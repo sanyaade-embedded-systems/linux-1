@@ -1789,7 +1789,8 @@ static int omapfb_do_probe(struct platform_device *pdev,
 			vram, fbdev->mem_desc.region_cnt);
 	pr_info("omapfb: Pixclock %lu kHz hfreq %lu.%lu kHz "
 			"vfreq %lu.%lu Hz\n",
-			phz / 1000, hhz / 10000, hhz % 10, vhz / 10, vhz % 10);
+			phz / 1000, hhz / 10000, hhz % 10000,
+			vhz / 10, vhz % 10);
 
 	return 0;
 
