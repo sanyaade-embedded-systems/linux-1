@@ -582,11 +582,13 @@ static int omap_dispc_enable_plane(int plane, int enable)
 	const u32 at_reg[] = { DISPC_GFX_ATTRIBUTES,
 				DISPC_VID1_BASE + DISPC_VID_ATTRIBUTES,
 				DISPC_VID2_BASE + DISPC_VID_ATTRIBUTES };
+	unsigned overlay_opt = plane & !!enable & !dispc.color_key.key_type;
 	if ((unsigned int)plane > dispc.mem_desc.region_cnt)
 		return -EINVAL;
 
 	enable_lcd_clocks(1);
 	MOD_REG_FLD(at_reg[plane], 1, enable ? 1 : 0);
+	MOD_REG_FLD(DISPC_CONTROL, 1<<12 | 1<<5, overlay_opt<<12 | 1<<5);
 	enable_lcd_clocks(0);
 
 	return 0;
