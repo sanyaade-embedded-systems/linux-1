@@ -206,8 +206,8 @@ static int ctrl_change_mode(struct fb_info *fbi)
 	struct omapfb_device *fbdev = plane->fbdev;
 	struct fb_var_screeninfo *var = &fbi->var;
 
-	offset = var->yoffset * fbi->fix.line_length +
-		 var->xoffset * var->bits_per_pixel / 8;
+	offset = (var->yoffset * var->xres_virtual + var->xoffset) *
+		var->bits_per_pixel / 8;
 
 	if (fbdev->ctrl->sync)
 		fbdev->ctrl->sync();
@@ -423,6 +423,8 @@ static void set_fb_fix(struct fb_info *fbi)
 	}
 	fix->accel		= FB_ACCEL_OMAP1610;
 	fix->line_length	= var->xres_virtual * bpp / 8;
+	fix->xpanstep		= 1;
+	fix->ypanstep		= 1;
 }
 
 static int set_color_mode(struct omapfb_plane_struct *plane,

@@ -435,6 +435,8 @@ static inline int _setup_plane(int plane, int channel_out,
 
 	dispc_write_reg(ri_reg[plane], (screen_width - width) * bpp / 8 + 1);
 
+	MOD_REG_FLD(DISPC_CONTROL, 1<<5, 1<<5);
+
 	return height * screen_width * bpp / 8;
 }
 
