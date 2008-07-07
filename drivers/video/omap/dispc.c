@@ -738,14 +738,16 @@ static void setup_color_conv_coef(void)
 	MOD_REG_FLD(at2_reg, (1 << 11), ct->full_range);
 }
 
+#define MAX_FCK_LCD 173000000
+
 static void calc_ck_div(int is_tft, int pck, int *lck_div, int *pck_div)
 {
 	unsigned long fck, lck;
 
-	*lck_div = 1;
 	pck = max(1, pck);
 	fck = clk_get_rate(dispc.dss1_fck);
-	lck = fck;
+	*lck_div = (fck + MAX_FCK_LCD - 1) / MAX_FCK_LCD;
+	lck = fck / *lck_div;
 	*pck_div = (lck + pck - 1) / pck;
 	if (is_tft)
 		*pck_div = max(2, *pck_div);
