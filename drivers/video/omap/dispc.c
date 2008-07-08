@@ -409,7 +409,7 @@ static inline int _setup_plane(int plane, int channel_out,
 	l |= cconv_en << 9;
 
 	l &= ~(0x03 << burst_shift);
-	l |= DISPC_BURST_8x32 << burst_shift;
+	l |= DISPC_BURST_16x32 << burst_shift;
 
 	l &= ~(1 << chout_shift);
 	l |= chout_val << chout_shift;
