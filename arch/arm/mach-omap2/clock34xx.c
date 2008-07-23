@@ -597,8 +597,6 @@ int __init omap2_clk_init(void)
 	/* u32 clkrate; */
 	u32 cpu_clkflg;
 
-	__raw_writel(0x1002, io_p2v(0x48004e40));
-
 	/* REVISIT: Ultimately this will be used for multiboot */
 #if 0
 	if (cpu_is_omap242x()) {
