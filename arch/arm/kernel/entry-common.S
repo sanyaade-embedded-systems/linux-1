@@ -68,6 +68,10 @@ no_work_pending:
 	/* perform architecture specific actions before user return */
 	arch_ret_to_user r1, lr
 
+#ifdef CONFIG_NEON_CACHE_BUG
+	dmb
+#endif
+
 	@ slow_restore_user_regs
 	ldr	r1, [sp, #S_PSR]		@ get calling cpsr
 	ldr	lr, [sp, #S_PC]!		@ get pc
