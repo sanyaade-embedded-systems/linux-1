@@ -403,17 +403,18 @@ static struct irq_chip twl4030_irq_chip = {
 };
 
 /* Global Functions */
-/*
- * @brief twl4030_i2c_write - Writes a n bit register in TWL4030
+
+/**
+ * twl4030_i2c_write - Writes a n bit register in TWL4030
+ * @mod_no: module number
+ * @value: an array of num_bytes+1 containing data to write
+ * @reg: register address (just offset will do)
+ * @num_bytes: number of bytes to transfer
  *
- * @param mod_no - module number
- * @param *value - an array of num_bytes+1 containing data to write
- * IMPORTANT - Allocate value num_bytes+1 and valid data starts at
- *		 Offset 1.
- * @param reg - register address (just offset will do)
- * @param num_bytes - number of bytes to transfer
+ * IMPORTANT: for 'value' parameter: Allocate value num_bytes+1 and
+ * valid data starts at Offset 1.
  *
- * @return result of operation - 0 is success
+ * Returns the result of operation - 0 is success
  */
 int twl4030_i2c_write(u8 mod_no, u8 *value, u8 reg, u8 num_bytes)
 {
@@ -457,14 +458,13 @@ int twl4030_i2c_write(u8 mod_no, u8 *value, u8 reg, u8 num_bytes)
 EXPORT_SYMBOL(twl4030_i2c_write);
 
 /**
- * @brief twl4030_i2c_read - Reads a n bit register in TWL4030
+ * twl4030_i2c_read - Reads a n bit register in TWL4030
+ * @mod_no: module number
+ * @value: an array of num_bytes containing data to be read
+ * @reg: register address (just offset will do)
+ * @num_bytes: number of bytes to transfer
  *
- * @param mod_no - module number
- * @param *value - an array of num_bytes containing data to be read
- * @param reg - register address (just offset will do)
- * @param num_bytes - number of bytes to transfer
- *
- * @return result of operation - num_bytes is success else failure.
+ * Returns result of operation - num_bytes is success else failure.
  */
 int twl4030_i2c_read(u8 mod_no, u8 *value, u8 reg, u8 num_bytes)
 {
@@ -511,13 +511,12 @@ int twl4030_i2c_read(u8 mod_no, u8 *value, u8 reg, u8 num_bytes)
 EXPORT_SYMBOL(twl4030_i2c_read);
 
 /**
- * @brief twl4030_i2c_write_u8 - Writes a 8 bit register in TWL4030
+ * twl4030_i2c_write_u8 - Writes a 8 bit register in TWL4030
+ * @mod_no: module number
+ * @value: the value to be written 8 bit
+ * @reg: register address (just offset will do)
  *
- * @param mod_no - module number
- * @param value - the value to be written 8 bit
- * @param reg - register address (just offset will do)
- *
- * @return result of operation - 0 is success
+ * Returns result of operation - 0 is success
  */
 int twl4030_i2c_write_u8(u8 mod_no, u8 value, u8 reg)
 {
@@ -531,13 +530,12 @@ int twl4030_i2c_write_u8(u8 mod_no, u8 value, u8 reg)
 EXPORT_SYMBOL(twl4030_i2c_write_u8);
 
 /**
- * @brief twl4030_i2c_read_u8 - Reads a 8 bit register from TWL4030
+ * twl4030_i2c_read_u8 - Reads a 8 bit register from TWL4030
+ * @mod_no: module number
+ * @value: the value read 8 bit
+ * @reg: register address (just offset will do)
  *
- * @param mod_no - module number
- * @param *value - the value read 8 bit
- * @param reg - register address (just offset will do)
- *
- * @return result of operation - 0 is success
+ * Returns result of operation - 0 is success
  */
 int twl4030_i2c_read_u8(u8 mod_no, u8 *value, u8 reg)
 {
@@ -695,7 +693,8 @@ static void do_twl4030_irq(unsigned int irq, irq_desc_t *desc)
 }
 
 /* attach a client to the adapter */
-static int twl4030_detect_client(struct i2c_adapter *adapter, unsigned char sid)
+static int __init twl4030_detect_client(struct i2c_adapter *adapter,
+					unsigned char sid)
 {
 	int err = 0;
 	struct twl4030_client *twl;
@@ -744,7 +743,7 @@ static int twl4030_detect_client(struct i2c_adapter *adapter, unsigned char sid)
 }
 
 /* adapter callback */
-static int twl4030_attach_adapter(struct i2c_adapter *adapter)
+static int __init twl4030_attach_adapter(struct i2c_adapter *adapter)
 {
 	int i;
 	int ret = 0;
@@ -797,7 +796,7 @@ static int twl4030_detach_client(struct i2c_client *client)
 	return 0;
 }
 
-static struct task_struct *start_twl4030_irq_thread(int irq)
+static struct task_struct * __init start_twl4030_irq_thread(int irq)
 {
 	struct task_struct *thread;
 
@@ -815,7 +814,7 @@ static struct task_struct *start_twl4030_irq_thread(int irq)
  * These three functions should be part of Voltage frame work
  * added here to complete the functionality for now.
  */
-static int protect_pm_master(void)
+static int __init protect_pm_master(void)
 {
 	int e = 0;
 
@@ -824,7 +823,7 @@ static int protect_pm_master(void)
 	return e;
 }
 
-static int unprotect_pm_master(void)
+static int __init unprotect_pm_master(void)
 {
 	int e = 0;
 
@@ -835,7 +834,7 @@ static int unprotect_pm_master(void)
 	return e;
 }
 
-static int power_companion_init(void)
+static int __init power_companion_init(void)
 {
 	struct clk *osc;
 	u32 rate;
@@ -880,7 +879,7 @@ static int power_companion_init(void)
  * status register to ensure that any prior interrupts are cleared.
  * Returns the status from the I2C read operation.
  */
-static int twl4030_i2c_clear_isr(u8 mod_no, u8 reg, u8 cor)
+static int __init twl4030_i2c_clear_isr(u8 mod_no, u8 reg, u8 cor)
 {
 	u8 tmp;
 
