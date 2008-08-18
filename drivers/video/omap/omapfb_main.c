@@ -40,6 +40,7 @@ static unsigned long	def_vxres;
 static unsigned long	def_vyres;
 static unsigned int	def_rotate;
 static unsigned int	def_mirror;
+static int		def_mode = -1;
 
 #ifdef CONFIG_FB_OMAP_MANUAL_UPDATE
 static int		manual_update = 1;
@@ -78,6 +79,57 @@ static struct caps_table_struct color_caps[] = {
 	{ 1 << OMAPFB_COLOR_CLUT_1BPP,	"CLUT1", },
 	{ 1 << OMAPFB_COLOR_RGB444,	"RGB444", },
 	{ 1 << OMAPFB_COLOR_YUY422,	"YUY422", },
+};
+
+static const struct video_mode video_modes[] = {
+	{
+		.name 		= "1280x720@50",
+		.x_res		= 1280,
+		.y_res		= 720,
+		.hfp		= 440,
+		.hsw		= 40,
+		.hbp		= 220,
+		.vfp		= 20,
+		.vsw		= 5,
+		.vbp		= 5,
+		.pixel_clock	= 74250,
+	},
+	{
+		.name		= "1280x720@60",
+		.x_res		= 1280,
+		.y_res		= 720,
+		.hfp		= 110,
+		.hsw		= 40,
+		.hbp		= 220,
+		.vfp		= 20,
+		.vsw		= 5,
+		.vbp		= 5,
+		.pixel_clock	= 74250,
+	},
+	{
+		.name		= "1920x1080@24",
+		.x_res		= 1920,
+		.y_res		= 1080,
+		.hfp		= 148,
+		.hsw		= 44,
+		.hbp		= 638,
+		.vfp		= 36,
+		.vsw		= 5,
+		.vbp		= 4,
+		.pixel_clock	= 74160,
+	},
+	{
+		.name		= "1920x1080@25",
+		.x_res		= 1920,
+		.y_res		= 1080,
+		.hfp		= 148,
+		.hsw		= 44,
+		.hbp		= 528,
+		.vfp		= 36,
+		.vsw		= 5,
+		.vbp		= 4,
+		.pixel_clock	= 74250,
+	}
 };
 
 /*
@@ -1711,6 +1763,18 @@ static int omapfb_do_probe(struct platform_device *pdev,
 		goto cleanup;
 	}
 
+	if (def_mode != -1) {
+		fbdev->panel->x_res	= video_modes[def_mode].x_res;
+		fbdev->panel->y_res	= video_modes[def_mode].y_res;
+		fbdev->panel->pixel_clock = video_modes[def_mode].pixel_clock;
+		fbdev->panel->hsw	= video_modes[def_mode].hsw;
+		fbdev->panel->hfp	= video_modes[def_mode].hfp;
+		fbdev->panel->hbp	= video_modes[def_mode].hbp;
+		fbdev->panel->vsw	= video_modes[def_mode].vsw;
+		fbdev->panel->vfp	= video_modes[def_mode].vfp;
+		fbdev->panel->vbp	= video_modes[def_mode].vbp;
+	}
+
 	r = fbdev->panel->init(fbdev->panel, fbdev);
 	if (r)
 		goto cleanup;
@@ -1867,6 +1931,16 @@ static struct platform_driver omapfb_driver = {
 	},
 };
 
+static int __init omapfb_find_mode(char *mode)
+{
+	int i;
+
+	for (i = 0; i < sizeof(video_modes)/sizeof(video_modes[0]); i++)
+		if (!strcmp(mode, video_modes[i].name))
+			return i;
+	return -1;
+}
+
 #ifndef MODULE
 
 /* Process kernel command line parameters */
@@ -1915,6 +1989,8 @@ static int __init omapfb_setup(char *options)
 			def_mirror = (simple_strtoul(this_opt + 7, NULL, 0));
 		else if (!strncmp(this_opt, "manual_update", 13))
 			manual_update = 1;
+		else if (!strncmp(this_opt, "mode:", 5))
+			def_mode = omapfb_find_mode(this_opt + 5);
 		else {
 			pr_debug("omapfb: invalid option\n");
 			r = -1;

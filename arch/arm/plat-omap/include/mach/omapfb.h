@@ -192,6 +192,20 @@ enum omapfb_update_mode {
 
 struct omapfb_device;
 
+struct video_mode {
+	const char	*name;
+	int		x_res, y_res;
+	int		pixel_clock;	/* In kHz */
+	int		hsw;		/* Horizontal synchronization
+					   pulse width */
+	int		hfp;		/* Horizontal front porch */
+	int		hbp;		/* Horizontal back porch */
+	int		vsw;		/* Vertical synchronization
+					   pulse width */
+	int		vfp;		/* Vertical front porch */
+	int		vbp;		/* Vertical back porch */
+};
+
 struct lcd_panel {
 	const char	*name;
 	int		config;		/* TFT/STN, signal inversion */
