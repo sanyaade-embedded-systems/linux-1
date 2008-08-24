@@ -884,8 +884,11 @@ EXPORT_SYMBOL(omap_dispc_free_irq);
 
 static irqreturn_t omap_dispc_irq_handler(int irq, void *dev)
 {
-	u32 stat = dispc_read_reg(DISPC_IRQSTATUS);
+	u32 stat;
 
+	enable_lcd_clocks(1);
+
+	stat = dispc_read_reg(DISPC_IRQSTATUS);
 	if (stat & DISPC_IRQ_FRAMEMASK)
 		complete(&dispc.frame_done);
 
@@ -900,6 +903,8 @@ static irqreturn_t omap_dispc_irq_handler(int irq, void *dev)
 		dispc.irq_callback(dispc.irq_callback_data);
 
 	dispc_write_reg(DISPC_IRQSTATUS, stat);
+
+	enable_lcd_clocks(0);
 
 	return IRQ_HANDLED;
 }
@@ -951,18 +956,13 @@ static void put_dss_clocks(void)
 
 static void enable_lcd_clocks(int enable)
 {
-	if (enable)
-		clk_enable(dispc.dss1_fck);
-	else
-		clk_disable(dispc.dss1_fck);
-}
-
-static void enable_interface_clocks(int enable)
-{
-	if (enable)
+	if (enable) {
 		clk_enable(dispc.dss_ick);
-	else
+		clk_enable(dispc.dss1_fck);
+	} else {
+		clk_disable(dispc.dss1_fck);
 		clk_disable(dispc.dss_ick);
+	}
 }
 
 static void enable_digit_clocks(int enable)
@@ -1398,7 +1398,6 @@ static int omap_dispc_init(struct omapfb_device *fbdev, int ext_mode,
 	if ((r = get_dss_clocks()) < 0)
 		return r;
 
-	enable_interface_clocks(1);
 	enable_lcd_clocks(1);
 
 #ifdef CONFIG_FB_OMAP_BOOTLOADER_INIT
@@ -1429,10 +1428,10 @@ static int omap_dispc_init(struct omapfb_device *fbdev, int ext_mode,
 		enable_digit_clocks(0);
 	}
 
-	/* Enable smart idle and autoidle */
+	/* Enable smart standby/idle, autoidle and wakeup */
 	l = dispc_read_reg(DISPC_SYSCONFIG);
 	l &= ~((3 << 12) | (3 << 3));
-	l |= (2 << 12) | (2 << 3) | (1 << 0);
+	l |= (2 << 12) | (2 << 3) | (1 << 2) | (1 << 0);
 	dispc_write_reg(DISPC_SYSCONFIG, l);
 	omap_writel(1 << 0, DSS_BASE + DSS_SYSCONFIG);
 
@@ -1502,7 +1501,6 @@ fail2:
 	free_irq(INT_24XX_DSS_IRQ, fbdev);
 fail1:
 	enable_lcd_clocks(0);
-	enable_interface_clocks(0);
 	put_dss_clocks();
 
 	return r;
@@ -1519,7 +1517,6 @@ static void omap_dispc_cleanup(void)
 	cleanup_fbmem();
 	free_palette_ram();
 	free_irq(INT_24XX_DSS_IRQ, dispc.fbdev);
-	enable_interface_clocks(0);
 	put_dss_clocks();
 }
 
