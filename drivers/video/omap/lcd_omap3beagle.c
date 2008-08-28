@@ -31,6 +31,10 @@
 
 #define LCD_PANEL_ENABLE_GPIO       170
 
+#define LCD_XRES		1024	
+#define LCD_YRES 		768
+#define LCD_PIXCLOCK		64000 /* in kHz */
+
 static int omap3beagle_panel_init(struct lcd_panel *panel,
 				struct omapfb_device *fbdev)
 {
@@ -62,43 +66,18 @@ struct lcd_panel omap3beagle_panel = {
 	.name		= "omap3beagle",
 	.config		= OMAP_LCDC_PANEL_TFT,
 
-	.bpp		= 16,
+	.bpp		= 24,
 	.data_lines	= 24,
+	.x_res		= LCD_XRES,
+	.y_res		= LCD_YRES,
+	.hsw		= 3,		/* hsync_len (4) - 1 */
+	.hfp		= 3,		/* right_margin (4) - 1 */
+	.hbp		= 39,		/* left_margin (40) - 1 */
+	.vsw		= 1,		/* vsync_len (2) - 1 */
+	.vfp		= 2,		/* lower_margin */
+	.vbp		= 7,		/* upper_margin (8) - 1 */
 
-#if 0				/* 720p50 */
-	.x_res		= 1280,
-	.y_res		= 720,
-	.hfp		= 440,		/* right_margin */
-	.hsw		= 40,		/* hsync_len */
-	.hbp		= 220,		/* left_margin */
-	.vfp		= 5,		/* lower_margin */
-	.vsw		= 5,		/* vsync_len */
-	.vbp		= 20,		/* upper_margin */
-	.pixel_clock	= 74250,
-#elif 1				/* 720p60 */
-	.x_res		= 1280,
-	.y_res		= 720,
-	.hfp		= 110,		/* right_margin */
-	.hsw		= 40,		/* hsync_len */
-	.hbp		= 220,		/* left_margin */
-	.vfp		= 5,		/* lower_margin */
-	.vsw		= 5,		/* vsync_len */
-	.vbp		= 20,		/* upper_margin */
-	.pixel_clock	= 74250,
-#else
-	.x_res		= 1360,
-	.y_res		= 768,
-	.hfp		= 64,		/* right_margin */
-	.hsw		= 112,		/* hsync_len */
-	.hbp		= 256,		/* left_margin */
-	.vfp		= 3,		/* lower_margin */
-	.vsw		= 6,		/* vsync_len */
-	.vbp		= 18,		/* upper_margin */
-	.pixel_clock	= 85500,
-	.pcd		= 5,
-#endif
-
-	.acb		= 40,
+	.pixel_clock	= LCD_PIXCLOCK,
 
 	.init		= omap3beagle_panel_init,
 	.cleanup	= omap3beagle_panel_cleanup,
