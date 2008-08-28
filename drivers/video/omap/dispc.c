@@ -881,13 +881,7 @@ static void set_lcd_timings(void)
 	l |= panel->acb & 0xff;
 	dispc_write_reg(DISPC_POL_FREQ, l);
 
-	if (panel->pcd) {
-		pck_div = panel->pcd;
-		lck_div = 1;
-	} else {
-		calc_ck_div(is_tft, panel->pixel_clock * 1000,
-			    &lck_div, &pck_div);
-	}
+	calc_ck_div(is_tft, panel->pixel_clock * 1000, &lck_div, &pck_div);
 
 	l = dispc_read_reg(DISPC_DIVISOR);
 	l &= ~(FLD_MASK(16, 8) | FLD_MASK(0, 8));
