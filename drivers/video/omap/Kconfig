@@ -7,6 +7,14 @@ config FB_OMAP
 	help
           Frame buffer driver for OMAP based boards.
 
+config FB_OMAP_VIDEO_MODE
+	string "Default video mode"
+	depends on FB_OMAP
+	help
+	  Enter video mode name to use if none is specified on the kernel
+	  command line. If left blank, board-specific default timings
+	  will be used. See omapfb_main.c for a list of valid mode names.
+
 config FB_OMAP_LCDC_EXTERNAL
 	bool "External LCD controller support"
 	depends on FB_OMAP
