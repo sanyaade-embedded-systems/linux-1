@@ -90,6 +90,7 @@ static int omap3beagle_panel_probe(struct platform_device *pdev)
 
 static int omap3beagle_panel_remove(struct platform_device *pdev)
 {
+	omapfb_unregister_panel(&omap3beagle_panel);
 	return 0;
 }
 
