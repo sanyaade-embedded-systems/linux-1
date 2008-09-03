@@ -1073,7 +1073,8 @@ static int mmap_kern(struct omapfb_mem_region *region)
 	pgprot_t		pgprot;
 	unsigned long		vaddr;
 
-	kvma = get_vm_area(region->size, VM_IOREMAP);
+	kvma = __get_vm_area(region->size, VM_IOREMAP,
+			     VMALLOC_START, VMALLOC_END);
 	if (kvma == NULL) {
 		dev_err(dispc.fbdev->dev, "can't get kernel vm area\n");
 		return -ENOMEM;
