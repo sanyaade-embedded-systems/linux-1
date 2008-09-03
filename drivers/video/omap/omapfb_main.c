@@ -1736,7 +1736,8 @@ static void omapfb_free_resources(struct omapfb_device *fbdev, int state)
 	case 7:
 		omapfb_unregister_sysfs(fbdev);
 	case 6:
-		fbdev->panel->disable(fbdev->panel);
+		if (fbdev->panel)
+			fbdev->panel->disable(fbdev->panel);
 	case 5:
 		omapfb_set_update_mode(fbdev, OMAPFB_UPDATE_DISABLED);
 	case 4:
@@ -1744,7 +1745,8 @@ static void omapfb_free_resources(struct omapfb_device *fbdev, int state)
 	case 3:
 		ctrl_cleanup(fbdev);
 	case 2:
-		fbdev->panel->cleanup(fbdev->panel);
+		if (fbdev->panel)
+			fbdev->panel->cleanup(fbdev->panel);
 	case 1:
 		dev_set_drvdata(fbdev->dev, NULL);
 		kfree(fbdev);
@@ -1998,6 +2000,17 @@ void omapfb_register_panel(struct lcd_panel *panel)
 		omapfb_do_probe(fbdev_pdev, fbdev_panel);
 }
 EXPORT_SYMBOL(omapfb_register_panel);
+
+void omapfb_unregister_panel(struct lcd_panel *panel)
+{
+	BUG_ON(fbdev_panel != panel);
+
+	panel->disable(panel);
+
+	omapfb_dev->panel = NULL;
+	fbdev_panel = NULL;
+}
+EXPORT_SYMBOL(omapfb_unregister_panel);
 
 /* Called when the device is being detached from the driver */
 static int omapfb_remove(struct platform_device *pdev)
