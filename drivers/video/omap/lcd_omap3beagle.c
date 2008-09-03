@@ -127,3 +127,5 @@ static void __exit omap3beagle_panel_drv_exit(void)
 
 module_init(omap3beagle_panel_drv_init);
 module_exit(omap3beagle_panel_drv_exit);
+
+MODULE_LICENSE("GPL");
