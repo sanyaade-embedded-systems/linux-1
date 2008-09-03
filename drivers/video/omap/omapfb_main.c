@@ -54,7 +54,7 @@ static unsigned long	def_vxres;
 static unsigned long	def_vyres;
 static unsigned int	def_rotate;
 static unsigned int	def_mirror;
-static char		def_mode[16] = CONFIG_FB_OMAP_VIDEO_MODE;
+static char		def_mode[16];
 
 #ifdef CONFIG_FB_OMAP_MANUAL_UPDATE
 static int		manual_update = 1;
@@ -2143,7 +2143,8 @@ static int __init omapfb_init(void)
 	omapfb_setup(option);
 #endif
 
-	omapfb_find_mode(def_mode, &video_mode);
+	omapfb_find_mode(def_mode[0]? def_mode : CONFIG_FB_OMAP_VIDEO_MODE,
+			 &video_mode);
 
 	/* Register the driver with LDM */
 	if (platform_driver_register(&omapfb_driver)) {
