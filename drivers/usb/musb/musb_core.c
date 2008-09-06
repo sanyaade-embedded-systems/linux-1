@@ -1819,6 +1819,9 @@ allocate_instance(struct device *dev, void __iomem *mbase)
 		ep->epnum = epnum;
 	}
 
+#ifdef CONFIG_USB_MUSB_OTG
+	otg_set_transceiver(&musb->xceiv);
+#endif
 	musb->controller = dev;
 	return musb;
 }
