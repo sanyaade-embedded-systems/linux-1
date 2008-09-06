@@ -148,7 +148,7 @@ static struct omap_mcbsp_ops omap2_mcbsp_ops = {
 #ifdef CONFIG_ARCH_OMAP24XX
 static struct omap_mcbsp_platform_data omap24xx_mcbsp_pdata[] = {
 	{
-		.virt_base	= OMAP2_IO_ADDRESS(OMAP24XX_MCBSP1_BASE),
+		.phys_base	= OMAP24XX_MCBSP1_BASE,
 		.dma_rx_sync	= OMAP24XX_DMA_MCBSP1_RX,
 		.dma_tx_sync	= OMAP24XX_DMA_MCBSP1_TX,
 		.rx_irq		= INT_24XX_MCBSP1_IRQ_RX,
@@ -157,7 +157,7 @@ static struct omap_mcbsp_platform_data omap24xx_mcbsp_pdata[] = {
 		.clk_name	= "mcbsp_clk",
 	},
 	{
-		.virt_base	= OMAP2_IO_ADDRESS(OMAP24XX_MCBSP2_BASE),
+		.phys_base	= OMAP24XX_MCBSP2_BASE,
 		.dma_rx_sync	= OMAP24XX_DMA_MCBSP2_RX,
 		.dma_tx_sync	= OMAP24XX_DMA_MCBSP2_TX,
 		.rx_irq		= INT_24XX_MCBSP2_IRQ_RX,
@@ -175,7 +175,7 @@ static struct omap_mcbsp_platform_data omap24xx_mcbsp_pdata[] = {
 #ifdef CONFIG_ARCH_OMAP34XX
 static struct omap_mcbsp_platform_data omap34xx_mcbsp_pdata[] = {
 	{
-		.virt_base	= OMAP2_IO_ADDRESS(OMAP34XX_MCBSP1_BASE),
+		.phys_base	= OMAP34XX_MCBSP1_BASE,
 		.dma_rx_sync	= OMAP24XX_DMA_MCBSP1_RX,
 		.dma_tx_sync	= OMAP24XX_DMA_MCBSP1_TX,
 		.rx_irq		= INT_24XX_MCBSP1_IRQ_RX,
@@ -184,7 +184,7 @@ static struct omap_mcbsp_platform_data omap34xx_mcbsp_pdata[] = {
 		.clk_name	= "mcbsp_clk",
 	},
 	{
-		.virt_base	= OMAP2_IO_ADDRESS(OMAP34XX_MCBSP2_BASE),
+		.phys_base	= OMAP34XX_MCBSP2_BASE,
 		.dma_rx_sync	= OMAP24XX_DMA_MCBSP2_RX,
 		.dma_tx_sync	= OMAP24XX_DMA_MCBSP2_TX,
 		.rx_irq		= INT_24XX_MCBSP2_IRQ_RX,
@@ -193,21 +193,21 @@ static struct omap_mcbsp_platform_data omap34xx_mcbsp_pdata[] = {
 		.clk_name	= "mcbsp_clk",
 	},
 	{
-		.virt_base	= OMAP2_IO_ADDRESS(OMAP34XX_MCBSP3_BASE),
+		.phys_base	= OMAP34XX_MCBSP3_BASE,
 		.dma_rx_sync	= OMAP24XX_DMA_MCBSP3_RX,
 		.dma_tx_sync	= OMAP24XX_DMA_MCBSP3_TX,
 		.ops		= &omap2_mcbsp_ops,
 		.clk_name	= "mcbsp_clk",
 	},
 	{
-		.virt_base	= OMAP2_IO_ADDRESS(OMAP34XX_MCBSP4_BASE),
+		.phys_base	= OMAP34XX_MCBSP4_BASE,
 		.dma_rx_sync	= OMAP24XX_DMA_MCBSP4_RX,
 		.dma_tx_sync	= OMAP24XX_DMA_MCBSP4_TX,
 		.ops		= &omap2_mcbsp_ops,
 		.clk_name	= "mcbsp_clk",
 	},
 	{
-		.virt_base	= OMAP2_IO_ADDRESS(OMAP34XX_MCBSP5_BASE),
+		.phys_base	= OMAP34XX_MCBSP5_BASE,
 		.dma_rx_sync	= OMAP24XX_DMA_MCBSP5_RX,
 		.dma_tx_sync	= OMAP24XX_DMA_MCBSP5_TX,
 		.ops		= &omap2_mcbsp_ops,
