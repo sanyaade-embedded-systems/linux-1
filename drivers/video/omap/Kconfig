@@ -117,6 +117,10 @@ config OMAP_FB_LCD_OMAP3BEAGLE
 	tristate "Beagle board DVI port support"
 	depends on FB_OMAP && MACH_OMAP3_BEAGLE
 
+config OMAP_FB_LCD_OVERO
+	tristate "Overo DVI port support"
+	depends on FB_OMAP && MACH_OVERO
+
 config FB_OMAP_BOOTLOADER_INIT
 	bool "Check bootloader initialization"
 	depends on FB_OMAP

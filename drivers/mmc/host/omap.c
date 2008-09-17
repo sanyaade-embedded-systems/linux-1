@@ -172,7 +172,7 @@ struct mmc_omap_host {
 	struct omap_mmc_platform_data *pdata;
 };
 
-void mmc_omap_fclk_offdelay(struct mmc_omap_slot *slot)
+static void mmc_omap_fclk_offdelay(struct mmc_omap_slot *slot)
 {
 	unsigned long tick_ns;
 
@@ -182,7 +182,7 @@ void mmc_omap_fclk_offdelay(struct mmc_omap_slot *slot)
 	}
 }
 
-void mmc_omap_fclk_enable(struct mmc_omap_host *host, unsigned int enable)
+static void mmc_omap_fclk_enable(struct mmc_omap_host *host, unsigned int enable)
 {
 	unsigned long flags;
 
@@ -1317,7 +1317,7 @@ static int __init mmc_omap_new_slot(struct mmc_omap_host *host, int id)
 	host->slots[id] = slot;
 
 	mmc->caps = 0;
-	if (host->pdata->conf.wire4)
+	if (host->pdata->slots[id].wire4)
 		mmc->caps |= MMC_CAP_4_BIT_DATA;
 
 	mmc->ops = &mmc_omap_ops;

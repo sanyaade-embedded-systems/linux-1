@@ -35,6 +35,7 @@ obj-$(CONFIG_OMAP_FB_LCD_OMAP2EVM) += lcd_omap2evm.o
 obj-$(CONFIG_OMAP_FB_LCD_OMAP3EVM) += lcd_omap3evm.o
 obj-$(CONFIG_OMAP_FB_LCD_OMAP3BEAGLE) += lcd_omap3beagle.o
 obj-$(CONFIG_OMAP_FB_LCD_MIPID) += lcd_mipid.o
+obj-$(CONFIG_OMAP_FB_LCD_OVERO) += lcd_overo.o
 
 omapfb-objs := $(objs-yy)
 

@@ -61,6 +61,7 @@ static unsigned long omap3beagle_panel_get_caps(struct lcd_panel *panel)
 struct lcd_panel omap3beagle_panel = {
 	.name		= "omap3beagle",
 	.config		= OMAP_LCDC_PANEL_TFT,
+
 	.bpp		= 16,
 	.data_lines	= 24,
 
