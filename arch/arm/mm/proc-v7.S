@@ -182,6 +182,15 @@ __v7_setup:
 	mov	r10, #0x1f			@ domains 0, 1 = manager
 	mcr	p15, 0, r10, c3, c0, 0		@ load domain access register
 #endif
+
+	mrc	p15, 0, r0, c1, c0, 1		@ read aux control register
+#ifdef CONFIG_CACHE_V7_L2
+	orr	r0, r0, #(1<<1)
+#else
+	bic	r0, r0, #(1<<1)
+#endif
+	mcr	p15, 0, r0, c1, c0, 1
+
 	adr	r5, v7_crval
 	ldmia	r5, {r5, r6}
    	mrc	p15, 0, r0, c1, c0, 0		@ read control register

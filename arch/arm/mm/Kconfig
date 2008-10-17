@@ -751,6 +751,11 @@ config CACHE_XSC3L2
 	help
 	  This option enables the L2 cache on XScale3.
 
+config CACHE_V7_L2
+	bool "Enable L2 cache"
+	depends on CPU_V7
+	default y
+
 config USER_L2_PLE
 	bool "Enable userspace access to the L2 PLE"
 	depends on CPU_V7
