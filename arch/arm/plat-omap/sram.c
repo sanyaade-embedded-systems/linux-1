@@ -44,6 +44,8 @@
 #define OMAP3_SRAM_PUB_PA       0x40208000
 #define OMAP3_SRAM_PUB_VA       0xd7008000
 
+#define OMAP_SRAM_ROM_RESERVED	0x1000
+
 #if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX)
 #define SRAM_BOOTLOADER_SZ	0x00
 #else
@@ -165,7 +167,7 @@ void __init omap_detect_sram(void)
 				       omap_sram_size,
 				       omap_sram_start + SRAM_BOOTLOADER_SZ,
 				       omap_sram_size - SRAM_BOOTLOADER_SZ);
-	omap_sram_size -= reserved;
+	omap_sram_size -= reserved + OMAP_SRAM_ROM_RESERVED;
 	omap_sram_ceil = omap_sram_base + omap_sram_size;
 }
 
