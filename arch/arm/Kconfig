@@ -909,6 +909,11 @@ config ALIGNMENT_TRAP
 	  correct operation of some network protocols. With an IP-only
 	  configuration it is safe to say N, otherwise say Y.
 
+config CPU_V7_SYSFS
+	bool
+	depends on CPU_V7 && SYSFS
+	default y
+
 endmenu
 
 menu "Boot options"
