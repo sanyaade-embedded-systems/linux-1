@@ -145,10 +145,21 @@ static void __init overo_flash_init(void)
 static struct omap_uart_config overo_uart_config __initdata = {
 	.enabled_uarts	= ((1 << 0) | (1 << 1) | (1 << 2)),
 };
+static struct twl4030_gpio_platform_data overo_gpio_data = {
+	.gpio_base	= OMAP_MAX_GPIO_LINES,
+	.irq_base	= TWL4030_GPIO_IRQ_BASE,
+	.irq_end	= TWL4030_GPIO_IRQ_END,
+};
+
+static struct twl4030_usb_data overo_usb_data = {
+	.usb_mode	= T2_USB_MODE_ULPI,
+};
 
 static struct twl4030_platform_data overo_twldata = {
 	.irq_base	= TWL4030_IRQ_BASE,
 	.irq_end	= TWL4030_IRQ_END,
+	.gpio		= &overo_gpio_data,
+	.usb		= &overo_usb_data,
 };
 
 static struct i2c_board_info __initdata overo_i2c_boardinfo[] = {
@@ -214,8 +225,15 @@ static void __init overo_init(void)
 		udelay(10);
 		gpio_set_value(OVERO_GPIO_W2W_NRESET, 1);
 	} else {
-		printk(KERN_ERR "could not obtain gpio for OVERO_GPIO_W2W_NRESET\n");
+		printk(KERN_ERR "could not obtain gpio for "
+					"OVERO_GPIO_W2W_NRESET\n");
 	}
+
+	if ((gpio_request(OVERO_GPIO_BT_XGATE, "OVERO_GPIO_BT_XGATE") == 0) &&
+	    (gpio_direction_output(OVERO_GPIO_BT_XGATE, 0) == 0))
+		gpio_export(OVERO_GPIO_BT_XGATE, 0);
+	else
+		printk(KERN_ERR "could not obtain gpio for OVERO_GPIO_BT_XGATE\n");
 
 	if ((gpio_request(OVERO_GPIO_BT_NRESET, "OVERO_GPIO_BT_NRESET") == 0) &&
 	    (gpio_direction_output(OVERO_GPIO_BT_NRESET, 1) == 0)) {
@@ -224,21 +242,24 @@ static void __init overo_init(void)
 		mdelay(6);
 		gpio_set_value(OVERO_GPIO_BT_NRESET, 1);
 	} else {
-		printk(KERN_ERR "could not obtain gpio for OVERO_GPIO_BT_NRESET\n");
+		printk(KERN_ERR "could not obtain gpio for "
+					"OVERO_GPIO_BT_NRESET\n");
 	}
 
 	if ((gpio_request(OVERO_GPIO_USBH_CPEN, "OVERO_GPIO_USBH_CPEN") == 0) &&
 	    (gpio_direction_output(OVERO_GPIO_USBH_CPEN, 1) == 0))
 		gpio_export(OVERO_GPIO_USBH_CPEN, 0);
 	else
-		printk(KERN_ERR "could not obtain gpio for OVERO_GPIO_USBH_CPEN\n");
+		printk(KERN_ERR "could not obtain gpio for "
+					"OVERO_GPIO_USBH_CPEN\n");
 
 	if ((gpio_request(OVERO_GPIO_USBH_NRESET,
 			  "OVERO_GPIO_USBH_NRESET") == 0) &&
 	    (gpio_direction_output(OVERO_GPIO_USBH_NRESET, 1) == 0))
 		gpio_export(OVERO_GPIO_USBH_NRESET, 0);
 	else
-		printk(KERN_ERR "could not obtain gpio for OVERO_GPIO_USBH_NRESET\n");
+		printk(KERN_ERR "could not obtain gpio for "
+					"OVERO_GPIO_USBH_NRESET\n");
 }
 
 static void __init overo_map_io(void)

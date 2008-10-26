@@ -271,7 +271,6 @@ static int _omap3_noncore_dpll_stop(struct clk *clk)
 static int omap3_noncore_dpll_enable(struct clk *clk)
 {
 	int r;
-	long rate;
 	struct dpll_data *dd;
 
 	if (clk == &dpll3_ck)
@@ -281,15 +280,13 @@ static int omap3_noncore_dpll_enable(struct clk *clk)
 	if (!dd)
 		return -EINVAL;
 
-	rate = omap2_get_dpll_rate(clk);
-
-	if (dd->bypass_clk->rate == rate)
+	if (clk->rate == dd->bypass_clk->rate)
 		r = _omap3_noncore_dpll_bypass(clk);
 	else
 		r = _omap3_noncore_dpll_lock(clk);
 
 	if (!r)
-		clk->rate = rate;
+		clk->rate = omap2_get_dpll_rate(clk);
 
 	return r;
 }
@@ -431,6 +428,9 @@ static int omap3_noncore_dpll_set_rate(struct clk *clk, unsigned long rate)
 
 		ret = omap3_noncore_dpll_program(clk, dd->last_rounded_m,
 						 dd->last_rounded_n, freqsel);
+
+		if (!ret)
+			clk->rate = rate;
 
 	}
 
