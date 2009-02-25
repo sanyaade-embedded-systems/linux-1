@@ -19,6 +19,10 @@
 #include <asm/mach/map.h>
 #include <mach/clock.h>
 #include <mach/mux.h>
+#include <mach/cpu.h>
+#include <mach/omapl1x7.h>
+
+#define OMAPL1X7_ARM_INTC_BASE	0xFFFEE000
 
 extern void davinci_check_revision(void);
 
@@ -31,6 +35,15 @@ static struct map_desc davinci_io_desc[] __initdata = {
 		.virtual	= IO_VIRT,
 		.pfn		= __phys_to_pfn(IO_PHYS),
 		.length		= IO_SIZE,
+		.type		= MT_DEVICE
+	},
+};
+
+static struct map_desc omapl1x7_intc_desc[] __initdata = {
+	{
+		.virtual	= IO_Dx_INTC_VIRT,
+		.pfn		= __phys_to_pfn(OMAPL1X7_ARM_INTC_BASE),
+		.length		= IO_Dx_INTC_SIZE,
 		.type		= MT_DEVICE
 	},
 };
@@ -50,6 +63,14 @@ void __init davinci_map_common_io(void)
 	 * IO space mapping must be initialized before we can do that.
 	 */
 	davinci_check_revision();
+
+	/*
+	 * Map the interrupt controller to a common address across all
+	 * SoCs.  Other SoC specific mapping can go here as well.
+	 */
+	if (cpu_is_omapl1x7())
+		iotable_init(omapl1x7_intc_desc,
+				ARRAY_SIZE(omapl1x7_intc_desc));
 }
 
 #define BETWEEN(p, st, sz)	((p) >= (st) && (p) < ((st) + (sz)))

@@ -1,0 +1,15 @@
+0001-lpsc-assigments-for-omapl1xx.patch
+0002-interrupt-number-assigments-for-omapl1xx.patch
+0003-irq-changes.patch
+0004-uart-configuration.patch
+0005-add-omapl1xx-cpu-type.patch
+0006-clock-subsystem-changes-for-omapl1xx.patch
+0007-add-omapl1xx-board-support.patch
+0008-timer-changes.patch
+0009-pinmux-configurations-for-omapl1xx.patch
+0010-omapl1xx-defconfig.patch
+0011-i2c-changes-for-omapl1x7.patch
+0012-emac-changes-for-omapl1x7-part1.patch
+0013-emac-platdata.patch
+0014-emac-phy-mask.patch
+0015-emac-omapl1x7.patch

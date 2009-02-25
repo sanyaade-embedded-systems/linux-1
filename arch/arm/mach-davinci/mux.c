@@ -20,6 +20,8 @@
 #include <linux/spinlock.h>
 
 #include <mach/hardware.h>
+#include <mach/omapl1x7.h>
+#include <mach/cpu.h>
 #include <mach/mux.h>
 
 static const struct mux_config *mux_table;
@@ -48,6 +50,9 @@ int __init_or_module davinci_cfg_reg(const unsigned long index)
 
 	if (!mux_table)
 		BUG();
+
+	if (cpu_is_omapl1x7())
+		base = IO_ADDRESS(OMAPL1X7_BOOT_CFG_BASE);
 
 	if (index >= pin_table_sz) {
 		printk(KERN_ERR "Invalid pin mux index: %lu (%lu)\n",

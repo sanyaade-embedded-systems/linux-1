@@ -18,6 +18,8 @@
 #define DAVINCI_PLL2_BASE 0x01c40c00
 #define MAX_PLL 2
 
+#define OMAPL1X7_PLL_CNTRL0_BASE 0x01C11000
+
 /* PLL/Reset register offsets */
 #define PLLCTL          0x100
 #define PLLCTL_PLLEN    BIT(0)
@@ -66,6 +68,7 @@ struct clk {
 	u8			usecount;
 	u8			flags;
 	u8			lpsc;
+	u8			domain;
 	struct clk              *parent;
 	struct pll_data         *pll_data;
 	u32                     div_reg;

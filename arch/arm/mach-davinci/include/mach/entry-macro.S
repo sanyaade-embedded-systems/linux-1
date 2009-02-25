@@ -13,18 +13,31 @@
 
 		.macro	disable_fiq
 		.endm
-
 		.macro  get_irqnr_preamble, base, tmp
+#ifdef CONFIG_ARCH_OMAPL1x7
+		ldr \base, =IO_Dx_INTC_VIRT
+#else
 		ldr \base, =IO_ADDRESS(DAVINCI_ARM_INTC_BASE)
+#endif
 		.endm
 
 		.macro  arch_ret_to_user, tmp1, tmp2
 		.endm
 
 		.macro	get_irqnr_and_base, irqnr, irqstat, base, tmp
+#ifdef CONFIG_ARCH_OMAPL1x7
+		ldr \irqnr, [\base, #0x80] /* get irq number */
+		and \irqnr, \irqnr, #0xff  /* irq is in bits 0-9 */
+		mov \tmp, \irqnr, lsr #3
+		and \tmp, \tmp, #0xfc
+		add \tmp, \tmp, #0x280 /* get the register offset */
+		ldr \irqstat, [\base, \tmp] /* get the intc status */
+		cmp \irqstat, #0x0
+#else
 		ldr \tmp, [\base, #0x14]
 		movs \tmp, \tmp, lsr #2
 		sub \irqnr, \tmp, #1
+#endif
 		.endm
 
 		.macro	irq_prio_table

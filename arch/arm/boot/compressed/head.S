@@ -154,6 +154,10 @@ not_angel:
 		 */
 
 		.text
+#ifdef CONFIG_CPU_DCACHE_WRITETHROUGH
+                mov     r0, #4                  @ put dcache in WT mode
+                mcr     p15, 7, r0, c15, c0, 0
+#endif
 		adr	r0, LC0
 		ldmia	r0, {r1, r2, r3, r4, r5, r6, ip, sp}
 		subs	r0, r0, r1		@ calculate the delta offset
@@ -399,9 +403,17 @@ __setup_mmu:	sub	r3, r4, #16384		@ Page directory size
 		orr	r1, r1, #3 << 10
 		add	r2, r3, #16384
 1:		cmp	r1, r9			@ if virt > start of RAM
+#ifdef CONFIG_CPU_DCACHE_WRITETHROUGH
+                orrhs   r1, r1, #0x08           @ set cacheable
+#else
 		orrhs	r1, r1, #0x0c		@ set cacheable, bufferable
+#endif
 		cmp	r1, r10			@ if virt > end of RAM
+#ifdef CONFIG_CPU_DCACHE_WRITETHROUGH
+                bichs   r1, r1, #0x08           @ set cacheable
+#else
 		bichs	r1, r1, #0x0c		@ clear cacheable, bufferable
+#endif
 		str	r1, [r0], #4		@ 1:1 mapping
 		add	r1, r1, #1048576
 		teq	r0, r2

@@ -30,6 +30,10 @@
 /* Power and Sleep Controller (PSC) Domains */
 #define DAVINCI_GPSC_ARMDOMAIN      0
 #define DAVINCI_GPSC_DSPDOMAIN      1
+#define DAVINCI_GPSC0_ARMDOMAIN     DAVINCI_GPSC_ARMDOMAIN
+#define DAVINCI_GPSC0_DSPDOMAIN     DAVINCI_GPSC_DSPDOMAIN
+#define DAVINCI_GPSC1_ARMDOMAIN     2
+#define DAVINCI_GPSC1_DSPDOMAIN     3
 
 #define DAVINCI_LPSC_VPSSMSTR       0
 #define DAVINCI_LPSC_VPSSSLV        1
@@ -115,6 +119,48 @@
 #define DM646X_LPSC_TIMER0         34
 #define DM646X_LPSC_TIMER1         35
 #define DM646X_LPSC_ARM_INTC       45
+
+/* OMAPL1x7 LPSC defines */
+/* PSC0 defines */
+#define OMAPL1X7_LPSC_TPCC         0
+#define OMAPL1X7_LPSC_TPTC0        1
+#define OMAPL1X7_LPSC_TPTC1        2
+#define OMAPL1X7_LPSC_EMIF25       3
+#define OMAPL1X7_LPSC_SPI0         4
+#define OMAPL1X7_LPSC_MMC_SD       5
+#define OMAPL1X7_LPSC_AINTC        6
+#define OMAPL1X7_LPSC_ARM_RAM_ROM  7
+#define OMAPL1X7_LPSC_SECU_MGR     8
+#define OMAPL1X7_LPSC_UART0        9
+#define OMAPL1X7_LPSC_SCR0_SS      10
+#define OMAPL1X7_LPSC_SCR1_SS      11
+#define OMAPL1X7_LPSC_SCR2_SS      12
+#define OMAPL1X7_LPSC_DMAX         13
+#define OMAPL1X7_LPSC_ARM          14
+#define OMAPL1X7_LPSC_GEM          15
+
+/* PSC1 defines */
+#define OMAPL1X7_LPSC_USB20        (32 + 1)
+#define OMAPL1X7_LPSC_USB11        (32 + 2)
+#define OMAPL1X7_LPSC_GPIO         (32 + 3)
+#define OMAPL1X7_LPSC_UHPI         (32 + 4)
+#define OMAPL1X7_LPSC_CPGMAC       (32 + 5)
+#define OMAPL1X7_LPSC_EMIF3C       (32 + 6)
+#define OMAPL1X7_LPSC_McASP0       (32 + 7)
+#define OMAPL1X7_LPSC_McASP1       (32 + 8)
+#define OMAPL1X7_LPSC_McASP2       (32 + 9)
+#define OMAPL1X7_LPSC_SPI1         (32 + 10)
+#define OMAPL1X7_LPSC_I2C          (32 + 11)
+#define OMAPL1X7_LPSC_UART1        (32 + 12)
+#define OMAPL1X7_LPSC_UART2        (32 + 13)
+#define OMAPL1X7_LPSC_LCDCNTL      (32 + 16)
+#define OMAPL1X7_LPSC_PWM          (32 + 17)
+#define OMAPL1X7_LPSC_ECAP         (32 + 20)
+#define OMAPL1X7_LPSC_EQEP         (32 + 21)
+#define OMAPL1X7_LPSC_SCR_P0_SS    (32 + 24)
+#define OMAPL1X7_LPSC_SCR_P1_SS    (32 + 25)
+#define OMAPL1X7_LPSC_CR_P3_SS     (32 + 26)
+#define OMAPL1X7_LPSC_L3_CBA_RAM   (32 + 31)
 
 extern void davinci_psc_config(unsigned int domain, unsigned int id,
 			       char enable);

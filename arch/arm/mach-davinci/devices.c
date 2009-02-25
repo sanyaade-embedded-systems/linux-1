@@ -23,6 +23,7 @@
 #include <asm/mach/map.h>
 
 #include <mach/hardware.h>
+#include <mach/omapl1x7.h>
 #include <mach/edma.h>
 #include <mach/emac.h>
 #include <mach/i2c.h>
@@ -42,6 +43,7 @@
 #define DM355_MMCSD0_BASE	     0x01E11000
 #define DM355_MMCSD1_BASE	     0x01E00000
 
+#ifndef CONFIG_MACH_OMAPL1X7_EVM
 static struct resource i2c_resources[] = {
 	{
 		.start		= DAVINCI_I2C_BASE,
@@ -60,14 +62,71 @@ static struct platform_device davinci_i2c_device = {
 	.num_resources	= ARRAY_SIZE(i2c_resources),
 	.resource	= i2c_resources,
 };
+#else
+static struct resource omapl1x7_i2c_resources0[] = {
+	{
+		.start          = OMAPL1X7_I2C0_BASE,
+		.end            = OMAPL1X7_I2C0_BASE + SZ_4K - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	{
+		.start          = IRQ_OMAPL1X7_I2CINT0,
+		.end            = IRQ_OMAPL1X7_I2CINT0,
+		.flags          = IORESOURCE_IRQ,
+	},
+};
+
+static struct resource omapl1x7_i2c_resources1[] = {
+	{
+		.start          = OMAPL1X7_I2C1_BASE,
+		.end            = OMAPL1X7_I2C1_BASE + SZ_4K - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	{
+		.start          = IRQ_OMAPL1X7_I2CINT1,
+		.end            = IRQ_OMAPL1X7_I2CINT1,
+		.flags          = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device omapl1x7_i2c_device[] = {
+	[0] = {
+		.name           = "i2c_davinci",
+		.id             = 1,
+		.num_resources  = ARRAY_SIZE(omapl1x7_i2c_resources0),
+		.resource       = omapl1x7_i2c_resources0,
+	},
+	[1] = {
+		.name           = "i2c_davinci",
+		.id             = 2,
+		.num_resources  = ARRAY_SIZE(omapl1x7_i2c_resources1),
+		.resource       = omapl1x7_i2c_resources1,
+	}
+};
+#endif
 
 void __init davinci_init_i2c(struct davinci_i2c_platform_data *pdata)
 {
+	int i = 0;
 	if (cpu_is_davinci_dm644x())
 		davinci_cfg_reg(DM644X_I2C);
 
+	if (cpu_is_omapl1x7()) {
+		davinci_cfg_reg(OMAPL1X7_I2C1_SCL);
+		davinci_cfg_reg(OMAPL1X7_I2C1_SDA);
+		davinci_cfg_reg(OMAPL1X7_I2C0_SDA);
+		davinci_cfg_reg(OMAPL1X7_I2C0_SCL);		
+	}
+
+#ifndef CONFIG_MACH_OMAPL1X7_EVM
 	davinci_i2c_device.dev.platform_data = pdata;
 	(void) platform_device_register(&davinci_i2c_device);
+#else
+	for (i = 0; i < 2; i++) {
+		omapl1x7_i2c_device[i].dev.platform_data = pdata;
+		(void) platform_device_register(&omapl1x7_i2c_device[i]);
+	}
+#endif
 }
 
 #if	defined(CONFIG_MMC_DAVINCI) || defined(CONFIG_MMC_DAVINCI_MODULE)
@@ -349,12 +408,91 @@ static struct platform_device dm646x_emac_device = {
 	}
 };
 
+#define RESOURCE_IRQ	4
+
+static struct resource omapl1x7_emac_resources [] = {
+        {
+                .start  = OMAPL1X7_EMAC_CPGMAC_BASE,
+                .end    = OMAPL1X7_EMAC_CPGMAC_BASE + 0xfff,
+                .flags  = IORESOURCE_MEM,
+                .name   = "ctrl_regs",
+        },
+        {
+                .start  = OMAPL1X7_EMAC_CPGMACSS_BASE,
+                .end    = OMAPL1X7_EMAC_CPGMACSS_BASE + 0xfff,
+                .flags  = IORESOURCE_MEM,
+                .name   = "ctrl_module_regs",
+        },
+        {
+                .start  = OMAPL1X7_EMAC_CPPI_PORT_BASE,
+                .end    = OMAPL1X7_EMAC_CPPI_PORT_BASE + 0x1fff,
+                .flags  = IORESOURCE_MEM,
+                .name   = "ctrl_ram",
+        },
+        {
+                .start  = OMAPL1X7_EMAC_MDIO_BASE,
+                .end    = OMAPL1X7_EMAC_MDIO_BASE + 0xfff,
+                .flags  = IORESOURCE_MEM,
+                .name   = "mdio_regs",
+        },
+        [RESOURCE_IRQ] = {
+                .start  = IRQ_OMAPL1X7_C0_RX_THRESH_PULSE,
+                .end	= IRQ_OMAPL1X7_C0_RX_THRESH_PULSE,
+                .flags  = IORESOURCE_IRQ,
+                .name   = "mac_rx_threshold",
+        },
+        {
+                .start  = IRQ_OMAPL1X7_C0_RX_PULSE,
+                .end	= IRQ_OMAPL1X7_C0_RX_PULSE,
+                .flags  = IORESOURCE_IRQ,
+                .name   = "mac_rx",
+        },
+        {
+                .start  = IRQ_OMAPL1X7_C0_TX_PULSE,
+                .end	= IRQ_OMAPL1X7_C0_TX_PULSE,
+                .flags  = IORESOURCE_IRQ,
+                .name   = "mac_tx",
+        },
+        {
+                .start  = IRQ_OMAPL1X7_C0_MISC_PULSE,
+                .end	= IRQ_OMAPL1X7_C0_MISC_PULSE,
+                .flags  = IORESOURCE_IRQ,
+                .name   = "mac_misc",
+        },
+};
+static struct emac_platform_data omapl1x7_emac_pdata = {
+	.phy_mask = 0x0,	/* No PHY */
+};
+
+static struct platform_device omapl1x7_emac_device = {
+        .name = "davinci_emac",
+        .id = 1,
+        .num_resources = ARRAY_SIZE(omapl1x7_emac_resources),
+        .resource = omapl1x7_emac_resources,
+        .dev = {
+                .platform_data = &omapl1x7_emac_pdata,
+        }
+};
+
 void davinci_init_emac(char *mac_addr)
 {
 	DECLARE_MAC_BUF(buf);
 
-	if (!(cpu_is_davinci_dm644x() || cpu_is_davinci_dm646x()))
+	if (!(cpu_is_davinci_dm644x() || cpu_is_davinci_dm646x()
+		|| cpu_is_omapl1x7()))
 		return;
+
+	if (cpu_is_omapl1x7()) {
+		davinci_cfg_reg(OMAPL1X7_RMII_TXD_0);
+		davinci_cfg_reg(OMAPL1X7_RMII_TXD_1);
+		davinci_cfg_reg(OMAPL1X7_RMII_TXEN);
+		davinci_cfg_reg(OMAPL1X7_RMII_CRS_DV);
+		davinci_cfg_reg(OMAPL1X7_RMII_RXD_0);
+		davinci_cfg_reg(OMAPL1X7_RMII_RXD_1);
+		davinci_cfg_reg(OMAPL1X7_RMII_RXER);
+		davinci_cfg_reg(OMAPL1X7_MDIO_CLK);
+		davinci_cfg_reg(OMAPL1X7_MDIO_D);
+	}
 
 	/* if valid MAC exists, don't re-register */
 	if (is_valid_ether_addr(emac_pdata.mac_addr))
@@ -371,8 +509,10 @@ void davinci_init_emac(char *mac_addr)
 	}
 	if ((cpu_is_davinci_dm644x()))
 		(void) platform_device_register(&davinci_emac_device);
-	else
+	else if (cpu_is_davinci_dm646x())
 		(void) platform_device_register(&dm646x_emac_device);
+	else
+		(void) platform_device_register(&omapl1x7_emac_device);
 }
 
 #else

@@ -198,6 +198,8 @@ static const char emac_version_string[] = "TI DaVinci EMAC Linux v6.0";
 #define EMAC_MACCONTROL_GIGABITEN_SHIFT (7)
 #define EMAC_MACCONTROL_FULLDUPLEXEN	(0x1)
 
+#define EMAC_MACCONTROL_RMIISPEED_MASK	(0x1 << 15)
+
 /* GIGABIT MODE related bits */
 #define EMAC_DM646X_MACCONTORL_GMIIEN	(0x01 << 5)
 #define EMAC_DM646X_MACCONTORL_GIG	(0x01 << 7)
@@ -505,6 +507,8 @@ struct emac_priv {
 	struct timer_list periodic_timer;
 	u32 periodic_ticks;
 	u32 timer_active;
+	/* PHY mask from platform data */
+	u32 phy_mask;
 	/* mii_bus,phy members */
 	struct mii_bus *mii_bus;
 	struct phy_device *phydev;
@@ -746,7 +750,10 @@ static void emac_update_phystatus(struct emac_priv *priv)
 
 	mac_control = emac_read(EMAC_MACCONTROL);
 
-	new_duplex = priv->phydev->duplex;
+	if (priv->phy_mask)
+		new_duplex = priv->phydev->duplex;
+	else
+		new_duplex = DUPLEX_FULL;
 
 	/* We get called only if link has changed (speed/duplex/status) */
 	if ((priv->link) && (new_duplex != priv->duplex)) {
@@ -998,7 +1005,7 @@ static void emac_dev_mcast_set(struct net_device *ndev)
  */
 static void emac_int_disable(struct emac_priv *priv)
 {
-	if (cpu_is_davinci_dm646x()) {
+	if (cpu_is_davinci_dm646x() || cpu_is_omapl1x7()) {
 		unsigned long flags;
 
 		local_irq_save(flags);
@@ -1026,7 +1033,7 @@ static void emac_int_disable(struct emac_priv *priv)
  */
 static void emac_int_enable(struct emac_priv *priv)
 {
-	if (cpu_is_davinci_dm646x()) {
+	if (cpu_is_davinci_dm646x() || cpu_is_omapl1x7()) {
 		emac_ctrl_write(EMAC_DM646X_CMRXINTEN, 0xff);
 		emac_ctrl_write(EMAC_DM646X_CMTXINTEN, 0xff);
 
@@ -2064,6 +2071,10 @@ static int emac_hw_enable(struct emac_priv *priv)
 		((priv->speed == 1000) ? EMAC_MACCONTROL_GIGABITEN : 0x0) |
 		((EMAC_DEF_TXPACING_EN) ? (EMAC_MACCONTROL_TXPACEEN) : 0x0) |
 		((priv->duplex == DUPLEX_FULL) ? 0x1 : 0));
+
+	if (cpu_is_omapl1x7())
+		mac_control |= EMAC_MACCONTROL_RMIISPEED_MASK;
+ 
 	emac_write(EMAC_MACCONTROL, mac_control);
 
 	mbp_enable =
@@ -2156,7 +2167,7 @@ static int emac_poll(struct napi_struct *napi, int budget)
 	/* Since we support only 1 TX ch, for now check all TX int mask */
 	mask = EMAC_DM644X_MAC_IN_VECTOR_TX_INT_VEC;
 
-	if (cpu_is_davinci_dm646x())
+	if (cpu_is_davinci_dm646x() || cpu_is_omapl1x7())
 		mask = EMAC_DM646X_MAC_IN_VECTOR_TX_INT_VEC;
 
 	if (status & mask) {
@@ -2168,7 +2179,7 @@ static int emac_poll(struct napi_struct *napi, int budget)
 	/* Since we support only 1 RX ch, for now check all RX int mask */
 	mask = EMAC_DM644X_MAC_IN_VECTOR_RX_INT_VEC;
 
-	if (cpu_is_davinci_dm646x())
+	if (cpu_is_davinci_dm646x() || cpu_is_omapl1x7())
 		mask = EMAC_DM646X_MAC_IN_VECTOR_RX_INT_VEC;
 
 	if (status & mask) {
@@ -2441,36 +2452,45 @@ static int emac_dev_open(struct net_device *ndev)
 	/* Start/Enable EMAC hardware */
 	emac_hw_enable(priv);
 
-	/* find the first phy */
-	priv->phydev = NULL;
-	for (phy_addr = 0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
-		if (priv->mii_bus->phy_map[phy_addr]) {
-			priv->phydev = priv->mii_bus->phy_map[phy_addr];
-			break;
+	if (priv->phy_mask) {
+		/* find the first phy */
+		priv->phydev = NULL;
+		for (phy_addr = 0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
+			if (priv->mii_bus->phy_map[phy_addr]) {
+				priv->phydev = priv->mii_bus->phy_map[phy_addr];
+				break;
+			}
 		}
-	}
 
-	if (!priv->phydev) {
-		printk(KERN_ERR "%s: no PHY found\n", ndev->name);
-		return -1;
-	}
+		if (!priv->phydev) {
+			printk(KERN_ERR "%s: no PHY found\n", ndev->name);
+			return -1;
+		}
 
-	priv->phydev = phy_connect(ndev, priv->phydev->dev.bus_id,
+		priv->phydev = phy_connect(ndev, priv->phydev->dev.bus_id,
 				&emac_adjust_link, 0, PHY_INTERFACE_MODE_MII);
 
-	if (IS_ERR(priv->phydev)) {
-		printk(KERN_ERR "%s: Could not attach to PHY\n", ndev->name);
-		return PTR_ERR(priv->phydev);
+		if (IS_ERR(priv->phydev)) {
+			printk(KERN_ERR "%s: Could not attach to PHY\n",
+								ndev->name);
+			return PTR_ERR(priv->phydev);
+		}
+
+		priv->link = 0;
+		priv->speed = 0;
+		priv->duplex = -1;
+
+		printk(KERN_INFO "%s: attached PHY driver [%s] "
+			"(mii_bus:phy_addr=%s, id=%x)\n", ndev->name,
+			priv->phydev->drv->name, priv->phydev->dev.bus_id,
+			priv->phydev->phy_id);
+	} else {
+		/* No PHY, set the values for link, speed, duplex */
+		priv->link = 1;
+		priv->speed = SPEED_100;
+		priv->duplex = DUPLEX_FULL;
+		emac_update_phystatus(priv);
 	}
-
-	priv->link = 0;
-	priv->speed = 0;
-	priv->duplex = -1;
-
-	printk(KERN_INFO "%s: attached PHY driver [%s] "
-		"(mii_bus:phy_addr=%s, id=%x)\n", ndev->name,
-		priv->phydev->drv->name, priv->phydev->dev.bus_id,
-		priv->phydev->phy_id);
 
 	if (!netif_running(ndev)) /* debug only - to avoid compiler warning */
 		emac_dump_regs(priv);
@@ -2478,7 +2498,8 @@ static int emac_dev_open(struct net_device *ndev)
 	if (netif_msg_drv(priv))
 		dev_notice(EMAC_DEV, "DaVinci EMAC: Opened %s\n", ndev->name);
 
-	phy_start(priv->phydev);
+	if (priv->phy_mask)
+		phy_start(priv->phydev);
 
 	return 0;
 
@@ -2630,11 +2651,12 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 	spin_lock_init(&priv->rx_lock);
 	spin_lock_init(&priv->lock);
 
-	/* MAC addr: from platform_data */
+	/* MAC addr and  PHY mask from platform_data */
 	if (pdev->dev.platform_data) {
 		struct emac_platform_data *pdata = pdev->dev.platform_data;
 
 		memcpy(priv->mac_addr, pdata->mac_addr, 6);
+		priv->phy_mask = pdata->phy_mask;
 	}
 
 	/* Get EMAC platform data */
@@ -2739,53 +2761,61 @@ static int __devinit davinci_emac_probe(struct platform_device *pdev)
 
 	clk_enable(emac_clk);
 
-	/* MII/Phy intialisation, mdio bus registration */
-	emac_mii = mdiobus_alloc();
-	if (emac_mii == NULL) {
-		dev_err(EMAC_DEV, "DaVinci EMAC: Error allocating mii_bus\n");
-		rc = -ENOMEM;
-		goto mdio_alloc_err;
+	/* If there is no PHY do not register the MDIO */
+	if (priv->phy_mask) {
+		/* MII/Phy intialisation, mdio bus registration */
+		emac_mii = mdiobus_alloc();
+		if (emac_mii == NULL) {
+			dev_err(EMAC_DEV,
+				"DaVinci EMAC: Error allocating mii_bus\n");
+			rc = -ENOMEM;
+			goto mdio_alloc_err;
+		}
+
+		priv->mii_bus = emac_mii;
+		emac_mii->name  = "emac-mii",
+		emac_mii->read  = emac_mii_read,
+		emac_mii->write = emac_mii_write,
+		emac_mii->reset = emac_mii_reset,
+		emac_mii->irq   = mii_irqs,
+		emac_mii->phy_mask = ~(EMAC_EVM_PHY_MASK);
+		emac_mii->parent = &pdev->dev;
+
+		/* Base address initialisation for MDIO */
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM,
+								"mdio_regs");
+		if (!res) {
+			dev_err(EMAC_DEV,
+				"DaVinci EMAC: Error getting mdio res\n");
+			rc = -ENOENT;
+			goto no_mdio_res;
+		}
+
+		emac_mii->priv = (void *)(res->start);
+		size = res->end - res->start + 1;
+		emac_mii->priv = ioremap(res->start, size);
+		if (!emac_mii->priv) {
+			dev_err(EMAC_DEV, "Unable to map MDIO regs\n");
+			rc = -ENOMEM;
+			goto no_mdio_res;
+		}
+		if (!request_mem_region(res->start,
+					(res->end - res->start + 1),
+					ndev->name)) {
+			dev_err(EMAC_DEV, "DaVinci EMAC: \
+				failed request_mem_region() for mdio regs\n");
+			rc = -ENXIO;
+			goto no_mdio_res;
+		}
+
+		snprintf(priv->mii_bus->id, MII_BUS_ID_SIZE, "%x", priv->pdev->id);
+		emac_mii->reset(emac_mii);
+
+		/* Register the MII bus */
+		rc = mdiobus_register(emac_mii);
+		if (rc)
+			goto mdiobus_quit;
 	}
-
-	priv->mii_bus = emac_mii;
-	emac_mii->name  = "emac-mii",
-	emac_mii->read  = emac_mii_read,
-	emac_mii->write = emac_mii_write,
-	emac_mii->reset = emac_mii_reset,
-	emac_mii->irq   = mii_irqs,
-	emac_mii->phy_mask = ~(EMAC_EVM_PHY_MASK);
-	emac_mii->parent = &pdev->dev;
-
-	/* Base address initialisation for MDIO */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mdio_regs");
-	if (!res) {
-		dev_err(EMAC_DEV, "DaVinci EMAC: Error getting mdio res\n");
-		rc = -ENOENT;
-		goto no_mdio_res;
-	}
-
-	emac_mii->priv = (void *)(res->start);
-	size = res->end - res->start + 1;
-	emac_mii->priv = ioremap(res->start, size);
-	if (!emac_mii->priv) {
-		dev_err(EMAC_DEV, "Unable to map MDIO regs\n");
-		rc = -ENOMEM;
-		goto no_mdio_res;
-	}
-	if (!request_mem_region(res->start, size, ndev->name)) {
-		dev_err(EMAC_DEV, "DaVinci EMAC: failed request_mem_region() \
-					for mdio regs\n");
-		rc = -ENXIO;
-		goto no_mdio_res;
-	}
-
-	snprintf(priv->mii_bus->id, MII_BUS_ID_SIZE, "%x", priv->pdev->id);
-	emac_mii->reset(emac_mii);
-
-	/* Register the MII bus */
-	rc = mdiobus_register(emac_mii);
-	if (rc)
-		goto mdiobus_quit;
 
 	if (netif_msg_probe(priv)) {
 		dev_notice(EMAC_DEV, "DaVinci EMAC Probe found device "\

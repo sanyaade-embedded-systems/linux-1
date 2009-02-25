@@ -26,6 +26,18 @@
 #define __IO_ADDRESS(x)	((x) + IO_OFFSET)
 
 /*
+ * Some platforms have the interrupt controller mapped at a different physical
+ * address.  This I/O map creates a virtual mapping of the interrupt controller
+ * that is common across platforms; it needs to apply to all platform variants.
+ * The interrupt controller address mapped in the IO_VIRT range should not be
+ * used.  The address is determined by the size of CP INTC address space (which
+ * is 4KB or 1 page) and a single page hole to reduce the chance for invalid
+ * memory access.
+ */
+#define IO_Dx_INTC_SIZE SZ_64K
+#define IO_Dx_INTC_VIRT 0xfebd0000
+
+/*
  * We don't actually have real ISA nor PCI buses, but there is so many
  * drivers out there that might just work if we fake them...
  */

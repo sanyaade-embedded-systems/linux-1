@@ -13,6 +13,7 @@
 
 struct emac_platform_data {
 	char mac_addr[6];
+	u32 phy_mask;
 };
 
 void davinci_init_emac(char *mac_addr);

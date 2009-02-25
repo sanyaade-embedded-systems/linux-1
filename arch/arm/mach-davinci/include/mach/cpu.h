@@ -24,9 +24,16 @@ static inline int is_davinci_dm ##type(void)	        \
 	return (davinci_rev() == (id)) ? 1 : 0;	        \
 }
 
+#define IS_OMAP_CPU(type, id)			\
+static inline int is_omap ##type(void)	        \
+{							\
+	return (davinci_rev() == (id)) ? 1 : 0;	        \
+}
+
 IS_DAVINCI_CPU(644x, 0x6446)
 IS_DAVINCI_CPU(646x, 0x6467)
 IS_DAVINCI_CPU(355, 0x355)
+IS_OMAP_CPU(l1x7, 0x800)
 
 #ifdef CONFIG_ARCH_DAVINCI_DM644x
 #define cpu_is_davinci_dm644x() is_davinci_dm644x()
@@ -44,6 +51,12 @@ IS_DAVINCI_CPU(355, 0x355)
 #define cpu_is_davinci_dm355() is_davinci_dm355()
 #else
 #define cpu_is_davinci_dm355() 0
+#endif
+
+#ifdef CONFIG_ARCH_OMAPL1x7
+#define cpu_is_omapl1x7() is_omapl1x7()
+#else
+#define cpu_is_omapl1x7() 0
 #endif
 
 #endif

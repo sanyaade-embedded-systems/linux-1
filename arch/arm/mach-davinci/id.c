@@ -15,7 +15,11 @@
 #include <linux/init.h>
 #include <linux/io.h>
 
+#ifdef CONFIG_ARCH_OMAPL1x7
+#define JTAG_ID_BASE		IO_ADDRESS(0x01c14018)
+#else
 #define JTAG_ID_BASE		IO_ADDRESS(0x01c40028)
+#endif
 
 static unsigned int davinci_revision;
 
@@ -48,6 +52,13 @@ static struct davinci_id davinci_ids[] __initdata = {
 		.variant	= 0x0,
 		.manufacturer	= 0x00f,
 		.type		= 0x03550000,
+	},
+	{
+		/* OMAPL1X7 */
+		.part_no	= 0xb7df,
+		.variant	= 0x0,
+		.manufacturer	= 0x017,
+		.type		= 0x08000000,
 	},
 };
 
@@ -111,6 +122,11 @@ void __init davinci_check_revision(void)
 		}
 	}
 
+#ifndef CONFIG_ARCH_OMAPL1x7
 	printk(KERN_INFO "DaVinci DM%04x variant 0x%x\n",
 	       davinci_rev(), variant);
+#else
+	printk(KERN_INFO "OMAP L1%04x variant 0x%x\n",
+	       davinci_rev(), variant);
+#endif
 }

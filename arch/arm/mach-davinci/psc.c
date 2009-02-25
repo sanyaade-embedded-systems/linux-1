@@ -24,11 +24,13 @@
 #include <linux/io.h>
 
 #include <mach/cpu.h>
-#include <mach/hardware.h>
+#include <mach/omapl1x7.h>
 #include <mach/psc.h>
 #include <mach/mux.h>
 
-#define DAVINCI_PWR_SLEEP_CNTRL_BASE 0x01C41000
+#define DAVINCI_PWR_SLEEP_CNTRL_BASE	0x01C41000
+#define OMAPL1X7_PSC0_BASE		0x01C10000
+#define OMAPL1X7_PSC1_BASE		0x01E27000
 
 /* PSC register offsets */
 #define EPCPR		0x070
@@ -39,11 +41,33 @@
 #define MDSTAT		0x800
 #define MDCTL		0xA00
 
+static u32 omapl1x7_psc_base[] = { (u32)IO_ADDRESS(OMAPL1X7_PSC0_BASE),
+				   (u32)IO_ADDRESS(OMAPL1X7_PSC1_BASE) };
+static u32 *psc_base_array;
+
 /* Enable or disable a PSC domain */
 void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 {
 	u32 epcpr, ptcmd, ptstat, pdstat, pdctl1, mdstat, mdctl, mdstat_mask;
 	void __iomem *psc_base = IO_ADDRESS(DAVINCI_PWR_SLEEP_CNTRL_BASE);
+	u32 domain_shift;
+
+	if (id > 64)
+		return;
+
+	if (cpu_is_omapl1x7())
+		psc_base_array = omapl1x7_psc_base;
+	else
+		psc_base_array = psc_base;
+
+	if (id > 32) {
+		id -= 32;
+		domain = 1;
+	}
+
+	psc_base = (void __iomem *)(psc_base_array[domain]);
+	/* XXX domain != which psc reg to use--we always use domain 0 */
+	domain_shift = 0;	
 
 	mdctl = __raw_readl(psc_base + MDCTL + 4 * id);
 	if (enable)
@@ -58,12 +82,12 @@ void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 		pdctl1 |= 0x1;
 		__raw_writel(pdctl1, psc_base + PDCTL1);
 
-		ptcmd = 1 << domain;
+		ptcmd = 1 << domain_shift;
 		__raw_writel(ptcmd, psc_base + PTCMD);
 
 		do {
 			epcpr = __raw_readl(psc_base + EPCPR);
-		} while ((((epcpr >> domain) & 1) == 0));
+		} while ((((epcpr >> domain_shift) & 1) == 0));
 
 		pdctl1 = __raw_readl(psc_base + PDCTL1);
 		pdctl1 |= 0x100;
@@ -72,14 +96,14 @@ void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 		do {
 			ptstat = __raw_readl(psc_base +
 					       PTSTAT);
-		} while (!(((ptstat >> domain) & 1) == 0));
+		} while (!(((ptstat >> domain_shift) & 1) == 0));
 	} else {
-		ptcmd = 1 << domain;
+		ptcmd = 1 << domain_shift;
 		__raw_writel(ptcmd, psc_base + PTCMD);
 
 		do {
 			ptstat = __raw_readl(psc_base + PTSTAT);
-		} while (!(((ptstat >> domain) & 1) == 0));
+		} while (!(((ptstat >> domain_shift) & 1) == 0));
 	}
 
 	if (enable)

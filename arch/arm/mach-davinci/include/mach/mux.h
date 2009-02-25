@@ -34,7 +34,7 @@
 struct mux_config {
 	char *name;
 	const char *mux_reg_name;
-	const unsigned char mux_reg;
+	const unsigned int mux_reg;
 	const unsigned char mask_offset;
 	const unsigned char mask;
 	const unsigned char mode;
@@ -149,6 +149,39 @@ enum davinci_dm355_index {
 	DM355_EVT8_ASP1_TX,
 	DM355_EVT9_ASP1_RX,
 	DM355_EVT26_MMC0_RX,
+};
+
+enum davinci_omapl1x7_index {
+	/* UART0 function */
+	OMAPL1X7_NUART0_CTS,
+	OMAPL1X7_NUART0_RTS,
+	OMAPL1X7_UART0_RXD,
+	OMAPL1X7_UART0_TXD,
+
+	/* UART1 function */
+	OMAPL1X7_UART1_RXD,
+	OMAPL1X7_UART1_TXD,
+
+	/* UART2 function */
+	OMAPL1X7_UART2_RXD,
+	OMAPL1X7_UART2_TXD,
+
+	/* I2C function */
+	OMAPL1X7_I2C1_SCL,
+	OMAPL1X7_I2C1_SDA,
+	OMAPL1X7_I2C0_SDA,
+	OMAPL1X7_I2C0_SCL,
+
+	/* EMAC function */
+	OMAPL1X7_RMII_TXD_0,
+	OMAPL1X7_RMII_TXD_1,
+	OMAPL1X7_RMII_TXEN,
+	OMAPL1X7_RMII_CRS_DV,
+	OMAPL1X7_RMII_RXD_0,
+	OMAPL1X7_RMII_RXD_1,
+	OMAPL1X7_RMII_RXER,
+	OMAPL1X7_MDIO_CLK,
+	OMAPL1X7_MDIO_D,
 };
 
 #ifdef CONFIG_DAVINCI_MUX

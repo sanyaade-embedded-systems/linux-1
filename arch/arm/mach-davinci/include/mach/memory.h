@@ -20,8 +20,13 @@
 /**************************************************************************
  * Definitions
  **************************************************************************/
+#ifdef CONFIG_ARCH_OMAPL1x7
+#define DAVINCI_DDR_BASE    0xc0000000
+#define DAVINCI_IRAM_BASE   0x80000000 /* ARM Internal RAM */
+#else
 #define DAVINCI_DDR_BASE    0x80000000
 #define DAVINCI_IRAM_BASE   0x00008000 /* ARM Internal RAM */
+#endif
 
 #define PHYS_OFFSET DAVINCI_DDR_BASE
 
