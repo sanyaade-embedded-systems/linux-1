@@ -175,6 +175,8 @@ static __init void omapl1x7_evm_init(void)
 	omapl1x7_evm_init_i2c();
 
 	davinci_setup_mmc(0, &omapl1x7_mmc_config);
+
+	omapl1x7_init_rtc();
 }
 
 static __init void omapl1x7_evm_irq_init(void)

@@ -25,6 +25,7 @@
 #include <mach/hardware.h>
 
 void __init omapl1x7_init(void);
+void omapl1x7_init_rtc(void);
 
 #define OMAPL1X7_BOOT_CFG_BASE		0x01C14000
 

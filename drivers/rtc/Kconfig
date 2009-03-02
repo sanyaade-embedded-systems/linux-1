@@ -745,4 +745,14 @@ config RTC_DRV_MV
 	  This driver can also be built as a module. If so, the module
 	  will be called rtc-mv.
 
+config RTC_DRV_OMAPL1X7
+	tristate "TI OMAPL1x7 RTC"
+	depends on RTC_CLASS
+	help
+	  If you say yes here you will get support for the
+	  TI RealTime Clock controller on OMAPL1x7 SoC's.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-omapl1x7.
+
 endif # RTC_CLASS

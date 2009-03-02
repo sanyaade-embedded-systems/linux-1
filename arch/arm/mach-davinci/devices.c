@@ -43,6 +43,7 @@
 #define DM355_MMCSD0_BASE	     0x01E11000
 #define DM355_MMCSD1_BASE	     0x01E00000
 #define OMAPL1X7_MMC_SD0_BASE	     0x01C40000
+#define OMAPL1X7_RTC_BASE	     0x01C23000
 
 #ifndef CONFIG_MACH_OMAPL1X7_EVM
 static struct resource i2c_resources[] = {
@@ -325,6 +326,31 @@ void __init davinci_setup_mmc(int module, struct davinci_mmc_config *config)
 }
 
 #endif
+
+static struct resource omapl1x7_rtc_resources[] = {
+	[0] = {		/* registers */
+		.start  = OMAPL1X7_RTC_BASE,
+		.end    = OMAPL1X7_RTC_BASE + SZ_4K - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	[1] = {		/* interrupt */
+		.start  = IRQ_OMAPL1X7_RTC,
+		.end    = IRQ_OMAPL1X7_RTC,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device omapl1x7_rtc_device = {
+	.name		= "rtc-omapl1x7",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(omapl1x7_rtc_resources),
+	.resource	= omapl1x7_rtc_resources,
+};
+
+void omapl1x7_init_rtc(void)
+{
+        (void) platform_device_register(&omapl1x7_rtc_device);
+}
 
 /*-------------------------------------------------------------------------*/
 
