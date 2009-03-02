@@ -157,6 +157,12 @@ static struct clk emac_clk = {
 	.lpsc = OMAPL1X7_LPSC_CPGMAC,
 };
 
+static struct clk gpio_clk = {
+	.name = "gpio",
+	.parent = &pll1_sysclk4,
+	.lpsc = OMAPL1X7_LPSC_GPIO,
+};
+
 static struct clk *omapl1x7_clks[] __initdata = {
 	&ref_clk,
 	&aux_clkin,
@@ -178,6 +184,7 @@ static struct clk *omapl1x7_clks[] __initdata = {
 	&watchdog_clk,
 	&i2c_clk,
 	&emac_clk,
+	&gpio_clk,
 	NULL,
 };
 

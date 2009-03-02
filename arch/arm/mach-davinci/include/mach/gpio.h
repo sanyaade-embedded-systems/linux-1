@@ -18,7 +18,11 @@
 
 #include <mach/irqs.h>
 
+#ifndef CONFIG_ARCH_OMAPL1x7
 #define DAVINCI_GPIO_BASE 0x01C67000
+#else
+#define DAVINCI_GPIO_BASE 0x01E26000
+#endif
 
 /*
  * basic gpio routines
