@@ -95,10 +95,14 @@
 #define EDMA_CCSTAT	0x0640
 
 #define EDMA_M		0x1000	/* global channel registers */
+#define EDMA_ECR	0x1008
+#define EDMA_ECRH	0x100C
 #define EDMA_SHADOW0	0x2000	/* 4 regions shadowing global channels */
 #define EDMA_PARM	0x4000	/* 128 param entries */
 
 #define DAVINCI_DMA_3PCC_BASE	0x01C00000
+
+#define SZ_32K		0x00008000
 
 #define PARM_OFFSET(param_no)	(EDMA_PARM + ((param_no) << 5))
 
@@ -442,6 +446,134 @@ static irqreturn_t dma_tc1err_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+/*
+ * edma_clear_event - clear an outstanding event on the DMA channel
+ * Arguments:
+ *      lch - logical channel number
+ */
+void edma_clear_event(int lch)
+{
+	if (lch < 0 || lch >= DAVINCI_EDMA_NUM_DMACH)
+		return;
+	if (lch < 32)
+		edma_write(EDMA_ECR, 1 << lch);
+	else
+		edma_write(EDMA_ECRH, 1 << (lch - 32));
+}
+EXPORT_SYMBOL(edma_clear_event);
+
+/******************************************************************************
+ *
+ * DMA initialisation on davinci
+ *
+ *****************************************************************************/
+static int __init davinci_dma_init(void)
+{
+	int i;
+	int status;
+	const s8 *noevent;
+	unsigned int cc_reg0_int = IRQ_CCINT0, cc_error_int = IRQ_CCERRINT;
+	unsigned int tc0_error_int = IRQ_TCERRINT0;
+	unsigned int tc1_error_int = IRQ_TCERRINT;
+
+	platform_driver_register(&edma_driver);
+	platform_device_register(&edma_dev);
+
+	dev_dbg(&edma_dev.dev, "DMA REG BASE ADDR=%p\n", edmacc_regs_base);
+
+	for (i = 0; i < DAVINCI_EDMA_NUM_PARAMENTRY; i++)
+		memcpy_toio(edmacc_regs_base + PARM_OFFSET(i),
+				&dummy_paramset, PARM_SIZE);
+
+	if (cpu_is_davinci_dm355()) {
+		/* NOTE conflicts with SPI1_INT{0,1} and SPI2_INT0 */
+		davinci_cfg_reg(DM355_INT_EDMA_CC);
+		if (tc_errs_handled) {
+			davinci_cfg_reg(DM355_INT_EDMA_TC0_ERR);
+			davinci_cfg_reg(DM355_INT_EDMA_TC1_ERR);
+		}
+		noevent = dma_chan_dm355_no_event;
+	} else if (cpu_is_davinci_dm644x()) {
+		noevent = dma_chan_dm644x_no_event;
+	} else if (cpu_is_omapl1x7()) {
+		noevent = dma_chan_omapl1x7_no_event;
+	} else {
+		/* alloc_channel(EDMA_CHANNEL_ANY) fails */
+		noevent = NULL;
+	}
+
+	if (noevent) {
+		while (*noevent != -1)
+			set_bit(*noevent++, edma_noevent);
+	}
+
+	if (cpu_is_omapl1x7()) {
+		cc_reg0_int  = IRQ_OMAPL1X7_CCINT0;
+		cc_error_int = IRQ_OMAPL1X7_CCERRINT;
+		tc0_error_int = IRQ_OMAPL1X7_TCERRINT0;
+		tc1_error_int = IRQ_OMAPL1X7_TCERRINT1;
+	}
+
+	status = request_irq(cc_reg0_int, dma_irq_handler, 0, "edma", NULL);
+	if (status < 0) {
+		dev_dbg(&edma_dev.dev, "request_irq %d failed --> %d\n",
+			IRQ_CCINT0, status);
+		return status;
+	}
+	status = request_irq(cc_error_int, dma_ccerr_handler, 0,
+				"edma_error", NULL);
+	if (status < 0) {
+		dev_dbg(&edma_dev.dev, "request_irq %d failed --> %d\n",
+			IRQ_CCERRINT, status);
+		return status;
+	}
+
+	if (tc_errs_handled) {
+		status = request_irq(tc0_error_int, dma_tc0err_handler, 0,
+					"edma_tc0", NULL);
+		if (status < 0) {
+			dev_dbg(&edma_dev.dev, "request_irq %d failed --> %d\n",
+				IRQ_TCERRINT0, status);
+			return status;
+		}
+		status = request_irq(tc1_error_int, dma_tc1err_handler, 0,
+					"edma_tc1", NULL);
+		if (status < 0) {
+			dev_dbg(&edma_dev.dev, "request_irq %d --> %d\n",
+				IRQ_TCERRINT, status);
+			return status;
+		}
+	}
+
+	/* Everything lives on transfer controller 1 until otherwise specified.
+	 * This way, long transfers on the low priority queue
+	 * started by the codec engine will not cause audio defects.
+	 */
+	for (i = 0; i < DAVINCI_EDMA_NUM_DMACH; i++)
+		map_dmach_queue(i, EVENTQ_1);
+
+	i = 0;
+	/* Event queue to TC mapping */
+	while (queue_tc_mapping[i][0] != -1) {
+		map_queue_tc(queue_tc_mapping[i][0], queue_tc_mapping[i][1]);
+		i++;
+	}
+	i = 0;
+	/* Event queue priority mapping */
+	while (queue_priority_mapping[i][0] != -1) {
+		assign_priority_to_queue(queue_priority_mapping[i][0],
+					 queue_priority_mapping[i][1]);
+		i++;
+	}
+	for (i = 0; i < DAVINCI_EDMA_NUM_REGIONS; i++) {
+		edma_write_array2(EDMA_DRAE, i, 0, 0x0);
+		edma_write_array2(EDMA_DRAE, i, 1, 0x0);
+		edma_write_array(EDMA_QRAE, i, 0x0);
+	}
+	return 0;
+}
+arch_initcall(davinci_dma_init);
+
 /*-----------------------------------------------------------------------*/
 
 /* Resource alloc/free:  dma channels, parameter RAM slots */
@@ -513,7 +645,6 @@ int edma_alloc_channel(int channel,
 	return channel;
 }
 EXPORT_SYMBOL(edma_alloc_channel);
-
 
 /**
  * edma_free_channel - deallocate DMA channel

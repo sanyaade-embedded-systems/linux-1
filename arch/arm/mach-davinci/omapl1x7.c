@@ -163,6 +163,27 @@ static struct clk gpio_clk = {
 	.lpsc = OMAPL1X7_LPSC_GPIO,
 };
 
+static struct clk edma_cc0_clk = {
+	.name = "edma_cc0",
+	.parent = &pll1_sysclk2,
+	.lpsc = OMAPL1X7_LPSC_TPCC,
+	.flags = CLK_PSC | ALWAYS_ENABLED,
+};
+
+static struct clk edma_tc0_clk = {
+	.name = "edma_tc0",
+	.parent = &pll1_sysclk2,
+	.lpsc = OMAPL1X7_LPSC_TPTC0,
+	.flags = ALWAYS_ENABLED,
+};
+
+static struct clk edma_tc1_clk = {
+	.name = "edma_tc1",
+	.parent = &pll1_sysclk2,
+	.lpsc = OMAPL1X7_LPSC_TPTC1,
+	.flags = ALWAYS_ENABLED,
+};
+
 static struct clk *omapl1x7_clks[] __initdata = {
 	&ref_clk,
 	&aux_clkin,
@@ -185,6 +206,9 @@ static struct clk *omapl1x7_clks[] __initdata = {
 	&i2c_clk,
 	&emac_clk,
 	&gpio_clk,
+	&edma_cc0_clk,
+	&edma_tc0_clk,
+	&edma_tc1_clk,
 	NULL,
 };
 
