@@ -34,6 +34,9 @@
 #include <mach/mmc.h>
 #include <mach/cpu.h>
 #include <mach/edma.h>
+#include <mach/hardware.h>
+#include <mach/omapl1x7.h>
+#include <mach/irqs.h>
 
 /*
  * Register Definitions
@@ -317,6 +320,12 @@ static void mmc_davinci_start_command(struct mmc_davinci_host *host,
 	if (host->do_dma)
 		cmd_reg |= MMCCMD_DMATRIG;
 
+	if (cpu_is_omapl1x7()) {
+		if ((host->data != NULL) &&
+	    		(host->data_dir == DAVINCI_MMC_DATADIR_READ))
+			cmd_reg |= MMCCMD_DMATRIG;
+	}
+
 	/* Setting whether command involves data transfer or not */
 	if (cmd->data)
 		cmd_reg |= MMCCMD_WDATX;
@@ -393,8 +402,8 @@ static void mmc_davinci_dma_cb(unsigned channel, u16 ch_status, void *data)
 		dev_warn(mmc_dev(host->mmc), "DMA %s error\n",
 			(host->data->flags & MMC_DATA_WRITE)
 				? "write" : "read");
-		host->data->error = -EIO;
-		mmc_davinci_xfer_done(host, host->data);
+		//host->data->error = -EIO;
+		//mmc_davinci_xfer_done(host, host->data);
 	}
 }
 
@@ -509,6 +518,8 @@ static void mmc_davinci_send_dma_request(struct mmc_davinci_host *host,
 		edma_write_slot(slot, template);
 	}
 
+	if (cpu_is_omapl1x7())
+		edma_clear_event(channel);
 	edma_start(channel);
 }
 
@@ -607,7 +618,11 @@ free_master_write:
 static void
 mmc_davinci_prepare_data(struct mmc_davinci_host *host, struct mmc_request *req)
 {
+#ifdef CONFIG_ARCH_OMAPL1x7
+	int fifo_lev = (rw_threshold == 64) ? MMCFIFOCTL_FIFOLEV : 0;
+#else
 	int fifo_lev = (rw_threshold == 32) ? MMCFIFOCTL_FIFOLEV : 0;
+#endif
 	int timeout;
 	struct mmc_data *data = req->data;
 

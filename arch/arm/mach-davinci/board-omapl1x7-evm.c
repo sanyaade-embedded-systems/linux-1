@@ -45,11 +45,13 @@
 #include <mach/serial.h>
 #include <mach/mux.h>
 #include <mach/i2c.h>
+#include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
 #include <linux/i2c/at24.h>
 #include <linux/etherdevice.h>
 #include <mach/emac.h>
+#include <mach/mmc.h>
 
 #include "clock.h"
 
@@ -99,6 +101,44 @@ int omapl1x7evm_eeprom_write(void *buf, off_t off, size_t count)
 }
 EXPORT_SYMBOL(omapl1x7evm_eeprom_write);
 
+static int omapl1x7_evm_mmc_get_ro(int index)
+{
+	int val, status, gpio_num = 33;
+
+	status = gpio_request(gpio_num, "MMC WP\n");
+	if (status < 0) {
+		printk(KERN_WARNING "%s can not open GPIO %d\n", __func__,
+				gpio_num);
+		return 0;
+	}
+	gpio_direction_input(gpio_num);
+	val = gpio_get_value(gpio_num);
+	gpio_free(gpio_num);
+	return val;
+}
+
+static int omapl1x7_evm_mmc_get_cd(int index)
+{
+	int val, status, gpio_num = 34;
+       
+	status = gpio_request(gpio_num, "MMC CD\n");
+	if (status < 0) {
+		printk(KERN_WARNING "%s can not open GPIO %d\n", __func__,
+				gpio_num);
+		return 0;
+	}
+	gpio_direction_input(gpio_num);
+	val = gpio_get_value(gpio_num);
+	gpio_free(gpio_num);
+	return !val;
+}
+
+static struct davinci_mmc_config omapl1x7_mmc_config = {
+	.get_ro         = omapl1x7_evm_mmc_get_ro,
+	.get_cd		= omapl1x7_evm_mmc_get_cd,
+	.wires          = 4
+};
+
 static struct i2c_board_info __initdata i2c_info[] =  {
 	{
 		I2C_BOARD_INFO("24c256", 0x50),
@@ -133,6 +173,8 @@ static __init void omapl1x7_evm_init(void)
 	davinci_cfg_reg(OMAPL1X7_UART2_TXD);
 	davinci_serial_init(&uart_config);
 	omapl1x7_evm_init_i2c();
+
+	davinci_setup_mmc(0, &omapl1x7_mmc_config);
 }
 
 static __init void omapl1x7_evm_irq_init(void)

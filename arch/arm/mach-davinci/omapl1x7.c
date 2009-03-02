@@ -184,6 +184,12 @@ static struct clk edma_tc1_clk = {
 	.flags = ALWAYS_ENABLED,
 };
 
+static struct clk mmcsd_clk = {
+	.name = "mmcsd",
+	.parent = &pll1_sysclk2,
+	.lpsc = OMAPL1X7_LPSC_MMC_SD,
+};
+
 static struct clk *omapl1x7_clks[] __initdata = {
 	&ref_clk,
 	&aux_clkin,
@@ -209,6 +215,7 @@ static struct clk *omapl1x7_clks[] __initdata = {
 	&edma_cc0_clk,
 	&edma_tc0_clk,
 	&edma_tc1_clk,
+	&mmcsd_clk,
 	NULL,
 };
 
@@ -238,6 +245,16 @@ OMAPL1X7_MUX_CFG(OMAPL1X7,	RMII_RXD_1,	10,  24,    15,   2,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	RMII_RXER,	10,  28,    15,   2,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	MDIO_CLK,	11,  0,     15,   2,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	MDIO_D,		11,  4,     15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_0,	13,  24,    15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_1,	13,  28,    15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_2,	14,  0,     15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_3,	14,  4,     15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_4,	14,  8,     15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_5,	14,  12,    15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_6,	14,  16,    15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_7,	14,  20,    15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_CLK,	15,  28,    15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_CMD,	16,  0,     15,   2,     false)
 };
 
 void __init omapl1x7_init(void)

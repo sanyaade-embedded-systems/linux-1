@@ -42,6 +42,7 @@
 #define DAVINCI_MMCSD0_BASE	     0x01E10000
 #define DM355_MMCSD0_BASE	     0x01E11000
 #define DM355_MMCSD1_BASE	     0x01E00000
+#define OMAPL1X7_MMC_SD0_BASE	     0x01C40000
 
 #ifndef CONFIG_MACH_OMAPL1X7_EVM
 static struct resource i2c_resources[] = {
@@ -207,6 +208,35 @@ static struct platform_device davinci_mmcsd1_device = {
 	.resource = mmcsd1_resources,
 };
 
+static struct resource omapl1x7_mmc_resources[] = {
+	{		 /* registers */
+		.start	= OMAPL1X7_MMC_SD0_BASE,
+		.end	= OMAPL1X7_MMC_SD0_BASE + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{		 /* interrupt */
+		.start	= IRQ_OMAPL1X7_MMCSDINT0,
+		.end	= IRQ_OMAPL1X7_MMCSDINT0,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{		 /* DMA RX */
+		.start	= 16,
+		.end	= 16,
+		.flags	= IORESOURCE_DMA,
+	},
+	{		 /* DMA TX */
+		.start	= 17,
+		.end	= 17,
+		.flags	= IORESOURCE_DMA,
+	},
+};
+
+static struct platform_device omapl1x7_mmc_device = {
+	.name		= "davinci_mmc",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(omapl1x7_mmc_resources),
+	.resource	= omapl1x7_mmc_resources,
+};
 
 void __init davinci_setup_mmc(int module, struct davinci_mmc_config *config)
 {
@@ -262,7 +292,22 @@ void __init davinci_setup_mmc(int module, struct davinci_mmc_config *config)
 			davinci_cfg_reg(DM644X_MSTK);
 		}
 
-		pdev = &davinci_mmcsd0_device;
+		else if (cpu_is_omapl1x7()) {
+			pdev = &omapl1x7_mmc_device;
+			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_0);
+			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_1);
+			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_2);
+			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_3);
+			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_4);
+			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_5);
+			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_6);
+			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_7);
+			davinci_cfg_reg(OMAPL1X7_MMCSD_CLK);
+			davinci_cfg_reg(OMAPL1X7_MMCSD_CMD);
+		} else
+			pdev = &davinci_mmcsd0_device;
+
+		clockname = cpu_is_davinci_dm355() ? "mmcsd0" : "mmcsd";
 		break;
 	}
 
