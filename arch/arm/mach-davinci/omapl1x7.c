@@ -202,6 +202,18 @@ static struct clk aemif_clk = {
 	.lpsc = OMAPL1X7_LPSC_EMIF25,
 };
 
+static struct clk spi0_clk = {
+	.name = "SPI0CLK",
+	.parent = &pll1_sysclk2,
+	.lpsc = OMAPL1X7_LPSC_SPI0,
+};
+
+static struct clk spi1_clk = {
+	.name = "SPI1CLK",
+	.parent = &pll1_sysclk2,
+	.lpsc = OMAPL1X7_LPSC_SPI1,
+};
+
 static struct clk *omapl1x7_clks[] __initdata = {
 	&ref_clk,
 	&aux_clkin,
@@ -230,6 +242,8 @@ static struct clk *omapl1x7_clks[] __initdata = {
 	&mmcsd_clk,
 	&emif3_clk,
 	&aemif_clk,
+	&spi0_clk,
+	&spi1_clk,
 	NULL,
 };
 
@@ -371,6 +385,17 @@ OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_14,	6,   28,    15,   1,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_15,	7,   0,     15,   1,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_WE_DQM_1,	7,   4,     15,   1,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_WE_DQM_0,	7,   8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	SPI0_SOMI_0,	7,   12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	SPI0_SIMO_0,	7,   16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	SPI0_CLK,	7,   20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NSPI0_ENA,	7,   24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NSPI0_SCS_0,	7,   28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	SPI1_SOMI_0,	8,   0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	SPI1_SIMO_0,	8,   4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	SPI1_CLK,	8,   8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NSPI1_ENA,	8,   28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NSPI1_SCS_0,	9,   0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	GPIO3_10,	11,  12,    15,   8,     false)
 };
 
 void __init omapl1x7_init(void)

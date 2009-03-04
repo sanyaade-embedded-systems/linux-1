@@ -25,3 +25,4 @@ obj-$(CONFIG_MACH_DAVINCI_DM355_EVM)	+= board-dm355-evm.o
 obj-$(CONFIG_MACH_SFFSDR)		+= board-sffsdr.o
 obj-$(CONFIG_ARCH_OMAPL1x7)		+= soc-omapl1x7.o
 obj-$(CONFIG_MACH_OMAPL1X7_EVM)		+= board-omapl1x7-evm.o
+obj-$(CONFIG_SPI_DAVINCI)		+= spi.o

@@ -97,6 +97,15 @@ config MTD_M25P80
 	  if you want to specify device partitioning or to use a device which
 	  doesn't support the JEDEC ID instruction.
 
+config MTD_SPI_FLASH
+	tristate "Support for Windbond W25XXX Flash"
+	depends on MTD && SPI_MASTER
+	help
+	  Supports Windbond SPI FLASH.  The SPI FLASH operations are similar
+	  across various devices.  The goal is to have something that is
+	  generic enough to handle SPI FLASH from various vendors.  A goal
+	  for example is to merge the ST M25 driver into this driver.
+
 config M25PXX_USE_FAST_READ
 	bool "Use FAST_READ OPCode allowing SPI CLK <= 50MHz"
 	depends on MTD_M25P80
