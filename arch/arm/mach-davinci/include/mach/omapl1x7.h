@@ -95,6 +95,9 @@ void omapl1x7_init_rtc(void);
 #define OMAPL1X7_I2C0_BASE		0x01C22000
 #define OMAPL1X7_I2C1_BASE		0x01E28000
 
+#define OMAPL1X7_LCD_CNTRL_BASE			0x01E13000
+#define OMAPL1X7_EMIF30_ASYNC_DATA_CE5_BASE	0xC0000000
+
 /* omapl1x7 cfg regs have to be unlocked by writing magic values to kick regs */
 #ifdef CONFIG_MACH_OMAPL1X7_EVM
 #define davinci_cfg_readl(a) ({                                         \

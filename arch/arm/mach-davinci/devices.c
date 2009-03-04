@@ -30,6 +30,7 @@
 #include <mach/cpu.h>
 #include <mach/mux.h>
 #include <mach/mmc.h>
+#include <mach/omapl1x7_lcdc.h>
 
 #include "clock.h"
 
@@ -611,13 +612,76 @@ void davinci_init_emac(char *unused) {}
 #endif
 
 /*-------------------------------------------------------------------------*/
+static struct omapl1x7_lcdc_platform_data omapl1x7_evm_lcdc_pdata = {
+	.lcdc_clk_name  = "LCDCTRLCLK",
+};
+static struct resource omapl1x7_lcdc_resources[] = {
+	[0] = {	/* registers */
+		.start	= OMAPL1X7_LCD_CNTRL_BASE,
+		.end	= OMAPL1X7_LCD_CNTRL_BASE + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+/* XXX Next resource seems wrong.  Should use dma_* calls? -- Remove */
+	[1] = {	/* frame buffer and palette */
+		.start	= OMAPL1X7_EMIF30_ASYNC_DATA_CE5_BASE,
+		.end	= OMAPL1X7_EMIF30_ASYNC_DATA_CE5_BASE + SZ_512M - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+/* END Remove */
+	[2] = {	/* interrupt */
+		.start	= IRQ_OMAPL1X7_LCDINT,
+		.end	= IRQ_OMAPL1X7_LCDINT,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device omapl1x7_lcdc_device = {
+	.name		= "omapl1x7_lcdc",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(omapl1x7_lcdc_resources),
+	.resource	= omapl1x7_lcdc_resources,
+	.dev = {
+		.platform_data = &omapl1x7_evm_lcdc_pdata,
+	}
+};
 
 static int __init davinci_init_devices(void)
 {
+	int ret;
+
 	/* please keep these calls, and their implementations above,
 	 * in alphabetical order so they're easier to sort through.
 	 */
 	davinci_init_wdt();
+	if (cpu_is_omapl1x7()) {
+		ret = platform_device_register(&omapl1x7_lcdc_device);
+
+		if (ret)
+			return ret;
+		else {
+			davinci_cfg_reg(OMAPL1X7_LCD_D_0);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_1);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_2);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_3);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_4);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_5);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_6);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_7);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_8);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_9);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_10);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_11);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_12);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_13);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_14);
+			davinci_cfg_reg(OMAPL1X7_LCD_D_15);
+			davinci_cfg_reg(OMAPL1X7_LCD_PCLK);
+			davinci_cfg_reg(OMAPL1X7_LCD_HSYNC);
+			davinci_cfg_reg(OMAPL1X7_LCD_VSYNC);
+			davinci_cfg_reg(OMAPL1X7_NLCD_AC_ENB_CS);
+			davinci_cfg_reg(OMAPL1X7_LCD_MCLK);			
+		}
+	}
 
 	return 0;
 }

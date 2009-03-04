@@ -214,6 +214,12 @@ static struct clk spi1_clk = {
 	.lpsc = OMAPL1X7_LPSC_SPI1,
 };
 
+static struct clk lcdc_clk = {
+	.name = "LCDCTRLCLK",
+	.parent = &pll1_sysclk2,
+	.lpsc = OMAPL1X7_LPSC_LCDCNTL,
+};
+
 static struct clk *omapl1x7_clks[] __initdata = {
 	&ref_clk,
 	&aux_clkin,
@@ -244,6 +250,7 @@ static struct clk *omapl1x7_clks[] __initdata = {
 	&aemif_clk,
 	&spi0_clk,
 	&spi1_clk,
+	&lcdc_clk,
 	NULL,
 };
 
@@ -396,6 +403,27 @@ OMAPL1X7_MUX_CFG(OMAPL1X7,	SPI1_CLK,	8,   8,     15,   1,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	NSPI1_ENA,	8,   28,    15,   1,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	NSPI1_SCS_0,	9,   0,     15,   1,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	GPIO3_10,	11,  12,    15,   8,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_8,	14,  24,    15,   4,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_9,	14,  28,    15,   4,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_7,	15,  24,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_10,	15,   0,    15,   4,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_11,	15,   4,    15,   4,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_12,	15,   8,    15,   4,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_13,	15,  12,    15,   4,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_14,	15,  16,    15,   4,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_15,	15,  20,    15,   4,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_6,	16,   4,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_3,	16,   8,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_2,	16,  12,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_1,	16,  16,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_0,	16,  20,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_PCLK,	16,  24,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_HSYNC,	16,  28,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_VSYNC,	17,   0,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NLCD_AC_ENB_CS,	17,   4,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_MCLK,	17,   8,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_5,	17,  12,    15,   2,	 false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_4,	17,  16,    15,   2,	 false)
 };
 
 void __init omapl1x7_init(void)
