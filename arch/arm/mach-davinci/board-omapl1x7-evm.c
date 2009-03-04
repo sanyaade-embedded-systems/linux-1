@@ -50,10 +50,52 @@
 #include <linux/i2c.h>
 #include <linux/i2c/at24.h>
 #include <linux/etherdevice.h>
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/nand.h>
+#include <linux/mtd/partitions.h>
 #include <mach/emac.h>
 #include <mach/mmc.h>
 
 #include "clock.h"
+
+struct mtd_partition omapl1x7_evm_nandflash_partition[] = {
+	/* 5 MB space at the beginning for bootloader and kernel */
+	{
+		.name           = "NAND filesystem",
+		.offset         = 3 * SZ_1M,
+		.size           = MTDPART_SIZ_FULL,
+		.mask_flags     = 0,
+	}
+};
+
+static struct flash_platform_data omapl1x7_evm_nandflash_data = {
+	.parts		= omapl1x7_evm_nandflash_partition,
+	.nr_parts	= ARRAY_SIZE(omapl1x7_evm_nandflash_partition),
+};
+
+#define SZ_32K	(32 * 1024)
+
+static struct resource omapl1x7_evm_nandflash_resource[] = {
+	{
+		.start	= 0x62000000,
+		.end	= 0x62000000 + SZ_512K + 2 * SZ_1K - 1,
+		.flags	= IORESOURCE_MEM,
+	}, {
+		.start	= 0x68000000,
+		.end	= 0x68000000 + SZ_32K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device omapl1x7_evm_nandflash_device = {
+	.name		= "davinci_nand",
+	.id		= 0,
+	.dev		= {
+		.platform_data  = &omapl1x7_evm_nandflash_data,
+	},
+	.num_resources	= ARRAY_SIZE(omapl1x7_evm_nandflash_resource),
+	.resource	= omapl1x7_evm_nandflash_resource,
+};
 
 /* Most of this EEPROM is unused, but U-Boot uses some data:
  *  - 0x7f00, 6 bytes Ethernet Address
@@ -161,6 +203,10 @@ static void __init omapl1x7_evm_init_i2c(void)
 	i2c_register_board_info(1, i2c_info, ARRAY_SIZE(i2c_info));
 }
 
+static struct platform_device *omapl1x7_evm_devices[] __initdata = {
+	&omapl1x7_evm_nandflash_device,
+};
+
 static void __init omapl1x7_map_io(void)
 {
 	davinci_map_common_io();
@@ -172,6 +218,10 @@ static __init void omapl1x7_evm_init(void)
 	davinci_cfg_reg(OMAPL1X7_UART2_RXD);
 	davinci_cfg_reg(OMAPL1X7_UART2_TXD);
 	davinci_serial_init(&uart_config);
+
+	platform_add_devices(omapl1x7_evm_devices,
+			     ARRAY_SIZE(omapl1x7_evm_devices));
+
 	omapl1x7_evm_init_i2c();
 
 	davinci_setup_mmc(0, &omapl1x7_mmc_config);

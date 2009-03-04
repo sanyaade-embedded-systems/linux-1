@@ -190,6 +190,18 @@ static struct clk mmcsd_clk = {
 	.lpsc = OMAPL1X7_LPSC_MMC_SD,
 };
 
+static struct clk emif3_clk = {
+	.name = "emif3",
+	.parent = &pll1_sysclk2,
+	.lpsc = OMAPL1X7_LPSC_EMIF3C,
+};
+
+static struct clk aemif_clk = {
+	.name = "aemif",
+	.parent = &pll1_sysclk2,
+	.lpsc = OMAPL1X7_LPSC_EMIF25,
+};
+
 static struct clk *omapl1x7_clks[] __initdata = {
 	&ref_clk,
 	&aux_clkin,
@@ -216,6 +228,8 @@ static struct clk *omapl1x7_clks[] __initdata = {
 	&edma_tc0_clk,
 	&edma_tc1_clk,
 	&mmcsd_clk,
+	&emif3_clk,
+	&aemif_clk,
 	NULL,
 };
 
@@ -255,6 +269,108 @@ OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_6,	14,  16,    15,   2,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_DAT_7,	14,  20,    15,   2,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_CLK,	15,  28,    15,   2,     false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	MMCSD_CMD,	16,  0,     15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_0,	13,  24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_1,	13,  28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_2,	14,  0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_3,	14,  4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_4,	14,  8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_5,	14,  12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_6,	14,  16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_7,	14,  20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_8,	14,  24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_9,	14,  28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_10,	15,  0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_11,	15,  4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_12,	15,  8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_13,	15,  12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_14,	15,  16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_D_15,	15,  20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_0,	15,  24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_1,	15,  28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_2,	16,  0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_3,	16,  4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_4,	16,  8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_5,	16,  12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_6,	16,  16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_7,	16,  20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_8,	16,  24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_9,	16,  28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_10,	17,  0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_11,	17,  4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_A_12,	17,  8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_BA_1,	17,  12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_BA_0,	17,  16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_CLK,	17,  20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_SDCKE,	17,  24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_CAS,	17,  28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_CS_4,	17,  28,    15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_RAS,	18,  0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_WE,	18,  4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_CS_0,	18,  8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_CS_2,	18,  12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_CS_3,	18,  16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_OE,	18,  20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_WE_DQM_1,	18,  24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_WE_DQM_0,	18,  28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMA_CS_5,	18,  0,     15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMA_WAIT_0,	19,  0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_SDCKE,	0,   8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_CLK_GLUE,	0,   12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_CLK,	0,   12,    15,   2,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_CS_0,	0,   16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_CAS,	0,   20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_RAS,	0,   24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_WE,	0,   28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_BA_1,	1,   0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_BA_0,	1,   4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_0,	1,   8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_1,	1,   12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_2,	1,   16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_3,	1,   20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_4,	1,   24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_5,	1,   28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_6,	2,   0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_7,	2,   4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_8,	2,   8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_9,	2,   12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_10,	2,   16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_11,	2,   20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_A_12,	2,   24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_31,	2,   28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_30,	3,   0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_29,	3,   4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_28,	3,   8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_27,	3,   12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_26,	3,   16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_25,	3,   20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_24,	3,   24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_23,	3,   28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_22,	4,   0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_21,	4,   4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_20,	4,   8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_19,	4,   12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_18,	4,   16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_17,	4,   20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_16,	4,   24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_WE_DQM_3,	4,   28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_WE_DQM_2,	5,   0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_0,	5,   4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_1,	5,   8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_2,	5,   12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_3,	5,   16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_4,	5,   20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_5,	5,   24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_7,	6,   0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_8,	6,   4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_9,	6,   8,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_10,	6,   12,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_11,	6,   16,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_12,	6,   20,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_13,	6,   24,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_14,	6,   28,    15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	EMB_D_15,	7,   0,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_WE_DQM_1,	7,   4,     15,   1,     false)
+OMAPL1X7_MUX_CFG(OMAPL1X7,	NEMB_WE_DQM_0,	7,   8,     15,   1,     false)
 };
 
 void __init omapl1x7_init(void)
