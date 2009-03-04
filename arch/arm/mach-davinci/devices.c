@@ -369,9 +369,27 @@ static struct platform_device davinci_wdt_device = {
 	.resource	= wdt_resources,
 };
 
+static struct resource omapl1x7_wdt_resources[] = {
+	{
+		.start	= 0x01c21000,
+		.end	= 0x01c21fff,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device omapl1x7_wdt_device = {
+	.name		= "watchdog",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(omapl1x7_wdt_resources),
+	.resource	= omapl1x7_wdt_resources,
+};
+
 static void davinci_init_wdt(void)
 {
-	platform_device_register(&davinci_wdt_device);
+	if (cpu_is_omapl1x7())
+		platform_device_register(&omapl1x7_wdt_device);
+	else
+		platform_device_register(&davinci_wdt_device);
 }
 
 /*-------------------------------------------------------------------------*/
