@@ -11,9 +11,13 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/clk.h>
+#include <linux/platform_device.h>
 
 #include <mach/omapl1x7.h>
 #include <mach/clock.h>
+#include <mach/cpu.h>
+#include <mach/edma.h>
+#include <mach/irqs.h>
 #include <mach/psc.h>
 #include <mach/mux.h>
 
@@ -223,7 +227,7 @@ static struct clk lcdc_clk = {
 struct davinci_clk omapl1x7_clks[] = {
 	CLK(NULL, "ref", &ref_clk),
 	CLK(NULL, "aux", &aux_clkin),
-	CLK(NULL, "pll1" &pll1_clk),
+	CLK(NULL, "pll1", &pll1_clk),
 	CLK(NULL, "pll1_sysclk", &pll1_sysclk1),
 	CLK(NULL, "pll1_sysclk", &pll1_sysclk2),
 	CLK(NULL, "pll1_sysclk", &pll1_sysclk3),
@@ -483,7 +487,7 @@ void __init omapl1x7_init(void)
 				ARRAY_SIZE(davinci_omapl1x7_pins));
 }
 
-static int __init dm644x_init_devices(void)
+static int __init omapl1x7_init_devices(void)
 {
 	if (!cpu_is_omapl1x7())
 		return 0;

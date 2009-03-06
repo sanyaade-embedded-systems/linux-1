@@ -207,7 +207,6 @@ void edma_stop(unsigned channel);
 void edma_clean_channel(unsigned channel);
 void edma_pause(unsigned channel);
 void edma_resume(unsigned channel);
-void edma_clear_event(int lch);
 
 /* UNRELATED TO DMA */
 int davinci_alloc_iram(unsigned size);
