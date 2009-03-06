@@ -220,38 +220,38 @@ static struct clk lcdc_clk = {
 	.lpsc = OMAPL1X7_LPSC_LCDCNTL,
 };
 
-static struct clk *omapl1x7_clks[] __initdata = {
-	&ref_clk,
-	&aux_clkin,
-	&pll1_clk,
-	&pll1_sysclk1,
-	&pll1_sysclk2,
-	&pll1_sysclk3,
-	&pll1_sysclk4,
-	&pll1_sysclk5,
-	&pll1_sysclk6,
-	&pll1_sysclk7,
-	&pll1_sysclkbp,
-	&pll1_aux_clk,
-	&arm_clk,
-	&uart0_clk,
-	&uart1_clk,
-	&uart2_clk,
-	&timer0_clk,
-	&watchdog_clk,
-	&i2c_clk,
-	&emac_clk,
-	&gpio_clk,
-	&edma_cc0_clk,
-	&edma_tc0_clk,
-	&edma_tc1_clk,
-	&mmcsd_clk,
-	&emif3_clk,
-	&aemif_clk,
-	&spi0_clk,
-	&spi1_clk,
-	&lcdc_clk,
-	NULL,
+struct davinci_clk omapl1x7_clks[] = {
+	CLK(NULL, "ref", &ref_clk),
+	CLK(NULL, "aux", &aux_clkin),
+	CLK(NULL, "pll1" &pll1_clk),
+	CLK(NULL, "pll1_sysclk", &pll1_sysclk1),
+	CLK(NULL, "pll1_sysclk", &pll1_sysclk2),
+	CLK(NULL, "pll1_sysclk", &pll1_sysclk3),
+	CLK(NULL, "pll1_sysclk", &pll1_sysclk4),
+	CLK(NULL, "pll1_sysclk", &pll1_sysclk5),
+	CLK(NULL, "pll1_sysclk", &pll1_sysclk6),
+	CLK(NULL, "pll1_sysclk", &pll1_sysclk7),
+	CLK(NULL, "pll1_sysclk", &pll1_sysclkbp),
+	CLK(NULL, "pll1_aux", &pll1_aux_clk),
+	CLK(NULL, "arm", &arm_clk),
+	CLK(NULL, "uart0", &uart0_clk),
+	CLK(NULL, "uart1", &uart1_clk),
+	CLK(NULL, "uart2", &uart2_clk),
+	CLK(NULL, "timer0", &timer0_clk),
+	CLK("watchdog", NULL, &watchdog_clk),
+	CLK(NULL, "i2c", &i2c_clk),
+	CLK(NULL, "emac", &emac_clk),
+	CLK(NULL, "gpio", &gpio_clk),
+	CLK(NULL, "edma_cc0", &edma_cc0_clk),
+	CLK(NULL, "edma_tc0", &edma_tc0_clk),
+	CLK(NULL, "edma_tc1", &edma_tc1_clk),
+	CLK("davinci_mmc", NULL, &mmcsd_clk),
+	CLK(NULL, "emif", &emif3_clk),
+	CLK(NULL, "aemif", &aemif_clk),
+	CLK(NULL, "spi0", &spi0_clk),
+	CLK(NULL, "spi1", &spi1_clk),
+	CLK(NULL, "lcdc", &lcdc_clk),
+	CLK(NULL, NULL, NULL),
 };
 
 /*
@@ -426,9 +426,69 @@ OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_5,	17,  12,    15,   2,	 false)
 OMAPL1X7_MUX_CFG(OMAPL1X7,	LCD_D_4,	17,  16,    15,   2,	 false)
 };
 
+static const s8 dma_chan_omapl1x7_no_event[] = {
+	20, 21,
+	-1
+};
+
+static struct edma_soc_info omapl1x7_edma_info = {
+	.n_channel	= 32,
+	.n_region	= 4,
+	.n_slot		= 128,
+	.n_tc		= 2,
+	.noevent	= dma_chan_omapl1x7_no_event,
+};
+
+static struct resource edma_resources[] = {
+	{
+		.start	= 0x01c00000,
+		.end	= 0x01c00000 + SZ_64K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "edma_tc0",
+		.start	= 0x01c08000,
+		.end	= 0x01c08000 + SZ_1K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "edma_tc1",
+		.start	= 0x01c08400,
+		.end	= 0x01c08400 + SZ_1K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= IRQ_OMAPL1X7_CCINT0,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_OMAPL1X7_CCERRINT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	/* not using TC*_ERR */
+};
+
+static struct platform_device omapl1x7_edma_device = {
+	.name			= "edma",
+	.id			= -1,
+	.dev.platform_data	= &omapl1x7_edma_info,
+	.num_resources		= ARRAY_SIZE(edma_resources),
+	.resource		= edma_resources,
+};
+
 void __init omapl1x7_init(void)
 {
 	davinci_clk_init(omapl1x7_clks);
 	davinci_mux_register(davinci_omapl1x7_pins,
 				ARRAY_SIZE(davinci_omapl1x7_pins));
 }
+
+static int __init dm644x_init_devices(void)
+{
+	if (!cpu_is_omapl1x7())
+		return 0;
+
+	platform_device_register(&omapl1x7_edma_device);
+	return 0;
+}
+postcore_initcall(omapl1x7_init_devices);
