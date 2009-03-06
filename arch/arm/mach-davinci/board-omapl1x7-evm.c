@@ -244,6 +244,52 @@ static __init void omapl1x7_evm_init(void)
 	davinci_cfg_reg(OMAPL1X7_UART2_TXD);
 	davinci_serial_init(&uart_config);
 
+	davinci_cfg_reg(OMAPL1X7_EMA_D_0);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_1);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_2);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_3);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_4);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_5);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_6);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_7);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_8);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_9);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_10);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_11);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_12);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_13);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_14);
+	davinci_cfg_reg(OMAPL1X7_EMA_D_15);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_0);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_1);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_2);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_3);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_4);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_5);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_6);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_7);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_8);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_9);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_10);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_11);
+	davinci_cfg_reg(OMAPL1X7_EMA_A_12);
+	davinci_cfg_reg(OMAPL1X7_EMA_BA_0);
+	davinci_cfg_reg(OMAPL1X7_EMA_BA_1);
+	davinci_cfg_reg(OMAPL1X7_EMA_CLK);
+	davinci_cfg_reg(OMAPL1X7_EMA_SDCKE);
+	davinci_cfg_reg(OMAPL1X7_NEMA_CAS);
+	davinci_cfg_reg(OMAPL1X7_NEMA_RAS);
+	davinci_cfg_reg(OMAPL1X7_NEMA_WE);
+	davinci_cfg_reg(OMAPL1X7_NEMA_CS_0);
+	davinci_cfg_reg(OMAPL1X7_NEMA_CS_2);
+	davinci_cfg_reg(OMAPL1X7_NEMA_CS_3);
+	davinci_cfg_reg(OMAPL1X7_NEMA_CAS);
+	davinci_cfg_reg(OMAPL1X7_NEMA_RAS);
+	davinci_cfg_reg(OMAPL1X7_NEMA_OE);
+	davinci_cfg_reg(OMAPL1X7_NEMA_WE_DQM_1);
+	davinci_cfg_reg(OMAPL1X7_NEMA_WE_DQM_0);
+	davinci_cfg_reg(OMAPL1X7_EMA_WAIT_0);
+
 	platform_add_devices(omapl1x7_evm_devices,
 			     ARRAY_SIZE(omapl1x7_evm_devices));
 

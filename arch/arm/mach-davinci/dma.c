@@ -95,6 +95,8 @@
 #define EDMA_CCSTAT	0x0640
 
 #define EDMA_M		0x1000	/* global channel registers */
+#define EDMA_ECR	0x1008
+#define EDMA_ECRH	0x100C
 #define EDMA_SHADOW0	0x2000	/* 4 regions shadowing global channels */
 #define EDMA_PARM	0x4000	/* 128 param entries */
 
@@ -441,6 +443,22 @@ static irqreturn_t dma_tc1err_handler(int irq, void *data)
 	dev_dbg(data, "dma_tc1err_handler\n");
 	return IRQ_HANDLED;
 }
+
+/*
+ * edma_clear_event - clear an outstanding event on the DMA channel
+ * Arguments:
+ *      lch - logical channel number
+ */
+void edma_clear_event(int lch)
+{
+	if (lch < 0 || lch >= num_channels)
+		return;
+	if (lch < 32)
+		edma_write(EDMA_ECR, 1 << lch);
+	else
+		edma_write(EDMA_ECRH, 1 << (lch - 32));
+}
+EXPORT_SYMBOL(edma_clear_event);
 
 /*-----------------------------------------------------------------------*/
 

@@ -658,6 +658,7 @@ static int __init davinci_init_devices(void)
 		if (ret)
 			return ret;
 		else {
+			printk ("## Mux for LCDC ## \n");
 			davinci_cfg_reg(OMAPL1X7_LCD_D_0);
 			davinci_cfg_reg(OMAPL1X7_LCD_D_1);
 			davinci_cfg_reg(OMAPL1X7_LCD_D_2);

@@ -51,8 +51,13 @@ int __init_or_module davinci_cfg_reg(const unsigned long index)
 	if (!mux_table)
 		BUG();
 
-	if (cpu_is_omapl1x7())
+	if (cpu_is_omapl1x7()) {
 		base = IO_ADDRESS(OMAPL1X7_BOOT_CFG_BASE);
+
+		/* Unlock the SYSCFG registers */
+		__raw_writel(OMAPL1X7_KICK0_MAGIC, IO_ADDRESS(OMAPL1X7_KICK0));
+		__raw_writel(OMAPL1X7_KICK1_MAGIC, IO_ADDRESS(OMAPL1X7_KICK1));
+	}
 
 	if (index >= pin_table_sz) {
 		printk(KERN_ERR "Invalid pin mux index: %lu (%lu)\n",

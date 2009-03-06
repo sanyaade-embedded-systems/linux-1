@@ -346,12 +346,6 @@ static void __init davinci_timer_init(void)
 		clk_enable(wd_clk);
 	}
 
-	if (cpu_is_omapl1x7()) {
-		wd_clk = clk_get(NULL, "watchdog");
-		BUG_ON(IS_ERR(wd_clk));
-		clk_enable(wd_clk);
-	}
-
 	num_timers = 2;
 	bases = davinci_bases;
 	timer_irqs = default_timer_irqs;
