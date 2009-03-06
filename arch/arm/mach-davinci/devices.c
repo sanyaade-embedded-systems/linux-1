@@ -294,7 +294,7 @@ void __init davinci_setup_mmc(int module, struct davinci_mmc_config *config)
 			davinci_cfg_reg(DM644X_MSTK);
 		}
 
-		else if (cpu_is_omapl1x7()) {
+		if (cpu_is_omapl1x7()) {
 			pdev = &omapl1x7_mmc_device;
 			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_0);
 			davinci_cfg_reg(OMAPL1X7_MMCSD_DAT_1);
@@ -309,7 +309,6 @@ void __init davinci_setup_mmc(int module, struct davinci_mmc_config *config)
 		} else
 			pdev = &davinci_mmcsd0_device;
 
-		clockname = cpu_is_davinci_dm355() ? "mmcsd0" : "mmcsd";
 		break;
 	}
 
