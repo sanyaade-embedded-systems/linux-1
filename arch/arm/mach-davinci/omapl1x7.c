@@ -252,8 +252,8 @@ struct davinci_clk omapl1x7_clks[] = {
 	CLK("davinci_mmc.0", NULL, &mmcsd_clk),
 	CLK(NULL, "emif", &emif3_clk),
 	CLK(NULL, "aemif", &aemif_clk),
-	CLK(NULL, "spi0", &spi0_clk),
-	CLK(NULL, "spi1", &spi1_clk),
+	CLK("dm_spi.0", NULL, &spi0_clk),
+	CLK("dm_spi.1", NULL, &spi1_clk),
 	CLK("omapl1x7_lcdc.0", NULL, &lcdc_clk),
 	CLK(NULL, NULL, NULL),
 };
