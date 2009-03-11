@@ -1,5 +1,8 @@
 if ARCH_DAVINCI
 
+config CP_INTC
+	bool
+
 menu "TI DaVinci Implementations"
 
 comment "DaVinci Core Type"
@@ -21,19 +24,16 @@ config ARCH_DAVINCI_DM355
 config ARCH_DA830
 	bool "DA830 based system"
 	select CPU_V5
-	select DAVINCI_SOC_USING_CP_INTC
+	select CP_INTC
 	select ARCH_DA8XX
 
 config ARCH_DA850
 	bool "DA850 based system"
 	select CPU_V5
-	select DAVINCI_SOC_USING_CP_INTC
+	select CP_INTC
 	select ARCH_DA8XX
 
 config DAVINCI_SOC_USING_AINTC
-	bool
-
-config DAVINCI_SOC_USING_CP_INTC
 	bool
 
 config ARCH_DA8XX

@@ -55,6 +55,7 @@
 #include <linux/mtd/partitions.h>
 #include <mach/emac.h>
 #include <mach/mmc.h>
+#include <mach/cp_intc.h>
 
 #include "clock.h"
 
@@ -312,7 +313,7 @@ static __init void da850_evm_init(void)
 
 static __init void da850_evm_irq_init(void)
 {
-	soc_da8xx_irq_init();
+	cp_intc_init((void __iomem*)IO_Dx_INTC_VIRT, IRQ_DA850_MCBSP1XINT + 1, NULL);
 }
 
 MACHINE_START(DAVINCI_DA8XX_EVM, "DaVinci DA850 EVM")
