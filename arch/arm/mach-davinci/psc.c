@@ -46,6 +46,16 @@ static u32 da8xx_psc_base[] = { (u32)IO_ADDRESS(DA8XX_PSC0_BASE),
 				   (u32)IO_ADDRESS(DA8XX_PSC1_BASE) };
 static u32 *psc_base_array;
 
+/* Return nonzero iff the domain's clock is active */
+int __init davinci_psc_is_clk_active(unsigned int id)
+{
+	void __iomem *psc_base = IO_ADDRESS(DAVINCI_PWR_SLEEP_CNTRL_BASE);
+	u32 mdstat = __raw_readl(psc_base + MDSTAT + 4 * id);
+
+	/* if clocked, state can be "Enable" or "SyncReset" */
+	return mdstat & BIT(12);
+}
+
 /* Enable or disable a PSC domain */
 void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 {
@@ -74,7 +84,7 @@ void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 	if (enable)
 		mdctl |= 0x00000003;	/* Enable Module */
 	else
-		mdctl &= 0xFFFFFFF2;	/* Disable Module */
+		mdctl &= 0xFFFFFFE2;	/* Disable Module */
 	__raw_writel(mdctl, psc_base + MDCTL + 4 * id);
 
 	pdstat = __raw_readl(psc_base + PDSTAT);
