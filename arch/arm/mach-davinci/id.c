@@ -58,7 +58,7 @@ static struct davinci_id davinci_ids[] __initdata = {
 		.part_no	= 0xb7df,
 		.variant	= 0x0,
 		.manufacturer	= 0x017,
-		.type		= 0x08000000,
+		.type		= 0x08300000,
 	},
 };
 
@@ -126,7 +126,7 @@ void __init davinci_check_revision(void)
 	printk(KERN_INFO "DaVinci DM%04x variant 0x%x\n",
 	       davinci_rev(), variant);
 #else
-	printk(KERN_INFO "OMAP L1%04x variant 0x%x\n",
+	printk(KERN_INFO "DA%04x variant 0x%x\n",
 	       davinci_rev(), variant);
 #endif
 }
