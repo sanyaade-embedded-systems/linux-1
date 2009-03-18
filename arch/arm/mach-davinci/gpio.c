@@ -130,7 +130,7 @@ static int __init davinci_gpio_setup(void)
 		 * are usable, and we're not rejecting the others.
 		 */
 		ngpio = 43;
-	} else if (cpu_is_omapl1x7()) {		/* or omapl1x7 */
+	} else if (cpu_is_da830()) {		/* or da830 */
 		ngpio = 128;
 	} else {
 		/* if cpu_is_davinci_dm643x() ngpio = 111 */
@@ -280,8 +280,8 @@ static int __init davinci_gpio_irq_setup(void)
 		bank_irq = IRQ_GPIOBNK0;
 	} else if (cpu_is_davinci_dm646x()) {
 		bank_irq = IRQ_DM646X_GPIOBNK0;
-	} else if (cpu_is_omapl1x7()) {
-		bank_irq = IRQ_OMAPL1X7_GPIO0;
+	} else if (cpu_is_da830()) {
+		bank_irq = IRQ_DA830_GPIO0;
 	} else {
 		printk(KERN_ERR "Don't know first GPIO bank IRQ.\n");
 		return -EINVAL;

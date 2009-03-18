@@ -1005,7 +1005,7 @@ static void emac_dev_mcast_set(struct net_device *ndev)
  */
 static void emac_int_disable(struct emac_priv *priv)
 {
-	if (cpu_is_davinci_dm646x() || cpu_is_omapl1x7()) {
+	if (cpu_is_davinci_dm646x() || cpu_is_da830()) {
 		unsigned long flags;
 
 		local_irq_save(flags);
@@ -1033,7 +1033,7 @@ static void emac_int_disable(struct emac_priv *priv)
  */
 static void emac_int_enable(struct emac_priv *priv)
 {
-	if (cpu_is_davinci_dm646x() || cpu_is_omapl1x7()) {
+	if (cpu_is_davinci_dm646x() || cpu_is_da830()) {
 		emac_ctrl_write(EMAC_DM646X_CMRXINTEN, 0xff);
 		emac_ctrl_write(EMAC_DM646X_CMTXINTEN, 0xff);
 
@@ -2072,7 +2072,7 @@ static int emac_hw_enable(struct emac_priv *priv)
 		((EMAC_DEF_TXPACING_EN) ? (EMAC_MACCONTROL_TXPACEEN) : 0x0) |
 		((priv->duplex == DUPLEX_FULL) ? 0x1 : 0));
 
-	if (cpu_is_omapl1x7())
+	if (cpu_is_da830())
 		mac_control |= EMAC_MACCONTROL_RMIISPEED_MASK;
  
 	emac_write(EMAC_MACCONTROL, mac_control);
@@ -2167,7 +2167,7 @@ static int emac_poll(struct napi_struct *napi, int budget)
 	/* Since we support only 1 TX ch, for now check all TX int mask */
 	mask = EMAC_DM644X_MAC_IN_VECTOR_TX_INT_VEC;
 
-	if (cpu_is_davinci_dm646x() || cpu_is_omapl1x7())
+	if (cpu_is_davinci_dm646x() || cpu_is_da830())
 		mask = EMAC_DM646X_MAC_IN_VECTOR_TX_INT_VEC;
 
 	if (status & mask) {
@@ -2179,7 +2179,7 @@ static int emac_poll(struct napi_struct *napi, int budget)
 	/* Since we support only 1 RX ch, for now check all RX int mask */
 	mask = EMAC_DM644X_MAC_IN_VECTOR_RX_INT_VEC;
 
-	if (cpu_is_davinci_dm646x() || cpu_is_omapl1x7())
+	if (cpu_is_davinci_dm646x() || cpu_is_da830())
 		mask = EMAC_DM646X_MAC_IN_VECTOR_RX_INT_VEC;
 
 	if (status & mask) {

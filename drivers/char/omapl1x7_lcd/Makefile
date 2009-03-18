@@ -2,9 +2,9 @@
 # Makefile for the Linux lcd driver.
 #
 
-obj-$(CONFIG_OMAPL1X7_LCD) += omapl1x7_lcd.o
+obj-$(CONFIG_DA830_LCD) += da830_lcd.o
 
-omapl1x7_lcd-objs := lcd_drv.o  lidd_hal.o  hd44780_hal.o
+da830_lcd-objs := lcd_drv.o  lidd_hal.o  hd44780_hal.o
 
-omapl1x7_lcd.o:      $(omapl1x7_lcd-objs)
-	$(LD) -r -o $@ $(omapl1x7_lcd-objs)
+da830_lcd.o:      $(da830_lcd-objs)
+	$(LD) -r -o $@ $(da830_lcd-objs)

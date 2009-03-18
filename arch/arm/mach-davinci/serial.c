@@ -137,25 +137,25 @@ void __init davinci_serial_init(struct davinci_uart_config *info)
 			}
 		}
 
-		if (cpu_is_omapl1x7()) {
+		if (cpu_is_da830()) {
 			p->iotype = UPIO_MEM32;
 			if (i == 0) {
 				p->membase = (char *)
-					IO_ADDRESS(OMAPL1X7_UART0_BASE);
-				p->mapbase = (unsigned long)OMAPL1X7_UART0_BASE;
-				p->irq = IRQ_OMAPL1X7_UARTINT0;
+					IO_ADDRESS(DA830_UART0_BASE);
+				p->mapbase = (unsigned long)DA830_UART0_BASE;
+				p->irq = IRQ_DA830_UARTINT0;
 			}
 			if (i == 1) {
 				p->membase = (char *)
-					IO_ADDRESS(OMAPL1X7_UART1_BASE);
-				p->mapbase = (unsigned long)OMAPL1X7_UART1_BASE;
-				p->irq = IRQ_OMAPL1X7_UARTINT1;
+					IO_ADDRESS(DA830_UART1_BASE);
+				p->mapbase = (unsigned long)DA830_UART1_BASE;
+				p->irq = IRQ_DA830_UARTINT1;
 			}
 			if (i == 2) {
 				p->membase = (char *)
-					IO_ADDRESS(OMAPL1X7_UART2_BASE);
-				p->mapbase = (unsigned long)OMAPL1X7_UART2_BASE;
-				p->irq = IRQ_OMAPL1X7_UARTINT2;
+					IO_ADDRESS(DA830_UART2_BASE);
+				p->mapbase = (unsigned long)DA830_UART2_BASE;
+				p->irq = IRQ_DA830_UARTINT2;
 			}
 		}
 

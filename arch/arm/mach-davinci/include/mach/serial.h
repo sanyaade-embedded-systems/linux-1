@@ -20,9 +20,9 @@
 
 #define DM355_UART2_BASE	(IO_PHYS + 0x206000)
 
-#define OMAPL1X7_UART0_BASE     (IO_PHYS + 0x42000)
-#define OMAPL1X7_UART1_BASE     (IO_PHYS + 0x10C000)
-#define OMAPL1X7_UART2_BASE     (IO_PHYS + 0x10D000)
+#define DA830_UART0_BASE     (IO_PHYS + 0x42000)
+#define DA830_UART1_BASE     (IO_PHYS + 0x10C000)
+#define DA830_UART2_BASE     (IO_PHYS + 0x10D000)
 
 /* DaVinci UART register offsets */
 #define UART_DAVINCI_PWREMU		0x0c

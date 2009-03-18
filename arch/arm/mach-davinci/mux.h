@@ -48,12 +48,12 @@
 			.mode = mux_mode,				\
 		},
 
-#define OMAPL1X7_MUX_CFG(soc, desc, muxreg, mode_offset, mode_mask, mux_mode, dbg)\
+#define DA830_MUX_CFG(soc, desc, muxreg, mode_offset, mode_mask, mux_mode, dbg)\
 [soc##_##desc] = {							\
 			.name =  #desc,					\
 			.debug = dbg,					\
-			.mux_reg_name = "OMAPL1X7_PINMUX"#muxreg,	\
-			.mux_reg = OMAPL1X7_PINMUX##muxreg,		\
+			.mux_reg_name = "DA830_PINMUX"#muxreg,	\
+			.mux_reg = DA830_PINMUX##muxreg,		\
 			.mask_offset = mode_offset,			\
 			.mask = mode_mask,				\
 			.mode = mux_mode,				\

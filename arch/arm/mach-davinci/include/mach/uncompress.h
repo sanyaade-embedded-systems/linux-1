@@ -23,8 +23,8 @@ static u32 *uart;
 static u32 *get_uart_base(void)
 {
 	/* Add logic here for new platforms */
-#ifdef CONFIG_ARCH_OMAPL1x7
-	return (u32 *)OMAPL1X7_UART2_BASE;
+#ifdef CONFIG_ARCH_DA830
+	return (u32 *)DA830_UART2_BASE;
 #else
 	return (u32 *)DAVINCI_UART0_BASE;
 #endif

@@ -17,10 +17,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef __OMAPL1X7_LCDC_H__
-#define __OMAPL1X7_LCDC_H__
+#ifndef __DA830_LCDC_H__
+#define __DA830_LCDC_H__
 
-#define OMAPL1X7_LCDC_REVISION	  0x4C100100
+#define DA830_LCDC_REVISION	  0x4C100100
 
 /* LCD Status Register */
 #define LCD_END_OF_FRAME1           (1 << 9)
@@ -108,4 +108,4 @@
 #define  LCD_DMA_FRM_BUF_CEILING_ADDR_0_REG     0x48
 #define  LCD_DMA_FRM_BUF_BASE_ADDR_1_REG        0x4C
 #define  LCD_DMA_FRM_BUF_CEILING_ADDR_1_REG     0x50
-#endif /*__OMAPL1X7_LCDC_H__*/
+#endif /*__DA830_LCDC_H__*/

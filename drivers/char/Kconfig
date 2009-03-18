@@ -1101,12 +1101,12 @@ config DEVPORT
 
 source "drivers/s390/char/Kconfig"
 
-config  OMAPL1X7_LCD
-	tristate "OMAPL1X7 Character LCD Support"
+config  DA830_LCD
+	tristate "DA830 Character LCD Support"
 	default n
-	depends on MACH_OMAPL1X7_EVM && !FB_OMAPL1X7
+	depends on MACH_DA830_EVM && !FB_DA830
 	help
-	  OMAPL1X7 Character LCD support.
+	  DA830 Character LCD support.
 
 
 endmenu

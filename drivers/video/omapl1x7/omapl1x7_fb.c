@@ -25,31 +25,31 @@
 #include <linux/platform_device.h>
 #include <mach/io.h>
 #include <mach/hardware.h>
-#include <mach/omapl1x7_lcdc.h>
+#include <mach/da830_lcdc.h>
 #include <linux/uaccess.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
 #include <linux/clk.h>
-#include "omapl1x7_fb.h"
-#include "omapl1x7_lcdc.h"
+#include "da830_fb.h"
+#include "da830_lcdc.h"
 #ifdef CONFIG_GLCD_SHARP_COLOR
 #include "sharp_color.h"
 #endif
 
-#define DRIVER_NAME "omapl1x7_lcdc"
+#define DRIVER_NAME "da830_lcdc"
 
 #undef FB_DEBUG
 #define FB_DEBUG
-#define omapl1x7_fb_read(addr)	__raw_readl(omapl1x7_fb_reg_base + (addr))
-#define omapl1x7_fb_write(val, addr)	__raw_writel(val, \
-						omapl1x7_fb_reg_base + (addr))
+#define da830_fb_read(addr)	__raw_readl(da830_fb_reg_base + (addr))
+#define da830_fb_write(val, addr)	__raw_writel(val, \
+						da830_fb_reg_base + (addr))
 
 #define WSI_TIMEOUT 50
 
-static resource_size_t omapl1x7_fb_reg_base;
-static wait_queue_head_t omapl1x7_wq;
+static resource_size_t da830_fb_reg_base;
+static wait_queue_head_t da830_wq;
 
-struct omapl1x7fb_par {
+struct da830fb_par {
 	resource_size_t p_regs_base;
 	resource_size_t p_screen_base;
 	resource_size_t p_palette_base;
@@ -64,7 +64,7 @@ struct omapl1x7fb_par {
 };
 
 /* Variable Screen Information */
-static struct fb_var_screeninfo omapl1x7fb_var __devinitdata = {
+static struct fb_var_screeninfo da830fb_var __devinitdata = {
 	.xoffset = 0,
 	.yoffset = 0,
 	.transp = {0, 0, 0},
@@ -81,8 +81,8 @@ static struct fb_var_screeninfo omapl1x7fb_var __devinitdata = {
 	.vmode = FB_VMODE_NONINTERLACED
 };
 
-static struct fb_fix_screeninfo omapl1x7fb_fix __devinitdata = {
-	.id = "OMAPL1X7 FB Drv",
+static struct fb_fix_screeninfo da830fb_fix __devinitdata = {
+	.id = "DA830 FB Drv",
 	.type = FB_TYPE_PACKED_PIXELS,
 	.type_aux = 0,
 	.visual = FB_VISUAL_PSEUDOCOLOR,
@@ -94,28 +94,28 @@ static struct fb_fix_screeninfo omapl1x7fb_fix __devinitdata = {
 
 static u32 g_databuf_sz;
 static u32 g_palette_sz;
-static struct fb_ops omapl1x7_fb_ops;
+static struct fb_ops da830_fb_ops;
 static int lcd_wait_status_int(int int_status_mask);
 
 #ifdef FB_DEBUG
 static void lcd_show_raster_status(void)
 {
-	u32 value = omapl1x7_fb_read(LCD_STAT_REG);
+	u32 value = da830_fb_read(LCD_STAT_REG);
 	if (value & LCD_FIFO_UNDERFLOW)
-		printk(KERN_ALERT "OMAPL1X7 LCD: FIFO Underflow!\n");
+		printk(KERN_ALERT "DA830 LCD: FIFO Underflow!\n");
 	if (value & LCD_AC_BIAS_COUNT_STATUS)
-		printk(KERN_INFO "OMAPL1X7 LCD: AC Bias Count Reached\n");
+		printk(KERN_INFO "DA830 LCD: AC Bias Count Reached\n");
 	if (value & LCD_PALETTE_LOADED)
-		printk(KERN_INFO "OMAPL1X7 LCD: Palette is Loaded\n");
+		printk(KERN_INFO "DA830 LCD: Palette is Loaded\n");
 	else
-		printk(KERN_ALERT "OMAPL1X7 LCD: Palette is not Loaded!\n");
+		printk(KERN_ALERT "DA830 LCD: Palette is not Loaded!\n");
 	if (value & LCD_SYNC_LOST) {
-		printk(KERN_ALERT "OMAPL1X7 LCD: Frame Synchronization Error!\n");
-		omapl1x7_fb_write(omapl1x7_fb_read(LCD_STAT_REG) |
+		printk(KERN_ALERT "DA830 LCD: Frame Synchronization Error!\n");
+		da830_fb_write(da830_fb_read(LCD_STAT_REG) |
 				LCD_SYNC_LOST, LCD_STAT_REG);
 	}
-	value = omapl1x7_fb_read(0x00);
-	printk(KERN_INFO "OMAPL1X7 LCD: Revision id is %x\n", value);
+	value = da830_fb_read(0x00);
+	printk(KERN_INFO "DA830 LCD: Revision id is %x\n", value);
 
 }
 
@@ -125,27 +125,27 @@ static void lcd_show_raster_interface(void)
 	printk(KERN_INFO "LCD Raster Interface Configuration\n");
 	printk(KERN_INFO "----------------------------------\n");
 	printk(KERN_INFO "LCD Control Register:    0x%x\n",
-	       omapl1x7_fb_read(LCD_CTRL_REG));
+	       da830_fb_read(LCD_CTRL_REG));
 	printk(KERN_INFO "Raster Control:          0x%x\n",
-	       omapl1x7_fb_read(LCD_RASTER_CTRL_REG));
+	       da830_fb_read(LCD_RASTER_CTRL_REG));
 	printk(KERN_INFO "Timing Register 0:       0x%x\n",
-	       omapl1x7_fb_read(LCD_RASTER_TIMING_0_REG));
+	       da830_fb_read(LCD_RASTER_TIMING_0_REG));
 	printk(KERN_INFO "Timing Register 1:       0x%x\n",
-	       omapl1x7_fb_read(LCD_RASTER_TIMING_1_REG));
+	       da830_fb_read(LCD_RASTER_TIMING_1_REG));
 	printk(KERN_INFO "Timing Register 2:       0x%x\n",
-	       omapl1x7_fb_read(LCD_RASTER_TIMING_2_REG));
+	       da830_fb_read(LCD_RASTER_TIMING_2_REG));
 	printk(KERN_INFO "Subpanel Register:       0x%x\n",
-	       omapl1x7_fb_read(LCD_RASTER_SUBPANEL_DISP_REG));
+	       da830_fb_read(LCD_RASTER_SUBPANEL_DISP_REG));
 	printk(KERN_INFO "DMA Control Register:    0x%x\n",
-	       omapl1x7_fb_read(LCD_DMA_CTRL_REG));
+	       da830_fb_read(LCD_DMA_CTRL_REG));
 	printk(KERN_INFO "DMA 0 Start Address:     0x%x\n",
-	       omapl1x7_fb_read(LCD_DMA_FRM_BUF_BASE_ADDR_0_REG));
+	       da830_fb_read(LCD_DMA_FRM_BUF_BASE_ADDR_0_REG));
 	printk(KERN_INFO "DMA 0 End Address:       0x%x\n",
-	       omapl1x7_fb_read(LCD_DMA_FRM_BUF_CEILING_ADDR_0_REG));
+	       da830_fb_read(LCD_DMA_FRM_BUF_CEILING_ADDR_0_REG));
 	printk(KERN_INFO "DMA 1 Start Address:     0x%x\n",
-	       omapl1x7_fb_read(LCD_DMA_FRM_BUF_BASE_ADDR_1_REG));
+	       da830_fb_read(LCD_DMA_FRM_BUF_BASE_ADDR_1_REG));
 	printk(KERN_INFO "DMA 1 End Address:       0x%x\n",
-	       omapl1x7_fb_read(LCD_DMA_FRM_BUF_CEILING_ADDR_1_REG));
+	       da830_fb_read(LCD_DMA_FRM_BUF_CEILING_ADDR_1_REG));
 	printk(KERN_INFO "\n");
 	lcd_show_raster_status();
 	printk(KERN_INFO "\n");
@@ -158,9 +158,9 @@ static int lcd_disable_raster(void)
 	u32 reg;
 	int ret = 0;
 
-	reg = omapl1x7_fb_read(LCD_RASTER_CTRL_REG);
+	reg = da830_fb_read(LCD_RASTER_CTRL_REG);
 	if (reg & LCD_RASTER_ENABLE) {
-		omapl1x7_fb_write(reg & ~LCD_RASTER_ENABLE,
+		da830_fb_write(reg & ~LCD_RASTER_ENABLE,
 						LCD_RASTER_CTRL_REG);
 		ret = lcd_wait_status_int(LCD_END_OF_FRAME0);
 	}
@@ -174,18 +174,18 @@ static int lcd_blit(int load_mode, u32 p_buf)
 	u32 tmp = p_buf + g_databuf_sz - 2;
 
 	/* Update the databuf in the hw. */
-	omapl1x7_fb_write(p_buf, LCD_DMA_FRM_BUF_BASE_ADDR_0_REG);
-	omapl1x7_fb_write(tmp, LCD_DMA_FRM_BUF_CEILING_ADDR_0_REG);
+	da830_fb_write(p_buf, LCD_DMA_FRM_BUF_BASE_ADDR_0_REG);
+	da830_fb_write(tmp, LCD_DMA_FRM_BUF_CEILING_ADDR_0_REG);
 
 	/* Start the DMA. */
-	reg = omapl1x7_fb_read(LCD_RASTER_CTRL_REG);
+	reg = da830_fb_read(LCD_RASTER_CTRL_REG);
 	reg &= ~(3 << 20);
 	if (load_mode == LOAD_DATA) {
 		reg |= LCD_PALETTE_LOAD_MODE(PALETTE_AND_DATA);
-		omapl1x7_fb_write(reg, LCD_RASTER_CTRL_REG);
+		da830_fb_write(reg, LCD_RASTER_CTRL_REG);
 	} else if (LOAD_PALETTE == load_mode) {
 		reg |= LCD_PALETTE_LOAD_MODE(PALETTE_ONLY);
-		omapl1x7_fb_write(reg, LCD_RASTER_CTRL_REG);
+		da830_fb_write(reg, LCD_RASTER_CTRL_REG);
 	}
 	return ret;
 }
@@ -194,7 +194,7 @@ static int lcd_blit(int load_mode, u32 p_buf)
 static int lcd_cfg_dma(int burst_size)
 {
 	u32 reg;
-	reg = omapl1x7_fb_read(LCD_DMA_CTRL_REG) & 0x00000001;
+	reg = da830_fb_read(LCD_DMA_CTRL_REG) & 0x00000001;
 	switch (burst_size) {
 	case 1:
 		reg |= LCD_DMA_BURST_SIZE(LCD_DMA_BURST_1);
@@ -215,10 +215,10 @@ static int lcd_cfg_dma(int burst_size)
 		return -EINVAL;
 #ifdef FB_DEBUG
 		printk(KERN_INFO
-		       "OMAPL1X7 LCD: Configured LCD DMA Burst Size...\n");
+		       "DA830 LCD: Configured LCD DMA Burst Size...\n");
 #endif
 	}
-	omapl1x7_fb_write(reg | LCD_END_OF_FRAME_INT_ENA, LCD_DMA_CTRL_REG);
+	da830_fb_write(reg | LCD_END_OF_FRAME_INT_ENA, LCD_DMA_CTRL_REG);
 
 	return 0;
 }
@@ -227,12 +227,12 @@ static void lcd_cfg_ac_bias(int period, int transitions_per_int)
 {
 	u32 reg;
 	/* Set the AC Bias Period and Number of Transisitons per Interrupt */
-	reg = omapl1x7_fb_read(LCD_RASTER_TIMING_2_REG) & 0xFFF00000;
+	reg = da830_fb_read(LCD_RASTER_TIMING_2_REG) & 0xFFF00000;
 	reg |= LCD_AC_BIAS_FREQUENCY(period) |
 	    LCD_AC_BIAS_TRANSITIONS_PER_INT(transitions_per_int);
-	omapl1x7_fb_write(reg, LCD_RASTER_TIMING_2_REG);
+	da830_fb_write(reg, LCD_RASTER_TIMING_2_REG);
 #ifdef FB_DEBUG
-	printk(KERN_INFO "OMAPL1X7 LCD: Configured AC Bias...\n");
+	printk(KERN_INFO "DA830 LCD: Configured AC Bias...\n");
 #endif
 }
 
@@ -240,14 +240,14 @@ static void lcd_cfg_horizontal_sync(int back_porch, int pulse_width,
 				    int front_porch)
 {
 	u32 reg;
-	reg = omapl1x7_fb_read(LCD_RASTER_TIMING_0_REG) & 0xf;
+	reg = da830_fb_read(LCD_RASTER_TIMING_0_REG) & 0xf;
 	reg |= ((back_porch & 0xff) << 24)
 	    | ((front_porch & 0xff) << 16)
 	    | ((pulse_width & 0x3f) << 10);
-	omapl1x7_fb_write(reg, LCD_RASTER_TIMING_0_REG);
+	da830_fb_write(reg, LCD_RASTER_TIMING_0_REG);
 #ifdef FB_DEBUG
 	printk(KERN_INFO
-	       "OMAPL1X7 LCD: Configured Horizontal Sync Properties...\n");
+	       "DA830 LCD: Configured Horizontal Sync Properties...\n");
 #endif
 }
 
@@ -255,13 +255,13 @@ static void lcd_cfg_vertical_sync(int back_porch, int pulse_width,
 				  int front_porch)
 {
 	u32 reg;
-	reg = omapl1x7_fb_read(LCD_RASTER_TIMING_1_REG) & 0x3ff;
+	reg = da830_fb_read(LCD_RASTER_TIMING_1_REG) & 0x3ff;
 	reg |= ((back_porch & 0xff) << 24)
 	    | ((front_porch & 0xff) << 16)
 	    | ((pulse_width & 0x3f) << 10);
-	omapl1x7_fb_write(reg, LCD_RASTER_TIMING_1_REG);
+	da830_fb_write(reg, LCD_RASTER_TIMING_1_REG);
 #ifdef FB_DEBUG
-	printk(KERN_INFO "OMAPL1X7 LCD: Configured Vertical Sync Properties...\n");
+	printk(KERN_INFO "DA830 LCD: Configured Vertical Sync Properties...\n");
 #endif
 }
 
@@ -270,7 +270,7 @@ static void lcd_cfg_display(const struct lcd_ctrl_config *cfg)
 	u32 reg;
 
 	reg =
-	    omapl1x7_fb_read(LCD_RASTER_CTRL_REG) & ~(LCD_TFT_MODE |
+	    da830_fb_read(LCD_RASTER_CTRL_REG) & ~(LCD_TFT_MODE |
 						   LCD_MONO_8BIT_MODE |
 						   LCD_MONOCHROME_MODE);
 
@@ -298,9 +298,9 @@ static void lcd_cfg_display(const struct lcd_ctrl_config *cfg)
 		break;
 	}
 
-	omapl1x7_fb_write(reg, LCD_RASTER_CTRL_REG);
+	da830_fb_write(reg, LCD_RASTER_CTRL_REG);
 
-	reg = omapl1x7_fb_read(LCD_RASTER_TIMING_2_REG);
+	reg = da830_fb_read(LCD_RASTER_TIMING_2_REG);
 
 	if (cfg->sync_ctrl)
 		reg |= LCD_SYNC_CTRL;
@@ -327,7 +327,7 @@ static void lcd_cfg_display(const struct lcd_ctrl_config *cfg)
 	else
 		reg &= ~LCD_INVERT_FRAME_CLOCK;
 
-	omapl1x7_fb_write(reg, LCD_RASTER_TIMING_2_REG);
+	da830_fb_write(reg, LCD_RASTER_TIMING_2_REG);
 
 #ifdef FB_DEBUG
 	printk(KERN_INFO "GLCD: Configured to Active Color...\n");
@@ -343,24 +343,24 @@ static int lcd_cfg_frame_buffer(u32 width, u32 height, u32 bpp,
 	u32 g_bpp = bpp;
 
 	/* Disable Dual Frame Buffer. */
-	reg = omapl1x7_fb_read(LCD_DMA_CTRL_REG);
-	omapl1x7_fb_write(reg & ~LCD_DUAL_FRAME_BUFFER_ENABLE,
+	reg = da830_fb_read(LCD_DMA_CTRL_REG);
+	da830_fb_write(reg & ~LCD_DUAL_FRAME_BUFFER_ENABLE,
 						LCD_DMA_CTRL_REG);
 	/* Set the Panel Width */
 	/* Pixels per line = (PPL + 1)*16 */
 	/*0x3F in bits 4..9 gives max horisontal resolution = 1024 pixels*/
 	width &= 0x3f0;
-	reg = omapl1x7_fb_read(LCD_RASTER_TIMING_0_REG);
+	reg = da830_fb_read(LCD_RASTER_TIMING_0_REG);
 	reg = (((width >> 4) - 1) << 4) | (reg & 0xfffffc00);
-	omapl1x7_fb_write(reg, LCD_RASTER_TIMING_0_REG);
+	da830_fb_write(reg, LCD_RASTER_TIMING_0_REG);
 
 	/* Set the Panel Height */
-	reg = omapl1x7_fb_read(LCD_RASTER_TIMING_1_REG);
+	reg = da830_fb_read(LCD_RASTER_TIMING_1_REG);
 	reg = ((height - 1) & 0x3ff) | (reg & 0xfffffc00);
-	omapl1x7_fb_write(reg, LCD_RASTER_TIMING_1_REG);
+	da830_fb_write(reg, LCD_RASTER_TIMING_1_REG);
 
 	/* Set the Raster Order of the Frame Buffer */
-	reg = omapl1x7_fb_read(LCD_RASTER_CTRL_REG) & ~(1 << 8);
+	reg = da830_fb_read(LCD_RASTER_CTRL_REG) & ~(1 << 8);
 	if (raster_order)
 		reg |= LCD_RASTER_ORDER;
 
@@ -382,12 +382,12 @@ static int lcd_cfg_frame_buffer(u32 width, u32 height, u32 bpp,
 
 	default:
 #ifdef FB_DEBUG
-		printk(KERN_ALERT "OMAPL1X7 LCD: Unsupported BPP!\n");
+		printk(KERN_ALERT "DA830 LCD: Unsupported BPP!\n");
 #endif
 		break;
 	}
 #ifdef FB_DEBUG
-	printk(KERN_INFO "OMAPL1X7 LCD: Configured Frame Buffer...\n");
+	printk(KERN_INFO "DA830 LCD: Configured Frame Buffer...\n");
 #endif
 
 	return 0;
@@ -399,21 +399,21 @@ static int lcd_wait_status_int(int int_status_mask)
 	int ret;
 
 	if (int_status_mask == LCD_SYNC_LOST)
-		ret = wait_event_interruptible_timeout(omapl1x7_wq,
-						       omapl1x7_fb_read
+		ret = wait_event_interruptible_timeout(da830_wq,
+						       da830_fb_read
 						       (LCD_STAT_REG) &
 						       int_status_mask,
 						       WSI_TIMEOUT);
 	else
-		ret = wait_event_interruptible_timeout(omapl1x7_wq,
-						       !omapl1x7_fb_read
+		ret = wait_event_interruptible_timeout(da830_wq,
+						       !da830_fb_read
 						       (LCD_STAT_REG) &
 						       int_status_mask,
 						       WSI_TIMEOUT);
 #ifdef FB_DEBUG
 	if (ret <= 0) {
 		printk(KERN_ALERT
-		       "OMAPL1X7 LCD: status wait returned %d, mask %d\n",
+		       "DA830 LCD: status wait returned %d, mask %d\n",
 		       ret, int_status_mask);
 		lcd_show_raster_status();
 	}
@@ -428,10 +428,10 @@ static int lcd_wait_status_int(int int_status_mask)
 }
 
 /* Palette Initialization */
-static void omapl1x7fb_init_palette(struct fb_info *info)
+static void da830fb_init_palette(struct fb_info *info)
 {
 	unsigned short i, size;
-	struct omapl1x7fb_par *par = info->par;
+	struct da830fb_par *par = info->par;
 	unsigned short *palette = (unsigned short *)par->p_palette_base;
 
 	/* Palette Size */
@@ -462,7 +462,7 @@ static void omapl1x7fb_init_palette(struct fb_info *info)
 		palette[0] |= (4 << 12);
 		break;
 	default:
-		printk(KERN_ALERT "OMAPL1X7 LCD: Unsupported Video BPP %d!\n",
+		printk(KERN_ALERT "DA830 LCD: Unsupported Video BPP %d!\n",
 		       par->bpp);
 		break;
 	}
@@ -475,12 +475,12 @@ static void omapl1x7fb_init_palette(struct fb_info *info)
 #endif
 }
 
-static int omapl1x7_fb_setcolreg(unsigned regno, unsigned red, unsigned green,
+static int da830_fb_setcolreg(unsigned regno, unsigned red, unsigned green,
 			      unsigned blue, unsigned transp,
 			      struct fb_info *info)
 {
 	u_short pal;
-	struct omapl1x7fb_par *par = info->par;
+	struct da830fb_par *par = info->par;
 	unsigned short *palette = (unsigned short *)par->v_palette_base;
 
 	if (regno > 255)
@@ -510,20 +510,20 @@ static int omapl1x7_fb_setcolreg(unsigned regno, unsigned red, unsigned green,
 static void lcd_reset(void)
 {
 	/* Disable the Raster if previously Enabled */
-	if (omapl1x7_fb_read(LCD_RASTER_CTRL_REG) & LCD_RASTER_ENABLE) {
+	if (da830_fb_read(LCD_RASTER_CTRL_REG) & LCD_RASTER_ENABLE) {
 #ifdef FB_DEBUG
 		printk(KERN_INFO
-		       "OMAPL1X7 LCD: Waiting for Raster Frame Done...\n");
+		       "DA830 LCD: Waiting for Raster Frame Done...\n");
 #endif
 		lcd_disable_raster();
 	}
 	/* DMA has to be disabled */
-	omapl1x7_fb_write(0, LCD_DMA_CTRL_REG);
+	da830_fb_write(0, LCD_DMA_CTRL_REG);
 #ifdef FB_DEBUG
-	printk(KERN_INFO "OMAPL1X7 LCD: Raster is going for Reset now...\n");
+	printk(KERN_INFO "DA830 LCD: Raster is going for Reset now...\n");
 	lcd_show_raster_interface();
 #endif
-	omapl1x7_fb_write(0, LCD_RASTER_CTRL_REG);
+	da830_fb_write(0, LCD_RASTER_CTRL_REG);
 	/* TODO: Place the LCD block in reset */
 	/* TODO: Release it from Reset */
 #ifdef FB_DEBUG
@@ -535,15 +535,15 @@ static void lcd_reset(void)
 static int lcd_init(const struct lcd_ctrl_config *cfg)
 {
 	u32 bpp;
-	if (omapl1x7_lcd_hw_init()) {
+	if (da830_lcd_hw_init()) {
 		printk(KERN_ALERT "Error in Initialising\n");
 		return -ENODEV;
 	}
-	if (omapl1x7_fb_read(LCD_BLK_REV_REG) != OMAPL1X7_LCDC_REVISION)
+	if (da830_fb_read(LCD_BLK_REV_REG) != DA830_LCDC_REVISION)
 		return -ENOENT;
 	lcd_reset();
 	/* Configure the LCD clock divisor. */
-	omapl1x7_fb_write(LCD_CLK_DIVISOR(cfg->pxl_clk) |
+	da830_fb_write(LCD_CLK_DIVISOR(cfg->pxl_clk) |
 					(LCD_RASTER_MODE & 0x1), LCD_CTRL_REG);
 	/* Configure the DMA burst size. */
 	lcd_cfg_dma(cfg->dma_burst_sz);
@@ -570,33 +570,33 @@ static int lcd_init(const struct lcd_ctrl_config *cfg)
 			     (unsigned int)cfg->p_disp_panel->height, bpp,
 			     cfg->raster_order);
 	/* Configure FDD */
-	omapl1x7_fb_write((omapl1x7_fb_read(LCD_RASTER_CTRL_REG) & 0xfff00fff) |
+	da830_fb_write((da830_fb_read(LCD_RASTER_CTRL_REG) & 0xfff00fff) |
 		       (cfg->fdd << 12), LCD_RASTER_CTRL_REG);
 
 	return 0;
 }
 
-static irqreturn_t omapl1x7_lcdc_irq_handler(int irq, void *arg)
+static irqreturn_t da830_lcdc_irq_handler(int irq, void *arg)
 {
 
-	u32 stat = omapl1x7_fb_read(LCD_STAT_REG);
+	u32 stat = da830_fb_read(LCD_STAT_REG);
 	u32 reg;
 
 	if ((stat & LCD_SYNC_LOST) && (stat & LCD_FIFO_UNDERFLOW)) {
-		reg = omapl1x7_fb_read(LCD_RASTER_CTRL_REG);
-		omapl1x7_fb_write(reg & ~LCD_RASTER_ENABLE,
+		reg = da830_fb_read(LCD_RASTER_CTRL_REG);
+		da830_fb_write(reg & ~LCD_RASTER_ENABLE,
 							LCD_RASTER_CTRL_REG);
-		omapl1x7_fb_write(stat, LCD_STAT_REG);
-		omapl1x7_fb_write(reg | LCD_RASTER_ENABLE, LCD_RASTER_CTRL_REG);
+		da830_fb_write(stat, LCD_STAT_REG);
+		da830_fb_write(reg | LCD_RASTER_ENABLE, LCD_RASTER_CTRL_REG);
 	} else
-		omapl1x7_fb_write(stat, LCD_STAT_REG);
+		da830_fb_write(stat, LCD_STAT_REG);
 
 	/*TODO: m.b. use lcd_clear_status_int((u32)int_status_mask) here*/
-	wake_up_interruptible(&omapl1x7_wq);
+	wake_up_interruptible(&da830_wq);
 	return IRQ_HANDLED;
 }
 
-static int omapl1x7_fb_check_var(struct fb_var_screeninfo *var,
+static int da830_fb_check_var(struct fb_var_screeninfo *var,
 			      struct fb_info *info)
 {
 	int err = 0;
@@ -643,7 +643,7 @@ static int omapl1x7_fb_check_var(struct fb_var_screeninfo *var,
 	return err;
 }
 
-static int omapl1x7_fb_set_par(struct fb_info *info)
+static int da830_fb_set_par(struct fb_info *info)
 {
 	struct fb_fix_screeninfo *fix = &info->fix;
 	struct fb_var_screeninfo *var = &info->var;
@@ -668,17 +668,17 @@ static int omapl1x7_fb_set_par(struct fb_info *info)
 	return 0;
 }
 
-static int __devexit omapl1x7_fb_remove(struct platform_device *dev)
+static int __devexit da830_fb_remove(struct platform_device *dev)
 {
 	struct fb_info *info = dev_get_drvdata(&dev->dev);
 	if (info) {
-		struct omapl1x7fb_par *par = info->par;
+		struct da830fb_par *par = info->par;
 		/*TODO: do we need this along with line below? */
-		if (omapl1x7_fb_read(LCD_RASTER_CTRL_REG) & LCD_RASTER_ENABLE)
+		if (da830_fb_read(LCD_RASTER_CTRL_REG) & LCD_RASTER_ENABLE)
 			lcd_disable_raster();
-		omapl1x7_fb_write(0, LCD_RASTER_CTRL_REG);
+		da830_fb_write(0, LCD_RASTER_CTRL_REG);
 		/* disable DMA  */
-		omapl1x7_fb_write(0, LCD_DMA_CTRL_REG);
+		da830_fb_write(0, LCD_DMA_CTRL_REG);
 
 		unregister_framebuffer(info);
 
@@ -698,13 +698,13 @@ static int __devexit omapl1x7_fb_remove(struct platform_device *dev)
 	}
 	return 0;
 }
-static int __init omapl1x7_fb_probe(struct platform_device *device)
+static int __init da830_fb_probe(struct platform_device *device)
 {
-	struct fb_info *omapl1x7fb_info;
-	struct omapl1x7fb_par *par;
+	struct fb_info *da830fb_info;
+	struct da830fb_par *par;
 	int ret;
 	struct resource *lcdc_regs;
-	struct omapl1x7_lcdc_platform_data *fb_pdata =
+	struct da830_lcdc_platform_data *fb_pdata =
 						device->dev.platform_data;
 	struct clk *fb_clk = NULL;
 	if (fb_pdata == NULL) {
@@ -719,7 +719,7 @@ static int __init omapl1x7_fb_probe(struct platform_device *device)
 		return -ENOENT;
 	}
 
-	omapl1x7_fb_reg_base = (resource_size_t) IO_ADDRESS(lcdc_regs->start);
+	da830_fb_reg_base = (resource_size_t) IO_ADDRESS(lcdc_regs->start);
 
 	fb_clk = clk_get(&device->dev, fb_pdata->lcdc_clk_name);
 	if (IS_ERR(fb_clk)) {
@@ -735,15 +735,15 @@ static int __init omapl1x7_fb_probe(struct platform_device *device)
 		ret = -EFAULT;
 		goto err_clk_disable;
 	}
-	omapl1x7fb_info = framebuffer_alloc(sizeof(struct fb_info),
+	da830fb_info = framebuffer_alloc(sizeof(struct fb_info),
 							&device->dev);
-	if (!omapl1x7fb_info) {
+	if (!da830fb_info) {
 		dev_dbg(&device->dev, "Memory allocation failed for fb_info\n");
 		ret = -ENOMEM;
 		goto err_clk_disable;
 	}
 
-	par = omapl1x7fb_info->par;
+	par = da830fb_info->par;
 	/* allocate frame buffer */
 	par->v_palette_base = dma_alloc_coherent(NULL, g_databuf_sz,
 						 &par->p_palette_base,
@@ -766,15 +766,15 @@ static int __init omapl1x7_fb_probe(struct platform_device *device)
 
 	par->lcdc_clk = fb_clk;
 
-	omapl1x7fb_fix.smem_start = (unsigned long)par->p_screen_base;
-	omapl1x7fb_fix.smem_len = par->screen_size;
+	da830fb_fix.smem_start = (unsigned long)par->p_screen_base;
+	da830fb_fix.smem_len = par->screen_size;
 
 #ifdef FB_DEBUG
 	printk(KERN_INFO "GLCD: Frame Buffer Memory allocation successful\n");
 	printk(KERN_INFO "GLCD: Palette Memory allocation successful\n");
 #endif
 
-	init_waitqueue_head(&omapl1x7_wq);
+	init_waitqueue_head(&da830_wq);
 
 	par->irq = platform_get_irq(device, 0);
 	if (par->irq < 0) {
@@ -782,7 +782,7 @@ static int __init omapl1x7_fb_probe(struct platform_device *device)
 		goto err_release_fb_mem;
 	}
 
-	ret = request_irq(par->irq, omapl1x7_lcdc_irq_handler, 0,
+	ret = request_irq(par->irq, da830_lcdc_irq_handler, 0,
 			  DRIVER_NAME, NULL);
 	if (ret)
 		goto err_free_irq;
@@ -790,35 +790,35 @@ static int __init omapl1x7_fb_probe(struct platform_device *device)
 	/* Initialize par */
 	par->bpp = lcd_cfg.bpp;
 
-	omapl1x7fb_var.xres = lcd_cfg.p_disp_panel->width;
-	omapl1x7fb_var.xres_virtual = lcd_cfg.p_disp_panel->width;
+	da830fb_var.xres = lcd_cfg.p_disp_panel->width;
+	da830fb_var.xres_virtual = lcd_cfg.p_disp_panel->width;
 
-	omapl1x7fb_var.yres = lcd_cfg.p_disp_panel->height;
-	omapl1x7fb_var.yres_virtual = lcd_cfg.p_disp_panel->height;
+	da830fb_var.yres = lcd_cfg.p_disp_panel->height;
+	da830fb_var.yres_virtual = lcd_cfg.p_disp_panel->height;
 
-	omapl1x7fb_var.grayscale =
+	da830fb_var.grayscale =
 	    lcd_cfg.p_disp_panel->panel_shade == MONOCROME ? 1 : 0;
-	omapl1x7fb_var.bits_per_pixel = lcd_cfg.bpp;
+	da830fb_var.bits_per_pixel = lcd_cfg.bpp;
 
-	omapl1x7fb_var.hsync_len = lcd_cfg.hsw;
-	omapl1x7fb_var.vsync_len = lcd_cfg.vsw;
+	da830fb_var.hsync_len = lcd_cfg.hsw;
+	da830fb_var.vsync_len = lcd_cfg.vsw;
 
 	/* Initialize fbinfo */
-	omapl1x7fb_info->flags = FBINFO_FLAG_DEFAULT;
-	omapl1x7fb_info->screen_base = par->v_screen_base;
-	omapl1x7fb_info->device = &device->dev;
-	omapl1x7fb_info->fix = omapl1x7fb_fix;
-	omapl1x7fb_info->var = omapl1x7fb_var;
-	omapl1x7fb_info->fbops = &omapl1x7_fb_ops;
-	omapl1x7fb_info->pseudo_palette = par->pseudo_palette;
+	da830fb_info->flags = FBINFO_FLAG_DEFAULT;
+	da830fb_info->screen_base = par->v_screen_base;
+	da830fb_info->device = &device->dev;
+	da830fb_info->fix = da830fb_fix;
+	da830fb_info->var = da830fb_var;
+	da830fb_info->fbops = &da830_fb_ops;
+	da830fb_info->pseudo_palette = par->pseudo_palette;
 
 	/* Initialize the Palette */
 #ifdef FB_DEBUG
 	printk(KERN_INFO "GLCD: Initializing the Palette...\n");
 #endif
-	omapl1x7fb_init_palette(omapl1x7fb_info);
+	da830fb_init_palette(da830fb_info);
 
-	ret = fb_alloc_cmap(&omapl1x7fb_info->cmap, PALETTE_SIZE, 0);
+	ret = fb_alloc_cmap(&da830fb_info->cmap, PALETTE_SIZE, 0);
 	if (ret)
 		goto err_free_irq;
 
@@ -831,25 +831,25 @@ static int __init omapl1x7_fb_probe(struct platform_device *device)
 	lcd_blit(LOAD_DATA, (u32) par->p_palette_base);
 
 	/* initialize var_screeninfo */
-	omapl1x7fb_var.activate = FB_ACTIVATE_FORCE;
-	fb_set_var(omapl1x7fb_info, &omapl1x7fb_var);
+	da830fb_var.activate = FB_ACTIVATE_FORCE;
+	fb_set_var(da830fb_info, &da830fb_var);
 
-	dev_set_drvdata(&device->dev, omapl1x7fb_info);
+	dev_set_drvdata(&device->dev, da830fb_info);
 	/* Register the Frame Buffer  */
-	if (register_framebuffer(omapl1x7fb_info) < 0) {
+	if (register_framebuffer(da830fb_info) < 0) {
 		printk(KERN_ALERT "GLCD: Frame Buffer Registration Failed!\n");
 		ret = -EINVAL;
 		goto err_dealloc_cmap;
 	}
 
 	/* enable raster engine */
-	omapl1x7_fb_write(omapl1x7_fb_read(LCD_RASTER_CTRL_REG) |
+	da830_fb_write(da830_fb_read(LCD_RASTER_CTRL_REG) |
 					LCD_RASTER_ENABLE, LCD_RASTER_CTRL_REG);
 
 	return 0;
 
 err_dealloc_cmap:
-	fb_dealloc_cmap(&omapl1x7fb_info->cmap);
+	fb_dealloc_cmap(&da830fb_info->cmap);
 
 err_free_irq:
 	free_irq(par->irq, NULL);
@@ -859,7 +859,7 @@ err_release_fb_mem:
 			  par->p_palette_base);
 
 err_release_fb:
-	framebuffer_release(omapl1x7fb_info);
+	framebuffer_release(da830fb_info);
 
 err_clk_disable:
 	clk_disable(fb_clk);
@@ -870,7 +870,7 @@ err_clk_put:
 	return ret;
 }
 
-static int omapl1x7_fb_ioctl(struct fb_info *info, unsigned int cmd,
+static int da830_fb_ioctl(struct fb_info *info, unsigned int cmd,
 			  unsigned long arg)
 {
 	int val;
@@ -925,55 +925,55 @@ static int omapl1x7_fb_ioctl(struct fb_info *info, unsigned int cmd,
 	return 0;
 }
 
-static struct fb_ops omapl1x7_fb_ops = {
+static struct fb_ops da830_fb_ops = {
 	.owner = THIS_MODULE,
-	.fb_check_var = omapl1x7_fb_check_var,
-	.fb_set_par = omapl1x7_fb_set_par,
-	.fb_setcolreg = omapl1x7_fb_setcolreg,
-	.fb_ioctl = omapl1x7_fb_ioctl,
+	.fb_check_var = da830_fb_check_var,
+	.fb_set_par = da830_fb_set_par,
+	.fb_setcolreg = da830_fb_setcolreg,
+	.fb_ioctl = da830_fb_ioctl,
 	.fb_fillrect = cfb_fillrect,
 	.fb_copyarea = cfb_copyarea,
 	.fb_imageblit = cfb_imageblit,
 };
 
 #ifdef CONFIG_PM
-static int omapl1x7_fb_suspend(struct platform_device *dev, pm_message_t state)
+static int da830_fb_suspend(struct platform_device *dev, pm_message_t state)
 {
 	 /*TODO*/ return -EBUSY;
 }
-static int omapl1x7_fb_resume(struct platform_device *dev)
+static int da830_fb_resume(struct platform_device *dev)
 {
 	 /*TODO*/ return -EBUSY;
 }
 #else
-#define omapl1x7_fb_suspend NULL
-#define omapl1x7_fb_resume NULL
+#define da830_fb_suspend NULL
+#define da830_fb_resume NULL
 #endif
 
-static struct platform_driver omapl1x7_fb_driver = {
-	.probe = omapl1x7_fb_probe,
-	.remove = omapl1x7_fb_remove,
-	.suspend = omapl1x7_fb_suspend,
-	.resume = omapl1x7_fb_resume,
+static struct platform_driver da830_fb_driver = {
+	.probe = da830_fb_probe,
+	.remove = da830_fb_remove,
+	.suspend = da830_fb_suspend,
+	.resume = da830_fb_resume,
 	.driver = {
 		   .name = DRIVER_NAME,
 		   .owner = THIS_MODULE,
 		   },
 };
 
-static int __init omapl1x7fb_init(void)
+static int __init da830fb_init(void)
 {
-	return platform_driver_register(&omapl1x7_fb_driver);
+	return platform_driver_register(&da830_fb_driver);
 }
 
-static void __exit omapl1x7fb_cleanup(void)
+static void __exit da830fb_cleanup(void)
 {
-	platform_driver_unregister(&omapl1x7_fb_driver);
+	platform_driver_unregister(&da830_fb_driver);
 }
 
-module_init(omapl1x7fb_init);
-module_exit(omapl1x7fb_cleanup);
+module_init(da830fb_init);
+module_exit(da830fb_cleanup);
 
-MODULE_DESCRIPTION("Framebuffer driver for TI omapl1x7");
+MODULE_DESCRIPTION("Framebuffer driver for TI da830");
 MODULE_AUTHOR("MontaVista Software");
 MODULE_LICENSE("GPL");

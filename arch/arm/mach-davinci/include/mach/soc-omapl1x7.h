@@ -11,6 +11,6 @@
 #ifndef SOC_OMAPPL1X7_H
 #define SOC_OMAPPL1X7_H
 
-void __init soc_omapl1x7_irq_init(void);
+void __init soc_da830_irq_init(void);
 
 #endif /* SOC_OMAPPL1X7_H */

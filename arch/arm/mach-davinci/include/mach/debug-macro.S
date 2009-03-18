@@ -22,7 +22,7 @@
 		.macro addruart, rx
 		mrc	p15, 0, \rx, c1, c0
 		tst	\rx, #1			@ MMU enabled?
-#if defined(CONFIG_ARCH_OMAPL1x7)
+#if defined(CONFIG_ARCH_DA830)
 		moveq	\rx, #0x01d00000	@ physical base address
 		movne	\rx, #0xfe000000	@ virtual base
 		orr	\rx, \rx, #0x00d00000   @ UART 2

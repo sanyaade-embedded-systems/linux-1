@@ -20,7 +20,7 @@
 #include <linux/spinlock.h>
 
 #include <mach/hardware.h>
-#include <mach/omapl1x7.h>
+#include <mach/da830.h>
 #include <mach/cpu.h>
 #include <mach/mux.h>
 
@@ -51,12 +51,12 @@ int __init_or_module davinci_cfg_reg(const unsigned long index)
 	if (!mux_table)
 		BUG();
 
-	if (cpu_is_omapl1x7()) {
-		base = IO_ADDRESS(OMAPL1X7_BOOT_CFG_BASE);
+	if (cpu_is_da830()) {
+		base = IO_ADDRESS(DA830_BOOT_CFG_BASE);
 
 		/* Unlock the SYSCFG registers */
-		__raw_writel(OMAPL1X7_KICK0_MAGIC, IO_ADDRESS(OMAPL1X7_KICK0));
-		__raw_writel(OMAPL1X7_KICK1_MAGIC, IO_ADDRESS(OMAPL1X7_KICK1));
+		__raw_writel(DA830_KICK0_MAGIC, IO_ADDRESS(DA830_KICK0));
+		__raw_writel(DA830_KICK1_MAGIC, IO_ADDRESS(DA830_KICK1));
 	}
 
 	if (index >= pin_table_sz) {

@@ -63,8 +63,8 @@ static struct resource da8xx_spi_resources0[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
-		.start = IRQ_OMAPL1X7_SPINT0,
-		.end = IRQ_OMAPL1X7_SPINT0,
+		.start = IRQ_DA830_SPINT0,
+		.end = IRQ_DA830_SPINT0,
 		.flags = IORESOURCE_IRQ,
 	},
 	[2] = {
@@ -112,8 +112,8 @@ static struct resource da8xx_spi_resources1[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
-		.start = IRQ_OMAPL1X7_SPINT1,
-		.end = IRQ_OMAPL1X7_SPINT1,
+		.start = IRQ_DA830_SPINT1,
+		.end = IRQ_DA830_SPINT1,
 		.flags = IORESOURCE_IRQ,
 	},
 	[2] = {
@@ -264,11 +264,11 @@ static int __init da8xx_spi_board_init(void)
 	if (ret)
 		return ret;
 	else {
-		davinci_cfg_reg(OMAPL1X7_SPI0_SOMI_0);
-		davinci_cfg_reg(OMAPL1X7_SPI0_SIMO_0);
-		davinci_cfg_reg(OMAPL1X7_SPI0_CLK);
-		davinci_cfg_reg(OMAPL1X7_NSPI0_ENA);
-		davinci_cfg_reg(OMAPL1X7_NSPI0_SCS_0);
+		davinci_cfg_reg(DA830_SPI0_SOMI_0);
+		davinci_cfg_reg(DA830_SPI0_SIMO_0);
+		davinci_cfg_reg(DA830_SPI0_CLK);
+		davinci_cfg_reg(DA830_NSPI0_ENA);
+		davinci_cfg_reg(DA830_NSPI0_SCS_0);
 	}
 
 	ret = da8xx_spi_register(&da8xx_spi_pdev1, da8xx_spi_board_info1,
@@ -277,11 +277,11 @@ static int __init da8xx_spi_board_init(void)
 	if (ret)
 		return ret;
 	else {
-		davinci_cfg_reg(OMAPL1X7_SPI1_SOMI_0);
-		davinci_cfg_reg(OMAPL1X7_SPI1_SIMO_0);
-		davinci_cfg_reg(OMAPL1X7_SPI1_CLK);
-		davinci_cfg_reg(OMAPL1X7_NSPI1_ENA);
-		davinci_cfg_reg(OMAPL1X7_GPIO3_10);
+		davinci_cfg_reg(DA830_SPI1_SOMI_0);
+		davinci_cfg_reg(DA830_SPI1_SIMO_0);
+		davinci_cfg_reg(DA830_SPI1_CLK);
+		davinci_cfg_reg(DA830_NSPI1_ENA);
+		davinci_cfg_reg(DA830_GPIO3_10);
 	}
 
 	return ret;

@@ -1,5 +1,5 @@
 /*
- * Header file for TI OMAPL1X7 LCD controller platform data.
+ * Header file for TI DA830 LCD controller platform data.
  *
  * 2008 (c) MontaVista Software, Inc. This file is licensed under
  * the terms of the GNU General Public License version 2. This program
@@ -7,12 +7,12 @@
  * or implied.
  */
 
-#ifndef OMAPL1X7_LCDC_PLAT_H
-#define OMAPL1X7_LCDC_PLAT_H
+#ifndef DA830_LCDC_PLAT_H
+#define DA830_LCDC_PLAT_H
 
-struct omapl1x7_lcdc_platform_data {
+struct da830_lcdc_platform_data {
 	const char *lcdc_clk_name;
 };
-int omapl1x7_lcd_hw_init(void);
-#endif  /* ifndef OMAPL1X7_LCDC_PLAT_H */
+int da830_lcd_hw_init(void);
+#endif  /* ifndef DA830_LCDC_PLAT_H */
 

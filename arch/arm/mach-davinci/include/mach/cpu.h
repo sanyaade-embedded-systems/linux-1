@@ -53,10 +53,10 @@ IS_OMAP_CPU(l1x7, 0x800)
 #define cpu_is_davinci_dm355() 0
 #endif
 
-#ifdef CONFIG_ARCH_OMAPL1x7
-#define cpu_is_omapl1x7() is_omapl1x7()
+#ifdef CONFIG_ARCH_DA830
+#define cpu_is_da830() is_da830()
 #else
-#define cpu_is_omapl1x7() 0
+#define cpu_is_da830() 0
 #endif
 
 #endif

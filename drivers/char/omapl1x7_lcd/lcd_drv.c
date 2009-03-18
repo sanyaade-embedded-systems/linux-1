@@ -59,7 +59,7 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
-#include <mach/omapl1x7_lcdc.h>
+#include <mach/da830_lcdc.h>
 #include "lidd_hal.h"
 
 #define    LCD_VERSION                 "0.2"
@@ -70,7 +70,7 @@
 #define  SEEK_END    2
 #define  SEEK_SET    0
 
-#define OMAPL1X7_LCD_NAME "lcd_omapl1x7"
+#define DA830_LCD_NAME "lcd_da830"
 
 struct lcd_dev {
 	void *hal_handle;
@@ -277,21 +277,21 @@ struct file_operations tilcd_fops = {
 	.llseek = tilcd_lseek
 };
 
-static struct miscdevice omapl1x7_lcd_miscdev = {
+static struct miscdevice da830_lcd_miscdev = {
 	.minor = 0,
-	.name = OMAPL1X7_LCD_NAME,
+	.name = DA830_LCD_NAME,
 	.fops = &tilcd_fops,
 };
 
-static int __devinit omapl1x7_lcd_probe(struct platform_device *device)
+static int __devinit da830_lcd_probe(struct platform_device *device)
 {
 	struct ti_lidd_info lcd_info;
 	struct resource *lcdc_regs;
-	struct omapl1x7_lcdc_platform_data *lcd_pdata =
+	struct da830_lcdc_platform_data *lcd_pdata =
 						device->dev.platform_data;
 	int ret = 0;
 
-	if (omapl1x7_lcd_hw_init()) {
+	if (da830_lcd_hw_init()) {
 		printk(KERN_ALERT "Error in Initialising\n");
 		return -ENODEV;
 	}
@@ -348,9 +348,9 @@ static int __devinit omapl1x7_lcd_probe(struct platform_device *device)
 		goto err_hal_init;
 	}
 
-	sprintf(lcd_dev->devname, OMAPL1X7_LCD_NAME);
+	sprintf(lcd_dev->devname, DA830_LCD_NAME);
 
-	ret = misc_register(&omapl1x7_lcd_miscdev);
+	ret = misc_register(&da830_lcd_miscdev);
 	if (ret < 0) {
 		printk(KERN_ERR "LCD: misc_register failed\n");
 		ret = -EIO;
@@ -375,9 +375,9 @@ err_get_resource:
 	return ret;
 }
 
-static int omapl1x7_lcd_remove(struct platform_device *dev)
+static int da830_lcd_remove(struct platform_device *dev)
 {
-	misc_deregister(&omapl1x7_lcd_miscdev);
+	misc_deregister(&da830_lcd_miscdev);
 	ti_lidd_hal_cleanup(lcd_dev->hal_handle);
 	clk_disable(lcd_dev->clk);
 	clk_put(lcd_dev->clk);
@@ -386,27 +386,27 @@ static int omapl1x7_lcd_remove(struct platform_device *dev)
 	return 0;
 }
 
-static struct platform_driver omapl1x7_lcd_driver = {
-	.probe	= omapl1x7_lcd_probe,
-	.remove = omapl1x7_lcd_remove,
+static struct platform_driver da830_lcd_driver = {
+	.probe	= da830_lcd_probe,
+	.remove = da830_lcd_remove,
 	.driver = {
-		   .name = "omapl1x7_lcdc",
+		   .name = "da830_lcdc",
 		   .owner = THIS_MODULE,
 	},
 };
 
-static int __init omapl1x7_lcd_init(void)
+static int __init da830_lcd_init(void)
 {
-	return platform_driver_register(&omapl1x7_lcd_driver);
+	return platform_driver_register(&da830_lcd_driver);
 }
 
-static void __exit omapl1x7_lcd_cleanup(void)
+static void __exit da830_lcd_cleanup(void)
 {
-	platform_driver_unregister(&omapl1x7_lcd_driver);
+	platform_driver_unregister(&da830_lcd_driver);
 }
 
-module_init(omapl1x7_lcd_init);
-module_exit(omapl1x7_lcd_cleanup);
+module_init(da830_lcd_init);
+module_exit(da830_lcd_cleanup);
 
 module_param(rows, int, 0);
 module_param(columns, int, 0);

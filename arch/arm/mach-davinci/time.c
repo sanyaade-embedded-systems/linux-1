@@ -20,7 +20,7 @@
 #include <linux/err.h>
 #include <linux/device.h>
 
-#include <mach/omapl1x7.h>
+#include <mach/da830.h>
 #include <asm/system.h>
 #include <asm/irq.h>
 #include <asm/mach/irq.h>
@@ -36,8 +36,8 @@ static unsigned int davinci_clock_tick_rate;
 #define DAVINCI_TIMER0_BASE (IO_PHYS + 0x21400)
 #define DAVINCI_TIMER1_BASE (IO_PHYS + 0x21800)
 #define DAVINCI_WDOG_BASE   (IO_PHYS + 0x21C00)
-#define OMAPL1X7_TIMER64P0_BASE		0x01C20000
-#define OMAPL1X7_TIMER64P1_BASE		0x01C21000
+#define DA830_TIMER64P0_BASE		0x01C20000
+#define DA830_TIMER64P1_BASE		0x01C21000
 
 enum {
 	T0_BOT = 0, T0_TOP, T1_BOT, T1_TOP, NUM_TIMERS,
@@ -55,11 +55,11 @@ static int default_timer_irqs[NUM_TIMERS] = {
 	IRQ_TINT1_TINT34,
 };
 
-static int omapl1x7_timer_irqs[NUM_TIMERS] = {
-	IRQ_OMAPL1X7_TINT12_0,
-	IRQ_OMAPL1X7_TINT34_0,
-	IRQ_OMAPL1X7_TINT12_1,
-	IRQ_OMAPL1X7_TINT34_1
+static int da830_timer_irqs[NUM_TIMERS] = {
+	IRQ_DA830_TINT12_0,
+	IRQ_DA830_TINT34_0,
+	IRQ_DA830_TINT12_1,
+	IRQ_DA830_TINT34_1
 };
 
 static int tid_system;
@@ -323,8 +323,8 @@ static struct clock_event_device clockevent_davinci = {
 };
 
 static u32 davinci_bases[] = { DAVINCI_TIMER0_BASE, DAVINCI_TIMER1_BASE };
-static u32 omapl1x7_bases[] = { OMAPL1X7_TIMER64P0_BASE,
-				OMAPL1X7_TIMER64P1_BASE };
+static u32 da830_bases[] = { DA830_TIMER64P0_BASE,
+				DA830_TIMER64P1_BASE };
 
 static void __init davinci_timer_init(void)
 {
@@ -349,7 +349,7 @@ static void __init davinci_timer_init(void)
 	num_timers = 2;
 	bases = davinci_bases;
 	timer_irqs = default_timer_irqs;
-	if (cpu_is_omapl1x7()) {
+	if (cpu_is_da830()) {
 		/*
 		 * Configure the 2 64-bit timer as 4 32-bit timers with
 		 * following assignments.
@@ -361,8 +361,8 @@ static void __init davinci_timer_init(void)
 		tid_system = T0_BOT;
 
 		/* timer interrupt using compare reg so free-run not needed */
-		bases = omapl1x7_bases;
-		timer_irqs = omapl1x7_timer_irqs;
+		bases = da830_bases;
+		timer_irqs = da830_timer_irqs;
 		num_timers = 2;
 		tid_freerun = T0_TOP;
 	} else if (cpu_is_davinci_dm646x()) {

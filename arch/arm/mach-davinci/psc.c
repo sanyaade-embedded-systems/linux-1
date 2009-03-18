@@ -24,13 +24,13 @@
 #include <linux/io.h>
 
 #include <mach/cpu.h>
-#include <mach/omapl1x7.h>
+#include <mach/da830.h>
 #include <mach/psc.h>
 #include <mach/mux.h>
 
 #define DAVINCI_PWR_SLEEP_CNTRL_BASE	0x01C41000
-#define OMAPL1X7_PSC0_BASE		0x01C10000
-#define OMAPL1X7_PSC1_BASE		0x01E27000
+#define DA830_PSC0_BASE		0x01C10000
+#define DA830_PSC1_BASE		0x01E27000
 
 /* PSC register offsets */
 #define EPCPR		0x070
@@ -41,8 +41,8 @@
 #define MDSTAT		0x800
 #define MDCTL		0xA00
 
-static u32 omapl1x7_psc_base[] = { (u32)IO_ADDRESS(OMAPL1X7_PSC0_BASE),
-				   (u32)IO_ADDRESS(OMAPL1X7_PSC1_BASE) };
+static u32 da830_psc_base[] = { (u32)IO_ADDRESS(DA830_PSC0_BASE),
+				   (u32)IO_ADDRESS(DA830_PSC1_BASE) };
 static u32 *psc_base_array;
 
 /* Enable or disable a PSC domain */
@@ -55,8 +55,8 @@ void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 	if (id > 64)
 		return;
 
-	if (cpu_is_omapl1x7())
-		psc_base_array = omapl1x7_psc_base;
+	if (cpu_is_da830())
+		psc_base_array = da830_psc_base;
 	else
 		psc_base_array = psc_base;
 

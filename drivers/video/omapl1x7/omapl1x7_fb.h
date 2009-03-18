@@ -17,8 +17,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#ifndef __OMAPL1X7_FB_H__
-#define __OMAPL1X7_FB_H__
+#ifndef __DA830_FB_H__
+#define __DA830_FB_H__
 
 #define QVGA_HEIGHT    240
 #define QVGA_WIDTH     320

@@ -14,7 +14,7 @@
 		.macro	disable_fiq
 		.endm
 		.macro  get_irqnr_preamble, base, tmp
-#ifdef CONFIG_ARCH_OMAPL1x7
+#ifdef CONFIG_ARCH_DA830
 		ldr \base, =IO_Dx_INTC_VIRT
 #else
 		ldr \base, =IO_ADDRESS(DAVINCI_ARM_INTC_BASE)
@@ -25,7 +25,7 @@
 		.endm
 
 		.macro	get_irqnr_and_base, irqnr, irqstat, base, tmp
-#ifdef CONFIG_ARCH_OMAPL1x7
+#ifdef CONFIG_ARCH_DA830
 		ldr \irqnr, [\base, #0x80] /* get irq number */
 		and \irqnr, \irqnr, #0xff  /* irq is in bits 0-9 */
 		mov \tmp, \irqnr, lsr #3
