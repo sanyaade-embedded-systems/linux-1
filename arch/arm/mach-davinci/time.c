@@ -62,6 +62,11 @@ static int da830_timer_irqs[NUM_TIMERS] = {
 	IRQ_DA830_TINT34_1
 };
 
+/* Compare registers are only available to the bottom timer 0 */
+static  int da830_cmp_irqs[NUM_TIMERS] = {
+	IRQ_DA830_T12CMPINT0_0,
+};
+
 static int tid_system;
 static int tid_freerun;
 
@@ -86,6 +91,7 @@ static int tid_freerun;
 #define TCR                          0x20
 #define TGCR                         0x24
 #define WDTCR                        0x28
+#define CMP12(n)		     (0x60 + ((n) << 2))
 
 /* Timer register bitfields */
 #define TCR_ENAMODE_DISABLE          0x0
@@ -120,8 +126,10 @@ struct timer_s {
 	void __iomem *base;
 	unsigned long tim_off;
 	unsigned long prd_off;
+	unsigned long cmp_off;
 	unsigned long enamode_shift;
 	struct irqaction irqaction;
+	struct irqaction cmpaction;
 };
 
 /* values for 'opts' field of struct timer_s */
@@ -140,6 +148,8 @@ static int timer32_config(struct timer_s *t)
 	/* reset counter to zero, set new period */
 	__raw_writel(0, t->base + t->tim_off);
 	__raw_writel(t->period, t->base + t->prd_off);
+	if (t->cmp_off)
+		__raw_writel(t->period, t->base + t->cmp_off);
 
 	/* Set enable mode */
 	if (t->opts & TIMER_OPTS_ONESHOT) {
@@ -171,6 +181,32 @@ static irqreturn_t freerun_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t cmp_interrupt(int irq, void *dev_id)
+{
+	struct timer_s *t = dev_id;
+	struct clock_event_device *evt = &clockevent_davinci;
+
+	/* We have to emulate the periodic mode for the clockevents layer */
+	if (t->opts & TIMER_OPTS_PERIODIC) {
+		unsigned long tim, cmp = __raw_readl(t->base + t->cmp_off);
+
+		cmp += t->period;
+		__raw_writel(cmp, t->base + t->cmp_off);
+
+		/*
+		 * The interrupts do happen  to be disabled by the kernel for
+		 * a long periods of time, thus the timer can go far ahead of
+		 * the last set compare value...
+		 */
+		tim = __raw_readl(t->base + t->tim_off);
+		if (time_after(tim, cmp))
+			__raw_writel(tim + t->period, t->base + t->cmp_off);
+	}
+
+	clockevent_davinci.event_handler(evt);
+	return IRQ_HANDLED;
+}
+
 static struct timer_s davinci_system_timer = {
 	.name      = "clockevent",
 	.opts      = TIMER_OPTS_DISABLED,
@@ -187,12 +223,18 @@ static struct timer_s davinci_freerun_timer = {
 	.irqaction = {
 		.flags   = IRQF_DISABLED | IRQF_TIMER,
 		.handler = freerun_interrupt,
+	},
+	.cmpaction = {
+		.name		= "timer compare reg 0",
+		.flags		= IRQF_DISABLED | IRQF_TIMER,
+		.handler	= cmp_interrupt,
 	}
 };
 
 static struct timer_s *timers[NUM_TIMERS];
 
-static void __init timer_init(int num_timers, u32 *phys_bases, int *timer_irqs)
+static void __init timer_init(int num_timers, u32 *phys_bases,
+			      int *timer_irqs, int *cmp_irqs)
 {
 	int i;
 
@@ -236,6 +278,14 @@ static void __init timer_init(int num_timers, u32 *phys_bases, int *timer_irqs)
 				t->enamode_shift = 6;
 				t->tim_off = TIM12;
 				t->prd_off = PRD12;
+				/* Check the compare register IRQ */
+				if (t->cmpaction.handler != NULL &&
+				    cmp_irqs != NULL && cmp_irqs[t->id]) {
+					t->cmp_off = CMP12(0);
+					t->cmpaction.dev_id = (void *)t;
+					setup_irq(cmp_irqs[t->id],
+						  &t->cmpaction);
+				}
 			} else {
 				t->enamode_shift = 22;
 				t->tim_off = TIM34;
@@ -287,7 +337,16 @@ static int davinci_set_next_event(unsigned long cycles,
 	struct timer_s *t = timers[tid_system];
 
 	t->period = cycles;
-	timer32_config(t);
+
+	/*
+	 * We need not (and must not) disable the timer and reprogram
+	 * its mode/period when using the compare register...
+	 */
+	if (t->cmp_off)
+		__raw_writel(__raw_readl(t->base + t->tim_off) + cycles,
+			     t->base + t->cmp_off);
+	else
+		timer32_config(t);
 	return 0;
 }
 
@@ -329,7 +388,7 @@ static u32 da830_bases[] = { DA830_TIMER64P0_BASE,
 static void __init davinci_timer_init(void)
 {
 	int num_timers;
-	int *timer_irqs;
+	int *timer_irqs, *cmp_irqs;
 	u32 *bases;
 	struct clk *timer_clk, *wd_clk;
 
@@ -363,6 +422,7 @@ static void __init davinci_timer_init(void)
 		/* timer interrupt using compare reg so free-run not needed */
 		bases = da830_bases;
 		timer_irqs = da830_timer_irqs;
+		cmp_irqs = da830_cmp_irqs;
 		num_timers = 2;
 		tid_freerun = T0_TOP;
 	} else if (cpu_is_davinci_dm646x()) {
@@ -399,7 +459,7 @@ static void __init davinci_timer_init(void)
 		timers[tid_freerun] = &davinci_freerun_timer;
 
 	/* init timer hw */
-	timer_init(num_timers, bases, timer_irqs);
+	timer_init(num_timers, bases, timer_irqs, cmp_irqs);
 	
 	davinci_clock_tick_rate = clk_get_rate(timer_clk);
 	clk_put(timer_clk);
