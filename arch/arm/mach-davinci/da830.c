@@ -445,10 +445,13 @@ static struct edma_soc_info da830_edma_info = {
 	.noevent	= dma_chan_da830_no_event,
 };
 
+#define SZ_32K  (32 * 1024)
+
 static struct resource edma_resources[] = {
 	{
+		.name	= "edma_cc",
 		.start	= 0x01c00000,
-		.end	= 0x01c00000 + SZ_64K - 1,
+		.end	= 0x01c00000 + SZ_32K - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 	{

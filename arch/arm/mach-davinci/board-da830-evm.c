@@ -68,6 +68,7 @@ struct mtd_partition da830_evm_nandflash_partition[] = {
 	}
 };
 
+#if defined (CONFIG_MTD_NAND_DAVINCI) || defined(CONFIG_MTD_NAND_DAVINCI_MODULE)
 static struct flash_platform_data da830_evm_nandflash_data = {
 	.parts		= da830_evm_nandflash_partition,
 	.nr_parts	= ARRAY_SIZE(da830_evm_nandflash_partition),
@@ -96,6 +97,7 @@ static struct platform_device da830_evm_nandflash_device = {
 	.num_resources	= ARRAY_SIZE(da830_evm_nandflash_resource),
 	.resource	= da830_evm_nandflash_resource,
 };
+#endif
 
 /* Most of this EEPROM is unused, but U-Boot uses some data:
  *  - 0x7f00, 6 bytes Ethernet Address
@@ -143,6 +145,7 @@ int da830evm_eeprom_write(void *buf, off_t off, size_t count)
 }
 EXPORT_SYMBOL(da830evm_eeprom_write);
 
+#if defined(CONFIG_MMC_DAVINCI) || defined(CONFIG_MMC_DAVINCI_MODULE)
 static int da830_evm_mmc_get_ro(int index)
 {
 	int val, status, gpio_num = 33;
@@ -180,6 +183,7 @@ static struct davinci_mmc_config da830_mmc_config = {
 	.get_cd		= da830_evm_mmc_get_cd,
 	.wires          = 4
 };
+#endif
 
 static struct i2c_board_info __initdata i2c_info[] =  {
 	{
@@ -207,7 +211,9 @@ static void __init da830_evm_init_i2c(void)
 }
 
 static struct platform_device *da830_evm_devices[] __initdata = {
+#if defined (CONFIG_MTD_NAND_DAVINCI) || defined(CONFIG_MTD_NAND_DAVINCI_MODULE)
 	&da830_evm_nandflash_device,
+#endif
 };
 
 static void __init da830_map_io(void)
@@ -244,6 +250,7 @@ static __init void da830_evm_init(void)
 	davinci_cfg_reg(DA830_UART2_TXD);
 	davinci_serial_init(&uart_config);
 
+#if defined (CONFIG_MTD_NAND_DAVINCI) || defined(CONFIG_MTD_NAND_DAVINCI_MODULE)
 	davinci_cfg_reg(DA830_EMA_D_0);
 	davinci_cfg_reg(DA830_EMA_D_1);
 	davinci_cfg_reg(DA830_EMA_D_2);
@@ -289,13 +296,16 @@ static __init void da830_evm_init(void)
 	davinci_cfg_reg(DA830_NEMA_WE_DQM_1);
 	davinci_cfg_reg(DA830_NEMA_WE_DQM_0);
 	davinci_cfg_reg(DA830_EMA_WAIT_0);
+#endif
 
 	platform_add_devices(da830_evm_devices,
 			     ARRAY_SIZE(da830_evm_devices));
 
 	da830_evm_init_i2c();
 
+#if defined(CONFIG_MMC_DAVINCI) || defined(CONFIG_MMC_DAVINCI_MODULE)
 	davinci_setup_mmc(0, &da830_mmc_config);
+#endif
 
 	da830_init_rtc();
 }
