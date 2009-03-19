@@ -312,6 +312,8 @@ struct davinci_clk dm644x_clks[] = {
 	CLK(NULL, NULL, NULL),
 };
 
+static unsigned long pinmux_in_use[2];
+
 /*
  * Device specific mux setup
  *
@@ -424,7 +426,8 @@ static struct platform_device dm644x_edma_device = {
 void __init dm644x_init(void)
 {
 	davinci_clk_init(dm644x_clks);
-	davinci_mux_register(dm644x_pins, ARRAY_SIZE(dm644x_pins));
+	davinci_mux_register(dm644x_pins, ARRAY_SIZE(dm644x_pins),
+				pinmux_in_use);
 }
 
 static int __init dm644x_init_devices(void)

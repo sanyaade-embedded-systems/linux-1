@@ -258,6 +258,8 @@ struct davinci_clk da830_clks[] = {
 	CLK(NULL, NULL, NULL),
 };
 
+static unsigned long pinmux_in_use[20];
+
 /*
  *		  soc		description	mux  mode   mode  mux	 dbg
  *						reg  offset mask  mode
@@ -483,8 +485,8 @@ static struct platform_device da830_edma_device = {
 void __init da830_init(void)
 {
 	davinci_clk_init(da830_clks);
-	davinci_mux_register(davinci_da830_pins,
-				ARRAY_SIZE(davinci_da830_pins));
+	davinci_mux_register(davinci_da830_pins, ARRAY_SIZE(davinci_da830_pins),
+				pinmux_in_use);
 }
 
 static int __init da830_init_devices(void)

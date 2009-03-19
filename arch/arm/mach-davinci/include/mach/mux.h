@@ -35,6 +35,7 @@ struct mux_config {
 	char *name;
 	const char *mux_reg_name;
 	const unsigned int mux_reg;
+	const unsigned char reg_index;
 	const unsigned char mask_offset;
 	const unsigned char mask;
 	const unsigned char mode;
@@ -345,7 +346,7 @@ enum davinci_da830_index {
 /* setup pin muxing */
 extern void davinci_mux_init(void);
 extern int davinci_mux_register(const struct mux_config *pins,
-				unsigned long size);
+				unsigned long size, unsigned long *in_use);
 extern int davinci_cfg_reg(unsigned long reg_cfg);
 #else
 /* boot loader does it all (no warnings from CONFIG_DAVINCI_MUX_WARNINGS) */

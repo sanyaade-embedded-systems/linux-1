@@ -24,16 +24,31 @@
 #include <mach/cpu.h>
 #include <mach/mux.h>
 
+static unsigned long *pinmux_in_use;
 static const struct mux_config *mux_table;
 static unsigned long pin_table_sz;
 
 int __init davinci_mux_register(const struct mux_config *pins,
-				unsigned long size)
+				unsigned long size, unsigned long *in_use)
 {
 	mux_table = pins;
 	pin_table_sz = size;
+	pinmux_in_use = in_use;
 
 	return 0;
+}
+
+static int davinci_find_index(unsigned int mux_reg, unsigned long mask)
+{
+	unsigned long cur_mask;
+	int i;
+
+	for (i = 0; i < pin_table_sz; i++) {
+		cur_mask = mux_table[i].mode << mux_table[i].mask_offset;
+		if (mux_table[i].mux_reg == mux_reg && cur_mask == mask)
+			return i;
+	}
+	return -1;
 }
 
 /*
@@ -47,6 +62,8 @@ int __init_or_module davinci_cfg_reg(const unsigned long index)
 	const struct mux_config *cfg;
 	unsigned int reg_orig = 0, reg = 0;
 	unsigned int mask, warn = 0;
+	int cft;
+	const char *cft_name;
 
 	if (!mux_table)
 		BUG();
@@ -89,6 +106,20 @@ int __init_or_module davinci_cfg_reg(const unsigned long index)
 
 		if (tmp1 != tmp2)
 			warn = 1;
+
+		if (pinmux_in_use[cfg->reg_index] & mask) {
+			cft = davinci_find_index(cfg->mux_reg, reg_orig & mask);
+			cft_name = cft < 0 ? "???" : mux_table[cft].name;
+
+			if (warn) {
+				printk(KERN_ERR "Pin %s already used for %s.\n",
+					cfg->name, cft_name);
+				spin_unlock_irqrestore(&mux_spin_lock, flags);
+				return -EBUSY;
+			}
+		} else {
+			pinmux_in_use[cfg->reg_index] |= mask;
+		}
 
 		__raw_writel(reg, base + cfg->mux_reg);
 		spin_unlock_irqrestore(&mux_spin_lock, flags);

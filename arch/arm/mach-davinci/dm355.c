@@ -426,6 +426,8 @@ void __init dm355_init_spi0(unsigned chipselect_mask,
 
 /*----------------------------------------------------------------------*/
 
+static unsigned long pinmux_in_use[5];
+
 /*
  * Device specific mux setup
  *
@@ -525,7 +527,8 @@ static struct platform_device dm355_edma_device = {
 void __init dm355_init(void)
 {
 	davinci_clk_init(dm355_clks);
-	davinci_mux_register(dm355_pins, ARRAY_SIZE(dm355_pins));;
+	davinci_mux_register(dm355_pins, ARRAY_SIZE(dm355_pins),
+				pinmux_in_use);;
 }
 
 static int __init dm355_init_devices(void)
