@@ -20,7 +20,7 @@
 #include <linux/err.h>
 #include <linux/device.h>
 
-#include <mach/da830.h>
+#include <mach/da8xx.h>
 #include <asm/system.h>
 #include <asm/irq.h>
 #include <asm/mach/irq.h>
@@ -56,10 +56,10 @@ static int default_timer_irqs[NUM_TIMERS] = {
 };
 
 static int da830_timer_irqs[NUM_TIMERS] = {
-	IRQ_DA830_TINT12_0,
-	IRQ_DA830_TINT34_0,
-	IRQ_DA830_TINT12_1,
-	IRQ_DA830_TINT34_1
+	IRQ_DA8XX_TINT12_0,
+	IRQ_DA8XX_TINT34_0,
+	IRQ_DA8XX_TINT12_1,
+	IRQ_DA8XX_TINT34_1
 };
 
 /* Compare registers are only available to the bottom timer 0 */
@@ -408,7 +408,7 @@ static void __init davinci_timer_init(void)
 	num_timers = 2;
 	bases = davinci_bases;
 	timer_irqs = default_timer_irqs;
-	if (cpu_is_da830()) {
+	if (cpu_is_da830() || cpu_is_da850()) {
 		/*
 		 * Configure the 2 64-bit timer as 4 32-bit timers with
 		 * following assignments.

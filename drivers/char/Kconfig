@@ -1104,9 +1104,9 @@ source "drivers/s390/char/Kconfig"
 config  DA830_LCD
 	tristate "DA830 Character LCD Support"
 	default n
-	depends on MACH_DA830_EVM && !FB_DA830
+	depends on (MACH_DA830_EVM || MACH_DA850_EVM) && !FB_DA830
 	help
-	  DA830 Character LCD support.
+	  DA830/DA850 Character LCD support.
 
 
 endmenu

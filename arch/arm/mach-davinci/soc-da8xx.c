@@ -15,14 +15,14 @@
 #include <mach/irqs.h>
 #include <mach/irq_cp_intc.h>
 
-static struct cp_intc_irq_data soc_da830_cp_intc = {
+static struct cp_intc_irq_data soc_da8xx_cp_intc = {
 	.base = IO_Dx_INTC_VIRT,
 	.num_host_irqs = 2,
 	.host_irq = 1,
-	.max_irq = IRQ_DA830_ARMCLKSTOPREQ + 1,
+	.max_irq = IRQ_DA8XX_ARMCLKSTOPREQ + 1,
 };
 
-void __init soc_da830_irq_init(void)
+void __init soc_da8xx_irq_init(void)
 {
-	cp_intc_init(&soc_da830_cp_intc);
+	cp_intc_init(&soc_da8xx_cp_intc);
 }

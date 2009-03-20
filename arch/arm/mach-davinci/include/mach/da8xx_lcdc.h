@@ -7,12 +7,13 @@
  * or implied.
  */
 
-#ifndef DA830_LCDC_PLAT_H
-#define DA830_LCDC_PLAT_H
+#ifndef DA8XX_LCDC_PLAT_H
+#define DA8XX_LCDC_PLAT_H
 
-struct da830_lcdc_platform_data {
+struct da8xx_lcdc_platform_data {
 	const char *lcdc_clk_name;
 };
 int da830_lcd_hw_init(void);
+int da850_lcd_hw_init(void);
 #endif  /* ifndef DA830_LCDC_PLAT_H */
 

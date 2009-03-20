@@ -16,7 +16,7 @@
 
 #define DAVINCI_PLL1_BASE 0x01c40800
 #define DAVINCI_PLL2_BASE 0x01c40c00
-#define DA830_PLL_CNTRL0_BASE 0x01C11000
+#define DA8XX_PLL_CNTRL0_BASE 0x01C11000
 #define MAX_PLL 2
 
 /* PLL/Reset register offsets */

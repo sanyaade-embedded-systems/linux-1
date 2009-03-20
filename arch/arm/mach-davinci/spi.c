@@ -63,8 +63,8 @@ static struct resource da8xx_spi_resources0[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
-		.start = IRQ_DA830_SPINT0,
-		.end = IRQ_DA830_SPINT0,
+		.start = IRQ_DA8XX_SPINT0,
+		.end = IRQ_DA8XX_SPINT0,
 		.flags = IORESOURCE_IRQ,
 	},
 	[2] = {
@@ -112,8 +112,8 @@ static struct resource da8xx_spi_resources1[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
-		.start = IRQ_DA830_SPINT1,
-		.end = IRQ_DA830_SPINT1,
+		.start = IRQ_DA8XX_SPINT1,
+		.end = IRQ_DA8XX_SPINT1,
 		.flags = IORESOURCE_IRQ,
 	},
 	[2] = {

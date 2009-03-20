@@ -317,7 +317,7 @@ static int davinci_spi_setup(struct spi_device *spi)
 	return retval;
 }
 
-static void davinci_spi_cleanup(const struct spi_device *spi)
+static void davinci_spi_cleanup(struct spi_device *spi)
 {
 	struct davinci_spi *davinci_spi = spi_master_get_devdata(spi->master);
 	struct davinci_spi_dma *davinci_spi_dma;

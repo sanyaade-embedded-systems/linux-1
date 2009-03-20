@@ -34,6 +34,7 @@ IS_DAVINCI_CPU(644x, 0x6446)
 IS_DAVINCI_CPU(646x, 0x6467)
 IS_DAVINCI_CPU(355, 0x355)
 IS_OMAP_CPU(830, 0x830)
+IS_OMAP_CPU(850, 0x850)
 
 #ifdef CONFIG_ARCH_DAVINCI_DM644x
 #define cpu_is_davinci_dm644x() is_davinci_dm644x()
@@ -59,4 +60,9 @@ IS_OMAP_CPU(830, 0x830)
 #define cpu_is_da830() 0
 #endif
 
+#ifdef CONFIG_ARCH_DA850
+#define cpu_is_da850() is_omap_da850()
+#else
+#define cpu_is_da850() 0
+#endif
 #endif

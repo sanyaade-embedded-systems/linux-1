@@ -122,45 +122,45 @@
 
 /* DA830 LPSC defines */
 /* PSC0 defines */
-#define DA830_LPSC_TPCC         0
-#define DA830_LPSC_TPTC0        1
-#define DA830_LPSC_TPTC1        2
-#define DA830_LPSC_EMIF25       3
-#define DA830_LPSC_SPI0         4
-#define DA830_LPSC_MMC_SD       5
-#define DA830_LPSC_AINTC        6
-#define DA830_LPSC_ARM_RAM_ROM  7
-#define DA830_LPSC_SECU_MGR     8
-#define DA830_LPSC_UART0        9
-#define DA830_LPSC_SCR0_SS      10
-#define DA830_LPSC_SCR1_SS      11
-#define DA830_LPSC_SCR2_SS      12
-#define DA830_LPSC_DMAX         13
-#define DA830_LPSC_ARM          14
-#define DA830_LPSC_GEM          15
+#define DA8XX_LPSC_TPCC         0
+#define DA8XX_LPSC_TPTC0        1
+#define DA8XX_LPSC_TPTC1        2
+#define DA8XX_LPSC_EMIF25       3
+#define DA8XX_LPSC_SPI0         4
+#define DA8XX_LPSC_MMC_SD       5
+#define DA8XX_LPSC_AINTC        6
+#define DA8XX_LPSC_ARM_RAM_ROM  7
+#define DA8XX_LPSC_SECU_MGR     8
+#define DA8XX_LPSC_UART0        9
+#define DA8XX_LPSC_SCR0_SS      10
+#define DA8XX_LPSC_SCR1_SS      11
+#define DA8XX_LPSC_SCR2_SS      12
+#define DA8XX_LPSC_DMAX         13
+#define DA8XX_LPSC_ARM          14
+#define DA8XX_LPSC_GEM          15
 
 /* PSC1 defines */
-#define DA830_LPSC_USB20        (32 + 1)
-#define DA830_LPSC_USB11        (32 + 2)
-#define DA830_LPSC_GPIO         (32 + 3)
-#define DA830_LPSC_UHPI         (32 + 4)
-#define DA830_LPSC_CPGMAC       (32 + 5)
-#define DA830_LPSC_EMIF3C       (32 + 6)
-#define DA830_LPSC_McASP0       (32 + 7)
+#define DA8XX_LPSC_USB20        (32 + 1)
+#define DA8XX_LPSC_USB11        (32 + 2)
+#define DA8XX_LPSC_GPIO         (32 + 3)
+#define DA8XX_LPSC_UHPI         (32 + 4)
+#define DA8XX_LPSC_CPGMAC       (32 + 5)
+#define DA8XX_LPSC_EMIF3C       (32 + 6)
+#define DA8XX_LPSC_McASP0       (32 + 7)
 #define DA830_LPSC_McASP1       (32 + 8)
 #define DA830_LPSC_McASP2       (32 + 9)
-#define DA830_LPSC_SPI1         (32 + 10)
-#define DA830_LPSC_I2C          (32 + 11)
-#define DA830_LPSC_UART1        (32 + 12)
-#define DA830_LPSC_UART2        (32 + 13)
-#define DA830_LPSC_LCDCNTL      (32 + 16)
-#define DA830_LPSC_PWM          (32 + 17)
-#define DA830_LPSC_ECAP         (32 + 20)
+#define DA8XX_LPSC_SPI1         (32 + 10)
+#define DA8XX_LPSC_I2C          (32 + 11)
+#define DA8XX_LPSC_UART1        (32 + 12)
+#define DA8XX_LPSC_UART2        (32 + 13)
+#define DA8XX_LPSC_LCDCNTL      (32 + 16)
+#define DA8XX_LPSC_PWM          (32 + 17)
+#define DA8XX_LPSC_ECAP         (32 + 20)
 #define DA830_LPSC_EQEP         (32 + 21)
-#define DA830_LPSC_SCR_P0_SS    (32 + 24)
-#define DA830_LPSC_SCR_P1_SS    (32 + 25)
-#define DA830_LPSC_CR_P3_SS     (32 + 26)
-#define DA830_LPSC_L3_CBA_RAM   (32 + 31)
+#define DA8XX_LPSC_SCR_P0_SS    (32 + 24)
+#define DA8XX_LPSC_SCR_P1_SS    (32 + 25)
+#define DA8XX_LPSC_SCR_P3_SS     (32 + 26)
+#define DA8XX_LPSC_L3_CBA_RAM   (32 + 31)
 
 extern void davinci_psc_config(unsigned int domain, unsigned int id,
 			       char enable);

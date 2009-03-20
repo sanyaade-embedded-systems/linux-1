@@ -14,6 +14,7 @@ obj-$(CONFIG_ARCH_DAVINCI_DM644x)       += dm644x.o
 obj-$(CONFIG_ARCH_DAVINCI_DM646x)       += dm646x.o
 obj-$(CONFIG_ARCH_DAVINCI_DM355)        += dm355.o
 obj-$(CONFIG_ARCH_DA830)		+= da830.o
+obj-$(CONFIG_ARCH_DA850)		+= da850.o
 
 obj-$(CONFIG_DAVINCI_SOC_USING_AINTC)	+= irq.o
 obj-$(CONFIG_DAVINCI_SOC_USING_CP_INTC)	+= irq_cp_intc.o
@@ -23,6 +24,8 @@ obj-$(CONFIG_MACH_DAVINCI_EVM)  	+= board-dm644x-evm.o
 obj-$(CONFIG_MACH_DAVINCI_DM646X_EVM)	+= board-dm646x-evm.o
 obj-$(CONFIG_MACH_DAVINCI_DM355_EVM)	+= board-dm355-evm.o
 obj-$(CONFIG_MACH_SFFSDR)		+= board-sffsdr.o
-obj-$(CONFIG_ARCH_DA830)		+= soc-da830.o
+obj-$(CONFIG_ARCH_DA830)		+= soc-da8xx.o
 obj-$(CONFIG_MACH_DA830_EVM)		+= board-da830-evm.o
+obj-$(CONFIG_ARCH_DA850)		+= soc-da8xx.o
+obj-$(CONFIG_MACH_DA850_EVM)		+= board-da850-evm.o
 obj-$(CONFIG_SPI_DAVINCI)		+= spi.o

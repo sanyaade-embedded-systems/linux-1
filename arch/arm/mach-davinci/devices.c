@@ -23,14 +23,14 @@
 #include <asm/mach/map.h>
 
 #include <mach/hardware.h>
-#include <mach/da830.h>
+#include <mach/da8xx.h>
 #include <mach/edma.h>
 #include <mach/emac.h>
 #include <mach/i2c.h>
 #include <mach/cpu.h>
 #include <mach/mux.h>
 #include <mach/mmc.h>
-#include <mach/da830_lcdc.h>
+#include <mach/da8xx_lcdc.h>
 
 #include "clock.h"
 
@@ -46,7 +46,6 @@
 #define DA830_MMC_SD0_BASE	     0x01C40000
 #define DA830_RTC_BASE	     0x01C23000
 
-#ifndef CONFIG_MACH_DA830_EVM
 static struct resource i2c_resources[] = {
 	{
 		.start		= DAVINCI_I2C_BASE,
@@ -65,29 +64,29 @@ static struct platform_device davinci_i2c_device = {
 	.num_resources	= ARRAY_SIZE(i2c_resources),
 	.resource	= i2c_resources,
 };
-#else
+
 static struct resource da830_i2c_resources0[] = {
 	{
-		.start          = DA830_I2C0_BASE,
-		.end            = DA830_I2C0_BASE + SZ_4K - 1,
+		.start          = DA8XX_I2C0_BASE,
+		.end            = DA8XX_I2C0_BASE + SZ_4K - 1,
 		.flags          = IORESOURCE_MEM,
 	},
 	{
-		.start          = IRQ_DA830_I2CINT0,
-		.end            = IRQ_DA830_I2CINT0,
+		.start          = IRQ_DA8XX_I2CINT0,
+		.end            = IRQ_DA8XX_I2CINT0,
 		.flags          = IORESOURCE_IRQ,
 	},
 };
 
 static struct resource da830_i2c_resources1[] = {
 	{
-		.start          = DA830_I2C1_BASE,
-		.end            = DA830_I2C1_BASE + SZ_4K - 1,
+		.start          = DA8XX_I2C1_BASE,
+		.end            = DA8XX_I2C1_BASE + SZ_4K - 1,
 		.flags          = IORESOURCE_MEM,
 	},
 	{
-		.start          = IRQ_DA830_I2CINT1,
-		.end            = IRQ_DA830_I2CINT1,
+		.start          = IRQ_DA8XX_I2CINT1,
+		.end            = IRQ_DA8XX_I2CINT1,
 		.flags          = IORESOURCE_IRQ,
 	},
 };
@@ -106,7 +105,47 @@ static struct platform_device da830_i2c_device[] = {
 		.resource       = da830_i2c_resources1,
 	}
 };
-#endif
+
+static struct resource da850_i2c_resources0[] = {
+	{
+		.start          = 0x01c22000,
+		.end            = 0x01c22000 + SZ_4K - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	{
+		.start          = 15,
+		.end            = 15,
+		.flags          = IORESOURCE_IRQ,
+	},
+};
+
+static struct resource da850_i2c_resources1[] = {
+	{
+		.start          = 0x01e28000,
+		.end            = 0x01e28000 + SZ_4K - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	{
+		.start          = 51,
+		.end            = 51,
+		.flags          = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device da850_i2c_device[] = {
+	[0] = {
+		.name           = "i2c_davinci",
+		.id             = 1,
+		.num_resources  = ARRAY_SIZE(da850_i2c_resources0),
+		.resource       = da850_i2c_resources0,
+	},
+	[1] = {
+		.name           = "i2c_davinci",
+		.id             = 2,
+		.num_resources  = ARRAY_SIZE(da850_i2c_resources1),
+		.resource       = da850_i2c_resources1,
+	}
+};
 
 void __init davinci_init_i2c(struct davinci_i2c_platform_data *pdata)
 {
@@ -121,15 +160,29 @@ void __init davinci_init_i2c(struct davinci_i2c_platform_data *pdata)
 		davinci_cfg_reg(DA830_I2C0_SCL);		
 	}
 
-#ifndef CONFIG_MACH_DA830_EVM
-	davinci_i2c_device.dev.platform_data = pdata;
-	(void) platform_device_register(&davinci_i2c_device);
-#else
-	for (i = 0; i < 2; i++) {
-		da830_i2c_device[i].dev.platform_data = pdata;
-		(void) platform_device_register(&da830_i2c_device[i]);
+	if (cpu_is_da850()) {
+		davinci_cfg_reg(DA850_I2C1_SCL);
+		davinci_cfg_reg(DA850_I2C1_SDA);
+		davinci_cfg_reg(DA850_I2C0_SDA);
+		davinci_cfg_reg(DA850_I2C0_SCL);		
 	}
-#endif
+
+	if (cpu_is_davinci_dm644x() ||
+	    cpu_is_davinci_dm646x() ||
+	    cpu_is_davinci_dm355()) {
+		davinci_i2c_device.dev.platform_data = pdata;
+		(void) platform_device_register(&davinci_i2c_device);
+	} else if (cpu_is_da830()) {
+		for (i = 0; i < 2; i++) {
+			da830_i2c_device[i].dev.platform_data = pdata;
+			(void) platform_device_register(&da830_i2c_device[i]);
+		}
+	} else if (cpu_is_da850()) {
+		for (i = 0; i < 2; i++) {
+			da850_i2c_device[i].dev.platform_data = pdata;
+			(void) platform_device_register(&da850_i2c_device[i]);
+		}
+	}
 }
 
 #if	defined(CONFIG_MMC_DAVINCI) || defined(CONFIG_MMC_DAVINCI_MODULE)
@@ -217,8 +270,8 @@ static struct resource da830_mmc_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{		 /* interrupt */
-		.start	= IRQ_DA830_MMCSDINT0,
-		.end	= IRQ_DA830_MMCSDINT0,
+		.start	= IRQ_DA8XX_MMCSDINT0,
+		.end	= IRQ_DA8XX_MMCSDINT0,
 		.flags	= IORESOURCE_IRQ,
 	},
 	{		 /* DMA RX */
@@ -238,6 +291,36 @@ static struct platform_device da830_mmc_device = {
 	.id		= 0,
 	.num_resources	= ARRAY_SIZE(da830_mmc_resources),
 	.resource	= da830_mmc_resources,
+};
+
+static struct resource da850_mmc_resources[] = {
+	{		 /* registers */
+		.start	= 0x01c40000,
+		.end	= 0x01c40000 + SZ_4K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{		 /* interrupt */
+		.start	= 16,
+		.end	= 16,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{		 /* DMA RX */
+		.start	= 16,
+		.end	= 16,
+		.flags	= IORESOURCE_DMA,
+	},
+	{		 /* DMA TX */
+		.start	= 17,
+		.end	= 17,
+		.flags	= IORESOURCE_DMA,
+	},
+};
+
+static struct platform_device da850_mmc_device = {
+	.name		= "davinci_mmc",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(da850_mmc_resources),
+	.resource	= da850_mmc_resources,
 };
 
 void __init davinci_setup_mmc(int module, struct davinci_mmc_config *config)
@@ -306,6 +389,18 @@ void __init davinci_setup_mmc(int module, struct davinci_mmc_config *config)
 			davinci_cfg_reg(DA830_MMCSD_DAT_7);
 			davinci_cfg_reg(DA830_MMCSD_CLK);
 			davinci_cfg_reg(DA830_MMCSD_CMD);
+		} else if (cpu_is_da850()) {
+			pdev = &da850_mmc_device;
+			davinci_cfg_reg(DA850_MMCSD0_DAT_0);
+			davinci_cfg_reg(DA850_MMCSD0_DAT_1);
+			davinci_cfg_reg(DA850_MMCSD0_DAT_2);
+			davinci_cfg_reg(DA850_MMCSD0_DAT_3);
+			davinci_cfg_reg(DA850_MMCSD0_DAT_4);
+			davinci_cfg_reg(DA850_MMCSD0_DAT_5);
+			davinci_cfg_reg(DA850_MMCSD0_DAT_6);
+			davinci_cfg_reg(DA850_MMCSD0_DAT_7);
+			davinci_cfg_reg(DA850_MMCSD0_CLK);
+			davinci_cfg_reg(DA850_MMCSD0_CMD);
 		} else
 			pdev = &davinci_mmcsd0_device;
 
@@ -327,29 +422,29 @@ void __init davinci_setup_mmc(int module, struct davinci_mmc_config *config)
 
 #endif
 
-static struct resource da830_rtc_resources[] = {
+static struct resource da8xx_rtc_resources[] = {
 	[0] = {		/* registers */
 		.start  = DA830_RTC_BASE,
 		.end    = DA830_RTC_BASE + SZ_4K - 1,
 		.flags  = IORESOURCE_MEM,
 	},
 	[1] = {		/* interrupt */
-		.start  = IRQ_DA830_RTC,
-		.end    = IRQ_DA830_RTC,
+		.start  = IRQ_DA8XX_RTC,
+		.end    = IRQ_DA8XX_RTC,
 		.flags  = IORESOURCE_IRQ,
 	},
 };
 
-static struct platform_device da830_rtc_device = {
+static struct platform_device da8xx_rtc_device = {
 	.name		= "rtc-da830",
 	.id		= 0,
-	.num_resources	= ARRAY_SIZE(da830_rtc_resources),
-	.resource	= da830_rtc_resources,
+	.num_resources	= ARRAY_SIZE(da8xx_rtc_resources),
+	.resource	= da8xx_rtc_resources,
 };
 
-void da830_init_rtc(void)
+void da8xx_init_rtc(void)
 {
-        (void) platform_device_register(&da830_rtc_device);
+        (void) platform_device_register(&da8xx_rtc_device);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -369,7 +464,7 @@ static struct platform_device davinci_wdt_device = {
 	.resource	= wdt_resources,
 };
 
-static struct resource da830_wdt_resources[] = {
+static struct resource da8xx_wdt_resources[] = {
 	{
 		.start	= 0x01c21000,
 		.end	= 0x01c21fff,
@@ -377,17 +472,17 @@ static struct resource da830_wdt_resources[] = {
 	},
 };
 
-static struct platform_device da830_wdt_device = {
+static struct platform_device da8xx_wdt_device = {
 	.name		= "watchdog",
 	.id		= -1,
-	.num_resources	= ARRAY_SIZE(da830_wdt_resources),
-	.resource	= da830_wdt_resources,
+	.num_resources	= ARRAY_SIZE(da8xx_wdt_resources),
+	.resource	= da8xx_wdt_resources,
 };
 
 static void davinci_init_wdt(void)
 {
-	if (cpu_is_da830())
-		platform_device_register(&da830_wdt_device);
+	if (cpu_is_da830() || cpu_is_da850())
+		platform_device_register(&da8xx_wdt_device);
 	else
 		platform_device_register(&davinci_wdt_device);
 }
@@ -499,67 +594,67 @@ static struct platform_device dm646x_emac_device = {
 
 #define RESOURCE_IRQ	4
 
-static struct resource da830_emac_resources [] = {
+static struct resource da8xx_emac_resources [] = {
         {
-                .start  = DA830_EMAC_CPGMAC_BASE,
-                .end    = DA830_EMAC_CPGMAC_BASE + 0xfff,
+                .start  = DA8XX_EMAC_CPGMAC_BASE,
+                .end    = DA8XX_EMAC_CPGMAC_BASE + 0xfff,
                 .flags  = IORESOURCE_MEM,
                 .name   = "ctrl_regs",
         },
         {
-                .start  = DA830_EMAC_CPGMACSS_BASE,
-                .end    = DA830_EMAC_CPGMACSS_BASE + 0xfff,
+                .start  = DA8XX_EMAC_CPGMACSS_BASE,
+                .end    = DA8XX_EMAC_CPGMACSS_BASE + 0xfff,
                 .flags  = IORESOURCE_MEM,
                 .name   = "ctrl_module_regs",
         },
         {
-                .start  = DA830_EMAC_CPPI_PORT_BASE,
-                .end    = DA830_EMAC_CPPI_PORT_BASE + 0x1fff,
+                .start  = DA8XX_EMAC_CPPI_PORT_BASE,
+                .end    = DA8XX_EMAC_CPPI_PORT_BASE + 0x1fff,
                 .flags  = IORESOURCE_MEM,
                 .name   = "ctrl_ram",
         },
         {
-                .start  = DA830_EMAC_MDIO_BASE,
-                .end    = DA830_EMAC_MDIO_BASE + 0xfff,
+                .start  = DA8XX_EMAC_MDIO_BASE,
+                .end    = DA8XX_EMAC_MDIO_BASE + 0xfff,
                 .flags  = IORESOURCE_MEM,
                 .name   = "mdio_regs",
         },
         [RESOURCE_IRQ] = {
-                .start  = IRQ_DA830_C0_RX_THRESH_PULSE,
-                .end	= IRQ_DA830_C0_RX_THRESH_PULSE,
+                .start  = IRQ_DA8XX_C0_RX_THRESH_PULSE,
+                .end	= IRQ_DA8XX_C0_RX_THRESH_PULSE,
                 .flags  = IORESOURCE_IRQ,
                 .name   = "mac_rx_threshold",
         },
         {
-                .start  = IRQ_DA830_C0_RX_PULSE,
-                .end	= IRQ_DA830_C0_RX_PULSE,
+                .start  = IRQ_DA8XX_C0_RX_PULSE,
+                .end	= IRQ_DA8XX_C0_RX_PULSE,
                 .flags  = IORESOURCE_IRQ,
                 .name   = "mac_rx",
         },
         {
-                .start  = IRQ_DA830_C0_TX_PULSE,
-                .end	= IRQ_DA830_C0_TX_PULSE,
+                .start  = IRQ_DA8XX_C0_TX_PULSE,
+                .end	= IRQ_DA8XX_C0_TX_PULSE,
                 .flags  = IORESOURCE_IRQ,
                 .name   = "mac_tx",
         },
         {
-                .start  = IRQ_DA830_C0_MISC_PULSE,
-                .end	= IRQ_DA830_C0_MISC_PULSE,
+                .start  = IRQ_DA8XX_C0_MISC_PULSE,
+                .end	= IRQ_DA8XX_C0_MISC_PULSE,
                 .flags  = IORESOURCE_IRQ,
                 .name   = "mac_misc",
         },
 };
-static struct emac_platform_data da830_emac_pdata = {
+static struct emac_platform_data da8xx_emac_pdata = {
 	.phy_mask = 0x0,	/* No PHY */
 };
 
-static struct platform_device da830_emac_device = {
+static struct platform_device da8xx_emac_device = {
         .name = "davinci_emac",
         .id = 1,
-        .num_resources = ARRAY_SIZE(da830_emac_resources),
-        .resource = da830_emac_resources,
+        .num_resources = ARRAY_SIZE(da8xx_emac_resources),
+        .resource = da8xx_emac_resources,
         .dev = {
-                .platform_data = &da830_emac_pdata,
+                .platform_data = &da8xx_emac_pdata,
         }
 };
 
@@ -568,10 +663,10 @@ void davinci_init_emac(char *mac_addr)
 	DECLARE_MAC_BUF(buf);
 
 	if (!(cpu_is_davinci_dm644x() || cpu_is_davinci_dm646x()
-		|| cpu_is_da830()))
+		|| cpu_is_da830() || cpu_is_da850()))
 		return;
 
-	if (cpu_is_da830()) {
+	if (cpu_is_da830() || cpu_is_da850()) {
 		davinci_cfg_reg(DA830_RMII_TXD_0);
 		davinci_cfg_reg(DA830_RMII_TXD_1);
 		davinci_cfg_reg(DA830_RMII_TXEN);
@@ -600,8 +695,8 @@ void davinci_init_emac(char *mac_addr)
 		(void) platform_device_register(&davinci_emac_device);
 	else if (cpu_is_davinci_dm646x())
 		(void) platform_device_register(&dm646x_emac_device);
-	else
-		(void) platform_device_register(&da830_emac_device);
+	else if (cpu_is_da830() || cpu_is_da850())
+		(void) platform_device_register(&da8xx_emac_device);
 }
 
 #else
@@ -611,36 +706,36 @@ void davinci_init_emac(char *unused) {}
 #endif
 
 /*-------------------------------------------------------------------------*/
-static struct da830_lcdc_platform_data da830_evm_lcdc_pdata = {
+static struct da8xx_lcdc_platform_data da8xx_evm_lcdc_pdata = {
 	.lcdc_clk_name  = "LCDCTRLCLK",
 };
-static struct resource da830_lcdc_resources[] = {
+static struct resource da8xx_lcdc_resources[] = {
 	[0] = {	/* registers */
-		.start	= DA830_LCD_CNTRL_BASE,
-		.end	= DA830_LCD_CNTRL_BASE + SZ_4K - 1,
+		.start	= DA8XX_LCD_CNTRL_BASE,
+		.end	= DA8XX_LCD_CNTRL_BASE + SZ_4K - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 /* XXX Next resource seems wrong.  Should use dma_* calls? -- Remove */
 	[1] = {	/* frame buffer and palette */
-		.start	= DA830_EMIF30_ASYNC_DATA_CE5_BASE,
-		.end	= DA830_EMIF30_ASYNC_DATA_CE5_BASE + SZ_512M - 1,
+		.start	= DA8XX_EMIF30_ASYNC_DATA_CE5_BASE,
+		.end	= DA8XX_EMIF30_ASYNC_DATA_CE5_BASE + SZ_512M - 1,
 		.flags	= IORESOURCE_MEM,
 	},
 /* END Remove */
 	[2] = {	/* interrupt */
-		.start	= IRQ_DA830_LCDINT,
-		.end	= IRQ_DA830_LCDINT,
+		.start	= IRQ_DA8XX_LCDINT,
+		.end	= IRQ_DA8XX_LCDINT,
 		.flags	= IORESOURCE_IRQ,
 	},
 };
 
-static struct platform_device da830_lcdc_device = {
-	.name		= "da830_lcdc",
+static struct platform_device da8xx_lcdc_device = {
+	.name		= "da8xx_lcdc",
 	.id		= 0,
-	.num_resources	= ARRAY_SIZE(da830_lcdc_resources),
-	.resource	= da830_lcdc_resources,
+	.num_resources	= ARRAY_SIZE(da8xx_lcdc_resources),
+	.resource	= da8xx_lcdc_resources,
 	.dev = {
-		.platform_data = &da830_evm_lcdc_pdata,
+		.platform_data = &da8xx_evm_lcdc_pdata,
 	}
 };
 
@@ -652,12 +747,12 @@ static int __init davinci_init_devices(void)
 	 * in alphabetical order so they're easier to sort through.
 	 */
 	davinci_init_wdt();
-	if (cpu_is_da830()) {
-		ret = platform_device_register(&da830_lcdc_device);
+	if (cpu_is_da830() || cpu_is_da850()) {
+		ret = platform_device_register(&da8xx_lcdc_device);
 
 		if (ret)
 			return ret;
-		else {
+		else if (cpu_is_da830()) {
 			davinci_cfg_reg(DA830_LCD_D_0);
 			davinci_cfg_reg(DA830_LCD_D_1);
 			davinci_cfg_reg(DA830_LCD_D_2);
@@ -679,6 +774,28 @@ static int __init davinci_init_devices(void)
 			davinci_cfg_reg(DA830_LCD_VSYNC);
 			davinci_cfg_reg(DA830_NLCD_AC_ENB_CS);
 			davinci_cfg_reg(DA830_LCD_MCLK);			
+		} else if (cpu_is_da850()) {
+			davinci_cfg_reg(DA850_LCD_D_0);
+			davinci_cfg_reg(DA850_LCD_D_1);
+			davinci_cfg_reg(DA850_LCD_D_2);
+			davinci_cfg_reg(DA850_LCD_D_3);
+			davinci_cfg_reg(DA850_LCD_D_4);
+			davinci_cfg_reg(DA850_LCD_D_5);
+			davinci_cfg_reg(DA850_LCD_D_6);
+			davinci_cfg_reg(DA850_LCD_D_7);
+			davinci_cfg_reg(DA850_LCD_D_8);
+			davinci_cfg_reg(DA850_LCD_D_9);
+			davinci_cfg_reg(DA850_LCD_D_10);
+			davinci_cfg_reg(DA850_LCD_D_11);
+			davinci_cfg_reg(DA850_LCD_D_12);
+			davinci_cfg_reg(DA850_LCD_D_13);
+			davinci_cfg_reg(DA850_LCD_D_14);
+			davinci_cfg_reg(DA850_LCD_D_15);
+			davinci_cfg_reg(DA850_LCD_PCLK);
+			davinci_cfg_reg(DA850_LCD_HSYNC);
+			davinci_cfg_reg(DA850_LCD_VSYNC);
+			davinci_cfg_reg(DA850_NLCD_AC_ENB_CS);
+			davinci_cfg_reg(DA850_LCD_MCLK);			
 		}
 	}
 

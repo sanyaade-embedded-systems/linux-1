@@ -20,7 +20,7 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 
-#include <mach/da830.h>
+#include <mach/da8xx.h>
 
 #include <mach/psc.h>
 #include <mach/cpu.h>

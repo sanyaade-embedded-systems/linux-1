@@ -35,7 +35,7 @@
 #include <mach/cpu.h>
 #include <mach/edma.h>
 #include <mach/hardware.h>
-#include <mach/da830.h>
+#include <mach/da8xx.h>
 #include <mach/irqs.h>
 
 /*
@@ -320,7 +320,7 @@ static void mmc_davinci_start_command(struct mmc_davinci_host *host,
 	if (host->do_dma)
 		cmd_reg |= MMCCMD_DMATRIG;
 
-	if (cpu_is_da830()) {
+	if (cpu_is_da830() || cpu_is_da850()) {
 		if ((host->data != NULL) &&
 	    		(host->data_dir == DAVINCI_MMC_DATADIR_READ))
 			cmd_reg |= MMCCMD_DMATRIG;
@@ -518,7 +518,7 @@ static void mmc_davinci_send_dma_request(struct mmc_davinci_host *host,
 		edma_write_slot(slot, template);
 	}
 
-	if (cpu_is_da830())
+	if (cpu_is_da830() || cpu_is_da850())
 		edma_clear_event(channel);
 	edma_start(channel);
 }

@@ -23,9 +23,10 @@
 #include <linux/dma-mapping.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
+#include <mach/cpu.h>
 #include <mach/io.h>
 #include <mach/hardware.h>
-#include <mach/da830_lcdc.h>
+#include <mach/da8xx_lcdc.h>
 #include <linux/uaccess.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
@@ -535,9 +536,17 @@ static void lcd_reset(void)
 static int lcd_init(const struct lcd_ctrl_config *cfg)
 {
 	u32 bpp;
-	if (da830_lcd_hw_init()) {
-		printk(KERN_ALERT "Error in Initialising\n");
-		return -ENODEV;
+
+	if (cpu_is_da830()) {
+		if (da830_lcd_hw_init()) {
+			printk(KERN_ALERT "Error in Initialising\n");
+			return -ENODEV;
+		}
+	} else if (cpu_is_da850()) {
+		if (da850_lcd_hw_init()) {
+			printk(KERN_ALERT "Error in Initialising\n");
+			return -ENODEV;
+		}
 	}
 	if (da830_fb_read(LCD_BLK_REV_REG) != DA830_LCDC_REVISION)
 		return -ENOENT;
@@ -704,7 +713,7 @@ static int __init da830_fb_probe(struct platform_device *device)
 	struct da830fb_par *par;
 	int ret;
 	struct resource *lcdc_regs;
-	struct da830_lcdc_platform_data *fb_pdata =
+	struct da8xx_lcdc_platform_data *fb_pdata =
 						device->dev.platform_data;
 	struct clk *fb_clk = NULL;
 	if (fb_pdata == NULL) {

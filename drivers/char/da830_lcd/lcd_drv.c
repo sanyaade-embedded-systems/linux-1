@@ -59,7 +59,8 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
-#include <mach/da830_lcdc.h>
+#include <mach/cpu.h>
+#include <mach/da8xx_lcdc.h>
 #include "lidd_hal.h"
 
 #define    LCD_VERSION                 "0.2"
@@ -287,13 +288,20 @@ static int __devinit da830_lcd_probe(struct platform_device *device)
 {
 	struct ti_lidd_info lcd_info;
 	struct resource *lcdc_regs;
-	struct da830_lcdc_platform_data *lcd_pdata =
+	struct da8xx_lcdc_platform_data *lcd_pdata =
 						device->dev.platform_data;
 	int ret = 0;
 
-	if (da830_lcd_hw_init()) {
-		printk(KERN_ALERT "Error in Initialising\n");
-		return -ENODEV;
+	if (cpu_is_da830()) {
+		if (da830_lcd_hw_init()) {
+			printk(KERN_ALERT "Error in Initialising\n");
+			return -ENODEV;
+		}
+	} else if (cpu_is_da850()) {
+		if (da850_lcd_hw_init()) {
+			printk(KERN_ALERT "Error in Initialising\n");
+			return -ENODEV;
+		}
 	}
 
 	if (lcd_pdata == NULL) {
@@ -325,7 +333,7 @@ static int __devinit da830_lcd_probe(struct platform_device *device)
 		goto err_get_resource;
 	}
 
-	lcd_info.base_addr = IO_ADDRESS(lcdc_regs->start);
+	lcd_info.base_addr = (unsigned int)(IO_ADDRESS(lcdc_regs->start));
 	lcd_dev->clk = clk_get(&device->dev, lcd_pdata->lcdc_clk_name);
 	if (IS_ERR(lcd_dev->clk)) {
 		printk(KERN_ERR "Can not get LCD clock\n");
