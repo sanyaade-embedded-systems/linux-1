@@ -374,6 +374,15 @@ static void mmc_davinci_start_command(struct mmc_davinci_host *host,
 
 /* DMA infrastructure */
 
+static void davinci_reinit_chan(struct mmc_davinci_host *host)
+{
+	edma_stop(host->txdma);
+	edma_clean_channel(host->txdma);
+
+	edma_stop(host->rxdma);
+	edma_clean_channel(host->rxdma);
+}
+
 static void davinci_abort_dma(struct mmc_davinci_host *host)
 {
 	int sync_dev;
@@ -385,6 +394,10 @@ static void davinci_abort_dma(struct mmc_davinci_host *host)
 
 	edma_stop(sync_dev);
 	edma_clean_channel(sync_dev);
+
+	/* Re-intialize the DMA channels */
+	davinci_reinit_chan(host);
+
 }
 
 static void
@@ -402,8 +415,8 @@ static void mmc_davinci_dma_cb(unsigned channel, u16 ch_status, void *data)
 		dev_warn(mmc_dev(host->mmc), "DMA %s error\n",
 			(host->data->flags & MMC_DATA_WRITE)
 				? "write" : "read");
-		//host->data->error = -EIO;
-		//mmc_davinci_xfer_done(host, host->data);
+		host->data->error = -EIO;
+		mmc_davinci_xfer_done(host, host->data);
 	}
 }
 
