@@ -254,7 +254,7 @@ struct davinci_clk da830_clks[] = {
 	CLK(NULL, "aemif", &aemif_clk),
 	CLK("dm_spi.0", NULL, &spi0_clk),
 	CLK("dm_spi.1", NULL, &spi1_clk),
-	CLK("da830_lcdc.0", NULL, &lcdc_clk),
+	CLK("da8xx_lcdc.0", NULL, &lcdc_clk),
 	CLK(NULL, NULL, NULL),
 };
 

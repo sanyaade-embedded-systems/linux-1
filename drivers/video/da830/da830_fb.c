@@ -37,7 +37,7 @@
 #include "sharp_color.h"
 #endif
 
-#define DRIVER_NAME "da830_lcdc"
+#define DRIVER_NAME "da8xx_lcdc"
 
 #undef FB_DEBUG
 #define FB_DEBUG

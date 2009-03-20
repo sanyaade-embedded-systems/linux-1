@@ -398,7 +398,7 @@ static struct platform_driver da830_lcd_driver = {
 	.probe	= da830_lcd_probe,
 	.remove = da830_lcd_remove,
 	.driver = {
-		   .name = "da830_lcdc",
+		   .name = "da8xx_lcdc",
 		   .owner = THIS_MODULE,
 	},
 };
