@@ -390,7 +390,7 @@ static void __init davinci_timer_init(void)
 	int num_timers;
 	int *timer_irqs, *cmp_irqs;
 	u32 *bases;
-	struct clk *timer_clk, *wd_clk;
+	struct clk *timer_clk;
 
 	static char err[] __initdata = KERN_ERR
 		"%s: can't register clocksource!\n";
@@ -398,12 +398,6 @@ static void __init davinci_timer_init(void)
 	timer_clk = clk_get(NULL, "timer0");
 	BUG_ON(IS_ERR(timer_clk));
 	clk_enable(timer_clk);
-
-	if (cpu_is_davinci_dm644x() || cpu_is_davinci_dm355()) {
-		wd_clk = clk_get(NULL, "timer2");
-		BUG_ON(IS_ERR(wd_clk));
-		clk_enable(wd_clk);
-	}
 
 	num_timers = 2;
 	bases = davinci_bases;
