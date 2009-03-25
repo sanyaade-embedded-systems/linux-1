@@ -495,16 +495,19 @@ void davinci_watchdog_reset(void) {
 		return;
 	clk_enable(wd_clk);
 
+	if (cpu_is_da830() || cpu_is_da850())
+		base = IO_ADDRESS(DA830_TIMER64P1_BASE);
+
 	/* disable, internal clock source */
 	__raw_writel(0, base + TCR);
 
 	/* reset timer, set mode to 64-bit watchdog, and unreset */
 	tgcr = 0;
-	__raw_writel(tgcr, base + TCR);
+	__raw_writel(tgcr, base + TGCR);
 	tgcr = TGCR_TIMMODE_64BIT_WDOG << TGCR_TIMMODE_SHIFT;
 	tgcr |= (TGCR_UNRESET << TGCR_TIM12RS_SHIFT) |
 		(TGCR_UNRESET << TGCR_TIM34RS_SHIFT);
-	__raw_writel(tgcr, base + TCR);
+	__raw_writel(tgcr, base + TGCR);
 
 	/* clear counter and period regs */
 	__raw_writel(0, base + TIM12);
