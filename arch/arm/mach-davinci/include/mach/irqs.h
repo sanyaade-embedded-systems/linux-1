@@ -95,7 +95,7 @@
 #define IRQ_COMMRX       62
 #define IRQ_EMUINT       63
 
-#if defined (CONFIG_ARCH_DA830) || defined (CONFIG_ARCH_DA850)
+#ifdef CONFIG_ARCH_DA8XX
 #define DAVINCI_N_AINTC_IRQ	91	
 #else
 #define DAVINCI_N_AINTC_IRQ	64

@@ -61,7 +61,7 @@ IS_DAVINCI_CPU(da850, 0x850)
 #endif
 #endif
 
-#if defined(CONFIG_ARCH_DA830) || defined (CONFIG_ARCH_DA850)
+#ifdef CONFIG_ARCH_DA8XX
 #define cpu_is_da8xx()	(cpu_is_da830() || cpu_is_da850())
 #else
 #define cpu_is_da8xx()	0
