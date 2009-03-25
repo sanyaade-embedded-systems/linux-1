@@ -38,7 +38,7 @@ static void putc(int c)
 	return;
 #endif
 
-#ifdef CONFIG_ARCH_OMAP
+#if defined(CONFIG_ARCH_OMAP) || defined(CONFIG_ARCH_NETRA)
 #ifdef	CONFIG_OMAP_LL_DEBUG_UART3
 	uart = (volatile u8 *)(OMAP_UART3_BASE);
 #elif defined(CONFIG_OMAP_LL_DEBUG_UART2)

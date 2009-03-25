@@ -24,7 +24,7 @@
 #include <mach/board.h>
 #include <mach/mmc.h>
 #include <mach/mux.h>
-#include <mach/gpio.h>
+//!@0 #include <mach/gpio.h>
 #include <mach/dsp_common.h>
 #include <mach/mcbsp.h>
 

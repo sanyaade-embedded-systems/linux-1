@@ -262,13 +262,15 @@ arch_initcall(omap_init_clocksource_32k);
 
 /* Global address base setup code */
 
-#if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
+#if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_NETRA)
 
 static struct omap_globals *omap2_globals;
 
 static void __init __omap2_set_globals(void)
 {
+#ifndef CONFIG_ARCH_NETRA
 	omap2_set_globals_tap(omap2_globals);
+#endif
 	omap2_set_globals_sdrc(omap2_globals);
 	omap2_set_globals_control(omap2_globals);
 	omap2_set_globals_prcm(omap2_globals);
@@ -314,7 +316,7 @@ void __init omap2_set_globals_243x(void)
 }
 #endif
 
-#if defined(CONFIG_ARCH_OMAP3430)
+#if defined(CONFIG_ARCH_OMAP3430) || defined(CONFIG_ARCH_NETRA)
 
 static struct omap_globals omap343x_globals = {
 	.class	= OMAP343X_CLASS,

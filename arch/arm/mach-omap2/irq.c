@@ -193,7 +193,7 @@ void __init omap_init_irq(void)
 
 		if (cpu_is_omap24xx())
 			bank->base_reg = OMAP2_IO_ADDRESS(OMAP24XX_IC_BASE);
-		else if (cpu_is_omap34xx())
+		else if (cpu_is_omap34xx() || cpu_is_netra())
 			bank->base_reg = OMAP2_IO_ADDRESS(OMAP34XX_IC_BASE);
 
 		omap_irq_bank_init_one(bank);

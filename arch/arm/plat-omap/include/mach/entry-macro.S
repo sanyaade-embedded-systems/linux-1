@@ -56,13 +56,17 @@
 		.endm
 
 #endif
-#if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX)
+#if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX) \
+		|| defined(CONFIG_ARCH_NETRA)
 
 #if defined(CONFIG_ARCH_OMAP24XX)
 #include <mach/omap24xx.h>
 #endif
 #if defined(CONFIG_ARCH_OMAP34XX)
 #include <mach/omap34xx.h>
+#endif
+#if defined(CONFIG_ARCH_NETRA)
+#include <mach/netra.h>
 #endif
 
 #define INTCPS_SIR_IRQ_OFFSET	0x0040		/* Active interrupt offset */

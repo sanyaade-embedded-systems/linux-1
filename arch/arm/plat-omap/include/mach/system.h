@@ -9,6 +9,10 @@
 #include <asm/mach-types.h>
 #include <mach/hardware.h>
 
+#if defined(CONFIG_ARCH_NETRA)
+#include <asm/io.h>
+#endif
+
 #include <mach/prcm.h>
 
 #ifndef CONFIG_MACH_VOICEBLUE
@@ -38,6 +42,12 @@ static inline void omap1_arch_reset(char mode)
 		omap_writew(1, ARM_RSTCT1);
 }
 
+#if defined(CONFIG_ARCH_NETRA)
+static inline void arch_reset(char mode)
+{
+	while(1);
+}
+#else
 static inline void arch_reset(char mode)
 {
 	if (!cpu_class_is_omap2())
@@ -45,5 +55,6 @@ static inline void arch_reset(char mode)
 	else
 		omap_prcm_arch_reset(mode);
 }
+#endif /* !CONFIG_ARCH_NETRA */
 
 #endif

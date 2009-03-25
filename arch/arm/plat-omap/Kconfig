@@ -1,4 +1,4 @@
-if ARCH_OMAP
+if ARCH_OMAP || ARCH_NETRA
 
 menu "TI OMAP Implementations"
 
@@ -7,6 +7,7 @@ config ARCH_OMAP_OTG
 
 choice
 	prompt "OMAP System Type"
+	depends on !ARCH_NETRA
 	default ARCH_OMAP1
 
 config ARCH_OMAP1
@@ -48,7 +49,7 @@ config OMAP_DEBUG_POWERDOMAIN
 
 config OMAP_DEBUG_CLOCKDOMAIN
 	bool "Emit debug messages from clockdomain layer"
-	depends on ARCH_OMAP2 || ARCH_OMAP3
+	depends on ARCH_OMAP2 || ARCH_OMAP3 || ARCH_NETRA
 	default n
 	help
 	  Say Y here if you want to compile in clockdomain layer
@@ -210,8 +211,9 @@ config OMAP_32K_TIMER_HZ
 
 config OMAP_TICK_GPTIMER
 	int "GPTIMER used for system tick timer"
-	depends on ARCH_OMAP2 || ARCH_OMAP3
-	range 1 12
+	depends on ARCH_OMAP2 || ARCH_OMAP3 || ARCH_NETRA
+	range 1 12 if !ARCH_NETRA
+	range 1 8 if ARCH_NETRA
 	default 1
 	help
 	  Linux uses one of the twelve on-board OMAP GPTIMER blocks to generate
@@ -221,17 +223,17 @@ config OMAP_TICK_GPTIMER
 	  of which GPTIMER to use.  The historical default is GPTIMER1.
 	  If CONFIG_OMAP_32K_TIMER is selected, Beagle may require GPTIMER12
 	  due to hardware sensitivity to glitches on the OMAP 32kHz clock
-	  input.
+	  input. Note that for NETRA, the number of timers available is Eight.
 
 config OMAP_DM_TIMER
 	bool "Use dual-mode timer"
-	depends on ARCH_OMAP16XX || ARCH_OMAP24XX || ARCH_OMAP34XX
+	depends on ARCH_OMAP16XX || ARCH_OMAP24XX || ARCH_OMAP34XX || ARCH_NETRA
 	help
 	 Select this option if you want to use OMAP Dual-Mode timers.
 
 choice
 	prompt "Low-level debug console UART"
-	depends on ARCH_OMAP
+	depends on ARCH_OMAP || ARCH_NETRA
 	default OMAP_LL_DEBUG_UART1
 
 config OMAP_LL_DEBUG_UART1

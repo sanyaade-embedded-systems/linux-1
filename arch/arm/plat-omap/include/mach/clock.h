@@ -17,7 +17,7 @@ struct module;
 struct clk;
 struct clockdomain;
 
-#if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
+#if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_NETRA)
 
 struct clksel_rate {
 	u32			val;
@@ -45,7 +45,7 @@ struct dpll_data {
 	u8			last_rounded_n;
 	u8			min_divider;
 	u8			max_divider;
-#  if defined(CONFIG_ARCH_OMAP3)
+#  if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_NETRA)
 	u8			modes;
 	u8			auto_recal_bit;
 	u8			recal_en_bit;
@@ -94,7 +94,7 @@ struct clk {
 	__u8			enable_bit;
 	__s8			usecount;
 	u8			idlest_bit;
-#if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
+#if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_NETRA)
 	u8			fixed_div;
 	u32			clksel_mask;
 	const struct clksel	*clksel;

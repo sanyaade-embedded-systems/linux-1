@@ -218,7 +218,8 @@
 #define OMAP3_IVA2_BOOTMOD_IDLE		(0x1 << 0)
 
 #ifndef __ASSEMBLY__
-#if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
+#if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_NETRA)
+/* !@@ */
 extern void __iomem *omap_ctrl_base_get(void);
 extern u8 omap_ctrl_readb(u16 offset);
 extern u16 omap_ctrl_readw(u16 offset);

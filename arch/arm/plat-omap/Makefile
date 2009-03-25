@@ -3,8 +3,13 @@
 #
 
 # Common support
-obj-y := common.o sram.o clock.o devices.o dma.o mux.o gpio.o \
+obj-y := common.o sram.o clock.o devices.o dma.o mux.o \
 	 usb.o fb.o io.o
+
+ifneq ($(CONFIG_ARCH_NETRA),y)
+obj-y += gpio.o
+endif
+
 obj-m :=
 obj-n :=
 obj-  :=

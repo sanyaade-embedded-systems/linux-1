@@ -572,6 +572,14 @@ config ARCH_OMAP
 	help
 	  Support for TI's OMAP platform (OMAP1 and OMAP2).
 
+config ARCH_NETRA
+	bool "TI Netra"
+	select CPU_ARM926T
+	select GENERIC_TIME
+	select GENERIC_CLOCKEVENTS
+	help
+	  Support for TI's Netra based systems.
+
 config ARCH_MSM
 	bool "Qualcomm MSM"
 	select CPU_V6
@@ -627,6 +635,8 @@ source "arch/arm/mach-omap1/Kconfig"
 source "arch/arm/mach-omap2/Kconfig"
 
 source "arch/arm/mach-orion5x/Kconfig"
+
+source "arch/arm/mach-netra/Kconfig"
 
 source "arch/arm/mach-kirkwood/Kconfig"
 

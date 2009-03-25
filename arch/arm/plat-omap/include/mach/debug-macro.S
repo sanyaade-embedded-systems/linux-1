@@ -36,18 +36,26 @@
 		add	\rx, \rx, #0x00004000	@ UART 3
 #endif
 
-#elif	CONFIG_ARCH_OMAP3
+#else  if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_NETRA) 
 		moveq	\rx, #0x48000000	@ physical base address
 		movne	\rx, #0xd8000000	@ virtual base
+#ifdef CONFIG_ARCH_NETRA
+		orr	\rx, \rx, #0x00020000
+#else
 		orr	\rx, \rx, #0x0006a000
+#endif
 #ifdef CONFIG_OMAP_LL_DEBUG_UART2
 		add	\rx, \rx, #0x00002000	@ UART 2
 #endif
 #ifdef CONFIG_OMAP_LL_DEBUG_UART3
+#ifdef CONFIG_ARCH_NETRA
+		add	\rx, \rx, #0x00002000	@ UART 3
+#else
 		add	\rx, \rx, #0x00fb0000	@ UART 3
 		add	\rx, \rx, #0x00006000
-#endif
-#endif
+#endif /* CONFIG_ARCH_OMAP3 */
+#endif /* CONFIG_OMAP_LL_DEBUG_UART3 */
+#endif /* CONFIG_ARCH_OMAP3 || CONFIG_ARCH_NETRA */
 		.endm
 
 		.macro	senduart,rd,rx

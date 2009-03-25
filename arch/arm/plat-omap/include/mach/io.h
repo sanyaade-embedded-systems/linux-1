@@ -100,7 +100,7 @@
 #define DSP_MMU_24XX_VIRT	0xe2000000
 #define DSP_MMU_24XX_SIZE	SZ_4K
 
-#elif defined(CONFIG_ARCH_OMAP3)
+#elif defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_NETRA)
 
 /* We map both L3 and L4 on OMAP3 */
 #define L3_34XX_PHYS		L3_34XX_BASE	/* 0x68000000 */
