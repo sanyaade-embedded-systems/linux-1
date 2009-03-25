@@ -181,7 +181,8 @@ static int da830_evm_mmc_get_cd(int index)
 static struct davinci_mmc_config da830_mmc_config = {
 	.get_ro         = da830_evm_mmc_get_ro,
 	.get_cd		= da830_evm_mmc_get_cd,
-	.wires          = 4
+	.wires          = 4,
+	.cc_inst	= EDMA_CC_INST_0
 };
 #endif
 

@@ -480,11 +480,13 @@ static int davinci_i2s_probe(struct platform_device *pdev,
 
 	dev->dma_params[SNDRV_PCM_STREAM_PLAYBACK] = &davinci_i2s_pcm_out;
 	dev->dma_params[SNDRV_PCM_STREAM_PLAYBACK]->channel = pdata->tx_dma_ch;
+	dev->dma_params[SNDRV_PCM_STREAM_PLAYBACK]->cc_inst = pdata->cc_inst;
 	dev->dma_params[SNDRV_PCM_STREAM_PLAYBACK]->dma_addr =
 	    (dma_addr_t)(io_v2p(dev->base) + DAVINCI_MCBSP_DXR_REG);
 
 	dev->dma_params[SNDRV_PCM_STREAM_CAPTURE] = &davinci_i2s_pcm_in;
 	dev->dma_params[SNDRV_PCM_STREAM_CAPTURE]->channel = pdata->rx_dma_ch;
+	dev->dma_params[SNDRV_PCM_STREAM_CAPTURE]->cc_inst = pdata->cc_inst;
 	dev->dma_params[SNDRV_PCM_STREAM_CAPTURE]->dma_addr =
 	    (dma_addr_t)(io_v2p(dev->base) + DAVINCI_MCBSP_DRR_REG);
 

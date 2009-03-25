@@ -512,10 +512,11 @@ static const s8 dma_chan_da850_no_event[] = {
 };
 
 static struct edma_soc_info da850_edma_info = {
-	.n_channel	= 32,
-	.n_region	= 4,
-	.n_slot		= 128,
-	.n_tc		= 2,
+	.n_channel	= 64,
+	.n_region	= 8,
+	.n_slot		= 256,
+	.n_tc		= 3,
+	.n_cc		= 2,
 	.noevent	= dma_chan_da850_no_event,
 };
 
@@ -523,7 +524,7 @@ static struct edma_soc_info da850_edma_info = {
 
 static struct resource edma_resources[] = {
 	{
-		.name	= "edma_cc",
+		.name	= "edma_cc0",
 		.start	= 0x01c00000,
 		.end	= 0x01c00000 + SZ_32K - 1,
 		.flags	= IORESOURCE_MEM,
@@ -541,11 +542,31 @@ static struct resource edma_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
+		.name	= "edma_cc1",
+		.start	= 0x01e30000,
+		.end	= 0x01e30000 + SZ_32K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "edma_tc2",
+		.start	= 0x01e38000,
+		.end	= 0x01e38000 + SZ_1K - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
 		.start	= IRQ_DA8XX_CCINT0,
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
 		.start	= IRQ_DA8XX_CCERRINT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_DA850_CCINT1,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_DA850_CCERRINT1,
 		.flags	= IORESOURCE_IRQ,
 	},
 	/* not using TC*_ERR */

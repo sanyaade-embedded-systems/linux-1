@@ -481,12 +481,13 @@ static struct edma_soc_info dm355_edma_info = {
 	.n_region	= 4,
 	.n_slot		= 128,
 	.n_tc		= 2,
+	.n_cc		= 1,
 	.noevent	= dma_chan_dm355_no_event,
 };
 
 static struct resource edma_resources[] = {
 	{
-		.name	= "edma_cc",
+		.name	= "edma_cc0",
 		.start	= 0x01c00000,
 		.end	= 0x01c00000 + SZ_64K - 1,
 		.flags	= IORESOURCE_MEM,

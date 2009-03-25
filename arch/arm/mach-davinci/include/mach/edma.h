@@ -175,39 +175,39 @@ enum sync_dimension {
 #define EDMA_SLOT_ANY			-1	/* for edma_alloc_slot() */
 
 /* alloc/free DMA channels and their dedicated parameter RAM slots */
-int edma_alloc_channel(int channel,
+int edma_alloc_channel(unsigned cc_inst, int channel,
 	void (*callback)(unsigned channel, u16 ch_status, void *data),
 	void *data, enum dma_event_q);
-void edma_free_channel(unsigned channel);
+void edma_free_channel(unsigned cc_inst, unsigned channel);
 
 /* alloc/free parameter RAM slots */
-int edma_alloc_slot(int slot);
-void edma_free_slot(unsigned slot);
+int edma_alloc_slot(unsigned cc_inst, int slot);
+void edma_free_slot(unsigned cc_inst, unsigned slot);
 
 /* calls that operate on part of a parameter RAM slot */
-void edma_set_src(unsigned slot, dma_addr_t src_port,
+void edma_set_src(unsigned cc_inst, unsigned slot, dma_addr_t src_port,
 				enum address_mode mode, enum fifo_width);
-void edma_set_dest(unsigned slot, dma_addr_t dest_port,
+void edma_set_dest(unsigned cc_inst, unsigned slot, dma_addr_t dest_port,
 				 enum address_mode mode, enum fifo_width);
-void edma_get_position(unsigned slot, dma_addr_t *src, dma_addr_t *dst);
-void edma_set_src_index(unsigned slot, s16 src_bidx, s16 src_cidx);
-void edma_set_dest_index(unsigned slot, s16 dest_bidx, s16 dest_cidx);
-void edma_set_transfer_params(unsigned slot, u16 acnt, u16 bcnt, u16 ccnt,
+void edma_get_position(unsigned cc_inst, unsigned slot, dma_addr_t *src, dma_addr_t *dst);
+void edma_set_src_index(unsigned cc_inst, unsigned slot, s16 src_bidx, s16 src_cidx);
+void edma_set_dest_index(unsigned cc_inst, unsigned slot, s16 dest_bidx, s16 dest_cidx);
+void edma_set_transfer_params(unsigned cc_inst, unsigned slot, u16 acnt, u16 bcnt, u16 ccnt,
 		u16 bcnt_rld, enum sync_dimension sync_mode);
-void edma_link(unsigned from, unsigned to);
-void edma_unlink(unsigned from);
+void edma_link(unsigned cc_inst, unsigned from, unsigned to);
+void edma_unlink(unsigned cc_inst, unsigned from);
 
 /* calls that operate on an entire parameter RAM slot */
-void edma_write_slot(unsigned slot, const struct edmacc_param *params);
-void edma_read_slot(unsigned slot, struct edmacc_param *params);
+void edma_write_slot(unsigned cc_inst, unsigned slot, const struct edmacc_param *params);
+void edma_read_slot(unsigned cc_inst, unsigned slot, struct edmacc_param *params);
 
 /* channel control operations */
-int edma_start(unsigned channel);
-void edma_stop(unsigned channel);
-void edma_clean_channel(unsigned channel);
-void edma_pause(unsigned channel);
-void edma_resume(unsigned channel);
-void edma_clear_event(int lch);
+int edma_start(unsigned cc_inst, unsigned channel);
+void edma_stop(unsigned cc_inst, unsigned channel);
+void edma_clean_channel(unsigned cc_inst, unsigned channel);
+void edma_pause(unsigned cc_inst, unsigned channel);
+void edma_resume(unsigned cc_inst, unsigned channel);
+void edma_clear_event(unsigned cc_inst, int lch);
 
 /* UNRELATED TO DMA */
 int davinci_alloc_iram(unsigned size);
@@ -221,6 +221,7 @@ struct edma_soc_info {
 	unsigned	n_region;
 	unsigned	n_slot;
 	unsigned	n_tc;
+	unsigned	n_cc;
 
 	/* list of channels with no even trigger; terminated by "-1" */
 	const s8	*noevent;

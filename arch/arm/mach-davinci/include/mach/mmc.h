@@ -19,7 +19,15 @@ struct davinci_mmc_config {
 
 	/* any additional host capabilities: OR'd in to mmc->f_caps */
 	u32     caps;
+
+	/* Instance of EDMA Channel Controller this MMC is on */
+	u8	cc_inst;
 };
 void davinci_setup_mmc(int module, struct davinci_mmc_config *config);
+
+enum {
+	EDMA_CC_INST_0 = 0,
+	EDMA_CC_INST_1,
+};
 
 #endif

@@ -17,11 +17,13 @@ struct davinci_pcm_dma_params {
 	int channel;		/* sync dma channel ID */
 	dma_addr_t dma_addr;	/* device physical address for DMA */
 	unsigned int data_type;	/* xfer data type */
+	u8 cc_inst;
 };
 
 struct evm_snd_platform_data {
 	int tx_dma_ch;
 	int rx_dma_ch;
+	u8 cc_inst;
 };
 
 extern struct snd_soc_platform davinci_soc_platform;

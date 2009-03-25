@@ -198,6 +198,9 @@ struct mmc_davinci_host {
 	/* For PIO we walk scatterlists one segment at a time. */
 	unsigned int		sg_len;
 	int			sg_idx;
+
+	/* Instance of EDMA Channel Controller this MMC is on */
+	u8 cc_inst;
 };
 
 
@@ -376,11 +379,11 @@ static void mmc_davinci_start_command(struct mmc_davinci_host *host,
 
 static void davinci_reinit_chan(struct mmc_davinci_host *host)
 {
-	edma_stop(host->txdma);
-	edma_clean_channel(host->txdma);
+	edma_stop(host->cc_inst, host->txdma);
+	edma_clean_channel(host->cc_inst, host->txdma);
 
-	edma_stop(host->rxdma);
-	edma_clean_channel(host->rxdma);
+	edma_stop(host->cc_inst, host->rxdma);
+	edma_clean_channel(host->cc_inst, host->rxdma);
 }
 
 static void davinci_abort_dma(struct mmc_davinci_host *host)
@@ -392,8 +395,8 @@ static void davinci_abort_dma(struct mmc_davinci_host *host)
 	else
 		sync_dev = host->txdma;
 
-	edma_stop(sync_dev);
-	edma_clean_channel(sync_dev);
+	edma_stop(host->cc_inst, sync_dev);
+	edma_clean_channel(host->cc_inst, sync_dev);
 
 	/* Re-intialize the DMA channels */
 	davinci_reinit_chan(host);
@@ -470,15 +473,15 @@ static void __init mmc_davinci_dma_setup(struct mmc_davinci_host *host,
 	 * are not 256-bit (32-byte) aligned.  So we use INCR, and the W8BIT
 	 * parameter is ignored.
 	 */
-	edma_set_src(sync_dev, src_port, INCR, W8BIT);
-	edma_set_dest(sync_dev, dst_port, INCR, W8BIT);
+	edma_set_src(host->cc_inst, sync_dev, src_port, INCR, W8BIT);
+	edma_set_dest(host->cc_inst, sync_dev, dst_port, INCR, W8BIT);
 
-	edma_set_src_index(sync_dev, src_bidx, src_cidx);
-	edma_set_dest_index(sync_dev, dst_bidx, dst_cidx);
+	edma_set_src_index(host->cc_inst, sync_dev, src_bidx, src_cidx);
+	edma_set_dest_index(host->cc_inst, sync_dev, dst_bidx, dst_cidx);
 
-	edma_set_transfer_params(sync_dev, acnt, bcnt, ccnt, 8, ABSYNC);
+	edma_set_transfer_params(host->cc_inst, sync_dev, acnt, bcnt, ccnt, 8, ABSYNC);
 
-	edma_read_slot(sync_dev, template);
+	edma_read_slot(host->cc_inst, sync_dev, template);
 
 	/* don't bother with irqs or chaining */
 	template->opt |= sync_dev << 12;
@@ -528,12 +531,12 @@ static void mmc_davinci_send_dma_request(struct mmc_davinci_host *host,
 			template->dst = buf;
 		template->ccnt = count >> shift;
 
-		edma_write_slot(slot, template);
+		edma_write_slot(host->cc_inst, slot, template);
 	}
 
 	if (cpu_is_da830() || cpu_is_da850())
-		edma_clear_event(channel);
-	edma_start(channel);
+		edma_clear_event(host->cc_inst, channel);
+	edma_start(host->cc_inst, channel);
 }
 
 static int mmc_davinci_start_dma_transfer(struct mmc_davinci_host *host,
@@ -574,10 +577,10 @@ davinci_release_dma_channels(struct mmc_davinci_host *host)
 		return;
 
 	for (i = 0; i < host->n_link; i++)
-		edma_free_slot(host->links[i]);
+		edma_free_slot(host->cc_inst, host->links[i]);
 
-	edma_free_channel(host->txdma);
-	edma_free_channel(host->rxdma);
+	edma_free_channel(host->cc_inst, host->txdma);
+	edma_free_channel(host->cc_inst, host->rxdma);
 }
 
 static int __init davinci_acquire_dma_channels(struct mmc_davinci_host *host)
@@ -585,7 +588,7 @@ static int __init davinci_acquire_dma_channels(struct mmc_davinci_host *host)
 	int r, i;
 
 	/* Acquire master DMA write channel */
-	r = edma_alloc_channel(host->txdma, mmc_davinci_dma_cb, host,
+	r = edma_alloc_channel(host->cc_inst, host->txdma, mmc_davinci_dma_cb, host,
 			EVENTQ_DEFAULT);
 	if (r < 0) {
 		dev_warn(mmc_dev(host->mmc), "alloc %s channel err %d\n",
@@ -595,7 +598,7 @@ static int __init davinci_acquire_dma_channels(struct mmc_davinci_host *host)
 	mmc_davinci_dma_setup(host, true, &host->tx_template);
 
 	/* Acquire master DMA read channel */
-	r = edma_alloc_channel(host->rxdma, mmc_davinci_dma_cb, host,
+	r = edma_alloc_channel(host->cc_inst, host->rxdma, mmc_davinci_dma_cb, host,
 			EVENTQ_DEFAULT);
 	if (r < 0) {
 		dev_warn(mmc_dev(host->mmc), "alloc %s channel err %d\n",
@@ -608,7 +611,7 @@ static int __init davinci_acquire_dma_channels(struct mmc_davinci_host *host)
 	 * channel as needed to handle a scatterlist.
 	 */
 	for (i = 0; i < ARRAY_SIZE(host->links); i++) {
-		r = edma_alloc_slot(EDMA_SLOT_ANY);
+		r = edma_alloc_slot(host->cc_inst, EDMA_SLOT_ANY);
 		if (r < 0) {
 			dev_dbg(mmc_dev(host->mmc), "dma PaRAM alloc --> %d\n",
 				r);
@@ -621,7 +624,7 @@ static int __init davinci_acquire_dma_channels(struct mmc_davinci_host *host)
 	return 0;
 
 free_master_write:
-	edma_free_channel(host->txdma);
+	edma_free_channel(host->cc_inst, host->txdma);
 
 	return r;
 }
@@ -1132,6 +1135,7 @@ static int __init davinci_mmcsd_probe(struct platform_device *pdev)
 
 	host->use_dma = use_dma;
 	host->irq = irq;
+	host->cc_inst = pdata->cc_inst;
 
 	if (host->use_dma && davinci_acquire_dma_channels(host) != 0)
 		host->use_dma = 0;
@@ -1141,6 +1145,8 @@ static int __init davinci_mmcsd_probe(struct platform_device *pdev)
 
 	if (!pdata || pdata->wires == 4 || pdata->wires == 0)
 		mmc->caps |= MMC_CAP_4_BIT_DATA;
+
+	//host->cc_inst = pdata->cc_inst;
 
 	mmc->ops = &mmc_davinci_ops;
 	mmc->f_min = 312500;
