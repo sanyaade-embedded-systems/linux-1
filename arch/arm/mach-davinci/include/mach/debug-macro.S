@@ -22,19 +22,15 @@
 		.macro addruart, rx
 		mrc	p15, 0, \rx, c1, c0
 		tst	\rx, #1			@ MMU enabled?
-#if defined (CONFIG_ARCH_DA830)
-		moveq	\rx, #0x01d00000	@ physical base address
+		moveq	\rx, #0x01000000	@ physical base address
 		movne	\rx, #0xfe000000	@ virtual base
+#if defined (CONFIG_ARCH_DA830)
 		orr	\rx, \rx, #0x00d00000   @ UART 2
 		orr	\rx, \rx, #0x0000d000   @ UART 2
 #elif defined (CONFIG_ARCH_DA850)
-		moveq	\rx, #0x01c00000	@ physical base address
-		movne	\rx, #0xfe000000	@ virtual base
-		orr	\rx, \rx, #0x00400000   @ UART 0
+		orr	\rx, \rx, #0x00c40000   @ UART 0
 		orr	\rx, \rx, #0x00002000   @ UART 0
 #else
-		moveq	\rx, #0x01000000	@ physical base address
-		movne	\rx, #0xfe000000	@ virtual base
 		orr	\rx, \rx, #0x00c20000   @ UART 0
 #endif
 		.endm
