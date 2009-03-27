@@ -40,6 +40,7 @@
 #define PDCTL1		0x304
 #define MDSTAT		0x800
 #define MDCTL		0xA00
+#define MDSTAT_STATE_MASK 0x1f
 
 static u32 davinci_psc_base[] = { (u32)IO_ADDRESS(DAVINCI_PWR_SLEEP_CNTRL_BASE) };
 static u32 da8xx_psc_base[] = { (u32)IO_ADDRESS(DA8XX_PSC0_BASE),
@@ -59,7 +60,8 @@ int __init davinci_psc_is_clk_active(unsigned int id)
 /* Enable or disable a PSC domain */
 void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 {
-	u32 epcpr, ptcmd, ptstat, pdstat, pdctl1, mdstat, mdctl, mdstat_mask;
+	u32 epcpr, ptcmd, ptstat, pdstat, pdctl1, mdstat, mdctl;
+	u32 next_state = enable ? 0x3 : 0x2; /* 0x3 enables, 0x2 disables */
 	void __iomem *psc_base;
 	u32 domain_shift;
 
@@ -81,10 +83,8 @@ void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 	domain_shift = 0;	
 
 	mdctl = __raw_readl(psc_base + MDCTL + 4 * id);
-	if (enable)
-		mdctl |= 0x00000003;	/* Enable Module */
-	else
-		mdctl &= 0xFFFFFFE2;	/* Disable Module */
+	mdctl &= ~MDSTAT_STATE_MASK;
+	mdctl |= next_state;
 	__raw_writel(mdctl, psc_base + MDCTL + 4 * id);
 
 	pdstat = __raw_readl(psc_base + PDSTAT);
@@ -117,12 +117,7 @@ void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 		} while (!(((ptstat >> domain_shift) & 1) == 0));
 	}
 
-	if (enable)
-		mdstat_mask = 0x3;
-	else
-		mdstat_mask = 0x2;
-
 	do {
 		mdstat = __raw_readl(psc_base + MDSTAT + 4 * id);
-	} while (!((mdstat & 0x0000001F) == mdstat_mask));
+	} while (!((mdstat & MDSTAT_STATE_MASK) == next_state));
 }
