@@ -141,20 +141,20 @@ void __init davinci_serial_init(struct davinci_uart_config *info)
 			p->iotype = UPIO_MEM32;
 			if (i == 0) {
 				p->membase = (char *)
-					IO_ADDRESS(DA830_UART0_BASE);
-				p->mapbase = (unsigned long)DA830_UART0_BASE;
+					IO_ADDRESS(DA8XX_UART0_BASE);
+				p->mapbase = (unsigned long)DA8XX_UART0_BASE;
 				p->irq = IRQ_DA8XX_UARTINT0;
 			}
 			if (i == 1) {
 				p->membase = (char *)
-					IO_ADDRESS(DA830_UART1_BASE);
-				p->mapbase = (unsigned long)DA830_UART1_BASE;
+					IO_ADDRESS(DA8XX_UART1_BASE);
+				p->mapbase = (unsigned long)DA8XX_UART1_BASE;
 				p->irq = IRQ_DA8XX_UARTINT1;
 			}
 			if (i == 2) {
 				p->membase = (char *)
-					IO_ADDRESS(DA830_UART2_BASE);
-				p->mapbase = (unsigned long)DA830_UART2_BASE;
+					IO_ADDRESS(DA8XX_UART2_BASE);
+				p->mapbase = (unsigned long)DA8XX_UART2_BASE;
 				p->irq = IRQ_DA8XX_UARTINT2;
 			}
 		}

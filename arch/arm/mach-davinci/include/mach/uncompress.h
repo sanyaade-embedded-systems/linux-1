@@ -24,7 +24,9 @@ static u32 *get_uart_base(void)
 {
 	/* Add logic here for new platforms */
 #ifdef CONFIG_ARCH_DA830
-	return (u32 *)DA830_UART2_BASE;
+	return (u32 *)DA8XX_UART2_BASE;
+#elif defined(CONFIG_ARCH_DA850)
+	return (u32 *)DA8XX_UART0_BASE;
 #else
 	return (u32 *)DAVINCI_UART0_BASE;
 #endif
