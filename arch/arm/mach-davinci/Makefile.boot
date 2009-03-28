@@ -4,7 +4,7 @@ params_phys-y	:= 0x80000100
 initrd_phys-y	:= 0x80800000
 endif
 
-ifdef CONFIG_ARCH_DA830
+ifdef CONFIG_ARCH_DA8XX
    zreladdr-y	:= 0xC0008000
 params_phys-y	:= 0xC0000100
 initrd_phys-y	:= 0xC0800000
