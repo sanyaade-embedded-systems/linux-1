@@ -402,7 +402,7 @@ static void __init davinci_timer_init(void)
 	num_timers = 2;
 	bases = davinci_bases;
 	timer_irqs = default_timer_irqs;
-	if (cpu_is_da830() || cpu_is_da850()) {
+	if (cpu_is_da8xx()) {
 		/*
 		 * Configure the 2 64-bit timer as 4 32-bit timers with
 		 * following assignments.

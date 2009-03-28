@@ -481,7 +481,7 @@ static struct platform_device da8xx_wdt_device = {
 
 static void davinci_init_wdt(void)
 {
-	if (cpu_is_da830() || cpu_is_da850())
+	if (cpu_is_da8xx())
 		platform_device_register(&da8xx_wdt_device);
 	else
 		platform_device_register(&davinci_wdt_device);
@@ -663,10 +663,10 @@ void davinci_init_emac(char *mac_addr)
 	DECLARE_MAC_BUF(buf);
 
 	if (!(cpu_is_davinci_dm644x() || cpu_is_davinci_dm646x()
-		|| cpu_is_da830() || cpu_is_da850()))
+		|| cpu_is_da8xx()))
 		return;
 
-	if (cpu_is_da830() || cpu_is_da850()) {
+	if (cpu_is_da8xx()) {
 		davinci_cfg_reg(DA830_RMII_TXD_0);
 		davinci_cfg_reg(DA830_RMII_TXD_1);
 		davinci_cfg_reg(DA830_RMII_TXEN);
@@ -695,7 +695,7 @@ void davinci_init_emac(char *mac_addr)
 		(void) platform_device_register(&davinci_emac_device);
 	else if (cpu_is_davinci_dm646x())
 		(void) platform_device_register(&dm646x_emac_device);
-	else if (cpu_is_da830() || cpu_is_da850())
+	else if (cpu_is_da8xx())
 		(void) platform_device_register(&da8xx_emac_device);
 }
 
@@ -747,7 +747,7 @@ static int __init davinci_init_devices(void)
 	 * in alphabetical order so they're easier to sort through.
 	 */
 	davinci_init_wdt();
-	if (cpu_is_da830() || cpu_is_da850()) {
+	if (cpu_is_da8xx()) {
 		ret = platform_device_register(&da8xx_lcdc_device);
 
 		if (ret)

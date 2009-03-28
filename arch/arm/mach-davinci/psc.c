@@ -56,7 +56,7 @@ void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 	if (id > 64)
 		return;
 
-	if (cpu_is_da830() || cpu_is_da850())
+	if (cpu_is_da8xx())
 		psc_base_array = da8xx_psc_base;
 	else
 		psc_base_array = davinci_psc_base;

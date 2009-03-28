@@ -68,7 +68,7 @@ void __init davinci_map_common_io(void)
 	 * Map the interrupt controller to a common address across all
 	 * SoCs.  Other SoC specific mapping can go here as well.
 	 */
-	if (cpu_is_da830() || cpu_is_da850())
+	if (cpu_is_da8xx())
 		iotable_init(da8xx_intc_desc,
 				ARRAY_SIZE(da8xx_intc_desc));
 }

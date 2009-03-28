@@ -68,7 +68,7 @@ int __init_or_module davinci_cfg_reg(const unsigned long index)
 	if (!mux_table)
 		BUG();
 
-	if (cpu_is_da830() || cpu_is_da850()) {
+	if (cpu_is_da8xx()) {
 		base = IO_ADDRESS(DA8XX_BOOT_CFG_BASE);
 
 		/* Unlock the SYSCFG registers */

@@ -137,7 +137,7 @@ void __init davinci_serial_init(struct davinci_uart_config *info)
 			}
 		}
 
-		if (cpu_is_da830() || cpu_is_da850()) {
+		if (cpu_is_da8xx()) {
 			p->iotype = UPIO_MEM32;
 			if (i == 0) {
 				p->membase = (char *)

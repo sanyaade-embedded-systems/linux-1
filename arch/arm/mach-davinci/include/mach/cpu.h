@@ -19,22 +19,16 @@
 extern unsigned int davinci_rev(void);
 
 #define IS_DAVINCI_CPU(type, id)			\
-static inline int is_davinci_dm ##type(void)	        \
+static inline int is_davinci_ ##type(void)	        \
 {							\
 	return (davinci_rev() == (id)) ? 1 : 0;	        \
 }
 
-#define IS_OMAP_CPU(type, id)			\
-static inline int is_omap_da ##type(void)	        \
-{							\
-	return (davinci_rev() == (id)) ? 1 : 0;	        \
-}
-
-IS_DAVINCI_CPU(644x, 0x6446)
-IS_DAVINCI_CPU(646x, 0x6467)
-IS_DAVINCI_CPU(355, 0x355)
-IS_OMAP_CPU(830, 0x830)
-IS_OMAP_CPU(850, 0x850)
+IS_DAVINCI_CPU(dm644x, 0x6446)
+IS_DAVINCI_CPU(dm646x, 0x6467)
+IS_DAVINCI_CPU(dm355, 0x355)
+IS_DAVINCI_CPU(da830, 0x830)
+IS_DAVINCI_CPU(da850, 0x850)
 
 #ifdef CONFIG_ARCH_DAVINCI_DM644x
 #define cpu_is_davinci_dm644x() is_davinci_dm644x()
@@ -55,14 +49,20 @@ IS_OMAP_CPU(850, 0x850)
 #endif
 
 #ifdef CONFIG_ARCH_DA830
-#define cpu_is_da830() is_omap_da830()
+#define cpu_is_da830() is_davinci_da830()
 #else
 #define cpu_is_da830() 0
 #endif
 
 #ifdef CONFIG_ARCH_DA850
-#define cpu_is_da850() is_omap_da850()
+#define cpu_is_da850() is_davinci_da850()
 #else
 #define cpu_is_da850() 0
 #endif
+#endif
+
+#if defined(CONFIG_ARCH_DA830) || defined (CONFIG_ARCH_DA850)
+#define cpu_is_da8xx()	(cpu_is_da830() || cpu_is_da850())
+#else
+#define cpu_is_da8xx()	0
 #endif
