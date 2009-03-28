@@ -15,7 +15,7 @@
 #include <linux/init.h>
 #include <linux/io.h>
 
-#ifdef CONFIG_ARCH_DA830
+#ifdef CONFIG_ARCH_DA8XX
 #define JTAG_ID_BASE		IO_ADDRESS(0x01c14018)
 #else
 #define JTAG_ID_BASE		IO_ADDRESS(0x01c40028)
@@ -129,11 +129,11 @@ void __init davinci_check_revision(void)
 		}
 	}
 
-#ifndef CONFIG_ARCH_DA830
-	printk(KERN_INFO "DaVinci DM%04x variant 0x%x\n",
+#ifdef CONFIG_ARCH_DA8XX
+	printk(KERN_INFO "DA%04x variant 0x%x\n",
 	       davinci_rev(), variant);
 #else
-	printk(KERN_INFO "DA%04x variant 0x%x\n",
+	printk(KERN_INFO "DaVinci DM%04x variant 0x%x\n",
 	       davinci_rev(), variant);
 #endif
 }

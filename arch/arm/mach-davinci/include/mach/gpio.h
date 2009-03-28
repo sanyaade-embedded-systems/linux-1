@@ -18,10 +18,10 @@
 
 #include <mach/irqs.h>
 
-#ifndef CONFIG_ARCH_DA830
-#define DAVINCI_GPIO_BASE 0x01C67000
-#else
+#ifndef CONFIG_ARCH_DA8XX
 #define DAVINCI_GPIO_BASE 0x01E26000
+#else
+#define DAVINCI_GPIO_BASE 0x01C67000
 #endif
 
 /*

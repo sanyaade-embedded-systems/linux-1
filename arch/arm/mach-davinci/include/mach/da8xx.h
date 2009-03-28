@@ -1,6 +1,6 @@
 /*
  * This file contains the processor specific definitions
- * of the TI DA830.
+ * of the TI DA830/DA850
  *
  * Copyright (C) 2008 Texas Instruments.
  *
@@ -19,8 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-#ifndef __ASM_ARCH_DA830_H
-#define __ASM_ARCH_DA830_H
+#ifndef __ASM_ARCH_DA8XX_H
+#define __ASM_ARCH_DA8XX_H
 
 #include <mach/hardware.h>
 
@@ -72,4 +72,4 @@ void da8xx_init_rtc(void);
 #define DA8XX_LCD_CNTRL_BASE			0x01E13000
 #define DA8XX_EMIF30_ASYNC_DATA_CE5_BASE	0xC0000000
 
-#endif /* __ASM_ARCH_DA830_H */
+#endif /* __ASM_ARCH_DA8XX_H */

@@ -495,7 +495,7 @@ void davinci_watchdog_reset(void) {
 		return;
 	clk_enable(wd_clk);
 
-	if (cpu_is_da830() || cpu_is_da850())
+	if (cpu_is_da8xx())
 		base = IO_ADDRESS(DA830_TIMER64P1_BASE);
 
 	/* disable, internal clock source */

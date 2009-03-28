@@ -100,7 +100,7 @@
 #else
 #define DAVINCI_N_AINTC_IRQ	64
 #endif
-#ifdef CONFIG_ARCH_DA830
+#ifdef CONFIG_ARCH_DA8XX
 #define DAVINCI_N_GPIO		128
 #else
 #define DAVINCI_N_GPIO		104

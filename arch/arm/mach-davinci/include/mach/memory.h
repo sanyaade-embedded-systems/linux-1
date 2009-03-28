@@ -20,7 +20,7 @@
 /**************************************************************************
  * Definitions
  **************************************************************************/
-#ifdef CONFIG_ARCH_DA830
+#ifdef CONFIG_ARCH_DA8XX
 #define DAVINCI_DDR_BASE    0xc0000000
 #define DAVINCI_IRAM_BASE   0x80000000 /* ARM Internal RAM */
 #else
