@@ -38,6 +38,7 @@ struct davinci_spi_platform_data {
 	u8	*chip_sel;
 	char	*clk_name;
 	struct clk *clk_info;
+	u8	cc_inst;
 };
 
 #endif				/* __DAVINCI_SPI_H_ */

@@ -12,6 +12,7 @@
 #include <linux/init.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
+#include <linux/spi/davinci_spi_master.h>
 
 #include <mach/da8xx.h>
 #include <mach/clock.h>
@@ -485,6 +486,141 @@ static struct platform_device da830_edma_device = {
 	.num_resources		= ARRAY_SIZE(edma_resources),
 	.resource		= edma_resources,
 };
+
+static struct davinci_spi_platform_data da8xx_spi_pdata0 = {
+	.version = DAVINCI_SPI_VERSION_2,
+	.clk_name = "SPI0CLK",
+	.cc_inst = 0
+};
+
+static struct resource da8xx_spi_resources0[] = {
+	[0] = {
+		.start = 0x01C41000,
+		.end = 0x01C41000 + 0xfff,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_DA8XX_SPINT0,
+		.end = IRQ_DA8XX_SPINT0,
+		.flags = IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start = 14,
+		.end = 14,
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_RX_CHAN,
+	},
+	[3] = {
+		.start = 15,
+		.end = 15,
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_TX_CHAN,
+	},
+	[4] = {
+		.start = 1,
+		.end = 1,
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_EVENT_Q,
+	},
+};
+
+static struct platform_device da8xx_spi_pdev0 = {
+	.name = "dm_spi",
+	.id = 0,
+	.resource = da8xx_spi_resources0,
+	.num_resources = ARRAY_SIZE(da8xx_spi_resources0),
+	.dev = {
+		.platform_data = &da8xx_spi_pdata0,
+	},
+};
+
+static struct davinci_spi_platform_data da8xx_spi_pdata1 = {
+	.version = DAVINCI_SPI_VERSION_2,
+	.clk_name = "SPI1CLK",
+	.cc_inst = 0
+};
+
+static struct resource da8xx_spi_resources1[] = {
+	[0] = {
+		.start = 0x01E12000,
+		.end = 0x01E12000 + 0xfff,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_DA8XX_SPINT1,
+		.end = IRQ_DA8XX_SPINT1,
+		.flags = IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start = 18,
+		.end = 18,
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_RX_CHAN,
+	},
+	[3] = {
+		.start = 19,
+		.end = 19,
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_TX_CHAN,
+	},
+	[4] = {
+		.start = 1,
+		.end = 1,
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_EVENT_Q,
+	},
+};
+
+static struct platform_device da8xx_spi_pdev1 = {
+	.name = "dm_spi",
+	.id = 1,
+	.resource = da8xx_spi_resources1,
+	.num_resources = ARRAY_SIZE(da8xx_spi_resources1),
+	.dev = {
+		.platform_data = &da8xx_spi_pdata1,
+	},
+};
+
+void __init da8xx_init_spi0(unsigned char* chip_sel, unsigned int num_sel,
+	struct spi_board_info *info, unsigned num_dev)
+{
+	struct davinci_spi_platform_data *pdata =
+			da8xx_spi_pdev0.dev.platform_data;
+	/* TODO:
+	* 1.  remove ENA pin mux. It is likely not used anywhere.
+	* 2.  do pinmux based on chipsel mask ala DM355
+	*/
+	davinci_cfg_reg(DA830_SPI0_SOMI_0);
+	davinci_cfg_reg(DA830_SPI0_SIMO_0);
+	davinci_cfg_reg(DA830_SPI0_CLK);
+
+	if (num_sel && (!chip_sel || chip_sel[0] == DAVINCI_SPI_INTERN_CS))
+		davinci_cfg_reg(DA830_NSPI0_SCS_0);
+
+	spi_register_board_info(info, num_dev);
+
+	pdata->chip_sel = chip_sel;
+	pdata->num_chipselect = num_sel;
+	platform_device_register(&da8xx_spi_pdev0);
+}
+
+void __init da8xx_init_spi1(unsigned char* chip_sel, unsigned int num_sel,
+	struct spi_board_info *info, unsigned num_dev)
+{
+	struct davinci_spi_platform_data *pdata =
+			da8xx_spi_pdev1.dev.platform_data;
+	/* TODO
+	* 1.  remove ENA pin mux. It is likely not used anywhere.
+	* 2.  do pinmux based on chipsel mask ala DM355
+	*/
+
+	davinci_cfg_reg(DA830_SPI1_SOMI_0);
+	davinci_cfg_reg(DA830_SPI1_SIMO_0);
+	davinci_cfg_reg(DA830_SPI1_CLK);
+
+	if (num_sel && (!chip_sel || chip_sel[0] == DAVINCI_SPI_INTERN_CS))
+		davinci_cfg_reg(DA830_NSPI1_SCS_0);
+
+	spi_register_board_info(info, num_dev);
+
+	pdata->chip_sel = chip_sel;
+	pdata->num_chipselect = num_sel;
+	platform_device_register(&da8xx_spi_pdev1);
+}
 
 void __init da830_init(void)
 {
