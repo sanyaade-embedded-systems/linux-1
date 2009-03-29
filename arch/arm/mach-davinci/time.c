@@ -388,7 +388,7 @@ static u32 da830_bases[] = { DA830_TIMER64P0_BASE,
 static void __init davinci_timer_init(void)
 {
 	int num_timers;
-	int *timer_irqs, *cmp_irqs;
+	int *timer_irqs = NULL, *cmp_irqs = NULL;
 	u32 *bases;
 	struct clk *timer_clk;
 
