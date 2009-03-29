@@ -36,8 +36,8 @@ static unsigned int davinci_clock_tick_rate;
 #define DAVINCI_TIMER0_BASE (IO_PHYS + 0x21400)
 #define DAVINCI_TIMER1_BASE (IO_PHYS + 0x21800)
 #define DAVINCI_WDOG_BASE   (IO_PHYS + 0x21C00)
-#define DA830_TIMER64P0_BASE		0x01C20000
-#define DA830_TIMER64P1_BASE		0x01C21000
+#define DA8XX_TIMER64P0_BASE		0x01C20000
+#define DA8XX_TIMER64P1_BASE		0x01C21000
 
 enum {
 	T0_BOT = 0, T0_TOP, T1_BOT, T1_TOP, NUM_TIMERS,
@@ -55,7 +55,7 @@ static int default_timer_irqs[NUM_TIMERS] = {
 	IRQ_TINT1_TINT34,
 };
 
-static int da830_timer_irqs[NUM_TIMERS] = {
+static int da8xx_timer_irqs[NUM_TIMERS] = {
 	IRQ_DA8XX_TINT12_0,
 	IRQ_DA8XX_TINT34_0,
 	IRQ_DA8XX_TINT12_1,
@@ -382,8 +382,7 @@ static struct clock_event_device clockevent_davinci = {
 };
 
 static u32 davinci_bases[] = { DAVINCI_TIMER0_BASE, DAVINCI_TIMER1_BASE };
-static u32 da830_bases[] = { DA830_TIMER64P0_BASE,
-				DA830_TIMER64P1_BASE };
+static u32 da8xx_bases[] = { DA8XX_TIMER64P0_BASE, DA8XX_TIMER64P1_BASE };
 
 static void __init davinci_timer_init(void)
 {
@@ -402,6 +401,14 @@ static void __init davinci_timer_init(void)
 	num_timers = 2;
 	bases = davinci_bases;
 	timer_irqs = default_timer_irqs;
+	/*
+	 * DA850 does not support compare IRQs for bottom two timers.
+	 * It has 4 timers, so assume using compare registers is not
+	 * really a necessity.
+	 */
+	if (cpu_is_da830())
+		cmp_irqs = da830_cmp_irqs;
+
 	if (cpu_is_da8xx()) {
 		/*
 		 * Configure the 2 64-bit timer as 4 32-bit timers with
@@ -414,10 +421,8 @@ static void __init davinci_timer_init(void)
 		tid_system = T0_BOT;
 
 		/* timer interrupt using compare reg so free-run not needed */
-		bases = da830_bases;
-		timer_irqs = da830_timer_irqs;
-		cmp_irqs = da830_cmp_irqs;
-		num_timers = 2;
+		bases = da8xx_bases;
+		timer_irqs = da8xx_timer_irqs;
 		tid_freerun = T0_TOP;
 	} else if (cpu_is_davinci_dm646x()) {
 		/*
@@ -496,7 +501,7 @@ void davinci_watchdog_reset(void) {
 	clk_enable(wd_clk);
 
 	if (cpu_is_da8xx())
-		base = IO_ADDRESS(DA830_TIMER64P1_BASE);
+		base = IO_ADDRESS(DA8XX_TIMER64P1_BASE);
 
 	/* disable, internal clock source */
 	__raw_writel(0, base + TCR);
