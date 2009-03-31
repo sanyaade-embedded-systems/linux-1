@@ -41,7 +41,7 @@
 #define MDSTAT		0x800
 #define MDCTL		0xA00
 
-u32 davinci_psc_base[] = { (u32)IO_ADDRESS(DAVINCI_PWR_SLEEP_CNTRL_BASE) };
+static u32 davinci_psc_base[] = { (u32)IO_ADDRESS(DAVINCI_PWR_SLEEP_CNTRL_BASE) };
 static u32 da8xx_psc_base[] = { (u32)IO_ADDRESS(DA8XX_PSC0_BASE),
 				   (u32)IO_ADDRESS(DA8XX_PSC1_BASE) };
 static u32 *psc_base_array;
@@ -61,7 +61,7 @@ void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 	else
 		psc_base_array = davinci_psc_base;
 
-	if (id > 32) {
+	if (cpu_is_da8xx() && id > 32) {
 		id -= 32;
 		domain = 1;
 	}
