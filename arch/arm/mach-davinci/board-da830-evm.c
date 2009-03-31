@@ -65,7 +65,7 @@ static struct mtd_partition spi_flash_partitions[] = {
 	[0] = {
 		.name = "U-Boot",
 		.offset = 0,
-		.size = SZ_128K,
+		.size = SZ_256K,
 		.mask_flags = MTD_WRITEABLE,
 	},
 	[1] = {
