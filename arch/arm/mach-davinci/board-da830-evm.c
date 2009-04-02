@@ -61,7 +61,6 @@
 
 #include "clock.h"
 
-#if defined(CONFIG_MTD_SPI_FLASH) || defined(CONFIG_MTD_SPI_FLASH_MODULE)
 static struct mtd_partition spi_flash_partitions[] = {
 	[0] = {
 		.name = "U-Boot",
@@ -109,10 +108,7 @@ static struct flash_platform_data spi_flash_data = {
 	.type = "w25x32",
 };
 
-#endif
-
 static struct spi_board_info da8xx_spi_board_info0[] = {
-#if defined(CONFIG_MTD_SPI_FLASH) || defined(CONFIG_MTD_SPI_FLASH_MODULE)
 	[0] = {
 		.modalias = "m25p80",
 		.platform_data = &spi_flash_data,
@@ -122,7 +118,6 @@ static struct spi_board_info da8xx_spi_board_info0[] = {
 		.bus_num = 0,
 		.chip_select = 0,
 	},
-#endif
 };
 struct mtd_partition da830_evm_nandflash_partition[] = {
 	/* 5 MB space at the beginning for bootloader and kernel */
