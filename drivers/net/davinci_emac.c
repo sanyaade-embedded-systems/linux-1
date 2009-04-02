@@ -128,7 +128,7 @@ static const char emac_version_string[] = "TI DaVinci EMAC Linux v6.0";
 #define EMAC_DEF_TXPACING_EN		(0) /* TX pacing NOT supported*/
 
 #define EMAC_DEF_BUFFER_OFFSET		(0) /* Buffer offset to DMA (future) */
-#define EMAC_DEF_EXTRA_RXBUF_SIZE	(32)/* Extra bytes in each RX packet */
+#define EMAC_DEF_EXTRA_RXBUF_SIZE	(34)/* Extra bytes in each RX packet */
 #define EMAC_DEF_MIN_ETHPKTSIZE		(60) /* Minimum ethernet pkt size */
 #define EMAC_DEF_MAX_FRAME_SIZE		(1500 + 14 + 4 + 4 + \
 					 (EMAC_DEF_EXTRA_RXBUF_SIZE))
