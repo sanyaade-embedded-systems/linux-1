@@ -359,7 +359,12 @@ static void davinci_set_mode(enum clock_event_mode mode,
 	case CLOCK_EVT_MODE_PERIODIC:
 		t->period = davinci_clock_tick_rate / (HZ);
 		t->opts = TIMER_OPTS_PERIODIC;
-		timer32_config(t);
+
+		if (t->cmp_off)
+			davinci_set_next_event(davinci_clock_tick_rate / HZ,
+						evt);
+		else
+			timer32_config(t);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
 		t->opts = TIMER_OPTS_ONESHOT;
@@ -419,11 +424,15 @@ static void __init davinci_timer_init(void)
 		 * T1_BOT: Timer 1, watch dog timer.
 		 */
 		tid_system = T0_BOT;
-
-		/* timer interrupt using compare reg so free-run not needed */
 		bases = da8xx_bases;
 		timer_irqs = da8xx_timer_irqs;
-		tid_freerun = T0_TOP;
+
+		/* timer interrupt using compare reg so free-run not needed */
+		if (cmp_irqs != NULL)
+			tid_freerun = T0_BOT;
+		else
+			tid_freerun = T0_TOP;
+
 	} else if (cpu_is_davinci_dm646x()) {
 		/*
 		 * Configure the 2 64-bit timer as 4 32-bit timers with
