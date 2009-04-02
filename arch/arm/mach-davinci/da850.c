@@ -27,235 +27,214 @@
 /*
  * Device specific clocks
  */
-#define DA850_REF_FREQ	12000000
 #define DA850_AUX_FREQ	24000000
 
-static struct pll_data pll1_data = {
-	.num       = 1,
-	.phys_base = DA8XX_PLL_CNTRL0_BASE,
+static struct pll_data pll0_data = {
+	.num		= 1,
+	.phys_base	= DA8XX_PLL_CNTRL0_BASE,
+	.flags		= PLL_HAS_PREDIV | PLL_HAS_POSTDIV,
 };
 
 static struct clk ref_clk = {
-	.name = "ref_clk",
-	.rate = DA850_REF_FREQ,
+	.name		= "ref_clk",
+	.rate		= DA850_AUX_FREQ,
 };
 
-static struct clk aux_clkin = {
-	.name = "aux_clkin",
-	.rate = DA850_AUX_FREQ,
+static struct clk pll0_clk = {
+	.name		= "pll0",
+	.parent		= &ref_clk,
+	.pll_data	= &pll0_data,
+	.flags		= CLK_PLL,
 };
 
-static struct clk pll1_clk = {
-	.name = "pll1",
-	.parent = &ref_clk,
-	.pll_data = &pll1_data,
-	.flags = CLK_PLL,
+static struct clk pll0_aux_clk = {
+	.name		= "pll0_aux_clk",
+	.parent		= &pll0_clk,
+	.flags		= CLK_PLL | PRE_PLL,
 };
 
-static struct clk pll1_sysclk1 = {
-	.name = "pll1_sysclk1",
-	.parent = &pll1_clk,
-	.flags = CLK_PLL,
-	.div_reg = PLLDIV1,
+static struct clk pll0_sysclk2 = {
+	.name		= "pll0_sysclk2",
+	.parent		= &pll0_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV2,
 };
 
-static struct clk pll1_sysclk2 = {
-	.name = "pll1_sysclk2",
-	.parent = &pll1_clk,
-	.flags = CLK_PLL,
-	.div_reg = PLLDIV2,
+static struct clk pll0_sysclk3 = {
+	.name		= "pll0_sysclk3",
+	.parent		= &pll0_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV3,
 };
 
-static struct clk pll1_sysclk3 = {
-	.name = "pll1_sysclk3",
-	.parent = &pll1_clk,
-	.flags = CLK_PLL,
-	.div_reg = PLLDIV3,
+static struct clk pll0_sysclk4 = {
+	.name		= "pll0_sysclk4",
+	.parent		= &pll0_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV4,
 };
 
-static struct clk pll1_sysclk4 = {
-	.name = "pll1_sysclk4",
-	.parent = &pll1_clk,
-	.flags = CLK_PLL,
-	.div_reg = PLLDIV4,
+static struct clk pll0_sysclk5 = {
+	.name		= "pll0_sysclk5",
+	.parent		= &pll0_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV5,
 };
 
-static struct clk pll1_sysclk5 = {
-	.name = "pll1_sysclk5",
-	.parent = &pll1_clk,
-	.flags = CLK_PLL,
-	.div_reg = PLLDIV3,
+static struct clk pll0_sysclk6 = {
+	.name		= "pll0_sysclk6",
+	.parent		= &pll0_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV6,
 };
 
-static struct clk pll1_sysclk6 = {
-	.name = "pll1_sysclk6",
-	.parent = &pll1_clk,
-	.flags = CLK_PLL,
-	.div_reg = PLLDIV1,
+static struct clk pll0_sysclk7 = {
+	.name		= "pll0_sysclk7",
+	.parent		= &pll0_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV7,
 };
 
-static struct clk pll1_sysclk7 = {
-	.name = "pll1_sysclk7",
-	.parent = &pll1_clk,
-	.flags = CLK_PLL,
-	.div_reg = PLLDIV7,
+static struct clk i2c0_clk = {
+	.name		= "i2c0",
+	.parent		= &pll0_aux_clk,
 };
 
-static struct clk pll1_sysclkbp = {
-	.name = "pll1_sysclkbp",
-	.parent = &pll1_clk,
-	.flags = CLK_PLL | PRE_PLL,
-	.div_reg = BPDIV,
+static struct clk timerp64_0_clk = {
+	.name		= "timer0",
+	.parent		= &pll0_aux_clk,
 };
 
-static struct clk pll1_aux_clk = {
-	.name = "pll1_aux_clk",
-	.parent = &pll1_clk,
-	.flags = CLK_PLL | PRE_PLL,
+static struct clk timerp64_1_clk = {
+	.name		= "timer1",
+	.parent		= &pll0_aux_clk,
 };
 
-static struct clk arm_clk = {
-	.name = "arm",
-	.parent = &pll1_sysclk6,
-	.lpsc = DA8XX_LPSC_ARM,
-	.flags = ALWAYS_ENABLED,
+static struct clk tpcc_clk = {
+	.name		= "tpcc",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_TPCC,
+	.flags		= CLK_PSC | ALWAYS_ENABLED,
 };
 
-static struct clk uart0_clk = {
-	.name = "uart0",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_UART0,
+static struct clk tptc0_clk = {
+	.name		= "tptc0",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_TPTC0,
+	.flags		= ALWAYS_ENABLED,
 };
 
-static struct clk uart1_clk = {
-	.name = "uart1",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_UART1,
-};
-
-static struct clk uart2_clk = {
-	.name = "uart2",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_UART2,
-};
-
-static struct clk timer0_clk = {
-	.name = "timer0",
-	.parent = &aux_clkin,
-};
-
-static struct clk watchdog_clk = {
-	.name = "watchdog",
-	.parent = &aux_clkin,
-};
-
-static struct clk i2c_clk = {
-	.name = "I2CCLK",
-	.parent = &pll1_sysclk4,
-	.lpsc = DA8XX_LPSC_I2C,
-};
-
-static struct clk emac_clk = {
-	.name = "emac",
-	.parent = &pll1_sysclk4,
-	.lpsc = DA8XX_LPSC_CPGMAC,
-};
-
-static struct clk gpio_clk = {
-	.name = "gpio",
-	.parent = &pll1_sysclk4,
-	.lpsc = DA8XX_LPSC_GPIO,
-};
-
-static struct clk edma_cc0_clk = {
-	.name = "edma_cc0",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_TPCC,
-	.flags = CLK_PSC | ALWAYS_ENABLED,
-};
-
-static struct clk edma_tc0_clk = {
-	.name = "edma_tc0",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_TPTC0,
-	.flags = ALWAYS_ENABLED,
-};
-
-static struct clk edma_tc1_clk = {
-	.name = "edma_tc1",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_TPTC1,
-	.flags = ALWAYS_ENABLED,
+static struct clk tptc1_clk = {
+	.name		= "tptc1",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_TPTC1,
+	.flags		= ALWAYS_ENABLED,
 };
 
 static struct clk mmcsd_clk = {
-	.name = "mmcsd",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_MMC_SD,
+	.name		= "mmcsd",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_MMC_SD,
 };
 
-static struct clk emif3_clk = {
-	.name = "emif3",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_EMIF3C,
+static struct clk uart0_clk = {
+	.name		= "uart0",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_UART0,
 };
 
-static struct clk aemif_clk = {
-	.name = "aemif",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_EMIF25,
+static struct clk uart1_clk = {
+	.name		= "uart1",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_UART1,
+};
+
+static struct clk uart2_clk = {
+	.name		= "uart2",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_UART2,
 };
 
 static struct clk spi0_clk = {
-	.name = "SPI0CLK",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_SPI0,
+	.name		= "spi0",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_SPI0,
 };
 
 static struct clk spi1_clk = {
-	.name = "SPI1CLK",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_SPI1,
+	.name		= "spi1",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_SPI1,
 };
 
 static struct clk lcdc_clk = {
-	.name = "LCDCTRLCLK",
-	.parent = &pll1_sysclk2,
-	.lpsc = DA8XX_LPSC_LCDCNTL,
+	.name		= "lcdc",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_LCDCNTL,
 };
 
-struct davinci_clk da850_clks[] = {
-	CLK(NULL, "ref", &ref_clk),
-	CLK(NULL, "aux", &aux_clkin),
-	CLK(NULL, "pll1", &pll1_clk),
-	CLK(NULL, "pll1_sysclk", &pll1_sysclk1),
-	CLK(NULL, "pll1_sysclk", &pll1_sysclk2),
-	CLK(NULL, "pll1_sysclk", &pll1_sysclk3),
-	CLK(NULL, "pll1_sysclk", &pll1_sysclk4),
-	CLK(NULL, "pll1_sysclk", &pll1_sysclk5),
-	CLK(NULL, "pll1_sysclk", &pll1_sysclk6),
-	CLK(NULL, "pll1_sysclk", &pll1_sysclk7),
-	CLK(NULL, "pll1_sysclk", &pll1_sysclkbp),
-	CLK(NULL, "pll1_aux", &pll1_aux_clk),
-	CLK(NULL, "arm", &arm_clk),
-	CLK(NULL, "uart0", &uart0_clk),
-	CLK(NULL, "uart1", &uart1_clk),
-	CLK(NULL, "uart2", &uart2_clk),
-	CLK(NULL, "timer0", &timer0_clk),
-	CLK("watchdog", NULL, &watchdog_clk),
-	CLK("i2c_davinci.1", NULL, &i2c_clk),
-	CLK("davinci_emac.1", NULL, &emac_clk),
-	CLK(NULL, "gpio", &gpio_clk),
-	CLK(NULL, "edma_cc0", &edma_cc0_clk),
-	CLK(NULL, "edma_tc0", &edma_tc0_clk),
-	CLK(NULL, "edma_tc1", &edma_tc1_clk),
-	CLK("davinci_mmc.0", NULL, &mmcsd_clk),
-	CLK(NULL, "emif", &emif3_clk),
-	CLK(NULL, "aemif", &aemif_clk),
-	CLK("dm_spi.0", NULL, &spi0_clk),
-	CLK("dm_spi.1", NULL, &spi1_clk),
-	CLK("da850_lcdc.0", NULL, &lcdc_clk),
-	CLK(NULL, NULL, NULL),
+static struct clk aemif_clk = {
+	.name		= "aemif",
+	.parent		= &pll0_sysclk3,
+	.lpsc		= DA8XX_LPSC_EMIF25,
+	.flags		= ALWAYS_ENABLED,
+};
+
+static struct clk emac_clk = {
+	.name		= "emac",
+	.parent		= &pll0_sysclk4,
+	.lpsc		= DA8XX_LPSC_CPGMAC,
+};
+
+static struct clk gpio_clk = {
+	.name		= "gpio",
+	.parent		= &pll0_sysclk4,
+	.lpsc		= DA8XX_LPSC_GPIO,
+};
+
+static struct clk emif3_clk = {
+	.name		= "emif3",
+	.parent		= &pll0_sysclk5,
+	.lpsc		= DA8XX_LPSC_EMIF3C,
+	.flags		= ALWAYS_ENABLED,
+};
+
+static struct clk arm_clk = {
+	.name		= "arm",
+	.parent		= &pll0_sysclk6,
+	.lpsc		= DA8XX_LPSC_ARM,
+	.flags		= ALWAYS_ENABLED,
+};
+
+static struct davinci_clk da850_clks[] = {
+	CLK(NULL,		"ref",		&ref_clk),
+	CLK(NULL,		"pll0",		&pll0_clk),
+	CLK(NULL,		"pll0_aux",	&pll0_aux_clk),
+	CLK(NULL,		"pll0_sysclk2",	&pll0_sysclk2),
+	CLK(NULL,		"pll0_sysclk3",	&pll0_sysclk3),
+	CLK(NULL,		"pll0_sysclk4",	&pll0_sysclk4),
+	CLK(NULL,		"pll0_sysclk5",	&pll0_sysclk5),
+	CLK(NULL,		"pll0_sysclk6",	&pll0_sysclk6),
+	CLK(NULL,		"pll0_sysclk7",	&pll0_sysclk7),
+	CLK("i2c_davinci.1",	NULL,		&i2c0_clk),
+	CLK(NULL,		"timer0",	&timerp64_0_clk),
+	CLK("watchdog",		NULL,		&timerp64_1_clk),
+	CLK(NULL,		"tpcc",		&tpcc_clk),
+	CLK(NULL,		"tptc0",	&tptc0_clk),
+	CLK(NULL,		"tptc1",	&tptc1_clk),
+	CLK("davinci_mmc.0",	NULL,		&mmcsd_clk),
+	CLK(NULL,		"uart0",	&uart0_clk),
+	CLK(NULL,		"uart1",	&uart1_clk),
+	CLK(NULL,		"uart2",	&uart2_clk),
+	CLK("dm_spi.0",		NULL,		&spi0_clk),
+	CLK("dm_spi.1",		NULL,		&spi1_clk),
+	CLK("da8xx_lcdc.0",	NULL,		&lcdc_clk),
+	CLK(NULL,		"aemif",	&aemif_clk),
+	CLK("davinci_emac.1",	NULL,		&emac_clk),
+	CLK(NULL,		"gpio",		&gpio_clk),
+	CLK(NULL,		"emif3",	&emif3_clk),
+	CLK(NULL,		"arm",		&arm_clk),
+	CLK(NULL,		NULL,		NULL),
 };
 
 static unsigned long pinmux_in_use[20];
