@@ -46,6 +46,8 @@
 #define DA830_MMC_SD0_BASE	     0x01C40000
 #define DA830_RTC_BASE	     0x01C23000
 
+#define DA850_RMII_SEL	(0x01 << 8)
+
 static struct resource i2c_resources[] = {
 	{
 		.start		= DAVINCI_I2C_BASE,
@@ -644,29 +646,44 @@ static struct resource da8xx_emac_resources [] = {
                 .name   = "mac_misc",
         },
 };
-static struct emac_platform_data da8xx_emac_pdata = {
+static struct emac_platform_data da830_emac_pdata = {
 	.phy_mask = 0x0,	/* No PHY */
 };
 
-static struct platform_device da8xx_emac_device = {
+static struct platform_device da830_emac_device = {
         .name = "davinci_emac",
         .id = 1,
         .num_resources = ARRAY_SIZE(da8xx_emac_resources),
         .resource = da8xx_emac_resources,
         .dev = {
-                .platform_data = &da8xx_emac_pdata,
+		.platform_data = &da830_emac_pdata,
         }
+};
+
+static struct emac_platform_data da850_emac_pdata = {
+	.phy_mask = 0x1,	/* No PHY */
+};
+
+static struct platform_device da850_emac_device = {
+	.name = "davinci_emac",
+	.id = 1,
+	.num_resources = ARRAY_SIZE(da8xx_emac_resources),
+	.resource = da8xx_emac_resources,
+	.dev = {
+		.platform_data = &da850_emac_pdata,
+	}
 };
 
 void davinci_init_emac(char *mac_addr)
 {
+	void __iomem *addr;
 	DECLARE_MAC_BUF(buf);
 
 	if (!(cpu_is_davinci_dm644x() || cpu_is_davinci_dm646x()
 		|| cpu_is_da8xx()))
 		return;
 
-	if (cpu_is_da8xx()) {
+	if (cpu_is_da830()) {
 		davinci_cfg_reg(DA830_RMII_TXD_0);
 		davinci_cfg_reg(DA830_RMII_TXD_1);
 		davinci_cfg_reg(DA830_RMII_TXEN);
@@ -676,6 +693,27 @@ void davinci_init_emac(char *mac_addr)
 		davinci_cfg_reg(DA830_RMII_RXER);
 		davinci_cfg_reg(DA830_MDIO_CLK);
 		davinci_cfg_reg(DA830_MDIO_D);
+	}
+
+	if (cpu_is_da850()) {
+		addr = IO_ADDRESS(DA8XX_CFGCHIP3);
+		__raw_writel((__raw_readl(addr)) & (~DA850_RMII_SEL), addr);
+
+		davinci_cfg_reg(DA850_MII_TXEN);
+		davinci_cfg_reg(DA850_MII_TXCLK);
+		davinci_cfg_reg(DA850_MII_COL);
+		davinci_cfg_reg(DA850_MII_TXD_3);
+		davinci_cfg_reg(DA850_MII_TXD_2);
+		davinci_cfg_reg(DA850_MII_TXD_1);
+		davinci_cfg_reg(DA850_MII_TXD_0);
+		davinci_cfg_reg(DA850_MII_RXER);
+		davinci_cfg_reg(DA850_MII_CRS);
+		davinci_cfg_reg(DA850_MII_RXCLK);
+		davinci_cfg_reg(DA850_MII_RXDV);
+		davinci_cfg_reg(DA850_MII_RXD_3);
+		davinci_cfg_reg(DA850_MII_RXD_2);
+		davinci_cfg_reg(DA850_MII_RXD_1);
+		davinci_cfg_reg(DA850_MII_RXD_0);
 	}
 
 	/* if valid MAC exists, don't re-register */
@@ -695,8 +733,10 @@ void davinci_init_emac(char *mac_addr)
 		(void) platform_device_register(&davinci_emac_device);
 	else if (cpu_is_davinci_dm646x())
 		(void) platform_device_register(&dm646x_emac_device);
-	else if (cpu_is_da8xx())
-		(void) platform_device_register(&da8xx_emac_device);
+	else if (cpu_is_da830())
+		(void) platform_device_register(&da830_emac_device);
+	else if (cpu_is_da850())
+		(void) platform_device_register(&da850_emac_device);
 }
 
 #else
