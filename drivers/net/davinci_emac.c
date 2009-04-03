@@ -2072,7 +2072,7 @@ static int emac_hw_enable(struct emac_priv *priv)
 		((EMAC_DEF_TXPACING_EN) ? (EMAC_MACCONTROL_TXPACEEN) : 0x0) |
 		((priv->duplex == DUPLEX_FULL) ? 0x1 : 0));
 
-	if (cpu_is_da830() || cpu_is_da850())
+	if (cpu_is_da830())
 		mac_control |= EMAC_MACCONTROL_RMIISPEED_MASK;
  
 	emac_write(EMAC_MACCONTROL, mac_control);
