@@ -359,6 +359,8 @@ static struct evm_snd_platform_data da830_evm_snd_data[] = {
 		.codec_fmt	= SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_IB_NF,
 		.cc_inst	= 0,
 		.version	= MCASP_VERSION_2,
+		.txnumevt	= 8,
+		.rxnumevt	= 0,
 	},
 };
 

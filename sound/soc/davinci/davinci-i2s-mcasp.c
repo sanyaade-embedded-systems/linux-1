@@ -138,6 +138,14 @@ int davinci_i2s_mcasp_probe(struct platform_device *pdev,
 		dev[link_cnt].serial_dir = pdata->serial_dir;
 		dev[link_cnt].codec_fmt = pdata->codec_fmt;
 		dev[link_cnt].version = pdata->version;
+		dev[link_cnt].txnumevt = pdata->txnumevt;
+		dev[link_cnt].rxnumevt = pdata->rxnumevt;
+
+		if (dev[link_cnt].txnumevt > 64)
+			dev[link_cnt].txnumevt = 64;
+
+		if (dev[link_cnt].rxnumevt > 64)
+			dev[link_cnt].rxnumevt = 64;
 
 		dma_data[count].name = "I2S PCM Stereo out";
 		dma_data[count].channel = pdata->tx_dma_ch;
@@ -426,6 +434,7 @@ static void davinci_hw_common_param(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct davinci_audio_dev *dev = rtd->dai->cpu_dai->private_data;
+	u8 cnt = 0;
 	int i;
 
 	/* Default configuration */
@@ -454,7 +463,35 @@ static void davinci_hw_common_param(struct snd_pcm_substream *substream)
 			mcasp_clr_bits(dev->base + DAVINCI_MCASP_PDIR_REG,
 				       AXR(i));
 	}
+
+	if (dev->txnumevt && substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		for (i = 0; i < dev->num_serializer; i++) {
+			if (dev->serial_dir[i] == TX_MODE)
+				cnt++;;
+		}
+
+		mcasp_mod_bits(dev->base + DAVINCI_MCASP_WFIFOCTL, cnt,
+								NUMDMA_MASK);
+		mcasp_mod_bits(dev->base + DAVINCI_MCASP_WFIFOCTL,
+					(dev->txnumevt << 8), NUMEVT_MASK);
+		mcasp_set_bits(dev->base + DAVINCI_MCASP_WFIFOCTL, FIFO_ENABLE);
+	}
+
+	cnt = 0;
+	if (dev->rxnumevt && substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+		for (i = 0; i < dev->num_serializer; i++) {
+			if (dev->serial_dir[i] == RX_MODE)
+				cnt++;;
+		}
+
+		mcasp_mod_bits(dev->base + DAVINCI_MCASP_RFIFOCTL, cnt,
+								NUMDMA_MASK);
+		mcasp_mod_bits(dev->base + DAVINCI_MCASP_RFIFOCTL,
+					(dev->rxnumevt << 8), NUMEVT_MASK);
+		mcasp_set_bits(dev->base + DAVINCI_MCASP_WFIFOCTL, FIFO_ENABLE);
+	}
 }
+
 static void davinci_hw_iis_param(struct snd_pcm_substream *substream)
 {
 	int i, active_slots;
@@ -553,8 +590,17 @@ static int davinci_i2s_mcasp_hw_params(
 	struct davinci_pcm_dma_params *dma_params =
 					dev->dma_params[substream->stream];
 	int word_length;
+	u8 numevt;
 
 	davinci_hw_common_param(substream);
+
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		numevt = dev->txnumevt;
+	else
+		numevt = dev->rxnumevt;
+
+	if (!numevt)
+		numevt = 1;
 
 	if (dev->op_mode == DAVINCI_MCASP_DIT_MODE)
 		davinci_hw_dit_param(substream);
@@ -563,15 +609,15 @@ static int davinci_i2s_mcasp_hw_params(
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S8:
-		dma_params->data_type = 1;
+		dma_params->data_type = 1 * numevt;
 		word_length = DAVINCI_AUDIO_WORD_8;
 		break;
 	case SNDRV_PCM_FORMAT_S16_LE:
-		dma_params->data_type = 2;
+		dma_params->data_type = 2 * numevt;
 		word_length = DAVINCI_AUDIO_WORD_16;
 		break;
 	case SNDRV_PCM_FORMAT_S32_LE:
-		dma_params->data_type = 4;
+		dma_params->data_type = 4 * numevt;
 		word_length = DAVINCI_AUDIO_WORD_32;
 		break;
 	default:
@@ -580,7 +626,7 @@ static int davinci_i2s_mcasp_hw_params(
 	}
 
 	if (dev->version == MCASP_VERSION_2)
-		dma_params->acnt = 4;
+		dma_params->acnt = 4 * numevt;
 	else
 		dma_params->acnt = dma_params->data_type;
 

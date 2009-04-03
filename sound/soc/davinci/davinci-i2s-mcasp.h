@@ -92,6 +92,11 @@
 /* Receive Buffer for Serializer n */
 #define DAVINCI_MCASP_RXBUF_REG		0x280
 
+/* McASP FIFO Registers */
+#define DAVINCI_MCASP_WFIFOCTL		(0x1010)
+#define DAVINCI_MCASP_WFIFOSTS		(0x1014)
+#define DAVINCI_MCASP_RFIFOCTL		(0x1018)
+#define DAVINCI_MCASP_RFIFOSTS		(0x101C)
 
 /*
  * DAVINCI_MCASP_PWREMUMGT_REG - Power Down and Emulation Management
@@ -271,6 +276,13 @@
  */
 #define TXDATADMADIS BIT(0)
 
+/*
+ * DAVINCI_MCASP_W[R]FIFOCTL - Write/Read FIFO Control Register bits
+ */
+#define FIFO_ENABLE	BIT(16)
+#define NUMEVT_MASK	(0xFF << 8)
+#define NUMDMA_MASK	(0xFF)
+
 #define DAVINCI_MCASP_IIS_MODE	0
 #define DAVINCI_MCASP_DIT_MODE	1
 
@@ -308,6 +320,10 @@ struct davinci_audio_dev {
 
 	/* version of McASP */
 	u8 version;
+
+	/* McASP FIFO related */
+	u8				txnumevt;
+	u8				rxnumevt;
 };
 
 enum {

@@ -41,6 +41,10 @@ struct evm_snd_platform_data {
 	u8 *serial_dir;
 
 	u8 version;
+
+	/* McASP FIFO related - 0 to disable FIFO*/
+	u8 txnumevt;
+	u8 rxnumevt;
 };
 
 extern struct snd_soc_platform davinci_soc_platform;
