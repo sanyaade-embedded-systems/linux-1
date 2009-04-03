@@ -297,11 +297,6 @@ static int __devinit da830_lcd_probe(struct platform_device *device)
 			printk(KERN_ALERT "Error in Initialising\n");
 			return -ENODEV;
 		}
-	} else if (cpu_is_da850()) {
-		if (da850_lcd_hw_init()) {
-			printk(KERN_ALERT "Error in Initialising\n");
-			return -ENODEV;
-		}
 	}
 
 	if (lcd_pdata == NULL) {

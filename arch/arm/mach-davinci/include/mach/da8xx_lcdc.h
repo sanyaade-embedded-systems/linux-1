@@ -14,6 +14,5 @@ struct da8xx_lcdc_platform_data {
 	const char *lcdc_clk_name;
 };
 int da830_lcd_hw_init(void);
-int da850_lcd_hw_init(void);
 #endif  /* ifndef DA830_LCDC_PLAT_H */
 

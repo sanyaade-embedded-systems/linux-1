@@ -194,9 +194,6 @@ static struct i2c_board_info __initdata i2c_info[] =  {
 		I2C_BOARD_INFO("24c256", 0x50),
 		.platform_data  = &eeprom_info,
 	},
-	{
-		I2C_BOARD_INFO("pcf8574a", 0x3f),
-	},
 };
 
 static struct davinci_i2c_platform_data da850_i2c_data0 = {
@@ -225,28 +222,6 @@ static void __init da850_map_io(void)
 	davinci_map_common_io();
 	da850_init();
 }
-
-int da850_lcd_hw_init(void)
-{
-	struct i2c_client *client;
-	struct i2c_adapter *adap = i2c_get_adapter(1);
-	u32 val = 0;
-
-	list_for_each_entry(client, &adap->clients, list) {
-		if (!strcmp(client->name, "pcf8574a"))
-			break;
-	}
-	if (client == NULL) {
-		printk(KERN_ERR "PCF8574A Client not found\n");
-		return -ENODEV;
-	}
-	val = i2c_smbus_read_byte(client);
-	val &= ~(0x01 << 6);
-	i2c_smbus_write_byte(client, val);
-
-	return 0;
-}
-EXPORT_SYMBOL(da850_lcd_hw_init);
 
 static __init void da850_evm_init(void)
 {

@@ -545,12 +545,8 @@ static int lcd_init(const struct lcd_ctrl_config *cfg)
 			printk(KERN_ALERT "Error in Initialising\n");
 			return -ENODEV;
 		}
-	} else if (cpu_is_da850()) {
-		if (da850_lcd_hw_init()) {
-			printk(KERN_ALERT "Error in Initialising\n");
-			return -ENODEV;
-		}
 	}
+
 	if (da830_fb_read(LCD_BLK_REV_REG) != DA830_LCDC_REVISION)
 		return -ENOENT;
 	lcd_reset();
