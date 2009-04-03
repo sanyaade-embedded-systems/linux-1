@@ -149,7 +149,7 @@ EXPORT_SYMBOL(da850evm_eeprom_write);
 #if defined(CONFIG_MMC_DAVINCI) || defined(CONFIG_MMC_DAVINCI_MODULE)
 static int da850_evm_mmc_get_ro(int index)
 {
-	int val, status, gpio_num = 33;
+	int val, status, gpio_num = 49;
 
 	status = gpio_request(gpio_num, "MMC WP\n");
 	if (status < 0) {
@@ -165,7 +165,7 @@ static int da850_evm_mmc_get_ro(int index)
 
 static int da850_evm_mmc_get_cd(int index)
 {
-	int val, status, gpio_num = 34;
+	int val, status, gpio_num = 48;
        
 	status = gpio_request(gpio_num, "MMC CD\n");
 	if (status < 0) {
