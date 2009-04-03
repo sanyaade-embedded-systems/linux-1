@@ -138,7 +138,6 @@ void __init davinci_serial_init(struct davinci_uart_config *info)
 		}
 
 		if (cpu_is_da8xx()) {
-			p->iotype = UPIO_MEM32;
 			if (i == 0) {
 				p->membase = (char *)
 					IO_ADDRESS(DA8XX_UART0_BASE);
