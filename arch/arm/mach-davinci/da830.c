@@ -207,6 +207,12 @@ static struct clk arm_clk = {
 	.flags		= ALWAYS_ENABLED,
 };
 
+static struct clk mcasp1_clk = {
+	.name		= "mcasp1",
+	.lpsc		= DA830_LPSC_McASP1,
+	.parent		= &pll0_sysclk2,
+};
+
 static struct davinci_clk da830_clks[] = {
 	CLK(NULL,		"ref",		&ref_clk),
 	CLK(NULL,		"pll0",		&pll0_clk),
@@ -235,6 +241,7 @@ static struct davinci_clk da830_clks[] = {
 	CLK(NULL,		"gpio",		&gpio_clk),
 	CLK(NULL,		"emif3",	&emif3_clk),
 	CLK(NULL,		"arm",		&arm_clk),
+	CLK("soc-audio",	NULL,		&mcasp1_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 
@@ -410,6 +417,24 @@ DA8XX_MUX_CFG(DA830,	NLCD_AC_ENB_CS,	17,   4,    15,   2,	 false)
 DA8XX_MUX_CFG(DA830,	LCD_MCLK,	17,   8,    15,   2,	 false)
 DA8XX_MUX_CFG(DA830,	LCD_D_5,	17,  12,    15,   2,	 false)
 DA8XX_MUX_CFG(DA830,	LCD_D_4,	17,  16,    15,   2,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_10,	8,   20,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_11,	8,   24,    15,   1,     false)
+DA8XX_MUX_CFG(DA830,	AHCLKX1,	11,  20,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	ACLKX1,		11,  24,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AHCLKR1,	12,   0,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	ACLKR1,		12,   4,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AFSR1,		12,   8,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AMUTE1,		12,  12,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_0,		12,  16,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_1,		12,  20,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_2,		12,  24,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_3,		12,  28,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_4,		13,   0,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_5,		13,   4,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_6,		13,   8,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_7,		13,  12,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_8,		13,  16,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AXR1_9,		13,  20,    15,   1,	 false)
 };
 
 static const s8 dma_chan_da830_no_event[] = {
@@ -599,6 +624,21 @@ void __init da8xx_init_spi1(unsigned char* chip_sel, unsigned int num_sel,
 	pdata->chip_sel = chip_sel;
 	pdata->num_chipselect = num_sel;
 	platform_device_register(&da8xx_spi_pdev1);
+}
+
+void __init da830_init_mcasp1()
+{
+	davinci_cfg_reg(DA830_AHCLKX1);
+	davinci_cfg_reg(DA830_ACLKX1);
+	davinci_cfg_reg(DA830_AFSX1);
+	davinci_cfg_reg(DA830_AHCLKR1);
+	davinci_cfg_reg(DA830_AFSR1);
+	davinci_cfg_reg(DA830_AMUTE1);
+	davinci_cfg_reg(DA830_ACLKR1);
+
+	/* serializers interfaced to aic3x */
+	davinci_cfg_reg(DA830_AXR1_0);
+	davinci_cfg_reg(DA830_AXR1_5);
 }
 
 void __init da830_init(void)

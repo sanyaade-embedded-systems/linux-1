@@ -374,6 +374,8 @@ static __init void da830_evm_init(void)
 		ARRAY_SIZE(da8xx_spi_board_info0));
 
 	da8xx_init_rtc();
+
+	da830_init_mcasp1();
 }
 
 static __init void da830_evm_irq_init(void)

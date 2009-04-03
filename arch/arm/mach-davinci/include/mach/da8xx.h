@@ -32,6 +32,8 @@ struct spi_board_info;
 void __init da8xx_init_spi0(unsigned char* chip_sel, unsigned int num_sel,
 	struct spi_board_info *info, unsigned num_dev);
 
+void __init da830_init_mcasp1(void);
+
 #define DA8XX_BOOT_CFG_BASE		0x01C14000
 
 #define DA8XX_KICK0             (DA8XX_BOOT_CFG_BASE + 0x38)
