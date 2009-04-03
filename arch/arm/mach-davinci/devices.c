@@ -67,7 +67,7 @@ static struct platform_device davinci_i2c_device = {
 	.resource	= i2c_resources,
 };
 
-static struct resource da830_i2c_resources0[] = {
+static struct resource da8xx_i2c_resources0[] = {
 	{
 		.start          = DA8XX_I2C0_BASE,
 		.end            = DA8XX_I2C0_BASE + SZ_4K - 1,
@@ -80,7 +80,7 @@ static struct resource da830_i2c_resources0[] = {
 	},
 };
 
-static struct resource da830_i2c_resources1[] = {
+static struct resource da8xx_i2c_resources1[] = {
 	{
 		.start          = DA8XX_I2C1_BASE,
 		.end            = DA8XX_I2C1_BASE + SZ_4K - 1,
@@ -93,59 +93,18 @@ static struct resource da830_i2c_resources1[] = {
 	},
 };
 
-static struct platform_device da830_i2c_device[] = {
+static struct platform_device da8xx_i2c_device[] = {
 	[0] = {
 		.name           = "i2c_davinci",
 		.id             = 1,
-		.num_resources  = ARRAY_SIZE(da830_i2c_resources0),
-		.resource       = da830_i2c_resources0,
+		.num_resources  = ARRAY_SIZE(da8xx_i2c_resources0),
+		.resource       = da8xx_i2c_resources0,
 	},
 	[1] = {
 		.name           = "i2c_davinci",
 		.id             = 2,
-		.num_resources  = ARRAY_SIZE(da830_i2c_resources1),
-		.resource       = da830_i2c_resources1,
-	}
-};
-
-static struct resource da850_i2c_resources0[] = {
-	{
-		.start          = 0x01c22000,
-		.end            = 0x01c22000 + SZ_4K - 1,
-		.flags          = IORESOURCE_MEM,
-	},
-	{
-		.start          = 15,
-		.end            = 15,
-		.flags          = IORESOURCE_IRQ,
-	},
-};
-
-static struct resource da850_i2c_resources1[] = {
-	{
-		.start          = 0x01e28000,
-		.end            = 0x01e28000 + SZ_4K - 1,
-		.flags          = IORESOURCE_MEM,
-	},
-	{
-		.start          = 51,
-		.end            = 51,
-		.flags          = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device da850_i2c_device[] = {
-	[0] = {
-		.name           = "i2c_davinci",
-		.id             = 1,
-		.num_resources  = ARRAY_SIZE(da850_i2c_resources0),
-		.resource       = da850_i2c_resources0,
-	},
-	[1] = {
-		.name           = "i2c_davinci",
-		.id             = 2,
-		.num_resources  = ARRAY_SIZE(da850_i2c_resources1),
-		.resource       = da850_i2c_resources1,
+		.num_resources  = ARRAY_SIZE(da8xx_i2c_resources1),
+		.resource       = da8xx_i2c_resources1,
 	}
 };
 
@@ -174,15 +133,10 @@ void __init davinci_init_i2c(struct davinci_i2c_platform_data *pdata)
 	    cpu_is_davinci_dm355()) {
 		davinci_i2c_device.dev.platform_data = pdata;
 		(void) platform_device_register(&davinci_i2c_device);
-	} else if (cpu_is_da830()) {
+	} else if (cpu_is_da8xx()) {
 		for (i = 0; i < 2; i++) {
-			da830_i2c_device[i].dev.platform_data = pdata;
-			(void) platform_device_register(&da830_i2c_device[i]);
-		}
-	} else if (cpu_is_da850()) {
-		for (i = 0; i < 2; i++) {
-			da850_i2c_device[i].dev.platform_data = pdata;
-			(void) platform_device_register(&da850_i2c_device[i]);
+			da8xx_i2c_device[i].dev.platform_data = pdata;
+			(void) platform_device_register(&da8xx_i2c_device[i]);
 		}
 	}
 }
