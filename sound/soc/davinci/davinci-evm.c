@@ -38,6 +38,10 @@
 #define DA830_MCASP1_FIFO_CNTRL_BASE	0x01D05000
 #define DA830_MCASP1_DATAL_BASE 	0x01D06000
 
+#define DA850_MCASP_CNTRL_BASE		0x01D00000
+#define DA850_MCASP_FIFO_CNTRL_BASE	0x01D01000
+#define DA850_MCASP_DATAL_BASE		0x01D02000
+
 #define AUDIO_FORMAT (SND_SOC_DAIFMT_DSP_B | \
 		SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_IB_NF)
 static int evm_hw_params(struct snd_pcm_substream *substream,
@@ -60,7 +64,8 @@ static int evm_hw_params(struct snd_pcm_substream *substream,
 	else if (cpu_is_davinci_dm644x())
 		sysclk = 12288000;
 
-	else if (cpu_is_da830())
+	else if (cpu_is_da830() || cpu_is_da850())
+
 		sysclk = 24576000;
 	else
 		return -EINVAL;
@@ -151,6 +156,17 @@ static struct snd_soc_dai_link evm_dai = {
 	.codec_dai = &aic3x_dai,
 	.init = evm_aic3x_init,
 	.ops = &evm_ops,
+};
+
+static struct snd_soc_dai_link da850_evm_dai[] = {
+	{
+		.name		= "TLV320AIC3X",
+		.stream_name	= "AIC3X",
+		.cpu_dai	= davinci_iis_mcasp_dai,
+		.codec_dai	= &aic3x_dai,
+		.init		= evm_aic3x_init,
+		.ops		= &evm_ops,
+	},
 };
 
 static struct snd_soc_dai_link da830_evm_dai[] = {
@@ -364,6 +380,61 @@ static struct evm_snd_platform_data da830_evm_snd_data[] = {
 	},
 };
 
+/* davinci da850 evm audio machine driver */
+static u8 da850_iis_serializer_direction[] = {
+	TX_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	RX_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+};
+
+static struct snd_soc_card da850_snd_soc_card = {
+	.name		= "DA850 EVM",
+	.dai_link	= da850_evm_dai,
+	.platform	= &davinci_soc_platform,
+	.num_links	= 1,
+};
+
+static struct aic3x_setup_data da850_evm_aic3x_setup = {
+	.i2c_bus	= 1,
+	.i2c_address	= 0x18,
+	.variant	= AIC3106_CODEC,
+};
+
+/* evm audio subsystem */
+static struct snd_soc_device da850_evm_snd_devdata = {
+	.card		= &da850_snd_soc_card,
+	.codec_dev	= &soc_codec_dev_aic3x,
+	.codec_data	= &da850_evm_aic3x_setup,
+};
+
+static struct resource da850_evm_aic_snd_resources[] = {
+	{
+		.start	= DA850_MCASP_CNTRL_BASE,
+		.end	= DA850_MCASP_CNTRL_BASE + (SZ_1K << 1) - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct evm_snd_platform_data da850_evm_snd_data[] = {
+	{
+		.clk_name	= "mcasp",
+		.tx_dma_ch	= 1,
+		.rx_dma_ch	= 0,
+		.tx_dma_offset	= 0x2000,
+		.rx_dma_offset	= 0x2000,
+		.op_mode	= DAVINCI_MCASP_IIS_MODE,
+		.num_serializer	= 12,
+		.tdm_slots	= 2,
+		.serial_dir	= da850_iis_serializer_direction,
+		.eventq_no	= EVENTQ_1,
+		.codec_fmt	= SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_IB_NF,
+		.cc_inst	= 0,
+		.txnumevt	= 0,
+		.rxnumevt	= 0,
+		.version	= MCASP_VERSION_2,
+	},
+};
+
 static struct platform_device *evm_snd_device;
 
 static int __init evm_init(void)
@@ -402,6 +473,12 @@ static int __init evm_init(void)
 		resources = da830_evm_aic_snd_resources;
 		res_size = ARRAY_SIZE(da830_evm_aic_snd_resources);
 		data = da830_evm_snd_data;
+		index = -1;
+	} else if (cpu_is_da850()) {
+		evm_snd_dev_data = &da850_evm_snd_devdata;
+		resources = da850_evm_aic_snd_resources;
+		res_size = ARRAY_SIZE(da850_evm_aic_snd_resources);
+		data = da850_evm_snd_data;
 		index = -1;
 	} else
 		return -EINVAL;
