@@ -75,6 +75,7 @@ static void davinci_pcm_enqueue_dma(struct snd_pcm_substream *substream)
 	unsigned short src_bidx, dst_bidx;
 	unsigned int data_type;
 	unsigned int count;
+	unsigned int acnt;
 
 	period_size = snd_pcm_lib_period_bytes(substream);
 	dma_offset = prtd->period * period_size;
@@ -85,6 +86,7 @@ static void davinci_pcm_enqueue_dma(struct snd_pcm_substream *substream)
 
 	data_type = prtd->params->data_type;
 	count = period_size / data_type;
+	acnt = prtd->params->acnt;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		src = dma_pos;
@@ -102,8 +104,8 @@ static void davinci_pcm_enqueue_dma(struct snd_pcm_substream *substream)
 	edma_set_dest(prtd->params->cc_inst, lch, dst, INCR, W8BIT);
 	edma_set_src_index(prtd->params->cc_inst, lch, src_bidx, 0);
 	edma_set_dest_index(prtd->params->cc_inst, lch, dst_bidx, 0);
-	edma_set_transfer_params(prtd->params->cc_inst, lch, data_type, count, 1, 0, ASYNC);
-
+	edma_set_transfer_params(prtd->params->cc_inst, lch, acnt, count,
+								1, 0, ASYNC);
 	prtd->period++;
 	if (unlikely(prtd->period >= runtime->periods))
 		prtd->period = 0;
@@ -146,6 +148,7 @@ static int davinci_pcm_dma_request(struct snd_pcm_substream *substream)
 				  prtd->params->channel,
 				  davinci_pcm_dma_irq, substream,
 				  EVENTQ_0);
+
 	if (ret < 0)
 		return ret;
 	prtd->master_lch = ret;

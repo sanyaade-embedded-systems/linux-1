@@ -20,6 +20,7 @@ struct davinci_pcm_dma_params {
 	int channel;			/* sync dma channel ID */
 	dma_addr_t dma_addr;		/* device physical address for DMA */
 	unsigned int data_type;		/* xfer data type */
+	unsigned int acnt;
 	enum dma_event_q eventq_no;	/* event queue number */
 };
 
@@ -38,6 +39,8 @@ struct evm_snd_platform_data {
 	u8 op_mode;
 	u8 num_serializer;
 	u8 *serial_dir;
+
+	u8 version;
 };
 
 extern struct snd_soc_platform davinci_soc_platform;

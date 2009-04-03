@@ -137,7 +137,7 @@ int davinci_i2s_mcasp_probe(struct platform_device *pdev,
 		dev[link_cnt].num_serializer = pdata->num_serializer;
 		dev[link_cnt].serial_dir = pdata->serial_dir;
 		dev[link_cnt].codec_fmt = pdata->codec_fmt;
-
+		dev[link_cnt].version = pdata->version;
 
 		dma_data[count].name = "I2S PCM Stereo out";
 		dma_data[count].channel = pdata->tx_dma_ch;
@@ -578,6 +578,12 @@ static int davinci_i2s_mcasp_hw_params(
 		printk(KERN_WARNING "davinci-i2s: unsupported PCM format");
 		return -EINVAL;
 	}
+
+	if (dev->version == MCASP_VERSION_2)
+		dma_params->acnt = 4;
+	else
+		dma_params->acnt = dma_params->data_type;
+
 	davinci_config_channel_size(substream, word_length);
 
 	return 0;

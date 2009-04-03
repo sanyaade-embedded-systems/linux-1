@@ -305,8 +305,14 @@ struct davinci_audio_dev {
 	u8				op_mode;
 	u8				num_serializer;
 	u8				*serial_dir;
+
+	/* version of McASP */
+	u8 version;
 };
 
-
+enum {
+	MCASP_VERSION_1 = 0,	/* DM646x */
+	MCASP_VERSION_2,	/* DA830 */
+};
 
 #endif	/* DAVINCI_I2S_MCASP_H */
