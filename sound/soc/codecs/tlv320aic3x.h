@@ -13,7 +13,10 @@
 #define _AIC3X_H
 
 /* AIC3X register space */
-#define AIC3X_CACHEREGNUM		103
+#define AIC3X_GEN_PG0_END	103
+#define AIC3X_GEN_PG1_BEG	128
+#define AIC3X_GEN_PG1_END	183
+#define AIC3106_PG1_END		205
 
 /* Page select register */
 #define AIC3X_PAGE_SELECT		0
@@ -199,6 +202,11 @@
 /* Default input volume */
 #define DEFAULT_GAIN    0x20
 
+enum aic3x_codec_variant {
+	AIC3X_GENERIC_CODEC,
+	AIC3106_CODEC,
+};
+
 /* GPIO API */
 enum {
 	AIC3X_GPIO1_FUNC_DISABLED		= 0,
@@ -284,6 +292,7 @@ int aic3x_button_pressed(struct snd_soc_codec *codec);
 struct aic3x_setup_data {
 	int i2c_bus;
 	unsigned short i2c_address;
+	enum aic3x_codec_variant variant;
 	unsigned int gpio_func[2];
 };
 
