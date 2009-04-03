@@ -206,6 +206,12 @@ static struct clk arm_clk = {
 	.flags		= ALWAYS_ENABLED,
 };
 
+static struct clk mcasp_clk = {
+	.name		= "mcasp",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_McASP0,
+};
+
 static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"ref",		&ref_clk),
 	CLK(NULL,		"pll0",		&pll0_clk),
@@ -234,6 +240,7 @@ static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"gpio",		&gpio_clk),
 	CLK(NULL,		"emif3",	&emif3_clk),
 	CLK(NULL,		"arm",		&arm_clk),
+	CLK("soc-audio",	NULL,		&mcasp_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 
@@ -558,6 +565,20 @@ static struct platform_device da850_edma_device = {
 	.num_resources		= ARRAY_SIZE(edma_resources),
 	.resource		= edma_resources,
 };
+
+void __init da850_init_mcasp()
+{
+	davinci_cfg_reg(DA850_MCASP_ACLKR);
+	davinci_cfg_reg(DA850_MCASP_ACLKX);
+	davinci_cfg_reg(DA850_MCASP_AFSR);
+	davinci_cfg_reg(DA850_MCASP_AFSX);
+	davinci_cfg_reg(DA850_MCASP_AHCLKR);
+	davinci_cfg_reg(DA850_MCASP_AHCLKX);
+	davinci_cfg_reg(DA850_MCASP_AMUTE);
+	/* serializers interfaced to aic3x */
+	davinci_cfg_reg(DA850_MCASP_AXR_5);
+	davinci_cfg_reg(DA850_MCASP_AXR_0);
+}
 
 void __init da850_init(void)
 {

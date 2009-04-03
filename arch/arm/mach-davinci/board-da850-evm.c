@@ -56,6 +56,7 @@
 #include <mach/emac.h>
 #include <mach/mmc.h>
 #include <mach/cp_intc.h>
+#include <mach/asp.h>
 
 #include "clock.h"
 
@@ -311,6 +312,8 @@ static __init void da850_evm_init(void)
 #endif
 
 	da8xx_init_rtc();
+
+	da850_init_mcasp();
 }
 
 static __init void da850_evm_irq_init(void)

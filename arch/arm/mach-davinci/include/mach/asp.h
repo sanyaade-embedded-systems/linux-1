@@ -32,4 +32,5 @@
 #define DAVINCI_ASP1_RX_INT	IRQ_MBRINT
 #define DAVINCI_ASP1_TX_INT	IRQ_MBXINT
 
+void __init da850_init_mcasp(void);
 #endif /* __ASM_ARCH_DAVINCI_ASP_H */
