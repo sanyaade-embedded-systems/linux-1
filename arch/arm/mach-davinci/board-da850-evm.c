@@ -182,7 +182,9 @@ static int da850_evm_mmc_get_cd(int index)
 static struct davinci_mmc_config da850_mmc_config = {
 	.get_ro         = da850_evm_mmc_get_ro,
 	.get_cd		= da850_evm_mmc_get_cd,
-	.wires          = 4
+	.wires          = 4,
+	.version	= MMC_CTLR_VERSION_2,
+	.cc_inst	= EDMA_CC_INST_0
 };
 #endif
 

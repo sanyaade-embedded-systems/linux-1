@@ -535,6 +535,7 @@ static struct davinci_mmc_config dm6446evm_mmc_config = {
 	.get_cd		= dm6444evm_mmc_get_cd,
 	.get_ro		= dm6444evm_mmc_get_ro,
 	.wires		= 4,
+	.version	= MMC_CTLR_VERSION_1,
 	.cc_inst	= EDMA_CC_INST_0
 };
 
