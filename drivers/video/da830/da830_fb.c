@@ -73,6 +73,7 @@ static struct fb_var_screeninfo da830fb_var __devinitdata = {
 	.activate = 0,
 	.height = -1,
 	.width = -1,
+	.pixclock = 46666,	/* 46us - AUO display */
 	.accel_flags = 0,
 	.left_margin = LEFT_MARGIN,
 	.right_margin = RIGHT_MARGIN,
@@ -87,9 +88,9 @@ static struct fb_fix_screeninfo da830fb_fix __devinitdata = {
 	.type = FB_TYPE_PACKED_PIXELS,
 	.type_aux = 0,
 	.visual = FB_VISUAL_PSEUDOCOLOR,
-	.xpanstep = 0,
-	.ypanstep = 0,
-	.ywrapstep = 0,
+	.xpanstep = 1,
+	.ypanstep = 1,
+	.ywrapstep = 1,
 	.accel = FB_ACCEL_NONE
 };
 
@@ -298,6 +299,8 @@ static void lcd_cfg_display(const struct lcd_ctrl_config *cfg)
 #endif
 		break;
 	}
+
+	reg |= LCD_UNDERFLOW_INT_ENA;
 
 	da830_fb_write(reg, LCD_RASTER_CTRL_REG);
 
