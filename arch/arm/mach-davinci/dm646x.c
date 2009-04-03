@@ -185,6 +185,18 @@ static struct clk gpio_clk = {
 	.lpsc = DM646X_LPSC_GPIO,
 };
 
+static struct clk mcasp0_clk = {
+	.name = "mcasp0",
+	.parent = &pll1_sysclk3,
+	.lpsc = DM646X_LPSC_McASP0,
+};
+
+static struct clk mcasp1_clk = {
+	.name = "mcasp0",
+	.parent = &pll1_sysclk3,
+	.lpsc = DM646X_LPSC_McASP1,
+};
+
 static struct clk aemif_clk = {
 	.name = "aemif",
 	.parent = &pll1_sysclk3,
@@ -253,6 +265,8 @@ struct davinci_clk dm646x_clks[] = {
 	CLK(NULL, "uart2", &uart2_clk),
 	CLK("i2c_davinci.1", NULL, &i2c_clk),
 	CLK(NULL, "gpio", &gpio_clk),
+	CLK("soc-audio.0", NULL, &mcasp0_clk),
+	CLK("soc-audio.1", NULL, &mcasp1_clk),
 	CLK(NULL, "aemif", &aemif_clk),
 	CLK("davinci_emac.1", NULL, &emac_clk),
 	CLK(NULL, "pwm0", &pwm0_clk),
