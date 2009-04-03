@@ -114,7 +114,7 @@ static struct spi_board_info da8xx_spi_board_info0[] = {
 		.platform_data = &spi_flash_data,
 		.controller_data = &w25x32_spi_cfg,
 		.mode = SPI_MODE_0,
-		.max_speed_hz = 25000000,	/* max sample rate at 3V */
+		.max_speed_hz = 30000000,	/* max sample rate at 3V */
 		.bus_num = 0,
 		.chip_select = 0,
 	},

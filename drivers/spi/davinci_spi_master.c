@@ -201,7 +201,8 @@ static int davinci_spi_setup_transfer(struct spi_device *spi,
 	clear_fmt_bits(davinci_spi->base, SPI_SPIFMT_CHARLEN_MASK);
 	set_fmt_bits(davinci_spi->base, bits_per_word & 0x1f);
 
-	prescale = ((clk_get_rate(pdata->clk_info) / hz) - 1) & 0xff;
+	prescale = clk_get_rate(pdata->clk_info) / hz - 1;
+	prescale = ((prescale / hz) - 1) & 0xff;
 
 	clear_fmt_bits(davinci_spi->base, 0x0000ff00);
 	set_fmt_bits(davinci_spi->base, prescale << 8);
