@@ -641,6 +641,61 @@ void __init da830_init_mcasp1()
 	davinci_cfg_reg(DA830_AXR1_5);
 }
 
+#if defined(CONFIG_TI_DAVINCI_EMAC) || defined(CONFIG_TI_DAVINCI_EMAC_MODULE)
+
+static struct resource da830_emac_resources[] = {
+	{
+		.start	= DA8XX_EMAC_CPPI_PORT_BASE,
+		.end	= DA8XX_EMAC_CPPI_PORT_BASE + 0x47ff,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= IRQ_DA8XX_C0_RX_THRESH_PULSE,
+		.end	= IRQ_DA8XX_C0_RX_THRESH_PULSE,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_DA8XX_C0_RX_PULSE,
+		.end	= IRQ_DA8XX_C0_RX_PULSE,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_DA8XX_C0_TX_PULSE,
+		.end	= IRQ_DA8XX_C0_TX_PULSE,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_DA8XX_C0_MISC_PULSE,
+		.end	= IRQ_DA8XX_C0_MISC_PULSE,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device da830_emac_device = {
+	.name		= "davinci_emac",
+	.id		= 1,
+	.num_resources	= ARRAY_SIZE(da830_emac_resources),
+	.resource	= da830_emac_resources,
+};
+
+void da830_init_emac(struct emac_platform_data *pdata)
+{
+	pdata->ctrl_reg_offset		= DA8XX_EMAC_CTRL_REG_OFFSET;
+	pdata->ctrl_mod_reg_offset	= DA8XX_EMAC_MOD_REG_OFFSET;
+	pdata->ctrl_ram_offset		= DA8XX_EMAC_RAM_OFFSET;
+	pdata->mdio_reg_offset		= DA8XX_MDIO_REG_OFFSET;
+	pdata->ctrl_ram_size		= DA8XX_EMAC_CTRL_RAM_SIZE;
+	pdata->version			= EMAC_VERSION_2;
+	pdata->rmii_en			= 1;
+	da830_emac_device.dev.platform_data = pdata;
+	platform_device_register(&da830_emac_device);
+}
+#else
+
+void da830_init_emac(struct emac_platform_data *unused) {}
+
+#endif
+
 void __init da830_init(void)
 {
 	davinci_clk_init(da830_clks);

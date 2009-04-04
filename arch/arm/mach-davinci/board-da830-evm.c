@@ -62,6 +62,14 @@
 
 #include "clock.h"
 
+#define DA830_EVM_PHY_MASK		(0x0)	/* No Phy */
+#define DA830_EVM_MDIO_FREQUENCY	(2200000) /* PHY bus frequency */
+
+static struct emac_platform_data da830_evm_emac_pdata = {
+	.phy_mask	= DA830_EVM_PHY_MASK,
+	.mdio_max_freq	= DA830_EVM_MDIO_FREQUENCY,
+};
+
 static struct mtd_partition spi_flash_partitions[] = {
 	[0] = {
 		.name = "U-Boot",
@@ -180,7 +188,7 @@ static int at24_setup(struct at24_iface *iface, void *context)
 		printk(KERN_INFO "Read MAC addr from EEPROM: %s\n",
 		print_mac(mac_str, mac_addr));
 
-		davinci_init_emac(mac_addr);
+		memcpy(da830_evm_emac_pdata.mac_addr, mac_addr, 6);
 	}
 	return 0;
 }
@@ -378,6 +386,8 @@ static __init void da830_evm_init(void)
 	da8xx_init_rtc();
 
 	da830_init_mcasp1();
+
+	davinci_init_emac(&da830_evm_emac_pdata);
 }
 
 static __init void da830_evm_irq_init(void)

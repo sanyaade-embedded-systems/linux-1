@@ -23,6 +23,7 @@
 #define __ASM_ARCH_DA8XX_H
 
 #include <mach/hardware.h>
+#include <mach/emac.h>
 
 void __init da830_init(void);
 void __init da850_init(void);
@@ -33,6 +34,7 @@ void __init da8xx_init_spi0(unsigned char* chip_sel, unsigned int num_sel,
 	struct spi_board_info *info, unsigned num_dev);
 
 void __init da830_init_mcasp1(void);
+void da830_init_emac(struct emac_platform_data *);
 
 #define DA8XX_BOOT_CFG_BASE		0x01C14000
 
@@ -68,12 +70,15 @@ void __init da830_init_mcasp1(void);
 #define DA8XX_CFGCHIP3  (DA8XX_BOOT_CFG_BASE + 0x188)
 #define DA8XX_CFGCHIP4  (DA8XX_BOOT_CFG_BASE + 0x18c)
 
-#define DA8XX_EMAC_CPPI_PORT_BASE	0x01E20000
-#define DA8XX_EMAC_CPGMACSS_BASE	0x01E22000
-#define DA8XX_EMAC_CPGMAC_BASE	0x01E23000
-#define DA8XX_EMAC_MDIO_BASE		0x01E24000
 #define DA8XX_I2C0_BASE		0x01C22000
 #define DA8XX_I2C1_BASE		0x01E28000
+
+#define DA8XX_EMAC_CPPI_PORT_BASE	0x01E20000
+#define DA8XX_EMAC_CTRL_REG_OFFSET     0x3000
+#define DA8XX_EMAC_MOD_REG_OFFSET      0x2000
+#define DA8XX_EMAC_RAM_OFFSET          0x0000
+#define DA8XX_MDIO_REG_OFFSET          0x4000
+#define DA8XX_EMAC_CTRL_RAM_SIZE       SZ_8K
 
 #define DA8XX_LCD_CNTRL_BASE			0x01E13000
 #define DA8XX_EMIF30_ASYNC_DATA_CE5_BASE	0xC0000000

@@ -31,6 +31,8 @@
 #include <mach/mux.h>
 #include <mach/mmc.h>
 #include <mach/da8xx_lcdc.h>
+#include <mach/dm646x.h>
+#include <mach/da8xx.h>
 
 #include "clock.h"
 
@@ -447,238 +449,20 @@ static void davinci_init_wdt(void)
 
 #if defined(CONFIG_TI_DAVINCI_EMAC) || defined(CONFIG_TI_DAVINCI_EMAC_MODULE)
 
-static struct resource emac_resources[] = {
-	{
-		.start	= DAVINCI_EMAC_CNTRL_REGS_BASE,
-		.end	= DAVINCI_EMAC_CNTRL_REGS_BASE + 0x0fff,
-		.flags	= IORESOURCE_MEM,
-		.name	= "ctrl_regs"
-	},
-	{
-		.start	= DAVINCI_EMAC_CNTRL_MOD_REGS_BASE,
-		.end	= DAVINCI_EMAC_CNTRL_MOD_REGS_BASE + 0x0fff,
-		.flags	= IORESOURCE_MEM,
-		.name	= "ctrl_module_regs"
-	},
-	{
-		.start	= DAVINCI_EMAC_CNTRL_RAM_BASE,
-		.end	= DAVINCI_EMAC_CNTRL_RAM_BASE + 0x1fff,
-		.flags	= IORESOURCE_MEM,
-		.name	= "ctrl_ram"
-	},
-	{
-		.start	= DAVINCI_EMAC_MDIO_REGS_BASE,
-		.end	= DAVINCI_EMAC_MDIO_REGS_BASE + 0x07ff,
-		.flags	= IORESOURCE_MEM,
-		.name	= "mdio_regs"
-	},
-	{
-		.start = IRQ_EMACINT,
-		.end   = IRQ_EMACINT,
-		.flags = IORESOURCE_IRQ,
-	},
-};
-
-static struct emac_platform_data emac_pdata;
-
-static struct platform_device davinci_emac_device = {
-       .name		= "davinci_emac",
-       .id		= 1,
-       .num_resources	= ARRAY_SIZE(emac_resources),
-       .resource	= emac_resources,
-       .dev = {
-		.platform_data = &emac_pdata,
-	}
-};
-
-static struct resource dm646x_emac_resources[] = {
-	{
-		.start	= DAVINCI_EMAC_CNTRL_REGS_BASE,
-		.end	= DAVINCI_EMAC_CNTRL_REGS_BASE + 0x0fff,
-		.flags	= IORESOURCE_MEM,
-		.name	= "ctrl_regs"
-	},
-	{
-		.start	= DAVINCI_EMAC_CNTRL_MOD_REGS_BASE,
-		.end	= DAVINCI_EMAC_CNTRL_MOD_REGS_BASE + 0x0fff,
-		.flags	= IORESOURCE_MEM,
-		.name	= "ctrl_module_regs"
-	},
-	{
-		.start	= DAVINCI_EMAC_CNTRL_RAM_BASE,
-		.end	= DAVINCI_EMAC_CNTRL_RAM_BASE + 0x1fff,
-		.flags	= IORESOURCE_MEM,
-		.name	= "ctrl_ram"
-	},
-	{
-		.start	= DAVINCI_EMAC_MDIO_REGS_BASE,
-		.end	= DAVINCI_EMAC_MDIO_REGS_BASE + 0x07ff,
-		.flags	= IORESOURCE_MEM,
-		.name	= "mdio_regs"
-	},
-	{
-		.start	= IRQ_DM646X_EMACRXTHINT,
-		.end	= IRQ_DM646X_EMACRXTHINT,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= IRQ_DM646X_EMACRXINT,
-		.end	= IRQ_DM646X_EMACRXINT,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= IRQ_DM646X_EMACTXINT,
-		.end	= IRQ_DM646X_EMACTXINT,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= IRQ_DM646X_EMACMISCINT,
-		.end	= IRQ_DM646X_EMACMISCINT,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device dm646x_emac_device = {
-	.name		= "davinci_emac",
-	.id		= 1,
-	.num_resources	= ARRAY_SIZE(dm646x_emac_resources),
-	.resource	= dm646x_emac_resources,
-	.dev = {
-		.platform_data = &emac_pdata,
-	}
-};
-
-#define RESOURCE_IRQ	4
-
-static struct resource da8xx_emac_resources [] = {
-        {
-                .start  = DA8XX_EMAC_CPGMAC_BASE,
-                .end    = DA8XX_EMAC_CPGMAC_BASE + 0xfff,
-                .flags  = IORESOURCE_MEM,
-                .name   = "ctrl_regs",
-        },
-        {
-                .start  = DA8XX_EMAC_CPGMACSS_BASE,
-                .end    = DA8XX_EMAC_CPGMACSS_BASE + 0xfff,
-                .flags  = IORESOURCE_MEM,
-                .name   = "ctrl_module_regs",
-        },
-        {
-                .start  = DA8XX_EMAC_CPPI_PORT_BASE,
-                .end    = DA8XX_EMAC_CPPI_PORT_BASE + 0x1fff,
-                .flags  = IORESOURCE_MEM,
-                .name   = "ctrl_ram",
-        },
-        {
-                .start  = DA8XX_EMAC_MDIO_BASE,
-                .end    = DA8XX_EMAC_MDIO_BASE + 0xfff,
-                .flags  = IORESOURCE_MEM,
-                .name   = "mdio_regs",
-        },
-        [RESOURCE_IRQ] = {
-                .start  = IRQ_DA8XX_C0_RX_THRESH_PULSE,
-                .end	= IRQ_DA8XX_C0_RX_THRESH_PULSE,
-                .flags  = IORESOURCE_IRQ,
-                .name   = "mac_rx_threshold",
-        },
-        {
-                .start  = IRQ_DA8XX_C0_RX_PULSE,
-                .end	= IRQ_DA8XX_C0_RX_PULSE,
-                .flags  = IORESOURCE_IRQ,
-                .name   = "mac_rx",
-        },
-        {
-                .start  = IRQ_DA8XX_C0_TX_PULSE,
-                .end	= IRQ_DA8XX_C0_TX_PULSE,
-                .flags  = IORESOURCE_IRQ,
-                .name   = "mac_tx",
-        },
-        {
-                .start  = IRQ_DA8XX_C0_MISC_PULSE,
-                .end	= IRQ_DA8XX_C0_MISC_PULSE,
-                .flags  = IORESOURCE_IRQ,
-                .name   = "mac_misc",
-        },
-};
-static struct emac_platform_data da830_emac_pdata = {
-	.phy_mask = 0x0,	/* No PHY */
-};
-
-static struct platform_device da830_emac_device = {
-        .name = "davinci_emac",
-        .id = 1,
-        .num_resources = ARRAY_SIZE(da8xx_emac_resources),
-        .resource = da8xx_emac_resources,
-        .dev = {
-		.platform_data = &da830_emac_pdata,
-        }
-};
-
-static struct emac_platform_data da850_emac_pdata = {
-	.phy_mask = 0x1,	/* No PHY */
-};
-
-static struct platform_device da850_emac_device = {
-	.name = "davinci_emac",
-	.id = 1,
-	.num_resources = ARRAY_SIZE(da8xx_emac_resources),
-	.resource = da8xx_emac_resources,
-	.dev = {
-		.platform_data = &da850_emac_pdata,
-	}
-};
-
-void davinci_init_emac(char *mac_addr)
+void davinci_init_emac(struct emac_platform_data *pdata)
 {
-	void __iomem *addr;
 	DECLARE_MAC_BUF(buf);
-	struct emac_platform_data *pdata = &emac_pdata;
 
-	if (!(cpu_is_davinci_dm644x() || cpu_is_davinci_dm646x()
-		|| cpu_is_da8xx()))
-		return;
-
-	if (cpu_is_da830()) {
-		davinci_cfg_reg(DA830_RMII_TXD_0);
-		davinci_cfg_reg(DA830_RMII_TXD_1);
-		davinci_cfg_reg(DA830_RMII_TXEN);
-		davinci_cfg_reg(DA830_RMII_CRS_DV);
-		davinci_cfg_reg(DA830_RMII_RXD_0);
-		davinci_cfg_reg(DA830_RMII_RXD_1);
-		davinci_cfg_reg(DA830_RMII_RXER);
-		davinci_cfg_reg(DA830_MDIO_CLK);
-		davinci_cfg_reg(DA830_MDIO_D);
-		pdata = &da830_emac_pdata;
-	}
-
-	if (cpu_is_da850()) {
-		addr = IO_ADDRESS(DA8XX_CFGCHIP3);
-		__raw_writel((__raw_readl(addr)) & (~DA850_RMII_SEL), addr);
-
-		davinci_cfg_reg(DA850_MII_TXEN);
-		davinci_cfg_reg(DA850_MII_TXCLK);
-		davinci_cfg_reg(DA850_MII_COL);
-		davinci_cfg_reg(DA850_MII_TXD_3);
-		davinci_cfg_reg(DA850_MII_TXD_2);
-		davinci_cfg_reg(DA850_MII_TXD_1);
-		davinci_cfg_reg(DA850_MII_TXD_0);
-		davinci_cfg_reg(DA850_MII_RXER);
-		davinci_cfg_reg(DA850_MII_CRS);
-		davinci_cfg_reg(DA850_MII_RXCLK);
-		davinci_cfg_reg(DA850_MII_RXDV);
-		davinci_cfg_reg(DA850_MII_RXD_3);
-		davinci_cfg_reg(DA850_MII_RXD_2);
-		davinci_cfg_reg(DA850_MII_RXD_1);
-		davinci_cfg_reg(DA850_MII_RXD_0);
-		pdata = &da850_emac_pdata;
-	}
+	if (cpu_is_davinci_dm644x())
+		dm644x_init_emac(pdata);
+	else if (cpu_is_davinci_dm646x())
+		dm646x_init_emac(pdata);
+	else if (cpu_is_da830())
+		da830_init_emac(pdata);
 
 	/* if valid MAC exists, don't re-register */
 	if (is_valid_ether_addr(pdata->mac_addr))
 		return;
-
-	if (mac_addr && is_valid_ether_addr(mac_addr))
-		memcpy(pdata->mac_addr, mac_addr, 6);
 	else {
 		/* Use random MAC if none passed */
 		random_ether_addr(pdata->mac_addr);
@@ -686,19 +470,11 @@ void davinci_init_emac(char *mac_addr)
 		printk(KERN_WARNING "%s: using random MAC addr: %s\n",
 		       __func__, print_mac(buf, pdata->mac_addr));
 	}
-	if ((cpu_is_davinci_dm644x()))
-		(void) platform_device_register(&davinci_emac_device);
-	else if (cpu_is_davinci_dm646x())
-		(void) platform_device_register(&dm646x_emac_device);
-	else if (cpu_is_da830())
-		(void) platform_device_register(&da830_emac_device);
-	else if (cpu_is_da850())
-		(void) platform_device_register(&da850_emac_device);
 }
 
 #else
 
-void davinci_init_emac(char *unused) {}
+void davinci_init_emac(struct emac_platform_data *unused) {}
 
 #endif
 
@@ -799,12 +575,3 @@ static int __init davinci_init_devices(void)
 	return 0;
 }
 arch_initcall(davinci_init_devices);
-
-static int __init davinci_init_devices_late(void)
-{
-	/* This is a backup call in case board code did not call init func */
-	davinci_init_emac(NULL);
-
-	return 0;
-}
-late_initcall(davinci_init_devices_late);

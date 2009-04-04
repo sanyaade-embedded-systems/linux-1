@@ -60,6 +60,14 @@
 
 #include "clock.h"
 
+#define DA850_EVM_PHY_MASK		(0x1)
+#define DA850_EVM_MDIO_FREQUENCY	(2200000) /* PHY bus frequency */
+
+static struct emac_platform_data da850_evm_emac_pdata = {
+	.phy_mask	= DA850_EVM_PHY_MASK,
+	.mdio_max_freq	= DA850_EVM_MDIO_FREQUENCY,
+};
+
 struct mtd_partition da850_evm_nandflash_partition[] = {
 	/* 5 MB space at the beginning for bootloader and kernel */
 	{
@@ -119,7 +127,7 @@ static int at24_setup(struct at24_iface *iface, void *context)
 		printk(KERN_INFO "Read MAC addr from EEPROM: %s\n",
 		print_mac(mac_str, mac_addr));
 
-		davinci_init_emac(mac_addr);
+		memcpy(da850_evm_emac_pdata.mac_addr, mac_addr, 6);
 	}
 	return 0;
 }
@@ -225,6 +233,8 @@ static void __init da850_map_io(void)
 
 static __init void da850_evm_init(void)
 {
+	unsigned int *addr = IO_ADDRESS(DA8XX_CFGCHIP3);
+
 	davinci_cfg_reg(DA850_UART2_RXD);
 	davinci_cfg_reg(DA850_UART2_TXD);
 	davinci_serial_init(&uart_config);
@@ -289,6 +299,28 @@ static __init void da850_evm_init(void)
 	da8xx_init_rtc();
 
 	da850_init_mcasp();
+
+
+	/* select MII in Linux */
+	__raw_writel((__raw_readl(addr)) & ~BIT(8), addr);
+
+	davinci_cfg_reg(DA850_MII_TXEN);
+	davinci_cfg_reg(DA850_MII_TXCLK);
+	davinci_cfg_reg(DA850_MII_COL);
+	davinci_cfg_reg(DA850_MII_TXD_3);
+	davinci_cfg_reg(DA850_MII_TXD_2);
+	davinci_cfg_reg(DA850_MII_TXD_1);
+	davinci_cfg_reg(DA850_MII_TXD_0);
+	davinci_cfg_reg(DA850_MII_RXER);
+	davinci_cfg_reg(DA850_MII_CRS);
+	davinci_cfg_reg(DA850_MII_RXCLK);
+	davinci_cfg_reg(DA850_MII_RXDV);
+	davinci_cfg_reg(DA850_MII_RXD_3);
+	davinci_cfg_reg(DA850_MII_RXD_2);
+	davinci_cfg_reg(DA850_MII_RXD_1);
+	davinci_cfg_reg(DA850_MII_RXD_0);
+
+	davinci_init_emac(&da850_evm_emac_pdata);
 }
 
 static __init void da850_evm_irq_init(void)
