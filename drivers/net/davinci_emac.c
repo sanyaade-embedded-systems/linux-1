@@ -349,6 +349,17 @@ static const char emac_version_string[] = "TI DaVinci EMAC Linux v6.0";
 #define EMAC_DM646X_MAC_EOI_C0_RXEN	(0x01)
 #define EMAC_DM646X_MAC_EOI_C0_TXEN	(0x02)
 
+/*
+ * L3 Alignment mechanism: The below given macro returns the number of
+ * bytes required to align the given size to a L3 frame 4 byte
+ * boundry. This is typically required to add 2 bytes to the ethernet
+ * frame start to make sure the IP header (L3) is aligned on a 4 byte
+ * boundry
+ */
+static char emac_L3_align[] = { 0x02, 0x01, 0x00, 0x03 };
+
+#define EMAC_L3_ALIGN(size)    emac_L3_align[(size) & 0x3]
+
 /** net_buf_obj: EMAC network bufferdata structure
  *
  * EMAC network buffer data structure
@@ -1560,7 +1571,8 @@ static void *emac_net_alloc_rx_buf(struct emac_priv *priv, int buf_size,
 
 	/* set device pointer in skb and reserve space for extra bytes */
 	p_skb->dev = ndev;
-	skb_reserve(p_skb, EMAC_DEF_EXTRA_RXBUF_SIZE);
+	skb_reserve(p_skb, EMAC_DEF_EXTRA_RXBUF_SIZE +
+		    EMAC_L3_ALIGN(EMAC_DEF_EXTRA_RXBUF_SIZE));
 	*data_token = (void *) p_skb;
 	EMAC_CACHE_WRITEBACK_INVALIDATE((unsigned long)p_skb->data, buf_size);
 	return p_skb->data;
@@ -1990,8 +2002,9 @@ static int emac_rx_bdproc(struct emac_priv *priv, u32 ch, u32 budget,
 	       (pkts_processed < budget)) {
 
 		new_buffer = emac_net_alloc_rx_buf(priv,
-					EMAC_DEF_MAX_FRAME_SIZE,
-					&new_buf_token, EMAC_DEF_RX_CH);
+				EMAC_DEF_MAX_FRAME_SIZE +
+				EMAC_L3_ALIGN(EMAC_DEF_EXTRA_RXBUF_SIZE),
+				&new_buf_token, EMAC_DEF_RX_CH);
 		if (unlikely(NULL == new_buffer)) {
 			++rxch->out_of_rx_buffers;
 			goto end_emac_rx_bdproc;
@@ -2411,7 +2424,9 @@ static int emac_dev_open(struct net_device *ndev)
 		ndev->dev_addr[cnt] = priv->mac_addr[cnt];
 
 	/* Configuration items */
-	priv->rx_buf_size = EMAC_DEF_MAX_FRAME_SIZE + EMAC_DEF_EXTRA_RXBUF_SIZE;
+	priv->rx_buf_size = EMAC_DEF_MAX_FRAME_SIZE +
+			    EMAC_DEF_EXTRA_RXBUF_SIZE +
+			    EMAC_L3_ALIGN(EMAC_DEF_EXTRA_RXBUF_SIZE);
 
 	/* Clear basic hardware */
 	for (ch = 0; ch < EMAC_MAX_TXRX_CHANNELS; ch++) {
