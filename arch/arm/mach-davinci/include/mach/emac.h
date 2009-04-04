@@ -11,8 +11,10 @@
 #ifndef _MACH_DAVINCI_EMAC_H
 #define _MACH_DAVINCI_EMAC_H
 
+#include <linux/if_ether.h>
+
 struct emac_platform_data {
-	char mac_addr[6];
+	u8 mac_addr[ETH_ALEN];
 	u32 ctrl_reg_offset;
 	u32 ctrl_mod_reg_offset;
 	u32 ctrl_ram_offset;

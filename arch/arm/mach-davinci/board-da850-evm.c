@@ -48,7 +48,6 @@
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/i2c.h>
-#include <linux/i2c/at24.h>
 #include <linux/etherdevice.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -109,51 +108,23 @@ static struct platform_device da850_evm_nandflash_device = {
 };
 #endif
 
-/* Most of this EEPROM is unused, but U-Boot uses some data:
- *  - 0x7f00, 6 bytes Ethernet Address
- *  - ... newer boards may have more
- */
-static struct at24_iface *at24_if;
-
-static int at24_setup(struct at24_iface *iface, void *context)
+static int eth_addr_setup(char *str)
 {
-	DECLARE_MAC_BUF(mac_str);
-	char mac_addr[6];
+	int i;
 
-	at24_if = iface;
+	if (str == NULL)
+		return 0;
 
-	/* Read MAC addr from EEPROM */
-	if (at24_if->read(at24_if, mac_addr, 0x7f00, 6) == 6) {
-		printk(KERN_INFO "Read MAC addr from EEPROM: %s\n",
-		print_mac(mac_str, mac_addr));
+	/* Conversion of a MAC address from a string (AA:BB:CC:DD:EE:FF)
+	 * to a 6 bytes array. */
+	for (i = 0; i < ETH_ALEN; i++)
+		sscanf(&str[i*3], "%x",
+			(int *) &da850_evm_emac_pdata.mac_addr[i]);
 
-		memcpy(da850_evm_emac_pdata.mac_addr, mac_addr, 6);
-	}
-	return 0;
+	return 1;
 }
-
-static struct at24_platform_data eeprom_info = {
-	.byte_len	= (256*1024) / 8,
-	.page_size	= 64,
-	.flags		= AT24_FLAG_ADDR16,
-	.setup		= at24_setup,
-};
-
-int da850evm_eeprom_read(void *buf, off_t off, size_t count)
-{
-	if (at24_if)
-		return at24_if->read(at24_if, buf, off, count);
-	return -ENODEV;
-}
-EXPORT_SYMBOL(da850evm_eeprom_read);
-
-int da850evm_eeprom_write(void *buf, off_t off, size_t count)
-{
-	if (at24_if)
-		return at24_if->write(at24_if, buf, off, count);
-	return -ENODEV;
-}
-EXPORT_SYMBOL(da850evm_eeprom_write);
+/* Get MAC address from kernel boot parameter eth=AA:BB:CC:DD:EE:FF */
+__setup("eth=", eth_addr_setup);
 
 #if defined(CONFIG_MMC_DAVINCI) || defined(CONFIG_MMC_DAVINCI_MODULE)
 static int da850_evm_mmc_get_ro(int index)
@@ -198,10 +169,6 @@ static struct davinci_mmc_config da850_mmc_config = {
 #endif
 
 static struct i2c_board_info __initdata i2c_info[] =  {
-	{
-		I2C_BOARD_INFO("24c256", 0x50),
-		.platform_data  = &eeprom_info,
-	},
 };
 
 static struct davinci_i2c_platform_data da850_i2c_data0 = {
@@ -299,7 +266,6 @@ static __init void da850_evm_init(void)
 	da8xx_init_rtc();
 
 	da850_init_mcasp();
-
 
 	/* select MII in Linux */
 	__raw_writel((__raw_readl(addr)) & ~BIT(8), addr);
