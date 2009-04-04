@@ -632,6 +632,7 @@ void davinci_init_emac(char *mac_addr)
 {
 	void __iomem *addr;
 	DECLARE_MAC_BUF(buf);
+	struct emac_platform_data *pdata = &emac_pdata;
 
 	if (!(cpu_is_davinci_dm644x() || cpu_is_davinci_dm646x()
 		|| cpu_is_da8xx()))
@@ -647,6 +648,7 @@ void davinci_init_emac(char *mac_addr)
 		davinci_cfg_reg(DA830_RMII_RXER);
 		davinci_cfg_reg(DA830_MDIO_CLK);
 		davinci_cfg_reg(DA830_MDIO_D);
+		pdata = &da830_emac_pdata;
 	}
 
 	if (cpu_is_da850()) {
@@ -668,20 +670,21 @@ void davinci_init_emac(char *mac_addr)
 		davinci_cfg_reg(DA850_MII_RXD_2);
 		davinci_cfg_reg(DA850_MII_RXD_1);
 		davinci_cfg_reg(DA850_MII_RXD_0);
+		pdata = &da850_emac_pdata;
 	}
 
 	/* if valid MAC exists, don't re-register */
-	if (is_valid_ether_addr(emac_pdata.mac_addr))
+	if (is_valid_ether_addr(pdata->mac_addr))
 		return;
 
 	if (mac_addr && is_valid_ether_addr(mac_addr))
-		memcpy(emac_pdata.mac_addr, mac_addr, 6);
+		memcpy(pdata->mac_addr, mac_addr, 6);
 	else {
 		/* Use random MAC if none passed */
-		random_ether_addr(emac_pdata.mac_addr);
+		random_ether_addr(pdata->mac_addr);
 
 		printk(KERN_WARNING "%s: using random MAC addr: %s\n",
-		       __func__, print_mac(buf, emac_pdata.mac_addr));
+		       __func__, print_mac(buf, pdata->mac_addr));
 	}
 	if ((cpu_is_davinci_dm644x()))
 		(void) platform_device_register(&davinci_emac_device);
