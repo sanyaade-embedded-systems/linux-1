@@ -1997,20 +1997,20 @@ config FB_DAVINCI
 	  hardware found on the TI DaVinci EVM.	 If
 	  unsure, say N.
 
-config FB_DA830
-        tristate "DA830 Framebuffer support"
-        depends on FB && (MACH_DA830_EVM || MACH_DA850_EVM)
+config FB_DA8XX
+        tristate "DA8XX/OMAP-L1XX Framebuffer support"
+        depends on FB && ARCH_DA8XX
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
 	---help---
           This is the frame buffer device driver for the TI LCD controller
-	  found on DA830 and DA850 EVM board.
+	  found on DA8XX/OMAP-L1XX EVM board.
           If unsure, say N.
 
 config GLCD_SHARP_COLOR
 	bool "Use SHARP LQ035Q3DG01 LCD Display"
-	depends on FB_DA830
+	depends on FB_DA8XX
 	default y
 
 config FB_VIRTUAL
