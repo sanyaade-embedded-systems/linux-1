@@ -111,7 +111,7 @@ obj-$(CONFIG_PS3_FLASH)		+= ps3flash.o
 obj-$(CONFIG_JS_RTC)		+= js-rtc.o
 js-rtc-y = rtc.o
 
-obj-$(CONFIG_DA8XX_LCD)	+= da830_lcd/
+obj-$(CONFIG_CLCD_DA8XX)	+= da8xx_lcd/
 
 # Files generated that shall be removed upon make clean
 clean-files := consolemap_deftbl.c defkeymap.c

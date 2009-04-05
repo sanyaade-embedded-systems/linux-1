@@ -1101,7 +1101,7 @@ config DEVPORT
 
 source "drivers/s390/char/Kconfig"
 
-config  DA8XX_LCD
+config  CLCD_DA8XX
 	tristate "DA8XX/OMAP-L1XX Character LCD Support"
 	default n
 	depends on ARCH_DA8XX && !FB_DA8XX

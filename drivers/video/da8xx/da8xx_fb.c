@@ -31,8 +31,8 @@
 #include <linux/device.h>
 #include <linux/interrupt.h>
 #include <linux/clk.h>
-#include "da830_fb.h"
-#include "da830_lcdc.h"
+#include "da8xx_fb.h"
+#include "da8xx_lcdc.h"
 #ifdef CONFIG_GLCD_SHARP_COLOR
 #include "sharp_color.h"
 #endif
