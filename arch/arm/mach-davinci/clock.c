@@ -115,6 +115,10 @@ int clk_register(struct clk *clk)
 {
 	if (clk == NULL || IS_ERR(clk))
 		return -EINVAL;
+	
+	if (cpu_is_da850() && clk->dup_parent)
+		if (get_async3_src())
+			clk->parent = clk->dup_parent;
 
 	if (WARN(clk->parent && !clk->parent->rate,
 			"CLK: %s parent %s has no rate!\n",

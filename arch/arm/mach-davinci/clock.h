@@ -17,6 +17,7 @@
 #define DAVINCI_PLL1_BASE 0x01c40800
 #define DAVINCI_PLL2_BASE 0x01c40c00
 #define DA8XX_PLL_CNTRL0_BASE 0x01C11000
+#define DA8XX_PLL_CNTRL1_BASE 0x01E27000
 #define MAX_PLL 2
 
 /* PLL/Reset register offsets */
@@ -70,6 +71,7 @@ struct clk {
 	struct clk              *parent;
 	struct pll_data         *pll_data;
 	u32                     div_reg;
+	struct clk		*dup_parent;
 };
 
 /* Clock flags */

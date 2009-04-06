@@ -95,6 +95,67 @@ static struct clk pll0_sysclk7 = {
 	.div_reg	= PLLDIV7,
 };
 
+static struct pll_data pll1_data = {
+	.num		= 2,
+	.phys_base	= DA8XX_PLL_CNTRL1_BASE,
+	.flags		= PLL_HAS_PREDIV | PLL_HAS_POSTDIV,
+};
+
+static struct clk pll1_clk = {
+	.name		= "pll1",
+	.parent		= &ref_clk,
+	.pll_data	= &pll1_data,
+	.flags		= CLK_PLL,
+};
+
+static struct clk pll1_aux_clk = {
+	.name		= "pll1_aux_clk",
+	.parent		= &pll1_clk,
+	.flags		= CLK_PLL | PRE_PLL,
+};
+
+static struct clk pll1_sysclk2 = {
+	.name		= "pll1_sysclk2",
+	.parent		= &pll1_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV2,
+};
+
+static struct clk pll1_sysclk3 = {
+	.name		= "pll1_sysclk3",
+	.parent		= &pll1_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV3,
+};
+
+static struct clk pll1_sysclk4 = {
+	.name		= "pll1_sysclk4",
+	.parent		= &pll1_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV4,
+};
+
+static struct clk pll1_sysclk5 = {
+	.name		= "pll1_sysclk5",
+	.parent		= &pll1_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV5,
+};
+
+static struct clk pll1_sysclk6 = {
+	.name		= "pll1_sysclk6",
+	.parent		= &pll1_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV6,
+};
+
+static struct clk pll1_sysclk7 = {
+	.name		= "pll1_sysclk7",
+	.parent		= &pll1_clk,
+	.flags		= CLK_PLL,
+	.div_reg	= PLLDIV7,
+};
+
 static struct clk i2c0_clk = {
 	.name		= "i2c0",
 	.parent		= &pll0_aux_clk,
@@ -147,12 +208,14 @@ static struct clk uart1_clk = {
 	.name		= "uart1",
 	.parent		= &pll0_sysclk2,
 	.lpsc		= DA8XX_LPSC_UART1,
+	.dup_parent	= &pll1_sysclk2,
 };
 
 static struct clk uart2_clk = {
 	.name		= "uart2",
 	.parent		= &pll0_sysclk2,
 	.lpsc		= DA8XX_LPSC_UART2,
+	.dup_parent	= &pll1_sysclk2,
 };
 
 static struct clk spi0_clk = {
@@ -165,6 +228,7 @@ static struct clk spi1_clk = {
 	.name		= "spi1",
 	.parent		= &pll0_sysclk2,
 	.lpsc		= DA8XX_LPSC_SPI1,
+	.dup_parent	= &pll1_sysclk2,
 };
 
 static struct clk lcdc_clk = {
@@ -210,6 +274,7 @@ static struct clk mcasp_clk = {
 	.name		= "mcasp",
 	.parent		= &pll0_sysclk2,
 	.lpsc		= DA8XX_LPSC_McASP0,
+	.dup_parent	= &pll1_sysclk2,
 };
 
 static struct davinci_clk da850_clks[] = {
@@ -222,6 +287,14 @@ static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"pll0_sysclk5",	&pll0_sysclk5),
 	CLK(NULL,		"pll0_sysclk6",	&pll0_sysclk6),
 	CLK(NULL,		"pll0_sysclk7",	&pll0_sysclk7),
+	CLK(NULL,		"pll1",		&pll1_clk),
+	CLK(NULL,		"pll1_aux",	&pll1_aux_clk),
+	CLK(NULL,		"pll1_sysclk2",	&pll1_sysclk2),
+	CLK(NULL,		"pll1_sysclk3",	&pll1_sysclk3),
+	CLK(NULL,		"pll1_sysclk4",	&pll1_sysclk4),
+	CLK(NULL,		"pll1_sysclk5",	&pll1_sysclk5),
+	CLK(NULL,		"pll1_sysclk6",	&pll1_sysclk6),
+	CLK(NULL,		"pll1_sysclk7",	&pll1_sysclk7),
 	CLK("i2c_davinci.1",	NULL,		&i2c0_clk),
 	CLK(NULL,		"timer0",	&timerp64_0_clk),
 	CLK("watchdog",		NULL,		&timerp64_1_clk),
@@ -581,7 +654,7 @@ static struct platform_device da850_edma_device = {
 	.resource		= edma_resources,
 };
 
-void __init da850_init_mcasp()
+void __init da850_init_mcasp(void)
 {
 	davinci_cfg_reg(DA850_MCASP_ACLKR);
 	davinci_cfg_reg(DA850_MCASP_ACLKX);
@@ -648,6 +721,13 @@ void da830_init_emac(struct emac_platform_data *pdata)
 void da830_init_emac(struct emac_platform_data *unused) {}
 
 #endif
+
+int get_async3_src(void)
+{
+	unsigned int *addr = IO_ADDRESS(DA8XX_CFGCHIP3);
+
+        return ((__raw_readl(addr) & 0x10) ? 1 : 0);
+}
 
 void __init da850_init(void)
 {

@@ -35,6 +35,7 @@ void __init da8xx_init_spi0(unsigned char* chip_sel, unsigned int num_sel,
 
 void __init da830_init_mcasp1(void);
 void da830_init_emac(struct emac_platform_data *);
+int get_async3_src(void);
 
 #define DA8XX_BOOT_CFG_BASE		0x01C14000
 
