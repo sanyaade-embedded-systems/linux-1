@@ -1022,7 +1022,7 @@ void edma_clean_channel(unsigned cc_inst, unsigned channel)
 		edma_write_array(cc_inst, EDMA_EMCR, j, mask);
 		/* Clear any SER */
 		edma_shadow0_write_array(cc_inst, SH_SECR, j, mask);
-		edma_shadow0_write_array(cc_inst, SH_EECR, j, mask); /* sudhakar */
+		edma_shadow0_write_array(cc_inst, SH_EECR, j, mask);
 		edma_write(cc_inst, EDMA_CCERRCLR, (1 << 16) | 0x3);
 	}
 }
