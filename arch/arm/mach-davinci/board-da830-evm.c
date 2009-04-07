@@ -161,7 +161,7 @@ static struct resource da830_evm_nandflash_resource[] = {
 
 static struct platform_device da830_evm_nandflash_device = {
 	.name		= "davinci_nand",
-	.id		= 0,
+	.id		= 1,
 	.dev		= {
 		.platform_data  = &da830_evm_nandflash_data,
 	},
