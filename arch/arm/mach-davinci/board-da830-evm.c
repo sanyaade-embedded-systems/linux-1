@@ -142,7 +142,8 @@ struct mtd_partition da830_evm_nandflash_partition[] = {
 static struct davinci_nand_pdata da830_evm_nandflash_data = {
 	.parts		= da830_evm_nandflash_partition,
 	.nr_parts	= ARRAY_SIZE(da830_evm_nandflash_partition),
-	.ecc_mode	= NAND_ECC_HW,
+	.ecc_mode	= NAND_ECC_HW_SYNDROME,
+	.options	= NAND_USE_FLASH_BBT,
 };
 
 #define SZ_32K	(32 * 1024)
