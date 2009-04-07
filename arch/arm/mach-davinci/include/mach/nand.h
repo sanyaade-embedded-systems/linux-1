@@ -57,6 +57,15 @@
 #define	MASK_ALE		0x08
 #define	MASK_CLE		0x10
 
+/* Definitions for 4-bit hardware ECC */
+#define NAND_4BIT_ECC_MASK		0x03FF03FF
+#define NANDFSR_ECC_STATE_MASK  	0x00000F00
+#define ECC_STATE_NO_ERR		0x0
+#define ECC_STATE_TOO_MANY_ERRS		0x1
+#define ECC_STATE_ERR_CORR_COMP_P	0x2
+#define ECC_STATE_ERR_CORR_COMP_N	0x3
+#define ECC_MAX_CORRECTABLE_ERRORS	0x4
+
 struct davinci_nand_pdata {		/* platform_data */
 	u32			mask_ale;
 	u32			mask_cle;
