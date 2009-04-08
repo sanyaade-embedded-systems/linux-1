@@ -579,6 +579,9 @@ static const struct mux_config davinci_da850_pins[] = {
 	DA8XX_MUX_CFG(DA850,	SATA_CP_DET,	3,    28,  15,   0,     false)
 	DA8XX_MUX_CFG(DA850,	SATA_LED,	4,    24,  15,   4,     false)
 	DA8XX_MUX_CFG(DA850,	SATA_CP_POD,	4,    28,  15,   4,     false)
+	/* GPIO function */
+	DA8XX_MUX_CFG(DA850,	GPIO4_0,	10,   28,  15,   8,	false)
+	DA8XX_MUX_CFG(DA850,	GPIO4_1,	10,   24,  15,   8,	false)
 };
 
 static const s8 dma_chan_da850_no_event[] = {

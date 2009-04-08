@@ -640,6 +640,10 @@ enum davinci_da850_index {
 	DA850_SATA_CP_DET,
 	DA850_SATA_LED,
 	DA850_SATA_CP_POD,
+
+	/* GPIO function */
+	DA850_GPIO4_0,
+	DA850_GPIO4_1,
 };
 
 #ifdef CONFIG_DAVINCI_MUX

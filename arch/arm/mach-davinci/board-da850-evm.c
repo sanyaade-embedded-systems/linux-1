@@ -132,7 +132,8 @@ __setup("eth=", eth_addr_setup);
 #if defined(CONFIG_MMC_DAVINCI) || defined(CONFIG_MMC_DAVINCI_MODULE)
 static int da850_evm_mmc_get_ro(int index)
 {
-	int val, status, gpio_num = 49;
+	/* GPIO 4[1] is used for MMC/SD WP - 16 * 4 + 1 = 65 */
+	int val, status, gpio_num = 65;
 
 	status = gpio_request(gpio_num, "MMC WP\n");
 	if (status < 0) {
@@ -148,7 +149,8 @@ static int da850_evm_mmc_get_ro(int index)
 
 static int da850_evm_mmc_get_cd(int index)
 {
-	int val, status, gpio_num = 48;
+	/* GPIO 4[0] is used for MMC/SD WP - 16 * 4 + 0 = 64 */
+	int val, status, gpio_num = 64;
        
 	status = gpio_request(gpio_num, "MMC CD\n");
 	if (status < 0) {
@@ -263,6 +265,9 @@ static __init void da850_evm_init(void)
 	da850_evm_init_i2c();
 
 #if defined(CONFIG_MMC_DAVINCI) || defined(CONFIG_MMC_DAVINCI_MODULE)
+	/* Mux the GPIO required for WP feature */
+	davinci_cfg_reg(DA850_GPIO4_0);
+	davinci_cfg_reg(DA850_GPIO4_1);
 	davinci_setup_mmc(0, &da850_mmc_config);
 #endif
 
