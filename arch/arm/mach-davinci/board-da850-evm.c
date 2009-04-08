@@ -53,6 +53,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <mach/emac.h>
+#include <mach/nand.h>
 #include <mach/mmc.h>
 #include <mach/cp_intc.h>
 #include <mach/asp.h>
@@ -78,9 +79,11 @@ struct mtd_partition da850_evm_nandflash_partition[] = {
 };
 
 #if defined (CONFIG_MTD_NAND_DAVINCI) || defined(CONFIG_MTD_NAND_DAVINCI_MODULE)
-static struct flash_platform_data da850_evm_nandflash_data = {
+static struct davinci_nand_pdata da850_evm_nandflash_data = {
 	.parts		= da850_evm_nandflash_partition,
 	.nr_parts	= ARRAY_SIZE(da850_evm_nandflash_partition),
+	.ecc_mode	= NAND_ECC_HW_SYNDROME,
+	.options	= NAND_USE_FLASH_BBT,
 };
 
 #define SZ_32K	(32 * 1024)
@@ -99,7 +102,7 @@ static struct resource da850_evm_nandflash_resource[] = {
 
 static struct platform_device da850_evm_nandflash_device = {
 	.name		= "davinci_nand",
-	.id		= 0,
+	.id		= 1,
 	.dev		= {
 		.platform_data  = &da850_evm_nandflash_data,
 	},
