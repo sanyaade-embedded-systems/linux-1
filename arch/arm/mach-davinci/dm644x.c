@@ -461,8 +461,6 @@ void dm644x_init_emac(struct emac_platform_data *unused) {}
 
 #endif
 
-void __init dm644x_init(void)
-
 /*----------------------------------------------------------------------*/
 
 void __init dm644x_init(void)

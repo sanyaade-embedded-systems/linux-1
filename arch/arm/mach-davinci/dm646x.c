@@ -418,8 +418,6 @@ void dm646x_init_emac(struct emac_platform_data *unused) {}
 #endif
 
 void __init dm646x_init(void)
-
-void __init dm646x_init(void)
 {
 	davinci_clk_init(dm646x_clks);
 	davinci_mux_register(dm646x_pins, ARRAY_SIZE(dm646x_pins),

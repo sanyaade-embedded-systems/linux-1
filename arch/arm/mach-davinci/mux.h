@@ -33,7 +33,6 @@
 			.debug = dbg,					\
 			.mux_reg_name = "INTMUX",			\
 			.mux_reg = INTMUX,				\
-			.reg_index = muxreg,				\
 			.mask_offset = mode_offset,			\
 			.mask = mode_mask,				\
 			.mode = mux_mode,				\
@@ -45,7 +44,6 @@
 			.debug = dbg,					\
 			.mux_reg_name = "EVTMUX",			\
 			.mux_reg = EVTMUX,				\
-			.reg_index = muxreg,				\
 			.mask_offset = mode_offset,			\
 			.mask = mode_mask,				\
 			.mode = mux_mode,				\
