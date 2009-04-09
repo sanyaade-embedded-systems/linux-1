@@ -314,7 +314,7 @@ static __init void da850_evm_irq_init(void)
 	cp_intc_init((void __iomem*)IO_Dx_INTC_VIRT, IRQ_DA850_MCBSP1XINT + 1, NULL);
 }
 
-MACHINE_START(DAVINCI_DA8XX_EVM, "DaVinci DA850 EVM")
+MACHINE_START(DAVINCI_DA850_EVM, "DaVinci DA850 EVM")
 	.phys_io	= IO_PHYS,
 	.io_pg_offst	= (__IO_ADDRESS(IO_PHYS) >> 18) & 0xfffc,
 	.boot_params	= (0xC0000100),
