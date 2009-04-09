@@ -26,5 +26,3 @@ obj-$(CONFIG_MACH_DAVINCI_DM355_EVM)	+= board-dm355-evm.o
 obj-$(CONFIG_MACH_SFFSDR)		+= board-sffsdr.o
 obj-$(CONFIG_MACH_DA830_EVM)		+= board-da830-evm.o
 obj-$(CONFIG_MACH_DA850_EVM)		+= board-da850-evm.o
-
-obj-m	+= saEdma.o
