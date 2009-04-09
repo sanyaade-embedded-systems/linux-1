@@ -63,6 +63,12 @@
 #define DA850_EVM_PHY_MASK		(0x1)
 #define DA850_EVM_MDIO_FREQUENCY	(2200000) /* PHY bus frequency */
 
+#define PCF8575_PORT0	(0)
+#define PCF8575_PORT1	(8)
+#define VIDEO_SEL	BIT(PCF8575_PORT0 + 5)
+#define CAMERA_SEL	BIT(PCF8575_PORT0 + 6)
+#define ADC_SEL		BIT(PCF8575_PORT0 + 7)
+
 static struct emac_platform_data da850_evm_emac_pdata = {
 	.phy_mask	= DA850_EVM_PHY_MASK,
 	.mdio_max_freq	= DA850_EVM_MDIO_FREQUENCY,
@@ -174,6 +180,9 @@ static struct davinci_mmc_config da850_mmc_config = {
 #endif
 
 static struct i2c_board_info __initdata i2c_info[] =  {
+	{
+		I2C_BOARD_INFO("pcf8575", 0x20),
+	},
 };
 
 static struct davinci_i2c_platform_data da850_i2c_data0 = {
