@@ -229,6 +229,21 @@ static __init void da850_evm_init(void)
 	davinci_cfg_reg(DA850_EMA_D_5);
 	davinci_cfg_reg(DA850_EMA_D_6);
 	davinci_cfg_reg(DA850_EMA_D_7);
+	davinci_cfg_reg(DA850_NEMA_OE);
+	davinci_cfg_reg(DA850_NEMA_CS_3);
+	davinci_cfg_reg(DA850_NEMA_CS_4);
+	davinci_cfg_reg(DA850_EMA_A_1);
+	davinci_cfg_reg(DA850_EMA_A_2);
+	davinci_cfg_reg(DA850_NEMA_WE);
+#elif defined (CONFIG_MTD_CFI) || defined (CONFIG_MTD_CFI_MODULE)
+	davinci_cfg_reg(DA850_EMA_D_0);
+	davinci_cfg_reg(DA850_EMA_D_1);
+	davinci_cfg_reg(DA850_EMA_D_2);
+	davinci_cfg_reg(DA850_EMA_D_3);
+	davinci_cfg_reg(DA850_EMA_D_4);
+	davinci_cfg_reg(DA850_EMA_D_5);
+	davinci_cfg_reg(DA850_EMA_D_6);
+	davinci_cfg_reg(DA850_EMA_D_7);
 	davinci_cfg_reg(DA850_EMA_D_8);
 	davinci_cfg_reg(DA850_EMA_D_9);
 	davinci_cfg_reg(DA850_EMA_D_10);
@@ -250,22 +265,10 @@ static __init void da850_evm_init(void)
 	davinci_cfg_reg(DA850_EMA_A_10);
 	davinci_cfg_reg(DA850_EMA_A_11);
 	davinci_cfg_reg(DA850_EMA_A_12);
-	davinci_cfg_reg(DA850_EMA_BA_0);
 	davinci_cfg_reg(DA850_EMA_BA_1);
-	davinci_cfg_reg(DA850_EMA_CLK);
-	davinci_cfg_reg(DA850_EMA_SDCKE);
-	davinci_cfg_reg(DA850_NEMA_CAS);
-	davinci_cfg_reg(DA850_NEMA_RAS);
 	davinci_cfg_reg(DA850_NEMA_WE);
-	davinci_cfg_reg(DA850_NEMA_CS_0);
 	davinci_cfg_reg(DA850_NEMA_CS_2);
-	davinci_cfg_reg(DA850_NEMA_CS_3);
-	davinci_cfg_reg(DA850_NEMA_CAS);
-	davinci_cfg_reg(DA850_NEMA_RAS);
 	davinci_cfg_reg(DA850_NEMA_OE);
-	davinci_cfg_reg(DA850_NEMA_WE_DQM_1);
-	davinci_cfg_reg(DA850_NEMA_WE_DQM_0);
-	davinci_cfg_reg(DA850_EMA_WAIT_0);
 #endif
 
 	platform_add_devices(da850_evm_devices,
