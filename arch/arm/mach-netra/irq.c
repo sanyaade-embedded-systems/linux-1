@@ -124,6 +124,7 @@ static void omap_unmask_irq(unsigned int irq)
 
 	irq &= (IRQ_BITS_PER_REG - 1);
 
+	/* !@@@ */
 	intc_bank_write_reg(1 << irq, &irq_banks[0], INTC_MIR_CLEAR0 + offset);
 }
 

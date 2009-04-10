@@ -778,7 +778,9 @@ static void __init do_pre_smp_initcalls(void)
 
 static void run_init_process(char *init_filename)
 {
+	printk("We are inside run init process \n");/*!@0*/
 	argv_init[0] = init_filename;
+	printk("Init file name is %s \n",init_filename);/*!@0*/
 	kernel_execve(init_filename, argv_init, envp_init);
 }
 
@@ -787,13 +789,20 @@ static void run_init_process(char *init_filename)
  */
 static noinline int init_post(void)
 {
+	/* !@0 printks Added by Nageswari for Debug */
 	/* need to finish all async __init code before freeing the memory */
+	printk("Enter init_post 1 \n");
 	async_synchronize_full();
+	printk("Enter init_post 2 \n");
 	free_initmem();
+	printk("Enter init_post 3 \n");
 	unlock_kernel();
+	printk("Enter init_post 4 \n");
 	mark_rodata_ro();
+	printk("Enter init_post 5 \n");
 	system_state = SYSTEM_RUNNING;
 	numa_default_policy();
+	printk("We are inside init _post 6 \n");
 
 	if (sys_open((const char __user *) "/dev/console", O_RDWR, 0) < 0)
 		printk(KERN_WARNING "Warning: unable to open an initial console.\n");
@@ -803,6 +812,7 @@ static noinline int init_post(void)
 
 	current->signal->flags |= SIGNAL_UNKILLABLE;
 
+	printk("We are entering ramdisk_execute_command \n");
 	if (ramdisk_execute_command) {
 		run_init_process(ramdisk_execute_command);
 		printk(KERN_WARNING "Failed to execute %s\n",
@@ -815,6 +825,7 @@ static noinline int init_post(void)
 	 * The Bourne shell can be used instead of init if we are
 	 * trying to recover a really broken machine.
 	 */
+	printk("We are entering execute_command \n");
 	if (execute_command) {
 		run_init_process(execute_command);
 		printk(KERN_WARNING "Failed to execute %s.  Attempting "

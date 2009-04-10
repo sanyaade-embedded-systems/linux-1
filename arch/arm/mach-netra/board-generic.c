@@ -39,9 +39,9 @@ static void __init omap_generic_init_irq(void)
 {
 	/* !@0 */
 #if defined(CONFIG_ARCH_NETRA)
+	omap2_set_globals_343x();
 	pwrdm_init(powerdomains_omap);
 	clkdm_init(clockdomains_omap, clkdm_pwrdm_autodeps);
-	omap2_set_globals_343x();
 	omap2_clk_init();
 #else
 	omap2_init_common_hw(NULL);

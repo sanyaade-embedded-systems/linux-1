@@ -44,6 +44,9 @@ static irqreturn_t omap2_gp_timer_interrupt(int irq, void *dev_id)
 	struct omap_dm_timer *gpt = (struct omap_dm_timer *)dev_id;
 	struct clock_event_device *evt = &clockevent_gpt;
 
+	/**** !@0 Need to be removed as printk in interrupt context is not a cleaner approach Nageswari */
+//	printk("We are inside timer interrupt \n");
+
 	omap_dm_timer_write_status(gpt, OMAP_TIMER_INT_OVERFLOW);
 
 	evt->event_handler(evt);
@@ -76,6 +79,11 @@ static void omap2_gp_timer_set_mode(enum clock_event_mode mode,
 		period = clk_get_rate(omap_dm_timer_get_fclk(gptimer)) / HZ;
 		period -= 1;
 
+		/* !@@ Added code to check Reload counter value  Nageswari */
+#ifdef CONFIG_MACH_NETRA_SIM
+		printk("omap2_gp_timer_set_mode: period = %u\n", period);
+		period = 0x0000ffff;
+#endif	
 		omap_dm_timer_set_load_start(gptimer, 1, 0xffffffff - period);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
@@ -109,7 +117,7 @@ static void __init omap2_gp_clockevent_init(void)
 #endif
 	pr_info("timer-gp: timer @%p: fclk @%p, iclk @%p\n", gptimer, (int *)gptimer + 4, (int *)gptimer + 5);
 #ifdef CONFIG_MACH_NETRA_SIM
-	tick_rate = 100;
+	tick_rate = 100; /* !@@ */
 #else
 	tick_rate = clk_get_rate(omap_dm_timer_get_fclk(gptimer));
 #endif
@@ -181,6 +189,9 @@ static void __init omap2_gp_clocksource_init(void)
 	gpt = omap_dm_timer_request();
 	if (!gpt)
 		printk(err1, clocksource_gpt.name);
+	else
+		printk("%s: gpt @%#x\n", __FUNCTION__, gpt);
+
 	gpt_clocksource = gpt;
 
 	pr_info("clockdomain: %d\n", __LINE__);
@@ -194,8 +205,10 @@ static void __init omap2_gp_clocksource_init(void)
 	omap_dm_timer_set_load_start(gpt, 1, 0);
 	pr_info("clockdomain: %d\n", __LINE__);
 
-	clocksource_gpt.mult =
-		clocksource_khz2mult(tick_rate/1000, clocksource_gpt.shift);
+	/* Commented this portion suspecting this is causing "divide by zer" error */
+	/*clocksource_gpt.mult =
+	  	clocksource_khz2mult(tick_rate/1000, clocksource_gpt.shift);
+	*/
 	pr_info("clockdomain: %d\n", __LINE__);
 	if (clocksource_register(&clocksource_gpt))
 		printk(err2, clocksource_gpt.name);

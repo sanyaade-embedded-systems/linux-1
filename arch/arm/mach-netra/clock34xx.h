@@ -3336,8 +3336,8 @@ static struct clk wdt1_fck = {
 };
 
 static struct clk *onchip_34xx_clks[] __initdata = {
-#ifndef CONFIG_MACH_NETRA_SIM
 	&omap_32k_fck,
+#ifndef CONFIG_MACH_NETRA_SIM
 	&virt_12m_ck,
 	&virt_13m_ck,
 	&virt_16_8m_ck,
