@@ -234,6 +234,7 @@ static struct clk timer1_clk = {
 	.name = "timer1",
 	.parent = &pll1_sysclk3,
 	.lpsc = DM646X_LPSC_TIMER1,
+	.flags = ALWAYS_ENABLED,
 };
 
 static struct clk timer2_clk = {
