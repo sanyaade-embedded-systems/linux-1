@@ -2449,16 +2449,26 @@ static struct clk usim_fck = {
 static struct clk gpt1_fck = {
 	.name		= "gpt1_fck",
 	.prcm_mod	= WKUP_MOD,
+#ifndef CONFIG_MACH_NETRA_SIM
 	.init		= &omap2_init_clksel_parent,
+#else
+	.rate		= 32768,	/* !@0 Skip CM module access for parent.
+					   TODO: Need to set correct rate. For
+					   now just use 32K rate. */
+#endif
 	.enable_reg	= CM_FCLKEN,
 	.enable_bit	= OMAP3430_EN_GPT1_SHIFT,
 	.idlest_bit	= OMAP3430_ST_GPT1_SHIFT,
 	.clksel_reg	= CM_CLKSEL,
 	.clksel_mask	= OMAP3430_CLKSEL_GPT1_MASK,
+#ifndef CONFIG_MACH_NETRA_SIM
 	.clksel		= omap343x_gpt_clksel,
+#endif
 	.flags		= CLOCK_IN_OMAP343X | WAIT_READY,
 	.clkdm		= { .name = "prm_clkdm" },
+#ifndef CONFIG_MACH_NETRA_SIM
 	.recalc		= &omap2_clksel_recalc,
+#endif
 };
 
 static struct clk wkup_32k_fck = {
@@ -2620,16 +2630,26 @@ static struct clk uart3_fck = {
 static struct clk gpt2_fck = {
 	.name		= "gpt2_fck",
 	.prcm_mod	= OMAP3430_PER_MOD,
+#ifndef CONFIG_MACH_NETRA_SIM
 	.init		= &omap2_init_clksel_parent,
+#else
+	.rate		= 32768,	/* !@0 Skip CM module access for parent.
+					   TODO: Need to set correct rate. For
+					   now just use 32K rate. */
+#endif
 	.enable_reg	= CM_FCLKEN,
 	.enable_bit	= OMAP3430_EN_GPT2_SHIFT,
 	.idlest_bit	= OMAP3430_ST_GPT2_SHIFT,
 	.clksel_reg	= CM_CLKSEL,
 	.clksel_mask	= OMAP3430_CLKSEL_GPT2_MASK,
+#ifndef CONFIG_MACH_NETRA_SIM
 	.clksel		= omap343x_gpt_clksel,
+#endif
 	.flags		= CLOCK_IN_OMAP343X | WAIT_READY,
 	.clkdm		= { .name = "per_clkdm" },
+#ifndef CONFIG_MACH_NETRA_SIM
 	.recalc		= &omap2_clksel_recalc,
+#endif
 };
 
 static struct clk gpt3_fck = {
@@ -3337,15 +3357,17 @@ static struct clk wdt1_fck = {
 
 static struct clk *onchip_34xx_clks[] __initdata = {
 	&omap_32k_fck,
-#ifndef CONFIG_MACH_NETRA_SIM
 	&virt_12m_ck,
+#ifndef CONFIG_MACH_NETRA_SIM
 	&virt_13m_ck,
 	&virt_16_8m_ck,
 	&virt_19_2m_ck,
 	&virt_26m_ck,
 	&virt_38_4m_ck,
+#endif
 	&osc_sys_ck,
 	&sys_ck,
+#ifndef CONFIG_MACH_NETRA_SIM
 	&sys_altclk,
 	&mcbsp_clks,
 	&sys_clkout1,
@@ -3425,6 +3447,8 @@ static struct clk *onchip_34xx_clks[] __initdata = {
 	&mcspi3_fck,
 	&mcspi2_fck,
 	&mcspi1_fck,
+#endif
+#ifndef CONFIG_MACH_NETRA_SIM
 	&uart2_fck,
 	&uart1_fck,
 	&fshostusb_fck,
@@ -3459,6 +3483,8 @@ static struct clk *onchip_34xx_clks[] __initdata = {
 	&i2c3_ick,
 	&i2c2_ick,
 	&i2c1_ick,
+#endif
+#ifndef CONFIG_MACH_NETRA_SIM
 	&uart2_ick,
 	&uart1_ick,
 	&gpt11_ick,
@@ -3498,6 +3524,8 @@ static struct clk *onchip_34xx_clks[] __initdata = {
 	&gpio1_dbck,
 	&wdt2_fck,
 	&wkup_l4_ick,
+#endif
+#ifndef CONFIG_MACH_NETRA_SIM
 	&usim_ick,
 	&wdt2_ick,
 	&wdt1_ick,
@@ -3510,7 +3538,9 @@ static struct clk *onchip_34xx_clks[] __initdata = {
 	&per_96m_fck,
 	&per_48m_fck,
 	&uart3_fck,
+#endif
 	&gpt2_fck,
+#ifndef CONFIG_MACH_NETRA_SIM
 	&gpt3_fck,
 	&gpt4_fck,
 	&gpt5_fck,
@@ -3532,6 +3562,8 @@ static struct clk *onchip_34xx_clks[] __initdata = {
 	&gpio3_ick,
 	&gpio2_ick,
 	&wdt3_ick,
+#endif
+#ifndef CONFIG_MACH_NETRA_SIM
 	&uart3_ick,
 	&gpt9_ick,
 	&gpt8_ick,

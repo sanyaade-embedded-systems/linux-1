@@ -146,8 +146,8 @@ static struct clockdomain dss_24xx_clkdm = {
  * 34xx clockdomains
  */
 
-#if defined(CONFIG_ARCH_OMAP34XX)
-
+#if defined(CONFIG_ARCH_OMAP34XX) || defined(CONFIG_ARCH_NETRA)
+#ifndef CONFIG_ARCH_NETRA
 static struct clockdomain mpu_34xx_clkdm = {
 	.name		= "mpu_clkdm",
 	.pwrdm		= { .name = "mpu_pwrdm" },
@@ -242,7 +242,6 @@ static struct clockdomain usbhost_clkdm = {
 	.clktrctrl_mask = OMAP3430ES2_CLKTRCTRL_USBHOST_MASK,
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430ES2),
 };
-
 static struct clockdomain per_clkdm = {
 	.name		= "per_clkdm",
 	.pwrdm		= { .name = "per_pwrdm" },
@@ -250,7 +249,8 @@ static struct clockdomain per_clkdm = {
 	.clktrctrl_mask = OMAP3430_CLKTRCTRL_PER_MASK,
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
 };
-
+#endif /* !@@ !CONFIG_ARCH_NETRA */
+#ifndef CONFIG_ARCH_NETRA
 /*
  * Disable hw supervised mode for emu_clkdm, because emu_pwrdm is
  * switched of even if sdti is in use
@@ -292,7 +292,7 @@ static struct clockdomain dpll5_clkdm = {
 	.pwrdm		= { .name = "dpll5_pwrdm" },
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430ES2),
 };
-
+#endif /* !CONFIG_ARCH_NETRA */
 #endif   /* CONFIG_ARCH_OMAP34XX */
 
 /*
@@ -360,6 +360,9 @@ static struct clockdomain *clockdomains_omap[] = {
 	&dpll3_clkdm,
 	&dpll4_clkdm,
 	&dpll5_clkdm,
+#endif
+#ifdef CONFIG_ARCH_NETRA
+//	&per_clkdm,		/* !@0 */
 #endif
 
 	NULL,

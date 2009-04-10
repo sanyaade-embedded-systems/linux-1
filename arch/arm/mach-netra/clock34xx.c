@@ -726,8 +726,17 @@ int __init omap2_clk_init(void)
 	     clkp < onchip_34xx_clks + ARRAY_SIZE(onchip_34xx_clks);
 	     clkp++) {
 		if ((*clkp)->flags & cpu_clkflg) {
-			pr_info("clock: registering for %s\n", (*clkp)->name);
+			pr_info("clock: registering for %s @%#x\n",
+					(*clkp)->name, (void *)(*clkp));
+			pr_info("clock: parent %s @%#x\n",
+					(*clkp)->parent 
+					? (*clkp)->parent->name : "NULL",
+					(void *)((*clkp)->parent));
 			clk_register(*clkp);
+			pr_info("clock: parent %s @%#x\n",
+					(*clkp)->parent 
+					? (*clkp)->parent->name : "NULL",
+					(void *)((*clkp)->parent));
 		}
 	}
 
