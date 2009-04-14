@@ -1569,6 +1569,7 @@ static void *emac_net_alloc_rx_buf(struct emac_priv *priv, int buf_size,
 
 	/* set device pointer in skb and reserve space for extra bytes */
 	p_skb->dev = ndev;
+	skb_reserve(p_skb, NET_IP_ALIGN);
 	*data_token = (void *) p_skb;
 	EMAC_CACHE_WRITEBACK_INVALIDATE((unsigned long)p_skb->data, buf_size);
 	return p_skb->data;
@@ -1997,10 +1998,8 @@ static int emac_rx_bdproc(struct emac_priv *priv, u32 ch, u32 budget,
 	       ((frame_status & EMAC_CPPI_OWNERSHIP_BIT) == 0) &&
 	       (pkts_processed < budget)) {
 
-		new_buffer = emac_net_alloc_rx_buf(priv,
-				EMAC_DEF_MAX_FRAME_SIZE +
-				EMAC_L3_ALIGN(EMAC_DEF_EXTRA_RXBUF_SIZE),
-				&new_buf_token, EMAC_DEF_RX_CH);
+		new_buffer = emac_net_alloc_rx_buf(priv, rxch->buf_size,
+					&new_buf_token, EMAC_DEF_RX_CH);
 		if (unlikely(NULL == new_buffer)) {
 			++rxch->out_of_rx_buffers;
 			goto end_emac_rx_bdproc;
@@ -2420,7 +2419,7 @@ static int emac_dev_open(struct net_device *ndev)
 		ndev->dev_addr[cnt] = priv->mac_addr[cnt];
 
 	/* Configuration items */
-	priv->rx_buf_size = EMAC_DEF_MAX_FRAME_SIZE;
+	priv->rx_buf_size = EMAC_DEF_MAX_FRAME_SIZE + NET_IP_ALIGN;
 
 	/* Clear basic hardware */
 	for (ch = 0; ch < EMAC_MAX_TXRX_CHANNELS; ch++) {
