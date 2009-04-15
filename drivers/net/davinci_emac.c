@@ -347,17 +347,6 @@ static const char emac_version_string[] = "TI DaVinci EMAC Linux v6.0";
 #define EMAC_DM646X_MAC_EOI_C0_RXEN	(0x01)
 #define EMAC_DM646X_MAC_EOI_C0_TXEN	(0x02)
 
-/*
- * L3 Alignment mechanism: The below given macro returns the number of
- * bytes required to align the given size to a L3 frame 4 byte
- * boundry. This is typically required to add 2 bytes to the ethernet
- * frame start to make sure the IP header (L3) is aligned on a 4 byte
- * boundry
- */
-static char emac_L3_align[] = { 0x02, 0x01, 0x00, 0x03 };
-
-#define EMAC_L3_ALIGN(size)    emac_L3_align[(size) & 0x3]
-
 /** net_buf_obj: EMAC network bufferdata structure
  *
  * EMAC network buffer data structure
