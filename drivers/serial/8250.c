@@ -1058,6 +1058,7 @@ static void autoconfig_16550a(struct uart_8250_port *up)
 		DEBUG_AUTOCONF("Couldn't force IER_UUE to 0 ");
 	}
 	serial_outp(up, UART_IER, iersave);
+	printk("%s: Set IER = %x\n", __FUNCTION__, iersave);
 }
 
 /*
@@ -1073,9 +1074,13 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 	unsigned char save_lcr, save_mcr;
 	unsigned long flags;
 
-	if (!up->port.iobase && !up->port.mapbase && !up->port.membase)
+	if (!up->port.iobase && !up->port.mapbase && !up->port.membase) {
+		/*!@0*/printk("%s:%d - ***ERROR***\n", __FUNCTION__, __LINE__);
 		return;
-
+	}
+		
+	/*!@0*/printk("ttyS%d: autoconf (0x%04x, 0x%p): ",
+		       serial_index(&up->port), up->port.iobase, up->port.membase);
 	DEBUG_AUTOCONF("ttyS%d: autoconf (0x%04x, 0x%p): ",
 		       serial_index(&up->port), up->port.iobase, up->port.membase);
 
@@ -1103,6 +1108,7 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 		 * and the device is in "PC" mode.
 		 */
 		scratch = serial_inp(up, UART_IER);
+		printk("%s: Read IER = %x\n", __FUNCTION__, scratch);
 		serial_outp(up, UART_IER, 0);
 #ifdef __i386__
 		outb(0xff, 0x080);
@@ -1112,17 +1118,21 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 		 * 16C754B) allow only to modify them if an EFR bit is set.
 		 */
 		scratch2 = serial_inp(up, UART_IER) & 0x0f;
+		printk("%s: Read IER = %x\n", __FUNCTION__, scratch2);
 		serial_outp(up, UART_IER, 0x0F);
 #ifdef __i386__
 		outb(0, 0x080);
 #endif
 		scratch3 = serial_inp(up, UART_IER) & 0x0f;
+		printk("%s: Read IER = %x\n", __FUNCTION__, scratch3);
 		serial_outp(up, UART_IER, scratch);
 		if (scratch2 != 0 || scratch3 != 0x0F) {
 			/*
 			 * We failed; there's nothing here
 			 */
 			DEBUG_AUTOCONF("IER test failed (%02x, %02x) ",
+				       scratch2, scratch3);
+			printk("IER test failed (%02x, %02x) ",
 				       scratch2, scratch3);
 			goto out;
 		}
@@ -1147,6 +1157,8 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 		if (status1 != 0x90) {
 			DEBUG_AUTOCONF("LOOP test failed (%02x) ",
 				       status1);
+			printk("LOOP test failed (%02x) ",
+				       status1);
 			goto out;
 		}
 	}
@@ -1168,6 +1180,7 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 	scratch = serial_in(up, UART_IIR) >> 6;
 
 	DEBUG_AUTOCONF("iir=%d ", scratch);
+	printk("iir=%d ", scratch);
 
 	switch (scratch) {
 	case 0:
@@ -1220,8 +1233,10 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 	up->capabilities = uart_config[up->port.type].flags;
 	up->tx_loadsz = uart_config[up->port.type].tx_loadsz;
 
-	if (up->port.type == PORT_UNKNOWN)
+	if (up->port.type == PORT_UNKNOWN) {
+		/*!@0*/printk("%s:%d - ***ERROR***\n", __FUNCTION__, __LINE__);
 		goto out;
+	}
 
 	/*
 	 * Reset the UART.
@@ -1235,11 +1250,14 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 	serial_in(up, UART_RX);
 	if (up->capabilities & UART_CAP_UUE)
 		serial_outp(up, UART_IER, UART_IER_UUE);
-	else
+	else {
 		serial_outp(up, UART_IER, 0);
+		printk("%s:%d Set IER = 0\n", __FUNCTION__, __LINE__);
+	}
 
  out:
 	spin_unlock_irqrestore(&up->port.lock, flags);
+	/*!@0*/printk("type=%s\n", uart_config[up->port.type].name);
 	DEBUG_AUTOCONF("type=%s\n", uart_config[up->port.type].name);
 }
 
@@ -1285,6 +1303,7 @@ static void autoconfig_irq(struct uart_8250_port *up)
 
 	serial_outp(up, UART_MCR, save_mcr);
 	serial_outp(up, UART_IER, save_ier);
+	printk("%s:%d setting IER %x \n", __FUNCTION__, __LINE__, save_ier);
 
 	if (up->port.flags & UPF_FOURPORT)
 		outb_p(save_ICP, ICP);
@@ -1560,12 +1579,25 @@ static irqreturn_t serial8250_interrupt(int irq, void *dev_id)
 		up = list_entry(l, struct uart_8250_port, list);
 
 		iir = serial_in(up, UART_IIR);
+#if 0
+		/* !@@ temp */
 		if (!(iir & UART_IIR_NO_INT)) {
+#else
+		if (1) {
+#endif
+			/*!@@*/if (!up->port.x_char)
+				serial_outp(up, UART_TX, 0);
+			
 			serial8250_handle_port(up);
 
 			handled = 1;
 
+#if 0
+		/* !@@ temp */
 			end = NULL;
+#else
+			end = l;
+#endif
 		} else if (up->port.iotype == UPIO_DWAPB &&
 			  (iir & UART_IIR_BUSY) == UART_IIR_BUSY) {
 			/* The DesignWare APB UART has an Busy Detect (0x07)
@@ -1646,7 +1678,7 @@ static int serial_link_irq_chain(struct uart_8250_port *up)
 		if (i->irq == up->port.irq)
 			break;
 	}
-
+	
 	if (n == NULL) {
 		i = kzalloc(sizeof(struct irq_info), GFP_KERNEL);
 		if (i == NULL) {
@@ -1673,8 +1705,10 @@ static int serial_link_irq_chain(struct uart_8250_port *up)
 
 		ret = request_irq(up->port.irq, serial8250_interrupt,
 				  irq_flags, "serial", i);
-		if (ret < 0)
+		if (ret < 0) {
+			/*!@0*/printk("%s:%d - ***ERROR***\n", __FUNCTION__, __LINE__);
 			serial_do_unlink(i, up);
+		}
 	}
 
 	return ret;
@@ -1938,6 +1972,8 @@ static int serial8250_startup(struct uart_port *port)
 	unsigned char lsr, iir;
 	int retval;
 
+	/*!@0*/printk("%s:%d for %#x\n", __FUNCTION__, __LINE__, up);
+
 	up->capabilities = uart_config[up->port.type].flags;
 	up->mcr = 0;
 
@@ -1985,6 +2021,7 @@ static int serial8250_startup(struct uart_port *port)
 	    (serial_inp(up, UART_LSR) == 0xff)) {
 		printk(KERN_INFO "ttyS%d: LSR safety check engaged!\n",
 		       serial_index(&up->port));
+		/*!@0*/printk("%s:%d - ***ERROR***\n", __FUNCTION__, __LINE__);
 		return -ENODEV;
 	}
 
@@ -2041,6 +2078,8 @@ static int serial8250_startup(struct uart_port *port)
 			up->bugs |= UART_BUG_THRE;
 			pr_debug("ttyS%d - using backup timer\n",
 				 serial_index(port));
+			printk("ttyS%d - using backup timer\n",
+				 serial_index(port));
 		}
 	}
 
@@ -2063,10 +2102,14 @@ static int serial8250_startup(struct uart_port *port)
 	if (!is_real_interrupt(up->port.irq)) {
 		up->timer.data = (unsigned long)up;
 		mod_timer(&up->timer, jiffies + poll_timeout(up->port.timeout));
+		printk("%s:%d\n", __FUNCTION__, __LINE__);/*!@0*/
 	} else {
+		printk("%s:%d adding to irq chain for %#x\n", __FUNCTION__, __LINE__, up);/*!@0*/
 		retval = serial_link_irq_chain(up);
-		if (retval)
+		if (retval) {
+			printk("%s:%d ***ERROR*** %d\n", __FUNCTION__, __LINE__, retval);/*!@0*/
 			return retval;
+		}
 	}
 
 	/*
@@ -2100,6 +2143,8 @@ static int serial8250_startup(struct uart_port *port)
 		if (!(up->bugs & UART_BUG_TXEN)) {
 			up->bugs |= UART_BUG_TXEN;
 			pr_debug("ttyS%d - enabling bad tx status workarounds\n",
+				 serial_index(port));
+			printk("ttyS%d - enabling bad tx status workarounds\n",
 				 serial_index(port));
 		}
 	} else {
@@ -2146,6 +2191,7 @@ static void serial8250_shutdown(struct uart_port *port)
 	struct uart_8250_port *up = (struct uart_8250_port *)port;
 	unsigned long flags;
 
+	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	/*
 	 * Disable interrupts from this port
 	 */
@@ -2414,10 +2460,13 @@ static unsigned int serial8250_port_size(struct uart_8250_port *pt)
 {
 	if (pt->port.iotype == UPIO_AU)
 		return 0x100000;
-#ifdef CONFIG_ARCH_OMAP
-	if (is_omap_port(pt))
+#if defined CONFIG_ARCH_OMAP || defined CONFIG_ARCH_NETRA
+	if (is_omap_port(pt)) {
+		/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 		return 0x16 << pt->port.regshift;
+	}
 #endif
+	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	return 8 << pt->port.regshift;
 }
 
@@ -2568,8 +2617,9 @@ static void serial8250_config_port(struct uart_port *port, int flags)
 	if (flags & UART_CONFIG_TYPE)
 		autoconfig(up, probeflags);
 	if (up->port.type != PORT_UNKNOWN && flags & UART_CONFIG_IRQ)
+	{
 		autoconfig_irq(up);
-
+	}
 	if (up->port.type != PORT_RSA && probeflags & PROBE_RSA)
 		serial8250_release_rsa_resource(up);
 	if (up->port.type == PORT_UNKNOWN)
@@ -2584,6 +2634,7 @@ serial8250_verify_port(struct uart_port *port, struct serial_struct *ser)
 	    ser->type >= ARRAY_SIZE(uart_config) || ser->type == PORT_CIRRUS ||
 	    ser->type == PORT_STARTECH)
 		return -EINVAL;
+	
 	return 0;
 }
 
@@ -2633,6 +2684,7 @@ static void __init serial8250_isa_init_ports(void)
 		return;
 	first = 0;
 
+	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	for (i = 0; i < nr_uarts; i++) {
 		struct uart_8250_port *up = &serial8250_ports[i];
 
@@ -2665,6 +2717,7 @@ static void __init serial8250_isa_init_ports(void)
 		set_io_from_upio(&up->port);
 		if (share_irqs)
 			up->port.flags |= UPF_SHARE_IRQ;
+		/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	}
 }
 
@@ -2768,8 +2821,9 @@ static int __init serial8250_console_setup(struct console *co, char *options)
 	if (co->index >= nr_uarts)
 		co->index = 0;
 	port = &serial8250_ports[co->index].port;
-	if (!port->iobase && !port->membase)
+	if (!port->iobase && !port->membase) {
 		return -ENODEV;
+	}
 
 	if (options)
 		uart_parse_options(options, &baud, &parity, &bits, &flow);
@@ -2935,14 +2989,17 @@ static int __devinit serial8250_probe(struct platform_device *dev)
 		port.dev		= &dev->dev;
 		if (share_irqs)
 			port.flags |= UPF_SHARE_IRQ;
+		/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 		ret = serial8250_register_port(&port);
 		if (ret < 0) {
 			dev_err(&dev->dev, "unable to register port at index %d "
 				"(IO%lx MEM%llx IRQ%d): %d\n", i,
 				p->iobase, (unsigned long long)p->mapbase,
 				p->irq, ret);
+			/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 		}
 	}
+	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	return 0;
 }
 
@@ -3064,8 +3121,10 @@ int serial8250_register_port(struct uart_port *port)
 	struct uart_8250_port *uart;
 	int ret = -ENOSPC;
 
-	if (port->uartclk == 0)
+	if (port->uartclk == 0) {
+		/*!@0*/printk("%s:%d - ***ERROR***\n", __FUNCTION__, __LINE__);
 		return -EINVAL;
+	}
 
 	mutex_lock(&serial_mutex);
 
@@ -3182,6 +3241,7 @@ unreg_uart_drv:
 	uart_unregister_driver(&serial8250_reg);
 #endif
 out:
+	/*!@0*/printk("%s:%d - ret = %d\n", __FUNCTION__, __LINE__, ret);
 	return ret;
 }
 

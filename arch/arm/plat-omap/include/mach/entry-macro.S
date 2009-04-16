@@ -83,7 +83,8 @@
 
 		.macro	get_irqnr_and_base, irqnr, irqstat, base, tmp
 		ldr	\base, =OMAP2_VA_IC_BASE
-#ifndef CONFIG_MACH_NETRA_SIM
+#if 1
+//!@0 ndef CONFIG_MACH_NETRA_SIM
 		ldr	\irqnr, [\base, #0x98] /* IRQ pending reg 1 */
 		cmp	\irqnr, #0x0
 		bne	2222f
