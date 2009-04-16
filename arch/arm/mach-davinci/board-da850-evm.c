@@ -117,15 +117,15 @@ struct davinci_spi_config_t w25x64_spi_cfg = {
 };
 
 static struct flash_platform_data spi_flash_data = {
-	.name = "m25p64",
+	.name = "m25p80",
 	.parts = spi_flash_partitions,
 	.nr_parts = ARRAY_SIZE(spi_flash_partitions),
-	.type = "w25x64",
+	.type = "m25p64",
 };
 
 static struct spi_board_info da850_spi_board_info0[] = {
 	[0] = {
-		.modalias = "m25p64",
+		.modalias = "m25p80",
 		.platform_data = &spi_flash_data,
 		.controller_data = &w25x64_spi_cfg,
 		.mode = SPI_MODE_0,
