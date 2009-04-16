@@ -32,6 +32,8 @@ void da8xx_init_rtc(void);
 struct spi_board_info;
 void __init da8xx_init_spi0(unsigned char* chip_sel, unsigned int num_sel,
 	struct spi_board_info *info, unsigned num_dev);
+void __init da850_init_spi1(unsigned char* chip_sel, unsigned int num_sel,
+	struct spi_board_info *info, unsigned num_dev);
 
 void __init da830_init_mcasp1(void);
 void da830_init_emac(struct emac_platform_data *);

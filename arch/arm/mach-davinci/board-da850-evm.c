@@ -27,12 +27,14 @@
 #include <linux/serial_8250.h>
 #include <linux/io.h>
 #include <linux/console.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/flash.h>
+#include <linux/spi/davinci_spi_master.h>
 
 #include <asm/setup.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
-#include <asm/mach/flash.h>
 #include <mach/irqs.h>
 #include <mach/edma.h>
 #include <linux/kgdb.h>
@@ -72,6 +74,65 @@
 static struct emac_platform_data da850_evm_emac_pdata = {
 	.phy_mask	= DA850_EVM_PHY_MASK,
 	.mdio_max_freq	= DA850_EVM_MDIO_FREQUENCY,
+};
+
+static struct mtd_partition spi_flash_partitions[] = {
+	[0] = {
+		.name = "U-Boot",
+		.offset = 0,
+		.size = SZ_256K,
+		.mask_flags = MTD_WRITEABLE,
+	},
+	[1] = {
+		.name = "U-Boot Environment",
+		.offset = MTDPART_OFS_APPEND,
+		.size = SZ_16K,
+		.mask_flags = MTD_WRITEABLE,
+	},
+	[2] = {
+		.name = "Linux",
+		.offset = MTDPART_OFS_NXTBLK,
+		.size = MTDPART_SIZ_FULL,
+		.mask_flags = 0,
+	},
+};
+
+struct davinci_spi_config_t w25x64_spi_cfg = {
+	.wdelay         = 0,
+	.odd_parity     = 0,
+	.parity_enable  = 0,
+	.wait_enable    = 0,
+	.lsb_first      = 0,
+	.timer_disable  = 0,
+	.clk_high       = 0,
+	.phase_in       = 1,
+	.clk_internal   = 1,
+	.loop_back      = 0,
+	.cs_hold        = 1,
+	.intr_level     = 0,
+	.pin_op_modes   = SPI_OPMODE_SPISCS_4PIN,
+#ifndef CONFIG_SPI_INTERRUPT
+	.poll_mode      = 1,
+#endif
+};
+
+static struct flash_platform_data spi_flash_data = {
+	.name = "m25p64",
+	.parts = spi_flash_partitions,
+	.nr_parts = ARRAY_SIZE(spi_flash_partitions),
+	.type = "w25x64",
+};
+
+static struct spi_board_info da850_spi_board_info0[] = {
+	[0] = {
+		.modalias = "m25p64",
+		.platform_data = &spi_flash_data,
+		.controller_data = &w25x64_spi_cfg,
+		.mode = SPI_MODE_0,
+		.max_speed_hz = 30000000,       /* max sample rate at 3V */
+		.bus_num = 0,
+		.chip_select = 0,
+	},
 };
 
 struct mtd_partition da850_evm_nandflash_partition[] = {
@@ -282,6 +343,9 @@ static __init void da850_evm_init(void)
 	davinci_cfg_reg(DA850_GPIO4_1);
 	davinci_setup_mmc(0, &da850_mmc_config);
 #endif
+
+	da850_init_spi1(NULL, 1, da850_spi_board_info0,
+			ARRAY_SIZE(da850_spi_board_info0));
 
 	da8xx_init_rtc();
 

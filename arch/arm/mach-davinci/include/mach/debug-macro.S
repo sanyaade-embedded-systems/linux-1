@@ -24,12 +24,9 @@
 		tst	\rx, #1			@ MMU enabled?
 		moveq	\rx, #0x01000000	@ physical base address
 		movne	\rx, #0xfe000000	@ virtual base
-#if defined (CONFIG_ARCH_DA830)
+#if defined (CONFIG_ARCH_DA8XX)
 		orr	\rx, \rx, #0x00d00000   @ UART 2
 		orr	\rx, \rx, #0x0000d000   @ UART 2
-#elif defined (CONFIG_ARCH_DA850)
-		orr	\rx, \rx, #0x00c40000   @ UART 0
-		orr	\rx, \rx, #0x00002000   @ UART 0
 #else
 		orr	\rx, \rx, #0x00c20000   @ UART 0
 #endif
