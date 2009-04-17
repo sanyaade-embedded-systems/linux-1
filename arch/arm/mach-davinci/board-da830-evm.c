@@ -388,7 +388,7 @@ static __init void da830_evm_init(void)
 
 	da830_init_mcasp1();
 
-	davinci_init_emac(&da830_evm_emac_pdata);
+	da830_init_emac(&da830_evm_emac_pdata);
 }
 
 static __init void da830_evm_irq_init(void)

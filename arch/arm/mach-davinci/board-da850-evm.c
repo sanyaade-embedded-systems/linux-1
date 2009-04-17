@@ -370,7 +370,7 @@ static __init void da850_evm_init(void)
 	davinci_cfg_reg(DA850_MII_RXD_1);
 	davinci_cfg_reg(DA850_MII_RXD_0);
 
-	davinci_init_emac(&da850_evm_emac_pdata);
+	da850_init_emac(&da850_evm_emac_pdata);
 }
 
 static __init void da850_evm_irq_init(void)

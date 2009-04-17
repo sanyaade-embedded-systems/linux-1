@@ -778,7 +778,7 @@ static struct platform_device da850_emac_device = {
 	.resource	= da850_emac_resources,
 };
 
-void da830_init_emac(struct emac_platform_data *pdata)
+void da850_init_emac(struct emac_platform_data *pdata)
 {
 	pdata->ctrl_reg_offset		= DA8XX_EMAC_CTRL_REG_OFFSET;
 	pdata->ctrl_mod_reg_offset	= DA8XX_EMAC_MOD_REG_OFFSET;
@@ -791,7 +791,7 @@ void da830_init_emac(struct emac_platform_data *pdata)
 }
 #else
 
-void da830_init_emac(struct emac_platform_data *unused) {}
+void da850_init_emac(struct emac_platform_data *unused) {}
 
 #endif
 
