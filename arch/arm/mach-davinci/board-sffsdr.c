@@ -54,6 +54,9 @@
 #include <mach/psc.h>
 #include <mach/mux.h>
 
+#define SFFSDR_PHY_MASK		(0x2)
+#define SFFSDR_MDIO_FREQUENCY	(2200000) /* PHY bus frequency */
+
 #define DAVINCI_ASYNC_EMIF_CONTROL_BASE   0x01e00000
 #define DAVINCI_ASYNC_EMIF_DATA_CE0_BASE  0x02000000
 
@@ -107,6 +110,11 @@ static struct platform_device davinci_sffsdr_nandflash_device = {
 
 /* Get Ethernet address from kernel boot params */
 static u8 davinci_sffsdr_mac_addr[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+static struct emac_platform_data sffsdr_emac_pdata = {
+	.phy_mask	= SFFSDR_PHY_MASK,
+	.mdio_max_freq	= SFFSDR_MDIO_FREQUENCY,
+};
 
 static struct at24_platform_data eeprom_info = {
 	.byte_len	= (64*1024) / 8,
