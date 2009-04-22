@@ -758,7 +758,6 @@ int __init omap_dm_timer_init(void)
 			timer->iclk = clk_get(NULL, clk_name);
 			sprintf(clk_name, "gpt%d_fck", i + 1);
 			timer->fclk = clk_get(NULL, clk_name);
-			pr_info("dmtimer: timer @%p: fclk @%p\n", timer, timer->fclk);
 		}
 #endif
 	}

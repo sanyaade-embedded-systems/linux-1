@@ -112,15 +112,7 @@ static void __init omap2_gp_clockevent_init(void)
 #else
 	omap_dm_timer_set_source(gptimer, OMAP_TIMER_SRC_SYS_CLK);
 #endif
-	pr_info("timer-gp: timer @%p: fclk @%p, iclk @%p\n", gptimer, (int *)gptimer + 4, (int *)gptimer + 5);
-	
 	tick_rate = clk_get_rate(omap_dm_timer_get_fclk(gptimer));
-
-#ifdef CONFIG_MACH_NETRA_SIM
-	pr_info("%s: tick_rate = %u\n", __FUNCTION__, tick_rate);
-	if (tick_rate == 0)
-		tick_rate = 100; /* !@@ */
-#endif
 
 	pr_info("OMAP clockevent source: GPTIMER%d at %u Hz\n",
 		CONFIG_OMAP_TICK_GPTIMER, tick_rate);
@@ -185,34 +177,24 @@ static void __init omap2_gp_clocksource_init(void)
 	static char err2[] __initdata = KERN_ERR
 		"%s: can't register clocksource!\n";
 
-	pr_info("clockdomain: %d\n", __LINE__);
 	gpt = omap_dm_timer_request();
 	if (!gpt)
 		printk(err1, clocksource_gpt.name);
-	else
-		printk("%s: gpt @%#x\n", __FUNCTION__, (void *)gpt);
 
 	gpt_clocksource = gpt;
 
-	pr_info("clockdomain: %d\n", __LINE__);
 	omap_dm_timer_set_source(gpt, OMAP_TIMER_SRC_SYS_CLK);
-	pr_info("clockdomain: %d\n", __LINE__);
 	tick_rate = clk_get_rate(omap_dm_timer_get_fclk(gpt));
-	pr_info("clockdomain: %d, tick_rate =  %u\n", __LINE__, tick_rate);
 	tick_period = (tick_rate / HZ) - 1;
-	pr_info("clockdomain: %d\n", __LINE__);
 
 	omap_dm_timer_set_load_start(gpt, 1, 0);
-	pr_info("clockdomain: %d\n", __LINE__);
 
 	/* Commented this portion suspecting this is causing "divide by zer" error */
 	clocksource_gpt.mult =
 	  	clocksource_khz2mult(tick_rate/1000, clocksource_gpt.shift);
 
-	pr_info("clockdomain: %d\n", __LINE__);
 	if (clocksource_register(&clocksource_gpt))
 		printk(err2, clocksource_gpt.name);
-	pr_info("clockdomain: %d\n", __LINE__);
 }
 #endif
 

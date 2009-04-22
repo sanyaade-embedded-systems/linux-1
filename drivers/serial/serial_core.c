@@ -145,12 +145,9 @@ static int uart_startup(struct uart_state *state, int init_hw)
 	unsigned long page;
 	int retval = 0;
 
-	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
-
 	if (info->flags & UIF_INITIALIZED)
 		return 0;
 
-	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	/*
 	 * Set the TTY IO error marker - we will only clear this
 	 * once we have successfully opened the port.  Also set
@@ -161,7 +158,6 @@ static int uart_startup(struct uart_state *state, int init_hw)
 	if (port->type == PORT_UNKNOWN)
 		return 0;
 
-	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	/*
 	 * Initialise and allocate the transmit and temporary
 	 * buffer.
@@ -174,10 +170,8 @@ static int uart_startup(struct uart_state *state, int init_hw)
 
 		info->xmit.buf = (unsigned char *) page;
 		uart_circ_clear(&info->xmit);
-	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	}
 
-	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	retval = port->ops->startup(port);
 	if (retval == 0) {
 		if (init_hw) {
@@ -204,14 +198,11 @@ static int uart_startup(struct uart_state *state, int init_hw)
 		info->flags |= UIF_INITIALIZED;
 
 		clear_bit(TTY_IO_ERROR, &info->port.tty->flags);
-	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	}
-	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 
 	if (retval && capable(CAP_SYS_ADMIN))
 		retval = 0;
 
-	/*!@0*/printk("%s:%d\n", __FUNCTION__, __LINE__);
 	return retval;
 }
 
@@ -1609,10 +1600,8 @@ static int uart_open(struct tty_struct *tty, struct file *filp)
 	 * we won't get caught by uart_close()).
 	 */
 	retval = -ENODEV;
-	if (line >= tty->driver->num) {
-		printk("%s:%d\n", __FUNCTION__, __LINE__);/*!@0*/
+	if (line >= tty->driver->num)
 		goto fail;
-	}
 
 	/*
 	 * We take the semaphore inside uart_get to guarantee that we won't
@@ -1623,11 +1612,9 @@ static int uart_open(struct tty_struct *tty, struct file *filp)
 	 */
 	state = uart_get(drv, line);
 	if (IS_ERR(state)) {
-		printk("%s:%d\n", __FUNCTION__, __LINE__);/*!@0*/
 		retval = PTR_ERR(state);
 		goto fail;
 	}
-		printk("%s:%d\n", __FUNCTION__, __LINE__);/*!@0*/
 
 	/*
 	 * Once we set tty->driver_data here, we are guaranteed that
@@ -1640,7 +1627,6 @@ static int uart_open(struct tty_struct *tty, struct file *filp)
 	tty->alt_speed = 0;
 	state->info.port.tty = tty;
 
-		printk("%s:%d\n", __FUNCTION__, __LINE__);/*!@0*/
 	/*
 	 * If the port is in the middle of closing, bail out now.
 	 */

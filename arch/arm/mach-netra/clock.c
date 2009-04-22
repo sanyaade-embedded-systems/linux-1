@@ -209,7 +209,10 @@ void omap2_init_clk_clkdm(struct clk *clk)
 		pr_err("clock: %s: could not associate to clkdm %s\n",
 		       clk->name, clk->clkdm.name);
 #ifdef CONFIG_MACH_NETRA_SIM
-		/*!@0 tmp dbg print */printk("clkdm.ptr = %#x\n", clk->clkdm.ptr);
+		/* Initialize the ptr here so that routines such as
+		 * omap2_clkdm_clk_enable which check tghis pointer for NULL can
+		 * exit without crashing.
+		 */
 		clk->clkdm.ptr = NULL;
 #endif
 	}
@@ -489,21 +492,21 @@ int omap2_clk_enable(struct clk *clk)
 {
 	int ret;
 
-	printk(KERN_INFO "Enabling clk %s @%#x\n", clk->name, (void *)clk); 
+	pr_debug("clock: enabling %s @%#x\n", clk->name, (void *)clk); 
 
 	if (++clk->usecount > 1)
 		return 0;
 
-
-	printk(KERN_INFO "Enabling clkdomain %s @%#x\n",
+	pr_debug("clock: enabling clkdomain %s @%#x\n",
 			clk->clkdm.ptr ? clk->clkdm.ptr->name : "NULL",
 			(void *)clk->clkdm.ptr); 
+
 	omap2_clkdm_clk_enable(clk->clkdm.ptr, clk);
 
 	if (clk->parent) {
 		int parent_ret;
 
-		printk(KERN_INFO "Enabling parent clk %s\n", clk->parent->name); 
+		pr_debug("clock: enabling parent clk %s\n", clk->parent->name); 
 		
 		parent_ret = omap2_clk_enable(clk->parent);
 

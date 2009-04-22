@@ -445,24 +445,18 @@ int clk_register(struct clk *clk)
 		return -EINVAL;
 
 	mutex_lock(&clocks_mutex);
-	printk("1: parent %s\n", clk->parent ? clk->parent->name : "NULL");
 	if (arch_clock->clk_register) {
 		ret = arch_clock->clk_register(clk);
 		if (ret)
 			goto cr_out;
 	}
-	printk("2: parent %s\n", clk->parent ? clk->parent->name : "NULL");
 	list_add(&clk->node, &clocks);
-	printk("3: parent %s\n", clk->parent ? clk->parent->name : "NULL");
 	if (!clk->children.next)
 		INIT_LIST_HEAD(&clk->children);
-	printk("4: parent %s\n", clk->parent ? clk->parent->name : "NULL");
 	if (clk->parent)
 		omap_clk_add_child(clk->parent, clk);
-	printk("5: parent %s\n", clk->parent ? clk->parent->name : "NULL");
 	if (clk->init)
 		clk->init(clk);
-	printk("6: parent %s\n", clk->parent ? clk->parent->name : "NULL");
 	ret = 0;
 cr_out:
 	mutex_unlock(&clocks_mutex);

@@ -202,7 +202,7 @@ int clkdm_register(struct clockdomain *clkdm)
 	int ret = -EINVAL;
 	struct powerdomain *pwrdm;
 
-	pr_info("clockdomain: %p:%s\n", clkdm, clkdm ? clkdm->name : "NULL");
+	pr_debug("clockdomain: registering %s\n", clkdm ? clkdm->name : "NULL");
 
 	if (!clkdm || !clkdm->name)
 		return -EINVAL;

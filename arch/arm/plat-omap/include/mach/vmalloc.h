@@ -17,5 +17,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+#ifndef CONFIG_ARCH_NETRA
 #define VMALLOC_END	  (PAGE_OFFSET + 0x18000000)
+#else
+#define VMALLOC_END	  0xd8000000	/* !@1 Setting absolute value for now to
+					   avoid dependency on memory split */
+#endif
 

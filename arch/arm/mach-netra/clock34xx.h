@@ -2452,7 +2452,7 @@ static struct clk gpt1_fck = {
 #ifndef CONFIG_MACH_NETRA_SIM
 	.init		= &omap2_init_clksel_parent,
 #else
-	.rate		= 32768*1024,	/* !@0 Skip CM module access for parent.
+	.rate		= 32768*5,	/* !@0 Skip CM module access for parent.
 					   TODO: Need to set correct rate. For
 					   now just use 32K rate. */
 #endif
@@ -2633,7 +2633,7 @@ static struct clk gpt2_fck = {
 #ifndef CONFIG_MACH_NETRA_SIM
 	.init		= &omap2_init_clksel_parent,
 #else
-	.rate		= 32768*1024,	/* !@0 Skip CM module access for parent.
+	.rate		= 32768*5,	/* !@0 Skip CM module access for parent.
 					   TODO: Need to set correct rate. For
 					   now just use 32K rate. */
 #endif
