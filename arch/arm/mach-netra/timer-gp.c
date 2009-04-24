@@ -76,11 +76,6 @@ static void omap2_gp_timer_set_mode(enum clock_event_mode mode,
 		period = clk_get_rate(omap_dm_timer_get_fclk(gptimer)) / HZ;
 		period -= 1;
 
-		/* !@@ Added code to check Reload counter value  Nageswari */
-#ifdef CONFIG_MACH_NETRA_SIM
-		printk("omap2_gp_timer_set_mode: period = %u\n", period);
-		//!@@ trying to remove this hack -> period = 0x0000ffff;
-#endif	
 		omap_dm_timer_set_load_start(gptimer, 1, 0xffffffff - period);
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
@@ -121,21 +116,14 @@ static void __init omap2_gp_clockevent_init(void)
 	setup_irq(omap_dm_timer_get_irq(gptimer), &omap2_gp_timer_irq);
 	omap_dm_timer_set_int_enable(gptimer, OMAP_TIMER_INT_OVERFLOW);
 
-#ifdef CONFIG_MACH_NETRA_SIM
 	clockevent_gpt.mult = div_sc(tick_rate, NSEC_PER_SEC,
 				     clockevent_gpt.shift);
-
 	clockevent_gpt.max_delta_ns =
 		clockevent_delta2ns(0xffffffff, &clockevent_gpt);
 	clockevent_gpt.min_delta_ns =
 		clockevent_delta2ns(3, &clockevent_gpt);
 		/* Timer internal resynch latency. */
-#else
-	clockevent_gpt.mult = 4;
-	clockevent_gpt.max_delta_ns = 1000;
-	clockevent_gpt.min_delta_ns = 1;
-#endif
-	
+
 	clockevent_gpt.cpumask = cpumask_of(0);
 	clockevents_register_device(&clockevent_gpt);
 }
@@ -180,7 +168,6 @@ static void __init omap2_gp_clocksource_init(void)
 	gpt = omap_dm_timer_request();
 	if (!gpt)
 		printk(err1, clocksource_gpt.name);
-
 	gpt_clocksource = gpt;
 
 	omap_dm_timer_set_source(gpt, OMAP_TIMER_SRC_SYS_CLK);
@@ -189,10 +176,8 @@ static void __init omap2_gp_clocksource_init(void)
 
 	omap_dm_timer_set_load_start(gpt, 1, 0);
 
-	/* Commented this portion suspecting this is causing "divide by zer" error */
 	clocksource_gpt.mult =
-	  	clocksource_khz2mult(tick_rate/1000, clocksource_gpt.shift);
-
+		clocksource_khz2mult(tick_rate/1000, clocksource_gpt.shift);
 	if (clocksource_register(&clocksource_gpt))
 		printk(err2, clocksource_gpt.name);
 }
