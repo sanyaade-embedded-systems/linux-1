@@ -14,6 +14,9 @@ obj-$(CONFIG_ARCH_OMAP3) += $(omap-2-3-common) $(prcm-common) $(clock-common)
 
 obj-$(CONFIG_OMAP_MCBSP) += mcbsp.o
 
+# SMP support ONLY available for OMAP4
+obj-$(CONFIG_SMP)			+= omap-smp.o omap-headsmp.o \
+					   timer-mpu.o
 # Functions loaded to SRAM
 obj-$(CONFIG_ARCH_OMAP2420)		+= sram242x.o
 obj-$(CONFIG_ARCH_OMAP2430)		+= sram243x.o
