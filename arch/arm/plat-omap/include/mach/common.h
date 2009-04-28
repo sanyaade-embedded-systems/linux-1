@@ -30,6 +30,9 @@
 #include <linux/i2c.h>
 
 struct sys_timer;
+#ifdef CONFIG_LOCAL_TIMERS /* Base address of mpu timer */
+extern void __iomem *twd_base;
+#endif
 
 extern void omap_map_common_io(void);
 extern struct sys_timer omap_timer;
