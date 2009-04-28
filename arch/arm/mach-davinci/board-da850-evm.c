@@ -74,6 +74,7 @@
 static struct emac_platform_data da850_evm_emac_pdata = {
 	.phy_mask	= DA850_EVM_PHY_MASK,
 	.mdio_max_freq	= DA850_EVM_MDIO_FREQUENCY,
+	.rmii_en	= 1,
 };
 
 static struct mtd_partition spi_flash_partitions[] = {
@@ -351,24 +352,40 @@ static __init void da850_evm_init(void)
 
 	da850_init_mcasp();
 
-	/* select MII in Linux */
-	__raw_writel((__raw_readl(addr)) & ~BIT(8), addr);
+	if (da850_evm_emac_pdata.rmii_en) {
+		/* RMII */
+		__raw_writel((__raw_readl(addr)) | BIT(8), addr);
+		davinci_cfg_reg(DA850_RMII_TXD_0);
+		davinci_cfg_reg(DA850_RMII_TXD_1);
+		davinci_cfg_reg(DA850_RMII_TXEN);
+		davinci_cfg_reg(DA850_RMII_CRS_DV);
+		davinci_cfg_reg(DA850_RMII_RXD_0);
+		davinci_cfg_reg(DA850_RMII_RXD_1);
+		davinci_cfg_reg(DA850_RMII_RXER);
+		davinci_cfg_reg(DA850_RMII_MHZ_50_CLK);
 
-	davinci_cfg_reg(DA850_MII_TXEN);
-	davinci_cfg_reg(DA850_MII_TXCLK);
-	davinci_cfg_reg(DA850_MII_COL);
-	davinci_cfg_reg(DA850_MII_TXD_3);
-	davinci_cfg_reg(DA850_MII_TXD_2);
-	davinci_cfg_reg(DA850_MII_TXD_1);
-	davinci_cfg_reg(DA850_MII_TXD_0);
-	davinci_cfg_reg(DA850_MII_RXER);
-	davinci_cfg_reg(DA850_MII_CRS);
-	davinci_cfg_reg(DA850_MII_RXCLK);
-	davinci_cfg_reg(DA850_MII_RXDV);
-	davinci_cfg_reg(DA850_MII_RXD_3);
-	davinci_cfg_reg(DA850_MII_RXD_2);
-	davinci_cfg_reg(DA850_MII_RXD_1);
-	davinci_cfg_reg(DA850_MII_RXD_0);
+	} else {
+		/*MII */
+		__raw_writel((__raw_readl(addr)) & ~BIT(8), addr);
+		davinci_cfg_reg(DA850_MII_TXEN);
+		davinci_cfg_reg(DA850_MII_TXCLK);
+		davinci_cfg_reg(DA850_MII_COL);
+		davinci_cfg_reg(DA850_MII_TXD_3);
+		davinci_cfg_reg(DA850_MII_TXD_2);
+		davinci_cfg_reg(DA850_MII_TXD_1);
+		davinci_cfg_reg(DA850_MII_TXD_0);
+		davinci_cfg_reg(DA850_MII_RXER);
+		davinci_cfg_reg(DA850_MII_CRS);
+		davinci_cfg_reg(DA850_MII_RXCLK);
+		davinci_cfg_reg(DA850_MII_RXDV);
+		davinci_cfg_reg(DA850_MII_RXD_3);
+		davinci_cfg_reg(DA850_MII_RXD_2);
+		davinci_cfg_reg(DA850_MII_RXD_1);
+		davinci_cfg_reg(DA850_MII_RXD_0);
+	}
+
+	davinci_cfg_reg(DA850_MDIO_CLK);
+	davinci_cfg_reg(DA850_MDIO_D);
 
 	da850_init_emac(&da850_evm_emac_pdata);
 }

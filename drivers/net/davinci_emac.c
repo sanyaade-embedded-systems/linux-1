@@ -2438,6 +2438,7 @@ static int emac_dev_open(struct net_device *ndev)
 	/* find the first phy */
 	priv->phydev = NULL;
 	if (priv->phy_mask) {
+		emac_mii_reset(priv->mii_bus);
 		for (phy_addr = 0; phy_addr < PHY_MAX_ADDR; phy_addr++) {
 			if (priv->mii_bus->phy_map[phy_addr]) {
 				priv->phydev = priv->mii_bus->phy_map[phy_addr];
