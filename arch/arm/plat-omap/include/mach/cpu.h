@@ -45,6 +45,11 @@ struct omap_chip_id {
  */
 unsigned int omap_rev(void);
 
+/* Needed for secondary core boot */
+#ifdef CONFIG_SMP
+extern void omap_secondary_startup(void);
+#endif
+
 /*
  * Test if multicore OMAP support is needed
  */
