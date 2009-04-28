@@ -130,7 +130,7 @@ static struct spi_board_info da850_spi_board_info0[] = {
 		.controller_data = &w25x64_spi_cfg,
 		.mode = SPI_MODE_0,
 		.max_speed_hz = 30000000,       /* max sample rate at 3V */
-		.bus_num = 0,
+		.bus_num = 1,
 		.chip_select = 0,
 	},
 };
