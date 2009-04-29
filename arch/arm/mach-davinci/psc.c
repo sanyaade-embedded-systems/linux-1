@@ -73,7 +73,7 @@ void davinci_psc_config(unsigned int domain, unsigned int id, char enable)
 	else
 		psc_base_array = davinci_psc_base;
 
-	if (cpu_is_da8xx() && id > 32) {
+	if (cpu_is_da8xx() && id >= 32) {
 		id -= 32;
 		domain = 1;
 	}

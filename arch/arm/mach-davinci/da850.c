@@ -172,8 +172,8 @@ static struct clk timerp64_1_clk = {
 	.parent		= &pll0_aux_clk,
 };
 
-static struct clk tpcc_clk = {
-	.name		= "tpcc",
+static struct clk tpcc0_clk = {
+	.name		= "tpcc0",
 	.parent		= &pll0_sysclk2,
 	.lpsc		= DA8XX_LPSC_TPCC,
 	.flags		= CLK_PSC | ALWAYS_ENABLED,
@@ -190,6 +190,20 @@ static struct clk tptc1_clk = {
 	.name		= "tptc1",
 	.parent		= &pll0_sysclk2,
 	.lpsc		= DA8XX_LPSC_TPTC1,
+	.flags		= ALWAYS_ENABLED,
+};
+
+static struct clk tpcc1_clk = {
+	.name		= "tpcc1",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA850_LPSC_TPCC1,
+	.flags		= CLK_PSC | ALWAYS_ENABLED,
+};
+
+static struct clk tptc2_clk = {
+	.name		= "tptc2",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA850_LPSC_TPTC2,
 	.flags		= ALWAYS_ENABLED,
 };
 
@@ -299,9 +313,11 @@ static struct davinci_clk da850_clks[] = {
 	CLK("i2c_davinci.1",	NULL,		&i2c0_clk),
 	CLK(NULL,		"timer0",	&timerp64_0_clk),
 	CLK("watchdog",		NULL,		&timerp64_1_clk),
-	CLK(NULL,		"tpcc",		&tpcc_clk),
+	CLK(NULL,		"tpcc0",	&tpcc0_clk),
 	CLK(NULL,		"tptc0",	&tptc0_clk),
 	CLK(NULL,		"tptc1",	&tptc1_clk),
+	CLK(NULL,		"tpcc1",	&tpcc1_clk),
+	CLK(NULL,		"tptc2",	&tptc2_clk),
 	CLK("davinci_mmc.0",	NULL,		&mmcsd_clk),
 	CLK(NULL,		"uart0",	&uart0_clk),
 	CLK(NULL,		"uart1",	&uart1_clk),
@@ -585,22 +601,22 @@ static const struct mux_config davinci_da850_pins[] = {
 	DA8XX_MUX_CFG(DA850,	GPIO4_1,	10,   24,  15,   8,	false)
 };
 
-static const s8 dma_chan_da850_no_event[] = {
+static const s8 dma0_chan_da850_no_event[] = {
 	-1
 };
 
-static struct edma_soc_info da850_edma_info = {
-	.n_channel	= 64,
+static struct edma_soc_info da850_edma0_info = {
+	.n_channel	= 32,
 	.n_region	= 8,
-	.n_slot		= 256,
-	.n_tc		= 3,
-	.n_cc		= 2,
-	.noevent	= dma_chan_da850_no_event,
+	.n_slot		= 128,
+	.n_tc		= 2,
+	.n_cc		= 1,
+	.noevent	= dma0_chan_da850_no_event,
 };
 
 #define SZ_32K  (32 * 1024)
 
-static struct resource edma_resources[] = {
+static struct resource edma0_resources[] = {
 	{
 		.name	= "edma_cc0",
 		.start	= 0x01c00000,
@@ -620,6 +636,41 @@ static struct resource edma_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
+		.start	= IRQ_DA8XX_CCINT0,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.start	= IRQ_DA8XX_CCERRINT,
+		.flags	= IORESOURCE_IRQ,
+	},
+	/* not using TC*_ERR */
+};
+
+static struct platform_device da850_edma0_device = {
+	.name			= "edma",
+	.id			= 0,
+	.dev.platform_data	= &da850_edma0_info,
+	.num_resources		= ARRAY_SIZE(edma0_resources),
+	.resource		= edma0_resources,
+};
+
+static const s8 dma1_chan_da850_no_event[] = {
+	19, 20, 21, 22,	23,
+	30, 31,
+	-1	
+};
+
+static struct edma_soc_info da850_edma1_info = {
+	.n_channel	= 32,
+	.n_region	= 8,
+	.n_slot		= 128,
+	.n_tc		= 1,
+	.n_cc		= 1,
+	.noevent	= dma1_chan_da850_no_event,
+};
+
+static struct resource edma1_resources[] = {
+	{
 		.name	= "edma_cc1",
 		.start	= 0x01e30000,
 		.end	= 0x01e30000 + SZ_32K - 1,
@@ -632,14 +683,6 @@ static struct resource edma_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.start	= IRQ_DA8XX_CCINT0,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.start	= IRQ_DA8XX_CCERRINT,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
 		.start	= IRQ_DA850_CCINT1,
 		.flags	= IORESOURCE_IRQ,
 	},
@@ -650,12 +693,12 @@ static struct resource edma_resources[] = {
 	/* not using TC*_ERR */
 };
 
-static struct platform_device da850_edma_device = {
+static struct platform_device da850_edma1_device = {
 	.name			= "edma",
-	.id			= -1,
-	.dev.platform_data	= &da850_edma_info,
-	.num_resources		= ARRAY_SIZE(edma_resources),
-	.resource		= edma_resources,
+	.id			= 1,
+	.dev.platform_data	= &da850_edma1_info,
+	.num_resources		= ARRAY_SIZE(edma1_resources),
+	.resource		= edma1_resources,
 };
 
 static struct davinci_spi_platform_data da850_spi_pdata1 = {
@@ -814,7 +857,8 @@ static int __init da850_init_devices(void)
 	if (!cpu_is_da850())
 		return 0;
 
-	platform_device_register(&da850_edma_device);
+	platform_device_register(&da850_edma0_device);
+	platform_device_register(&da850_edma1_device);
 	return 0;
 }
 postcore_initcall(da850_init_devices);

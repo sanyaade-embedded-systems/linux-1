@@ -485,7 +485,7 @@ static struct resource edma_resources[] = {
 
 static struct platform_device da830_edma_device = {
 	.name			= "edma",
-	.id			= -1,
+	.id			= 0,
 	.dev.platform_data	= &da830_edma_info,
 	.num_resources		= ARRAY_SIZE(edma_resources),
 	.resource		= edma_resources,

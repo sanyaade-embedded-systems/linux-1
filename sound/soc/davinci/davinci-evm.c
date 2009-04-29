@@ -274,9 +274,8 @@ static u8 dm6467_dit_serializer_direction[] = {
 };
 
 static struct evm_snd_platform_data evm_snd_data = {
-	.tx_dma_ch	= DAVINCI_DMA_ASP0_TX,
-	.rx_dma_ch	= DAVINCI_DMA_ASP0_RX,
-	.cc_inst	= 0,
+	.tx_dma_ch	= EDMA_CTLR_CHAN(0, DAVINCI_DMA_ASP0_TX),
+	.rx_dma_ch	= EDMA_CTLR_CHAN(0, DAVINCI_DMA_ASP0_RX),
 };
 
 static struct evm_snd_platform_data dm6467_evm_snd_data[] = {
@@ -320,9 +319,8 @@ static struct resource dm335evm_snd_resources[] = {
 };
 
 static struct evm_snd_platform_data dm335evm_snd_data = {
-	.tx_dma_ch	= DAVINCI_DMA_ASP1_TX,
-	.rx_dma_ch	= DAVINCI_DMA_ASP1_RX,
-	.cc_inst	= 0,
+	.tx_dma_ch	= EDMA_CTLR_CHAN(0, DAVINCI_DMA_ASP1_TX),
+	.rx_dma_ch	= EDMA_CTLR_CHAN(0, DAVINCI_DMA_ASP1_RX),
 };
 
 /* davinci da830 evm audio machine driver */

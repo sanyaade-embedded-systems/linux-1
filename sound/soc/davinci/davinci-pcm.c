@@ -100,11 +100,11 @@ static void davinci_pcm_enqueue_dma(struct snd_pcm_substream *substream)
 		dst_bidx = data_type;
 	}
 
-	edma_set_src(prtd->params->cc_inst, lch, src, INCR, W8BIT);
-	edma_set_dest(prtd->params->cc_inst, lch, dst, INCR, W8BIT);
-	edma_set_src_index(prtd->params->cc_inst, lch, src_bidx, 0);
-	edma_set_dest_index(prtd->params->cc_inst, lch, dst_bidx, 0);
-	edma_set_transfer_params(prtd->params->cc_inst, lch, acnt, count,
+	edma_set_src(lch, src, INCR, W8BIT);
+	edma_set_dest(lch, dst, INCR, W8BIT);
+	edma_set_src_index(lch, src_bidx, 0);
+	edma_set_dest_index(lch, dst_bidx, 0);
+	edma_set_transfer_params(lch, acnt, count,
 								1, 0, ASYNC);
 	prtd->period++;
 	if (unlikely(prtd->period >= runtime->periods))
@@ -144,8 +144,7 @@ static int davinci_pcm_dma_request(struct snd_pcm_substream *substream)
 	prtd->params = dma_data;
 
 	/* Request master DMA channel */
-	ret = edma_alloc_channel(prtd->params->cc_inst,
-				  prtd->params->channel,
+	ret = edma_alloc_channel(prtd->params->channel,
 				  davinci_pcm_dma_irq, substream,
 				  EVENTQ_0);
 
@@ -154,9 +153,9 @@ static int davinci_pcm_dma_request(struct snd_pcm_substream *substream)
 	prtd->master_lch = ret;
 
 	/* Request parameter RAM reload slot */
-	ret = edma_alloc_slot(prtd->params->cc_inst, EDMA_SLOT_ANY);
+	ret = edma_alloc_slot(EDMA_CTLR(prtd->master_lch), EDMA_SLOT_ANY);
 	if (ret < 0) {
-		edma_free_channel(prtd->params->cc_inst, prtd->master_lch);
+		edma_free_channel(prtd->master_lch);
 		return ret;
 	}
 	prtd->slave_lch = ret;
@@ -170,10 +169,10 @@ static int davinci_pcm_dma_request(struct snd_pcm_substream *substream)
 	 * the buffer and its length (ccnt) ... use it as a template
 	 * so davinci_pcm_enqueue_dma() takes less time in IRQ.
 	 */
-	edma_read_slot(prtd->params->cc_inst, prtd->slave_lch, &p_ram);
-	p_ram.opt |= TCINTEN | EDMA_TCC(prtd->master_lch);
-	p_ram.link_bcntrld = prtd->slave_lch << 5;
-	edma_write_slot(prtd->params->cc_inst, prtd->slave_lch, &p_ram);
+	edma_read_slot(prtd->slave_lch, &p_ram);
+	p_ram.opt |= TCINTEN | EDMA_TCC(EDMA_CHAN_SLOT(prtd->master_lch));
+	p_ram.link_bcntrld = EDMA_CHAN_SLOT(prtd->slave_lch) << 5;
+	edma_write_slot(prtd->slave_lch, &p_ram);
 
 	return 0;
 }
@@ -189,12 +188,12 @@ static int davinci_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		edma_start(prtd->params->cc_inst, prtd->master_lch);
+		edma_start(prtd->master_lch);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-		edma_stop(prtd->params->cc_inst, prtd->master_lch);
+		edma_stop(prtd->master_lch);
 		break;
 	default:
 		ret = -EINVAL;
@@ -215,8 +214,8 @@ static int davinci_pcm_prepare(struct snd_pcm_substream *substream)
 	davinci_pcm_enqueue_dma(substream);
 
 	/* Copy self-linked parameter RAM entry into master channel */
-	edma_read_slot(prtd->params->cc_inst, prtd->slave_lch, &temp);
-	edma_write_slot(prtd->params->cc_inst, prtd->master_lch, &temp);
+	edma_read_slot(prtd->slave_lch, &temp);
+	edma_write_slot(prtd->master_lch, &temp);
 
 	return 0;
 }
@@ -232,7 +231,7 @@ davinci_pcm_pointer(struct snd_pcm_substream *substream)
 
 	spin_lock(&prtd->lock);
 
-	edma_get_position(prtd->params->cc_inst, prtd->master_lch, &src, &dst);
+	edma_get_position(prtd->master_lch, &src, &dst);
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		count = src - runtime->dma_addr;
 	else
@@ -277,10 +276,10 @@ static int davinci_pcm_close(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct davinci_runtime_data *prtd = runtime->private_data;
 
-	edma_unlink(prtd->params->cc_inst, prtd->slave_lch);
+	edma_unlink(prtd->slave_lch);
 
-	edma_free_slot(prtd->params->cc_inst, prtd->slave_lch);
-	edma_free_channel(prtd->params->cc_inst, prtd->master_lch);
+	edma_free_slot(prtd->slave_lch);
+	edma_free_channel(prtd->master_lch);
 
 	kfree(prtd);
 

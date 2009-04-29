@@ -165,10 +165,10 @@ static struct resource mmcsd0_resources[] = {
 	},
 	/* DMA channels: RX, then TX */
 	{
-		.start = DAVINCI_DMA_MMCRXEVT,
+		.start = EDMA_CTLR_CHAN(0, DAVINCI_DMA_MMCRXEVT),
 		.flags = IORESOURCE_DMA,
 	}, {
-		.start = DAVINCI_DMA_MMCTXEVT,
+		.start = EDMA_CTLR_CHAN(0, DAVINCI_DMA_MMCTXEVT),
 		.flags = IORESOURCE_DMA,
 	},
 };
@@ -202,10 +202,10 @@ static struct resource mmcsd1_resources[] = {
 	},
 	/* DMA channels: RX, then TX */
 	{
-		.start = 30,	/* rx */
+		.start = EDMA_CTLR_CHAN(0, 30),	/* rx */
 		.flags = IORESOURCE_DMA,
 	}, {
-		.start = 31,	/* tx */
+		.start = EDMA_CTLR_CHAN(0, 31),	/* tx */
 		.flags = IORESOURCE_DMA,
 	},
 };
@@ -233,13 +233,13 @@ static struct resource da830_mmc_resources[] = {
 		.flags	= IORESOURCE_IRQ,
 	},
 	{		 /* DMA RX */
-		.start	= 16,
-		.end	= 16,
+		.start	= EDMA_CTLR_CHAN(0, 16),
+		.end	= EDMA_CTLR_CHAN(0, 16),
 		.flags	= IORESOURCE_DMA,
 	},
 	{		 /* DMA TX */
-		.start	= 17,
-		.end	= 17,
+		.start	= EDMA_CTLR_CHAN(0, 17),
+		.end	= EDMA_CTLR_CHAN(0, 17),
 		.flags	= IORESOURCE_DMA,
 	},
 };
@@ -263,13 +263,13 @@ static struct resource da850_mmc_resources[] = {
 		.flags	= IORESOURCE_IRQ,
 	},
 	{		 /* DMA RX */
-		.start	= 16,
-		.end	= 16,
+		.start	= EDMA_CTLR_CHAN(0, 16),
+		.end	= EDMA_CTLR_CHAN(0, 16),
 		.flags	= IORESOURCE_DMA,
 	},
 	{		 /* DMA TX */
-		.start	= 17,
-		.end	= 17,
+		.start	= EDMA_CTLR_CHAN(0, 17),
+		.end	= EDMA_CTLR_CHAN(0, 17),
 		.flags	= IORESOURCE_DMA,
 	},
 };
