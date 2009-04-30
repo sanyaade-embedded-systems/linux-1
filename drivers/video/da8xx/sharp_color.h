@@ -41,18 +41,31 @@ static const struct display_panel disp_panel = {
 
 static const struct lcd_ctrl_config lcd_cfg = {
 	&disp_panel, /* p_disp_panel   */
+#ifdef CONFIG_ARCH_DA850
+	.hfp			= 2,   /* hfp            */
+	.hbp			= 2,   /* hbp            */
+	.hsw			= 41,  /* hsw            */
+	.vfp			= 2,    /* vfp            */
+	.vbp			= 2,    /* vbp            */
+	.vsw			= 10,   /* vsw            */
+#elif CONFIG_ARCH_DA830
 	.hfp			= 8,   /* hfp            */
 	.hbp			= 6,   /* hbp            */
 	.hsw			= 0,   /* hsw            */
 	.vfp			= 2,    /* vfp            */
 	.vbp			= 2,    /* vbp            */
 	.vsw			= 0,    /* vsw            */
+#endif
 	.ac_bias		= 255,  /* ac bias        */
 	.ac_bias_intrpt		= 0,    /* ac bias intrpt */
 	.dma_burst_sz		= 16,   /* dma_burst_sz   */
 	.bpp			= 16,   /* bpp            */
 	.fdd			= 255,  /* fdd            */
+#ifdef CONFIG_ARCH_DA850
+	.pxl_clk		= 0x12,    /* pxl_clk        */
+#elif CONFIG_ARCH_DA830
 	.pxl_clk		= 0x1e,    /* pxl_clk        */
+#endif
 	.tft_alt_mode		= 0,    /* tft_alt_mode   */
 	.stn_565_mode		= 0,    /* stn_565_mode   */
 	.mono_8bit_mode		= 0,    /* mono_8bit_mode    */

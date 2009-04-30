@@ -20,8 +20,14 @@
 #ifndef __DA830_FB_H__
 #define __DA830_FB_H__
 
+#ifdef CONFIG_ARCH_DA850
+#define QVGA_HEIGHT    272
+#define QVGA_WIDTH     480
+#elif CONFIG_ARCH_DA830
 #define QVGA_HEIGHT    240
 #define QVGA_WIDTH     320
+#endif
+
 #define PALETTE_SIZE 256
 #define LEFT_MARGIN   64
 #define RIGHT_MARGIN  64
