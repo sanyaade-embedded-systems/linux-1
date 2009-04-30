@@ -602,6 +602,7 @@ static const struct mux_config davinci_da850_pins[] = {
 };
 
 static const s8 dma0_chan_da850_no_event[] = {
+	20, 21
 	-1
 };
 
