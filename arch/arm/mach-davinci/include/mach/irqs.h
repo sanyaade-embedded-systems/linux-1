@@ -96,7 +96,7 @@
 #define IRQ_EMUINT       63
 
 #ifdef CONFIG_ARCH_DA8XX
-#define DAVINCI_N_AINTC_IRQ	91	
+#define DAVINCI_N_AINTC_IRQ	100
 #else
 #define DAVINCI_N_AINTC_IRQ	64
 #endif
