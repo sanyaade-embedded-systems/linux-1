@@ -222,10 +222,9 @@ static void davinci_spi_dma_rx_callback(unsigned lch, u16 ch_status, void *data)
 	pdata = davinci_spi->pdata;
 
 	if (ch_status == DMA_COMPLETE)
-		edma_stop(pdata->cc_inst, davinci_spi_dma->dma_rx_channel);
+		edma_stop(davinci_spi_dma->dma_rx_channel);
 	else
-		edma_clean_channel(pdata->cc_inst,
-			davinci_spi_dma->dma_rx_channel);
+		edma_clean_channel(davinci_spi_dma->dma_rx_channel);
 
 	complete(&davinci_spi_dma->dma_rx_completion);
 	/* We must disable the DMA RX request */
@@ -245,10 +244,9 @@ static void davinci_spi_dma_tx_callback(unsigned lch, u16 ch_status, void *data)
 	pdata = davinci_spi->pdata;
 
 	if (ch_status == DMA_COMPLETE)
-		edma_stop(pdata->cc_inst, davinci_spi_dma->dma_tx_channel);
+		edma_stop(davinci_spi_dma->dma_tx_channel);
 	else
-		edma_clean_channel(pdata->cc_inst,
-			davinci_spi_dma->dma_tx_channel);
+		edma_clean_channel(davinci_spi_dma->dma_tx_channel);
 
 	complete(&davinci_spi_dma->dma_tx_completion);
 	/* We must disable the DMA TX request */
@@ -267,7 +265,7 @@ static int davinci_spi_request_dma(struct spi_device *spi)
 	davinci_spi_dma = &davinci_spi->dma_channels[spi->chip_select];
 	pdata = davinci_spi->pdata;
 
-	r = edma_alloc_channel(pdata->cc_inst, davinci_spi_dma->dma_rx_sync_dev,
+	r = edma_alloc_channel(davinci_spi_dma->dma_rx_sync_dev,
 				davinci_spi_dma_rx_callback, spi,
 				davinci_spi_dma->eventq);
 	if (r < 0) {
@@ -275,12 +273,11 @@ static int davinci_spi_request_dma(struct spi_device *spi)
 		return -EAGAIN;
 	}
 	davinci_spi_dma->dma_rx_channel = r;
-	r = edma_alloc_channel(pdata->cc_inst, davinci_spi_dma->dma_tx_sync_dev,
+	r = edma_alloc_channel(davinci_spi_dma->dma_tx_sync_dev,
 				davinci_spi_dma_tx_callback, spi,
 				davinci_spi_dma->eventq);
 	if (r < 0) {
-		edma_free_channel(pdata->cc_inst,
-			davinci_spi_dma->dma_rx_channel);
+		edma_free_channel(davinci_spi_dma->dma_rx_channel);
 		davinci_spi_dma->dma_rx_channel = -1;
 		pr_err("Unable to request DMA channel for MibSPI TX\n");
 		return -EAGAIN;
@@ -341,10 +338,8 @@ static void davinci_spi_cleanup(struct spi_device *spi)
 
 		if ((davinci_spi_dma->dma_rx_channel != -1)
 				&& (davinci_spi_dma->dma_tx_channel != -1)) {
-			edma_free_channel(pdata->cc_inst,
-				 davinci_spi_dma->dma_tx_channel);
-			edma_free_channel(pdata->cc_inst,
-				davinci_spi_dma->dma_rx_channel);
+			edma_free_channel(davinci_spi_dma->dma_tx_channel);
+			edma_free_channel(davinci_spi_dma->dma_rx_channel);
 		}
 	}
 }
@@ -754,17 +749,14 @@ static int davinci_spi_bufs_dma(struct spi_device *spi, struct spi_transfer *t)
 					__func__, count);
 			return -1;
 		}*/
-		edma_set_transfer_params(pdata->cc_inst,
-			davinci_spi_dma->dma_tx_channel, data_type,
+		edma_set_transfer_params(davinci_spi_dma->dma_tx_channel, data_type,
 			count, 1, 0, ASYNC);
-		edma_set_dest(pdata->cc_inst, davinci_spi_dma->dma_tx_channel,
+		edma_set_dest(davinci_spi_dma->dma_tx_channel,
 				tx_reg, INCR, W8BIT);
-		edma_set_src(pdata->cc_inst, davinci_spi_dma->dma_tx_channel,
+		edma_set_src(davinci_spi_dma->dma_tx_channel,
 				t->tx_dma, INCR, W8BIT);
-		edma_set_src_index(pdata->cc_inst,
-				davinci_spi_dma->dma_tx_channel, data_type, 0);
-		edma_set_dest_index(pdata->cc_inst,
-				davinci_spi_dma->dma_tx_channel, 0, 0);
+		edma_set_src_index(davinci_spi_dma->dma_tx_channel, data_type, 0);
+		edma_set_dest_index(davinci_spi_dma->dma_tx_channel, 0, 0);
 	} else {
 		/* We need TX clocking for RX transaction */
 		t->tx_dma = dma_map_single(&spi->dev,
@@ -775,18 +767,15 @@ static int davinci_spi_bufs_dma(struct spi_device *spi, struct spi_transfer *t)
 				"tmp buffer\n", __func__, count);
 			return -1;
 		}*/
-		edma_set_transfer_params(pdata->cc_inst,
-				davinci_spi_dma->dma_tx_channel, data_type,
-				count + 1, 1, 0, ASYNC);
-		edma_set_dest(pdata->cc_inst, davinci_spi_dma->dma_tx_channel,
-				tx_reg, INCR, W8BIT);
-		edma_set_src(pdata->cc_inst, davinci_spi_dma->dma_tx_channel,
+		edma_set_transfer_params(davinci_spi_dma->dma_tx_channel,
+				data_type, count + 1, 1, 0, ASYNC);
+		edma_set_dest(davinci_spi_dma->dma_tx_channel, tx_reg,
+				INCR, W8BIT);
+		edma_set_src(davinci_spi_dma->dma_tx_channel,
 				t->tx_dma, INCR, W8BIT);
-		edma_set_src_index(pdata->cc_inst,
-				davinci_spi_dma->dma_tx_channel,
+		edma_set_src_index(davinci_spi_dma->dma_tx_channel,
 				data_type, 0);
-		edma_set_dest_index(pdata->cc_inst,
-				davinci_spi_dma->dma_tx_channel, 0, 0);
+		edma_set_dest_index(davinci_spi_dma->dma_tx_channel, 0, 0);
 	}
 
 	if (t->rx_buf != NULL) {
@@ -803,24 +792,21 @@ static int davinci_spi_bufs_dma(struct spi_device *spi, struct spi_transfer *t)
 						 count, DMA_TO_DEVICE);
 			return -1;
 		}*/
-		edma_set_transfer_params(pdata->cc_inst,
-				davinci_spi_dma->dma_rx_channel, data_type,
+		edma_set_transfer_params(davinci_spi_dma->dma_rx_channel, data_type,
 				count, 1, 0, ASYNC);
-		edma_set_src(pdata->cc_inst, davinci_spi_dma->dma_rx_channel,
+		edma_set_src(davinci_spi_dma->dma_rx_channel,
 				rx_reg, INCR, W8BIT);
-		edma_set_dest(pdata->cc_inst, davinci_spi_dma->dma_rx_channel,
+		edma_set_dest(davinci_spi_dma->dma_rx_channel,
 				t->rx_dma, INCR, W8BIT);
-		edma_set_src_index(pdata->cc_inst,
-				davinci_spi_dma->dma_rx_channel, 0, 0);
-		edma_set_dest_index(pdata->cc_inst,
-				davinci_spi_dma->dma_rx_channel, data_type, 0);
+		edma_set_src_index(davinci_spi_dma->dma_rx_channel, 0, 0);
+		edma_set_dest_index(davinci_spi_dma->dma_rx_channel, data_type, 0);
 	}
 
 	if ((t->tx_buf != NULL) || (t->rx_buf != NULL))
-		edma_start(pdata->cc_inst, davinci_spi_dma->dma_tx_channel);
+		edma_start(davinci_spi_dma->dma_tx_channel);
 
 	if (t->rx_buf != NULL)
-		edma_start(pdata->cc_inst, davinci_spi_dma->dma_rx_channel);
+		edma_start(davinci_spi_dma->dma_rx_channel);
 
 	if ((t->rx_buf != NULL) || (t->tx_buf != NULL))
 		davinci_spi_set_dma_req(spi, 1);
