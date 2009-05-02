@@ -74,7 +74,7 @@
 static struct emac_platform_data da850_evm_emac_pdata = {
 	.phy_mask	= DA850_EVM_PHY_MASK,
 	.mdio_max_freq	= DA850_EVM_MDIO_FREQUENCY,
-	.rmii_en	= 1,
+	.rmii_en	= 0,
 };
 
 static struct mtd_partition spi_flash_partitions[] = {
