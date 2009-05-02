@@ -380,9 +380,9 @@ static struct evm_snd_platform_data da830_evm_snd_data[] = {
 
 /* davinci da850 evm audio machine driver */
 static u8 da850_iis_serializer_direction[] = {
-	TX_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
-	INACTIVE_MODE,	RX_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
 	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	RX_MODE,	TX_MODE,
 };
 
 static struct snd_soc_card da850_snd_soc_card = {
