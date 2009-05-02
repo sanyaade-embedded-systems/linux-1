@@ -781,8 +781,8 @@ void __init da850_init_mcasp(void)
 	davinci_cfg_reg(DA850_MCASP_AHCLKX);
 	davinci_cfg_reg(DA850_MCASP_AMUTE);
 	/* serializers interfaced to aic3x */
-	davinci_cfg_reg(DA850_MCASP_AXR_5);
-	davinci_cfg_reg(DA850_MCASP_AXR_0);
+	davinci_cfg_reg(DA850_MCASP_AXR_11);
+	davinci_cfg_reg(DA850_MCASP_AXR_12);
 }
 
 #if defined(CONFIG_TI_DAVINCI_EMAC) || defined(CONFIG_TI_DAVINCI_EMAC_MODULE)
