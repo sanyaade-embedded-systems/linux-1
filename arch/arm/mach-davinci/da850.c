@@ -773,6 +773,9 @@ void __init da850_init_spi1(unsigned char* chip_sel, unsigned int num_sel,
 
 void __init da850_init_mcasp(void)
 {
+	unsigned int *addr = IO_ADDRESS(DA8XX_CFGCHIP1);
+
+	__raw_writel((__raw_readl(addr)) | BIT(0), addr);
 	davinci_cfg_reg(DA850_MCASP_ACLKR);
 	davinci_cfg_reg(DA850_MCASP_ACLKX);
 	davinci_cfg_reg(DA850_MCASP_AFSR);
