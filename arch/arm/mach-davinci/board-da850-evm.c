@@ -189,8 +189,8 @@ static int eth_addr_setup(char *str)
 	/* Conversion of a MAC address from a string (AA:BB:CC:DD:EE:FF)
 	 * to a 6 bytes array. */
 	for (i = 0; i < ETH_ALEN; i++)
-		sscanf(&str[i*3], "%x",
-			(int *) &da850_evm_emac_pdata.mac_addr[i]);
+		da850_evm_emac_pdata.mac_addr[i] = simple_strtol(&str[i*3],
+							   (char **)NULL, 16);
 
 	return 1;
 }
