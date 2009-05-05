@@ -525,7 +525,7 @@ static void davinci_hw_iis_param(struct snd_pcm_substream *substream)
 	} else {
 		/* bit stream is MSB first with no delay */
 		mcasp_set_bits(dev->base + DAVINCI_MCASP_RXFMT_REG,
-				FSRDLY(1) | RXORD);
+				FSRDLY(0) | RXORD);
 		mcasp_set_bits(dev->base + DAVINCI_MCASP_AHCLKRCTL_REG,
 				AHCLKRE);
 		mcasp_set_reg(dev->base + DAVINCI_MCASP_RXTDM_REG, mask);
