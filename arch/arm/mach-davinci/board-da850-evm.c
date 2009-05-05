@@ -141,7 +141,7 @@ struct mtd_partition da850_evm_nandflash_partition[] = {
 	{
 		.name           = "NAND filesystem",
 		.offset         = 3 * SZ_1M,
-		.size           = MTDPART_SIZ_FULL,
+		.size           = SZ_4M,
 		.mask_flags     = 0,
 	}
 };
