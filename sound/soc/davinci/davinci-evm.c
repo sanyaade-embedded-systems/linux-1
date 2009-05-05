@@ -382,7 +382,8 @@ static struct evm_snd_platform_data da830_evm_snd_data[] = {
 static u8 da850_iis_serializer_direction[] = {
 	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
 	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
-	INACTIVE_MODE,	INACTIVE_MODE,	RX_MODE,	TX_MODE,
+	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	TX_MODE,
+	RX_MODE,	INACTIVE_MODE,	INACTIVE_MODE,	INACTIVE_MODE,
 };
 
 static struct snd_soc_card da850_snd_soc_card = {
@@ -421,7 +422,7 @@ static struct evm_snd_platform_data da850_evm_snd_data[] = {
 		.tx_dma_offset	= 0x2000,
 		.rx_dma_offset	= 0x2000,
 		.op_mode	= DAVINCI_MCASP_IIS_MODE,
-		.num_serializer	= 12,
+		.num_serializer	= 16,
 		.tdm_slots	= 2,
 		.serial_dir	= da850_iis_serializer_direction,
 		.eventq_no	= EVENTQ_1,
