@@ -282,10 +282,12 @@ static __init void da850_evm_init(void)
 	davinci_cfg_reg(DA850_UART2_TXD);
 	davinci_serial_init(&uart_config);
 	/*
-	 * shut down uart1; its not used on the board and accessing it
-         * causes endless "too much work in irq53" messages with arago fs
+	 * shut down uart 0 and 1; they are not used on the board and
+         * accessing them causes endless "too much work in irq53" messages
+	 * with arago fs
          */
 	__raw_writel(0, IO_ADDRESS(DA8XX_UART1_BASE) + 0x30);
+	__raw_writel(0, IO_ADDRESS(DA8XX_UART0_BASE) + 0x30);
 
 #if defined (CONFIG_MTD_NAND_DAVINCI) || defined(CONFIG_MTD_NAND_DAVINCI_MODULE)
 	davinci_cfg_reg(DA850_EMA_D_0);
