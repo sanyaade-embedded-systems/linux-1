@@ -547,8 +547,6 @@ static int lcd_init(const struct lcd_ctrl_config *cfg)
 		}
 	}
 
-	if (da830_fb_read(LCD_BLK_REV_REG) != DA830_LCDC_REVISION)
-		return -ENOENT;
 	lcd_reset();
 	/* Configure the LCD clock divisor. */
 	da830_fb_write(LCD_CLK_DIVISOR(cfg->pxl_clk) |
