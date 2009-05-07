@@ -45,7 +45,6 @@
 #include <linux/mm.h>
 #include <linux/interrupt.h>
 #include <linux/init.h>
-#define DEBUG
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/skbuff.h>
