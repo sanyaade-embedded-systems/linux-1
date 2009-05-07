@@ -1277,8 +1277,7 @@ static void emac_stop_txch(struct emac_priv *priv, u32 ch)
  *
  * Returns number of packets processed
  */
-static int emac_tx_bdproc(struct emac_priv *priv, u32 ch, u32 budget,
-			  u32 *pending)
+static int emac_tx_bdproc(struct emac_priv *priv, u32 ch, u32 budget)
 {
 	struct device *emac_dev = &priv->ndev->dev;
 	unsigned long flags;
@@ -1289,7 +1288,6 @@ static int emac_tx_bdproc(struct emac_priv *priv, u32 ch, u32 budget,
 	struct emac_txch *txch = priv->txch[ch];
 	u32 *tx_complete_ptr = txch->tx_complete;
 
-	*pending = 0;
 	if (unlikely(1 == txch->teardown_pending)) {
 		if (netif_msg_tx_err(priv) && net_ratelimit()) {
 			dev_err(emac_dev, "DaVinci EMAC:emac_tx_bdproc: "\
@@ -1337,11 +1335,6 @@ static int emac_tx_bdproc(struct emac_priv *priv, u32 ch, u32 budget,
 			frame_status = curr_bd->mode;
 		}
 	} /* end of pkt processing loop */
-
-	if ((pkts_processed == budget) &&
-	    ((curr_bd) && ((frame_status & EMAC_CPPI_OWNERSHIP_BIT) == 0))) {
-		*pending = 1;
-	}
 
 	emac_net_tx_complete(priv,
 			     (void *)&txch->tx_complete[0],
@@ -1943,8 +1936,7 @@ static int emac_net_rx_cb(struct emac_priv *priv,
  *
  * Returns number of packets processed (and indication of pending packets)
  */
-static int emac_rx_bdproc(struct emac_priv *priv, u32 ch, u32 budget,
-			  u32 *pending)
+static int emac_rx_bdproc(struct emac_priv *priv, u32 ch, u32 budget)
 {
 	unsigned long flags;
 	u32 frame_status;
@@ -1958,7 +1950,6 @@ static int emac_rx_bdproc(struct emac_priv *priv, u32 ch, u32 budget,
 	void *new_buf_token;
 	struct emac_rxch *rxch = priv->rxch[ch];
 
-	*pending = 0;
 	if (unlikely(1 == rxch->teardown_pending))
 		return 0;
 	++rxch->proc_count;
@@ -2022,11 +2013,6 @@ static int emac_rx_bdproc(struct emac_priv *priv, u32 ch, u32 budget,
 			frame_status = curr_bd->mode;
 		}
 		++pkts_processed;
-	}
-
-	if ((pkts_processed == budget) &&
-	    ((curr_bd) && ((frame_status & EMAC_CPPI_OWNERSHIP_BIT) == 0))) {
-		*pending = 1;
 	}
 
 end_emac_rx_bdproc:
@@ -2142,8 +2128,6 @@ static int emac_poll(struct napi_struct *napi, int budget)
 	struct device *emac_dev = &ndev->dev;
 	u32 status = 0;
 	u32 num_pkts = 0;
-	u32 txpending = 0;
-	u32 rxpending = 0;
 
 	if (!netif_running(ndev))
 		return 0;
@@ -2158,9 +2142,11 @@ static int emac_poll(struct napi_struct *napi, int budget)
 
 	if (status & mask) {
 		num_pkts = emac_tx_bdproc(priv, EMAC_DEF_TX_CH,
-					  EMAC_DEF_TX_MAX_SERVICE,
-					  &txpending);
+					  EMAC_DEF_TX_MAX_SERVICE);
 	} /* TX processing */
+
+	if(num_pkts)
+		return budget;
 
 	mask = EMAC_DM644X_MAC_IN_VECTOR_RX_INT_VEC;
 
@@ -2168,16 +2154,10 @@ static int emac_poll(struct napi_struct *napi, int budget)
 		mask = EMAC_DM646X_MAC_IN_VECTOR_RX_INT_VEC;
 
 	if (status & mask) {
-		num_pkts = emac_rx_bdproc(priv, EMAC_DEF_RX_CH,
-					  budget, &rxpending);
+		num_pkts = emac_rx_bdproc(priv, EMAC_DEF_RX_CH, budget);
 	} /* RX processing */
 
-	if (txpending || rxpending) {
-		if (likely(napi_schedule_prep(&priv->napi))) {
-			emac_int_disable(priv);
-			__napi_schedule(&priv->napi);
-		}
-	} else {
+	if (num_pkts < budget) {
 		napi_complete(napi);
 		emac_int_enable(priv);
 	}
