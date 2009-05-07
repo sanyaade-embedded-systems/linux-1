@@ -16,7 +16,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/fb.h>
@@ -39,8 +38,6 @@
 
 #define DRIVER_NAME "da8xx_lcdc"
 
-#undef FB_DEBUG
-#define FB_DEBUG
 #define da830_fb_read(addr)	__raw_readl(da830_fb_reg_base + (addr))
 #define da830_fb_write(val, addr)	__raw_writel(val, \
 						da830_fb_reg_base + (addr))
@@ -97,65 +94,62 @@ static struct fb_fix_screeninfo da830fb_fix __devinitdata = {
 static u32 g_databuf_sz;
 static u32 g_palette_sz;
 static struct fb_ops da830_fb_ops;
-static int lcd_wait_status_int(int int_status_mask);
+static int lcd_wait_status_int(struct device*, int int_status_mask);
 
-#ifdef FB_DEBUG
-static void lcd_show_raster_status(void)
+static void lcd_show_raster_status(struct device* dev)
 {
 	u32 value = da830_fb_read(LCD_STAT_REG);
 	if (value & LCD_FIFO_UNDERFLOW)
-		printk(KERN_ALERT "DA830 LCD: FIFO Underflow!\n");
+		dev_dbg(dev, "DA830 LCD: FIFO Underflow!\n");
 	if (value & LCD_AC_BIAS_COUNT_STATUS)
-		printk(KERN_INFO "DA830 LCD: AC Bias Count Reached\n");
+		dev_dbg(dev, "DA830 LCD: AC Bias Count Reached\n");
 	if (value & LCD_PALETTE_LOADED)
-		printk(KERN_INFO "DA830 LCD: Palette is Loaded\n");
+		dev_dbg(dev, "DA830 LCD: Palette is Loaded\n");
 	else
-		printk(KERN_ALERT "DA830 LCD: Palette is not Loaded!\n");
+		dev_dbg(dev, "DA830 LCD: Palette is not Loaded!\n");
 	if (value & LCD_SYNC_LOST) {
-		printk(KERN_ALERT "DA830 LCD: Frame Synchronization Error!\n");
+		dev_dbg(dev, "DA830 LCD: Frame Synchronization Error!\n");
 		da830_fb_write(da830_fb_read(LCD_STAT_REG) |
 				LCD_SYNC_LOST, LCD_STAT_REG);
 	}
 	value = da830_fb_read(0x00);
-	printk(KERN_INFO "DA830 LCD: Revision id is %x\n", value);
-
+	dev_dbg(dev, "DA830 LCD: Revision id is %x\n", value);
 }
 
-static void lcd_show_raster_interface(void)
+static void lcd_show_raster_interface(struct device* dev)
 {
-	printk(KERN_INFO "\n");
-	printk(KERN_INFO "LCD Raster Interface Configuration\n");
-	printk(KERN_INFO "----------------------------------\n");
-	printk(KERN_INFO "LCD Control Register:    0x%x\n",
-	       da830_fb_read(LCD_CTRL_REG));
-	printk(KERN_INFO "Raster Control:          0x%x\n",
+	dev_dbg(dev, "\n");
+	dev_dbg(dev, "LCD Raster Interface Configuration\n");
+	dev_dbg(dev, "----------------------------------\n");
+	dev_dbg(dev, "LCD Control Register:    0x%x\n",
+		da830_fb_read(LCD_CTRL_REG));
+	dev_dbg(dev, "Raster Control:          0x%x\n",
 	       da830_fb_read(LCD_RASTER_CTRL_REG));
-	printk(KERN_INFO "Timing Register 0:       0x%x\n",
+	dev_dbg(dev, "Timing Register 0:       0x%x\n",
 	       da830_fb_read(LCD_RASTER_TIMING_0_REG));
-	printk(KERN_INFO "Timing Register 1:       0x%x\n",
+	dev_dbg(dev, "Timing Register 1:       0x%x\n",
 	       da830_fb_read(LCD_RASTER_TIMING_1_REG));
-	printk(KERN_INFO "Timing Register 2:       0x%x\n",
+	dev_dbg(dev, "Timing Register 2:       0x%x\n",
 	       da830_fb_read(LCD_RASTER_TIMING_2_REG));
-	printk(KERN_INFO "Subpanel Register:       0x%x\n",
+	dev_dbg(dev, "Subpanel Register:       0x%x\n",
 	       da830_fb_read(LCD_RASTER_SUBPANEL_DISP_REG));
-	printk(KERN_INFO "DMA Control Register:    0x%x\n",
+	dev_dbg(dev, "DMA Control Register:    0x%x\n",
 	       da830_fb_read(LCD_DMA_CTRL_REG));
-	printk(KERN_INFO "DMA 0 Start Address:     0x%x\n",
+	dev_dbg(dev, "DMA 0 Start Address:     0x%x\n",
 	       da830_fb_read(LCD_DMA_FRM_BUF_BASE_ADDR_0_REG));
-	printk(KERN_INFO "DMA 0 End Address:       0x%x\n",
+	dev_dbg(dev, "DMA 0 End Address:       0x%x\n",
 	       da830_fb_read(LCD_DMA_FRM_BUF_CEILING_ADDR_0_REG));
-	printk(KERN_INFO "DMA 1 Start Address:     0x%x\n",
+	dev_dbg(dev, "DMA 1 Start Address:     0x%x\n",
 	       da830_fb_read(LCD_DMA_FRM_BUF_BASE_ADDR_1_REG));
-	printk(KERN_INFO "DMA 1 End Address:       0x%x\n",
+	dev_dbg(dev, "DMA 1 End Address:       0x%x\n",
 	       da830_fb_read(LCD_DMA_FRM_BUF_CEILING_ADDR_1_REG));
-	printk(KERN_INFO "\n");
-	lcd_show_raster_status();
-	printk(KERN_INFO "\n");
+	dev_dbg(dev, "\n");
+	lcd_show_raster_status(dev);
+	dev_dbg(dev, "\n");
 }
-#endif
 
 /* Disable the Raster Engine of the LCD Controller */
-static int lcd_disable_raster(void)
+static int lcd_disable_raster(struct device* dev)
 {
 	u32 reg;
 	int ret = 0;
@@ -164,7 +158,7 @@ static int lcd_disable_raster(void)
 	if (reg & LCD_RASTER_ENABLE) {
 		da830_fb_write(reg & ~LCD_RASTER_ENABLE,
 						LCD_RASTER_CTRL_REG);
-		ret = lcd_wait_status_int(LCD_END_OF_FRAME0);
+		ret = lcd_wait_status_int(dev, LCD_END_OF_FRAME0);
 	}
 	return ret;
 }
@@ -193,7 +187,7 @@ static int lcd_blit(int load_mode, u32 p_buf)
 }
 
 /* Configure the Burst Size of DMA */
-static int lcd_cfg_dma(int burst_size)
+static int lcd_cfg_dma(struct device* dev, int burst_size)
 {
 	u32 reg;
 	reg = da830_fb_read(LCD_DMA_CTRL_REG) & 0x00000001;
@@ -215,17 +209,15 @@ static int lcd_cfg_dma(int burst_size)
 		break;
 	default:
 		return -EINVAL;
-#ifdef FB_DEBUG
-		printk(KERN_INFO
-		       "DA830 LCD: Configured LCD DMA Burst Size...\n");
-#endif
 	}
+	dev_dbg(dev, "DA830 LCD: Configured LCD DMA Burst Size...\n");
 	da830_fb_write(reg | LCD_END_OF_FRAME_INT_ENA, LCD_DMA_CTRL_REG);
 
 	return 0;
 }
 
-static void lcd_cfg_ac_bias(int period, int transitions_per_int)
+static void lcd_cfg_ac_bias(struct device* dev, int period,
+				int transitions_per_int)
 {
 	u32 reg;
 	/* Set the AC Bias Period and Number of Transisitons per Interrupt */
@@ -233,13 +225,11 @@ static void lcd_cfg_ac_bias(int period, int transitions_per_int)
 	reg |= LCD_AC_BIAS_FREQUENCY(period) |
 	    LCD_AC_BIAS_TRANSITIONS_PER_INT(transitions_per_int);
 	da830_fb_write(reg, LCD_RASTER_TIMING_2_REG);
-#ifdef FB_DEBUG
-	printk(KERN_INFO "DA830 LCD: Configured AC Bias...\n");
-#endif
+	dev_dbg(dev, "DA830 LCD: Configured AC Bias...\n");
 }
 
-static void lcd_cfg_horizontal_sync(int back_porch, int pulse_width,
-				    int front_porch)
+static void lcd_cfg_horizontal_sync(struct device* dev, int back_porch, int pulse_width,
+					int front_porch)
 {
 	u32 reg;
 	reg = da830_fb_read(LCD_RASTER_TIMING_0_REG) & 0xf;
@@ -247,14 +237,11 @@ static void lcd_cfg_horizontal_sync(int back_porch, int pulse_width,
 	    | ((front_porch & 0xff) << 16)
 	    | ((pulse_width & 0x3f) << 10);
 	da830_fb_write(reg, LCD_RASTER_TIMING_0_REG);
-#ifdef FB_DEBUG
-	printk(KERN_INFO
-	       "DA830 LCD: Configured Horizontal Sync Properties...\n");
-#endif
+	dev_dbg(dev, "DA830 LCD: Configured Horizontal Sync Properties...\n");
 }
 
-static void lcd_cfg_vertical_sync(int back_porch, int pulse_width,
-				  int front_porch)
+static void lcd_cfg_vertical_sync(struct device* dev, int back_porch,
+					int pulse_width, int front_porch)
 {
 	u32 reg;
 	reg = da830_fb_read(LCD_RASTER_TIMING_1_REG) & 0x3ff;
@@ -262,12 +249,10 @@ static void lcd_cfg_vertical_sync(int back_porch, int pulse_width,
 	    | ((front_porch & 0xff) << 16)
 	    | ((pulse_width & 0x3f) << 10);
 	da830_fb_write(reg, LCD_RASTER_TIMING_1_REG);
-#ifdef FB_DEBUG
-	printk(KERN_INFO "DA830 LCD: Configured Vertical Sync Properties...\n");
-#endif
+	dev_dbg(dev, "DA830 LCD: Configured Vertical Sync Properties...\n");
 }
 
-static void lcd_cfg_display(const struct lcd_ctrl_config *cfg)
+static void lcd_cfg_display(struct device* dev, const struct lcd_ctrl_config *cfg)
 {
 	u32 reg;
 
@@ -294,9 +279,7 @@ static void lcd_cfg_display(const struct lcd_ctrl_config *cfg)
 		break;
 
 	default:
-#ifdef FB_DEBUG
-		printk(KERN_ERR "Undefined LCD type\n");
-#endif
+		 dev_err(dev, "Undefined LCD type\n");
 		break;
 	}
 
@@ -333,14 +316,12 @@ static void lcd_cfg_display(const struct lcd_ctrl_config *cfg)
 
 	da830_fb_write(reg, LCD_RASTER_TIMING_2_REG);
 
-#ifdef FB_DEBUG
-	printk(KERN_INFO "GLCD: Configured to Active Color...\n");
-#endif
+	dev_dbg(dev, "GLCD: Configured to Active Color...\n");
 
 }
 
-static int lcd_cfg_frame_buffer(u32 width, u32 height, u32 bpp,
-				u32 raster_order)
+static int lcd_cfg_frame_buffer(struct device* dev, u32 width, u32 height,
+					u32 bpp, u32 raster_order)
 {
 	u32 reg;
 	u32 g_bpl;
@@ -385,20 +366,16 @@ static int lcd_cfg_frame_buffer(u32 width, u32 height, u32 bpp,
 		break;
 
 	default:
-#ifdef FB_DEBUG
-		printk(KERN_ALERT "DA830 LCD: Unsupported BPP!\n");
-#endif
+		dev_dbg(dev, "DA830 LCD: Unsupported BPP!\n");
 		break;
 	}
-#ifdef FB_DEBUG
-	printk(KERN_INFO "DA830 LCD: Configured Frame Buffer...\n");
-#endif
+	dev_dbg(dev, "DA830 LCD: Configured Frame Buffer...\n");
 
 	return 0;
 }
 
 /* Wait for Interrupt Status to appear. */
-static int lcd_wait_status_int(int int_status_mask)
+static int lcd_wait_status_int(struct device* dev, int int_status_mask)
 {
 	int ret;
 
@@ -414,14 +391,11 @@ static int lcd_wait_status_int(int int_status_mask)
 						       (LCD_STAT_REG) &
 						       int_status_mask,
 						       WSI_TIMEOUT);
-#ifdef FB_DEBUG
 	if (ret <= 0) {
-		printk(KERN_ALERT
-		       "DA830 LCD: status wait returned %d, mask %d\n",
+		dev_dbg(dev, "DA830 LCD: status wait returned %d, mask %d\n",
 		       ret, int_status_mask);
-		lcd_show_raster_status();
+		lcd_show_raster_status(dev);
 	}
-#endif
 	if (ret < 0)
 		return ret;
 
@@ -432,7 +406,7 @@ static int lcd_wait_status_int(int int_status_mask)
 }
 
 /* Palette Initialization */
-static void da830fb_init_palette(struct fb_info *info)
+static void da830fb_init_palette(struct device* dev, struct fb_info *info)
 {
 	unsigned short i, size;
 	struct da830fb_par *par = info->par;
@@ -466,17 +440,14 @@ static void da830fb_init_palette(struct fb_info *info)
 		palette[0] |= (4 << 12);
 		break;
 	default:
-		printk(KERN_ALERT "DA830 LCD: Unsupported Video BPP %d!\n",
-		       par->bpp);
+		dev_dbg(dev, "DA830 LCD: Unsupported Video BPP %d!\n", par->bpp);
 		break;
 	}
 
 	for (i = 0; i < size; i++)
 		par->pseudo_palette[i] = i;
 
-#ifdef FB_DEBUG
-	printk(KERN_INFO "GLCD: Palette initialization done successfully\n");
-#endif
+	dev_dbg(dev, "GLCD: Palette initialization done successfully\n");
 }
 
 static int da830_fb_setcolreg(unsigned regno, unsigned red, unsigned green,
@@ -511,58 +482,50 @@ static int da830_fb_setcolreg(unsigned regno, unsigned red, unsigned green,
 	return 0;
 }
 
-static void lcd_reset(void)
+static void lcd_reset(struct device* dev)
 {
 	/* Disable the Raster if previously Enabled */
 	if (da830_fb_read(LCD_RASTER_CTRL_REG) & LCD_RASTER_ENABLE) {
-#ifdef FB_DEBUG
-		printk(KERN_INFO
-		       "DA830 LCD: Waiting for Raster Frame Done...\n");
-#endif
-		lcd_disable_raster();
+		dev_dbg(dev, "DA830 LCD: Waiting for Raster Frame Done...\n");
+		lcd_disable_raster(dev);
 	}
 	/* DMA has to be disabled */
 	da830_fb_write(0, LCD_DMA_CTRL_REG);
-#ifdef FB_DEBUG
-	printk(KERN_INFO "DA830 LCD: Raster is going for Reset now...\n");
-	lcd_show_raster_interface();
-#endif
+	dev_dbg(dev, "DA830 LCD: Raster is going for Reset now...\n");
+	lcd_show_raster_interface(dev);
 	da830_fb_write(0, LCD_RASTER_CTRL_REG);
 	/* TODO: Place the LCD block in reset */
 	/* TODO: Release it from Reset */
-#ifdef FB_DEBUG
-	printk(KERN_INFO "GLCD: LCD Controller Reset...\n");
-	lcd_show_raster_interface();
-#endif
+	dev_dbg(dev, "GLCD: LCD Controller Reset...\n");
+	lcd_show_raster_interface(dev);
 }
 
-static int lcd_init(const struct lcd_ctrl_config *cfg)
+static int lcd_init(struct device* dev, const struct lcd_ctrl_config *cfg)
 {
 	u32 bpp;
 
 	if (cpu_is_da830()) {
 		if (da830_lcd_hw_init()) {
-			printk(KERN_ALERT "Error in Initialising\n");
+			dev_err(dev, "GLCD: Error in Initialising\n");
 			return -ENODEV;
 		}
 	}
 
-	lcd_reset();
+	lcd_reset(dev);
 	/* Configure the LCD clock divisor. */
 	da830_fb_write(LCD_CLK_DIVISOR(cfg->pxl_clk) |
 					(LCD_RASTER_MODE & 0x1), LCD_CTRL_REG);
 	/* Configure the DMA burst size. */
-	lcd_cfg_dma(cfg->dma_burst_sz);
+	lcd_cfg_dma(dev, cfg->dma_burst_sz);
 	/* Configure the AC bias properties. */
-	lcd_cfg_ac_bias(cfg->ac_bias, cfg->ac_bias_intrpt);
+	lcd_cfg_ac_bias(dev, cfg->ac_bias, cfg->ac_bias_intrpt);
 	/* Configure the vertical and horizontal sync properties. */
-	lcd_cfg_vertical_sync(cfg->vbp, cfg->vsw, cfg->vfp);
-	lcd_cfg_horizontal_sync(cfg->hbp, cfg->hsw, cfg->hfp);
+	lcd_cfg_vertical_sync(dev, cfg->vbp, cfg->vsw, cfg->vfp);
+	lcd_cfg_horizontal_sync(dev, cfg->hbp, cfg->hsw, cfg->hfp);
 	/* Configure for disply */
-	lcd_cfg_display(cfg);
+	lcd_cfg_display(dev, cfg);
 	if (QVGA != cfg->p_disp_panel->panel_type) {
-		printk(KERN_ALERT
-		       "\nError: Only QVGA panel is currently supported !");
+		dev_err(dev, "\nError: Only QVGA panel is currently supported !");
 		return -EINVAL;
 	}
 	if (cfg->bpp <= cfg->p_disp_panel->max_bpp &&
@@ -572,7 +535,7 @@ static int lcd_init(const struct lcd_ctrl_config *cfg)
 		bpp = cfg->p_disp_panel->max_bpp;
 	if (bpp == 12)
 		bpp = 16;
-	lcd_cfg_frame_buffer((unsigned int)cfg->p_disp_panel->width,
+	lcd_cfg_frame_buffer(dev, (unsigned int)cfg->p_disp_panel->width,
 			     (unsigned int)cfg->p_disp_panel->height, bpp,
 			     cfg->raster_order);
 	/* Configure FDD */
@@ -681,7 +644,7 @@ static int __devexit da830_fb_remove(struct platform_device *dev)
 		struct da830fb_par *par = info->par;
 		/*TODO: do we need this along with line below? */
 		if (da830_fb_read(LCD_RASTER_CTRL_REG) & LCD_RASTER_ENABLE)
-			lcd_disable_raster();
+			lcd_disable_raster(&dev->dev);
 		da830_fb_write(0, LCD_RASTER_CTRL_REG);
 		/* disable DMA  */
 		da830_fb_write(0, LCD_DMA_CTRL_REG);
@@ -736,7 +699,7 @@ static int __init da830_fb_probe(struct platform_device *device)
 	if (ret)
 		goto err_clk_put;
 
-	if (lcd_init(&lcd_cfg)) {
+	if (lcd_init(&device->dev, &lcd_cfg)) {
 		dev_err(&device->dev, "lcd_init failed\n");
 		ret = -EFAULT;
 		goto err_clk_disable;
@@ -775,10 +738,8 @@ static int __init da830_fb_probe(struct platform_device *device)
 	da830fb_fix.smem_start = (unsigned long)par->p_screen_base;
 	da830fb_fix.smem_len = par->screen_size;
 
-#ifdef FB_DEBUG
-	printk(KERN_INFO "GLCD: Frame Buffer Memory allocation successful\n");
-	printk(KERN_INFO "GLCD: Palette Memory allocation successful\n");
-#endif
+	dev_dbg(&device->dev, "GLCD: Frame Buffer Memory allocation successful\n");
+	dev_dbg(&device->dev, "GLCD: Palette Memory allocation successful\n");
 
 	init_waitqueue_head(&da830_wq);
 
@@ -819,19 +780,15 @@ static int __init da830_fb_probe(struct platform_device *device)
 	da830fb_info->pseudo_palette = par->pseudo_palette;
 
 	/* Initialize the Palette */
-#ifdef FB_DEBUG
-	printk(KERN_INFO "GLCD: Initializing the Palette...\n");
-#endif
-	da830fb_init_palette(da830fb_info);
+	dev_dbg(&device->dev, "GLCD: Initializing the Palette...\n");
+	da830fb_init_palette(&device->dev, da830fb_info);
 
 	ret = fb_alloc_cmap(&da830fb_info->cmap, PALETTE_SIZE, 0);
 	if (ret)
 		goto err_free_irq;
 
 	/* Map Video Memory */
-#ifdef FB_DEBUG
-	printk(KERN_INFO "GLCD: Mapping the Video Memory...\n");
-#endif
+	dev_dbg(&device->dev, "GLCD: Mapping the Video Memory...\n");
 
 	/* Flush the buffer to the screen. */
 	lcd_blit(LOAD_DATA, (u32) par->p_palette_base);
@@ -843,7 +800,7 @@ static int __init da830_fb_probe(struct platform_device *device)
 	dev_set_drvdata(&device->dev, da830fb_info);
 	/* Register the Frame Buffer  */
 	if (register_framebuffer(da830fb_info) < 0) {
-		printk(KERN_ALERT "GLCD: Frame Buffer Registration Failed!\n");
+		dev_err(&device->dev, "GLCD: Frame Buffer Registration Failed!\n");
 		ret = -EINVAL;
 		goto err_dealloc_cmap;
 	}
@@ -913,7 +870,7 @@ static int da830_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (copy_from_user(&sync_arg, (char *)arg,
 				sizeof(struct lcd_sync_arg)))
 			return -EINVAL;
-		lcd_cfg_horizontal_sync(sync_arg.back_porch,
+		lcd_cfg_horizontal_sync(info->dev, sync_arg.back_porch,
 					sync_arg.pulse_width,
 					sync_arg.front_porch);
 		break;
@@ -921,7 +878,7 @@ static int da830_fb_ioctl(struct fb_info *info, unsigned int cmd,
 		if (copy_from_user(&sync_arg, (char *)arg,
 				sizeof(struct lcd_sync_arg)))
 			return -EINVAL;
-		lcd_cfg_vertical_sync(sync_arg.back_porch,
+		lcd_cfg_vertical_sync(info->dev, sync_arg.back_porch,
 					sync_arg.pulse_width,
 					sync_arg.front_porch);
 		break;
