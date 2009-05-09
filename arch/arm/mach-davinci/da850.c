@@ -602,7 +602,7 @@ static const struct mux_config davinci_da850_pins[] = {
 };
 
 static const s8 dma0_chan_da850_no_event[] = {
-	20, 21
+	20, 21,
 	-1
 };
 
@@ -720,13 +720,13 @@ static struct resource da850_spi_resources1[] = {
 		.flags = IORESOURCE_IRQ,
 	},
 	[2] = {
-		.start = 18,
-		.end = 18,
+		.start = EDMA_CTLR_CHAN(0, 18),
+		.end = EDMA_CTLR_CHAN(0, 18),
 		.flags = IORESOURCE_DMA | IORESOURCE_DMA_RX_CHAN,
 	},
 	[3] = {
-		.start = 19,
-		.end = 19,
+		.start = EDMA_CTLR_CHAN(0, 19),
+		.end = EDMA_CTLR_CHAN(0, 19),
 		.flags = IORESOURCE_DMA | IORESOURCE_DMA_TX_CHAN,
 	},
 	[4] = {

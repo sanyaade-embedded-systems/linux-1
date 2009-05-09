@@ -509,13 +509,13 @@ static struct resource da8xx_spi_resources0[] = {
 		.flags = IORESOURCE_IRQ,
 	},
 	[2] = {
-		.start = 14,
-		.end = 14,
+		.start = EDMA_CTLR_CHAN(0, 14),
+		.end = EDMA_CTLR_CHAN(0, 14),
 		.flags = IORESOURCE_DMA | IORESOURCE_DMA_RX_CHAN,
 	},
 	[3] = {
-		.start = 15,
-		.end = 15,
+		.start = EDMA_CTLR_CHAN(0, 15),
+		.end = EDMA_CTLR_CHAN(0, 15),
 		.flags = IORESOURCE_DMA | IORESOURCE_DMA_TX_CHAN,
 	},
 	[4] = {
