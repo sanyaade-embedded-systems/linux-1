@@ -163,7 +163,7 @@
 #define DA8XX_LPSC_L3_CBA_RAM   (32 + 31)
 
 #define DA850_LPSC_TPCC1	(32 + 0)
-#define DA850_LPSC_TPTC2	(32 + 18)
+#define DA850_LPSC_TPTC2	(32 + 21)
 
 extern int davinci_psc_is_clk_active(unsigned int id);
 extern void davinci_psc_config(unsigned int domain, unsigned int id,
