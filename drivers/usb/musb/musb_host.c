@@ -1560,13 +1560,11 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 	if (dma && (rx_csr & MUSB_RXCSR_DMAENAB)) {
 		xfer_len = dma->actual_len;
 
-		val &= ~(MUSB_RXCSR_DMAENAB
-			| MUSB_RXCSR_H_AUTOREQ
+		val &= ~(MUSB_RXCSR_H_AUTOREQ
 			| MUSB_RXCSR_AUTOCLEAR
 			| MUSB_RXCSR_RXPKTRDY);
 		musb_writew(hw_ep->regs, MUSB_RXCSR, val);
 
-#ifdef CONFIG_USB_INVENTRA_DMA
 		if (usb_pipeisoc(pipe)) {
 			struct usb_iso_packet_descriptor *d;
 
@@ -1581,8 +1579,20 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 
 			if (++qh->iso_idx >= urb->number_of_packets)
 				done = true;
-			else
+			else {
+				struct dma_controller	*c;
+				void *buf;
+				u32 length,ret;
+				
+				c = musb->dma_controller;
+				buf = (void *)urb->iso_frame_desc[qh->iso_idx].
+						offset +(u32)urb->transfer_dma;
+				length = urb->iso_frame_desc[qh->iso_idx].
+							length;
+				ret = c->channel_program(dma, qh->maxpacket,
+						0, (u32)buf, length);
 				done = false;
+			}
 
 		} else  {
 		/* done if urb buffer is full or short packet is recd */
@@ -1602,9 +1612,6 @@ void musb_host_rx(struct musb *musb, u8 epnum)
 			done ? "off" : "reset",
 			musb_readw(epio, MUSB_RXCSR),
 			musb_readw(epio, MUSB_RXCOUNT));
-#else
-		done = true;
-#endif
 	} else if (urb->status == -EINPROGRESS) {
 		/* if no errors, be sure a packet is ready for unloading */
 		if (unlikely(!(rx_csr & MUSB_RXCSR_RXPKTRDY))) {
