@@ -36,6 +36,8 @@ obj-$(CONFIG_FB_INTEL)          += video/intelfb/
 
 obj-y				+= cbus/
 
+obj-$(CONFIG_MPU_BRIDGE)	+= dsp/bridge/
+
 # we also need input/serio early so serio bus is initialized by the time
 # serial drivers start registering their serio ports
 obj-$(CONFIG_SERIO)		+= input/serio/
