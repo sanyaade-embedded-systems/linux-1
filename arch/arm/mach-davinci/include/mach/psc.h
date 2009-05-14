@@ -165,6 +165,7 @@
 #define DA850_LPSC_TPCC1	(32 + 0)
 #define DA850_LPSC_TPTC2	(32 + 21)
 
+#define DA850_LPSC_SATA		(32 + 8)
 extern int davinci_psc_is_clk_active(unsigned int id);
 extern void davinci_psc_config(unsigned int domain, unsigned int id,
 			       char enable);

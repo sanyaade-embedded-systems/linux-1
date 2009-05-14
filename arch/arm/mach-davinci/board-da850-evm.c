@@ -395,6 +395,13 @@ static __init void da850_evm_init(void)
 	davinci_cfg_reg(DA850_MDIO_D);
 
 	da850_init_emac(&da850_evm_emac_pdata);
+	setup_usb(500, 8);
+
+	/* Own the usb1 VBUS line */
+#ifdef CONFIG_USB_OHCI_HCD
+	davinci_cfg_reg(DA850_MDIO_CLK);
+
+#endif
 }
 
 static __init void da850_evm_irq_init(void)

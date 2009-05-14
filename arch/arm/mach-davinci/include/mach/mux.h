@@ -362,6 +362,9 @@ enum davinci_da830_index {
 	DA830_AXR1_7,
 	DA830_AXR1_8,
 	DA830_AXR1_9,
+
+	/* USB0 DRVVBUS index */
+	DA830_USB0_DRVVBUS,
 };
 
 enum davinci_da850_index {
@@ -644,6 +647,9 @@ enum davinci_da850_index {
 	/* GPIO function */
 	DA850_GPIO4_0,
 	DA850_GPIO4_1,
+
+	/* USB0 DRVVBUS index */
+	DA850_USB0_DRVVBUS,
 };
 
 #ifdef CONFIG_DAVINCI_MUX

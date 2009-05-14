@@ -7,7 +7,15 @@ musb_hdrc-objs := musb_core.o
 obj-$(CONFIG_USB_MUSB_HDRC)	+= musb_hdrc.o
 
 ifeq ($(CONFIG_ARCH_DAVINCI),y)
-	musb_hdrc-objs	+= davinci.o
+	ifeq ($(CONFIG_ARCH_DA830),y)
+		musb_hdrc-objs	+= da8xx.o
+	else
+		ifeq ($(CONFIG_ARCH_DA850),y)
+			musb_hdrc-objs  += da8xx.o
+		else
+			musb_hdrc-objs	+= davinci.o
+		endif
+	endif
 endif
 
 ifeq ($(CONFIG_USB_TUSB6010),y)
@@ -53,9 +61,13 @@ ifneq ($(CONFIG_MUSB_PIO_ONLY),y)
       musb_hdrc-objs		+= cppi_dma.o
 
     else
-      ifeq ($(CONFIG_USB_TUSB_OMAP_DMA),y)
-        musb_hdrc-objs		+= tusb6010_omap.o
+      ifeq ($(CONFIG_USB_TI_CPPI41_DMA),y)
+        musb_hdrc-objs		+= cppi41_dma.o
 
+        ifeq ($(CONFIG_USB_TUSB_OMAP_DMA),y)
+          musb_hdrc-objs	+= tusb6010_omap.o
+
+        endif
       endif
     endif
   endif

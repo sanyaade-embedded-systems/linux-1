@@ -459,7 +459,6 @@ static inline struct usb_hcd *ohci_to_hcd (const struct ohci_hcd *ohci)
 }
 
 /*-------------------------------------------------------------------------*/
-
 #ifndef DEBUG
 #define STUB_DEBUG_FILES
 #endif	/* DEBUG */

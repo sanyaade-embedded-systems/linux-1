@@ -13,6 +13,9 @@
 #include <mach/common.h>
 #include <mach/hardware.h>
 #include <mach/irqs.h>
+#include <mach/cpu.h>
+#include <mach/mux.h>
+#include <mach/da8xx.h>
 
 #define DAVINCI_USB_OTG_BASE 0x01C64000
 
@@ -84,6 +87,14 @@ void __init setup_usb(unsigned mA, unsigned potpgt_msec)
 {
 	usb_data.power = mA / 2;
 	usb_data.potpgt = potpgt_msec / 2;
+	if (cpu_is_da830() || cpu_is_da850()) {
+		usb_resources[0].start = DA8XX_USB0_BASE;
+		usb_resources[0].end = DA8XX_USB0_BASE + 0x5ff;
+		usb_resources[1].start = IRQ_DA8XX_USB_INT;
+		davinci_cfg_reg(DA830_USB0_DRVVBUS);
+		usb_data.clock = "usb0";
+	}
+
 	platform_device_register(&usb_dev);
 }
 

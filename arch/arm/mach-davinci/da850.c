@@ -21,6 +21,7 @@
 #include <mach/irqs.h>
 #include <mach/psc.h>
 #include <mach/mux.h>
+#include <mach/usb.h>
 
 #include "clock.h"
 #include "mux.h"
@@ -292,6 +293,24 @@ static struct clk mcasp_clk = {
 	.dup_parent	= &pll1_sysclk2,
 };
 
+static struct clk usb0_clk = {
+	.name		= "usb0",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC_USB20,
+};
+
+static struct clk usb1_clk = {
+	.name		= "usb1",
+	.parent		= &pll0_sysclk4,
+	.lpsc		= DA8XX_LPSC_USB11,
+};
+
+static struct clk sata_clk = {
+	.name		= "ahci",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA850_LPSC_SATA,
+};
+
 static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"ref",		&ref_clk),
 	CLK(NULL,		"pll0",		&pll0_clk),
@@ -331,6 +350,9 @@ static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"emif3",	&emif3_clk),
 	CLK(NULL,		"arm",		&arm_clk),
 	CLK("soc-audio",	NULL,		&mcasp_clk),
+	CLK(NULL,		"usb0",		&usb0_clk),
+	CLK(NULL,		"usb1",		&usb1_clk),
+	CLK(NULL,		"ahci",		&sata_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 
@@ -599,6 +621,7 @@ static const struct mux_config davinci_da850_pins[] = {
 	/* GPIO function */
 	DA8XX_MUX_CFG(DA850,	GPIO4_0,	10,   28,  15,   8,	false)
 	DA8XX_MUX_CFG(DA850,	GPIO4_1,	10,   24,  15,   8,	false)
+	DA8XX_MUX_CFG(DA850,    USB0_DRVVBUS,   9,    4,   15,   1,     false)
 };
 
 static const s8 dma0_chan_da850_no_event[] = {
@@ -842,6 +865,59 @@ void da850_init_emac(struct emac_platform_data *unused) {}
 
 #endif
 
+struct  da830_ohci_root_hub da850_ohci_rh_data = {0, 0, 0, 0, 1};
+static struct resource da850_ohci_resources[] = {
+	{
+		/* physical address */
+		.start	=	DA8XX_USB1_BASE,
+		.end	=	DA8XX_USB1_BASE + 0xfff,
+		.flags	=	IORESOURCE_MEM,
+	},
+	{
+		.start	=	IRQ_DA8XX_IRQN,
+		.flags	=	IORESOURCE_IRQ,
+	}
+};
+
+static u64 da8xx_usb1_dma_mask = ~(u32)0;
+static struct platform_device da850_ohci_device = {
+	.name	= "usb1",
+	.id	= -1,
+	.dev = {
+		.platform_data          = &da850_ohci_rh_data,
+		.dma_mask               = &da8xx_usb1_dma_mask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.num_resources  = ARRAY_SIZE(da850_ohci_resources),
+	.resource       = da850_ohci_resources,
+};
+
+
+static struct resource da850_ahci_resources[] = {
+	{
+		/* physical address */
+		.start	=	DA850_SATA_BASE,
+		.end	=	DA850_SATA_BASE + 0x1fff,
+		.flags	=	IORESOURCE_MEM,
+	},
+	{
+		.start	=	IRQ_DA850_SATAINT,
+		.flags	=	IORESOURCE_IRQ,
+	}
+};
+
+static int da850_ahci_data = 8;
+static struct platform_device da850_ahci_device = {
+	.name		= "ahci",
+	.id		= -1,
+	.dev		= {
+				.platform_data = &da850_ahci_data,
+				.coherent_dma_mask = 0xffffffff,
+			},
+	.num_resources	= ARRAY_SIZE(da850_ahci_resources),
+	.resource	= da850_ahci_resources,
+};
+
 int get_async3_src(void)
 {
 	unsigned int *addr = IO_ADDRESS(DA8XX_CFGCHIP3);
@@ -863,6 +939,13 @@ static int __init da850_init_devices(void)
 
 	platform_device_register(&da850_edma0_device);
 	platform_device_register(&da850_edma1_device);
+	platform_device_register(&da850_ohci_device);
+#ifdef CONFIG_SATA_AHCI
+	/* Enable SATA CLK Power */
+	__raw_writel(0, IO_ADDRESS(DA850_SATA_CLK_PWRDN));
+#endif
+	platform_device_register(&da850_ahci_device);
+
 	return 0;
 }
 postcore_initcall(da850_init_devices);

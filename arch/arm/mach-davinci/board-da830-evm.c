@@ -388,6 +388,12 @@ static __init void da830_evm_init(void)
 	da830_init_mcasp1();
 
 	da830_init_emac(&da830_evm_emac_pdata);
+	setup_usb(500, 8);
+
+	/* Own the USB1 VBUS line */
+#ifdef CONFIG_USB_OHCI_HCD
+	davinci_cfg_reg(DA830_EMA_CLK);
+#endif
 }
 
 static __init void da830_evm_irq_init(void)
