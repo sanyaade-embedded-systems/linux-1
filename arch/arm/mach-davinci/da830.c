@@ -421,6 +421,7 @@ DA8XX_MUX_CFG(DA830,	AXR1_10,	8,   20,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	AXR1_11,	8,   24,    15,   1,     false)
 DA8XX_MUX_CFG(DA830,	AHCLKX1,	11,  20,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	ACLKX1,		11,  24,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	AFSX1,		11,  28,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	AHCLKR1,	12,   0,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	ACLKR1,		12,   4,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	AFSR1,		12,   8,    15,   1,	 false)
@@ -435,6 +436,7 @@ DA8XX_MUX_CFG(DA830,	AXR1_6,		13,   8,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	AXR1_7,		13,  12,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	AXR1_8,		13,  16,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	AXR1_9,		13,  20,    15,   1,	 false)
+DA8XX_MUX_CFG(DA830,	USB0_DRVVBUS,	9,   24,    15,   1,     false)
 };
 
 static const s8 dma_chan_da830_no_event[] = {
