@@ -116,4 +116,6 @@ source "drivers/platform/Kconfig"
 
 source "drivers/dsp/syslink/Kconfig"
 
+source "drivers/dsp/bridge/Kconfig"
+
 endmenu

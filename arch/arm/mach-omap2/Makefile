@@ -123,3 +123,4 @@ obj-y					+= $(onenand-m) $(onenand-y)
 
 smc91x-$(CONFIG_SMC91X)			:= gpmc-smc91x.o
 obj-y					+= $(smc91x-m) $(smc91x-y)
+obj-$(CONFIG_MPU_BRIDGE)                += dspbridge.o
