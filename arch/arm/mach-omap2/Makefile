@@ -60,4 +60,6 @@ obj-$(CONFIG_MACH_OMAP_4430SDP)		+= board-4430sdp.o
 # Platform specific device init code
 ifeq ($(CONFIG_USB_MUSB_SOC),y)
 obj-y					+= usb-musb.o
+
+obj-$(CONFIG_MPU_BRIDGE)                += dspbridge.o
 endif
