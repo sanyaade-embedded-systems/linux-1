@@ -89,6 +89,10 @@
 		u32 dwNumChnls;
 		void __iomem *dwPrmBase;
 		void __iomem *dwCmBase;
+#ifdef OMAP44XX
+        u32 dwCm1Base;
+        u32 dwCm2Base;
+#endif
 		void __iomem *dwPerBase;
 		u32 dwPerPmBase;
 		u32 dwCorePmBase;
