@@ -85,7 +85,9 @@ void SERVICES_Exit(void)
 		NTFY_Exit();
 		UTIL_Exit();
 		SYNC_Exit();
+#ifdef OMAP_3430
 		CLK_Exit();
+#endif
 		REG_Exit();
 		LST_Exit();
 		KFILE_Exit();
@@ -133,12 +135,18 @@ bool SERVICES_Init(void)
 		fLST = LST_Init();
 		/* fREG = REG_Init(); */
 		fSYNC = SYNC_Init();
+#ifdef OMAP_3430
 		fCLK  = CLK_Init();
+#endif
 		fUTIL = UTIL_Init();
 		fNTFY = NTFY_Init();
 
                fInit = fCFG && fCSL && fDBG && fDPC && fKFILE &&
+#ifdef OMAP_3430
                        fLST && fMEM && fREG && fSYNC && fCLK && fUTIL;
+#else
+                       fLST && fMEM && fREG && fSYNC && fUTIL;
+#endif
 
 		if (!fInit) {
 			if (fNTFY)
@@ -150,8 +158,10 @@ bool SERVICES_Init(void)
 			if (fSYNC)
 				SYNC_Exit();
 
+#ifdef OMAP_3430
 			if (fCLK)
 				CLK_Exit();
+#endif
 
 			if (fREG)
 				REG_Exit();
