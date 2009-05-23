@@ -1190,11 +1190,34 @@ static struct dynload_symbol *addToSymbolTable(struct Dynamic_Loader_Sym *this,
 		pSym = findSymbol(this, name);
 		bGblSearch = true;
 		if (pSym) {
+
+	#ifdef OMAP44XX
+	#define SQ_IGNORE_SYMBOLS 1
+	#endif
+	#if !SQ_IGNORE_SYMBOLS
+
 			bRedefinedSymbol = true;
 			GT_1trace(DBLL_debugMask, GT_6CLASS,
 				 "Symbol already defined in "
 				 "symbol table: %s\n", name);
 			return NULL;
+	#else
+		                        if ((strcmp(name, "___ASM__") == 0)
+                                || (strcmp(name, "___TARG__") == 0)
+                                || (strcmp(name, "___PLAT__") == 0)
+                                || (strcmp(name, "___ISA__") == 0)
+								|| (strcmp(name, "___TRDR__") == 0))
+                                retVal = findSymbol(this, name);
+                        else {
+                                bRedefinedSymbol = true;
+                                GT_1trace(DBLL_debugMask, GT_6CLASS,
+                                         "Symbol already defined in "
+                                         "symbol table: %s\n", name);
+                                return NULL;
+                        }
+	#endif
+
+
 		}
 	}
 	/* Allocate string to copy symbol name */
