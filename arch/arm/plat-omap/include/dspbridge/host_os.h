@@ -60,9 +60,14 @@
 #include <asm/cacheflush.h>
 #include <linux/dma-mapping.h>
 
-/* TODO -- Remove, once BP defines them */
-#define INT_MAIL_MPU_IRQ        26
-#define INT_DSP_MMU_IRQ        28
+
+#ifdef OMAP_3430
+#define INT_MAIL_MPU_IRQ        INT_24XX_MAIL_U0_MPU
+#define INT_DSP_MMU_IRQ         INT_24XX_DSP_MMU
+#else
+#define INT_MAIL_MPU_IRQ        INT_44XX_MAIL_U0_MPU
+#define INT_DSP_MMU_IRQ         INT_44XX_DSP_MMU
+#endif
 
 struct dspbridge_platform_data {
 	void 	(*dsp_set_min_opp)(u8 opp_id);
