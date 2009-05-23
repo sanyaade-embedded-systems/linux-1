@@ -25,6 +25,45 @@
 
 #include "_tiomap.h"
 #include "_tiomap_pwr.h"
+#include <hw_defs.h>
+#include <hw_mbox.h>
+
+
+
+#ifndef CONFIG_DISABLE_BRIDGE_PM
+#ifndef CONFIG_DISABLE_BRIDGE_DVFS
+#ifndef CONFIG_OMAP3_PM
+#include <mach/omap-pm.h>
+#else
+#include <mach/resource.h>
+extern struct constraint_handle *dsp_constraint_handle;
+#endif
+#endif
+#endif
+/*------------------------------------- Noitfy */
+#include <syslink/notify.h>
+#include <syslink/notify_driverdefs.h>
+#include <syslink/notify_tesladriver.h>
+extern struct notify_driver_object *handle;
+
+/*  ----------------------------------- Defines, Data Structures, Typedefs */
+#ifndef DEBUG
+#define TIHELEN_INT_TIMEOUT     1
+#define LOOP_COUNT              1000000
+#endif
+
+#ifdef OMAP44XX
+#define PROCESSOR_TESLA 0
+#define KEY 0
+#endif
+
+
+extern struct MAILBOX_CONTEXT mboxsetting;
+
+extern DSP_STATUS DSP_PeripheralClocks_Enable(struct WMD_DEV_CONTEXT
+                                             *pDevContext, IN void *pArgs);
+
+
 
 #define MAILBOX_FIFOSTATUS(m) (0x80 + 4 * (m))
 
@@ -41,6 +80,8 @@ DSP_STATUS CHNLSM_EnableInterrupt(struct WMD_DEV_CONTEXT *pDevContext)
 	struct CFG_HOSTRES resources;
 	u32 devType;
 	struct IO_MGR *hIOMgr;
+	u32 eventNo;
+	u32 hwStatus;
 
 	DBG_Trace(DBG_ENTER, "CHNLSM_EnableInterrupt(0x%x)\n", pDevContext);
 
@@ -50,68 +91,75 @@ DSP_STATUS CHNLSM_EnableInterrupt(struct WMD_DEV_CONTEXT *pDevContext)
 			     &resources);
 	DEV_GetDevType(pDevContext->hDevObject, &devType);
 	status = DEV_GetIOMgr(pDevContext->hDevObject, &hIOMgr);
-	if (devType == DSP_UNIT) {
-		HW_MBOX_NumMsgGet(resources.dwMboxBase,
-				  MBOX_DSP2ARM, &numMbxMsg);
-		while (numMbxMsg != 0) {
-			HW_MBOX_MsgRead(resources.dwMboxBase,
-					MBOX_DSP2ARM,
-					&mbxValue);
-			numMbxMsg--;
-		}
-		/* clear the DSP mailbox as well...*/
-		HW_MBOX_NumMsgGet(resources.dwMboxBase,
-				  MBOX_ARM2DSP, &numMbxMsg);
-		while (numMbxMsg != 0) {
-			HW_MBOX_MsgRead(resources.dwMboxBase,
-					MBOX_ARM2DSP, &mbxValue);
-			numMbxMsg--;
-			udelay(10);
 
-			HW_MBOX_EventAck(resources.dwMboxBase, MBOX_ARM2DSP,
-					 HW_MBOX_U1_DSP1,
-					 HW_MBOX_INT_NEW_MSG);
-		}
-		/* Enable the new message events on this IRQ line */
-		HW_MBOX_EventEnable(resources.dwMboxBase,
-				    MBOX_DSP2ARM,
-				    MBOX_ARM,
-				    HW_MBOX_INT_NEW_MSG);
-	}
+#ifdef OMAP44XX
+       eventNo = ((NOTIFY_SYSTEM_KEY<<16)|NOTIFY_TESLA_EVENTNUMBER);
 
-	return status;
+        notify_enable_event(handle, 0, eventNo);
+
+    if (devType == DSP_UNIT) {
+		notify_restore(KEY, PROCESSOR_TESLA);
+    }
+
+#else
+        if (devType == DSP_UNIT) {
+                hwStatus = HW_MBOX_EventDisable(resources.dwMboxBase,
+                                                MBOX_DSP2ARM,
+                                                MBOX_ARM,
+                                                HW_MBOX_INT_NEW_MSG);
+        }
+#endif
+        return status;
 }
+
 
 DSP_STATUS CHNLSM_DisableInterrupt(struct WMD_DEV_CONTEXT *pDevContext)
 {
-	struct CFG_HOSTRES resources;
+        DSP_STATUS status = DSP_SOK;
+        int  Notifystatus;
+        u32 eventNo;
+        struct CFG_HOSTRES resources;
+        u32 hwStatus;
 
 	DBG_Trace(DBG_ENTER, "CHNLSM_DisableInterrupt(0x%x)\n", pDevContext);
 
 	CFG_GetHostResources((struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
 			     &resources);
-	HW_MBOX_EventDisable(resources.dwMboxBase, MBOX_DSP2ARM,
+#ifdef OMAP44XX
+
+        eventNo = ((NOTIFY_SYSTEM_KEY<<16)|NOTIFY_TESLA_EVENTNUMBER);
+        notify_disable_event(handle, 0, eventNo);
+		notify_disable(PROCESSOR_TESLA);
+#else
+	
+		HW_MBOX_EventDisable(resources.dwMboxBase, MBOX_DSP2ARM,
 			     MBOX_ARM, HW_MBOX_INT_NEW_MSG);
+#endif
 	return DSP_SOK;
 }
 
 DSP_STATUS CHNLSM_InterruptDSP2(struct WMD_DEV_CONTEXT *pDevContext,
 				u16 wMbVal)
 {
+#ifndef CONFIG_DISABLE_BRIDGE_PM
 #ifdef CONFIG_BRIDGE_DVFS
 	struct dspbridge_platform_data *pdata =
 		omap_dspbridge_dev->dev.platform_data;
 	u32 opplevel = 0;
 #endif
+#endif
 	struct CFG_HOSTRES resources;
 	DSP_STATUS status = DSP_SOK;
 	unsigned long timeout;
 	u32 temp;
+	int  notifyStatus;
 
 	status = CFG_GetHostResources((struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
 				      &resources);
 	if (DSP_FAILED(status))
 		return DSP_EFAIL;
+#ifdef OMAP_3430
+#ifndef CONFIG_DISABLE_BRIDGE_PM
 #ifdef CONFIG_BRIDGE_DVFS
 	if (pDevContext->dwBrdState == BRD_DSP_HIBERNATION ||
 	    pDevContext->dwBrdState == BRD_HIBERNATION) {
@@ -122,6 +170,7 @@ DSP_STATUS CHNLSM_InterruptDSP2(struct WMD_DEV_CONTEXT *pDevContext,
 				(*pdata->dsp_set_min_opp)(opplevel+1);
 		}
 	}
+#endif
 #endif
 
 	if (pDevContext->dwBrdState == BRD_DSP_HIBERNATION ||
@@ -159,37 +208,48 @@ DSP_STATUS CHNLSM_InterruptDSP2(struct WMD_DEV_CONTEXT *pDevContext,
 			return WMD_E_TIMEOUT;
 		}
 	}
+#else
 	DBG_Trace(DBG_LEVEL3, "writing %x to Mailbox\n",
 		  wMbVal);
 
-	HW_MBOX_MsgWrite(resources.dwMboxBase, MBOX_ARM2DSP,
-			 wMbVal);
+	
+	notifyStatus = notify_sendevent(handle,/*PROC_TESLA*/0,
+                ((NOTIFY_SYSTEM_KEY<<16)|NOTIFY_TESLA_EVENTNUMBER),
+                pDevContext->wIntrVal2Dsp, true);
+#endif
+
 	return DSP_SOK;
 }
 
 bool CHNLSM_ISR(struct WMD_DEV_CONTEXT *pDevContext, bool *pfSchedDPC,
 		u16 *pwIntrVal)
 {
-	struct CFG_HOSTRES resources;
-	u32 numMbxMsg;
-	u32 mbxValue;
 
-	DBG_Trace(DBG_ENTER, "CHNLSM_ISR(0x%x)\n", pDevContext);
+        bool fMyInterrupt = true;       
+#ifdef OMAP_3430
+        struct CFG_HOSTRES resources;
+        u32 numMbxMsg;
+        u32 mbxValue;
 
-	CFG_GetHostResources((struct CFG_DEVNODE *)DRV_GetFirstDevExtension(), &resources);
+        CFG_GetHostResources(
+                (struct CFG_DEVNODE *)DRV_GetFirstDevExtension(), &resources);
 
-	HW_MBOX_NumMsgGet(resources.dwMboxBase, MBOX_DSP2ARM, &numMbxMsg);
+        HW_MBOX_NumMsgGet(resources.dwMboxBase, MBOX_DSP2ARM, &numMbxMsg);
 
-	if (numMbxMsg > 0) {
-		HW_MBOX_MsgRead(resources.dwMboxBase, MBOX_DSP2ARM, &mbxValue);
+        if (numMbxMsg > 0) {
+                HW_MBOX_MsgRead(resources.dwMboxBase, MBOX_DSP2ARM, &mbxValue);
 
-		HW_MBOX_EventAck(resources.dwMboxBase, MBOX_DSP2ARM,
-				 HW_MBOX_U0_ARM, HW_MBOX_INT_NEW_MSG);
+                HW_MBOX_EventAck(resources.dwMboxBase, MBOX_DSP2ARM,
+                                 HW_MBOX_U0_ARM, HW_MBOX_INT_NEW_MSG);
 
-		DBG_Trace(DBG_LEVEL3, "Read %x from Mailbox\n", mbxValue);
-		*pwIntrVal = (u16) mbxValue;
-	}
-	/* Set *pfSchedDPC to true; */
-	*pfSchedDPC = true;
-	return true;
+                DBG_Trace(DBG_LEVEL3, "Read %x from Mailbox\n", mbxValue);
+                *pwIntrVal = (u16) mbxValue;
+        }
+        /* Set *pfSchedDPC to true; */
+        *pfSchedDPC = true;
+#endif
+        return fMyInterrupt;
+
+
+
 }

@@ -54,8 +54,8 @@
 
 #include <dspbridge/_chnl_sm.h>
 #include <dspbridge/host_os.h>
-
 #include <dspbridge/iodefs.h>
+#include <syslink/notifydefs.h>
 
 #define IO_INPUT            0
 #define IO_OUTPUT           1
@@ -129,7 +129,10 @@
  *      Interrupts are disabled and EOI for this interrupt has been sent.
  *  Ensures:
  */
-       irqreturn_t IO_ISR(int irq, IN void *pRefData);
+	void IO_ISR (IN unsigned long int  procId,
+                     IN void * pRefData,
+                     struct pt_regs *reg);
+
 /*
  *  ======== IO_RequestChnl ========
  *  Purpose:
