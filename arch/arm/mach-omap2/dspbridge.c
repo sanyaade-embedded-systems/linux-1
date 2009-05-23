@@ -13,13 +13,15 @@
 
 #include <linux/platform_device.h>
 
+#ifdef CONFIG_PM
 #include <mach/omap-pm.h>
-
+#endif
 #include <dspbridge/host_os.h>
 
 static struct platform_device *dspbridge_pdev;
 
 static struct dspbridge_platform_data dspbridge_pdata __initdata = {
+
 #ifdef CONFIG_BRIDGE_DVFS
 	.dsp_set_min_opp = omap_pm_dsp_set_min_opp,
 	.dsp_get_opp	 = omap_pm_dsp_get_opp,
