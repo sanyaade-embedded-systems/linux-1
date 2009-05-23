@@ -247,11 +247,6 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 		if (mutex_lock_interruptible(notify_tesladriver_state.
 					gate_handle) != 0)
 			WARN_ON(1);
-		proc_id = PROC_TESLA;
-		if (proc_id == PROC_TESLA) {
-			printk(KERN_WARNING " --Tesla currently"
-					" not using driverAttrs--\n");
-		}
 
 		drv_attrs.numProc = 1;
 		drv_attrs.proc_info[PROC_TESLA].max_events = num_events;
