@@ -96,6 +96,14 @@
 #include "_msg_sm.h"
 #include <dspbridge/gt.h>
 
+/*------------------------------------Notify */
+#include <syslink/notify.h>
+#include <syslink/notify_driverdefs.h>
+#include <syslink/notify_tesladriver.h>
+#include <syslink/notify_shmdriver.h>
+#include <syslink/notify_driver.h>
+
+
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
 #define OUTPUTNOTREADY  0xffff
 #define NOTENABLED      0xffff	/* channel(s) not enabled */
@@ -106,6 +114,14 @@
 #define ulPageAlignSize 0x10000   /* Page Align Size */
 
 #define MAX_PM_REQS 32
+
+struct notify_driver_handle *handlePtr;
+struct notify_driver_object *handle;
+u32  eventNo;
+struct IO_MGR *ext_pIOMgr;
+extern irqreturn_t (*irq_handler)(int, void *, struct pt_regs *);
+void * external_piomgr;
+
 
 /* IO Manager: only one created per board: */
 struct IO_MGR {
@@ -206,6 +222,17 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 	struct CHNL_MGR *hChnlMgr;
        static int ref_count;
 	u32 devType;
+
+        struct notify_config ntfy_config;
+        struct notify_tesladrv_config tesla_cfg;
+        struct notify_tesladrv_params params;
+        u32 mem_va;
+        u32 mem_pa;
+        char  driverName[32] = "NOTIFYMBXDRV";
+        int  ntfystatus;
+        irq_handler = (void *) IO_ISR;
+
+
 	/* Check DBC requirements:  */
 	DBC_Require(phIOMgr != NULL);
 	DBC_Require(pMgrAttrs != NULL);
@@ -273,6 +300,52 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 		pIOMgr->iQuePowerHead = 0;
 		pIOMgr->iQuePowerTail = 0;
 	}
+
+	        notify_get_config(&ntfy_config);
+        ntfystatus = notify_setup(&ntfy_config);
+
+        if (NOTIFY_FAILED(ntfystatus)) {
+                DBG_Trace(DBG_LEVEL7, "Failed notify_setup ntfystatus 0x%x \n",
+                          ntfystatus);
+        } else
+                printk("%s:%d:PASS\n",__func__,__LINE__);
+
+        notify_tesladrv_getconfig(&tesla_cfg);
+
+        ntfystatus = notify_tesladrv_setup(&tesla_cfg);
+
+        notify_tesladrv_params_init(NULL, &params);
+
+        mem_va = dma_alloc_coherent(NULL, 0x4000, &mem_pa,GFP_ATOMIC);
+        if (mem_va == NULL)
+                pr_err("Memory allocation for communication failed\n");
+        params.num_events          = 32;
+        params.num_reserved_events  = 0;
+        params.send_event_poll_count = (int) -1;
+        params.recv_int_id          = 26;
+        params.send_int_id          = 55;
+        params.shared_addr_size     = 0x4000;
+        params.shared_addr                = mem_va;
+        params.remote_proc_id         = 0;
+
+        handle = notify_tesladrv_create(driverName,&params);
+        if (NOTIFY_FAILED(ntfystatus)) {
+                DBG_Trace(DBG_LEVEL7, "Failed notify_get_driver_handle  ntfystatus 0x%x \n",
+                          ntfystatus);
+        } 
+
+        eventNo = ((NOTIFY_SYSTEM_KEY<<16)|NOTIFY_TESLA_EVENTNUMBER);
+
+        ntfystatus = notify_register_event(handle, /*PROC_TESLA*/0, eventNo,(void*)IO_ISR, NULL);
+
+        if (NOTIFY_FAILED(ntfystatus)) {
+                DBG_Trace(DBG_LEVEL7, "Failed notify_register_event ntfystatus 0x%x \n",
+                          ntfystatus);
+        } 
+
+        notify_disable_event(handle, 0, eventNo);
+
+
 	if (DSP_SUCCEEDED(status)) {
 		status = CFG_GetHostResources((struct CFG_DEVNODE *)
 				DRV_GetFirstDevExtension() , &hostRes);
@@ -280,6 +353,10 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 	if (DSP_SUCCEEDED(status)) {
 		pIOMgr->hWmdContext = hWmdContext;
 		pIOMgr->fSharedIRQ = pMgrAttrs->fShared;
+#ifdef OMAP44XX
+		external_piomgr = pIOMgr;
+
+#else
 		IO_DisableInterrupt(hWmdContext);
 		if (devType == DSP_UNIT) {
 			/* Plug the channel ISR:. */
@@ -289,6 +366,7 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
                        else
                                status = DSP_EFAIL;
 		}
+#endif
        if (DSP_SUCCEEDED(status))
                DBG_Trace(DBG_LEVEL1, "ISR_IRQ Object 0x%x \n",
                                pIOMgr);
@@ -317,6 +395,11 @@ func_cont:
 DSP_STATUS WMD_IO_Destroy(struct IO_MGR *hIOMgr)
 {
 	DSP_STATUS status = DSP_SOK;
+#ifdef OMAP44XX
+	status = notify_tesladrv_delete(&handle);
+        status = notify_tesladrv_destroy();
+        status = notify_destroy();
+#else
 	struct WMD_DEV_CONTEXT *hWmdContext;
 	if (MEM_IsValidHandle(hIOMgr, IO_MGRSIGNATURE)) {
 		/* Unplug IRQ:    */
@@ -338,7 +421,7 @@ DSP_STATUS WMD_IO_Destroy(struct IO_MGR *hIOMgr)
 		MEM_FreeObject(hIOMgr);
        } else
 		status = DSP_EHANDLE;
-
+#endif
 	return status;
 }
 
@@ -676,15 +759,29 @@ func_cont:
 
 	/* Map the L4 peripherals */
 	i = 0;
-	while (L4PeripheralTable[i].physAddr && DSP_SUCCEEDED(status)) {
-		status = hIOMgr->pIntfFxns->pfnBrdMemMap
-			(hIOMgr->hWmdContext, L4PeripheralTable[i].physAddr,
-			L4PeripheralTable[i].dspVirtAddr, HW_PAGE_SIZE_4KB,
-			mapAttrs);
-		if (DSP_FAILED(status))
-			break;
-		i++;
-	}
+#ifdef OMAP_3430
+		while (L4PeripheralTable[i].physAddr && DSP_SUCCEEDED(status)) {
+			status = hIOMgr->pIntfFxns->pfnBrdMemMap
+				 (hIOMgr->hWmdContext,
+				  L4PeripheralTable[i].physAddr,
+				  L4PeripheralTable[i].dspVirtAddr,
+				  HW_PAGE_SIZE_4KB,
+				  mapAttrs);
+			DBC_Assert(DSP_SUCCEEDED(status));
+			i++;
+		}
+#else
+		while (L4PeripheralTable[i].physAddr && DSP_SUCCEEDED(status)) {
+			status = hIOMgr->pIntfFxns->pfnBrdMemMap
+				 (hIOMgr->hWmdContext,
+				  L4PeripheralTable[i].physAddr,
+				  L4PeripheralTable[i].dspVirtAddr,
+				  L4PeripheralTable[i].ulSize,
+				  mapAttrs);
+			DBC_Assert(DSP_SUCCEEDED(status));
+			i++;
+		}
+#endif
 
 	if (DSP_SUCCEEDED(status)) {
 		for (i = ndx; i < WMDIOCTL_NUMOFMMUTLB; i++) {
@@ -923,6 +1020,8 @@ static void IO_DispatchPM(struct work_struct *work)
 					 "Hibernation command failed\n");
 			}
 		} else if (pArg[0] == MBX_PM_OPP_REQ) {
+#ifndef CONFIG_DISABLE_BRIDGE_PM
+#ifndef CONFIG_DISABLE_BRIDGE_DVFS
 			pArg[1] = pIOMgr->pSharedMem->oppRequest.rqstOppPt;
 			DBG_Trace(DBG_LEVEL7, "IO_DispatchPM : Value of OPP "
 				 "value =0x%x \n", pArg[1]);
@@ -934,6 +1033,8 @@ static void IO_DispatchPM(struct work_struct *work)
 					 "to set constraint = 0x%x \n",
 					 pArg[1]);
 			}
+#endif
+#endif
 
 		} else {
 			DBG_Trace(DBG_LEVEL7, "IO_DispatchPM - clock control - "
@@ -1008,18 +1109,25 @@ void IO_DPC(IN OUT void *pRefData)
  *      Calls the WMD's CHNL_ISR to determine if this interrupt is ours, then
  *      schedules a DPC to dispatch I/O.
  */
-irqreturn_t IO_ISR(int irq, IN void *pRefData)
+
+void IO_ISR(IN  unsigned long int procId,
+	            IN void * pRefData,
+        	    struct pt_regs *reg)
 {
-	struct IO_MGR *hIOMgr = (struct IO_MGR *)pRefData;
+	struct IO_MGR *hIOMgr;
+        pRefData = external_piomgr;
+        hIOMgr = (struct IO_MGR *)pRefData;
+	
 	bool fSchedDPC;
-       DBC_Require(irq == INT_MAIL_MPU_IRQ);
+//       DBC_Require(irq == INT_MAIL_MPU_IRQ);
 	DBC_Require(MEM_IsValidHandle(hIOMgr, IO_MGRSIGNATURE));
 	DBG_Trace(DBG_LEVEL3, "Entering IO_ISR(0x%x)\n", pRefData);
 
+#ifdef OMAP_3430
 	/* Call WMD's CHNLSM_ISR() to see if interrupt is ours, and process. */
 	if (IO_CALLISR(hIOMgr->hWmdContext, &fSchedDPC, &hIOMgr->wIntrVal)) {
-		{
 			DBG_Trace(DBG_LEVEL3, "IO_ISR %x\n", hIOMgr->wIntrVal);
+#endif
 			if (hIOMgr->wIntrVal & MBX_PM_CLASS) {
 				hIOMgr->dQuePowerMbxVal[hIOMgr->iQuePowerHead] =
 					hIOMgr->wIntrVal;
@@ -1032,17 +1140,22 @@ irqreturn_t IO_ISR(int irq, IN void *pRefData)
 			if (hIOMgr->wIntrVal == MBX_DEH_RESET) {
 				DBG_Trace(DBG_LEVEL6, "*** DSP RESET ***\n");
 				hIOMgr->wIntrVal = 0;
+#ifdef OMAP44XX
+			} else {
+#else
 			} else if (fSchedDPC) {
+#endif
 				/* PROC-COPY defer i/o  */
 				DPC_Schedule(hIOMgr->hDPC);
 			}
-		}
+#ifdef OMAP_3430
        } else
 		/* Ensure that, if WMD didn't claim it, the IRQ is shared. */
 		DBC_Ensure(hIOMgr->fSharedIRQ);
        return IRQ_HANDLED;
+#endif
 }
-
+EXPORT_SYMBOL(IO_ISR);
 /*
  *  ======== IO_RequestChnl ========
  *  Purpose:
@@ -1743,8 +1856,6 @@ DSP_STATUS IO_SHMsetting(IN struct IO_MGR *hIOMgr, IN enum SHM_DESCTYPE desc,
 	default:
 		break;
 
-				queue_work(bridge_workqueue,
-							 &(hIOMgr->io_workq));
 	}
 #endif
 	return DSP_SOK;
@@ -1757,6 +1868,7 @@ DSP_STATUS IO_SHMsetting(IN struct IO_MGR *hIOMgr, IN enum SHM_DESCTYPE desc,
 DSP_STATUS WMD_IO_GetProcLoad(IN struct IO_MGR *hIOMgr,
 			     OUT struct DSP_PROCLOADSTAT *pProcStat)
 {
+#ifdef OMAP_3430
 	pProcStat->uCurrLoad = hIOMgr->pSharedMem->loadMonInfo.currDspLoad;
 	pProcStat->uPredictedLoad = hIOMgr->pSharedMem->loadMonInfo.predDspLoad;
 	pProcStat->uCurrDspFreq = hIOMgr->pSharedMem->loadMonInfo.currDspFreq;
@@ -1766,6 +1878,7 @@ DSP_STATUS WMD_IO_GetProcLoad(IN struct IO_MGR *hIOMgr,
 			     "Pred Freq = %d\n", pProcStat->uCurrLoad,
 			     pProcStat->uPredictedLoad, pProcStat->uCurrDspFreq,
 			     pProcStat->uPredictedFreq);
+#endif
 	return DSP_SOK;
 }
 
@@ -1773,8 +1886,8 @@ DSP_STATUS WMD_IO_GetProcLoad(IN struct IO_MGR *hIOMgr,
 void PrintDSPDebugTrace(struct IO_MGR *hIOMgr)
 {
 	u32 ulNewMessageLength = 0, ulGPPCurPointer;
+	volatile unsigned int i;
 
-       GT_0trace(dsp_trace_mask, GT_ENTER, "Entering PrintDSPDebugTrace\n");
 
 	while (true) {
 		/* Get the DSP current pointer */
@@ -1822,6 +1935,10 @@ void PrintDSPDebugTrace(struct IO_MGR *hIOMgr)
                        GT_0trace(dsp_trace_mask, GT_1CLASS, hIOMgr->pMsg);
 		}
 	}
+#ifdef OMAP44XX
+	for (i = 0; i < 0x100; i++)
+		;
+#endif
 }
 #endif
 
