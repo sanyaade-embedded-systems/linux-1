@@ -1654,8 +1654,16 @@ static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
 
 			if (pResources->dwPrmBase)
 				iounmap(pResources->dwPrmBase);
+#ifdef OMAP_3430
 			if (pResources->dwCmBase)
-				iounmap(pResources->dwCmBase);
+				iounmap((void *)pResources->dwCmBase);
+#endif
+#ifdef OMAP_44XX
+			if (pResources->dwCm1Base)
+				iounmap((void *)pResources->dwCm1Base);
+			if (pResources->dwCm2Base)
+				iounmap((void *)pResources->dwCm2Base);
+#endif
 			if (pResources->dwMboxBase)
 				iounmap(pResources->dwMboxBase);
 			if (pResources->dwMemBase[0])
@@ -1682,7 +1690,13 @@ static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
 				 * as it is used in BOARD_Stop */
 			}
 			pResources->dwPrmBase = NULL;
+#ifdef OMAP_3430
 			pResources->dwCmBase = NULL;
+#endif
+#ifdef OMAP_44XX
+			pResources->dwCm1Base = (u32) NULL;
+			pResources->dwCm2Base = (u32) NULL;
+#endif
 			pResources->dwMboxBase = NULL;
 			pResources->dwMemBase[0] = (u32) NULL;
 			pResources->dwMemBase[2] = (u32) NULL;
@@ -1710,8 +1724,17 @@ static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
 
 		pResources->dwPrmBase = ioremap(OMAP_IVA2_PRM_BASE,
 							OMAP_IVA2_PRM_SIZE);
-		pResources->dwCmBase = ioremap(OMAP_IVA2_CM_BASE,
-							OMAP_IVA2_CM_SIZE);
+
+#ifdef OMAP44XX
+                pResources->dwCm1Base = (u32)ioremap(OMAP_IVA2_CM1_BASE,
+                                                        OMAP_IVA2_CM1_SIZE);
+                pResources->dwCm2Base = (u32)ioremap(OMAP_IVA2_CM2_BASE,
+                                                        OMAP_IVA2_CM2_SIZE);
+#else
+				pResources->dwCmBase = ioremap(OMAP_IVA2_CM_BASE,
+													OMAP_IVA2_CM_SIZE);
+#endif
+
 		pResources->dwMboxBase = ioremap(OMAP_MBOX_BASE,
 							OMAP_MBOX_SIZE);
 		pResources->dwSysCtrlBase = ioremap(OMAP_SYSC_BASE,
@@ -1722,8 +1745,15 @@ static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
 			 pResources->dwMemBase[3]);
 		GT_1trace(curTrace, GT_2CLASS, "dwPrmBase 0x%x\n",
 							pResources->dwPrmBase);
+#ifdef OMAP44XX
+		GT_1trace(curTrace, GT_2CLASS, "dwCm1Base 0x%x\n",
+							pResources->dwCm1Base);
+		GT_1trace(curTrace, GT_2CLASS, "dwCm2Base 0x%x\n",
+							pResources->dwCm2Base);
+#else
 		GT_1trace(curTrace, GT_2CLASS, "dwCmBase 0x%x\n",
 							pResources->dwCmBase);
+#endif
 		GT_1trace(curTrace, GT_2CLASS, "dwWdTimerDspBase 0x%x\n",
 						pResources->dwWdTimerDspBase);
 		GT_1trace(curTrace, GT_2CLASS, "dwMboxBase 0x%x\n",
@@ -1806,12 +1836,20 @@ static DSP_STATUS RequestBridgeResourcesDSP(u32 dwContext, s32 bRequest)
 							OMAP_DSP_MEM2_SIZE);
 		pResources->dwMemBase[4] = (u32)ioremap(OMAP_DSP_MEM3_BASE,
 							OMAP_DSP_MEM3_SIZE);
+#ifdef OMAP_3430
 		pResources->dwPerBase = ioremap(OMAP_PER_CM_BASE,
 							OMAP_PER_CM_SIZE);
-               pResources->dwPerPmBase = (u32)ioremap(OMAP_PER_PRM_BASE,
-                                                       OMAP_PER_PRM_SIZE);
-               pResources->dwCorePmBase = (u32)ioremap(OMAP_CORE_PRM_BASE,
+        pResources->dwPerPmBase = (u32)ioremap(OMAP_PER_PRM_BASE,
+                                                     OMAP_PER_PRM_SIZE);
+        pResources->dwCorePmBase = (u32)ioremap(OMAP_CORE_PRM_BASE,
                                                        OMAP_CORE_PRM_SIZE);
+#else
+
+        pResources->dwCm1Base = (u32)ioremap(OMAP_IVA2_CM1_BASE,
+                            OMAP_IVA2_CM1_SIZE);
+        pResources->dwCm2Base = (u32)ioremap(OMAP_IVA2_CM2_BASE,
+                            OMAP_IVA2_CM2_SIZE);
+#endif
 		pResources->dwDmmuBase = ioremap(OMAP_DMMU_BASE,
 							OMAP_DMMU_SIZE);
 		pResources->dwWdTimerDspBase = NULL;
@@ -1828,8 +1866,15 @@ static DSP_STATUS RequestBridgeResourcesDSP(u32 dwContext, s32 bRequest)
 						pResources->dwMemBase[4]);
 		GT_1trace(curTrace, GT_2CLASS, "dwPrmBase 0x%x\n",
 						pResources->dwPrmBase);
+#ifdef OMAP44XX
+		GT_1trace(curTrace, GT_2CLASS, "dwCm1Base 0x%x\n",
+							pResources->dwCm1Base);
+		GT_1trace(curTrace, GT_2CLASS, "dwCm2Base 0x%x\n",
+							pResources->dwCm2Base);
+#else
 		GT_1trace(curTrace, GT_2CLASS, "dwCmBase 0x%x\n",
 						pResources->dwCmBase);
+#endif
 		GT_1trace(curTrace, GT_2CLASS, "dwWdTimerDspBase 0x%x\n",
 						pResources->dwWdTimerDspBase);
 		GT_1trace(curTrace, GT_2CLASS, "dwMboxBase 0x%x\n",
