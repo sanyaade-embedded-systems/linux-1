@@ -110,7 +110,12 @@
 #define DRIVER_NAME  "DspBridge"
 #define DRIVER_MAJOR 0		/* Linux assigns our Major device number */
 #define DRIVER_MINOR 0		/* Linux assigns our Major device number */
+
+#ifdef OMAP44XX
+s32 dsp_debug = 1;
+#else
 s32 dsp_debug;
+#endif
 
 struct platform_device *omap_dspbridge_dev;
 
