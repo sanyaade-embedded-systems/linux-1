@@ -667,12 +667,11 @@
       PRCM_PM_PWSTST_IVA2_PowerStateSt_OFFSET))
 
 #else
-/********************************************************************/
 
 #define PRM_TESLA_PWRSTCTRLReadRegister32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+PRM_PM_TESLA_PWRSTCTRL_OFFSET))
 
-/********************************************************************/
+
 
 #define PRM_TESLA_PWRSTCTRLWriteON32(baseAddress)\
 {\
@@ -685,7 +684,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, data);\
 }
 
-/********************************************************************/
 
 #define PRM_TESLA_PWRSTCTRLWriteINACTIVE32(baseAddress)\
 {\
@@ -698,7 +696,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, data);\
 }
 
-/********************************************************************/
 
 #define PRM_TESLA_PWRSTCTRLWriteRET32(baseAddress)\
 {\
@@ -711,7 +708,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, data);\
 }
 
-/********************************************************************/
 
 #define PRM_TESLA_PWRSTCTRLWriteOFF32(baseAddress)\
 {\
@@ -724,7 +720,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, data);\
 }
 
-/********************************************************************/
 
 #define PRM_TESLA_PWRSTCTRLWriteLOGICRETSTATE32(baseAddress, value)\
 {\
@@ -739,7 +734,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
 
 #define PRM_TESLA_PWRSTCTRLWriteL1RETSTATE32(baseAddress, value)\
 {\
@@ -754,7 +748,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
 
 #define PRM_TESLA_PWRSTCTRLWriteL2RETSTATE32(baseAddress, value)\
 {\
@@ -770,13 +763,9 @@
 }
 
 
-/********************************************************************/
-
 
 #define PRM_TESLA_PWRSTSTReadRegister32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+PRM_PM_TESLA_PWRSTST_OFFSET))
-
-/********************************************************************/
 
 
 #define PRM_TESLA_PWRSTSTGet32(baseAddress)\
@@ -784,7 +773,6 @@
 	PM_TESLA_PWRSTST_PowerState_MASK) >>\
 	PM_TESLA_PWRSTST_PowerState_OFFSET)
 
-/********************************************************************/
 
 #define PRM_CORE_PWRSTCTRLWrite32(baseAddress, value)\
 {\
@@ -815,8 +803,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define PRM_TESLA_RSTCTRL_RST2_Write32(baseAddress, value)\
 {\
 	const u32 offset = PRM_RM_TESLA_RSTCTRL_OFFSET;\
@@ -830,12 +816,10 @@
 }
 
 
-/********************************************************************/
 
 #define PRM_TESLA_RSTSTReadRegister32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+PRM_RM_TESLA_RSTST_OFFSET))
 
-/********************************************************************/
 
 #define PRM_TESLA_RSTST_Clear32(baseAddress)\
 {\
@@ -845,12 +829,10 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
 
 #define PRM_TESLA_CONTEXTReadRegister32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+PRM_RM_TESLA_TESLA_CONTEXT_OFFSET))
 
-/********************************************************************/
 
 #define PRM_TESLA_CONTEXT_Clear32(baseAddress)\
 {\
@@ -860,14 +842,9 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
-
 #define PRM_WKUP_IVA_ReadRegister32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+PRM_PM_ALWON_SR_IVA_WKDEP_OFFSET))
 
-
-/********************************************************************/
 
 #define PRM_WKUP_IVA_MPU_Write32(baseAddress, value)\
 {\
@@ -881,8 +858,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define PRM_WKUP_IVA_DUCATI_Write32(baseAddress, value)\
 {\
 	const u32 offset = PRM_PM_ALWON_SR_IVA_WKDEP_OFFSET;\
@@ -895,13 +870,9 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define PRM_ALWON_CONTEXTReadRegister32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+PRM_RM_ALWON_SR_IVA_CONTEXT_OFFSET))
 
-
-/**********************************************************************/
 
 #define CM_CLKSTCTRL_TESLAWriteRegister32(baseAddress, value)\
 {\
@@ -916,8 +887,6 @@
 }
 
 
-/**********************************************************************/
-
 #define CM_TESLA_TESLA_CLKCTRLWriteRegister32(baseAddress, value)\
 {\
 	const u32 offset = CM1_CM_TESLA_TESLA_CLKCTRL_OFFSET;\
@@ -930,15 +899,10 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define CM_TESLA_STBYST_Read32(baseAddress)\
 	(((RD_MEM_32_VOLATILE(((u32)(baseAddress))+CM1_CM_TESLA_TESLA_CLKCTRL_OFFSET))&\
 	CM_TESLA_TESLA_CLKCTRL_STBY_MASK) >>\
 	CM_TESLA_TESLA_CLKCTRL_STBY_OFFSET)
-
-/********************************************************************/
-
 
 #define CM_TESLA_IDLEST_Read32(baseAddress)\
 	(((RD_MEM_32_VOLATILE(((u32)(baseAddress))+CM1_CM_TESLA_TESLA_CLKCTRL_OFFSET))&\
@@ -952,8 +916,6 @@
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+CM2_CM_IVA_DVFS_PERF_TESLA_OFFSET))
 
 
-/********************************************************************/
-
 #define CM_IVA_DVFS_PERFTESTLA_Write32(baseAddress, value)\
 {\
 	const u32 offset = CM2_CM_IVA_DVFS_PERF_TESLA_OFFSET;\
@@ -966,12 +928,9 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define CM_IVA_DVFS_PERFIVAHD_Read32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+CM2_CM_IVA_DVFS_PERF_IVAHD_OFFSET))
 
-/********************************************************************/
 
 #define CM_IVA_DVFS_PERFIVAHD_Write32(baseAddress, value)\
 {\
@@ -985,12 +944,10 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
 
 #define CM_IVA_DVFS_PERFABE_Read32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+CM2_CM_IVA_DVFS_PERF_ABE_OFFSET))
 
-/********************************************************************/
 
 #define CM_IVA_DVFS_PERFABE_Write32(baseAddress, value)\
 {\
@@ -1004,18 +961,15 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
 
 #define CM_IVA_DVFS_RESULT_Read32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+CM2_CM_IVA_DVFS_RESULT_OFFSET))
 
-/********************************************************************/
 
 #define CM_IVA_DVFS_CURRENT_Read32(baseAddress)\
 	(RD_MEM_32_VOLATILE(((u32)(baseAddress))+CM2_CM_IVA_DVFS_CURRENT_OFFSET))
 
 
-/**********************************************************************/
 
 #define CM_CLKSTCTRL_ABEWriteRegister32(baseAddress, value)\
 {\
@@ -1029,7 +983,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
 
 #define CM_ABEEN_MCBSP1Write32(baseAddress, value)\
 {\
@@ -1043,7 +996,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
 
 
 #define CM_ABEEN_MCBSP2Write32(baseAddress, value)\
@@ -1058,9 +1010,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
-
 #define CM_ABEEN_MCBSP3Write32(baseAddress, value)\
 {\
 	const u32 offset = CM1_CM1_ABE_MCBSP3_CLKCTRL_OFFSET;\
@@ -1072,8 +1021,6 @@
 	newValue |= data;\
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
-
-/********************************************************************/
 
 #define CM_ABEEN_TIMER5Write32(baseAddress, value)\
 {\
@@ -1087,8 +1034,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define CM_ABEEN_TIMER6Write32(baseAddress, value)\
 {\
 	const u32 offset = CM1_CM1_ABE_TIMER6_CLKCTRL_OFFSET;\
@@ -1100,8 +1045,6 @@
 	newValue |= data;\
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
-
-/********************************************************************/
 
 #define CM_ABEEN_TIMER7Write32(baseAddress, value)\
 {\
@@ -1115,8 +1058,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define CM_ABEEN_TIMER8Write32(baseAddress, value)\
 {\
 	const u32 offset = CM1_CM1_ABE_TIMER8_CLKCTRL_OFFSET;\
@@ -1128,8 +1069,6 @@
 	newValue |= data;\
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
-
-/**********************************************************************/
 
 #define CM_CLKSTCTRL_L4PERWriteRegister32(baseAddress, value)\
 {\
@@ -1143,8 +1082,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define CM_L4PEREN_MCBSP4Write32(baseAddress, value)\
 {\
 	const u32 offset = CM2_CM_L4PER_MCBSP4_CLKCTRL_OFFSET;\
@@ -1156,8 +1093,6 @@
 	newValue |= data;\
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
-
-/********************************************************************/
 
 #define CM_L4PEREN_MCBSP5Write32(baseAddress, value)\
 {\
@@ -1171,8 +1106,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define CM_L4PEREN_DMTIMER2Write32(baseAddress, value)\
 {\
 	const u32 offset = CM2_CM_L4PER_DMTIMER2_CLKCTRL_OFFSET;\
@@ -1184,8 +1117,6 @@
 	newValue |= data;\
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
-
-/********************************************************************/
 
 #define CM_L4PEREN_DMTIMER3Write32(baseAddress, value)\
 {\
@@ -1199,8 +1130,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define CM_L4PEREN_DMTIMER4Write32(baseAddress, value)\
 {\
 	const u32 offset = CM2_CM_L4PER_DMTIMER4_CLKCTRL_OFFSET;\
@@ -1212,8 +1141,6 @@
 	newValue |= data;\
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
-
-/********************************************************************/
 
 #define CM_L4PEREN_DMTIMER9Write32(baseAddress, value)\
 {\
@@ -1227,8 +1154,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
-
 #define CM_L4PEREN_DMTIMER10Write32(baseAddress, value)\
 {\
 	const u32 offset = CM2_CM_L4PER_DMTIMER10_CLKCTRL_OFFSET;\
@@ -1240,8 +1165,6 @@
 	newValue |= data;\
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
-
-/********************************************************************/
 
 #define CM_L4PEREN_DMTIMER11Write32(baseAddress, value)\
 {\
@@ -1255,7 +1178,6 @@
 	WR_MEM_32_VOLATILE((u32)(baseAddress)+offset, newValue);\
 }
 
-/********************************************************************/
 
 
 #endif

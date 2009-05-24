@@ -326,20 +326,18 @@ static DSP_STATUS WMD_BRD_Monitor(struct WMD_DEV_CONTEXT *hDevContext)
 		goto error_return;
 
 #ifdef OMAP44XX
-    printk("Disabling Clocks... and resources.dwCm1Base = 0x%x \n  resources.dwCm2Base= 0x%x\n"
+	printk("Disabling Clocks... and resources.dwCm1Base = 0x%x \n  resources.dwCm2Base= 0x%x\n"
 		"resources.dwPrmBase = 0x%x", resources.dwCm1Base, resources.dwCm2Base, resources.dwPrmBase);
-    HW_CLK_Disable (resources.dwCm1Base, HW_CLK_TESLA) ;
-    printk("Resetting DSP...");
-    HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
-    printk("Enabling Clocks...");
-    HW_CLK_Enable (resources.dwCm1Base, HW_CLK_TESLA) ;
+	HW_CLK_Disable (resources.dwCm1Base, HW_CLK_TESLA) ;
+	printk("Resetting DSP...");
+	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
+	printk("Enabling Clocks...");
+	HW_CLK_Enable (resources.dwCm1Base, HW_CLK_TESLA) ;
 
 
-    HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);/*TODO check if it is correct*/
-    HW_RST_Reset(resources.dwPrmBase, HW_RST2_TESLA);/*Just to ensure that the RST's are enabled*/
+	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);/*TODO check if it is correct*/
+	HW_RST_Reset(resources.dwPrmBase, HW_RST2_TESLA);/*Just to ensure that the RST's are enabled*/
 	HW_RST_UnReset(resources.dwPrmBase, HW_RST2_TESLA);
-
-	printk("Calling the MMU_LOCK BaseValue");
 
 	*((REG_UWORD32 *)((u32)(resources.dwDmmuBase)+0x50)) = 0x400;
 #else
@@ -352,24 +350,16 @@ static DSP_STATUS WMD_BRD_Monitor(struct WMD_DEV_CONTEXT *hDevContext)
 	if ((temp & 0x03) != 0x03 || (temp & 0x03) != 0x02) {
 		/* IVA2 is not in ON state */
 		/* Read and set PM_PWSTCTRL_IVA2  to ON */
-		HW_PWR_PowerStateGet(resources.dwPrmBase, HW_PWR_DOMAIN_TESLA,
-				     &pwrState);
-
-		HW_PWR_PowerStateSet(resources.dwPrmBase,
-					  HW_PWR_DOMAIN_TESLA,
-					  HW_PWR_STATE_ON);
-
+		HW_PWR_IVA2StateGet(resources.dwPrmBase, HW_PWR_DOMAIN_DSP,
+					&pwrState);
 		HW_PWR_IVA2PowerStateSet(resources.dwPrmBase,
 					  HW_PWR_DOMAIN_DSP,
 					  HW_PWR_STATE_ON);
 		/* Set the SW supervised state transition */
-
-
-
 		HW_PWR_CLKCTRL_IVA2RegSet(resources.dwCmBase, HW_SW_SUP_WAKEUP);
 		/* Wait until the state has moved to ON */
 		HW_PWR_IVA2StateGet(resources.dwPrmBase, HW_PWR_DOMAIN_DSP,
-				     &pwrState);
+					&pwrState);
 		/* Disable Automatic transition */
 		HW_PWR_CLKCTRL_IVA2RegSet(resources.dwCmBase, HW_AUTOTRANS_DIS);
 	}
@@ -616,6 +606,7 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 #endif
 		/* Let the DSP MMU run */
 		HW_MMU_Enable(resources.dwDmmuBase);
+		(void)CHNLSM_EnableInterrupt(pDevContext);
 
 
 #ifdef OMAP_3430
@@ -768,8 +759,6 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 		 * stale messages */
 		(void)CHNLSM_EnableInterrupt(pDevContext);
 	}
-#else
-		(void)CHNLSM_EnableInterrupt(pDevContext);
 #endif
 	if (DSP_SUCCEEDED(status)) {
 #ifdef OMAP_3430
@@ -780,13 +769,13 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 		DBG_Trace(DBG_LEVEL7, "BRD_Start0: RM_RSTST_DSP = 0x%x \n",
 				temp);
 #else
-        HW_RSTCTRL_RegGet(resources.dwPrmBase, &temp);
-        DBG_Trace(DBG_LEVEL7, "BRD_Start: RM_RSTCTRL_DSP = 0x%x \n",
-                temp);
-        HW_RSTST_RegGet(resources.dwPrmBase, &temp);
-        DBG_Trace(DBG_LEVEL7, "BRD_Start0: RM_RSTST_DSP = 0x%x \n",
-                temp);
-        /* Let DSP go */
+		HW_RSTCTRL_RegGet(resources.dwPrmBase, HW_RST1_TESLA, &temp);
+		DBG_Trace(DBG_LEVEL7, "BRD_Start: RM_RSTCTRL_DSP = 0x%x \n",
+					temp);
+		HW_RSTST_RegGet(resources.dwPrmBase, HW_RST1_TESLA, &temp);
+		DBG_Trace(DBG_LEVEL7, "BRD_Start0: RM_RSTST_DSP = 0x%x \n",
+					temp);
+		/* Let DSP go */
 #endif
 		/* Let DSP go */
 		DBG_Trace(DBG_LEVEL7, "Unreset, WMD_BRD_Start\n");
@@ -796,10 +785,10 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 		/* release the RST1, DSP starts executing now .. */
 #ifdef OMAP44XX
 		HW_RST_UnReset(resources.dwPrmBase, HW_RST1_TESLA);
-        HW_RSTST_RegGet(resources.dwPrmBase, &temp);
-        DBG_Trace(DBG_LEVEL7, "BRD_Start: RM_RSTST_DSP = 0x%x \n",
-                temp);
-        HW_RSTCTRL_RegGet(resources.dwPrmBase, &temp);
+		HW_RSTST_RegGet(resources.dwPrmBase, HW_RST1_TESLA, &temp);
+		DBG_Trace(DBG_LEVEL7, "BRD_Start: RM_RSTST_DSP = 0x%x \n",
+				temp);
+		HW_RSTCTRL_RegGet(resources.dwPrmBase, HW_RST1_TESLA, &temp);
 #else
 		HW_RST_UnReset(resources.dwPrmBase, HW_RST1_IVA2);
 		HW_RSTST_RegGet(resources.dwPrmBase, HW_RST1_IVA2, &temp);
@@ -890,12 +879,9 @@ static DSP_STATUS WMD_BRD_Stop(struct WMD_DEV_CONTEXT *hDevContext)
 
 #ifdef OMAP44XX
         DBG_Trace(DBG_LEVEL7, "Resetting DSP...");
-        printk("Stop:Disabling Clocks...");
          HW_CLK_Disable (resources.dwCm1Base, HW_CLK_TESLA) ;
-         printk("Stop:Resetting DSP...");
          HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
          /*  Enable DSP */
-         printk("Stop:Enabling Clocks...");
          HW_CLK_Enable (resources.dwCm1Base, HW_CLK_TESLA) ;
 #else
 	HW_PWRST_IVA2RegGet(resources.dwPrmBase, &dspPwrState);
