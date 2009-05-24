@@ -220,17 +220,17 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 	struct CFG_HOSTRES hostRes;
 	struct CFG_DEVNODE *hDevNode;
 	struct CHNL_MGR *hChnlMgr;
-       static int ref_count;
+	static int ref_count;
 	u32 devType;
 
-        struct notify_config ntfy_config;
-        struct notify_tesladrv_config tesla_cfg;
-        struct notify_tesladrv_params params;
-        u32 mem_va;
-        u32 mem_pa;
-        char  driverName[32] = "NOTIFYMBXDRV";
-        int  ntfystatus;
-        irq_handler = (void *) IO_ISR;
+	struct notify_config ntfy_config;
+	struct notify_tesladrv_config tesla_cfg;
+	struct notify_tesladrv_params params;
+	u32 mem_va;
+	u32 mem_pa;
+	char driverName[32] = "NOTIFYMBXDRV";
+	int ntfystatus;
+	irq_handler = (void *) IO_ISR;
 
 
 	/* Check DBC requirements:  */
@@ -256,16 +256,16 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 	if (DSP_FAILED(status))
 		goto func_cont;
 
-    /*
-     *  Create a Single Threaded Work Queue
-     */
+/*
+ *  Create a Single Threaded Work Queue
+ */
 
-       if (ref_count == 0)
-               bridge_workqueue = create_workqueue("bridge_work-queue");
+	if (ref_count == 0)
+		bridge_workqueue = create_workqueue("bridge_work-queue");
 
-       if (bridge_workqueue <= 0)
-               DBG_Trace(DBG_LEVEL1, "Workque Create"
-                       " failed 0x%d \n", bridge_workqueue);
+	if (bridge_workqueue <= 0)
+		DBG_Trace(DBG_LEVEL1, "Workque Create"
+			" failed 0x%d \n", bridge_workqueue);
 
 
 	/* Allocate IO manager object: */
@@ -274,14 +274,14 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 		status = DSP_EMEMORY;
 		goto func_cont;
 	}
-       /*Intializing Work Element*/
-       if (ref_count == 0) {
-               INIT_WORK(&pIOMgr->io_workq, (void *)IO_DispatchPM);
-               ref_count = 1;
-       } else
-               PREPARE_WORK(&pIOMgr->io_workq, (void *)IO_DispatchPM);
+	/*Intializing Work Element*/
+	if (ref_count == 0) {
+		INIT_WORK(&pIOMgr->io_workq, (void *)IO_DispatchPM);
+		ref_count = 1;
+	} else
+		PREPARE_WORK(&pIOMgr->io_workq, (void *)IO_DispatchPM);
 
-	/* Initialize CHNL_MGR object:    */
+	/* Initialize CHNL_MGR object:*/
 #ifndef DSP_TRACEBUF_DISABLED
 	pIOMgr->pMsg = NULL;
 #endif
@@ -301,50 +301,55 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 		pIOMgr->iQuePowerTail = 0;
 	}
 
-	        notify_get_config(&ntfy_config);
-        ntfystatus = notify_setup(&ntfy_config);
+	notify_get_config(&ntfy_config);
+	ntfystatus = notify_setup(&ntfy_config);
 
-        if (NOTIFY_FAILED(ntfystatus)) {
-                DBG_Trace(DBG_LEVEL7, "Failed notify_setup ntfystatus 0x%x \n",
-                          ntfystatus);
-        } else
-                printk("%s:%d:PASS\n",__func__,__LINE__);
+	if (ntfystatus != NOTIFY_SUCCESS) {
+		pr_err("Failed notify_setup ntfystatus\n");
+		goto func_cont;
+	}
 
-        notify_tesladrv_getconfig(&tesla_cfg);
+	notify_tesladrv_getconfig(&tesla_cfg);
 
-        ntfystatus = notify_tesladrv_setup(&tesla_cfg);
+	ntfystatus = notify_tesladrv_setup(&tesla_cfg);
 
-        notify_tesladrv_params_init(NULL, &params);
+	if (ntfystatus != 0) {
+			pr_err("Failed notify_tesladrv_setup\n");
+			goto func_cont;
+	}
 
-        mem_va = dma_alloc_coherent(NULL, 0x4000, &mem_pa,GFP_ATOMIC);
-        if (mem_va == NULL)
-                pr_err("Memory allocation for communication failed\n");
-        params.num_events          = 32;
-        params.num_reserved_events  = 0;
-        params.send_event_poll_count = (int) -1;
-        params.recv_int_id          = 26;
-        params.send_int_id          = 55;
-        params.shared_addr_size     = 0x4000;
-        params.shared_addr                = mem_va;
-        params.remote_proc_id         = 0;
+	notify_tesladrv_params_init(NULL, &params);
 
-        handle = notify_tesladrv_create(driverName,&params);
-        if (NOTIFY_FAILED(ntfystatus)) {
-                DBG_Trace(DBG_LEVEL7, "Failed notify_get_driver_handle  ntfystatus 0x%x \n",
-                          ntfystatus);
-        } 
+	mem_va = dma_alloc_coherent(NULL, 0x4000, &mem_pa, GFP_ATOMIC);
+	
+	if (mem_va == NULL)
+		pr_err("Memory allocation for communication failed\n");
+	
+	params.num_events          = 32;
+	params.num_reserved_events  = 0;
+	params.send_event_poll_count = (int) -1;
+	params.recv_int_id          = 26;
+	params.send_int_id          = 55;
+	params.shared_addr_size     = 0x4000;
+	params.shared_addr                = mem_va;
+	params.remote_proc_id         = 0;
 
-        eventNo = ((NOTIFY_SYSTEM_KEY<<16)|NOTIFY_TESLA_EVENTNUMBER);
+	handle = notify_tesladrv_create(driverName, &params);
+	if (handle == NULL) {
+		pr_err("Failed notify_tesladrv_create\n");
+		goto func_cont;
+	}
 
-        ntfystatus = notify_register_event(handle, /*PROC_TESLA*/0, eventNo,(void*)IO_ISR, NULL);
+	eventNo = ((NOTIFY_SYSTEM_KEY<<16)|NOTIFY_TESLA_EVENTNUMBER);
 
-        if (NOTIFY_FAILED(ntfystatus)) {
-                DBG_Trace(DBG_LEVEL7, "Failed notify_register_event ntfystatus 0x%x \n",
-                          ntfystatus);
-        } 
+	ntfystatus = notify_register_event(handle, /*PROC_TESLA*/0,
+					eventNo, (void *)IO_ISR, NULL);
 
-        notify_disable_event(handle, 0, eventNo);
-
+	if (ntfystatus != NOTIFY_SUCCESS) {
+		pr_err("Failed notify_register_event\n");
+		goto func_cont;
+	}
+	notify_disable_event(handle, 0, eventNo);
 
 	if (DSP_SUCCEEDED(status)) {
 		status = CFG_GetHostResources((struct CFG_DEVNODE *)
@@ -360,19 +365,19 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 		IO_DisableInterrupt(hWmdContext);
 		if (devType == DSP_UNIT) {
 			/* Plug the channel ISR:. */
-                       if ((request_irq(INT_MAIL_MPU_IRQ, IO_ISR, 0,
-                               "DspBridge\tmailbox", (void *)pIOMgr)) == 0)
-                               status = DSP_SOK;
-                       else
-                               status = DSP_EFAIL;
+			if ((request_irq(INT_MAIL_MPU_IRQ, IO_ISR, 0,
+				"DspBridge\tmailbox", (void *)pIOMgr)) == 0)
+				status = DSP_SOK;
+			else
+				status = DSP_EFAIL;
 		}
 #endif
-       if (DSP_SUCCEEDED(status))
-               DBG_Trace(DBG_LEVEL1, "ISR_IRQ Object 0x%x \n",
-                               pIOMgr);
-       else
-               status = CHNL_E_ISR;
-       } else
+		if (DSP_SUCCEEDED(status))
+			DBG_Trace(DBG_LEVEL1, "ISR_IRQ Object 0x%x \n",
+				pIOMgr);
+		else
+			status = CHNL_E_ISR;
+	} else
 		status = CHNL_E_ISR;
 func_cont:
 	if (DSP_FAILED(status)) {
@@ -395,23 +400,24 @@ func_cont:
 DSP_STATUS WMD_IO_Destroy(struct IO_MGR *hIOMgr)
 {
 	DSP_STATUS status = DSP_SOK;
+	u32 notify_status;
 #ifdef OMAP44XX
-	status = notify_tesladrv_delete(&handle);
-        status = notify_tesladrv_destroy();
-        status = notify_destroy();
+	notify_status = notify_tesladrv_delete(&handle);
+	notify_status = notify_tesladrv_destroy();
+	notify_status = notify_destroy();
 #else
 	struct WMD_DEV_CONTEXT *hWmdContext;
 	if (MEM_IsValidHandle(hIOMgr, IO_MGRSIGNATURE)) {
 		/* Unplug IRQ:    */
-               /* Disable interrupts from the board:  */
-               if (DSP_SUCCEEDED(DEV_GetWMDContext(hIOMgr->hDevObject,
-                      &hWmdContext)))
-                               DBC_Assert(hWmdContext);
-               (void)CHNLSM_DisableInterrupt(hWmdContext);
-               destroy_workqueue(bridge_workqueue);
-               /* Linux function to uninstall ISR */
-               free_irq(INT_MAIL_MPU_IRQ, (void *)hIOMgr);
-               (void)DPC_Destroy(hIOMgr->hDPC);
+		/* Disable interrupts from the board:  */
+		if (DSP_SUCCEEDED(DEV_GetWMDContext(hIOMgr->hDevObject,
+			&hWmdContext)))
+			DBC_Assert(hWmdContext);
+		(void)CHNLSM_DisableInterrupt(hWmdContext);
+		destroy_workqueue(bridge_workqueue);
+		/* uninstall ISR */
+		free_irq(INT_MAIL_MPU_IRQ, (void *)hIOMgr);
+		(void)DPC_Destroy(hIOMgr->hDPC);
 #ifndef DSP_TRACEBUF_DISABLED
 		if (hIOMgr->pMsg)
 			MEM_Free(hIOMgr->pMsg);
@@ -419,7 +425,7 @@ DSP_STATUS WMD_IO_Destroy(struct IO_MGR *hIOMgr)
 		SYNC_DeleteCS(hIOMgr->hCSObj); 	/* Leak Fix. */
 		/* Free this IO manager object: */
 		MEM_FreeObject(hIOMgr);
-       } else
+	} else
 		status = DSP_EHANDLE;
 #endif
 	return status;
@@ -626,7 +632,7 @@ func_cont1:
 			 "numBytes %x\n", allBits, paCurr, vaCurr, numBytes);
 		for (i = 0; i < 4; i++) {
 			if ((numBytes >= pgSize[i]) && ((allBits &
-			   (pgSize[i] - 1)) == 0)) {
+				(pgSize[i] - 1)) == 0)) {
 				status = hIOMgr->pIntfFxns->pfnBrdMemMap
 					(hIOMgr->hWmdContext, paCurr, vaCurr,
 					pgSize[i], mapAttrs);
