@@ -91,5 +91,6 @@ static inline void dspbridge_reserve_sdram(void) {}
 #endif
 
 extern unsigned long dspbridge_get_mempool_base(void);
+
 #endif
 
