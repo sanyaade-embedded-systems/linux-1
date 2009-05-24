@@ -29,11 +29,11 @@
 #include <hw_defs.h>
 #include <hw_prcm.h>
 
-#ifdef OMAP_3430
+
 
 static HW_STATUS HW_RST_WriteVal(const void __iomem *baseAddress,
-				    enum HW_RstModule_t r,
-				    enum HW_SetClear_t val);
+				enum HW_RstModule_t r,
+				enum HW_SetClear_t val);
 
 HW_STATUS HW_RST_Reset(const void __iomem *baseAddress, enum HW_RstModule_t r)
 {
@@ -46,28 +46,38 @@ HW_STATUS HW_RST_UnReset(const void __iomem *baseAddress, enum HW_RstModule_t r)
 }
 
 static HW_STATUS HW_RST_WriteVal(const void __iomem *baseAddress,
-				    enum HW_RstModule_t r,
-				    enum HW_SetClear_t val)
+				enum HW_RstModule_t r,
+				enum HW_SetClear_t val)
 {
 	HW_STATUS status = RET_OK;
 
 	switch (r) {
+#ifdef OMAP44XX
+	case HW_RST1_TESLA:
+		PRM_TESLA_RSTCTRL_RST1_Write32(baseAddress, val);
+		break;
+	case HW_RST2_TESLA:
+		PRM_TESLA_RSTCTRL_RST2_Write32(baseAddress, val);
+		break;
+#else
 	case HW_RST1_IVA2:
-	    PRM_RSTCTRL_IVA2RST1_DSPWrite32(baseAddress, val);
-	    break;
+		PRM_RSTCTRL_IVA2RST1_DSPWrite32(baseAddress, val);
+		break;
 	case HW_RST2_IVA2:
-	    PRM_RSTCTRL_IVA2RST2_DSPWrite32(baseAddress, val);
-	    break;
+		PRM_RSTCTRL_IVA2RST2_DSPWrite32(baseAddress, val);
+		break;
 	case HW_RST3_IVA2:
-	    PRM_RSTCTRL_IVA2RST3_DSPWrite32(baseAddress, val);
-	    break;
+		PRM_RSTCTRL_IVA2RST3_DSPWrite32(baseAddress, val);
+		break;
+#endif
 	default:
-	    status = RET_FAIL;
-	    break;
+		status = RET_FAIL;
+		break;
 	}
 	return status;
 }
 
+#ifdef OMAP_3430
 HW_STATUS HW_PWR_IVA2StateGet(const void __iomem *baseAddress,
 		enum HW_PwrModule_t p, enum HW_PwrState_t *value)
 {
@@ -83,7 +93,6 @@ HW_STATUS HW_PWR_IVA2StateGet(const void __iomem *baseAddress,
 				(baseAddress);
 
 		} while (temp);
-
 		temp = PRCMPM_PWSTST_IVA2ReadRegister32(baseAddress);
 		*value = PRCMPM_PWSTST_IVA2PowerStateStGet32(temp);
 		break;
@@ -147,13 +156,18 @@ HW_STATUS HW_PWR_CLKCTRL_IVA2RegSet(const void __iomem *baseAddress,
 	return status;
 
 }
+#endif
 
 HW_STATUS HW_RSTST_RegGet(const void __iomem *baseAddress,
 		enum HW_RstModule_t m, u32 *value)
 {
 	HW_STATUS status = RET_OK;
+#ifdef OMAP44XX
+	*value = PRM_TESLA_RSTSTReadRegister32(baseAddress);
 
+#else
 	*value = PRCMRM_RSTST_DSPReadRegister32(baseAddress);
+#endif
 
 	return status;
 }
@@ -162,21 +176,21 @@ HW_STATUS HW_RSTCTRL_RegGet(const void __iomem *baseAddress,
 		enum HW_RstModule_t m, u32 *value)
 {
 	HW_STATUS status = RET_OK;
-
+#ifdef OMAP44XX
+	*value = PRM_TESLA_RSTCTRLReadRegister32(baseAddress);
+#else
 	*value = PRCMRM_RSTCTRL_DSPReadRegister32(baseAddress);
+#endif
+
 
 	return status;
 }
 
-#else
+#ifdef OMAP44XX
+
 static HW_STATUS HW_CLK_WriteVal (const u32 baseAddress, enum HW_ClkModule_t c, enum HW_SetClear_t val);
 static HW_STATUS HW_CLK_AutoIdleWriteVal (const u32 baseAddress, enum HW_ClkModule_t c, enum HW_SetClear_t val);
-static HW_STATUS HW_RST_WriteVal (const u32 baseAddress, enum HW_RstModule_t r, enum HW_SetClear_t val);
 
-/* ============================================================================
-* EXPORTED FUNCTIONS
-* =============================================================================
-*/
 
 HW_STATUS HW_CLK_Enable(const u32 baseAddress, enum HW_ClkModule_t c)
 {
@@ -195,7 +209,6 @@ static HW_STATUS HW_CLK_WriteVal (const u32 baseAddress, enum HW_ClkModule_t c, 
 
 	if (val == HW_SET)
 		val_clk = 0x2;
-
 
 	switch (c) {
 	case HW_CLK_TESLA:
@@ -246,117 +259,10 @@ static HW_STATUS HW_CLK_WriteVal (const u32 baseAddress, enum HW_ClkModule_t c, 
 	case HW_CLK_DMTIMER11:
 	CM_L4PEREN_DMTIMER11Write32(baseAddress, val_clk);
 	break;
-
 	default:
 	status = RET_FAIL;
 	break;
 	}
-
-	return status;
-}
-
-
-
-HW_STATUS HW_CLK_AutoIdleEnable(const u32 baseAddress, enum HW_ClkModule_t c)
-{
-	return HW_CLK_AutoIdleWriteVal(baseAddress, c, HW_SET);
-}
-
-HW_STATUS HW_CLK_AutoIdleDisable(const u32 baseAddress, enum  HW_ClkModule_t c)
-{
-	return HW_CLK_AutoIdleWriteVal(baseAddress, c, HW_CLEAR);
-}
-
-static HW_STATUS HW_CLK_AutoIdleWriteVal(const u32 baseAddress, enum HW_ClkModule_t c,
-				enum HW_SetClear_t val)
-{
-	HW_STATUS status = RET_OK;
-
-	switch (c) {
-
-	default:
-	status = RET_FAIL;
-	break;
-	}
-
-	return status;
-}
-
-HW_STATUS HW_CLK_StbyStatus(const u32 baseAddress, enum HW_SetClear_t *stbyState)
-{
-	HW_STATUS status = RET_OK;
-
-	*stbyState = (enum HW_SetClear_t)CM_TESLA_STBYST_Read32(baseAddress);
-
-	return status;
-}
-
-
-HW_STATUS HW_CLK_IdleStatus(const u32 baseAddress, enum HW_IdleStatus_t *idleState)
-{
-	HW_STATUS status = RET_OK;
-
-	*idleState = (enum HW_IdleStatus_t)CM_TESLA_IDLEST_Read32(baseAddress);
-
-	return status;
-}
-
-
-HW_STATUS HW_RST_Reset(const u32 baseAddress, enum HW_RstModule_t r)
-{
-	return HW_RST_WriteVal(baseAddress, r, HW_SET);
-}
-
-HW_STATUS HW_RST_UnReset(const u32 baseAddress, enum HW_RstModule_t r)
-{
-	return HW_RST_WriteVal(baseAddress, r, HW_CLEAR);
-}
-
-HW_STATUS HW_RSTCTRL_RegGet(const u32 baseAddress, u32 *value)
-{
-	HW_STATUS status = RET_OK;
-
-	*value = PRM_TESLA_RSTCTRLReadRegister32(baseAddress);
-
-	return status;
-}
-
-static HW_STATUS HW_RST_WriteVal(const u32 baseAddress, enum HW_RstModule_t p,
-				enum HW_SetClear_t value)
-{
-	HW_STATUS status = RET_OK;
-
-	switch (p) {
-	case HW_RST1_TESLA:
-	PRM_TESLA_RSTCTRL_RST1_Write32(baseAddress, value);
-	break;
-	case HW_RST2_TESLA:
-	PRM_TESLA_RSTCTRL_RST2_Write32(baseAddress, value);
-	break;
-
-	default:
-	status = RET_FAIL;
-	break;
-	}
-
-	return status;
-}
-
-HW_STATUS HW_RSTST_RegGet (const u32 baseAddress, u32 *value)
-{
-	HW_STATUS status = RET_OK;
-
-	*value = PRM_TESLA_RSTSTReadRegister32(baseAddress);
-
-	return status;
-}
-
-
-HW_STATUS HW_RSTST_RegClear (const u32 baseAddress)
-{
-	HW_STATUS status = RET_OK;
-
-	PRM_TESLA_RSTST_Clear32(baseAddress);
 
 	return status;
 }
@@ -370,6 +276,7 @@ HW_STATUS HW_PWRSTCTRL_RegGet(const u32 baseAddress, u32 *value)
 
 	return status;
 }
+
 
 HW_STATUS HW_PWR_PowerStateGet(const u32 baseAddress,
 	enum HW_PwrModule_t p, enum  HW_PwrState_t *value)
@@ -434,6 +341,147 @@ HW_STATUS HW_PWR_PowerStateSet(const u32 baseAddress,
 	return status;
 }
 
+HW_STATUS HW_PWR_ForceStateSet(const u32 baseAddress, enum HW_PwrModule_t p,
+	enum HW_TransitionState_t value)
+{
+	HW_STATUS status = RET_OK;
+
+	switch (p) {
+	case HW_PWR_DOMAIN_TESLA:
+	CM_CLKSTCTRL_TESLAWriteRegister32(baseAddress, value);
+	break;
+	case HW_PWR_DOMAIN_ABE:
+	CM_CLKSTCTRL_ABEWriteRegister32(baseAddress, value);
+	break;
+	case HW_PWR_DOMAIN_L4PER:
+	CM_CLKSTCTRL_L4PERWriteRegister32(baseAddress, value);
+	break;
+	default:
+	status = RET_FAIL;
+	break;
+	}
+
+	return status;
+}
+
+
+#endif
+
+
+
+
+
+#if 0
+HW_STATUS HW_CLK_AutoIdleEnable(const u32 baseAddress, enum HW_ClkModule_t c)
+{
+	return HW_CLK_AutoIdleWriteVal(baseAddress, c, HW_SET);
+}
+
+HW_STATUS HW_CLK_AutoIdleDisable(const u32 baseAddress, enum  HW_ClkModule_t c)
+{
+	return HW_CLK_AutoIdleWriteVal(baseAddress, c, HW_CLEAR);
+}
+
+static HW_STATUS HW_CLK_AutoIdleWriteVal(const u32 baseAddress, enum HW_ClkModule_t c,
+				enum HW_SetClear_t val)
+{
+	HW_STATUS status = RET_OK;
+
+	switch (c) {
+
+	default:
+	status = RET_FAIL;
+	break;
+	}
+
+	return status;
+}
+
+HW_STATUS HW_CLK_StbyStatus(const u32 baseAddress, enum HW_SetClear_t *stbyState)
+{
+	HW_STATUS status = RET_OK;
+
+	*stbyState = (enum HW_SetClear_t)CM_TESLA_STBYST_Read32(baseAddress);
+
+	return status;
+}
+
+
+HW_STATUS HW_CLK_IdleStatus(const u32 baseAddress, enum HW_IdleStatus_t *idleState)
+{
+	HW_STATUS status = RET_OK;
+
+	*idleState = (enum HW_IdleStatus_t)CM_TESLA_IDLEST_Read32(baseAddress);
+
+	return status;
+}
+
+
+HW_STATUS HW_RST_Reset(const u32 baseAddress, enum HW_RstModule_t r)
+{
+	return HW_RST_WriteVal(baseAddress, r, HW_SET);
+}
+
+HW_STATUS HW_RST_UnReset(const u32 baseAddress, enum HW_RstModule_t r)
+{
+	return HW_RST_WriteVal(baseAddress, r, HW_CLEAR);
+}
+
+HW_STATUS HW_RSTCTRL_RegGet(const u32 baseAddress, u32 *value)
+{
+	HW_STATUS status = RET_OK;
+
+	*value = PRM_TESLA_RSTCTRLReadRegister32(baseAddress);
+
+	return status;
+}
+
+
+static HW_STATUS HW_RST_WriteVal(const u32 baseAddress, enum HW_RstModule_t p,
+				enum HW_SetClear_t value)
+{
+	HW_STATUS status = RET_OK;
+
+	switch (p) {
+	case HW_RST1_TESLA:
+	PRM_TESLA_RSTCTRL_RST1_Write32(baseAddress, value);
+	break;
+	case HW_RST2_TESLA:
+	PRM_TESLA_RSTCTRL_RST2_Write32(baseAddress, value);
+	break;
+
+	default:
+	status = RET_FAIL;
+	break;
+	}
+
+	return status;
+}
+
+
+HW_STATUS HW_RSTST_RegGet (const u32 baseAddress, u32 *value)
+{
+	HW_STATUS status = RET_OK;
+
+
+
+	return status;
+}
+
+
+
+HW_STATUS HW_RSTST_RegClear (const u32 baseAddress)
+{
+	HW_STATUS status = RET_OK;
+
+	PRM_TESLA_RSTST_Clear32(baseAddress);
+
+	return status;
+}
+
+
+
+
 
 HW_STATUS HW_PWR_RetentionStateSet(const u32 baseAddress,
 	enum HW_PwrModule_t p, enum  HW_RetState_t src, enum HW_SetClear_t  value)
@@ -467,6 +515,7 @@ HW_STATUS HW_PWR_RetentionStateSet(const u32 baseAddress,
 }
 
 
+
 HW_STATUS HW_PWRST_RegGet(const u32 baseAddress, enum HW_PwrModule_t p, u32 *value)
 {
 	HW_STATUS status = RET_OK;
@@ -491,6 +540,7 @@ HW_STATUS HW_PWR_WkupDependency_RegGet(const u32 baseAddress, u32 *value)
 
 	return status;
 }
+
 
 HW_STATUS HW_PWR_WkupDependencySet(const u32 baseAddress, enum HW_PwrModule_t p,
 	enum HW_WeakUpDep_t src, enum HW_SetClear_t value)
@@ -519,28 +569,7 @@ HW_STATUS HW_PWR_WkupDependencySet(const u32 baseAddress, enum HW_PwrModule_t p,
 	return status;
 }
 
-HW_STATUS HW_PWR_ForceStateSet(const u32 baseAddress, enum HW_PwrModule_t p,
-	enum HW_PWR_TransState_t value)
-{
-	HW_STATUS status = RET_OK;
 
-	switch (p) {
-	case HW_PWR_DOMAIN_TESLA:
-	CM_CLKSTCTRL_TESLAWriteRegister32(baseAddress, value);
-	break;
-	case HW_PWR_DOMAIN_ABE:
-	CM_CLKSTCTRL_ABEWriteRegister32(baseAddress, value);
-	break;
-	case HW_PWR_DOMAIN_L4PER:
-	CM_CLKSTCTRL_L4PERWriteRegister32(baseAddress, value);
-	break;
-	default:
-	status = RET_FAIL;
-	break;
-	}
-
-	return status;
-}
 
 
 HW_STATUS HW_TESLA_CONTEXT_RegGet(const u32 baseAddress, u32 *value)
@@ -562,6 +591,7 @@ HW_STATUS HW_TESLA_CONTEXT_ClrSet(const u32 baseAddress)
 }
 
 
+
 HW_STATUS HW_ALWON_CONTEXT_RegGet(const u32 baseAddress, u32 *value)
 {
 	HW_STATUS status = RET_OK;
@@ -570,6 +600,7 @@ HW_STATUS HW_ALWON_CONTEXT_RegGet(const u32 baseAddress, u32 *value)
 
 	return status;
 }
+
 
 
 HW_STATUS HW_IVA_DVFSSet(const u32 baseAddress, enum HW_IvaDVFS_t src, u32 value)
