@@ -47,7 +47,7 @@ static void  __exit drvtesla_finalize_module(void) ;
 
 
 /* Function to invoke the APIs through ioctl. */
-static struct file_operations driver_ops = {
+static const struct file_operations driver_ops = {
 	.open = drvtesla_open,
 };
 
