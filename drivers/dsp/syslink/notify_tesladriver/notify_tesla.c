@@ -109,7 +109,7 @@ static struct notify_tesladrv_module notify_tesladriver_state = {
 
 
 
-void notify_tesladrv_isr(void *ref_data);
+static void notify_tesladrv_isr(void *ref_data);
 
 
 
@@ -159,7 +159,8 @@ int notify_tesladrv_open(char *driver_name,
 	BUG_ON(driver_name == NULL);
 	BUG_ON(handle_ptr == NULL);
 	/* Enter critical section protection. */
-	WARN_ON(mutex_lock_interruptible(notify_tesladriver_state.gate_handle) != 0);
+	WARN_ON(mutex_lock_interruptible(notify_tesladriver_state.gate_handle)
+									!= 0);
 	/* Get the handle from Notify module. */
 	status = notify_get_driver_handle(driver_name, handle_ptr);
 	if (status < 0)
@@ -201,7 +202,8 @@ void notify_tesladrv_params_init(struct notify_driver_object *handle,
 			&(notify_tesladriver_state.def_inst_params),
 			sizeof(struct notify_tesladrv_params));
 	} else {
-		/* Return updated NotifyDriverShm instance specific parameters. */
+		/* Return updated NotifyDriverShm instance
+		specific parameters. */
 		driver_obj = (struct notify_tesladrv_object *)
 				handle->driver_object;
 		memcpy(params, &(driver_obj->params),
@@ -259,25 +261,34 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 			params->remote_proc_id;
 
 		/* Function table information */
-		fxn_table.register_event = (void*)&notify_tesladrv_register_event;
-		fxn_table.unregister_event = (void*)&notify_tesladrv_unregister_event;
-		fxn_table.send_event = (void*)&notify_tesladrv_sendevent;
-		fxn_table.disable = (void*)&notify_tesladrv_disable;
-		fxn_table.restore = (void*)&notify_tesladrv_restore;
-		fxn_table.disable_event = (void*)&notify_tesladrv_disable_event;
-		fxn_table.enable_event = (void*)&notify_tesladrv_enable_event;
+		fxn_table.register_event = (void *)
+					&notify_tesladrv_register_event;
+		fxn_table.unregister_event = (void *)
+					&notify_tesladrv_unregister_event;
+		fxn_table.send_event = (void *)&notify_tesladrv_sendevent;
+		fxn_table.disable = (void *)&notify_tesladrv_disable;
+		fxn_table.restore = (void *)&notify_tesladrv_restore;
+		fxn_table.disable_event = (void *)
+					&notify_tesladrv_disable_event;
+		fxn_table.enable_event = (void *)&notify_tesladrv_enable_event;
 
 		status = notify_register_driver(driver_name,
-						&fxn_table, &drv_attrs, &drv_handle);
+						&fxn_table,
+						&drv_attrs,
+						&drv_handle);
 
 		if (status != NOTIFY_SUCCESS) {
-			/*! @retval NULL Failed to register driver with Notify module!*/
-			pr_err("notify_register_driver failed and status = %d\n", status);
+			/*retval NULL Failed to register
+			driver with Notify module*/
+			printk(KERN_ERR "notify_register_driver"
+					" failed and status = %d\n",
+					status);
 			status = -EINVAL;
 			goto func_end;
 		} else {
 
-			/* Allocate memory for the NotifyDriverShm_Object object. */
+			/* Allocate memory for the
+			NotifyDriverShm_Object object. */
 			drv_handle->driver_object = driver_obj =
 				kmalloc(sizeof(struct notify_tesladrv_object),
 						GFP_ATOMIC);
@@ -296,7 +307,8 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 	/*FIXME: Check with MultiProc_getId */
 	driver_obj->self_id  = 1;
 	driver_obj->other_id = 0;
-	driver_obj->ctrl_ptr = (struct notify_shmdrv_ctrl *) params->shared_addr;
+	driver_obj->ctrl_ptr = (struct notify_shmdrv_ctrl *)
+					params->shared_addr;
 
 
 	ctrl_ptr = &(driver_obj->ctrl_ptr->proc_ctrl[driver_obj->self_id]);
@@ -304,16 +316,18 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 
 	ctrl_ptr->self_event_chart = (struct notify_shmdrv_event_entry *)
 					((int)(driver_obj->ctrl_ptr)
-					+ sizeof(struct notify_shmdrv_ctrl)
-					+(sizeof(struct notify_shmdrv_event_entry)
+					+ sizeof(struct notify_shmdrv_ctrl)+
+					(sizeof(
+					struct notify_shmdrv_event_entry)
 					* params->num_events
 					* driver_obj->other_id));
 
 
 	ctrl_ptr->other_event_chart = (struct notify_shmdrv_event_entry *)
 					((int)(driver_obj->ctrl_ptr)
-					+ sizeof(struct notify_shmdrv_ctrl)
-					+(sizeof(struct notify_shmdrv_event_entry)
+					+ sizeof(struct notify_shmdrv_ctrl) +
+					(sizeof(
+					struct notify_shmdrv_event_entry)
 					* params->num_events
 					* driver_obj->self_id));
 
@@ -342,8 +356,9 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 		status = -ENOMEM;
 		goto func_end;
 	} else {
-		memset(driver_obj->reg_chart, 0, sizeof(struct notify_shmdrv_eventreg)
-					*params->num_events);
+		memset(driver_obj->reg_chart, 0,
+			sizeof(struct notify_shmdrv_eventreg)
+			*params->num_events);
 	}
 
 
@@ -437,7 +452,8 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 	WARN_ON(handlePtr == NULL);
 	if (handlePtr == NULL)
 		return -1;
-	driver_obj = (struct notify_tesladrv_object *)(*handlePtr)->driver_object;
+	driver_obj = (struct notify_tesladrv_object *)
+			(*handlePtr)->driver_object;
 	drv_handle = (*handlePtr);
 	WARN_ON((*handlePtr)->driver_object == NULL);
 
@@ -456,10 +472,12 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 	if (driver_obj != NULL) {
 		if (driver_obj->ctrl_ptr != NULL) {
 			/* Clear initialization status in shared memory. */
-			driver_obj->ctrl_ptr->proc_ctrl[driver_obj->self_id].recv_init_status =
-				0x0;
-			driver_obj->ctrl_ptr->proc_ctrl[driver_obj->self_id].send_init_status =
-				0x0;
+			driver_obj->ctrl_ptr->
+				proc_ctrl[driver_obj->self_id].
+				recv_init_status = 0x0;
+			driver_obj->ctrl_ptr->
+				proc_ctrl[driver_obj->self_id].
+				send_init_status = 0x0;
 			driver_obj->ctrl_ptr = NULL;
 		}
 
@@ -469,7 +487,8 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 			for (i = 0 ; i < driver_obj->params.num_events ; i++) {
 				WARN_ON(event_list[i].event_handler_count != 0);
 				event_list[i].event_handler_count = 0;
-				list_del((struct list_head *)&event_list[i].listeners);
+				list_del((struct list_head *)
+					&event_list[i].listeners);
 			}
 
 			kfree(event_list);
@@ -502,7 +521,6 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 	}
 	return status;
 }
-
 EXPORT_SYMBOL(notify_tesladrv_delete);
 
 
@@ -518,9 +536,8 @@ int notify_tesladrv_destroy(void)
 
 	/* Check if the gate_handle was created internally. */
 	if (notify_tesladriver_state.cfg.gate_handle == NULL) {
-		if (notify_tesladriver_state.gate_handle != NULL) {
+		if (notify_tesladriver_state.gate_handle != NULL)
 			kfree(notify_tesladriver_state.gate_handle);
-		}
 	}
 	notify_tesladriver_state.is_setup = false;
 	return status;
@@ -558,7 +575,8 @@ int notify_tesladrv_setup(struct notify_tesladrv_config *cfg)
 	if (cfg->gate_handle != NULL)
 		notify_tesladriver_state.gate_handle = cfg->gate_handle;
 	else {
-		notify_tesladriver_state.gate_handle = kmalloc(sizeof(struct mutex),
+		notify_tesladriver_state.gate_handle =
+					kmalloc(sizeof(struct mutex),
 						      GFP_KERNEL);
 		mutex_init(notify_tesladriver_state.gate_handle);
 	}
@@ -610,13 +628,15 @@ int  notify_tesladrv_register_event(
 	ctrl_ptr = driver_object->ctrl_ptr;
 
 	/* Allocate memory for event listener. */
-	event_listener = kmalloc(sizeof(struct notify_drv_eventlistner), GFP_ATOMIC);
+	event_listener = kmalloc(sizeof(struct notify_drv_eventlistner),
+						GFP_ATOMIC);
 
 	if (event_listener == NULL) {
 		status = -ENOMEM;
 		goto func_end;
 	} else {
-		memset(event_listener, 0, sizeof(struct notify_drv_eventlistner));
+		memset(event_listener, 0,
+			sizeof(struct notify_drv_eventlistner));
 	}
 
 	if (mutex_lock_interruptible(notify_tesladriver_state.gate_handle) != 0)
@@ -651,9 +671,11 @@ int  notify_tesladrv_register_event(
 			/* Find the correct slot in the registration array. */
 			if (reg_chart[i].reg_event_no == (int) -1) {
 				for (j = (i - 1); j >= 0; j--) {
-					if (event_no < reg_chart[j].reg_event_no) {
+					if (event_no < reg_chart[j].
+							reg_event_no) {
 						reg_chart[j + 1].reg_event_no =
-							reg_chart[j].reg_event_no;
+							reg_chart[j].
+							reg_event_no;
 						reg_chart[j + 1].reserved =
 							reg_chart[j].reserved;
 						i = j;
@@ -769,15 +791,14 @@ int notify_tesladrv_unregister_event(
 						reg_chart[j].reserved;
 				}
 				if (j == num_events) {
-					reg_chart[j - 1].reg_event_no = (int) -1;
+					reg_chart[j - 1].reg_event_no =
+								(int) -1;
 				}
 
 				break;
 			}
 		}
 	}
-
-
 
 func_end:
 	mutex_unlock(notify_tesladriver_state.gate_handle);
@@ -794,7 +815,7 @@ int notify_tesladrv_sendevent(struct notify_driver_object *handle,
 		int payload, short int wait_clear)
 {
 	int status = 0;
-	struct notify_tesladrv_object*driver_object;
+	struct notify_tesladrv_object *driver_object;
 	struct notify_shmdrv_ctrl *ctrl_ptr;
 	int max_poll_count;
 
@@ -867,7 +888,8 @@ int notify_tesladrv_disable_event(
 	driver_object = (struct notify_tesladrv_object *) handle->driver_object;
 	/* Enter critical section protection. */
 
-	WARN_ON(mutex_lock_interruptible(notify_tesladriver_state.gate_handle) != 0);
+	WARN_ON(mutex_lock_interruptible(notify_tesladriver_state.gate_handle)
+									!= 0);
 	CLEAR_BIT(driver_object->ctrl_ptr->proc_ctrl[driver_object->self_id].
 		  reg_mask.enable_mask, event_no);
 	/* Leave critical section protection. */
@@ -890,7 +912,8 @@ int notify_tesladrv_enable_event(struct notify_driver_object *handle,
 	driver_object = (struct notify_tesladrv_object *) handle->driver_object;
 	/* Enter critical section protection. */
 
-	WARN_ON(mutex_lock_interruptible(notify_tesladriver_state.gate_handle) != 0);
+	WARN_ON(mutex_lock_interruptible(notify_tesladriver_state.gate_handle)
+									!= 0);
 	SET_BIT(driver_object->ctrl_ptr->proc_ctrl[driver_object->self_id].
 		reg_mask.enable_mask, event_no);
 
@@ -914,7 +937,7 @@ int notify_tesladrv_debug(struct notify_driver_object *handle)
 *            interrupt received from the DSP.
 *
 */
-void notify_tesladrv_isr(void *ref_data)
+static void notify_tesladrv_isr(void *ref_data)
 {
 	int payload = 0;
 	int i = 0;
@@ -944,7 +967,8 @@ void notify_tesladrv_isr(void *ref_data)
 	do {
 		event_no = reg_chart[i].reg_event_no;
 		if (event_no != (unsigned long int) -1) {
-			if (TEST_BIT(ctrl_ptr->reg_mask.enable_mask, event_no) == 1) {
+			if (TEST_BIT(ctrl_ptr->reg_mask.enable_mask,
+						event_no) == 1) {
 				mbx_ret_val = ntfy_disp_read(mbox_module_no,
 						NOTIFYDRV_TESLA_RECV_MBX,
 						&payload,
@@ -954,7 +978,8 @@ void notify_tesladrv_isr(void *ref_data)
 					listeners.next;
 
 				for (j = 0; j <
-						drv_object->event_list[event_no].
+						drv_object->
+						event_list[event_no].
 						event_handler_count; j++) {
 					if (temp > (struct list_head *)0) {
 						((struct
