@@ -574,7 +574,7 @@ config ARCH_OMAP
 
 config ARCH_NETRA
 	bool "TI Netra"
-	select CPU_ARM926T
+	select CPU_CORTEXA8
 	select GENERIC_TIME
 	select GENERIC_CLOCKEVENTS
 	help

@@ -4,5 +4,5 @@ comment "Netra Board Type"
 config MACH_NETRA_SIM
 	bool "Netra Simulator"
 	depends on ARCH_NETRA
-	select CPU_ARM926T
-	select CPU_V5
+	select CPU_CORTEXA8
+	select CPU_V7
