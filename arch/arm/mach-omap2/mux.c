@@ -501,6 +501,45 @@ MUX_CFG_34XX("H17_34XX_SDRC_CKE1", 0x264,
 #define OMAP34XX_PINS_SZ	0
 #endif	/* CONFIG_ARCH_OMAP34XX */
 
+#ifdef CONFIG_ARCH_OMAP4
+static struct pin_config __initdata_or_module omap44xx_pins[] = {
+/*
+ *		Name, reg-offset,
+ *		mux-mode | [active-mode | off-mode]
+ */
+/* 34xx I2C */
+MUX_CFG_34XX("AA3_4430_McSPI1_CLK", 0x130,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+MUX_CFG_34XX("Y2_4430_McSPI1_SIMO", 0x136,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+MUX_CFG_34XX("Y3_4430_McSPI1_SOMI", 0x134,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+MUX_CFG_34XX("Y4_4430_McSPI1_CS0", 0x138,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+MUX_CFG_34XX("Y4_4430_McSPI1_CS1", 0x13a,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+MUX_CFG_34XX("Y4_4430_McSPI1_CS2", 0x13c,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+MUX_CFG_34XX("Y4_4430_McSPI1_CS3", 0x13e,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_INPUT_PULLUP)
+
+MUX_CFG_34XX("AA3_4430_McBSP1_CLK", 0x00fe,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+MUX_CFG_34XX("Y2_4430_McBSP1_DX", 0x102,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+MUX_CFG_34XX("Y3_4430_McBSP1_DR", 0x104,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+MUX_CFG_34XX("Y4_4430_McBSP1_FSX", 0x104,
+		OMAP34XX_MUX_MODE0 | OMAP34XX_PIN_OUTPUT)
+
+};
+#define OMAP44XX_PINS_SZ        ARRAY_SIZE(omap44xx_pins)
+
+#else
+#define omap44xx_pins           NULL
+#define OMAP44XX_PINS_SZ        0
+#endif  /* CONFIG_ARCH_OMAP34XX */
+
 #if defined(CONFIG_OMAP_MUX_DEBUG) || defined(CONFIG_OMAP_MUX_WARNINGS)
 static void __init_or_module omap2_cfg_debug(const struct pin_config *cfg, u16 reg)
 {
@@ -549,7 +588,7 @@ static int __init_or_module omap24xx_cfg_reg(const struct pin_config *cfg)
 #define omap24xx_cfg_reg	NULL
 #endif
 
-#ifdef CONFIG_ARCH_OMAP34XX
+#if defined(CONFIG_ARCH_OMAP34XX) || defined(CONFIG_ARCH_OMAP4)
 static int __init_or_module omap34xx_cfg_reg(const struct pin_config *cfg)
 {
 	static DEFINE_SPINLOCK(mux_spin_lock);
@@ -579,7 +618,11 @@ int __init omap2_mux_init(void)
 		arch_mux_cfg.size	= OMAP34XX_PINS_SZ;
 		arch_mux_cfg.cfg_reg	= omap34xx_cfg_reg;
 	}
-
+	if (cpu_is_omap44xx()) {
+		arch_mux_cfg.pins	= omap44xx_pins;
+		arch_mux_cfg.size	= OMAP44XX_PINS_SZ;
+		arch_mux_cfg.cfg_reg	= omap34xx_cfg_reg;
+	}
 	return omap_mux_register(&arch_mux_cfg);
 }
 

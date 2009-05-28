@@ -208,7 +208,7 @@ struct pin_config {
 	const unsigned int 	mux_reg;
 	unsigned char		debug;
 
-#if	defined(CONFIG_ARCH_OMAP34XX)
+#if	defined(CONFIG_ARCH_OMAP34XX) || defined(CONFIG_ARCH_OMAP4)
 	u16			mux_val; /* Wake-up, off mode, pull, mux mode */
 #endif
 
@@ -857,6 +857,23 @@ enum omap34xx_index {
 	/* OMAP3 SDRC CKE signals to SDR/DDR ram chips */
 	H16_34XX_SDRC_CKE0,
 	H17_34XX_SDRC_CKE1,
+};
+
+enum omap44xx_index {
+
+	AA3_4430_McSPI1_CLK,
+	Y2_4430_McSPI1_SIMO,
+	Y3_4430_McSPI1_SOMI,
+	Y4_4430_McSPI1_CS0,
+	Y4_4430_McSPI1_CS1,
+	Y4_4430_McSPI1_CS2,
+	Y4_4430_McSPI1_CS3,
+
+	AA3_4430_McBSP1_CLK,
+	Y2_4430_McBSP1_DX,
+	Y3_4430_McBSP1_DR,
+	Y4_4430_McBSP1_FSX,
+
 };
 
 struct omap_mux_cfg {
