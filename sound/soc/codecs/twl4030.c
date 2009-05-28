@@ -26,7 +26,9 @@
 #include <linux/pm.h>
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
+#ifndef CONFIG_SND_SOC_TWL4030_STUB
 #include <linux/i2c/twl4030.h>
+#endif
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -36,6 +38,12 @@
 #include <sound/tlv.h>
 
 #include "twl4030.h"
+
+#ifdef CONFIG_SND_SOC_TWL4030_STUB
+#define TWL4030_MODULE_AUDIO_VOICE			0
+int twl4030_i2c_write_u8(u8 mod_no, u8 val, u8 reg)	{ return 0; }
+int twl4030_i2c_read_u8(u8 mod_no, u8 *val, u8 reg)	{ return 0; }
+#endif
 
 /*
  * twl4030 register cache & default register settings
