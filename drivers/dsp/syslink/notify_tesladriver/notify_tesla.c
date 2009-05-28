@@ -24,7 +24,6 @@
 #include <linux/io.h>
 #include <linux/module.h>
 
-#include  <syslink/_bitops.h>
 #include <syslink/notify_driver.h>
 #include <syslink/notifydefs.h>
 #include <syslink/notify_driverdefs.h>
@@ -231,7 +230,6 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 	int proc_id;
 	int i;
 	unsigned long int num_events = NOTIFYNONSHMDRV_MAX_EVENTS;
-
 	struct mbox_config *mbox_hw_config;
 	int mbox_module_no;
 	int interrupt_no;
@@ -692,9 +690,9 @@ int  notify_tesladrv_register_event(
 		}
 
 		if (done) {
-			SET_BIT(ctrl_ptr->proc_ctrl[driver_object->self_id].
-				reg_mask.mask,
-				event_no);
+			set_bit(event_no, (unsigned long *)
+				&ctrl_ptr->proc_ctrl[driver_object->self_id].
+				reg_mask.mask);
 		} else {
 			/*! @retval NOTIFY_E_MAXEVENTS Maximum number of
 			supported events have already been registered. */
@@ -769,8 +767,9 @@ int notify_tesladrv_unregister_event(
 
 	if (list_empty((struct list_head *)
 			&event_list[event_no].listeners) == true) {
-		CLEAR_BIT(ctrl_ptr->proc_ctrl[driver_object->self_id].reg_mask.
-				mask, event_no);
+		clear_bit(event_no, (unsigned long *)
+				&ctrl_ptr->proc_ctrl[driver_object->self_id].
+				reg_mask.mask);
 		self_event_chart = ctrl_ptr->proc_ctrl[driver_object->self_id].
 				   self_event_chart;
 		/* Clear any pending unserviced event as there are no
@@ -890,8 +889,9 @@ int notify_tesladrv_disable_event(
 
 	WARN_ON(mutex_lock_interruptible(notify_tesladriver_state.gate_handle)
 									!= 0);
-	CLEAR_BIT(driver_object->ctrl_ptr->proc_ctrl[driver_object->self_id].
-		  reg_mask.enable_mask, event_no);
+	clear_bit(event_no, (unsigned long *)
+		&driver_object->ctrl_ptr->proc_ctrl[driver_object->self_id].
+		  reg_mask.enable_mask);
 	/* Leave critical section protection. */
 	mutex_unlock(notify_tesladriver_state.gate_handle);
 	return status;
@@ -914,8 +914,9 @@ int notify_tesladrv_enable_event(struct notify_driver_object *handle,
 
 	WARN_ON(mutex_lock_interruptible(notify_tesladriver_state.gate_handle)
 									!= 0);
-	SET_BIT(driver_object->ctrl_ptr->proc_ctrl[driver_object->self_id].
-		reg_mask.enable_mask, event_no);
+	set_bit(event_no, (unsigned long *) 
+		&driver_object->ctrl_ptr->proc_ctrl[driver_object->self_id].
+		reg_mask.enable_mask);
 
 	mutex_unlock(notify_tesladriver_state.gate_handle);
 	return status;
@@ -967,8 +968,8 @@ static void notify_tesladrv_isr(void *ref_data)
 	do {
 		event_no = reg_chart[i].reg_event_no;
 		if (event_no != (unsigned long int) -1) {
-			if (TEST_BIT(ctrl_ptr->reg_mask.enable_mask,
-						event_no) == 1) {
+			if (test_bit(event_no, (unsigned long *)
+				&ctrl_ptr->reg_mask.enable_mask) == 1) {
 				mbx_ret_val = ntfy_disp_read(mbox_module_no,
 						NOTIFYDRV_TESLA_RECV_MBX,
 						&payload,
