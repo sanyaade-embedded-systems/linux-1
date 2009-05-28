@@ -115,28 +115,65 @@
 
 #define OMAP24XX_GPIO_REVISION		0x0000
 #define OMAP24XX_GPIO_SYSCONFIG		0x0010
-#define OMAP24XX_GPIO_SYSSTATUS		0x0014
-#define OMAP24XX_GPIO_IRQSTATUS1	0x0018
-#define OMAP24XX_GPIO_IRQSTATUS2	0x0028
-#define OMAP24XX_GPIO_IRQENABLE2	0x002c
-#define OMAP24XX_GPIO_IRQENABLE1	0x001c
-#define OMAP24XX_GPIO_WAKE_EN		0x0020
-#define OMAP24XX_GPIO_CTRL		0x0030
-#define OMAP24XX_GPIO_OE		0x0034
-#define OMAP24XX_GPIO_DATAIN		0x0038
-#define OMAP24XX_GPIO_DATAOUT		0x003c
-#define OMAP24XX_GPIO_LEVELDETECT0	0x0040
-#define OMAP24XX_GPIO_LEVELDETECT1	0x0044
-#define OMAP24XX_GPIO_RISINGDETECT	0x0048
-#define OMAP24XX_GPIO_FALLINGDETECT	0x004c
-#define OMAP24XX_GPIO_DEBOUNCE_EN	0x0050
-#define OMAP24XX_GPIO_DEBOUNCE_VAL	0x0054
-#define OMAP24XX_GPIO_CLEARIRQENABLE1	0x0060
-#define OMAP24XX_GPIO_SETIRQENABLE1	0x0064
-#define OMAP24XX_GPIO_CLEARWKUENA	0x0080
-#define OMAP24XX_GPIO_SETWKUENA		0x0084
-#define OMAP24XX_GPIO_CLEARDATAOUT	0x0090
-#define OMAP24XX_GPIO_SETDATAOUT	0x0094
+
+#ifdef CONFIG_ARCH_OMAP4
+#define OMAP24XX_GPIO_SYSSTATUS		0x0114
+#define OMAP24XX_GPIO_IRQSTATUS1	0x0118
+#define OMAP24XX_GPIO_IRQSTATUS2	0x0128
+#define OMAP24XX_GPIO_IRQENABLE2	0x012c
+#define OMAP24XX_GPIO_IRQENABLE1	0x011c
+#define OMAP24XX_GPIO_WAKE_EN		0x0120
+#define OMAP24XX_GPIO_CTRL		0x0130
+#define OMAP24XX_GPIO_OE		0x0134
+#define OMAP24XX_GPIO_DATAIN		0x0138
+#define OMAP24XX_GPIO_DATAOUT		0x013c
+#define OMAP24XX_GPIO_LEVELDETECT0	0x0140
+#define OMAP24XX_GPIO_LEVELDETECT1	0x0144
+#define OMAP24XX_GPIO_RISINGDETECT	0x0148
+#define OMAP24XX_GPIO_FALLINGDETECT	0x014c
+#define OMAP24XX_GPIO_DEBOUNCE_EN	0x0150
+#define OMAP24XX_GPIO_DEBOUNCE_VAL	0x0154
+#define OMAP24XX_GPIO_CLEARIRQENABLE1	0x0160
+#define OMAP24XX_GPIO_SETIRQENABLE1	0x0164
+#define OMAP24XX_GPIO_CLEARWKUENA	0x0180
+#define OMAP24XX_GPIO_SETWKUENA		0x0184
+#define OMAP24XX_GPIO_CLEARDATAOUT	0x0190
+#define OMAP24XX_GPIO_SETDATAOUT	0x0194
+#define OMAP24XX_GPIO_STATUS_RAW_0	0x0024
+#define OMAP24XX_GPIO_STATUS_RAW_1	0x0028
+#define OMAP24XX_GPIO_IRQ_STATUS_0	0x002C
+#define OMAP24XX_GPIO_IRQ_STATUS_1	0x0030
+#define OMAP24XX_GPIO_IRQ_STATUS_SET_0	0x0034
+#define OMAP24XX_GPIO_IRQ_STATUS_SET_1	0x0038
+#define OMAP24XX_GPIO_IRQ_STATUS_CLR_0	0x003C
+#define OMAP24XX_GPIO_IRQ_STATUS_CLR_1	0x0040
+#define OMAP24XX_GPIO_IRQ_WAKE_ENABLE_0	0x0044
+#define OMAP24XX_GPIO_IRQ_WAKE_ENABLE_1	0x0048
+
+#else
+#define OMAP24XX_GPIO_SYSSTATUS         0x0014
+#define OMAP24XX_GPIO_IRQSTATUS1        0x0018
+#define OMAP24XX_GPIO_IRQSTATUS2        0x0028
+#define OMAP24XX_GPIO_IRQENABLE2        0x002c
+#define OMAP24XX_GPIO_IRQENABLE1        0x001c
+#define OMAP24XX_GPIO_WAKE_EN           0x0020
+#define OMAP24XX_GPIO_CTRL              0x0030
+#define OMAP24XX_GPIO_OE                0x0034
+#define OMAP24XX_GPIO_DATAIN            0x0038
+#define OMAP24XX_GPIO_DATAOUT           0x003c
+#define OMAP24XX_GPIO_LEVELDETECT0      0x0040
+#define OMAP24XX_GPIO_LEVELDETECT1      0x0044
+#define OMAP24XX_GPIO_RISINGDETECT      0x0048
+#define OMAP24XX_GPIO_FALLINGDETECT     0x004c
+#define OMAP24XX_GPIO_DEBOUNCE_EN       0x0050
+#define OMAP24XX_GPIO_DEBOUNCE_VAL      0x0054
+#define OMAP24XX_GPIO_CLEARIRQENABLE1   0x0060
+#define OMAP24XX_GPIO_SETIRQENABLE1     0x0064
+#define OMAP24XX_GPIO_CLEARWKUENA       0x0080
+#define OMAP24XX_GPIO_SETWKUENA         0x0084
+#define OMAP24XX_GPIO_CLEARDATAOUT      0x0090
+#define OMAP24XX_GPIO_SETDATAOUT        0x0094
+#endif
 
 /*
  * omap34xx specific GPIO registers
@@ -829,11 +866,16 @@ static void _clear_gpio_irqbank(struct gpio_bank *bank, int gpio_mask)
 		break;
 #endif
 #if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX) || \
-				defined(CONFIG_ARCH_OMAP4)
+defined(CONFIG_ARCH_OMAP4)
 	case METHOD_GPIO_24XX:
+	#ifdef CONFIG_ARCH_OMAP4
+		reg += OMAP24XX_GPIO_IRQ_STATUS_0;
+	#else
 		reg += OMAP24XX_GPIO_IRQSTATUS1;
+	#endif
 		break;
 #endif
+
 	default:
 		WARN_ON(1);
 		return;
@@ -841,14 +883,20 @@ static void _clear_gpio_irqbank(struct gpio_bank *bank, int gpio_mask)
 	__raw_writel(gpio_mask, reg);
 
 	/* Workaround for clearing DSP GPIO interrupts to allow retention */
-#if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX)
+#if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX) || \
+defined(CONFIG_ARCH_OMAP4)
+#ifdef CONFIG_ARCH_OMAP4
+	reg = bank->base + OMAP24XX_GPIO_IRQ_STATUS_1;
+#else
 	reg = bank->base + OMAP24XX_GPIO_IRQSTATUS2;
-	if (cpu_is_omap24xx() || cpu_is_omap34xx())
+#endif
+	if (cpu_is_omap24xx() || cpu_is_omap34xx() || cpu_is_omap44xx())
 		__raw_writel(gpio_mask, reg);
 
 	/* Flush posted write for the irq status to avoid spurious interrupts */
 	__raw_readl(reg);
 #endif
+
 }
 
 static inline void _clear_gpio_irqstatus(struct gpio_bank *bank, int gpio)
@@ -901,7 +949,11 @@ static u32 _get_gpio_irqbank_mask(struct gpio_bank *bank)
 #if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX) || \
 				defined(CONFIG_ARCH_OMAP4)
 	case METHOD_GPIO_24XX:
-		reg += OMAP24XX_GPIO_IRQENABLE1;
+#ifdef CONFIG_ARCH_OMAP4
+		reg += OMAP24XX_GPIO_IRQ_STATUS_SET_0;
+#else
+		reg += OMAP24XX_GPIO_IRQ_STATUS_SET_0;
+#endif
 		mask = 0xffffffff;
 		break;
 #endif
@@ -1160,7 +1212,11 @@ static void gpio_irq_handler(unsigned int irq, struct irq_desc *desc)
 #if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX) || \
 				defined(CONFIG_ARCH_OMAP4)
 	if (bank->method == METHOD_GPIO_24XX)
+	#ifdef CONFIG_ARCH_OMAP4
+		isr_reg = bank->base + OMAP24XX_GPIO_IRQ_STATUS_0;
+	#else
 		isr_reg = bank->base + OMAP24XX_GPIO_IRQSTATUS1;
+	#endif
 #endif
 	while(1) {
 		u32 isr_saved, level_mask = 0;
@@ -1672,9 +1728,17 @@ static int __init _omap_gpio_init(void)
 			static const u32 non_wakeup_gpios[] = {
 				0xe203ffc0, 0x08700040
 			};
-
-			__raw_writel(0x00000000, bank->base + OMAP24XX_GPIO_IRQENABLE1);
-			__raw_writel(0xffffffff, bank->base + OMAP24XX_GPIO_IRQSTATUS1);
+#ifdef CONFIG_ARCH_OMAP4
+			__raw_writel(0x00000000, bank->base +
+					OMAP24XX_GPIO_IRQ_STATUS_CLR_0);
+			__raw_writel(0xffffffff, bank->base +
+					OMAP24XX_GPIO_IRQ_STATUS_0);
+#else
+			__raw_writel(0x00000000, bank->base +
+					OMAP24XX_GPIO_IRQENABLE1);
+			__raw_writel(0xffffffff, bank->base +
+					OMAP24XX_GPIO_IRQSTATUS1);
+#endif
 			__raw_writew(0x0015, bank->base + OMAP24XX_GPIO_SYSCONFIG);
 			__raw_writel(0x00000000, bank->base + OMAP24XX_GPIO_DEBOUNCE_EN);
 
