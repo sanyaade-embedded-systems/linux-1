@@ -17,17 +17,39 @@
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/gpio.h>
+#include <linux/spi/spi.h>
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
+#include <mach/mux.h>
 
+#include <mach/mcspi.h>
 #include <mach/board.h>
 #include <mach/common.h>
 #include <mach/control.h>
 #include <mach/timer-gp.h>
 #include <asm/hardware/gic.h>
+
+static int ts_gpio;
+
+static struct omap2_mcspi_device_config tsc2046_mcspi_config = {
+	.turbo_mode     = 0,
+	.single_channel = 1,  /* 0: slave, 1: master */
+};
+
+static struct omap2_mcspi_device_config dummy1_mcspi_config = {
+	.turbo_mode     = 0,
+	.single_channel = 1,  /* 0: slave, 1: master */
+};
+
+#ifdef CONFIG_SPI_TI_OMAP_TEST
+static struct omap2_mcspi_device_config dummy2_mcspi_config = {
+	.turbo_mode     = 0,
+	.single_channel = 0,  /* 0: slave, 1: master */
+};
+#endif
 
 static struct platform_device sdp4430_lcd_device = {
 	.name		= "sdp4430_lcd",
@@ -57,6 +79,37 @@ static void __init gic_init_irq(void)
 	gic_cpu_init(0, IO_ADDRESS(OMAP44XX_GIC_CPU_BASE));
 }
 
+static struct spi_board_info sdp4430_spi_board_info[] __initdata = {
+	[0] = {
+		.modalias		= "spitst",
+		.bus_num		= 1,
+		.chip_select		= 0,
+		.max_speed_hz		= 1500000,
+	},
+	[1] = {
+		.modalias		= "ads7846",
+		.bus_num		= 1,
+		.chip_select		= 0,
+		.max_speed_hz		= 1500000,
+	},
+#ifdef CONFIG_SPI_TI_OMAP_TEST
+	[2] = {
+		.modalias		= "spidev",
+		.bus_num		= 3,
+		.chip_select		= 0,
+		.max_speed_hz		= 6000000,
+		.controller_data	= &dummy2_mcspi_config, /* Slave */
+	},
+	[3] = {
+		.modalias		= "dummydevice1",
+		.bus_num		= 2,
+		.chip_select		= 0,
+		.max_speed_hz		= 1500000,
+		.controller_data	= &dummy1_mcspi_config, /*Master */
+	},
+#endif
+};
+
 static void __init omap_4430sdp_init_irq(void)
 {
 	omap2_init_common_hw(NULL, NULL);
@@ -74,6 +127,10 @@ static void __init omap_4430sdp_init(void)
 	omap_board_config = sdp4430_config;
 	omap_board_config_size = ARRAY_SIZE(sdp4430_config);
 	omap_serial_init();
+	sdp4430_spi_board_info[0].irq = OMAP_GPIO_IRQ(ts_gpio);
+	spi_register_board_info(sdp4430_spi_board_info,
+				ARRAY_SIZE(sdp4430_spi_board_info));
+
 }
 
 static void __init omap_4430sdp_map_io(void)
