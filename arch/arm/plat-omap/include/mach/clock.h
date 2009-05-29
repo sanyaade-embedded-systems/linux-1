@@ -65,6 +65,10 @@ struct dpll_data {
 	u8			recal_en_bit;
 	u8			recal_st_bit;
 #  endif
+
+#if defined(CONFIG_ARCH_OMAP4)
+	struct clk		*clk_hsd_bypass;
+#endif
 };
 
 #endif
