@@ -49,6 +49,12 @@
 #define OMAP3430_NEON_MOD				0xb00
 #define OMAP3430ES2_USBHOST_MOD				0xc00
 
+#define BITS(n_bit)	\
+	(((1 << n_bit) - 1) | (1 << n_bit))
+
+#define BITFIELD(u_bit, l_bit)	\
+	(BITS(u_bit) & ~((BITS(l_bit)) >> 1))
+
 /* OMAP44XX specific module offsets */
 #define OMAP4430_OCP_SOCKET_MOD				0x0000
 #define OMAP4430_CKGEN_MOD				0x0100
