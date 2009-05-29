@@ -19,6 +19,10 @@
 #include "prm.h"
 #include "prm-regbits-44xx.h"
 
+static unsigned long omap4_dpll_recalc(struct clk *clk);
+static unsigned long omap4_clkoutx2_recalc(struct clk *clk);
+static int omap4_noncore_dpll_set_rate(struct clk *clk, unsigned long rate);
+
 /* PRM CLOCKS */
 
 static struct clk omap_32k_fck = {
@@ -298,4 +302,147 @@ static struct clk gpmc_fck = {
 	.ops            = &clkops_null,
 };
 
+/* DPLL's */
+
+#define DPLL_LOW_POWER_STOP	0x1
+#define DPLL_LOW_POWER_BYPASS	0x5
+#define	DPLL_LOCKED		0x7
+
+static const struct clksel_rate div_mx_dpll_rates[] = {
+	{ .div = 1, .val = 1, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 2, .val = 2, .flags = RATE_IN_443X },
+	{ .div = 3, .val = 3, .flags = RATE_IN_443X },
+	{ .div = 4, .val = 4, .flags = RATE_IN_443X },
+	{ .div = 5, .val = 5, .flags = RATE_IN_443X },
+	{ .div = 6, .val = 6, .flags = RATE_IN_443X },
+	{ .div = 7, .val = 7, .flags = RATE_IN_443X },
+	{ .div = 8, .val = 8, .flags = RATE_IN_443X },
+	{ .div = 9, .val = 9, .flags = RATE_IN_443X },
+	{ .div = 10, .val = 10, .flags = RATE_IN_443X },
+	{ .div = 11, .val = 11, .flags = RATE_IN_443X },
+	{ .div = 12, .val = 12, .flags = RATE_IN_443X },
+	{ .div = 13, .val = 13, .flags = RATE_IN_443X },
+	{ .div = 14, .val = 14, .flags = RATE_IN_443X },
+	{ .div = 15, .val = 15, .flags = RATE_IN_443X },
+	{ .div = 16, .val = 16, .flags = RATE_IN_443X },
+	{ .div = 17, .val = 17, .flags = RATE_IN_443X },
+	{ .div = 18, .val = 18, .flags = RATE_IN_443X },
+	{ .div = 19, .val = 19, .flags = RATE_IN_443X },
+	{ .div = 20, .val = 20, .flags = RATE_IN_443X },
+	{ .div = 21, .val = 21, .flags = RATE_IN_443X },
+	{ .div = 22, .val = 22, .flags = RATE_IN_443X },
+	{ .div = 23, .val = 23, .flags = RATE_IN_443X },
+	{ .div = 24, .val = 24, .flags = RATE_IN_443X },
+	{ .div = 25, .val = 25, .flags = RATE_IN_443X },
+	{ .div = 26, .val = 26, .flags = RATE_IN_443X },
+	{ .div = 27, .val = 27, .flags = RATE_IN_443X },
+	{ .div = 28, .val = 28, .flags = RATE_IN_443X },
+	{ .div = 29, .val = 29, .flags = RATE_IN_443X },
+	{ .div = 30, .val = 30, .flags = RATE_IN_443X },
+	{ .div = 31, .val = 31, .flags = RATE_IN_443X },
+	{ .div = 0 }
+};
+
+/* DPLL ABE */
+
+static struct dpll_data dpll_abe_dd = {
+	.mult_div1_reg	= OMAP4430_CM_CLKSEL_DPLL_ABE,
+	.mult_mask	= OMAP4430_CM2_DPLL_MULT_MASK,
+	.div1_mask	= OMAP4430_CM2_DPLL_DIV_MASK,
+	.clk_bypass	= &sys_ck,
+	.clk_ref	= &abe_dpll_alwon_ck,
+	.control_reg	= OMAP4430_CM_CLKMODE_DPLL_ABE,
+	.enable_mask	= OMAP4430_DPLL_EN_MASK,
+	.modes		= (1 << DPLL_LOW_POWER_BYPASS) | (1 << DPLL_LOCKED),
+	.autoidle_reg	= OMAP4430_CM_AUTOIDLE_DPLL_ABE,
+	.autoidle_mask	= OMAP4430_AUTO_DPLL_MODE_MASK,
+	.idlest_reg	= OMAP4430_CM_IDLEST_DPLL_ABE,
+	.idlest_mask	= OMAP4430_ST_DPLL_CLK_MASK,
+};
+
+static struct clk dpll_abe_ck = {
+	.name           = "dpll_abe_ck",
+	.ops            = &clkops_null,
+	.parent         = &abe_dpll_alwon_ck,
+	.dpll_data      = &dpll_abe_dd,
+	.round_rate     = &omap2_dpll_round_rate,
+	.set_rate       = &omap4_noncore_dpll_set_rate,
+	.recalc         = &omap4_dpll_recalc,
+};
+
+static struct clk dpll_abe_x2_ck = {
+	.name           = "dpll_abe_x2_ck",
+	.ops            = &clkops_null,
+	.parent         = &dpll_abe_ck,
+	.recalc         = &omap4_clkoutx2_recalc,
+};
+
+static const struct clksel dpll_abe_m2_clksel[] = {
+	{ .parent = &dpll_abe_ck, .rates = div_mx_dpll_rates },
+	{ .parent = NULL }
+};
+
+static struct clk dpll_abe_m2_ck = {
+	.name		= "dpll_abe_m2_ck",
+	.ops		= &clkops_null,
+	.init		= &omap2_init_clksel_parent,
+	.clksel_reg	= OMAP4430_CM_DIV_M2_DPLL_ABE,
+	.clksel_mask	= OMAP4430_DPLL_CLKOUT_DIV_MASK,
+	.clksel		= dpll_abe_m2_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static const struct clksel dpll_abe_x2mx_clksel[] = {
+	{ .parent = &dpll_abe_x2_ck, .rates = div_mx_dpll_rates },
+	{ .parent = NULL }
+};
+
+static struct clk dpll_abe_x2m2_ck = {
+	.name		= "dpll_abe_x2m2_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M2_DPLL_ABE,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUT_DIV_MASK,
+	.clksel         = dpll_abe_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk dpll_abe_x2m3_ck = {
+	.name		= "dpll_abe_x2m3_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M3_DPLL_ABE,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUTHIF_DIV_MASK,
+	.clksel         = dpll_abe_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk per_abe_x1_fck = {
+	.name		= "per_abe_x1_fck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_abe_m2_ck,
+	.recalc         = &followparent_recalc,
+};
+
+static struct clk dpll_abe_x2_fck = {
+	.name		= "dpll_abe_x2_fck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_abe_m2_ck,
+	.recalc         = &followparent_recalc,
+};
+
+static struct clk core_dpll_hs_ck = {
+	.name		= "core_dpll_hs_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_abe_m2_ck,
+	.recalc         = &followparent_recalc,
+};
+
+static struct clk per_dpll_hs_ck = {
+	.name 		= "per_dpll_hs_ck",
+	.ops		= &clkops_null,
+	.parent		= &core_dpll_hs_ck,
+	.fixed_div      = 2,
+	.recalc         = &omap2_fixed_divisor_recalc,
+};
 #endif
