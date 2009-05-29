@@ -873,4 +873,93 @@ static struct clk mpu_dpll_ck = {
 	.recalc		= &followparent_recalc,
 };
 
+/* IVA DPLL */
+
+static const struct clksel iva_dpll_hs_ck_clksel[] = {
+	{ .parent = &core_x2_ck, .rates = div4_rates },
+	{ .parent = NULL }
+};
+
+static struct clk iva_dpll_hs_ck = {
+	.name 		= "iva_dpll_hs_ck",
+	.ops            = &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.parent         = &core_x2_ck,
+	.clksel_reg     = OMAP4430_CM_BYPCLK_DPLL_IVA,
+	.clksel_mask    = OMAP4430_CLKSEL_MASK,
+	.clksel		= iva_dpll_hs_ck_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct dpll_data dpll_iva_dd = {
+	.mult_div1_reg	= OMAP4430_CM_CLKSEL_DPLL_IVA,
+	.mult_mask	= OMAP4430_CM2_DPLL_MULT_MASK,
+	.div1_mask	= OMAP4430_CM2_DPLL_DIV_MASK,
+	.clk_bypass	= &iva_dpll_hs_ck,
+	.clk_ref	= &dpll_sys_ref_ck,
+	.control_reg	= OMAP4430_CM_CLKMODE_DPLL_IVA,
+	.enable_mask	= OMAP4430_DPLL_EN_MASK,
+	.modes		= (1 << DPLL_LOW_POWER_BYPASS) | (1 << DPLL_LOCKED),
+	.autoidle_reg	= OMAP4430_CM_AUTOIDLE_DPLL_IVA,
+	.autoidle_mask	= OMAP4430_AUTO_DPLL_MODE_MASK,
+	.idlest_reg	= OMAP4430_CM_IDLEST_DPLL_IVA,
+	.idlest_mask	= OMAP4430_ST_DPLL_CLK_MASK,
+};
+
+static struct clk dpll_iva_ck = {
+	.name           = "dpll_iva_ck",
+	.ops            = &clkops_null,
+	.parent         = &dpll_sys_ref_ck,
+	.dpll_data      = &dpll_iva_dd,
+	.round_rate     = &omap2_dpll_round_rate,
+	.set_rate       = &omap4_noncore_dpll_set_rate,
+	.recalc         = &omap4_dpll_recalc,
+};
+
+static struct clk dpll_iva_x2_ck = {
+	.name           = "dpll_iva_x2_ck",
+	.ops            = &clkops_null,
+	.parent         = &dpll_iva_ck,
+	.recalc         = &omap4_clkoutx2_recalc,
+};
+
+static const struct clksel dpll_iva_x2mx_clksel[] = {
+	{ .parent = &dpll_iva_x2_ck, .rates = div_mx_dpll_rates },
+	{ .parent = NULL }
+};
+
+static struct clk dpll_iva_x2m4_ck = {
+	.name		= "dpll_iva_x2m4_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M4_DPLL_IVA,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUTHIF_DIV_MASK,
+	.clksel         = dpll_iva_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk dpll_iva_x2m5_ck = {
+	.name		= "dpll_iva_x2m5_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M5_DPLL_IVA,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUTHIF_DIV_MASK,
+	.clksel         = dpll_iva_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk dsp_root_ck = {
+	.name		= "dsp_root_ck",
+	.ops		= &clkops_null,
+	.parent         = &dpll_iva_x2m4_ck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk ivahd_ck = {
+	.name		= "ivahd_ck",
+	.ops		= &clkops_null,
+	.parent         = &dpll_iva_x2m5_ck,
+	.recalc		= &followparent_recalc,
+};
+
 #endif

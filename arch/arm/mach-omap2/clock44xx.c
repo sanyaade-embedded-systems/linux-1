@@ -119,7 +119,13 @@ static struct omap_clk omap44xx_clks[] = {
 	CLK(NULL,	"dpll_mpu_ck",		&dpll_mpu_ck, CK_443X),
 	CLK(NULL,	"dpll_mpu_m2_ck",	&dpll_mpu_m2_ck, CK_443X),
 	CLK(NULL,	"mpu_dpll_ck",		&mpu_dpll_ck, CK_443X),
-
+	CLK(NULL,	"iva_dpll_hs_ck",	&iva_dpll_hs_ck, CK_443X),
+	CLK(NULL,	"dpll_iva_ck",		&dpll_iva_ck, CK_443X),
+	CLK(NULL,	"dpll_iva_x2_ck",	&dpll_iva_x2_ck, CK_443X),
+	CLK(NULL,	"dpll_iva_x2m4_ck",	&dpll_iva_x2m4_ck, CK_443X),
+	CLK(NULL,	"dpll_iva_x2m5_ck",	&dpll_iva_x2m5_ck, CK_443X),
+	CLK(NULL,	"dsp_root_ck",		&dsp_root_ck, CK_443X),
+	CLK(NULL,	"ivahd_ck",		&ivahd_ck, CK_443X),
 };
 
 static struct clk_functions omap2_clk_functions = {
