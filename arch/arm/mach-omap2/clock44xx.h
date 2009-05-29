@@ -799,4 +799,78 @@ static struct clk core_sgx_fck = {
 	.parent		= &dpll_core_x2m7_ck,
 	.recalc		= &followparent_recalc,
 };
+
+/* MPU DPLL */
+
+static const struct clksel_rate div4_rates[] = {
+	{ .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 2, .val = 1, .flags = RATE_IN_443X },
+	{ .div = 4, .val = 2, .flags = RATE_IN_443X },
+	{ .div = 8, .val = 3, .flags = RATE_IN_443X },
+	{ .div = 0 }
+};
+
+static const struct clksel mpu_dpll_hs_ck_clksel[] = {
+	{ .parent = &core_x2_ck, .rates = div4_rates },
+	{ .parent = NULL }
+};
+
+static struct clk mpu_dpll_hs_ck = {
+	.name 		= "mpu_dpll_hs_ck",
+	.ops            = &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.parent         = &core_x2_ck,
+	.clksel_reg     = OMAP4430_CM_BYPCLK_DPLL_MPU,
+	.clksel_mask    = OMAP4430_CLKSEL_MASK,
+	.clksel		= mpu_dpll_hs_ck_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct dpll_data dpll_mpu_dd = {
+	.mult_div1_reg	= OMAP4430_CM_CLKSEL_DPLL_MPU,
+	.mult_mask	= OMAP4430_CM2_DPLL_MULT_MASK,
+	.div1_mask	= OMAP4430_CM2_DPLL_DIV_MASK,
+	.clk_bypass	= &mpu_dpll_hs_ck,
+	.clk_ref	= &dpll_sys_ref_ck,
+	.control_reg	= OMAP4430_CM_CLKMODE_DPLL_MPU,
+	.enable_mask	= OMAP4430_DPLL_EN_MASK,
+	.modes		= (1 << DPLL_LOW_POWER_BYPASS) | (1 << DPLL_LOCKED),
+	.autoidle_reg	= OMAP4430_CM_AUTOIDLE_DPLL_MPU,
+	.autoidle_mask	= OMAP4430_AUTO_DPLL_MODE_MASK,
+	.idlest_reg	= OMAP4430_CM_IDLEST_DPLL_MPU,
+	.idlest_mask	= OMAP4430_ST_DPLL_CLK_MASK,
+};
+
+static struct clk dpll_mpu_ck = {
+	.name           = "dpll_mpu_ck",
+	.ops            = &clkops_null,
+	.parent         = &dpll_sys_ref_ck,
+	.dpll_data      = &dpll_mpu_dd,
+	.round_rate     = &omap2_dpll_round_rate,
+	.set_rate       = &omap4_noncore_dpll_set_rate,
+	.recalc         = &omap4_dpll_recalc,
+};
+
+static const struct clksel dpll_mpu_m2_clksel[] = {
+	{ .parent = &dpll_mpu_ck, .rates = div_mx_dpll_rates },
+	{ .parent = NULL }
+};
+
+static struct clk dpll_mpu_m2_ck = {
+	.name		= "dpll_mpu_m2_ck",
+	.ops		= &clkops_null,
+	.init		= &omap2_init_clksel_parent,
+	.clksel_reg	= OMAP4430_CM_DIV_M2_DPLL_MPU,
+	.clksel_mask	= OMAP4430_DPLL_CLKOUT_DIV_MASK,
+	.clksel		= dpll_mpu_m2_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk mpu_dpll_ck = {
+	.name		= "mpu_dpll_ck",
+	.ops		= &clkops_null,
+	.parent         = &dpll_mpu_m2_ck,
+	.recalc		= &followparent_recalc,
+};
+
 #endif
