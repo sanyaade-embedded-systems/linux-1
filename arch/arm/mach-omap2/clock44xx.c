@@ -73,7 +73,16 @@ static struct omap_clk omap44xx_clks[] = {
 	CLK(NULL,	"gpt9_fck",	&gpt9_fck,	CK_443X),
 	CLK(NULL,	"gpt10_fck",	&gpt10_fck,	CK_443X),
 	CLK(NULL,	"gpt11_fck",	&gpt11_fck,	CK_443X),
-	CLK(NULL,       "gpmc_fck",    &gpmc_fck,     CK_443X),
+	CLK(NULL,       "gpmc_fck",	&gpmc_fck,	CK_443X),
+	CLK(NULL,       "dpll_abe_ck",	&dpll_abe_ck,	CK_443X),
+	CLK(NULL,       "dpll_abe_x2_ck",	&dpll_abe_x2_ck, CK_443X),
+	CLK(NULL,       "dpll_abe_m2_ck",	&dpll_abe_m2_ck, CK_443X),
+	CLK(NULL,       "dpll_abe_x2m2_ck",	&dpll_abe_x2m2_ck, CK_443X),
+	CLK(NULL,       "dpll_abe_x2m3_ck",	&dpll_abe_x2m3_ck, CK_443X),
+	CLK(NULL,       "per_abe_x1_fck",	&per_abe_x1_fck, CK_443X),
+	CLK(NULL,       "dpll_abe_x2_fck",	&dpll_abe_x2_fck, CK_443X),
+	CLK(NULL,       "core_dpll_hs_ck",	&core_dpll_hs_ck, CK_443X),
+	CLK(NULL,       "per_dpll_hs_ck",	&per_dpll_hs_ck, CK_443X),
 };
 
 static struct clk_functions omap2_clk_functions = {
@@ -88,6 +97,21 @@ static struct clk_functions omap2_clk_functions = {
 void omap2_clk_prepare_for_reboot(void)
 {
 	return;
+}
+
+static int omap4_noncore_dpll_set_rate(struct clk *clk, unsigned long rate)
+{
+	return 0;
+}
+
+static unsigned long omap4_clkoutx2_recalc(struct clk *clk)
+{
+	return 0;
+}
+
+static unsigned long omap4_dpll_recalc(struct clk *clk)
+{
+	return 0;
 }
 
 static int __init omap2_clk_arch_init(void)
