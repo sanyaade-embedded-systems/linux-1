@@ -83,6 +83,23 @@ static struct omap_clk omap44xx_clks[] = {
 	CLK(NULL,       "dpll_abe_x2_fck",	&dpll_abe_x2_fck, CK_443X),
 	CLK(NULL,       "core_dpll_hs_ck",	&core_dpll_hs_ck, CK_443X),
 	CLK(NULL,       "per_dpll_hs_ck",	&per_dpll_hs_ck, CK_443X),
+	CLK(NULL,       "per_hsd_byp_ck",	&per_hsd_byp_ck, CK_443X),
+	CLK(NULL,       "dpll_per_ck",	&dpll_per_ck, CK_443X),
+	CLK(NULL,       "dpll_per_x2_ck",	&dpll_per_x2_ck, CK_443X),
+	CLK(NULL,       "dpll_per_m2_ck",	&dpll_per_m2_ck, CK_443X),
+	CLK(NULL,       "dpll_per_x2m2_ck",	&dpll_per_x2m2_ck, CK_443X),
+	CLK(NULL,       "dpll_per_x2m3_ck",	&dpll_per_x2m3_ck, CK_443X),
+	CLK(NULL,       "dpll_per_x2m4_ck",	&dpll_per_x2m4_ck, CK_443X),
+	CLK(NULL,       "dpll_per_x2m5_ck",	&dpll_per_x2m5_ck, CK_443X),
+	CLK(NULL,       "dpll_per_x2m6_ck",	&dpll_per_x2m6_ck, CK_443X),
+	CLK(NULL,       "dpll_per_x2m7_ck",	&dpll_per_x2m7_ck, CK_443X),
+	CLK(NULL,       "omap_96m_alwon_ck",	&omap_96m_alwon_ck, CK_443X),
+	CLK(NULL,       "omap_192m_fck",	&omap_192m_fck, CK_443X),
+	CLK(NULL,       "per_dpll_scrm_ck",	&per_dpll_scrm_ck, CK_443X),
+	CLK(NULL,       "omap_128m_fck",	&omap_128m_fck, CK_443X),
+	CLK(NULL,       "dss_fck",	&dss_fck, CK_443X),
+	CLK(NULL,       "per_mpu_m3",	&per_mpu_m3, CK_443X),
+	CLK(NULL,       "per_dpll_emu_ck",	&per_dpll_emu_ck, CK_443X),
 };
 
 static struct clk_functions omap2_clk_functions = {
