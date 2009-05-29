@@ -291,4 +291,11 @@ static struct clk gpt11_fck = {
 	.clksel         = omap443x_gpt_clksel,
 	.recalc         = &omap2_clksel_recalc,
 };
+
+/* TODO:Dummy clock node still needed to boot on Omap4, remove later */
+static struct clk gpmc_fck = {
+	.name           = "gpmc_fck",
+	.ops            = &clkops_null,
+};
+
 #endif
