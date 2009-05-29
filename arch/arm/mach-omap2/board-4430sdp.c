@@ -126,6 +126,13 @@ static int __init omap4_i2c_init(void)
 	omap_register_i2c_bus(3, 400, NULL, 0);
 	return 0;
 }
+static void omap_mcbsp_init(void)
+{
+	omap_cfg_reg(AA3_4430_McBSP1_CLK);
+	omap_cfg_reg(Y3_4430_McBSP1_DR);
+	omap_cfg_reg(Y2_4430_McBSP1_DX);
+	omap_cfg_reg(Y4_4430_McBSP1_FSX);
+}
 
 static void __init omap_4430sdp_init(void)
 {
@@ -137,6 +144,7 @@ static void __init omap_4430sdp_init(void)
 	sdp4430_spi_board_info[0].irq = OMAP_GPIO_IRQ(ts_gpio);
 	spi_register_board_info(sdp4430_spi_board_info,
 				ARRAY_SIZE(sdp4430_spi_board_info));
+	omap_mcbsp_init();
 
 }
 
