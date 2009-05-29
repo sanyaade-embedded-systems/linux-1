@@ -80,11 +80,13 @@ extern u8 cpu_mask;
 /* clksel_rate data common to 24xx/343x */
 static const struct clksel_rate gpt_32k_rates[] = {
 	 { .div = 1, .val = 0, .flags = RATE_IN_24XX | RATE_IN_343X | DEFAULT_RATE },
+	 { .div = 1, .val = 1, .flags = RATE_IN_443X | DEFAULT_RATE },
 	 { .div = 0 }
 };
 
 static const struct clksel_rate gpt_sys_rates[] = {
 	 { .div = 1, .val = 1, .flags = RATE_IN_24XX | RATE_IN_343X | DEFAULT_RATE },
+	 { .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
 	 { .div = 0 }
 };
 
