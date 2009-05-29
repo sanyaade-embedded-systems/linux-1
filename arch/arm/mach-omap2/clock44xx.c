@@ -130,6 +130,12 @@ static struct omap_clk omap44xx_clks[] = {
 	CLK(NULL,	"dpll_unipro_x2_ck",	&dpll_unipro_x2_ck, CK_443X),
 	CLK(NULL,	"dpll_unipro_x2m2_ck",	&dpll_unipro_x2m2_ck, CK_443X),
 	CLK(NULL,	"unipro1_phy_fck",	&unipro1_phy_fck, CK_443X),
+	CLK(NULL,	"core_ck",		&core_ck, CK_443X),
+	CLK(NULL,	"l3_ick",		&l3_ick, CK_443X),
+	CLK(NULL,	"l4_root_ck",		&l4_root_ck, CK_443X),
+	CLK(NULL,	"fdif_fck",		&fdif_fck, CK_443X),
+	CLK(NULL,	"hsi_fck",		&hsi_fck, CK_443X),
+	CLK(NULL,	"mpu_m3_iss_ck",	&mpu_m3_iss_ck, CK_443X),
 };
 
 static struct clk_functions omap2_clk_functions = {
