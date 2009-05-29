@@ -1016,4 +1016,118 @@ static struct clk unipro1_phy_fck = {
 	.parent         = &dpll_unipro_x2m2_ck,
 	.recalc		= &followparent_recalc,
 };
+
+/* CM1 nodes */
+
+static const struct clksel core_ck_clksel[] = {
+	{ .parent = &core_x2_ck, .rates = div2_rates },
+	{ .parent = NULL }
+};
+
+static struct clk core_ck = {
+	.name		= "core_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_CLKSEL_CORE,
+	.clksel_mask    = OMAP4430_CLKSEL_CORE_MASK,
+	.clksel         = core_ck_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static const struct clksel l3_ick_clksel[] = {
+	{ .parent = &core_ck, .rates = div2_rates },
+	{ .parent = NULL }
+};
+
+static struct clk l3_ick = {
+	.name		= "l3_ick",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_CLKSEL_CORE,
+	.clksel_mask    = OMAP4430_CM_CLKSEL_CORE_RESTORE_CLKSEL_L3_MASK,
+	.clksel         = l3_ick_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static const struct clksel l4_root_ck_clksel[] = {
+	{ .parent = &core_ck, .rates = div2_rates },
+	{ .parent = NULL }
+};
+
+static struct clk l4_root_ck = {
+	.name		= "l4_root_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_CLKSEL_CORE,
+	.clksel_mask    = OMAP4430_CLKSEL_L4_MASK,
+	.clksel         = l4_root_ck_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+/* CM2 nodes */
+
+static const struct clksel_rate div124_rates[] = {
+	{ .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 2, .val = 1, .flags = RATE_IN_443X },
+	{ .div = 4, .val = 2, .flags = RATE_IN_443X },
+	{ .div = 0 }
+};
+
+static const struct clksel fdif_fck_clksel[] = {
+	{ .parent = &omap_128m_fck, .rates = div124_rates },
+	{ .parent = NULL }
+};
+
+static struct clk fdif_fck = {
+	.name		= "fdif_fck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_CAM_FDIF_CLKCTRL,
+	.clksel_mask    = OMAP4430_CLKSEL_FCLK_MASK,
+	.clksel         = fdif_fck_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static const struct clksel hsi_fck_clksel[] = {
+	{ .parent = &omap_192m_fck, .rates = div124_rates },
+	{ .parent = NULL }
+};
+
+static struct clk hsi_fck = {
+	.name		= "hsi_fck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_L3INIT_HSI_CLKCTRL,
+	.clksel_mask    = OMAP4430_HSI_CLKSEL_MASK,
+	.clksel         = hsi_fck_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static const struct clksel_rate core_ck_rates[] = {
+	{ .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel_rate per_mpu_m3_rates[] = {
+	{ .div = 1, .val = 1, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel mpu_m3_iss_ck_clksel[] = {
+	{ .parent = &core_ck, .rates = core_ck_rates },
+	{ .parent = &per_mpu_m3, .rates = per_mpu_m3_rates },
+	{ .parent = NULL }
+};
+
+static struct clk mpu_m3_iss_ck = {
+	.name           = "mpu_m3_iss_ck",
+	.ops            = &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.parent         = &core_ck,
+	.clksel_reg     = OMAP4430_CM_CLKSEL_DUCATI_ISS_ROOT,
+	.clksel_mask    = OMAP4430_MPU_M3_ISS_ROOT_CLKSEL_MASK,
+	.clksel         = mpu_m3_iss_ck_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
 #endif
