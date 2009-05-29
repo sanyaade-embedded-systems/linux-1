@@ -73,6 +73,7 @@ static struct omap_clk omap44xx_clks[] = {
 	CLK(NULL,	"gpt9_fck",	&gpt9_fck,	CK_443X),
 	CLK(NULL,	"gpt10_fck",	&gpt10_fck,	CK_443X),
 	CLK(NULL,	"gpt11_fck",	&gpt11_fck,	CK_443X),
+	CLK(NULL,       "gpmc_fck",    &gpmc_fck,     CK_443X),
 };
 
 static struct clk_functions omap2_clk_functions = {
