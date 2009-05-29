@@ -445,4 +445,190 @@ static struct clk per_dpll_hs_ck = {
 	.fixed_div      = 2,
 	.recalc         = &omap2_fixed_divisor_recalc,
 };
+
+/* DPLL PER */
+
+static const struct clksel_rate per_dpll_hs_ck_rates[] = {
+	{ .div = 1, .val = 1, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel per_hsd_byp_ck_clksel[] = {
+	{ .parent = &dpll_sys_ref_ck, .rates = dpll_sys_ref_ck_rates },
+	{ .parent = &per_dpll_hs_ck, .rates = per_dpll_hs_ck_rates },
+	{ .parent = NULL }
+};
+
+static struct clk per_hsd_byp_ck = {
+	.name 		= "per_hsd_byp_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.parent         = &dpll_sys_ref_ck,
+	.clksel_reg     = OMAP4430_CM_CLKSEL_DPLL_PER,
+	.clksel_mask    = OMAP4430_DPLL_BYP_CLKSEL_MASK,
+	.clksel         = per_hsd_byp_ck_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct dpll_data dpll_per_dd = {
+	.mult_div1_reg	= OMAP4430_CM_CLKSEL_DPLL_PER,
+	.mult_mask	= OMAP4430_CM2_DPLL_MULT_MASK,
+	.div1_mask	= OMAP4430_CM2_DPLL_DIV_MASK,
+	.clk_bypass	= &per_dpll_hs_ck,
+	.clk_ref	= &dpll_sys_ref_ck,
+	.clk_hsd_bypass = &per_hsd_byp_ck,
+	.control_reg	= OMAP4430_CM_CLKMODE_DPLL_PER,
+	.enable_mask	= OMAP4430_DPLL_EN_MASK,
+	.modes		= (1 << DPLL_LOW_POWER_BYPASS) | (1 << DPLL_LOCKED),
+	.autoidle_reg	= OMAP4430_CM_AUTOIDLE_DPLL_PER,
+	.autoidle_mask	= OMAP4430_AUTO_DPLL_MODE_MASK,
+	.idlest_reg	= OMAP4430_CM_IDLEST_DPLL_PER,
+	.idlest_mask	= OMAP4430_ST_DPLL_CLK_MASK,
+};
+
+static struct clk dpll_per_ck = {
+	.name           = "dpll_per_ck",
+	.ops            = &clkops_null,
+	.parent         = &dpll_sys_ref_ck,
+	.dpll_data      = &dpll_per_dd,
+	.round_rate     = &omap2_dpll_round_rate,
+	.set_rate       = &omap4_noncore_dpll_set_rate,
+	.recalc         = &omap4_dpll_recalc,
+};
+
+static struct clk dpll_per_x2_ck = {
+	.name           = "dpll_per_x2_ck",
+	.ops            = &clkops_null,
+	.parent         = &dpll_per_ck,
+	.recalc         = &omap4_clkoutx2_recalc,
+};
+
+static const struct clksel dpll_per_m2_clksel[] = {
+	{ .parent = &dpll_per_ck, .rates = div_mx_dpll_rates },
+	{ .parent = NULL }
+};
+
+static struct clk dpll_per_m2_ck = {
+	.name		= "dpll_per_m2_ck",
+	.ops		= &clkops_null,
+	.init		= &omap2_init_clksel_parent,
+	.clksel_reg	= OMAP4430_CM_DIV_M2_DPLL_PER,
+	.clksel_mask	= OMAP4430_DPLL_CLKOUT_DIV_MASK,
+	.clksel		= dpll_per_m2_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static const struct clksel dpll_per_x2mx_clksel[] = {
+	{ .parent = &dpll_per_x2_ck, .rates = div_mx_dpll_rates },
+	{ .parent = NULL }
+};
+
+static struct clk dpll_per_x2m2_ck = {
+	.name		= "dpll_per_x2m2_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M2_DPLL_PER,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUT_DIV_MASK,
+	.clksel         = dpll_per_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk dpll_per_x2m3_ck = {
+	.name		= "dpll_per_x2m3_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M3_DPLL_PER,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUTHIF_DIV_MASK,
+	.clksel         = dpll_per_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk dpll_per_x2m4_ck = {
+	.name		= "dpll_per_x2m4_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M4_DPLL_PER,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUTHIF_DIV_MASK,
+	.clksel         = dpll_per_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk dpll_per_x2m5_ck = {
+	.name		= "dpll_per_x2m5_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M5_DPLL_PER,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUTHIF_DIV_MASK,
+	.clksel         = dpll_per_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk dpll_per_x2m6_ck = {
+	.name		= "dpll_per_x2m6_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M6_DPLL_PER,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUTHIF_DIV_MASK,
+	.clksel         = dpll_per_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk dpll_per_x2m7_ck = {
+	.name		= "dpll_per_x2m7_ck",
+	.ops		= &clkops_null,
+	.init           = &omap2_init_clksel_parent,
+	.clksel_reg     = OMAP4430_CM_DIV_M7_DPLL_PER,
+	.clksel_mask    = OMAP4430_DPLL_CLKOUTHIF_DIV_MASK,
+	.clksel         = dpll_per_x2mx_clksel,
+	.recalc         = &omap2_clksel_recalc,
+};
+
+static struct clk omap_96m_alwon_ck = {
+	.name		= "omap_96m_alwon_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_per_m2_ck,
+	.recalc         = &followparent_recalc,
+};
+
+static struct clk omap_192m_fck = {
+	.name		= "omap_192m_fck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_per_x2m2_ck,
+	.recalc         = &followparent_recalc,
+};
+
+static struct clk per_dpll_scrm_ck = {
+	.name		= "per_dpll_scrm_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_per_x2m3_ck,
+	.recalc         = &followparent_recalc,
+};
+
+static struct clk omap_128m_fck = {
+	.name		= "omap_128m_fck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_per_x2m4_ck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk dss_fck = {
+	.name 		= "dss_fck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_per_x2m5_ck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk per_mpu_m3 = {
+	.name		= "per_mpu_m3",
+	.ops		= &clkops_null,
+	.parent		= &dpll_per_x2m6_ck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk per_dpll_emu_ck = {
+	.name		= "per_dpll_emu_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_per_x2m7_ck,
+	.recalc		= &followparent_recalc,
+};
 #endif
