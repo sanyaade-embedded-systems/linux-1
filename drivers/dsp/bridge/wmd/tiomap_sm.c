@@ -75,13 +75,15 @@ static inline unsigned int fifo_full(void __iomem *mbox_base, int mbox_id)
 DSP_STATUS CHNLSM_EnableInterrupt(struct WMD_DEV_CONTEXT *pDevContext)
 {
 	DSP_STATUS status = DSP_SOK;
+#ifdef OMAP_3430
 	u32 numMbxMsg;
 	u32 mbxValue;
+	u32 hwStatus;
+#endif
 	struct CFG_HOSTRES resources;
 	u32 devType;
 	struct IO_MGR *hIOMgr;
 	u32 eventNo;
-	u32 hwStatus;
 
 	DBG_Trace(DBG_ENTER, "CHNLSM_EnableInterrupt(0x%x)\n", pDevContext);
 
@@ -115,11 +117,8 @@ DSP_STATUS CHNLSM_EnableInterrupt(struct WMD_DEV_CONTEXT *pDevContext)
 
 DSP_STATUS CHNLSM_DisableInterrupt(struct WMD_DEV_CONTEXT *pDevContext)
 {
-        DSP_STATUS status = DSP_SOK;
-        int  Notifystatus;
         u32 eventNo;
         struct CFG_HOSTRES resources;
-        u32 hwStatus;
 
 	DBG_Trace(DBG_ENTER, "CHNLSM_DisableInterrupt(0x%x)\n", pDevContext);
 
@@ -141,6 +140,11 @@ DSP_STATUS CHNLSM_DisableInterrupt(struct WMD_DEV_CONTEXT *pDevContext)
 DSP_STATUS CHNLSM_InterruptDSP2(struct WMD_DEV_CONTEXT *pDevContext,
 				u16 wMbVal)
 {
+	struct CFG_HOSTRES resources;
+	DSP_STATUS status = DSP_SOK;
+	int  notifyStatus;
+
+#ifdef OMAP_3430
 #ifndef CONFIG_DISABLE_BRIDGE_PM
 #ifdef CONFIG_BRIDGE_DVFS
 	struct dspbridge_platform_data *pdata =
@@ -148,11 +152,9 @@ DSP_STATUS CHNLSM_InterruptDSP2(struct WMD_DEV_CONTEXT *pDevContext,
 	u32 opplevel = 0;
 #endif
 #endif
-	struct CFG_HOSTRES resources;
-	DSP_STATUS status = DSP_SOK;
 	unsigned long timeout;
 	u32 temp;
-	int  notifyStatus;
+#endif
 
 	status = CFG_GetHostResources((struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
 				      &resources);
