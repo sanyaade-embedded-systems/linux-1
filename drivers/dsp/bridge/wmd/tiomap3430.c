@@ -141,7 +141,9 @@ static DSP_STATUS PteSet(struct PgTableAttrs *pt, u32 pa, u32 va,
 static DSP_STATUS MemMapVmalloc(struct WMD_DEV_CONTEXT *hDevContext,
 			u32 ulMpuAddr, u32 ulVirtAddr,
 			u32 ulNumBytes, struct HW_MMUMapAttrs_t *hwAttrs);
-void GetHWRegs(u32 prcm_base, u32 cm1_base, u32 cm2_base);
+#ifdef OMAP44XX
+void GetHWRegs(void __iomem *prm_base, u32 cm1_base, u32 cm2_base);
+#endif
 
 /*  ----------------------------------- Globals */
 
@@ -249,7 +251,9 @@ static inline void tlb_flush_all(const void __iomem *base)
 static inline void flush_all(struct WMD_DEV_CONTEXT *pDevContext)
 {
 	struct CFG_HOSTRES resources;
+#ifdef OMAP_3430
 	u32 temp = 0;
+#endif
 
 	CFG_GetHostResources((struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
 				&resources);
@@ -265,7 +269,7 @@ static inline void flush_all(struct WMD_DEV_CONTEXT *pDevContext)
 	} else
 		tlb_flush_all(pDevContext->dwDSPMmuBase);
 #else
-		tlb_flush_all(pDevContext->dwDSPMmuBase);
+		tlb_flush_all((void __iomem *)pDevContext->dwDSPMmuBase);
 #endif
 }
 
@@ -316,8 +320,10 @@ static DSP_STATUS WMD_BRD_Monitor(struct WMD_DEV_CONTEXT *hDevContext)
 	DSP_STATUS status = DSP_SOK;
 	struct WMD_DEV_CONTEXT *pDevContext = hDevContext;
 	struct CFG_HOSTRES resources;
+#ifdef OMAP_3430
 	u32 temp;
 	enum HW_PwrState_t    pwrState;
+#endif
 
 	DBG_Trace(DBG_ENTER, "Board in the monitor state  \n");
 	status = CFG_GetHostResources(
@@ -326,19 +332,20 @@ static DSP_STATUS WMD_BRD_Monitor(struct WMD_DEV_CONTEXT *hDevContext)
 		goto error_return;
 
 #ifdef OMAP44XX
-	printk("Disabling Clocks... and resources.dwCm1Base = 0x%x \n  resources.dwCm2Base= 0x%x\n"
-		"resources.dwPrmBase = 0x%x", resources.dwCm1Base, resources.dwCm2Base, resources.dwPrmBase);
-	HW_CLK_Disable (resources.dwCm1Base, HW_CLK_TESLA) ;
+	printk(KERN_ERR "Disabling Clocks... and resources.dwCm1Base = 0x%x\n"
+		"resources.dwCm2Base= 0x%x\n"
+		"resources.dwPrmBase = 0x%x\n",
+		(unsigned int)resources.dwCm1Base,
+		(unsigned int)resources.dwCm2Base,
+		(unsigned int)resources.dwPrmBase);
+	HW_CLK_Disable (resources.dwCm1Base, HW_CLK_TESLA);
 	printk("Resetting DSP...");
 	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
 	printk("Enabling Clocks...");
-	HW_CLK_Enable (resources.dwCm1Base, HW_CLK_TESLA) ;
-
-
-	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);/*TODO check if it is correct*/
-	HW_RST_Reset(resources.dwPrmBase, HW_RST2_TESLA);/*Just to ensure that the RST's are enabled*/
+	HW_CLK_Enable (resources.dwCm1Base, HW_CLK_TESLA);
+	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
+	HW_RST_Reset(resources.dwPrmBase, HW_RST2_TESLA);
 	HW_RST_UnReset(resources.dwPrmBase, HW_RST2_TESLA);
-
 	*((REG_UWORD32 *)((u32)(resources.dwDmmuBase)+0x50)) = 0x400;
 #else
 	
@@ -457,21 +464,22 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 	u32 ulShmBaseVirt;	/* Dsp Virt SM base addr */
 	u32 ulTLBBaseVirt;	/* Base of MMU TLB entry */
 	u32 ulShmOffsetVirt;	/* offset of ulShmBaseVirt from ulTLBBaseVirt */
+	u32 temp;
+	struct CFG_HOSTRES resources;
 	s32 iEntryNdx;
 	s32 itmpEntryNdx = 0;	/* DSP-MMU TLB entry base address */
-	struct CFG_HOSTRES resources;
-	u32 temp;
+#ifdef OMAP_3430
 	u32 ulDspClkRate;
 	u32 ulDspClkAddr;
 	u32 ulBiosGpTimer;
 	u32 uClkCmd;
-	struct IO_MGR *hIOMgr;
-	register u32 newAdress = ((u32)(dwDSPAddr));
-
 	u32 ulLoadMonitorTimer;
 	u32 extClkId = 0;
 	u32 tmpIndex;
 	u32 clkIdIndex = MBX_PM_MAX_RESOURCES;
+#endif
+	struct IO_MGR *hIOMgr;
+	register u32 newAdress = ((u32)(dwDSPAddr));
 
 	DBG_Trace(DBG_ENTER, "Entering WMD_BRD_Start:\n hDevContext: 0x%x\n\t "
 			     "dwDSPAddr: 0x%x\n", hDevContext, dwDSPAddr);
@@ -851,10 +859,11 @@ static DSP_STATUS WMD_BRD_Stop(struct WMD_DEV_CONTEXT *hDevContext)
 	DSP_STATUS status = DSP_SOK;
 	struct WMD_DEV_CONTEXT *pDevContext = hDevContext;
 	struct CFG_HOSTRES resources;
+#ifdef OMAP_3430
 	struct PgTableAttrs *pPtAttrs;
 	u32 dspPwrState;
 	DSP_STATUS clk_status;
-
+#endif
 	DBG_Trace(DBG_ENTER, "Entering WMD_BRD_Stop:\nhDevContext: 0x%x\n",
 		  hDevContext);
 
@@ -948,7 +957,9 @@ static DSP_STATUS WMD_BRD_Delete(struct WMD_DEV_CONTEXT *hDevContext)
 	struct WMD_DEV_CONTEXT *pDevContext = hDevContext;
 	struct CFG_HOSTRES resources;
 	struct PgTableAttrs *pPtAttrs;
+#ifdef OMAP_3430
 	DSP_STATUS clk_status;
+#endif
 
 	DBG_Trace(DBG_ENTER, "Entering WMD_BRD_Delete:\nhDevContext: 0x%x\n",
 		  hDevContext);
@@ -1208,18 +1219,28 @@ static DSP_STATUS WMD_DEV_Create(OUT struct WMD_DEV_CONTEXT **ppDevContext,
 		DBG_Trace(DBG_LEVEL7, "WMD_DEV_create:Reset mail box and "
 			  "enable the clock \n");
 #ifdef OMAP44XX
-			HW_PWR_ForceStateSet(resources.dwCm1Base, HW_PWR_DOMAIN_TESLA, HW_SW_SUP_WAKEUP);
-			HW_PWR_PowerStateSet(resources.dwPrmBase, HW_PWR_DOMAIN_TESLA, HW_PWR_STATE_ON);
-			HW_PWR_PowerStateGet(resources.dwPrmBase, HW_PWR_DOMAIN_TESLA, &pwrState);
+			HW_PWR_ForceStateSet((u32)resources.dwCm1Base,
+				HW_PWR_DOMAIN_TESLA, HW_SW_SUP_WAKEUP);
+			HW_PWR_PowerStateSet((u32)resources.dwPrmBase,
+				HW_PWR_DOMAIN_TESLA, HW_PWR_STATE_ON);
+			HW_PWR_PowerStateGet((u32)resources.dwPrmBase,
+				HW_PWR_DOMAIN_TESLA, &pwrState);
 				while (HW_PWR_STATE_ON != pwrState) {
-						iIterations++;
-						if (iIterations >= 500) {
-							HW_PWRSTCTRL_RegGet(resources.dwPrmBase, &PwrCtrl);
-							printk("Error: Failed to put the DSP domain into ON"
-								"state PRM_TESLA_PWRSTCTRL = 0x%x", PwrCtrl);
-								return DSP_EFAIL;
-						}
-						HW_PWR_PowerStateGet(resources.dwPrmBase, HW_PWR_DOMAIN_TESLA, &pwrState);
+					iIterations++;
+					if (iIterations >= 500) {
+						HW_PWRSTCTRL_RegGet((u32)
+							resources.dwPrmBase,
+							&PwrCtrl);
+						printk("Error: Failed to put"
+							" the DSP domain in ON"
+							"state"
+							" PRM_TESLA_PWRSTCTRL ="
+							" 0x%x", PwrCtrl);
+						return DSP_EFAIL;
+					}
+					HW_PWR_PowerStateGet((u32)
+						resources.dwPrmBase,
+						HW_PWR_DOMAIN_TESLA, &pwrState);
 				}
 /*			HW_CLK_Enable (resources.dwPrmBase, HW_CLK_IF_MBOX);*/
 #else
@@ -1233,7 +1254,7 @@ static DSP_STATUS WMD_DEV_Create(OUT struct WMD_DEV_CONTEXT **ppDevContext,
 		/* 24xx-Linux MMU address is obtained from the host
 		 * resources struct */
 #endif
-		pDevContext->dwDSPMmuBase = resources.dwDmmuBase;
+		pDevContext->dwDSPMmuBase = (u32)resources.dwDmmuBase;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		pDevContext->hDevObject = hDevObject;
@@ -2130,7 +2151,7 @@ static DSP_STATUS MemMapVmalloc(struct WMD_DEV_CONTEXT *pDevContext,
 	return status;
 }
 #ifdef OMAP44XX
-void GetHWRegs(u32 prm_base, u32 cm1_base, u32 cm2_base) { }
+void GetHWRegs(void __iomem *prm_base, u32 cm1_base, u32 cm2_base) { }
 
 #else
 static void GetHWRegs(void __iomem *prm_base, void __iomem *cm_base)
@@ -2183,9 +2204,9 @@ void configureDspMmu(struct WMD_DEV_CONTEXT *pDevContext, u32 dataBasePhys,
 		 endianism, elemSize, mixedSize);
 	status = CFG_GetHostResources(
 		 (struct CFG_DEVNODE *)DRV_GetFirstDevExtension(), &resources);
-	status = HW_MMU_TLBAdd(pDevContext->dwDSPMmuBase, dataBasePhys,
-				dspBaseVirt, sizeInBytes, nEntryStart,
-				&mapAttrs, HW_SET, HW_SET);
+	status = HW_MMU_TLBAdd((const void __iomem *)pDevContext->dwDSPMmuBase,
+				dataBasePhys, dspBaseVirt, sizeInBytes,
+				nEntryStart, &mapAttrs, HW_SET, HW_SET);
 }
 
 /*
