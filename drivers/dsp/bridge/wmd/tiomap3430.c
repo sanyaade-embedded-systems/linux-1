@@ -338,11 +338,11 @@ static DSP_STATUS WMD_BRD_Monitor(struct WMD_DEV_CONTEXT *hDevContext)
 		(unsigned int)resources.dwCm1Base,
 		(unsigned int)resources.dwCm2Base,
 		(unsigned int)resources.dwPrmBase);
-	HW_CLK_Disable (resources.dwCm1Base, HW_CLK_TESLA);
+	HW_CLK_Disable(resources.dwCm1Base, HW_CLK_TESLA);
 	printk("Resetting DSP...");
 	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
 	printk("Enabling Clocks...");
-	HW_CLK_Enable (resources.dwCm1Base, HW_CLK_TESLA);
+	HW_CLK_Enable(resources.dwCm1Base, HW_CLK_TESLA);
 	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
 	HW_RST_Reset(resources.dwPrmBase, HW_RST2_TESLA);
 	HW_RST_UnReset(resources.dwPrmBase, HW_RST2_TESLA);
