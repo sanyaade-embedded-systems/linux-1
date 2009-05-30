@@ -111,8 +111,11 @@ void SERVICES_Exit(void)
 bool SERVICES_Init(void)
 {
 	bool fInit = true;
-       bool fCFG, fCSL, fDBG, fDPC, fKFILE, fLST, fMEM;
-       bool fREG, fSYNC, fCLK, fUTIL, fNTFY;
+	bool fCFG, fCSL, fDBG, fDPC, fKFILE, fLST, fMEM;
+	bool fREG, fSYNC, fUTIL, fNTFY;
+#ifdef OMAP_3430
+	bool fCLK;
+#endif
 
 	DBC_Require(cRefs >= 0);
 
