@@ -226,8 +226,8 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 	struct notify_config ntfy_config;
 	struct notify_tesladrv_config tesla_cfg;
 	struct notify_tesladrv_params params;
-	u32 mem_va;
-	u32 mem_pa;
+	dma_addr_t mem_pa;
+	void *mem_va = NULL;
 	char driverName[32] = "NOTIFYMBXDRV";
 	int ntfystatus;
 	irq_handler = (void *) IO_ISR;
@@ -325,14 +325,14 @@ DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
 	if (mem_va == NULL)
 		pr_err("Memory allocation for communication failed\n");
 	
-	params.num_events          = 32;
+	params.num_events = 32;
 	params.num_reserved_events  = 0;
 	params.send_event_poll_count = (int) -1;
-	params.recv_int_id          = 26;
-	params.send_int_id          = 55;
-	params.shared_addr_size     = 0x4000;
-	params.shared_addr                = mem_va;
-	params.remote_proc_id         = 0;
+	params.recv_int_id = 26;
+	params.send_int_id = 55;
+	params.shared_addr_size = 0x4000;
+	params.shared_addr = (int)mem_va;
+	params.remote_proc_id = 0;
 
 	handle = notify_tesladrv_create(driverName, &params);
 	if (handle == NULL) {
@@ -1124,8 +1124,10 @@ void IO_ISR(IN  unsigned long int procId,
         pRefData = external_piomgr;
         hIOMgr = (struct IO_MGR *)pRefData;
 	
+#ifdef OMAP_3430
 	bool fSchedDPC;
-//       DBC_Require(irq == INT_MAIL_MPU_IRQ);
+	DBC_Require(irq == INT_MAIL_MPU_IRQ);
+#endif
 	DBC_Require(MEM_IsValidHandle(hIOMgr, IO_MGRSIGNATURE));
 	DBG_Trace(DBG_LEVEL3, "Entering IO_ISR(0x%x)\n", pRefData);
 
