@@ -72,8 +72,8 @@ static ssize_t store_rotate_type(struct device *dev,
 	ofbi->rotation_type = rot_type;
 
 	/*
-	 * Since the VRAM for this FB is not allocated at the moment we don't need to
-	 * do any further parameter checking at this point.
+	 * Since the VRAM for this FB is not allocated at the moment we don't
+	 * need to do any further parameter checking at this point.
 	 */
 out:
 	omapfb_unlock(fbdev);
@@ -474,7 +474,8 @@ int omapfb_create_sysfs(struct omapfb2_device *fbdev)
 					&omapfb_attrs[t]);
 
 			if (r) {
-				dev_err(fbdev->dev, "failed to create sysfs file\n");
+				dev_err(fbdev->dev, "failed to create sysfs "
+						"file\n");
 				return r;
 			}
 		}
