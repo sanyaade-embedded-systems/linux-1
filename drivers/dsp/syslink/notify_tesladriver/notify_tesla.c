@@ -914,7 +914,7 @@ int notify_tesladrv_enable_event(struct notify_driver_object *handle,
 
 	WARN_ON(mutex_lock_interruptible(notify_tesladriver_state.gate_handle)
 									!= 0);
-	set_bit(event_no, (unsigned long *) 
+	set_bit(event_no, (unsigned long *)
 		&driver_object->ctrl_ptr->proc_ctrl[driver_object->self_id].
 		reg_mask.enable_mask);
 
