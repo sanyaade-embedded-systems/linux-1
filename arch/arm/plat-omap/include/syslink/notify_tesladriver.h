@@ -48,7 +48,7 @@ struct notify_tesladrv_params {
 	int remote_proc_id;
 	int num_reserved_events;
 	int send_event_poll_count;
-} ;
+};
 
 /*
 *  struct    notify_tesladrv_config
@@ -74,10 +74,10 @@ struct notify_tesladrv_config {
 
 int notify_tesladrv_register_event(
 	struct notify_driver_object *handle,
-	short int        proc_id,
-	int              event_no,
-	fn_notify_cbck        fn_notify_cbck,
-	void *cbck_arg) ;
+	short int proc_id,
+	int event_no,
+	fn_notify_cbck fn_notify_cbck,
+	void *cbck_arg);
 
 /*
 *  func   notify_mbxdrv_unregevent
@@ -89,10 +89,10 @@ int notify_tesladrv_register_event(
 
 int notify_tesladrv_unregister_event(
 	struct notify_driver_object *handle,
-	short int        proc_id,
-	int        event_no,
-	fn_notify_cbck        fn_notify_cbck,
-	void *cbck_arg) ;
+	short int proc_id,
+	int event_no,
+	fn_notify_cbck fn_notify_cbck,
+	void *cbck_arg);
 
 /*
 *  func   notify_mbxdrv_sendevent
@@ -104,10 +104,8 @@ int notify_tesladrv_unregister_event(
 */
 
 int notify_tesladrv_sendevent(struct notify_driver_object *handle,
-			      short int        proc_id,
-			      int              event_no,
-			      int              payload,
-			      short int        wait_clear) ;
+	short int proc_id, int event_no,
+	int payload, short int wait_clear);
 
 /*
 *  func   notify_mbxdrv_disable
@@ -117,7 +115,7 @@ int notify_tesladrv_sendevent(struct notify_driver_object *handle,
 *
 */
 
-void * notify_tesladrv_disable(struct notify_driver_object *handle, u16 proc_Id) ;
+void *notify_tesladrv_disable(struct notify_driver_object *handle, u16 proc_Id);
 
 /*
 *  func   notify_mbxdrv_restore
@@ -129,7 +127,7 @@ void * notify_tesladrv_disable(struct notify_driver_object *handle, u16 proc_Id)
 */
 
 int notify_tesladrv_restore(struct notify_driver_object *handle,
-			    u32 key, u16 proc_id) ;
+			u32 key, u16 proc_id);
 
 /*
 *  func   notify_mbxdrv_disable_event
@@ -139,10 +137,8 @@ int notify_tesladrv_restore(struct notify_driver_object *handle,
 *
 */
 
-int notify_tesladrv_disable_event(
-	struct notify_driver_object *handle,
-	short int       proc_id,
-	int   event_no) ;
+int notify_tesladrv_disable_event(struct notify_driver_object *handle,
+	short int proc_id, int event_no);
 
 /*
 *  func   notify_mbxdrv_enable_event
@@ -152,15 +148,8 @@ int notify_tesladrv_disable_event(
 *
 */
 
-int notify_tesladrv_enable_event(
-	struct notify_driver_object *handle,
-	short int    proc_id,
-	int    event_no) ;
-
-
-
-
-
+int notify_tesladrv_enable_event(struct notify_driver_object *handle,
+	short int proc_id, int event_no);
 
 /*
 *  func   notify_tesladrv_debug
@@ -170,7 +159,7 @@ int notify_tesladrv_enable_event(
 *
 */
 
-int notify_tesladrv_debug(struct notify_driver_object *handle) ;
+int notify_tesladrv_debug(struct notify_driver_object *handle);
 
 /*
 *  func   notify_tesladrv_create
@@ -180,8 +169,8 @@ int notify_tesladrv_debug(struct notify_driver_object *handle) ;
 *
 */
 
-struct notify_driver_object * notify_tesladrv_create(char * driver_name,
-		const struct notify_tesladrv_params* params);
+struct notify_driver_object *notify_tesladrv_create(char *driver_name,
+		const struct notify_tesladrv_params *params);
 
 /*
 *  func   notify_tesladrv_delete
@@ -190,14 +179,14 @@ struct notify_driver_object * notify_tesladrv_create(char * driver_name,
 */
 
 
-int notify_tesladrv_delete(struct notify_driver_object** handlePtr);
+int notify_tesladrv_delete(struct notify_driver_object **handlePtr);
 
 /*
 *  func   notify_tesladrv_getconfig
 *
 *  desc   Get the default configuration for driver.
 */
-void notify_tesladrv_getconfig(struct notify_tesladrv_config* cfg);
+void notify_tesladrv_getconfig(struct notify_tesladrv_config *cfg);
 
 
 /*
@@ -207,7 +196,7 @@ void notify_tesladrv_getconfig(struct notify_tesladrv_config* cfg);
 */
 
 
-int notify_tesladrv_setup(struct notify_tesladrv_config * cfg);
+int notify_tesladrv_setup(struct notify_tesladrv_config *cfg);
 
 /*
 *  func   notify_tesladrv_params_init
@@ -216,7 +205,7 @@ int notify_tesladrv_setup(struct notify_tesladrv_config * cfg);
 */
 
 void notify_tesladrv_params_init(struct notify_driver_object *handle,
-				 struct notify_tesladrv_params * params);
+				 struct notify_tesladrv_params *params);
 
 /*
 *  func   notify_tesladrv_destroy
