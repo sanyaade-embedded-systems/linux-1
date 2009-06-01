@@ -952,7 +952,7 @@ static u32 _get_gpio_irqbank_mask(struct gpio_bank *bank)
 #ifdef CONFIG_ARCH_OMAP4
 		reg += OMAP24XX_GPIO_IRQ_STATUS_SET_0;
 #else
-		reg += OMAP24XX_GPIO_IRQ_STATUS_SET_0;
+		reg += OMAP24XX_GPIO_IRQENABLE1;
 #endif
 		mask = 0xffffffff;
 		break;
