@@ -140,22 +140,29 @@ void __init omap_serial_init(void)
 			p->mapbase = 0;
 			continue;
 		}
+		/*
+		* FIX-ME: Replace with correct clk node when clk
+		* framework is available
+		*/
+		if (!cpu_is_omap44xx()) {
+			sprintf(name, "uart%d_ick", i+1);
+			uart_ick[i] = clk_get(NULL, name);
+			if (IS_ERR(uart_ick[i])) {
+				printk(KERN_ERR "Could not get uart%d_ick\n",
+								 i+1);
+				uart_ick[i] = NULL;
+			} else
+				clk_enable(uart_ick[i]);
 
-		sprintf(name, "uart%d_ick", i+1);
-		uart_ick[i] = clk_get(NULL, name);
-		if (IS_ERR(uart_ick[i])) {
-			printk(KERN_ERR "Could not get uart%d_ick\n", i+1);
-			uart_ick[i] = NULL;
-		} else
-			clk_enable(uart_ick[i]);
-
-		sprintf(name, "uart%d_fck", i+1);
-		uart_fck[i] = clk_get(NULL, name);
-		if (IS_ERR(uart_fck[i])) {
-			printk(KERN_ERR "Could not get uart%d_fck\n", i+1);
-			uart_fck[i] = NULL;
-		} else
-			clk_enable(uart_fck[i]);
+			sprintf(name, "uart%d_fck", i+1);
+			uart_fck[i] = clk_get(NULL, name);
+			if (IS_ERR(uart_fck[i])) {
+				printk(KERN_ERR "Could not get uart%d_fck\n",
+								 i+1);
+				uart_fck[i] = NULL;
+			} else
+				clk_enable(uart_fck[i]);
+		}
 
 		omap_serial_reset(p);
 	}
