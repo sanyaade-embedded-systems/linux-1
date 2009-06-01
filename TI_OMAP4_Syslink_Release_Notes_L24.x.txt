@@ -1,0 +1,541 @@
+================================================================================
+OMAP4 Syslink List Handoff
+================================================================================
+
+Author		: Ramesh Gupta G / Suman Anna
+Date		: June 1 2009
+
+===========
+Summary:
+===========
+OMAP4 Syslink consists of required set of drivers for Multi Core
+communication. The communication is mainly divided into Chiron to Tesla and
+Chiron to Ducati processors. Below sections provide details on the components
+in detail.
+
+=================
+Tesla MPU Bridge
+=================
+Tesla MPU bridge is the communication driver between the Chiron and
+Tesla processor.
+
+=============
+Syslink IPC
+=============
+Syslink IPC is the communication driver between the Chiron and Ducati cores.
+
+==============
+Proc manager
+==============
+	- Implemented initial version of Proc module. Proc module controls Ducati
+	Processors and supports IPC mechanism. Ducati enabler is now part of Proc
+	module.
+	- DMM support for Ducati memory.
+
+===============
+Notify module
+===============
+	Notify module provides an abstraction to underlying communiation layer,
+	notify clients(e.g notify_tesladriver & notify_ducatidriver) would register
+	with notify driver(omap_notify) with the supported set of functions
+	and the notify users (syslink ipc, tesla bridgedriver) use
+	notify driver to use client functionalities.
+
+=============
+Sources:
+=============
+All the above module sources are available along with the
+linux-omap4 kernel sources hosted in
+
+http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=summary
+
+Tesla Bridge api and sample sources are available in omapzoom.org in below link
+
+https://omapzoom.org/gf/project/omapbridge/frs/
+?action=FrsReleaseBrowse&frs_package_id=2
+
+For syslink ipc, Notify and proc manager apis/ samples please
+contact TI counter part.
+
+=======
+Setup:
+=======
+Virtio : VPOM4430_1.08a + patch1
+CCS: Version 3.3 with VPOM simulator. For more information on CCS availability
+please contact TI.
+CCSv4 with VPOM simulator is also supported.
+
+=====================
+Build Instructions:
+=====================
+
+Building the Linux Kernel and syslink components.
+
+All syslink component sources are now available along with Kernel sources under
+the drivers/dsp folders, They can be built as modules by below steps.
+
+Tesla Bridge driver sources available in folder drivers/dsp/bridge
+
+Syslink IPC component enables communication between Chiron and Ducati cores. The
+sources for Syslink components are available in folder drivers/dsp/syslink
+
+Proc manager driver initializes and programs
+MMU page table entries which is required for Ducati image loading.
+
+Please follow the below steps to build all the drivers.
+
+From the Kernel sources run below commands.
+
+	1. export PATH varible to arm codesourcey cross compiler.
+
+	2. export ARCH=arm
+
+	3. make distclean
+
+	4. make CROSS_COMPILE=arm-none-linux-gnueabi- omap_4430sdp_defconfig
+
+	5. Run make menuconfig
+
+	6. Select drivers under
+		Deivice Drivers -->Sys_Link  --->
+						<M>  OMAP IPC Module
+						<M>  OMAP Notify Module
+						<M>  Mailbox Dispatcher
+						<M>  OMAP Notify Tesla Module
+						<M>  OMAP Notify Ducati Module
+						<M>  Syslink Procmgr
+						<M>  Proc 4430
+		Device Drivers --><M> DSP Bridge driver-->
+						[*]   DSP Bridge Debug Support
+
+		Select DSP Bridge Debug Support option as above.
+	7. Save Configuration
+
+	8. Build the kernel by running below commands.
+
+	9. Add mkimage path to the PATH variable (for uImage building).
+
+	10. make CROSS_COMPILE=arm-none-linux-gnueabi- uImage
+
+	11. On successful uImage is built under arch/arm/boot, use this uImage
+		to boot Virtio.
+
+	12. Building the modules by below commands.
+
+	13. Run below command once the kernel is built.
+
+	14. Make CROSS_COMPILE=arm-none-linux-gnueabi- modules
+
+	15. 	Bridgedriver module (bridgedriver.ko) is built under folder
+		drivers/dsp/bridge/  dspbridge module(dspbridge.ko) is built
+		under folder arch/arm/plat-omap2 which is required for bridge
+		driver.
+
+	16. Notify module (omap_notify.ko) is built under folder
+		drivers/dsp/syslink/omap_notify/
+
+	17. notify dispatcher is (notify_disp.ko) is built under folder
+		drivers/dsp/syslink/notify_dispatcher
+
+	18. notify tesla driver (notify_tesladriver.ko) is built under folder
+		drivers/dsp/syslink/notify_tesladriver
+
+	19. notify dispatcher is (notify_ducatidriver.ko) is built under folder
+		drivers/dsp/syslink/notify_ducatidriver
+
+	20. syslink proc4430 module for ducati(syslink_proci4430.ko) is built under folder
+		drivers/dsp/syslink/procmgr/proc4430/
+
+	21. syslink proc module (syslink_proc.ko) is built under folder
+		drivers/dsp/syslink/procmgr/
+
+	22. syslink ipc module for ducati (syslink_ipc.ko) is built under folder
+		drivers/dsp/syslink/multicore_ipc/
+
+	23. copy all these drivers to the target file system
+		(ram disk file system)along with the tesla binaries
+
+	24. To build all of the above drivers as part of the Kernel,
+		select the drivers and run "make uImage"
+
+=================================================================================
+Important Notes:
+	1.bridgedriver depends on dspbridge driver, omap_notify
+		notify_tesladriver and notify_dispatcher drivers
+	2. notify_ducatidriver depends on
+		omap_notify,notify_dispatcher and syslink_proc4430 drivers.
+	3. syslink_ipc driver depends on omap_notify, notify_dispatcher,
+		notify_ducatidriver, syslink_proc and syslink_proc4430 drivers.
+=================================================================================
+
+=======================================
+Building Bridge API library and samples
+=======================================
+
+Build tesla bridge libraries by running below commands.
+
+	1. Copy the pthread libraries from arm cross compiler tool chain into
+		dspbridge/target/lib folder
+
+	2. cd into api folder cd /dspbridge/mpu_api
+
+	3. make PREFIX=<path to dspbridge folder>  TGTROOT=<path to dspbridge folder> clean
+
+	4. make PREFIX=<path to dspbridge folder>  TGTROOT=<path to dspbridge folder>
+
+	5. make PREFIX=<path to dspbridge folder>  TGTROOT=<path to dspbridge folder> install
+
+	6. On successful build libbridge.so, libbridge.so.2 are installed in
+		dspbridge/target/lib/ folder.
+
+Build the samples by running below commands.
+
+	1. Copy the bridge libraries libbridge.so* to folder dspbridge/samples/mpu/lib/
+
+	2. Cd dspbridge/samples/mpu/src
+
+	Run make command as below.
+
+	3. make PREFIX=<path to dspbridge folder>  TGTROOT=<path to dspbridge folder> clean
+
+	4. make PREFIX=<path to dspbridge folder>  TGTROOT=<path to dspbridge folder>
+
+	5. make PREFIX=<path to dspbridge folder>  TGTROOT=<path to dspbridge folder> install
+
+Build ducati syslink libraries by running below commands.
+
+	1. Copy the pthread and librt libraries from arm cross compiler tool chain into
+		dspbridge/target/lib folder. Also copy the libgcc.a file.
+
+	2. cd into api src folder cd /syslink/api/src
+
+	3. make PREFIX=<path to syslink folder>  TGTROOT=<path to syslink folder> clean
+
+	4. make PREFIX=<path to syslink folder>  TGTROOT=<path to syslink folder>
+
+	5. make PREFIX=<path to syslink folder>  TGTROOT=<path to syslink folder> install
+
+	6. On successful build, libutils.so, libutils.so.0, libnotify.so,
+		libipc.so, libnotify.so.2, libprocmgr.so, libprocmgr.so.2, libipc.so,
+		libipc.so.0, librcm.so, librcm.so.0  are installed in
+		syslink/target/lib/ folder.
+
+Build the syslink samples by running below commands.
+
+	1. cd syslink/samples
+
+	Run make command as below.
+
+	2. make PREFIX=<path to syslink folder>  TGTROOT=<path to syslink folder> clean
+
+	3. make PREFIX=<path to syslink folder>  TGTROOT=<path to syslink folder>
+
+	4. The sample .out files are build in the respective source directories
+		underneath syslink/samples folder.
+
+========================================
+Building Tesla images and Ducati samples
+========================================
+	1. Install the CCS and get the CGtools for Tesla and ARM (for Ducati)
+	2. Upgrade the BIOS to the latest from T.I website
+	3. https://www-a.ti.com/downloads/sds_support/targetcontent/index.html
+	4. Follow the DSP Application guide to build DSP samples.
+	5. Framework components present in the tarball that is uploaded and also
+		on TI website where BIOS is found.
+	6. Contact TI representative for Tesla/Ducati images.
+
+
+=======================
+Running Tesla Samples
+=======================
+
+	1. Boot the kernel with Ramdisk consisting all the drivers and Tesla
+		images, samples, API libraries.
+
+	2. Once kernel is booted, cd into the folder where all the binaries are
+		placed.
+
+	3. install all the drivers in the sequence as below
+
+		insmod omap_notify.ko
+
+		insmod notify_disp.ko
+
+		insmod notify_tesladriver.ko
+
+		insmod dspbridge.ko
+
+		insmod bridgedriver.ko
+
+	4. Create device node for bridgedriver accordingly
+		by checking the /proc/devices.
+
+		e.g: mknod /dev/DspBridge c 253 0
+
+	5.Load the image using cexec.out
+
+		./cexec.out ddspbase_tiomap4430.dof64T
+
+	6. This loads image and waits the sync mask to be cleared by DSP.
+		DSP Start address is displayed  as below.
+
+	- - - DSP Start Address [0x2104b000]- - -
+
+
+	7. Copy the above start address (0x2104b000), Go to Virtio IDE and break
+		the system by typing 'y' in the virtio console.
+
+	8. Open the Code Composer Studio, select Open Tesla.
+
+	9. Open the register window and modify the PC with the DSP Start
+		address (0x2104b000).
+
+	10. In CCS hit F11 key for several times (at least 5-10 times) and then
+		press F5.
+
+	11. Go back to Teraterm where cexec completes and DSP is started. Now we
+		are ready to run dsp samples, below are the commands for running
+		samples.
+
+		./scale.out 10
+		./zerocopymsg.out
+		./strmcopy.out 0 install_bridge out-strm-file.
+		./ping.out 10
+		./dmmcopy.out inoustall_bridge out-dmm-file
+
+
+Running Bridge Samples in Dynamic loading mode:
+
+	1. Boot Virtio
+
+	2. Install all the 3 driver using the script as mentioned in above section.
+		This step is not required if all the drivers are build as part of the
+		kernel.
+
+	3. load dynbase image.
+		./cexec.out dynbase_tiomap4430.dof64T
+
+	4. Follow same procedure as above in Section to start DSP. With CCS
+
+	5. Register the required dll as below.
+		./dynreg.out -r strmcopydyn_4430.dll64T
+
+	6. Run the strmcopy sample.
+		./strmcopy.out 0 install_bridge out-strm
+
+================================================================================
+Important Note3: Due to some limitations we cannot run 2 different samples at
+one time in dynamic loading mode. One needs to reboot Virtio for running other
+sample.
+================================================================================
+
+=======================
+Running Syslink Samples
+=======================
+
+	1. Boot the kernel with ramdisk consisting all the drivers and Syslink
+		samples, API libraries. Ducati images need not be part of the ramdisk.
+
+	2. Once kernel is booted, cd into the folder where all the binaries are
+		placed.
+
+	3. install all the drivers in the sequence as below
+
+		insmod omap_notify.ko
+
+		insmod notify_disp.ko
+
+		insmod notify_ducatidriver.ko
+
+		insmod syslink_proc.ko
+
+		insmod syslink_proc4430.ko
+
+		insmod syslink_ipc.ko
+
+	4. Create device node for syslink components accordingly
+		by checking the /proc/devices.
+
+		mknod /dev/ipcnotify c 232 0
+
+		mknod /dev/notifyducatidrv c 234 0
+
+		mkdir /dev/syslinkipc
+
+		mknod /dev/syslinkipc/ProcMgr c 254 0
+
+		mknod /dev/syslink-proc4430 c 253 0
+
+		mknod /dev/syslink_ipc c 252 0
+
+	5. Configure the Proc module by running the following command. This
+		sets up the drivers for running the syslink samples.
+
+		insmod procmgr_app.ko
+
+	6. Run the samples by running the corresponding .out files
+
+		eg: ./messagequ.out
+
+	7. Load the Ducati baseimage when prompted using CCS.
+
+
+==============================
+Validating the Ducati Driver
+==============================
+
+One can validate the Ducati enabler driver by running below steps.
+-------------------------------------------------------------------------------
+Important Note4: CCS need to be configured for "VPOMAP 4 Platform Simulator"
+
+Remove the IVAHD-iCONT1, IVAHD-iCONT2, and Modena.
+
+The System Configuration must have only Tesla and Duati-ARM-M3-1, Ducati-ARM-M3-2
+-------------------------------------------------------------------------------
+
+Two baseimages Bios6Boot.xm3 and Bios6Boot_Core1.xm3 can be used to validate
+the BIOS6 boot validation on each of the cores respectively.
+
+Please contact TI representative for these images.
+
+The following steps detail the boot on Core0. Similar procedure can be followed
+to boot the Core1 as well.
+
+	1. Boot the Virtio as usual.
+
+	2. Break the platform by typing 'y' in the Virtio Console after the bash
+		shell prompt appears.
+
+	3. install below drivers in below sequence.
+
+		insmod omap_notify.ko
+
+		insmod notify_disp.ko
+
+		insmod syslink_proc4430.ko
+
+		insmod notify_ducatidriver.ko
+
+	4. The syslink_proc4430 driver programs MMU and
+		updates page table entries.
+
+	5. Break the Virtio by typing y in console.
+
+	6. Open CCS and select Ducati core.
+
+	7. Load the base image into Ducati core0.
+
+	8. In Virtio design , browse to
+		VPOM4430->SDP->OMAP4430-> InitValue_DUCATI_SYS_1. Right click and open.
+
+		Right click on Signal (InitValue) and select Send Signal To Platform.
+		Send 1 and press OK. This resets the core.
+
+	9. Press F11 once to have the Reset release become effective.
+		Note that the PC does not change here and the SP is updated.
+		Press F11 couple more times to make sure Ducati is executing
+		and thereafter you can press F5.
+
+Running Notify ping sample on Ducati:
+-------------------------------------
+	1. Boot Vartio as usual.
+	2. Follow the same steps as above install required drivers (step 3
+		above).
+	3. create nodes for ipcnotify and notifyducatidrv accordinngly.
+		e.g: mknod /dev/ipcnotify c 232 0
+		     mknod /dev/notifyducatidrv c 234 0
+	4. run notifyping.out sample.
+
+	5. The sample keeps in a loop while sending events and
+		checking for ducati side initialization.
+
+	6. Break the Virtio by typing y in console.
+
+	7. Open CCS and select Ducati-ARM-M3-1  core.
+
+	6. Load  ducati image (notifyxfer_bios6.xm3) image.
+
+	7. Open source file notifyxfer_bios6.c file and add some breakpoints
+		in the main function.
+
+	8. Press F11 once to have the Reset release become effective.
+		Note that the PC does not change here and the SP is updated.
+		Press F11 couple more times to make sure Ducati is executing
+		and thereafter you can press F5.
+	9. One can observe Ducati receiving the events from Chiron
+		calling the call back function and sending event back to Chiron.
+
+	10. The Notifyping sample running on the Chiron shows event messages
+	and call back function messages.
+
+================================================================================
+Highlights / Important Notes
+================================================================================
+
+==============
+Tesla Bridge
+==============
+Features Introduced
+--------------------------
+- All modules now can be built alng with the Kernel.
+- Fixed checkpatch errors and warnings for all modules under syslink.
+- Dynamic Loading Support has been added.
+- Bridge Trace Support has been added.
+- All basic bridge features, messaging, processor copy streaming, dmmcopy,
+	zerocopy messaging in static and dynamic loading are validated.
+
+==============
+Syslink
+==============
+- First version of Syslink IPC code.
+
+Ducati Bridge
+==============
+- Elf Image support.
+- Ducati MMU Programming.
+- Page table entries updation.
+- Loading and running a Ducati image.
+- Validation using notify ping sample
+- BIOS30 and XDC39 Support.
+- IPC33 and FC36-RCM alignment.
+
+
+Important Notes
+--------------------
+	- Set the bootargs to use only 54M, this is required for Ducati testing.
+		Run below command in u-boot prompt.
+
+	set bootargs root=/dev/ram0 rw mem=54M console=ttyS0,115200n8
+	initrd=0x81600000,20M ramdisk_size=20480
+
+	- Code Composer Studio is required to write the Start DSP Address to the
+		PC register
+	* CCS_v3.3_SR9_79.exe or CCS_v3.3_SR10_80.exe or CCS_v3.3_SR11
+	* Install ccs_VPOMAP4_1.00.02.zip located at
+		C:\Virtio\Platforms\VPOM4430\CCS
+	* Use Tesla - VPOMAP 4 Platform Simulator.
+	* Please contact your TI representative for further information on
+		Code Composer Studio (CCS)
+
+	- Basic Validation for Tesla Bridge was done with samples in
+	Static and dynamic mode:
+		Dmmcopy, Zcmsg, Strmcopy, Scale and Ping
+	- Basic validation for Ducati image with loading ducati imeges
+		and Notify ping sample.
+
+==================================
+Issues Resolved
+==================================
+	- Due to timing issues some of the static samples were not
+		working properly. This issue got fixed. Please refer
+		TI internal tracking id:OMAPS00198805
+
+==================================
+Known Issues
+==================================
+	1. Running dynamic samples second time failing, one has to restart
+		Virtio for running another dyncamic sample.
+	2. Due to mailbox changes in Virtio1.06a version, Bridge 24.0.8 release
+		is not backward compatible with Virtio versions < 1.06a.
+	3. Notipy ping sample some times not working because of timing issues.
+		Need to have break points in Ducati side.
