@@ -1057,20 +1057,24 @@ defined(CONFIG_ARCH_OMAP4)
 
 	spin_lock_init(&mcspi->lock);
 	INIT_LIST_HEAD(&mcspi->msg_queue);
-
-	mcspi->ick = clk_get(&pdev->dev, "ick");
-	if (IS_ERR(mcspi->ick)) {
-		dev_dbg(&pdev->dev, "can't get mcspi_ick\n");
-		status = PTR_ERR(mcspi->ick);
-		goto err1a;
+	/*
+	* FIX-ME: Replace with correct clk node when clk
+	* framework is available
+	*/
+	if (!cpu_is_omap44xx()) {
+		mcspi->ick = clk_get(&pdev->dev, "ick");
+		if (IS_ERR(mcspi->ick)) {
+			dev_dbg(&pdev->dev, "can't get mcspi_ick\n");
+			status = PTR_ERR(mcspi->ick);
+			goto err1a;
+		}
+		mcspi->fck = clk_get(&pdev->dev, "fck");
+		if (IS_ERR(mcspi->fck)) {
+			dev_dbg(&pdev->dev, "can't get mcspi_fck\n");
+			status = PTR_ERR(mcspi->fck);
+			goto err2;
+		}
 	}
-	mcspi->fck = clk_get(&pdev->dev, "fck");
-	if (IS_ERR(mcspi->fck)) {
-		dev_dbg(&pdev->dev, "can't get mcspi_fck\n");
-		status = PTR_ERR(mcspi->fck);
-		goto err2;
-	}
-
 	mcspi->dma_channels = kcalloc(master->num_chipselect,
 			sizeof(struct omap2_mcspi_dma),
 			GFP_KERNEL);
