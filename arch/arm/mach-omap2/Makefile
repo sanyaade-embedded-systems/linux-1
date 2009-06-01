@@ -3,11 +3,11 @@
 #
 
 # Common support
-obj-y := id.o io.o control.o mux.o devices.o serial.o gpmc.o timer-gp.o
+obj-y := id.o io.o control.o mux.o devices.o serial.o gpmc.o timer-gp.o clock.o prcm.o
 
 omap-2-3-common				= irq.o sdrc.o
-prcm-common				= prcm.o powerdomain.o
-clock-common				= clock.o clockdomain.o
+prcm-common				= powerdomain.o
+clock-common				= clockdomain.o
 
 obj-$(CONFIG_ARCH_OMAP2) += $(omap-2-3-common) $(prcm-common) $(clock-common)
 obj-$(CONFIG_ARCH_OMAP3) += $(omap-2-3-common) $(prcm-common) $(clock-common)
@@ -35,6 +35,7 @@ endif
 # Clock framework
 obj-$(CONFIG_ARCH_OMAP2)		+= clock24xx.o
 obj-$(CONFIG_ARCH_OMAP3)		+= clock34xx.o
+obj-$(CONFIG_ARCH_OMAP4)		+= clock44xx.o
 
 # Specific board support
 obj-$(CONFIG_MACH_OMAP_GENERIC)		+= board-generic.o
