@@ -1611,14 +1611,21 @@ static int __init _omap_gpio_init(void)
 #endif
 
 #if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
+	/*
+	* FIX-ME: Replace with correct clk node when clk
+	* framework is available
+	*/
 	if (cpu_is_omap34xx() || cpu_is_omap44xx()) {
-		for (i = 0; i < OMAP34XX_NR_GPIOS; i++) {
-			sprintf(clk_name, "gpio%d_ick", i + 1);
-			gpio_iclks[i] = clk_get(NULL, clk_name);
-			if (IS_ERR(gpio_iclks[i]))
-				printk(KERN_ERR "Could not get %s\n", clk_name);
-			else
-				clk_enable(gpio_iclks[i]);
+		if (!cpu_is_omap44xx()) {
+			for (i = 0; i < OMAP34XX_NR_GPIOS; i++) {
+				sprintf(clk_name, "gpio%d_ick", i + 1);
+				gpio_iclks[i] = clk_get(NULL, clk_name);
+				if (IS_ERR(gpio_iclks[i]))
+					printk(KERN_ERR "Could not get %s\n",
+								 clk_name);
+				else
+					clk_enable(gpio_iclks[i]);
+			}
 		}
 	}
 #endif
@@ -1788,12 +1795,18 @@ static int __init _omap_gpio_init(void)
 		}
 		set_irq_chained_handler(bank->irq, gpio_irq_handler);
 		set_irq_data(bank->irq, bank);
-
+		/*
+		* FIX-ME: Replace with correct clk node when clk
+		* framework is available
+		*/
 		if (cpu_is_omap34xx() || cpu_is_omap44xx()) {
-			sprintf(clk_name, "gpio%d_dbck", i + 1);
-			bank->dbck = clk_get(NULL, clk_name);
-			if (IS_ERR(bank->dbck))
-				printk(KERN_ERR "Could not get %s\n", clk_name);
+			if (!cpu_is_omap44xx()) {
+				sprintf(clk_name, "gpio%d_dbck", i + 1);
+				bank->dbck = clk_get(NULL, clk_name);
+				if (IS_ERR(bank->dbck))
+					printk(KERN_ERR "Could not get %s\n",
+								clk_name);
+			}
 		}
 	}
 
