@@ -64,4 +64,13 @@ config SND_OMAP_SOC_OMAP3_BEAGLE
 	help
 	  Say Y if you want to add support for SoC audio on the Beagleboard.
 
+config SND_OMAP_SOC_SDP4430
+	tristate "SoC Audio support for Texas Instruments SDP4430"
+	depends on SND_OMAP_SOC && MACH_OMAP_4430SDP
+	select SND_OMAP_SOC_MCBSP
+	select SND_SOC_TWL4030
+	help
+	  Say Y if you want to add support for SoC audio on Texas Instruments.
+	  It uses a TWL4030 stubbed out.
+	  SDP4430.
 
