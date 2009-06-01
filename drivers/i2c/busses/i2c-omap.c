@@ -902,9 +902,14 @@ omap_i2c_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, dev);
-
-	if ((r = omap_i2c_get_clocks(dev)) != 0)
-		goto err_iounmap;
+	/*
+	* FIX-ME: Replace with correct clk node when clk
+	* framework is available
+	*/
+	if (!cpu_is_omap44xx()) {
+		if ((r = omap_i2c_get_clocks(dev)) != 0)
+			goto err_iounmap;
+	}
 
 	omap_i2c_unidle(dev);
 
