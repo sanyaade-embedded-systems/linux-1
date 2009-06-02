@@ -23,10 +23,10 @@ The kernel is based on Linux-omap version 2.6.30 -rc6 from open source.
 U-boot is based on open-source version 1.1.4.
 
 The u-boot source can be obtained via GIT from:
-http://git.omapzoom.org/?p=repo/u-boot.git;a=shortlog;h=refs/heads/omap4_dev
+  http://git.omapzoom.org/?p=repo/u-boot.git;a=shortlog;h=refs/heads/omap4_dev
 
 The kernel source can be obtained via GIT from:
-	http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=summary
+  http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=summary
 
 Virtio version used: VPOM4430_1.08a + VPOM4430_1.08a_Patch1.var
 
@@ -34,8 +34,8 @@ All drivers planned for this release are working as expected and
 overall platform stability is good.
 
 current L24.0.8 support:
-	SMP OS Kernel boot-up on with UART,GPTimers,
-			McBSP,McSPI,I2c	,GPIO,WATCHDOG.
+	SMP OS Kernel boot-up on with UART, GPTimers, McBSP, McSPI, I2c, 
+	GPIO, WATCHDOG.
 
 3.  Instructions
 ----------------
@@ -48,12 +48,14 @@ This release works on VPOM4430_1.08a_Patch1.
 3.2 Virtio Installation Instructions
 
 a. Install to C:\Virtio
-b. Once installation for virtio is started, you will be prompted for installation
+b. Once installation for virtio is started, you will be prompted for
+   installation
    for virtual serial port. Say yes to it and give a port number (say 5 or 6).
    Multiple serial ports can also be installed.
-c. Install C:\Virtio\Shared\Disassembler\Setup\VirtioDisassembler.exe. This is to
-   enable debugging using virtio
-d. License for virtio has to be set in the environment variables LM_LICENSE_FILE.
+c. Install C:\Virtio\Shared\Disassembler\Setup\VirtioDisassembler.exe.
+   This is to enable debugging using virtio.
+d. License for virtio has to be set in the environment variables
+   LM_LICENSE_FILE.
 e. Install VPOM4430_1.08a_Patch1.
 
 
@@ -73,7 +75,8 @@ b. If IVAHD is enabled the image boot up takes lot of time. If IVAHD component
 c. Open the Params tab and look at the User Parameters. Set the UARTx_COM_PORT
    to the virtual port number you had provided while installation.
 d. Both CPU cores support has been enabled.
-e. L2 Cache is not enabled in software. This requires the cache to be turned off   in the Virtio parameter list too. For this browse to
+e. L2 Cache is not enabled in software. This requires the cache to be turned 
+   off in the Virtio parameter list too. For this browse to
    VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1 and set the CacheDisabled parameter
    to true. Browse to VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_2 and set the
    CacheDisabled parameter to true.Also browse to
@@ -340,7 +343,8 @@ initrd=0x81600000,20M ramdisk_size=20480
 
 You should see the kernel booting and ramdisk getting loaded in a few seconds
 
-NOTE: The kernel binary used is arch/arm/boot/uImage and not arch/arm/boot/Image.
+NOTE: The kernel binary used is arch/arm/boot/uImage and 
+      not arch/arm/boot/Image.
 
 
 4. Features
