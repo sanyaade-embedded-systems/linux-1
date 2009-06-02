@@ -341,11 +341,14 @@ static int __devinit omap_mcpdm_probe(struct platform_device *pdev)
 
 	mcpdm->irq = pdata->irq;
 
-	mcpdm->clk = clk_get(&pdev->dev, "fclk");
-	if (IS_ERR(mcpdm->clk)) {
-		ret = PTR_ERR(mcpdm->clk);
-		dev_err(&pdev->dev, "unable to get fclk: %d\n", ret);
-		goto err_clk;
+	/* FIXME: Enable this ones correct clk nodes available */
+	if (!cpu_is_omap44xx()) {
+		mcpdm->clk = clk_get(&pdev->dev, "fclk");
+		if (IS_ERR(mcpdm->clk)) {
+			ret = PTR_ERR(mcpdm->clk);
+			dev_err(&pdev->dev, "unable to get fclk: %d\n", ret);
+			goto err_clk;
+		}
 	}
 
 	mcpdm->pdata = pdata;
