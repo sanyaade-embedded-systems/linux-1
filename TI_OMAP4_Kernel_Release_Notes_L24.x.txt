@@ -378,6 +378,9 @@ NA
 	None of the DPLL set_rate and recalc functions are implemented.
 
 -Audio
+	ALSA SoC compliant
+	McBSP Audio Stub
+	Added McPDM driver
 
 -Video
 	No support yet
