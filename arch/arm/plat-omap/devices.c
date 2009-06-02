@@ -27,7 +27,6 @@
 #include <mach/gpio.h>
 #include <mach/menelaus.h>
 #include <mach/mcbsp.h>
-#include <mach/mcpdm.h>
 #include <mach/dsp_common.h>
 
 #if	defined(CONFIG_OMAP_DSP) || defined(CONFIG_OMAP_DSP_MODULE)
@@ -190,32 +189,6 @@ void omap_mcbsp_register_board_cfg(struct omap_mcbsp_platform_data *config,
 					int size)
 {  }
 #endif
-
-/*-------------------------------------------------------------------------*/
-#if defined(CONFIG_OMAP_MCPDM)
-
-static struct omap_mcpdm_platform_data mcpdm_pdata = {
-	.phys_base = OMAP44XX_MCPDM_BASE,
-	.irq = INT_44XX_MCPDM_IRQ,
-};
-
-static struct platform_device omap_mcpdm_device = {
-	.name	= "omap-mcpdm",
-	.id	= -1,
-	.dev = {
-		.platform_data = &mcpdm_pdata,
-	},
-
-};
-
-static void omap_init_mcpdm(void)
-{
-	(void) platform_device_register(&omap_mcpdm_device);
-}
-#else
-static inline void omap_init_mcpdm(void) {}
-#endif
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -411,7 +384,6 @@ static int __init omap_init_devices(void)
 	 */
 	omap_init_dsp();
 	omap_init_kp();
-	omap_init_mcpdm();
 	omap_init_uwire();
 	omap_init_wdt();
 	omap_init_rng();

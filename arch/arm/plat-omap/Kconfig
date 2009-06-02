@@ -112,13 +112,6 @@ config OMAP_MCBSP
 	  Say Y here if you want support for the OMAP Multichannel
 	  Buffered Serial Port.
 
-config OMAP_MCPDM
-	bool "McPDM support"
-	depends on ARCH_OMAP4
-	default y
-	help
-	  Support for Multichannel Pulse Density modulation in OMAP4
-
 config OMAP_MBOX_FWK
 	tristate "Mailbox framework support"
 	depends on ARCH_OMAP
