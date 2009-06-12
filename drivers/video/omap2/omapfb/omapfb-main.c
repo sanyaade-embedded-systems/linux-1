@@ -1171,6 +1171,13 @@ static void omapfb_free_fbmem(struct fb_info *fbi)
 	rg->size = 0;
 }
 
+static void clear_fb_info(struct fb_info *fbi)
+{
+	memset(&fbi->var, 0, sizeof(fbi->var));
+	memset(&fbi->fix, 0, sizeof(fbi->fix));
+	strlcpy(fbi->fix.id, MODULE_NAME, sizeof(fbi->fix.id));
+}
+
 static int omapfb_free_all_fbmem(struct omapfb2_device *fbdev)
 {
 	int i;
@@ -1180,8 +1187,7 @@ static int omapfb_free_all_fbmem(struct omapfb2_device *fbdev)
 	for (i = 0; i < fbdev->num_fbs; i++) {
 		struct fb_info *fbi = fbdev->fbs[i];
 		omapfb_free_fbmem(fbi);
-		memset(&fbi->fix, 0, sizeof(fbi->fix));
-		memset(&fbi->var, 0, sizeof(fbi->var));
+		clear_fb_info(fbi);
 	}
 
 	return 0;
@@ -1509,8 +1515,7 @@ int omapfb_realloc_fbmem(struct fb_info *fbi, unsigned long size, int type)
 	omapfb_free_fbmem(fbi);
 
 	if (size == 0) {
-		memset(&fbi->fix, 0, sizeof(fbi->fix));
-		memset(&fbi->var, 0, sizeof(fbi->var));
+		clear_fb_info(fbi);
 		return 0;
 	}
 
@@ -1520,10 +1525,8 @@ int omapfb_realloc_fbmem(struct fb_info *fbi, unsigned long size, int type)
 		if (old_size)
 			omapfb_alloc_fbmem(fbi, old_size, old_paddr);
 
-		if (rg->size == 0) {
-			memset(&fbi->fix, 0, sizeof(fbi->fix));
-			memset(&fbi->var, 0, sizeof(fbi->var));
-		}
+		if (rg->size == 0)
+			clear_fb_info(fbi);
 
 		return r;
 	}
@@ -1556,8 +1559,7 @@ int omapfb_realloc_fbmem(struct fb_info *fbi, unsigned long size, int type)
 	return 0;
 err:
 	omapfb_free_fbmem(fbi);
-	memset(&fbi->fix, 0, sizeof(fbi->fix));
-	memset(&fbi->var, 0, sizeof(fbi->var));
+	clear_fb_info(fbi);
 	return r;
 }
 
@@ -1565,7 +1567,6 @@ err:
 int omapfb_fb_init(struct omapfb2_device *fbdev, struct fb_info *fbi)
 {
 	struct fb_var_screeninfo *var = &fbi->var;
-	struct fb_fix_screeninfo *fix = &fbi->fix;
 	struct omap_dss_device *display = fb2display(fbi);
 	struct omapfb_info *ofbi = FB2OFB(fbi);
 	int r = 0;
@@ -1727,6 +1728,8 @@ static int omapfb_create_framebuffers(struct omapfb2_device *fbdev)
 				"unable to allocate memory for plane info\n");
 			return -ENOMEM;
 		}
+
+		clear_fb_info(fbi);
 
 		fbdev->fbs[i] = fbi;
 
