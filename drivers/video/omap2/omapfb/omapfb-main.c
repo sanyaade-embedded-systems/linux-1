@@ -848,12 +848,9 @@ static int omapfb_pan_display(struct fb_var_screeninfo *var,
 		struct fb_info *fbi)
 {
 	struct omapfb_info *ofbi = FB2OFB(fbi);
-	struct omapfb2_device *fbdev = ofbi->fbdev;
 	int r = 0;
 
 	DBG("pan_display(%d)\n", ofbi->id);
-
-	omapfb_lock(fbdev);
 
 	if (var->xoffset != fbi->var.xoffset ||
 	    var->yoffset != fbi->var.yoffset) {
@@ -871,8 +868,6 @@ static int omapfb_pan_display(struct fb_var_screeninfo *var,
 			r = omapfb_apply_changes(fbi, 0);
 		}
 	}
-
-	omapfb_unlock(fbdev);
 
 	return r;
 }
