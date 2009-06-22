@@ -940,10 +940,6 @@ static int __init da850_init_devices(void)
 	platform_device_register(&da850_edma0_device);
 	platform_device_register(&da850_edma1_device);
 	platform_device_register(&da850_ohci_device);
-#ifdef CONFIG_SATA_AHCI
-	/* Enable SATA CLK Power */
-	__raw_writel(0, IO_ADDRESS(DA850_SATA_CLK_PWRDN));
-#endif
 	platform_device_register(&da850_ahci_device);
 
 	return 0;

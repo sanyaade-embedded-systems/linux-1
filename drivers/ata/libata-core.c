@@ -63,6 +63,8 @@
 #include <linux/libata.h>
 #include <asm/byteorder.h>
 #include <linux/cdrom.h>
+#include <linux/platform_device.h>
+#include <linux/clk.h>
 
 #include "libata.h"
 
@@ -6333,7 +6335,30 @@ int ata_pci_device_resume(struct pci_dev *pdev)
 }
 #endif /* CONFIG_PM */
 
+#else
+/**
+ *	ata_plat_remove_one - Platform callback for device removal
+ *	@pdev: Platform device that was removed
+ *
+ *	Platform layer indicates to libata via this hook that hot-unplug or
+ *	module unload event has occurred.  Detach all ports.  Resource
+ *	release is handled via devres.
+ *
+ *	LOCKING:
+ */
+void ata_plat_remove_one(struct platform_device *pdev)
+{
+	struct device *dev = &pdev->dev;
+	struct ata_host *host = dev_get_drvdata(dev);
+
+	ata_host_detach(host);
+	clk_disable(host->clock);
+	/* Call platform Specific remove function */
+	ata_plat_remove(host);
+}
+
 #endif /* CONFIG_PCI */
+
 
 static int __init ata_parse_force_one(char **cur,
 				      struct ata_force_ent *force_ent,
@@ -6724,7 +6749,9 @@ EXPORT_SYMBOL_GPL(ata_pci_device_do_resume);
 EXPORT_SYMBOL_GPL(ata_pci_device_suspend);
 EXPORT_SYMBOL_GPL(ata_pci_device_resume);
 #endif /* CONFIG_PM */
-#endif /* CONFIG_PCI */
+#else
+EXPORT_SYMBOL_GPL(ata_plat_remove_one);
+#endif  /* CONFIG_PCI */
 
 EXPORT_SYMBOL_GPL(__ata_ehi_push_desc);
 EXPORT_SYMBOL_GPL(ata_ehi_push_desc);
