@@ -180,6 +180,24 @@ int __init cppi41_queue_mgr_init(u8 q_mgr, dma_addr_t rgn0_base, u16 rgn0_size)
 
 	return 0;
 }
+EXPORT_SYMBOL(cppi41_queue_mgr_init);
+
+int cppi41_dma_sched_tbl_init(u8 dmanum, u8 qmgr, u32 *sch_tbl, u8 tblsz)
+{
+	struct cppi41_dma_block *dma_block;
+	int num_reg, k, i, val = 0;
+
+	dma_block = (struct cppi41_dma_block *)&cppi41_dma_block[dmanum];
+
+	num_reg = (tblsz + 3) / 4;
+	for (k = 0, i = 0; i < num_reg; i++) {
+		val = sch_tbl[i];
+		__raw_writel(val, dma_block->sched_table_base +
+			DMA_SCHED_TABLE_WORD_REG(i));
+	}
+	return 0;
+}
+EXPORT_SYMBOL(cppi41_dma_sched_tbl_init);
 
 int __init cppi41_dma_block_init(u8 dma_num, u8 q_mgr, u8 num_order,
 				 u32 *sched_tbl, u8 tbl_size)
@@ -189,7 +207,7 @@ int __init cppi41_dma_block_init(u8 dma_num, u8 q_mgr, u8 num_order,
 	dma_addr_t td_addr;
 	unsigned num_desc, num_reg;
 	void *ptr;
-	int error, i, j, k;
+	int error, i, k;
 	u16 q_num;
 	u32 val;
 
@@ -303,7 +321,7 @@ free_queue:
 	cppi41_queue_free(q_mgr, q_num);
 	return error;
 }
-
+EXPORT_SYMBOL(cppi41_dma_block_init);
 /*
  * cppi41_mem_rgn_alloc - allocate a memory region within the queue manager
  */
@@ -642,6 +660,18 @@ void cppi41_dma_ch_disable(struct cppi41_dma_ch_obj *dma_ch_obj)
 	    __raw_readl(dma_ch_obj->base_addr));
 }
 EXPORT_SYMBOL(cppi41_dma_ch_disable);
+
+void cppi41_free_teardown_queue(int dma_num)
+{
+	unsigned long td_addr;
+
+	do {
+		td_addr = cppi41_queue_pop(&dma_teardown[dma_num].queue_obj);
+		if (td_addr != 0)
+			DBG("pop tdDesc(%p) from tdQueue\n", td_addr);
+	} while (td_addr != 0);
+}
+EXPORT_SYMBOL(cppi41_free_teardown_queue);
 
 /**
  * alloc_queue - allocate a queue in the given range

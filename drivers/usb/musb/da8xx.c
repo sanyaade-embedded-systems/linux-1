@@ -108,8 +108,33 @@ u32 dma_sched_table[] = {
 int __init cppi41_init(void);
 extern int __init cppi41_queue_mgr_init(u8 q_mgr, dma_addr_t rgn0_base, u16 rgn0_size);
 extern int __init cppi41_dma_block_init(u8 dma_num, u8 q_mgr, u8 num_order,
-                                 u32 *sched_tbl, u8 tbl_size);
+				u32 *sched_tbl, u8 tbl_size);
+
 #endif /* CONFIG_USB_TI_CPPI41_DMA */
+
+#ifdef CONFIG_USB_TI_CPPI41_DMA
+int cppi41_disable_sched_rx(void)
+{
+	u16 numch = 7, blknum = usb_cppi41_info.dma_block;
+	dma_sched_table[0] = 0x02810100;
+	dma_sched_table[1] = 0x830382;
+	cppi41_dma_sched_tbl_init(blknum, usb_cppi41_info.q_mgr,
+			dma_sched_table, numch);
+	return 0;
+}
+
+int cppi41_enable_sched_rx(void)
+{
+	u16 numch = 8, blknum = usb_cppi41_info.dma_block;
+
+	dma_sched_table[0] = 0x81018000;
+	dma_sched_table[1] = 0x83038202;
+
+	cppi41_dma_sched_tbl_init(blknum, usb_cppi41_info.q_mgr,
+			dma_sched_table, numch);
+	return 0;
+}
+#endif
 
 /*
  * REVISIT (PM): we should be able to keep the PHY in low power mode most
@@ -185,6 +210,7 @@ void musb_platform_enable(struct musb *musb)
 	mask = ((musb->epmask & DA8XX_TX_EP_MASK) << USB_INTR_TX_SHIFT) |
 	       ((musb->epmask & DA8XX_RX_EP_MASK) << USB_INTR_RX_SHIFT) |
 	       (0x01ff << USB_INTR_USB_SHIFT);
+
 	musb_writel(reg_base, USB_INTR_MASK_SET_REG, mask);
 
 	/* Force the DRVVBUS IRQ so we can start polling for ID change. */
@@ -335,9 +361,8 @@ static irqreturn_t da8xx_interrupt(int irq, void *hci)
 		 * substitute for the interrupt status register and reading it
 		 * directly for speed.
 		 */
-#if 1
 		pend0 = musb_readl(reg_base, QMGR_PEND0_REG);
-#endif
+
 		if (pend0 & (0xf << 24)) {		/* queues 24 to 27 */
 			u32 tx = (pend0 >> 24) & 0x3;
 			u32 rx = (pend0 >> 26) & 0x3;
@@ -346,6 +371,10 @@ static irqreturn_t da8xx_interrupt(int irq, void *hci)
 			cppi41_completion(musb, rx, tx);
 			ret = IRQ_HANDLED;
 		}
+
+		/* handle the undocumented starvation interrupt bit:28 */
+		if (pend0 & 0x10000000)
+			ret = IRQ_HANDLED;
 	}
 
 	/* Acknowledge and handle non-CPPI interrupts */
@@ -551,6 +580,9 @@ int musb_platform_exit(struct musb *musb)
 	}
 
 	phy_off();
+
+	usb_nop_xceiv_unregister();
+
 	return 0;
 }
 #if 0

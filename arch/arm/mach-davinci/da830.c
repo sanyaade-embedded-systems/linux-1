@@ -207,6 +207,18 @@ static struct clk arm_clk = {
 	.flags		= ALWAYS_ENABLED,
 };
 
+static struct clk usb0_clk = {
+	.name           = "usb0",
+	.parent         = &pll0_sysclk2,
+	.lpsc           = DA8XX_LPSC_USB20,
+};
+
+static struct clk usb1_clk = {
+	.name           = "usb1",
+	.parent         = &pll0_sysclk4,
+	.lpsc           = DA8XX_LPSC_USB11,
+};
+
 static struct clk mcasp1_clk = {
 	.name		= "mcasp1",
 	.lpsc		= DA830_LPSC_McASP1,
@@ -242,6 +254,8 @@ static struct davinci_clk da830_clks[] = {
 	CLK(NULL,		"emif3",	&emif3_clk),
 	CLK(NULL,		"arm",		&arm_clk),
 	CLK("soc-audio",	NULL,		&mcasp1_clk),
+	CLK(NULL,               "usb0",         &usb0_clk),
+	CLK(NULL,               "usb1",         &usb1_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 
@@ -436,7 +450,7 @@ DA8XX_MUX_CFG(DA830,	AXR1_6,		13,   8,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	AXR1_7,		13,  12,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	AXR1_8,		13,  16,    15,   1,	 false)
 DA8XX_MUX_CFG(DA830,	AXR1_9,		13,  20,    15,   1,	 false)
-DA8XX_MUX_CFG(DA830,	USB0_DRVVBUS,	9,   24,    15,   1,     false)
+DA8XX_MUX_CFG(DA830,	USB0_DRVVBUS,	9,    4,    15,   1,     false)
 };
 
 static const s8 dma_chan_da830_no_event[] = {
