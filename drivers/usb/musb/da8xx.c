@@ -305,29 +305,6 @@ static void otg_timer(unsigned long _musb)
 		musb_writel(musb->ctrl_base, USB_INTR_SRC_SET_REG,
 			    MUSB_INTR_VBUSERROR << USB_INTR_USB_SHIFT);
 		break;
-	case OTG_STATE_B_IDLE:
-		if (!is_peripheral_enabled(musb))
-			break;
-
-		/*
-		 * There's no ID-changed IRQ, so we have no good way to tell
-		 * when to switch to the A-Default state machine (by setting
-		 * the DEVCTL.SESSION flag).
-		 *
-		 * Workaround:  whenever we're in B_IDLE, try setting the
-		 * session flag every few seconds.  If it works, ID was
-		 * grounded and we're now in the A-Default state machine.
-		 *
-		 * NOTE: setting the session flag is _supposed_ to trigger
-		 * SRP but clearly it doesn't.
-		 */
-		musb_writeb(mregs, MUSB_DEVCTL, devctl | MUSB_DEVCTL_SESSION);
-		devctl = musb_readb(mregs, MUSB_DEVCTL);
-		if (devctl & MUSB_DEVCTL_BDEVICE)
-			mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
-		else
-			musb->xceiv->state = OTG_STATE_A_IDLE;
-		break;
 	default:
 		break;
 	}
@@ -457,10 +434,6 @@ static irqreturn_t da8xx_interrupt(int irq, void *hci)
 	if (ret == IRQ_HANDLED || status)
 		musb_writel(reg_base, USB_END_OF_INTR_REG, 0);
 
-	/* Poll for ID change */
-	if (is_otg_enabled(musb) && musb->xceiv->state == OTG_STATE_B_IDLE)
-		mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
-
 	spin_unlock_irqrestore(&musb->lock, flags);
 
 	if (ret != IRQ_HANDLED) {
@@ -585,7 +558,7 @@ int musb_platform_exit(struct musb *musb)
 
 	return 0;
 }
-#if 0
+#if 1
 void musb_platform_try_idle(struct musb *musb, unsigned long timeout)
 {
 	static unsigned long last_timer;
@@ -598,16 +571,18 @@ void musb_platform_try_idle(struct musb *musb, unsigned long timeout)
 
 	/* Never idle if active, or when VBUS timeout is not set as host */
 	if (musb->is_active || (musb->a_wait_bcon == 0 &&
-				musb->xceiv.state == OTG_STATE_A_WAIT_BCON)) {
+				musb->xceiv->state == OTG_STATE_A_WAIT_BCON)) {
 		DBG(4, "%s active, deleting timer\n", otg_state_string(musb));
 		del_timer(&otg_workaround);
 		last_timer = jiffies;
 		return;
 	}
 
-	if (time_after(last_timer, timeout) && timer_pending(&otg_workaround)) {
-		DBG(4, "Longer idle timer already pending, ignoring...\n");
-		return;
+	if (time_after(last_timer, timeout)) {
+		if (timer_pending(&otg_workaround)) {
+			DBG(4, "Longer idle timer already pending, ignoring\n");
+			return;
+		}
 	}
 	last_timer = timeout;
 

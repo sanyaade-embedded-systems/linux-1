@@ -329,7 +329,7 @@ static void ahci_dev_config(struct ata_device *dev);
 static unsigned int ahci_fill_sg(struct ata_queued_cmd *qc, void *cmd_tbl);
 static void ahci_fill_cmd_slot(struct ahci_port_priv *pp, unsigned int tag,
 			       u32 opts);
-#ifdef CONFIG_PM
+#if defined(CONFIG_PM) && defined(CONFIG_PCI)
 static int ahci_port_suspend(struct ata_port *ap, pm_message_t mesg);
 static int ahci_pci_device_suspend(struct pci_dev *pdev, pm_message_t mesg);
 static int ahci_pci_device_resume(struct pci_dev *pdev);
@@ -390,7 +390,7 @@ static struct ata_port_operations ahci_ops = {
 	.em_store		= ahci_led_store,
 	.sw_activity_show	= ahci_activity_show,
 	.sw_activity_store	= ahci_activity_store,
-#ifdef CONFIG_PM
+#if defined(CONFIG_PM) && defined(CONFIG_PCI)
 	.port_suspend		= ahci_port_suspend,
 	.port_resume		= ahci_port_resume,
 #endif
@@ -647,7 +647,7 @@ static struct pci_driver ahci_pci_driver = {
 	.id_table		= ahci_pci_tbl,
 	.probe			= ahci_init_one,
 	.remove			= ata_pci_remove_one,
-#ifdef CONFIG_PM
+#if CONFIG_PM
 	.suspend		= ahci_pci_device_suspend,
 	.resume			= ahci_pci_device_resume,
 #endif
@@ -1131,7 +1131,7 @@ static int ahci_enable_alpm(struct ata_port *ap,
 	return 0;
 }
 
-#ifdef CONFIG_PM
+#if defined(CONFIG_PM) && defined(CONFIG_PCI)
 static void ahci_power_down(struct ata_port *ap)
 {
 	struct ahci_host_priv *hpriv = ap->host->private_data;
@@ -2349,7 +2349,7 @@ static int ahci_port_resume(struct ata_port *ap)
 	return 0;
 }
 
-#ifdef CONFIG_PM
+#if defined(CONFIG_PM) && defined(COFNIG_PCI)
 static int ahci_port_suspend(struct ata_port *ap, pm_message_t mesg)
 {
 	const char *emsg = NULL;
