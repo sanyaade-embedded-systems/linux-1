@@ -566,10 +566,11 @@ extern int musb_platform_exit(struct musb *musb);
 
 struct proc_dir_entry;
 
+#ifdef CONFIG_USB_MUSB_DEBUG
 #if (CONFIG_USB_MUSB_DEBUG > 0) && defined(MUSB_CONFIG_PROC_FS)
 extern struct proc_dir_entry *musb_debug_create(char *name, struct musb *data);
 extern void musb_debug_delete(char *name, struct musb *data);
-
+#endif
 #else
 static inline struct proc_dir_entry *
 musb_debug_create(char *name, struct musb *data)
