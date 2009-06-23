@@ -33,10 +33,20 @@
 
 #define MODULE_NAME			"dispc"
 
-#define DSS_BASE			0x48050000
-#define DSS_SYSCONFIG			0x0010
+#ifndef CONFIG_ARCH_OMAP4
+	/* DSS */
+	#define DSS_BASE			0x48050000
+	/* DISPLAY CONTROLLER */
+	#define DISPC_BASE                      0x48050400
+#else
+	/* DSS */
+	#define DSS_BASE                        0x48042000
+	/* DISPLAY CONTROLLER */
+	#define DISPC_BASE                      0x48041000
+#endif
 
-#define DISPC_BASE			0x48050400
+#define DSS_SYSCONFIG                   0x0010
+#define DSS_REG_SIZE                    0x00001000
 
 /* DISPC common */
 #define DISPC_REVISION			0x0000
@@ -435,6 +445,9 @@ static inline int _setup_plane(int plane, int channel_out,
 	}
 
 	dispc_write_reg(ri_reg[plane], (screen_width - width) * bpp / 8 + 1);
+
+	/* Enabling GO-LCD bit in DISPC_CONTROL */
+	MOD_REG_FLD(DISPC_CONTROL, 0x1<<05, 0x1<<05);
 
 	return height * screen_width * bpp / 8;
 }
@@ -1411,7 +1424,7 @@ static int omap_dispc_init(struct omapfb_device *fbdev, int ext_mode,
 
 	/* Enable those that we handle always */
 	omap_dispc_enable_irqs(DISPC_IRQ_FRAMEMASK);
-
+#ifndef CONFIG_ARCH_OMAP4
 	if ((r = request_irq(INT_24XX_DSS_IRQ, omap_dispc_irq_handler,
 			   0, MODULE_NAME, fbdev)) < 0) {
 		dev_err(dispc.fbdev->dev, "can't get DSS IRQ\n");
@@ -1420,7 +1433,7 @@ static int omap_dispc_init(struct omapfb_device *fbdev, int ext_mode,
 
 	/* L3 firewall setting: enable access to OCM RAM */
 	__raw_writel(0x402000b0, IO_ADDRESS(0x680050a0));
-
+#endif
 	if ((r = alloc_palette_ram()) < 0)
 		goto fail2;
 
