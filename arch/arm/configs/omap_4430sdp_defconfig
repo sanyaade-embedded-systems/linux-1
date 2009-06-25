@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.30-rc6
-# Mon Jun  1 06:46:47 2009
+# Tue Jun  2 16:00:42 2009
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -522,13 +522,14 @@ CONFIG_GPIOLIB=y
 # CONFIG_HWMON is not set
 # CONFIG_THERMAL is not set
 # CONFIG_THERMAL_HWMON is not set
-# CONFIG_WATCHDOG is not set
-CONFIG_SSB_POSSIBLE=y
+CONFIG_WATCHDOG=y
+CONFIG_OMAP_WATCHDOG=y
 
 #
 # Sonics Silicon Backplane
 #
 # CONFIG_SSB is not set
+CONFIG_SSB_POSSIBLE=y
 
 #
 # Multifunction device drivers
