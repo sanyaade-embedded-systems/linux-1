@@ -944,13 +944,13 @@ static int davinci_spi_probe(struct device *d)
 	davinci_spi = spi_master_get_devdata(master);
 	if (davinci_spi == NULL) {
 		ret = -ENOENT;
-		goto free_master;
+		goto put_master;
 	}
 
 	r = platform_get_resource(dev, IORESOURCE_MEM, 0);
 	if (r == NULL) {
 		ret = -ENOENT;
-		goto free_master;
+		goto put_master;
 	}
 
 	davinci_spi->pbase = r->start;
@@ -968,7 +968,7 @@ static int davinci_spi_probe(struct device *d)
 	mem = request_mem_region(r->start, davinci_spi->region_size, dev->name);
 	if (mem == NULL) {
 		ret = -EBUSY;
-		goto free_master;
+		goto put_master;
 	}
 
 	davinci_spi->base = (struct davinci_spi_reg __iomem *)
@@ -1008,12 +1008,12 @@ static int davinci_spi_probe(struct device *d)
 		pdata->clk_info = clk_get(d, pdata->clk_name);
 		if (IS_ERR(pdata->clk_info)) {
 			ret = -ENODEV;
-			goto put_master;
+			goto free_tmp_buf;
 		}
 		clk_enable(pdata->clk_info);
 	} else {
 		ret = -ENODEV;
-		goto put_master;
+		goto free_tmp_buf;
 	}
 
 	master->bus_num = dev->id;
@@ -1082,8 +1082,6 @@ free_clk:
 	clk_disable(pdata->clk_info);
 	clk_put(pdata->clk_info);
 	pdata->clk_info = NULL;
-put_master:
-	spi_master_put(master);
 free_tmp_buf:
 	kfree(davinci_spi->tmp_buf);
 release_irq:
@@ -1092,8 +1090,8 @@ unmap_io:
 	iounmap(davinci_spi->base);
 release_region:
 	release_mem_region(davinci_spi->pbase, davinci_spi->region_size);
-free_master:
-	kfree(master);
+put_master:
+	spi_master_put(master);
 err:
 	return ret;
 }
@@ -1113,10 +1111,9 @@ static int __devexit davinci_spi_remove(struct device *d)
 		container_of(d, struct platform_device, dev);
 	struct davinci_spi *davinci_spi;
 	struct spi_master *master;
-	struct davinci_spi_platform_data *pdata = platform_get_drvdata(dev);
+	struct davinci_spi_platform_data *pdata = NULL;
 
-	clk_disable(pdata->clk_info);
-	clk_put(pdata->clk_info);
+	pdata = dev->dev.platform_data;
 
 	master = dev_get_drvdata(&(dev)->dev);
 	davinci_spi = spi_master_get_devdata(master);
@@ -1130,9 +1127,8 @@ static int __devexit davinci_spi_remove(struct device *d)
 	spi_master_put(master);
 	kfree(davinci_spi->tmp_buf);
 	free_irq(davinci_spi->irq, davinci_spi);
-	iounmap(davinci_spi->base);
 	release_mem_region(davinci_spi->pbase, davinci_spi->region_size);
-	kfree(master);
+	iounmap(davinci_spi->base);
 
 	return 0;
 }
