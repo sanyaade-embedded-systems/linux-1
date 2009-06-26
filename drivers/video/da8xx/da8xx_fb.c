@@ -49,8 +49,10 @@ static wait_queue_head_t da830_wq;
 
 struct da830fb_par {
 	resource_size_t p_regs_base;
+	resource_size_t p_frame_buffer_mem_base;
 	resource_size_t p_screen_base;
 	resource_size_t p_palette_base;
+	unsigned char *v_frame_buffer_mem_base;
 	unsigned char *v_screen_base;
 	unsigned char *v_palette_base;
 	unsigned long screen_size;
@@ -167,7 +169,7 @@ static int lcd_blit(int load_mode, u32 p_buf)
 {
 	u32 reg;
 	int ret = 0;
-	u32 tmp = p_buf + g_databuf_sz - 2;
+	u32 tmp = p_buf + g_databuf_sz - 4;
 
 	/* Update the databuf in the hw. */
 	da830_fb_write(p_buf, LCD_DMA_FRM_BUF_BASE_ADDR_0_REG);
@@ -348,6 +350,7 @@ static int lcd_cfg_frame_buffer(struct device* dev, u32 width, u32 height,
 	reg = da830_fb_read(LCD_RASTER_CTRL_REG) & ~(1 << 8);
 	if (raster_order)
 		reg |= LCD_RASTER_ORDER;
+	da830_fb_write(reg, LCD_RASTER_CTRL_REG);
 
 	switch (g_bpp) {
 	case 1:
@@ -653,8 +656,9 @@ static int __devexit da830_fb_remove(struct platform_device *dev)
 
 		fb_dealloc_cmap(&info->cmap);
 
-		dma_free_coherent(NULL, g_databuf_sz, par->v_palette_base,
-				  par->p_palette_base);
+		dma_free_coherent(NULL, g_databuf_sz + PAGE_SIZE,
+				par->v_frame_buffer_mem_base,
+				par->p_frame_buffer_mem_base);
 
 		free_irq(par->irq, NULL);
 
@@ -713,17 +717,24 @@ static int __init da830_fb_probe(struct platform_device *device)
 	}
 
 	par = da830fb_info->par;
-	/* allocate frame buffer */
-	par->v_palette_base = dma_alloc_coherent(NULL, g_databuf_sz,
-						 &par->p_palette_base,
-						 GFP_KERNEL | GFP_DMA);
+	/* allocate frame buffer memory */
+	par->v_frame_buffer_mem_base = dma_alloc_coherent( NULL,
+						g_databuf_sz + PAGE_SIZE,
+						&par->p_frame_buffer_mem_base,
+						GFP_KERNEL | GFP_DMA);
 
-	if (!par->v_palette_base) {
+	if (!par->v_frame_buffer_mem_base) {
 		dev_err(&device->dev,
 			"GLCD: kmalloc for frame buffer failed\n");
 		ret = -EINVAL;
 		goto err_release_fb;
 	}
+
+	/* move palette base pointer by ( PAGE_SIZE - g_palette_sz ) bytes */
+	par->v_palette_base = par->v_frame_buffer_mem_base +
+				(PAGE_SIZE - g_palette_sz);
+	par->p_palette_base = par->p_frame_buffer_mem_base +
+				(PAGE_SIZE - g_palette_sz);
 
 	/* First g_palette_sz byte of the frame buffer is the palett */
 	par->palette_size = g_palette_sz;
@@ -818,8 +829,9 @@ err_free_irq:
 	free_irq(par->irq, NULL);
 
 err_release_fb_mem:
-	dma_free_coherent(NULL, g_databuf_sz, par->v_palette_base,
-			  par->p_palette_base);
+	dma_free_coherent(NULL, g_databuf_sz + PAGE_SIZE,
+			par->v_frame_buffer_mem_base,
+			par->p_frame_buffer_mem_base);
 
 err_release_fb:
 	framebuffer_release(da830fb_info);
