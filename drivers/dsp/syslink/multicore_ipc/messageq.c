@@ -421,7 +421,6 @@ int messageq_destroy(void)
 
 	/* Delete any Message Queues that have not been deleted so far. */
 	for (i = 0; i < messageq_state.num_queues; i++) {
-		BUG_ON(messageq_state.queues[i] == NULL);
 		if (messageq_state.queues[i] != NULL)
 			messageq_delete(&(messageq_state.queues[i]));
 	}
@@ -604,13 +603,14 @@ void *messageq_create(char *name, const struct messageq_params *params)
 			status, "Failed to create synchronizer semaphore");
 		goto semaphore_create_fail;
 	} else {
-		sema_init(handle->synchronizer, 1);
+		sema_init(handle->synchronizer, 0);
 	}
 
 	if (name != NULL) {
 		nameserver_add_uint32(messageq_state.ns_handle, name,
 						handle->queue);
 	}
+	goto exit;
 
 semaphore_create_fail:
 	if (handle->name != NULL)
@@ -721,8 +721,8 @@ int messageq_open(char *name, u32 *queue_id)
 
 	len = nameserver_get(messageq_state.ns_handle, name, queue_id,
 					sizeof(u32), NULL);
-	if (len <= 0) {
-		/* Name found */
+	if (len < 0) {
+		/* Name not found */
 		status = MESSAGEQ_E_FAIL;
 	}
 
@@ -946,7 +946,7 @@ messageq_msg messageq_alloc(u16 heap_id, u32 size)
 				"Module was not initialized!");
 		goto exit;
 	}
-	if (WARN_ON(heap_id < messageq_state.num_heaps)) {
+	if (WARN_ON(heap_id >= messageq_state.num_heaps)) {
 		/*! @retval NULL Heap id is invalid */
 		gt_2trace(messageq_dbgmask, GT_4CLASS, "messageq_alloc",
 				MESSAGEQ_E_INVALIDHEAPID,
@@ -1008,7 +1008,7 @@ int messageq_free(messageq_msg msg)
 		status = -EINVAL;
 		goto exit;
 	}
-	if (msg->heap_id < messageq_state.num_heaps) {
+	if (msg->heap_id >= messageq_state.num_heaps) {
 		status = MESSAGEQ_E_INVALIDHEAPID;
 		/*! @retval MESSAGEQ_E_INVALIDHEAPID
 		 *  Heap id is invalid */

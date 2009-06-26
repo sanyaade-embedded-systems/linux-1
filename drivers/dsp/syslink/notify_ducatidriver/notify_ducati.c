@@ -32,38 +32,41 @@
 
 
 
-#define NOTIFYSHMDRV_MEM_ALIGN       0
+#define NOTIFYSHMDRV_MEM_ALIGN	0
 
-#define NOTIFYSHMDRV_MAX_EVENTS      32
+#define NOTIFYSHMDRV_MAX_EVENTS	32
 
-#define NOTIFYSHMDRV_INIT_STAMP      0xA9C8B7D6
+#define NOTIFYSHMDRV_INIT_STAMP	0xA9C8B7D6
 
-#define NOTIFYNONSHMDRV_MAX_EVENTS      1
+#define NOTIFYNONSHMDRV_MAX_EVENTS	1
 
-#define NOTIFYNONSHMDRV_RESERVED_EVENTS      1
+#define NOTIFYNONSHMDRV_RESERVED_EVENTS	1
 
-#define NOTIFYDRV_DUCATI_RECV_MBX     2
+#define NOTIFYDRV_DUCATI_RECV_MBX	2
 
-#define NOTIFYDRV_DUCATI_SEND_MBX     3
+#define NOTIFYDRV_DUCATI_SEND_MBX	3
 
 /*FIX ME: Make use of Multi Proc module */
-#define SELF_ID    0
+#define SELF_ID	0
 
-#define OTHER_ID   1
+#define OTHER_ID	1
 
-#define UP    1
+#define UP	1
 
-#define DOWN  0
+#define DOWN	0
 
-#define PROC_TESLA  0
-#define PROC_DUCATI 1
-#define PROC_GPP    2
+#define PROC_TESLA	0
+#define PROC_DUCATI	1
+#define PROC_GPP	2
+#define PROCSYSM3	2
+#define PROCAPPM3	3
+#define MAX_SUBPROC_EVENTS	15
 
 static void notify_ducatidrv_isr(void *ref_data);
 
 
 /*
- *  brief  NotifyDriverShm instance object.
+ *	brief	Notify ducati driver instance object.
  */
 struct notify_ducatidrv_object {
 	struct notify_ducatidrv_params params;
@@ -78,8 +81,8 @@ struct notify_ducatidrv_object {
 
 
 /*
- *  brief   Defines the NotifyDriverShm state object, which contains all the
- * module specific information.
+ *	brief	Defines the notify_ducatidrv state object, which contains all
+ * 		the module specific information.
  */
 struct notify_ducatidrv_module {
 	struct notify_ducatidrv_config cfg;
@@ -105,7 +108,7 @@ static struct notify_ducatidrv_module notify_ducatidriver_state = {
 };
 
 /*
- *This function searchs for a element the List.
+ *	This function searchs for a element the List.
  */
 static void notify_ducatidrv_qsearch_elem(struct list_head *list,
 		struct notify_drv_eventlistner *check_obj,
@@ -113,13 +116,13 @@ static void notify_ducatidrv_qsearch_elem(struct list_head *list,
 
 
 /*
- *  brief      Get the default configuration for the NotifyDriverShm module.
+ *	brief	Get the default configuration for the notify_ducatidrv module.
  *
- *              This function can be called by the application to get their
- *              configuration parameter to NotifyDriverShm_setup filled in by
- *              the NotifyDriverShm module with the default parameters. If the
- *              user does not wish to make any change in the default parameters,
- *              this API is not required to be called.
+ *	This function can be called by the application to get their
+ *	configuration parameter to notify_ducatidrv_setup filled in by
+ *	the notify_ducatidrv module with the default parameters. If the
+ *	user does not wish to make any change in the default parameters,
+ *	this API is not required to be called.
  *
  */
 void notify_ducatidrv_getconfig(struct notify_ducatidrv_config *cfg)
@@ -133,12 +136,12 @@ void notify_ducatidrv_getconfig(struct notify_ducatidrv_config *cfg)
 EXPORT_SYMBOL(notify_ducatidrv_getconfig);
 
 /*
- *  brief      Function to open a handle to an existing NotifyDriverShm object
- *              handling the procId.
+ *	brief	Function to open a handle to an existing notify_ducatidrv_object
+ *		handling the procId.
  *
- *              This function returns a handle to an existing NotifyDriverShm
- *              instance created for this procId. It enables other entities to
- *              access and use this NotifyDriverShm instance.
+ *	This function returns a handle to an existing notify_ducatidrv
+ *	instance created for this procId. It enables other entities to
+ *	access and use this notify_ducatidrv instance.
  */
 int notify_ducatidrv_open(char *driver_name,
 			  struct notify_driver_object **handle_ptr)
@@ -160,10 +163,10 @@ int notify_ducatidrv_open(char *driver_name,
 
 
 /*
- *  brief      Function to close this handle to the NotifyDriverShm instance.
+ *	brief	Function to close this handle to the notify_ducatidrv instance.
  *
- *              This function closes the handle to the NotifyDriverShm instance
- *              obtained through NotifyDriverShm_open call made earlier.
+ *	This function closes the handle to the notify_ducatidrv instance
+ *	obtained through notify_ducatidrv_open call made earlier.
  */
 int notify_ducatidrv_close(struct notify_driver_object **handle_ptr)
 {
@@ -178,8 +181,8 @@ int notify_ducatidrv_close(struct notify_driver_object **handle_ptr)
 
 
 /*
- *  brief      Function to initialize the parameters for this NotifyDriver
- *              instance.
+ *	brief	Function to initialize the parameters for this notify_ducatidrv
+ *		instance.
  */
 void notify_ducatidrv_params_init(struct notify_driver_object *handle,
 				struct notify_ducatidrv_params *params)
@@ -191,7 +194,7 @@ void notify_ducatidrv_params_init(struct notify_driver_object *handle,
 		&(notify_ducatidriver_state.def_inst_params),
 		sizeof(struct notify_ducatidrv_params));
 	} else {
-		/*Return updated NotifyDriverShm instance specific parameters*/
+		/*Return updated notify_ducatidrv instance specific parameters*/
 		driver_obj = (struct notify_ducatidrv_object *)
 				handle->driver_object;
 		memcpy(params, &(driver_obj->params),
@@ -203,7 +206,7 @@ EXPORT_SYMBOL(notify_ducatidrv_params_init);
 
 
 /*
- *  brief      Function to create an instance of this NotifyDriver.
+ *	brief	Function to create an instance of this Notify ducati driver.
  *
  */
 struct notify_driver_object *notify_ducatidrv_create(char *driver_name,
@@ -249,18 +252,21 @@ struct notify_driver_object *notify_ducatidrv_create(char *driver_name,
 		/* Initialize all to invalid. */
 		drv_attrs.proc_info[i].proc_id = (u16)0xFFFF;
 	}
-	drv_attrs.numProc = 1;
-	drv_attrs.proc_info[params->remote_proc_id].max_events =
-		params->num_events;
-	drv_attrs.proc_info[params->remote_proc_id].reserved_events =
-		params->num_reserved_events;
-	/* Events are prioritized. */
-	drv_attrs.proc_info[params->remote_proc_id].event_priority = true;
-	/* 32-bit payload supported. */
-	drv_attrs.proc_info[params->remote_proc_id].payload_size =
-			sizeof(int);
-	drv_attrs.proc_info[params->remote_proc_id].proc_id =
-				params->remote_proc_id;
+
+	/*FIXME: Hack to allow SYSM3 and APPM3 events. Re-visit later */
+	if (params->remote_proc_id >= PROCSYSM3) {
+		for (i = PROCSYSM3; i <= PROCAPPM3; i++) {
+			drv_attrs.numProc = 1;
+			drv_attrs.proc_info[i].max_events = params->num_events;
+			drv_attrs.proc_info[i].reserved_events =
+				params->num_reserved_events;
+			/* Events are prioritized. */
+			drv_attrs.proc_info[i].event_priority = true;
+			/* 32-bit payload supported. */
+			drv_attrs.proc_info[i].payload_size = sizeof(int);
+			drv_attrs.proc_info[i].proc_id = i;
+		}
+	}
 
 	/* Function table information */
 	fxn_table.register_event = (void *)&notify_ducatidrv_register_event;
@@ -280,7 +286,7 @@ struct notify_driver_object *notify_ducatidrv_create(char *driver_name,
 		/*retval NULL Failed to register driver with Notify module!*/
 		status = -EINVAL;
 	} else {
-		/* Allocate memory for the NotifyDriverShm_Object object. */
+		/* Allocate memory for the notify_ducatidrv_object object. */
 		drv_handle->driver_object = driver_obj =
 				kmalloc(sizeof(struct notify_ducatidrv_object),
 					GFP_ATOMIC);
@@ -294,9 +300,14 @@ struct notify_driver_object *notify_ducatidrv_create(char *driver_name,
 		}
 	}
 	if (status >= 0) {
-		/*FIX ME Need to use MultiProc*/
-		driver_obj->self_id  = OTHER_ID;
-		driver_obj->other_id = SELF_ID;
+
+		if (params->remote_proc_id > multiproc_get_id(NULL)) {
+			driver_obj->self_id  = SELF_ID;
+			driver_obj->other_id = OTHER_ID;
+		} else {
+			driver_obj->self_id  = OTHER_ID;
+			driver_obj->other_id = SELF_ID;
+		}
 		shm_va = get_ducati_virt_mem();
 		driver_obj->ctrl_ptr = (struct notify_shmdrv_ctrl *) shm_va;
 		ctrl_ptr = &(driver_obj->ctrl_ptr->
@@ -439,7 +450,7 @@ func_end:
 EXPORT_SYMBOL(notify_ducatidrv_create);
 
 /*
- *  brief      Function to delete the instance of shared memory driver
+ *	brief	Function to delete the instance of shared memory driver
  *
  */
 int notify_ducatidrv_delete(struct notify_driver_object **handle_ptr)
@@ -489,8 +500,7 @@ int notify_ducatidrv_delete(struct notify_driver_object **handle_ptr)
 		if (event_list != NULL) {
 			/* Check if lists were created. */
 			for (i = 0 ; i < driver_obj->params.num_events ; i++) {
-				WARN_ON(event_list[i].
-						event_handler_count != 0);
+				WARN_ON(event_list[i].event_handler_count != 0);
 				event_list[i].event_handler_count = 0;
 				list_del((struct list_head *)
 					&event_list[i].listeners);
@@ -530,7 +540,7 @@ EXPORT_SYMBOL(notify_ducatidrv_delete);
 
 
 /*
- *  brief      Destroy the NotifyDriverShm module.
+ *	brief	Destroy the notify_ducatidrv module.
  *
  */
 int notify_ducatidrv_destroy(void)
@@ -551,19 +561,19 @@ EXPORT_SYMBOL(notify_ducatidrv_destroy);
 
 
 /*
- *  brief      Setup the NotifyDriverShm module.
+ *	brief	Setup the notify_ducatidrv module.
  *
- *              This function sets up the NotifyDriverShm module. This function
- *              must be called before any other instance-level APIs can be
- *              invoked.
- *              Module-level configuration needs to be provided to this
- *              function. If the user wishes to change some specific config
- *              parameters, then NotifyDriverShm_getConfig can be called to get
- *              the configuration filled with the default values. After this,
- *              only the required configuration values can be changed. If the
- *              user does not wish to make any change in the default parameters,
- *              the application can simply call NotifyDriverShm_setup with NULL
- *              parameters. The default parameters would get automatically used.
+ *	This function sets up the notify_ducatidrv module. This function
+ *	must be called before any other instance-level APIs can be
+ *	invoked.
+ *	Module-level configuration needs to be provided to this
+ *	function. If the user wishes to change some specific config
+ *	parameters, then notify_ducatidrv_getconfig can be called to get
+ *	the configuration filled with the default values. After this,
+ *	only the required configuration values can be changed. If the
+ *	user does not wish to make any change in the default parameters,
+ *	the application can simply call notify_ducatidrv_setup with NULL
+ *	parameters. The default parameters would get automatically used.
  */
 int notify_ducatidrv_setup(struct notify_ducatidrv_config *cfg)
 {
@@ -598,7 +608,7 @@ EXPORT_SYMBOL(notify_ducatidrv_setup);
 
 
 /*
-*  brief  egister a callback for an event with the Notify driver.
+*	brief	register a callback for an event with the Notify driver.
 *
 */
 int notify_ducatidrv_register_event(
@@ -714,7 +724,7 @@ func_end:
 
 /*
 *
-*  brief Unregister a callback for an event with the Notify driver.
+*	brief	Unregister a callback for an event with the Notify driver.
 *
 */
 
@@ -722,7 +732,7 @@ int notify_ducatidrv_unregister_event(
 	struct notify_driver_object *handle,
 	short int  proc_id,
 	int  event_no,
-	fn_notify_cbck     fn_notify_cbck,
+	fn_notify_cbck	fn_notify_cbck,
 	void *cbck_arg)
 {
 	int status = 0;
@@ -810,8 +820,8 @@ func_end:
 }
 
 /*
-* brief Send a notification event to the registered users for this
-*	notification on the specified processor.
+*	brief	Send a notification event to the registered users for this
+*		notification on the specified processor.
 *
 */
 int notify_ducatidrv_sendevent(struct notify_driver_object *handle,
@@ -917,7 +927,7 @@ int notify_ducatidrv_sendevent(struct notify_driver_object *handle,
 }
 
 /*
-* brief Disable all events for this Notify driver.
+*	brief	Disable all events for this Notify driver.
 *
 */
 void *notify_ducatidrv_disable(struct notify_driver_object *handle)
@@ -931,8 +941,8 @@ void *notify_ducatidrv_disable(struct notify_driver_object *handle)
 }
 
 /*
-*  brief  Restore the Notify driver to the state before the last disable was
-*called.
+*	brief	Restore the notify_ducatidrv to the state before the
+*		last disable was called.
 *
 */
 int notify_ducatidrv_restore(struct notify_driver_object *handle,
@@ -951,7 +961,7 @@ int notify_ducatidrv_restore(struct notify_driver_object *handle,
 }
 
 /*
-*  brief  Disable a specific event for this Notify driver.
+*	brief	Disable a specific event for this Notify ducati driver
 *
 */
 int notify_ducatidrv_disable_event(
@@ -981,7 +991,7 @@ int notify_ducatidrv_disable_event(
 }
 
 /*
-*  brief  Enable a specific event for this Notify driver.
+*	brief	Enable a specific event for this Notify ducati driver
 *
 */
 int notify_ducatidrv_enable_event(struct notify_driver_object *handle,
@@ -1009,7 +1019,7 @@ int notify_ducatidrv_enable_event(struct notify_driver_object *handle,
 }
 
 /*
-*  brief  Print debug information for the Notify driver.
+*	brief	Print debug information for the Notify ducati driver
 *
 */
 int notify_ducatidrv_debug(struct notify_driver_object *handle)
@@ -1022,8 +1032,8 @@ int notify_ducatidrv_debug(struct notify_driver_object *handle)
 
 /*
  *
- *  brief   This function implements the interrupt service routine for the
- *  interrupt received from the Ducati processor.
+ *	brief	This function implements the interrupt service routine for the
+ *		interrupt received from the Ducati processor.
  *
  */
 static void notify_ducatidrv_isr(void *ref_data)
@@ -1036,7 +1046,11 @@ static void notify_ducatidrv_isr(void *ref_data)
 	struct notify_ducatidrv_object *driver_obj;
 	struct notify_shmdrv_eventreg *reg_chart;
 	struct notify_shmdrv_proc_ctrl *proc_ctrl_ptr;
+	struct mbox_config *mbox_hw_config = ntfy_disp_get_config();
+	unsigned long int mbox_module_no = mbox_hw_config->mbox_modules;
 	int event_no;
+	signed long int mbx_ret_val = 0;
+	int num_messages;
 
 	driver_obj = (struct notify_ducatidrv_object *) ref_data;
 	proc_ctrl_ptr = &(driver_obj->ctrl_ptr->proc_ctrl[driver_obj->self_id]);
@@ -1060,6 +1074,10 @@ static void notify_ducatidrv_isr(void *ref_data)
 			payload = self_event_chart[event_no].
 						payload;
 			/* Acknowledge the event. */
+			 mbx_ret_val = ntfy_disp_read(mbox_module_no,
+						NOTIFYDRV_DUCATI_RECV_MBX,
+						&payload,
+						&num_messages, false);
 			self_event_chart[event_no].flag = DOWN;
 			/*Call the callbacks associated with the event*/
 			temp = driver_obj->
@@ -1073,6 +1091,16 @@ static void notify_ducatidrv_isr(void *ref_data)
 					/* Check for empty list. */
 					if (temp == NULL)
 						continue;
+					/*FIXME: Hack to support SYSM3 and
+						 APPM3 */
+					if ((driver_obj->proc_id == PROCAPPM3)
+					&& (event_no <= MAX_SUBPROC_EVENTS)) {
+						driver_obj->proc_id = PROCSYSM3;
+					}
+					if ((driver_obj->proc_id == PROCSYSM3)
+					&& (event_no > MAX_SUBPROC_EVENTS)) {
+						driver_obj->proc_id = PROCAPPM3;
+					}
 					((struct notify_drv_eventlistner *)
 						temp)->fn_notify_cbck(
 					driver_obj->proc_id,
@@ -1095,7 +1123,7 @@ static void notify_ducatidrv_isr(void *ref_data)
 EXPORT_SYMBOL(notify_ducatidrv_isr);
 
 /*
-* bref This function searchs for a element the List.
+*	brief	This function searchs for a element the List.
 *
 */
 static void notify_ducatidrv_qsearch_elem(struct list_head *list,
@@ -1108,10 +1136,8 @@ static void notify_ducatidrv_qsearch_elem(struct list_head *list,
 
 	BUG_ON(list ==  NULL);
 	BUG_ON(check_obj == NULL);
-	WARN_ON(listener == NULL);
+	BUG_ON(listener == NULL);
 
-	if (listener != NULL)
-		return;
 	*listener = NULL;
 	if ((list !=  NULL) && (check_obj != NULL)) {
 		if (list_empty((struct list_head *)list) == false) {

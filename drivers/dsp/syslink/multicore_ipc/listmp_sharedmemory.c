@@ -74,6 +74,7 @@
 #include <multiproc.h>
 #include "_listmp.h"
 #include <listmp.h>
+#include <gatepeterson.h>
 #include <listmp_sharedmemory.h>
 
 
@@ -124,7 +125,6 @@ struct listmp_sharedmemory_module_object listmp_sharedmemory_state = {
 			.default_inst_params.shared_addr_size = 0,
 			.default_inst_params.name = NULL,
 			.default_inst_params.lock_handle = NULL,
-			.default_inst_params.heap_handle = NULL,
 			.default_inst_params.list_type = listmp_type_SHARED};
 
 /*!
@@ -223,9 +223,9 @@ int listmp_sharedmemory_setup(struct listmp_config *config)
 	gt_1trace(listmpshm_debugmask, GT_ENTER, "ListMPSharedmemsetup",
 			config);
 
-	if (WARN_ON(config == NULL)) {
-		status = -EINVAL;
-		goto exit;
+	if (config == NULL) {
+		memcpy(config, &listmp_sharedmemory_state.default_cfg,
+			sizeof(struct listmp_config));
 	}
 	if (WARN_ON(config->max_name_len == 0)) {
 		status = -EINVAL;
@@ -238,8 +238,10 @@ int listmp_sharedmemory_setup(struct listmp_config *config)
 	params.max_name_len = config->max_name_len;
 	/* Create the nameserver for modules */
 	nshandle = nameserver_create(LISTMP_SHAREDMEMORY_NAMESERVER, &params);
-	if (unlikely(nshandle == NULL))
+	if (unlikely(nshandle == NULL)) {
+		status = LISTMPSHAREDMEMORY_E_FAIL;
 		goto exit;
+	}
 
 	listmp_sharedmemory_state.ns_handle = nshandle;
 	/* Construct the list object */
@@ -282,6 +284,8 @@ int listmp_sharedmemory_destroy(void)
 	int status = 0;
 	int status1 = 0;
 	struct list_head *elem = NULL;
+	struct list_head *head = &listmp_sharedmemory_state.obj_list;
+	struct list_head *next;
 
 	gt_0trace(listmpshm_debugmask, GT_ENTER, "listmp_sharedmemory_destroy");
 
@@ -292,7 +296,9 @@ int listmp_sharedmemory_destroy(void)
 
 	/* Check if any listmp_sharedmemory instances have not been
 	 * deleted so far. If not, delete them. */
-	list_for_each(elem, &listmp_sharedmemory_state.obj_list) {
+	for (elem = (head)->next; elem != (head); elem = next) {
+		/* Retain the next pointer so it doesn't get overwritten */
+		next = elem->next;
 		if (((struct listmp_sharedmemory_obj *) elem)->owner
 			->proc_id == multiproc_get_id(NULL)) {
 			status1 = listmp_sharedmemory_delete(
@@ -337,7 +343,6 @@ exit:
 void listmp_sharedmemory_params_init(listmp_sharedmemory_handle handle,
 				listmp_sharedmemory_params *params)
 {
-	int status = 0;
 	listmp_sharedmemory_object *object = NULL;
 	struct listmp_sharedmemory_obj *obj = NULL;
 
@@ -345,10 +350,8 @@ void listmp_sharedmemory_params_init(listmp_sharedmemory_handle handle,
 		"listmp_sharedmemory_params_init", handle, params);
 
 	BUG_ON(params == NULL);
-	if (WARN_ON(params == NULL)) {
-		status = -EINVAL;
+	if (WARN_ON(params == NULL))
 		goto exit;
-	}
 
 	if (handle == NULL) {
 		memcpy(params,
@@ -411,14 +414,18 @@ listmp_sharedmemory_handle listmp_sharedmemory_create(
 		_listmp_sharedmemory_create(params, true);
 
 	obj = (struct listmp_sharedmemory_obj *)handle->obj;
+	if (obj == NULL) {
+		status = LISTMPSHAREDMEMORY_E_FAIL;
+		goto exit;
+	}
 	obj->listmp_elem->next = (struct listmp_elem *) (sharedregion_get_srptr(
 				(void *)obj->listmp_elem, obj->index));
 	obj->listmp_elem->prev = (struct listmp_elem *) (sharedregion_get_srptr(
 				(void *)obj->listmp_elem, obj->index));
 
 exit:
-	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_create",
-		handle);
+	gt_2trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_create",
+		status, handle);
 	return (listmp_sharedmemory_handle) handle;
 }
 
@@ -747,7 +754,7 @@ bool listmp_sharedmemory_empty(listmp_sharedmemory_handle listMPHandle)
 	bool isEmpty = false;
 	listmp_sharedmemory_object *handle = NULL;
 	struct listmp_sharedmemory_obj *obj = NULL;
-	u32 key = 0;
+	s32 retval = 0;
 	struct listmp_elem *sharedHead;
 
 	gt_1trace(listmpshm_debugmask, GT_ENTER, "listmp_sharedmemory_empty",
@@ -765,8 +772,13 @@ bool listmp_sharedmemory_empty(listmp_sharedmemory_handle listMPHandle)
 	handle = (listmp_sharedmemory_object *)listMPHandle;
 	obj = (struct listmp_sharedmemory_obj *) handle->obj;
 
-	if (obj->params.lock_handle != NULL)
-		key = mutex_lock_interruptible(obj->params.lock_handle);
+	if (obj->params.lock_handle != NULL) {
+		retval = gatepeterson_enter(obj->params.lock_handle);
+		if (retval < 0) {
+			status = -EINVAL;
+			goto exit;
+		}
+	}
 
 	/*! @retval true if list is empty */
 	sharedHead = (struct listmp_elem *)(sharedregion_get_srptr(
@@ -776,7 +788,7 @@ bool listmp_sharedmemory_empty(listmp_sharedmemory_handle listMPHandle)
 		isEmpty = true;
 
 	if (obj->params.lock_handle != NULL)
-		mutex_unlock(obj->params.lock_handle);
+		gatepeterson_leave(obj->params.lock_handle, 0);
 
 exit:
 	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_empty",
@@ -797,7 +809,7 @@ void *listmp_sharedmemory_get_head(listmp_sharedmemory_handle listMPHandle)
 	struct listmp_elem *localHeadNext = NULL;
 	struct listmp_elem *localNext = NULL;
 	struct listmp_elem *sharedHead = NULL;
-	u32 key = 0;
+	s32 retval = 0;
 
 	gt_1trace(listmpshm_debugmask, GT_ENTER, "listmp_sharedmemory_get_head",
 			listMPHandle);
@@ -816,8 +828,11 @@ void *listmp_sharedmemory_get_head(listmp_sharedmemory_handle listMPHandle)
 	handle = (listmp_sharedmemory_object *)listMPHandle;
 	obj = (struct listmp_sharedmemory_obj *) handle->obj;
 
-	if (obj->params.lock_handle != NULL)
-		key = mutex_lock_interruptible(obj->params.lock_handle);
+	if (obj->params.lock_handle != NULL) {
+		retval = gatepeterson_enter(obj->params.lock_handle);
+		if (retval < 0)
+			goto exit;
+	}
 
 	localHeadNext = sharedregion_get_ptr((u32 *)obj->listmp_elem->next);
 	/* See if the listmp_sharedmemory_object was empty */
@@ -841,7 +856,7 @@ void *listmp_sharedmemory_get_head(listmp_sharedmemory_handle listMPHandle)
 	}
 
 	if (obj->params.lock_handle != NULL)
-		mutex_unlock(obj->params.lock_handle);
+		gatepeterson_leave(obj->params.lock_handle, 0);
 
 exit:
 	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_get_head",
@@ -863,7 +878,7 @@ void *listmp_sharedmemory_get_tail(listmp_sharedmemory_handle listMPHandle)
 	struct listmp_elem *localHeadPrev = NULL;
 	struct listmp_elem *localPrev = NULL;
 	struct listmp_elem *sharedHead = NULL;
-	u32 key = 0;
+	s32 retval = 0;
 
 	gt_1trace(listmpshm_debugmask, GT_ENTER,
 			"listmp_sharedmemory_get_tail", listMPHandle);
@@ -882,8 +897,11 @@ void *listmp_sharedmemory_get_tail(listmp_sharedmemory_handle listMPHandle)
 	handle = (listmp_sharedmemory_object *)listMPHandle;
 	obj = (struct listmp_sharedmemory_obj *) handle->obj;
 
-	if (obj->params.lock_handle != NULL)
-		key = mutex_lock_interruptible(obj->params.lock_handle);
+	if (obj->params.lock_handle != NULL) {
+		retval = gatepeterson_enter(obj->params.lock_handle);
+		if (retval < 0)
+			goto exit;
+	}
 
 	localHeadNext = sharedregion_get_ptr((u32 *)obj->listmp_elem->next);
 	localHeadPrev = sharedregion_get_ptr((u32 *)obj->listmp_elem->prev);
@@ -903,7 +921,7 @@ void *listmp_sharedmemory_get_tail(listmp_sharedmemory_handle listMPHandle)
 	}
 
 	if (obj->params.lock_handle != NULL)
-		mutex_unlock(obj->params.lock_handle);
+		gatepeterson_leave(obj->params.lock_handle, 0);
 
 exit:
 	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_get_tail",
@@ -925,7 +943,7 @@ int listmp_sharedmemory_put_head(listmp_sharedmemory_handle listMPHandle,
 	struct listmp_elem *localNextElem = NULL;
 	struct listmp_elem *sharedElem = NULL;
 	struct listmp_elem *sharedHead = NULL;
-	u32 key = 0;
+	s32 retval = 0;
 	u32 index;
 
 	gt_1trace(listmpshm_debugmask, GT_ENTER,
@@ -948,8 +966,13 @@ int listmp_sharedmemory_put_head(listmp_sharedmemory_handle listMPHandle,
 	sharedHead = (struct listmp_elem *)sharedregion_get_srptr(
 					(void *)obj->listmp_elem, obj->index);
 
-	if (obj->params.lock_handle != NULL)
-		key = mutex_lock_interruptible(obj->params.lock_handle);
+	if (obj->params.lock_handle != NULL) {
+		retval = gatepeterson_enter(obj->params.lock_handle);
+		if (retval < 0) {
+			status = -EINVAL;
+			goto exit;
+		}
+	}
 
 	/* Add the new elem into the list */
 	elem->next = obj->listmp_elem->next;
@@ -959,7 +982,7 @@ int listmp_sharedmemory_put_head(listmp_sharedmemory_handle listMPHandle,
 	obj->listmp_elem->next = sharedElem;
 
 	if (obj->params.lock_handle != NULL)
-		mutex_unlock(obj->params.lock_handle);
+		gatepeterson_leave(obj->params.lock_handle, 0);
 
 exit:
 	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_put_head",
@@ -982,7 +1005,7 @@ int listmp_sharedmemory_put_tail(listmp_sharedmemory_handle listMPHandle,
 	struct listmp_elem *localPrevElem = NULL;
 	struct listmp_elem *sharedElem = NULL;
 	struct listmp_elem *sharedHead = NULL;
-	u32 key = 0;
+	s32 retval = 0;
 	u32 index;
 
 	gt_2trace(listmpshm_debugmask, GT_ENTER, "listmp_sharedmemory_put_tail",
@@ -1007,8 +1030,14 @@ int listmp_sharedmemory_put_tail(listmp_sharedmemory_handle listMPHandle,
 	sharedHead = (struct listmp_elem *)sharedregion_get_srptr
 				((void *)obj->listmp_elem,
 				obj->index);
-	if (obj->params.lock_handle != NULL)
-		key = mutex_lock_interruptible(obj->params.lock_handle);
+
+	if (obj->params.lock_handle != NULL) {
+		retval = gatepeterson_enter(obj->params.lock_handle);
+		if (retval < 0) {
+			status = -EINVAL;
+			goto exit;
+		}
+	}
 
 	/* Add the new elem into the list */
 	elem->next = sharedHead;
@@ -1018,7 +1047,7 @@ int listmp_sharedmemory_put_tail(listmp_sharedmemory_handle listMPHandle,
 	obj->listmp_elem->prev = sharedElem;
 
 	if (obj->params.lock_handle != NULL)
-		mutex_unlock(obj->params.lock_handle);
+		gatepeterson_leave(obj->params.lock_handle, 0);
 
 exit:
 	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_put_tail",
@@ -1041,7 +1070,7 @@ int listmp_sharedmemory_insert(listmp_sharedmemory_handle  listMPHandle,
 	struct listmp_elem *localPrevElem = NULL;
 	struct listmp_elem *sharedNewElem = NULL;
 	struct listmp_elem *sharedCurElem = NULL;
-	u32 key = 0;
+	s32 retval = 0;
 	u32 index;
 
 	gt_3trace(listmpshm_debugmask, GT_ENTER, "listmp_sharedmemory_insert",
@@ -1060,8 +1089,13 @@ int listmp_sharedmemory_insert(listmp_sharedmemory_handle  listMPHandle,
 	handle = (listmp_sharedmemory_object *)listMPHandle;
 	obj = (struct listmp_sharedmemory_obj *) handle->obj;
 
-	if (obj->params.lock_handle != NULL)
-		key = mutex_lock_interruptible(obj->params.lock_handle);
+	if (obj->params.lock_handle != NULL) {
+		retval = gatepeterson_enter(obj->params.lock_handle);
+		if (retval < 0) {
+			status = -EINVAL;
+			goto exit;
+		}
+	}
 
 	/* If NULL change cur_elem to the obj */
 	if (cur_elem == NULL)
@@ -1086,7 +1120,7 @@ int listmp_sharedmemory_insert(listmp_sharedmemory_handle  listMPHandle,
 	cur_elem->prev = sharedNewElem;
 
 	if (obj->params.lock_handle != NULL)
-		mutex_unlock(obj->params.lock_handle);
+		gatepeterson_leave(obj->params.lock_handle, 0);
 
 exit:
 	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_insert",
@@ -1107,7 +1141,7 @@ int listmp_sharedmemory_remove(listmp_sharedmemory_handle  listMPHandle,
 	struct listmp_sharedmemory_obj	*obj = NULL;
 	struct listmp_elem *localPrevElem = NULL;
 	struct listmp_elem *localNextElem = NULL;
-	u32 key = 0;
+	s32 retval = 0;
 
 	gt_2trace(listmpshm_debugmask, GT_ENTER, "listmp_sharedmemory_remove",
 					listMPHandle,
@@ -1125,8 +1159,13 @@ int listmp_sharedmemory_remove(listmp_sharedmemory_handle  listMPHandle,
 	handle = (listmp_sharedmemory_object *)listMPHandle;
 	obj = (struct listmp_sharedmemory_obj *) handle->obj;
 
-	if (obj->params.lock_handle != NULL)
-		key = mutex_lock_interruptible(obj->params.lock_handle);
+	if (obj->params.lock_handle != NULL) {
+		retval = gatepeterson_enter(obj->params.lock_handle);
+		if (retval < 0) {
+			status = -EINVAL;
+			goto exit;
+		}
+	}
 
 	localPrevElem = sharedregion_get_ptr((u32 *)elem->prev);
 	localNextElem = sharedregion_get_ptr((u32 *)elem->next);
@@ -1135,7 +1174,7 @@ int listmp_sharedmemory_remove(listmp_sharedmemory_handle  listMPHandle,
 	localNextElem->prev = elem->prev;
 
 	if (obj->params.lock_handle != NULL)
-		mutex_unlock(obj->params.lock_handle);
+		gatepeterson_leave(obj->params.lock_handle, 0);
 
 exit:
 	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_remove",
@@ -1155,7 +1194,7 @@ void *listmp_sharedmemory_next(listmp_sharedmemory_handle listMPHandle,
 	struct listmp_sharedmemory_obj *obj = NULL;
 	struct listmp_elem *retElem = NULL;
 	struct listmp_elem *sharedNextElem = NULL;
-	u32 key = 0;
+	s32 retval = 0;
 
 
 	gt_2trace(listmpshm_debugmask, GT_ENTER, "listmp_sharedmemory_next",
@@ -1171,8 +1210,11 @@ void *listmp_sharedmemory_next(listmp_sharedmemory_handle listMPHandle,
 	handle = (listmp_sharedmemory_object *)listMPHandle;
 	obj = (struct listmp_sharedmemory_obj *) handle->obj;
 
-	if (obj->params.lock_handle != NULL)
-		key = mutex_lock_interruptible(obj->params.lock_handle);
+	if (obj->params.lock_handle != NULL) {
+		retval = gatepeterson_enter(obj->params.lock_handle);
+		if (retval < 0)
+			goto exit;
+	}
 
 	/* If element is NULL start at head */
 	if (elem == NULL)
@@ -1186,7 +1228,7 @@ void *listmp_sharedmemory_next(listmp_sharedmemory_handle listMPHandle,
 	if (retElem == (struct listmp_elem *)obj->listmp_elem)
 		retElem = NULL;
 	if (obj->params.lock_handle != NULL)
-		mutex_unlock(obj->params.lock_handle);
+		gatepeterson_leave(obj->params.lock_handle, 0);
 
 exit:
 	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_next",
@@ -1206,7 +1248,7 @@ void *listmp_sharedmemory_prev(listmp_sharedmemory_handle listMPHandle,
 	struct listmp_sharedmemory_obj	*obj = NULL;
 	struct listmp_elem *retElem = NULL;
 	struct listmp_elem *sharedPrevElem = NULL;
-	u32 key = 0;
+	s32 retval = 0;
 
 	gt_2trace(listmpshm_debugmask, GT_ENTER, "listmp_sharedmemory_prev",
 				   listMPHandle,
@@ -1221,8 +1263,11 @@ void *listmp_sharedmemory_prev(listmp_sharedmemory_handle listMPHandle,
 	handle = (listmp_sharedmemory_object *)listMPHandle;
 	obj = (struct listmp_sharedmemory_obj *) handle->obj;
 
-	if (obj->params.lock_handle != NULL)
-		key = mutex_lock_interruptible(obj->params.lock_handle);
+	if (obj->params.lock_handle != NULL) {
+		retval = gatepeterson_enter(obj->params.lock_handle);
+		if (retval < 0)
+			goto exit;
+	}
 
 	/* If elem is NULL use head */
 	if (elem == NULL)
@@ -1238,7 +1283,7 @@ void *listmp_sharedmemory_prev(listmp_sharedmemory_handle listMPHandle,
 		retElem = NULL;
 
 	if (obj->params.lock_handle != NULL)
-		mutex_unlock(obj->params.lock_handle);
+		gatepeterson_leave(obj->params.lock_handle, 0);
 
 exit:
 	gt_1trace(listmpshm_debugmask, GT_LEAVE, "listmp_sharedmemory_prev",
@@ -1330,9 +1375,6 @@ listmp_sharedmemory_handle _listmp_sharedmemory_create(
 
 	}
 
-	if (params->heap_handle != NULL)
-		obj->params.heap_handle = params->heap_handle;
-
 	/* Update processor information */
 	obj->owner = kmalloc(sizeof(struct listmp_proc_attrs),
 							GFP_KERNEL);
@@ -1366,7 +1408,7 @@ listmp_sharedmemory_handle _listmp_sharedmemory_create(
 			obj->remote->proc_id = MULTIPROC_INVALIDID;
 			obj->owner->creator = false;
 			obj->owner->open_count = 0;
-			obj->owner->proc_id = multiproc_get_id("DSP");
+			obj->owner->proc_id = multiproc_get_id("SysM3");
 			/* TBD */
 			obj->top = handle;
 		}

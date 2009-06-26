@@ -6,11 +6,18 @@ menuconfig Sys_Link
 
 if Sys_Link
 
-config MPU_SYSLINK_IPC
-        tristate "OMAP IPC Module"
+config  SYSLINK_PROC
+        tristate "Syslink ProcMgr"
         default m
         help
-          IPC Module
+           Syslink Proc manager
+
+config  SYSLINK_PROC4430
+        tristate "Proc 4430"
+        depends on SYSLINK_PROC
+        default m
+        help
+           Ducati Proc implementation
 
 config MPU_BRIDGE_NOTIFY
 	tristate "OMAP Notify Module"
@@ -34,24 +41,18 @@ config  NOTIFY_TESLA
 
 config  NOTIFY_DUCATI  
 	tristate "OMAP Notify Ducati Module"
-	depends on MPU_BRIDGE_NOTIFY
+	depends on MPU_BRIDGE_NOTIFY && SYSLINK_PROC4430
 	default m
 	help
  	   Notify Ducati Module 
 
-config  SYSLINK_PROC
-	tristate "Syslink Procmgr"
-	default m
-	help
-	   Syslink proc manager
-
-config  SYSLINK_PROC4430
-
-        tristate "Proc 4430"
-	depends on SYSLINK_PROC
+config MPU_SYSLINK_IPC
+        tristate "Syslink IPC Module"
+        depends on MPU_BRIDGE_NOTIFY && NOTIFY_DUCATI
         default m
         help
-           Ducati proc implementation
+          Syslink IPC Module
+
 endif
 
 
