@@ -1,15 +1,15 @@
-Release notes for the Linux kernel for L24.0.8
+Release notes for the Linux kernel for L24.0.9
 ----------------------------------------------
 
-02 JUNE 2009
+26 JUNE 2009
 
 Copyright (C) 2009 Texas Instruments Incorporated.  All rights reserved.
 
 
 1.  Introduction
 ----------------
-This document accompanies OMAP(TM) Software Release L24.0.8 for Linux 2.6.30 on
-OMAP4430 VPOM4430_1.08a_Patch1. The document specifies:
+This document accompanies OMAP(TM) Software Release L24.0.9 for Linux 2.6.30 on
+OMAP4430 VPOM4430_1.08a_Patch2. The document specifies:
 	- Instructions for unpacking the release
 	- New features and features the release supports
 	- Planned future features
@@ -28,12 +28,12 @@ The u-boot source can be obtained via GIT from:
 The kernel source can be obtained via GIT from:
   http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=summary
 
-Virtio version used: VPOM4430_1.08a + VPOM4430_1.08a_Patch1.var
+Virtio version used: VPOM4430_1.08a + VPOM4430_1.08a_Patch2.var
 
 All drivers planned for this release are working as expected and
 overall platform stability is good.
 
-current L24.0.8 support:
+current L24.0.9 support:
 	SMP OS Kernel boot-up on with UART, GPTimers, McBSP, McSPI, I2c, 
 	GPIO, WATCHDOG.
 
@@ -42,7 +42,7 @@ current L24.0.8 support:
 
 3.1 Virtio Setup
 
-This release works on VPOM4430_1.08a_Patch1.
+This release works on VPOM4430_1.08a_Patch2.
 
 
 3.2 Virtio Installation Instructions
@@ -56,7 +56,7 @@ c. Install C:\Virtio\Shared\Disassembler\Setup\VirtioDisassembler.exe.
    This is to enable debugging using virtio.
 d. License for virtio has to be set in the environment variables
    LM_LICENSE_FILE.
-e. Install VPOM4430_1.08a_Patch1.
+e. Install VPOM4430_1.08a_Patch2.
 
 
 3.3 Virtio Configuration Instructions
@@ -146,9 +146,11 @@ cc VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1
 # DMM_LISA_MAP[0]: 0x80000000 mapped to 0x0 on SDRC0 (128MiB, no interleaving)
 d 0x4E000100=0x80301000
 
-#load up the u-boot
-[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]l 0x80e80000 -bin <u-boot.bin PATH>
-[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_2]l 0x80e80000 -bin <u-boot.bin PATH>
+#load up the u-boot,kernel and file system
+[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]l 0x80300000 -bin <uImage PATH>
+[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]l 0x81600000 -bin <u-boot.bin PATH>
+[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]l 0x80e80000 -bin <ramfs PATH>
+
 
 # PRCM setup
 # WKUP Domain
@@ -296,6 +298,8 @@ d 0x4a20c08c=0xffffffff
 d 0x4a21208c=0xffffffff
 d 0x4a22808c=0xffffffff
 
+[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]r r15=0x80e80000
+[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_2]r r15=0x80e80000
 g
 
 ------------------------- [End of Native Apps.script]---------------------------
@@ -306,20 +310,11 @@ The kernel binary used will be arch/arm/boot/uImage.
 
 
 3.8.1 Loading the kernel image via Virtio
+Note that the new NativeApp.script can load the kernel image & file sytem
+image.
 
-Select 'break' in the VPOM4430 innovator window. This will halt the system.
-Use the following commands from the console window (will be open at the bottom
-of virtio innovator window) to load up Image and the file system
-	l 0x81600000 -bin <path where you have your ramdisk>
-	l 0x80300000 -bin <path where Image file is put>/uImage>
-	r r15=0x80e80054
-
-Select 'go' in the virtio window.
-Go to the hyper terminal and execute the following
-set bootargs root=/dev/ram0 rw mem=128M console=ttyS0,115200n8
-initrd=0x81600000,20M ramdisk_size=20480
-
-bootm  0x80300000
+Just give below command on u-boot prompt.
+	bootm  0x80300000
 You should see the kernel booting and ramdisk getting loaded in a few seconds
 
 3.8.2 Loading the kernel image via Trace32
@@ -337,8 +332,6 @@ file system
 Select 'go' in the T32 window
 Go to the hyper terminal and execute the following
 
->set bootargs root=/dev/ram0 rw mem=128M console=ttyS0,115200n8
-initrd=0x81600000,20M ramdisk_size=20480
 >bootm  0x80300000
 
 You should see the kernel booting and ramdisk getting loaded in a few seconds
@@ -383,7 +376,7 @@ NA
 	Added McPDM driver
 
 -Video
-	No support yet
+	Basic Frame Buffer support available
 
 
 4.3 Postponed Features
