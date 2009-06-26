@@ -31,7 +31,7 @@
 #include <linux/io.h>
 #include <linux/irq.h>
 
-#include <mach/mcpdm.h>
+#include "mcpdm.h"
 
 struct omap_mcpdm *mcpdm;
 
@@ -355,6 +355,7 @@ static int __devinit omap_mcpdm_probe(struct platform_device *pdev)
 	mcpdm->dev = &pdev->dev;
 	platform_set_drvdata(pdev, mcpdm);
 
+
 	return 0;
 
 err_clk:
@@ -382,7 +383,7 @@ static int __devexit omap_mcpdm_remove(struct platform_device *pdev)
 		mcpdm_ptr->dev = NULL;
 	}
 
-	printk(KERN_INFO "McPDM driver removed\n");
+	printk(KERN_INFO "McPDM driver removed \n");
 
 	return 0;
 }
@@ -395,10 +396,31 @@ static struct platform_driver omap_mcpdm_driver = {
 	},
 };
 
+static struct platform_device *omap_mcpdm_device;
+
+static struct omap_mcpdm_platform_data mcpdm_pdata = {
+	.phys_base = OMAP44XX_MCPDM_BASE,
+	.irq = INT_44XX_MCPDM_IRQ,
+};
+
 int __init omap_mcpdm_init(void)
 {
-	printk(KERN_INFO "McPDM driver initialized\n");
+	int ret;
+	struct platform_device *device;
 
-	return platform_driver_register(&omap_mcpdm_driver);
+	device = platform_device_alloc("omap-mcpdm", -1);
+	device->dev.platform_data = &mcpdm_pdata;
+
+	omap_mcpdm_device = device;
+	(void) platform_device_add(omap_mcpdm_device);
+
+	ret = platform_driver_register(&omap_mcpdm_driver);
+	if (ret)
+		goto error;
+	return 0;
+
+error:
+	printk(KERN_ERR "OMAP McPDM initialization error\n");
+	return ret;
 }
 arch_initcall(omap_mcpdm_init);
