@@ -48,6 +48,7 @@ static const struct lcd_ctrl_config lcd_cfg = {
 	.vfp			= 2,    /* vfp            */
 	.vbp			= 2,    /* vbp            */
 	.vsw			= 10,   /* vsw            */
+	.invert_pxl_clock	= 0,    /* invert_pxl_clock  */
 #elif CONFIG_ARCH_DA830
 	.hfp			= 8,   /* hfp            */
 	.hbp			= 6,   /* hbp            */
@@ -55,6 +56,7 @@ static const struct lcd_ctrl_config lcd_cfg = {
 	.vfp			= 2,    /* vfp            */
 	.vbp			= 2,    /* vbp            */
 	.vsw			= 0,    /* vsw            */
+	.invert_pxl_clock	= 1,    /* invert_pxl_clock  */
 #endif
 	.ac_bias		= 255,  /* ac bias        */
 	.ac_bias_intrpt		= 0,    /* ac bias intrpt */
@@ -69,7 +71,6 @@ static const struct lcd_ctrl_config lcd_cfg = {
 	.tft_alt_mode		= 0,    /* tft_alt_mode   */
 	.stn_565_mode		= 0,    /* stn_565_mode   */
 	.mono_8bit_mode		= 0,    /* mono_8bit_mode    */
-	.invert_pxl_clock	= 1,    /* invert_pxl_clock  */
 	.invert_line_clock	= 1,    /* invert_line_clock */
 	.invert_frm_clock	= 1,    /* invert_frm_clock  */
 	.sync_edge		= 0,    /* sync_edge         */
