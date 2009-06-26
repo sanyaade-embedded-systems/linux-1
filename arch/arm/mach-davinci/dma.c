@@ -1154,6 +1154,7 @@ void edma_clean_channel(unsigned channel)
 		edma_write_array(ctlr, EDMA_EMCR, j, mask);
 		/* Clear any SER */
 		edma_shadow0_write_array(ctlr, SH_SECR, j, mask);
+		edma_shadow0_write_array(ctlr, SH_EECR, j, mask);
 		edma_write(ctlr, EDMA_CCERRCLR, (1 << 16) | 0x3);
 	}
 }
