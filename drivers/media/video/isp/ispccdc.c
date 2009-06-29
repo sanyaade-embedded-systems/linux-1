@@ -634,7 +634,10 @@ static int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 		       ISPCCDC_SYN_MODE);
 
 	switch (pipe->ccdc_in) {
-	case CCDC_RAW:
+	case CCDC_RAW_GRBG:
+	case CCDC_RAW_RGGB:
+	case CCDC_RAW_BGGR:
+	case CCDC_RAW_GBRG:
 		syncif.ccdc_mastermode = 0;
 		syncif.datapol = 0;
 		syncif.datsz = DAT10;
@@ -1156,12 +1159,18 @@ int ispccdc_try_pipeline(struct isp_ccdc_device *isp_ccdc,
 	}
 
 	/* CCDC does not convert the image format */
-	if ((pipe->ccdc_in == CCDC_RAW || pipe->ccdc_in == CCDC_OTHERS)
-	    && pipe->ccdc_out == CCDC_YUV_RSZ) {
+	if ((pipe->ccdc_in == CCDC_RAW_GRBG ||
+	     pipe->ccdc_in == CCDC_RAW_RGGB ||
+	     pipe->ccdc_in == CCDC_RAW_BGGR ||
+	     pipe->ccdc_in == CCDC_RAW_GBRG ||
+	     pipe->ccdc_in == CCDC_OTHERS) &&
+	    pipe->ccdc_out == CCDC_YUV_RSZ) {
 		dev_info(isp->dev, "wrong CCDC I/O Combination\n");
 		return -EINVAL;
 	}
 
+	pipe->ccdc_in_h_st = 0;
+	pipe->ccdc_in_v_st = 0;
 	pipe->ccdc_out_w = pipe->ccdc_in_w;
 	pipe->ccdc_out_h = pipe->ccdc_in_h;
 
@@ -1169,6 +1178,33 @@ int ispccdc_try_pipeline(struct isp_ccdc_device *isp_ccdc,
 	    && pipe->ccdc_out != CCDC_OTHERS_MEM
 	    && pipe->ccdc_out != CCDC_OTHERS_VP_MEM)
 		pipe->ccdc_out_h -= 1;
+
+	if (pipe->ccdc_out == CCDC_OTHERS_VP) {
+		switch (pipe->ccdc_in) {
+		case CCDC_RAW_GRBG:
+			pipe->ccdc_in_h_st = 1;
+			pipe->ccdc_in_v_st = 0;
+			break;
+		case CCDC_RAW_BGGR:
+			pipe->ccdc_in_h_st = 1;
+			pipe->ccdc_in_v_st = 1;
+			break;
+		case CCDC_RAW_RGGB:
+			pipe->ccdc_in_h_st = 0;
+			pipe->ccdc_in_v_st = 0;
+			break;
+		case CCDC_RAW_GBRG:
+			pipe->ccdc_in_h_st = 0;
+			pipe->ccdc_in_v_st = 1;
+			break;
+		default:
+			break;
+		}
+		pipe->ccdc_out_h -= pipe->ccdc_in_v_st;
+		pipe->ccdc_out_w -= pipe->ccdc_in_h_st;
+		pipe->ccdc_out_h -= (pipe->ccdc_out_h % 2);
+		pipe->ccdc_out_w -= (pipe->ccdc_out_w % 2);
+	}
 
 	pipe->ccdc_out_w_img = pipe->ccdc_out_w;
 	/* Round up to nearest 16 pixels. */
@@ -1200,15 +1236,15 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 		return rval;
 
 	if (pipe->ccdc_out == CCDC_OTHERS_VP) {
-		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcin_woffset <<
+		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_in_h_st <<
 				ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
-			       (pipe->ccdc_in_w <<
+			       ((pipe->ccdc_in_w - pipe->ccdc_in_h_st) <<
 				ISPCCDC_FMT_HORZ_FMTLNH_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_FMT_HORZ);
-		isp_reg_writel(isp_ccdc->dev, (isp_ccdc->ccdcin_hoffset <<
+		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_in_v_st <<
 				ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
-			       (pipe->ccdc_in_h <<
+			       ((pipe->ccdc_in_h - pipe->ccdc_in_v_st) <<
 				ISPCCDC_FMT_VERT_FMTLNV_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_FMT_VERT);
@@ -1229,9 +1265,12 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 	} else if (pipe->ccdc_out == CCDC_OTHERS_MEM) {
 		isp_reg_writel(isp_ccdc->dev, 0, OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VP_OUT);
-		if (pipe->ccdc_in == CCDC_RAW) {
+		if (pipe->ccdc_in == CCDC_RAW_GRBG ||
+		    pipe->ccdc_in == CCDC_RAW_RGGB ||
+		    pipe->ccdc_in == CCDC_RAW_BGGR ||
+		    pipe->ccdc_in == CCDC_RAW_GBRG) {
 			isp_reg_writel(isp_ccdc->dev,
-				       0 << ISPCCDC_HORZ_INFO_SPH_SHIFT
+				       pipe->ccdc_in_h_st << ISPCCDC_HORZ_INFO_SPH_SHIFT
 				       | ((pipe->ccdc_out_w - 1)
 					  << ISPCCDC_HORZ_INFO_NPH_SHIFT),
 				       OMAP3_ISP_IOMEM_CCDC,
@@ -1264,14 +1303,14 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 			       ISPCCDC_VDINT);
 	} else if (pipe->ccdc_out == CCDC_OTHERS_VP_MEM) {
 		isp_reg_writel(isp_ccdc->dev,
-			       (0 << ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
-			       (pipe->ccdc_in_w <<
+			       (pipe->ccdc_in_h_st << ISPCCDC_FMT_HORZ_FMTSPH_SHIFT) |
+			       ((pipe->ccdc_in_w - pipe->ccdc_in_h_st) <<
 				ISPCCDC_FMT_HORZ_FMTLNH_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_FMT_HORZ);
 		isp_reg_writel(isp_ccdc->dev,
-			       (0 << ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
-			       (pipe->ccdc_in_h <<
+			       (pipe->ccdc_in_v_st << ISPCCDC_FMT_VERT_FMTSLV_SHIFT) |
+			       ((pipe->ccdc_in_h - pipe->ccdc_in_v_st) <<
 				ISPCCDC_FMT_VERT_FMTLNV_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_FMT_VERT);
@@ -1282,13 +1321,13 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VP_OUT);
 		isp_reg_writel(isp_ccdc->dev,
-			       0 << ISPCCDC_HORZ_INFO_SPH_SHIFT |
+			       pipe->ccdc_in_h_st << ISPCCDC_HORZ_INFO_SPH_SHIFT |
 			       ((pipe->ccdc_out_w - 1) <<
 				ISPCCDC_HORZ_INFO_NPH_SHIFT),
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_HORZ_INFO);
 		isp_reg_writel(isp_ccdc->dev,
-			       0 << ISPCCDC_VERT_START_SLV0_SHIFT,
+			       pipe->ccdc_in_v_st << ISPCCDC_VERT_START_SLV0_SHIFT,
 			       OMAP3_ISP_IOMEM_CCDC,
 			       ISPCCDC_VERT_START);
 		isp_reg_writel(isp_ccdc->dev, (pipe->ccdc_out_h - 1) <<
@@ -1307,7 +1346,10 @@ int ispccdc_s_pipeline(struct isp_ccdc_device *isp_ccdc,
 	}
 
 	if (is_isplsc_activated()) {
-		if (pipe->ccdc_in == CCDC_RAW) {
+		if (pipe->ccdc_in == CCDC_RAW_GRBG ||
+		    pipe->ccdc_in == CCDC_RAW_RGGB ||
+		    pipe->ccdc_in == CCDC_RAW_BGGR ||
+		    pipe->ccdc_in == CCDC_RAW_GBRG) {
 			ispccdc_config_lsc(isp_ccdc, &isp_ccdc->lsc_config);
 			ispccdc_load_lsc(isp_ccdc, isp_ccdc->lsc_gain_table,
 					 isp_ccdc->lsc_config.size);
@@ -1418,8 +1460,11 @@ void ispccdc_enable(struct isp_ccdc_device *isp_ccdc, u8 enable)
 		container_of(isp_ccdc, struct isp_device, isp_ccdc);
 
 	if (enable) {
-		if (isp_ccdc->lsc_enable
-		    && isp->pipeline.ccdc_in == CCDC_RAW)
+		if (isp_ccdc->lsc_enable &&
+		    ((isp->pipeline.ccdc_in == CCDC_RAW_GRBG) ||
+		     (isp->pipeline.ccdc_in == CCDC_RAW_RGGB) ||
+		     (isp->pipeline.ccdc_in == CCDC_RAW_BGGR) ||
+		     (isp->pipeline.ccdc_in == CCDC_RAW_GBRG)))
 			ispccdc_enable_lsc(isp_ccdc, 1);
 
 	} else {
@@ -1522,7 +1567,10 @@ void ispccdc_print_status(struct isp_ccdc_device *isp_ccdc,
 			isp_reg_readl(isp_ccdc->dev, OMAP3_ISP_IOMEM_MAIN,
 				      ISP_CTRL));
 	switch ((int)pipe->ccdc_in) {
-	case CCDC_RAW:
+	case CCDC_RAW_GRBG:
+	case CCDC_RAW_RGGB:
+	case CCDC_RAW_BGGR:
+	case CCDC_RAW_GBRG:
 		DPRINTK_ISPCCDC("ccdc input format is CCDC_RAW\n");
 		break;
 	case CCDC_YUV_SYNC:
