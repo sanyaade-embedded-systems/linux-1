@@ -1,7 +1,7 @@
 Release notes for the Linux kernel for L24.0.9
 ----------------------------------------------
 
-26 JUNE 2009
+30 JUNE 2009
 
 Copyright (C) 2009 Texas Instruments Incorporated.  All rights reserved.
 
@@ -9,7 +9,7 @@ Copyright (C) 2009 Texas Instruments Incorporated.  All rights reserved.
 1.  Introduction
 ----------------
 This document accompanies OMAP(TM) Software Release L24.0.9 for Linux 2.6.30 on
-OMAP4430 VPOM4430_1.08a_Patch2. The document specifies:
+OMAP4430 VPOM4430_1.09a_Patch3. The document specifies:
 	- Instructions for unpacking the release
 	- New features and features the release supports
 	- Planned future features
@@ -28,7 +28,7 @@ The u-boot source can be obtained via GIT from:
 The kernel source can be obtained via GIT from:
   http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=summary
 
-Virtio version used: VPOM4430_1.08a + VPOM4430_1.08a_Patch2.var
+Virtio version used: VPOM4430_1.09a + VPOM4430_1.09a_Patch3.var
 
 All drivers planned for this release are working as expected and
 overall platform stability is good.
@@ -42,7 +42,7 @@ current L24.0.9 support:
 
 3.1 Virtio Setup
 
-This release works on VPOM4430_1.08a_Patch2.
+This release works on VPOM4430_1.09a_Patch2.
 
 
 3.2 Virtio Installation Instructions
@@ -56,7 +56,7 @@ c. Install C:\Virtio\Shared\Disassembler\Setup\VirtioDisassembler.exe.
    This is to enable debugging using virtio.
 d. License for virtio has to be set in the environment variables
    LM_LICENSE_FILE.
-e. Install VPOM4430_1.08a_Patch2.
+e. Install VPOM4430_1.09a_Patch3.
 
 
 3.3 Virtio Configuration Instructions
@@ -376,7 +376,7 @@ NA
 	Added McPDM driver
 
 -Video
-	Basic Frame Buffer support available
+	None
 
 
 4.3 Postponed Features
