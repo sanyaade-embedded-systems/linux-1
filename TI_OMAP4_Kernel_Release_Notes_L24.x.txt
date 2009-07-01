@@ -376,7 +376,7 @@ NA
 	Added McPDM driver
 
 -Video
-	None
+	Basic Frame Buffer support.
 
 
 4.3 Postponed Features
