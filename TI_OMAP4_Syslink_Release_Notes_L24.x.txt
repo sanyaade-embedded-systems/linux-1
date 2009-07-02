@@ -3,7 +3,7 @@ OMAP4 Syslink List Handoff
 ================================================================================
 
 Author		: Ramesh Gupta G / Suman Anna
-Date		: June 1 2009
+Date		: June 30 2009
 
 ===========
 Summary:
@@ -60,7 +60,7 @@ contact TI counter part.
 =======
 Setup:
 =======
-Virtio : VPOM4430_1.08a + patch1
+Virtio : VPOM4430_1.09a + patch3
 CCS: Version 3.3 with VPOM simulator. For more information on CCS availability
 please contact TI.
 CCSv4 with VPOM simulator is also supported.
@@ -106,7 +106,7 @@ From the Kernel sources run below commands.
 						<M>  Syslink Procmgr
 						<M>  Proc 4430
 		Device Drivers --><M> DSP Bridge driver-->
-						[*]   DSP Bridge Debug Support
+						[M]   DSP Bridge Debug Support
 
 		Select DSP Bridge Debug Support option as above.
 	7. Save Configuration
@@ -124,7 +124,10 @@ From the Kernel sources run below commands.
 
 	13. Run below command once the kernel is built.
 
-	14. Make CROSS_COMPILE=arm-none-linux-gnueabi- modules
+	14. Make CROSS_COMPILE=arm-none-linux-gnueabi- modules. This command
+		is applicable only if we select the required drivers as modules.
+		if all the drivers are selected as part of the kernel steps
+		from 14 to 23 can be ignored.
 
 	15. 	Bridgedriver module (bridgedriver.ko) is built under folder
 		drivers/dsp/bridge/  dspbridge module(dspbridge.ko) is built
@@ -226,12 +229,19 @@ Build the syslink samples by running below commands.
 
 	Run make command as below.
 
-	2. make PREFIX=<path to syslink folder>  TGTROOT=<path to syslink folder> clean
+	2. make PREFIX=<path to syslink folder>  TGTROOT=<path to syslink folder>
+		KRNLSRC=<kernel sources > clean
 
 	3. make PREFIX=<path to syslink folder>  TGTROOT=<path to syslink folder>
+		KRNLSRC=<kernel sources >
 
 	4. The sample .out files are build in the respective source directories
 		underneath syslink/samples folder.
+	5. The kernel sample procmgr_app.ko is built under
+		syslink/samples/proc_sample/krnl
+	6. make sure to build the samples from the same session from which the
+		kernel is built or export ARCH and PATH variables as mentioned
+		in above in kernel building.
 
 ========================================
 Building Tesla images and Ducati samples
@@ -255,7 +265,10 @@ Running Tesla Samples
 	2. Once kernel is booted, cd into the folder where all the binaries are
 		placed.
 
-	3. install all the drivers in the sequence as below
+	3. install all the drivers in the sequence as below, this step is
+		required only if the drivers are build as modules,
+		if all the drivers are build as part of the kernel one can
+		ignore steps 3 and 4
 
 		insmod omap_notify.ko
 
@@ -339,7 +352,10 @@ Running Syslink Samples
 	2. Once kernel is booted, cd into the folder where all the binaries are
 		placed.
 
-	3. install all the drivers in the sequence as below
+	3. install all the drivers in the sequence as below, this step is
+		required only if the drivers are build as modules,
+		if all the drivers are build as part of the kernel one can
+		ignore steps 3 and 4
 
 		insmod omap_notify.ko
 
@@ -393,7 +409,7 @@ Remove the IVAHD-iCONT1, IVAHD-iCONT2, and Modena.
 The System Configuration must have only Tesla and Duati-ARM-M3-1, Ducati-ARM-M3-2
 -------------------------------------------------------------------------------
 
-Two baseimages Bios6Boot.xm3 and Bios6Boot_Core1.xm3 can be used to validate
+Two baseimages Bios6Boot.xem3 and Bios6Boot_Core1.xem3 can be used to validate
 the BIOS6 boot validation on each of the cores respectively.
 
 Please contact TI representative for these images.
@@ -406,7 +422,10 @@ to boot the Core1 as well.
 	2. Break the platform by typing 'y' in the Virtio Console after the bash
 		shell prompt appears.
 
-	3. install below drivers in below sequence.
+	3. install all the drivers in the sequence as below, this step is
+		required only if the drivers are build as modules,
+		if all the drivers are build as part of the kernel one can
+		ignore this step
 
 		insmod omap_notify.ko
 
@@ -418,7 +437,6 @@ to boot the Core1 as well.
 
 	4. The syslink_proc4430 driver programs MMU and
 		updates page table entries.
-
 	5. Break the Virtio by typing y in console.
 
 	6. Open CCS and select Ducati core.
@@ -426,9 +444,10 @@ to boot the Core1 as well.
 	7. Load the base image into Ducati core0.
 
 	8. In Virtio design , browse to
-		VPOM4430->SDP->OMAP4430-> InitValue_DUCATI_SYS_1. Right click and open.
-
-		Right click on Signal (InitValue) and select Send Signal To Platform.
+		VPOM4430->SDP->OMAP4430-> InitValue_DUCATI_SYS_1.
+		Right click and open.
+		Right click on Signal (InitValue) and select
+		Send Signal To Platform.
 		Send 1 and press OK. This resets the core.
 
 	9. Press F11 once to have the Reset release become effective.
@@ -440,7 +459,9 @@ Running Notify ping sample on Ducati:
 -------------------------------------
 	1. Boot Vartio as usual.
 	2. Follow the same steps as above install required drivers (step 3
-		above).
+		above), this step is required only if the drivers
+		are build as modules, if all the drivers are build
+		as part of the kernel one can ignore this step
 	3. create nodes for ipcnotify and notifyducatidrv accordinngly.
 		e.g: mknod /dev/ipcnotify c 232 0
 		     mknod /dev/notifyducatidrv c 234 0
@@ -453,7 +474,7 @@ Running Notify ping sample on Ducati:
 
 	7. Open CCS and select Ducati-ARM-M3-1  core.
 
-	6. Load  ducati image (notifyxfer_bios6.xm3) image.
+	6. Load  ducati image (notifyxfer_bios6.xem3) image.
 
 	7. Open source file notifyxfer_bios6.c file and add some breakpoints
 		in the main function.
@@ -468,6 +489,61 @@ Running Notify ping sample on Ducati:
 	10. The Notifyping sample running on the Chiron shows event messages
 	and call back function messages.
 
+Loading ducati images using the userspace loader:
+------------------------------------------------
+	1. On successful ducati sample build user space binary loader
+		ducati_load.out is build underi folder
+		syslink/samples/samples/procmgr/ducati_load/
+	2. One can load the ducati image on to SYSM3 or APPM3 using the
+		userspace binary loader as below.
+			./ducati_load.out <image_name>
+	3. on successful load the loader displays the entry point for
+		the image at the end.
+
+	------snip----
+		loaded_program: 0xea19
+		Completed Loading Image ..... notifyxfer_bios6.xem3
+		entry_point is 0xea19
+		Hit any key to terminate cexec.
+	--------------
+	4. Due to Virtio issues we cannot start SYSM3/APPM3 from the
+		MPU side, one has to use CCS for SYSM3/APPM3 start by
+		following below step.
+	5. Break Virtio and open CCS, Select the processor on which
+		image is loaded.
+	6. Open the PC registers.
+	7. Set the PC value to the entry point displayed from the loading
+		step.
+	8. Run couple of times step run.
+	9. Run the Processor.
+
+loading images on both SYSM3/APPM3 processors
+---------------------------------------------
+
+Follow below procedure to load images on both SYSM3/APPM3 using
+user space loader
+
+	1. SYSM3 should be reached main() before loading the APPM3 image.
+	2. SYSM3 should be in running state to load APPM3 from MPU using
+		user space loader. Otherwise MPU will not respond.
+	3. Because of the above reasons, one need to introduce a continuos
+		while loop in both the SYSM3/APPM3 programs immediately in the main()
+		function at the first place. e.g:
+
+		while(flag)
+			;
+	4. Load the SYSM3 image using the loader, set the PC using CCS and tun the
+		SYSM3 processor. Now SYSM3 executing the while(flag) loop.
+	5. Load the APPM3 using the loader, set the PC using the CCS and run the
+		APPM3 processor, now the APPM3 is executing the while(flag) loop.
+	6. Stop APPM3 processor.
+	7. Stop SYSM3 processor.
+	8. Bring SYSM3 out of while loop by changing the variable flag to 0 on the
+		fly.
+	9. Bring APP3 out of while loop by changing the variable flag to 0 on the
+		fly.
+	10. Run SYSM3 and Run APPM3.
+
 ================================================================================
 Highlights / Important Notes
 ================================================================================
@@ -477,7 +553,6 @@ Tesla Bridge
 ==============
 Features Introduced
 --------------------------
-- All modules now can be built alng with the Kernel.
 - Fixed checkpatch errors and warnings for all modules under syslink.
 - Dynamic Loading Support has been added.
 - Bridge Trace Support has been added.
@@ -487,7 +562,12 @@ Features Introduced
 ==============
 Syslink
 ==============
-- First version of Syslink IPC code.
+- RCM server and client works on Chiron, Ducati SYSM3 and APPM3.
+- Added load support by Proc manager.
+- All modules can be built along with the Kernel.
+- All modules are working as expected.
+- Userspace binary image loader utility is implemented for loading images on
+	Ducati.
 
 Ducati Bridge
 ==============
@@ -508,6 +588,8 @@ Important Notes
 	set bootargs root=/dev/ram0 rw mem=54M console=ttyS0,115200n8
 	initrd=0x81600000,20M ramdisk_size=20480
 
+	- One need to have CCS to start the Ducati processors as the Virtio doesn't have
+		the PRCM support to reset Ducati processors.
 	- Code Composer Studio is required to write the Start DSP Address to the
 		PC register
 	* CCS_v3.3_SR9_79.exe or CCS_v3.3_SR10_80.exe or CCS_v3.3_SR11
@@ -526,9 +608,7 @@ Important Notes
 ==================================
 Issues Resolved
 ==================================
-	- Due to timing issues some of the static samples were not
-		working properly. This issue got fixed. Please refer
-		TI internal tracking id:OMAPS00198805
+	- NONE
 
 ==================================
 Known Issues
@@ -539,3 +619,8 @@ Known Issues
 		is not backward compatible with Virtio versions < 1.06a.
 	3. Notipy ping sample some times not working because of timing issues.
 		Need to have break points in Ducati side.
+	4. CCS is required to start Ducati processors (SYSM3/APPM3), as the
+		current Virtio doesn't have the PRCM support to reset Ducati Processors.
+	5. ping sample is not working in dynamic mode in Tesla due to dependant
+		library issue this is been tracked by internal tracking number id:
+		OMAPS00202802
