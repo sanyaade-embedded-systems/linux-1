@@ -277,8 +277,7 @@ void nameserver_remotenotify_callback(u16 proc_id, u32 event_no,
 	void *nshandle = NULL;
 	u32 value;
 	u32 key;
-	s32 retval;
-	void *entry = NULL;
+	s32 retval = 0;
 
 	BUG_ON(arg == NULL);
 	proc_count = multiproc_get_max_processors();
@@ -293,19 +292,20 @@ void nameserver_remotenotify_callback(u16 proc_id, u32 event_no,
 		goto exit;
 
 	/* This is a request */
-	entry = nameserver_get_handle(handle->msg[1 - offset]->instance_name);
-	if (entry == NULL)
-		goto exit;
-
-	/* Search for the NameServer entry */
-	retval = nameserver_get_local(nshandle, handle->msg[1 - offset]->name,
-				&value,	handle->msg[1 - offset]->value_len);
-	if (retval != 0)
-		goto exit;
+	nshandle = nameserver_get_handle(
+				handle->msg[1 - offset]->instance_name);
+	if (nshandle != NULL)
+		/* Search for the NameServer entry */
+		retval = nameserver_get_local(nshandle,
+				handle->msg[1 - offset]->name, &value,
+				handle->msg[1 - offset]->value_len);
 
 	key = gatepeterson_enter(handle->params.gate);
-	handle->msg[1 - offset]->request_status = true;
-	handle->msg[1 - offset]->value = value;
+	/* If retval != 0 then an entry was found */
+	if (retval > 0) {
+		handle->msg[1 - offset]->request_status = true;
+		handle->msg[1 - offset]->value = value;
+	}
 	/* Send a response back */
 	handle->msg[1 - offset]->response = true;
 	handle->msg[1 - offset]->request = false;
