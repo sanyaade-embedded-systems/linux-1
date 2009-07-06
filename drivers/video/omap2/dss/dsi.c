@@ -2704,7 +2704,7 @@ static void dsi_update_screen_dispc(struct omap_dss_device *dssdev,
 	queue_delayed_work(dsi.workqueue, &dsi.framedone_timeout_work,
 			msecs_to_jiffies(1000));
 
-	dispc_enable_lcd_out(1);
+	dss_start_update(dssdev);
 
 	if (dsi.use_te)
 		dsi_vc_send_bta(1);
@@ -3823,20 +3823,17 @@ static int dsi_display_memory_read(struct omap_dss_device *dssdev,
 	return ret_size;
 }
 
-static void dsi_configure_overlay(struct omap_overlay *ovl)
+void dsi_get_overlay_fifo_thresholds(enum omap_plane plane,
+		u32 fifo_size, enum omap_burst_size *burst_size,
+		u32 *fifo_low, u32 *fifo_high)
 {
-	unsigned low, high, size;
-	enum omap_burst_size burst;
-	enum omap_plane plane = ovl->id;
+	unsigned burst_size_bytes;
 
-	burst = OMAP_DSS_BURST_16x32;
-	size = 16 * 32 / 8;
+	*burst_size = OMAP_DSS_BURST_16x32;
+	burst_size_bytes = 16 * 32 / 8;
 
-	dispc_set_burst_size(plane, burst);
-
-	high = dispc_get_plane_fifo_size(plane) - size;
-	low = 0;
-	dispc_setup_plane_fifo(plane, low, high);
+	*fifo_high = fifo_size - burst_size_bytes;
+	*fifo_low = 0;
 }
 
 int dsi_init_display(struct omap_dss_device *dssdev)
@@ -3862,8 +3859,6 @@ int dsi_init_display(struct omap_dss_device *dssdev)
 
 	dssdev->run_test = dsi_display_run_test;
 	dssdev->memory_read = dsi_display_memory_read;
-
-	dssdev->configure_overlay = dsi_configure_overlay;
 
 	dssdev->caps = OMAP_DSS_DISPLAY_CAP_MANUAL_UPDATE;
 
