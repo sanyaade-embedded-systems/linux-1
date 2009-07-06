@@ -24,8 +24,8 @@
 #ifndef __OMAPFB_H
 #define __OMAPFB_H
 
-#include <asm/ioctl.h>
-#include <asm/types.h>
+#include <linux/ioctl.h>
+#include <linux/types.h>
 
 /* IOCTL commands. */
 
@@ -256,7 +256,7 @@ struct lcd_ctrl_extif {
 	void (*read_data)	(void *buf, unsigned int len);
 	void (*write_data)	(const void *buf, unsigned int len);
 	void (*transfer_area)	(int width, int height,
-				 void (callback)(void * data), void *data);
+				 void (callback)(void *data), void *data);
 	int  (*setup_tearsync)	(unsigned pin_cnt,
 				 unsigned hs_pulse_time, unsigned vs_pulse_time,
 				 int hs_pol_inv, int vs_pol_inv, int div);
@@ -332,7 +332,7 @@ struct lcd_ctrl {
 
 enum omapfb_state {
 	OMAPFB_DISABLED	= 0,
-	OMAPFB_SUSPENDED= 99,
+	OMAPFB_SUSPENDED = 99,
 	OMAPFB_ACTIVE	= 100
 };
 
@@ -346,7 +346,7 @@ struct omapfb_plane_struct {
 struct omapfb_device {
 	int			state;
 	int                     ext_lcdc;               /* Using external
-                                                           LCD controller */
+							 LCD controller */
 	struct mutex		rqueue_mutex;
 
 	int			palette_size;
@@ -356,7 +356,7 @@ struct omapfb_device {
 	const struct lcd_ctrl	*ctrl;			/* LCD controller */
 	const struct lcd_ctrl	*int_ctrl;		/* internal LCD ctrl */
 	struct lcd_ctrl_extif	*ext_if;		/* LCD ctrl external
-							   interface */
+							interface */
 	struct device		*dev;
 	struct fb_var_screeninfo	new_var;	/* for mode changes */
 
@@ -396,3 +396,4 @@ extern void omapfb_set_ctrl_platform_data(void *pdata);
 #endif /* __KERNEL__ */
 
 #endif /* __OMAPFB_H */
+

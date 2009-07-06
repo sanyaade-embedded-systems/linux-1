@@ -23,9 +23,9 @@
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/omapfb.h>
 
 #include <mach/mux.h>
-#include <mach/omapfb.h>
 #include <asm/mach-types.h>
 
 #define LCD_PIXCLOCK_MAX                5400 /* freq 5.4 MHz */
