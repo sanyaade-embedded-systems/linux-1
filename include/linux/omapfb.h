@@ -24,6 +24,7 @@
 #ifndef __OMAPFB_H
 #define __OMAPFB_H
 
+#include <linux/fb.h>
 #include <linux/ioctl.h>
 #include <linux/types.h>
 
