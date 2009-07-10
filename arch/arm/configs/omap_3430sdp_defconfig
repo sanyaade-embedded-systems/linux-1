@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# Linux kernel version: 2.6.30-omap1
-# Tue Jun 23 10:36:45 2009
+# Linux kernel version: 2.6.31-rc1-omap1
+# Fri Jul 10 12:31:02 2009
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1706,6 +1706,10 @@ CONFIG_RTC_DRV_TWL4030=y
 # CONFIG_REGULATOR is not set
 # CONFIG_UIO is not set
 # CONFIG_STAGING is not set
+
+CONFIG_MPU_BRIDGE=m
+CONFIG_BRIDGE_MEMPOOL_SIZE=0x600000
+# CONFIG_BRIDGE_DEBUG is not set
 
 #
 # File systems
