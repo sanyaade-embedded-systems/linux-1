@@ -19,7 +19,7 @@
 #include <linux/input.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/ads7846.h>
-#include <linux/i2c/twl4030.h>
+#include <linux/i2c/twl.h>
 #include <linux/regulator/machine.h>
 #include <linux/io.h>
 #include <linux/gpio.h>

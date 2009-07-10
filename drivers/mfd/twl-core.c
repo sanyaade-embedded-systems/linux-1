@@ -36,7 +36,7 @@
 #include <linux/regulator/machine.h>
 
 #include <linux/i2c.h>
-#include <linux/i2c/twl4030.h>
+#include <linux/i2c/twl.h>
 
 #if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
 #include <mach/cpu.h>
@@ -717,9 +717,6 @@ static void clocks_init(struct device *dev)
 
 /*----------------------------------------------------------------------*/
 
-int twl_init_irq(int irq_num, unsigned irq_base, unsigned irq_end);
-int twl_exit_irq(void);
-
 static int twl4030_remove(struct i2c_client *client)
 {
 	unsigned i;
@@ -792,7 +789,8 @@ twl4030_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	if (client->irq
 			&& pdata->irq_base
 			&& pdata->irq_end > pdata->irq_base) {
-		status = twl_init_irq(client->irq, pdata->irq_base, pdata->irq_end);
+		status = twl_init_irq(client->irq, pdata->irq_base,
+			pdata->irq_end);
 		if (status < 0)
 			goto fail;
 	}

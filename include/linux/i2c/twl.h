@@ -257,7 +257,7 @@ int twl4030_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
  */
 
 #define MSG_BROADCAST(devgrp, grp, type, type2, state) \
-	( (devgrp) << 13 | 1 << 12 | (grp) << 9 | (type2) << 7 \
+	((devgrp) << 13 | 1 << 12 | (grp) << 9 | (type2) << 7 \
 	| (type) << 4 | (state))
 
 #define MSG_SINGULAR(devgrp, id, state) \
@@ -398,5 +398,8 @@ int twl4030_sih_setup(int module);
 #define TWL4030_REG_VUSB1V5	17
 #define TWL4030_REG_VUSB1V8	18
 #define TWL4030_REG_VUSB3V1	19
+
+int twl_init_irq(int irq_num, unsigned irq_base, unsigned irq_end);
+int twl_exit_irq(void);
 
 #endif /* End of __TWL4030_H */
