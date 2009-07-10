@@ -42,21 +42,38 @@
 #define OMAP2_MCSPI_MAX_FREQ		48000000
 
 #define OMAP2_MCSPI_REVISION		0x00
-#define OMAP2_MCSPI_SYSCONFIG		0x10
-#define OMAP2_MCSPI_SYSSTATUS		0x14
-#define OMAP2_MCSPI_IRQSTATUS		0x18
-#define OMAP2_MCSPI_IRQENABLE		0x1c
-#define OMAP2_MCSPI_WAKEUPENABLE	0x20
-#define OMAP2_MCSPI_SYST		0x24
-#define OMAP2_MCSPI_MODULCTRL		0x28
+#ifdef CONFIG_ARCH_OMAP4
+#define OMAP2_MCSPI_SYSCONFIG		0x110
+#define OMAP2_MCSPI_SYSSTATUS		0x114
+#define OMAP2_MCSPI_IRQSTATUS		0x118
+#define OMAP2_MCSPI_IRQENABLE		0x11c
+#define OMAP2_MCSPI_WAKEUPENABLE	0x120
+#define OMAP2_MCSPI_SYST		0x124
+#define OMAP2_MCSPI_MODULCTRL		0x128
 
 /* per-channel banks, 0x14 bytes each, first is: */
-#define OMAP2_MCSPI_CHCONF0		0x2c
-#define OMAP2_MCSPI_CHSTAT0		0x30
-#define OMAP2_MCSPI_CHCTRL0		0x34
-#define OMAP2_MCSPI_TX0			0x38
-#define OMAP2_MCSPI_RX0			0x3c
+#define OMAP2_MCSPI_CHCONF0		0x12c
+#define OMAP2_MCSPI_CHSTAT0		0x130
+#define OMAP2_MCSPI_CHCTRL0		0x134
+#define OMAP2_MCSPI_TX0			0x138
+#define OMAP2_MCSPI_RX0			0x13c
+#else
+#define OMAP2_MCSPI_REVISION            0x00
+#define OMAP2_MCSPI_SYSCONFIG           0x10
+#define OMAP2_MCSPI_SYSSTATUS           0x14
+#define OMAP2_MCSPI_IRQSTATUS           0x18
+#define OMAP2_MCSPI_IRQENABLE           0x1c
+#define OMAP2_MCSPI_WAKEUPENABLE        0x20
+#define OMAP2_MCSPI_SYST                0x24
+#define OMAP2_MCSPI_MODULCTRL           0x28
 
+/* per-channel banks, 0x14 bytes each, first is: */
+#define OMAP2_MCSPI_CHCONF0             0x2c
+#define OMAP2_MCSPI_CHSTAT0             0x30
+#define OMAP2_MCSPI_CHCTRL0             0x34
+#define OMAP2_MCSPI_TX0                 0x38
+#define OMAP2_MCSPI_RX0                 0x3c
+#endif
 /* per-register bitmasks: */
 
 #define OMAP2_MCSPI_SYSCONFIG_SMARTIDLE	(2 << 3)
@@ -933,7 +950,8 @@ static u8 __initdata spi2_txdma_id[] = {
 	OMAP24XX_DMA_SPI2_TX1,
 };
 
-#if defined(CONFIG_ARCH_OMAP2430) || defined(CONFIG_ARCH_OMAP34XX)
+#if defined(CONFIG_ARCH_OMAP2430) || defined(CONFIG_ARCH_OMAP34XX) ||\
+defined(CONFIG_ARCH_OMAP4)
 static u8 __initdata spi3_rxdma_id[] = {
 	OMAP24XX_DMA_SPI3_RX0,
 	OMAP24XX_DMA_SPI3_RX1,
@@ -945,7 +963,7 @@ static u8 __initdata spi3_txdma_id[] = {
 };
 #endif
 
-#ifdef CONFIG_ARCH_OMAP3
+#if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
 static u8 __initdata spi4_rxdma_id[] = {
 	OMAP34XX_DMA_SPI4_RX0,
 };
@@ -975,14 +993,15 @@ static int __init omap2_mcspi_probe(struct platform_device *pdev)
 		txdma_id = spi2_txdma_id;
 		num_chipselect = 2;
 		break;
-#if defined(CONFIG_ARCH_OMAP2430) || defined(CONFIG_ARCH_OMAP3)
+#if defined(CONFIG_ARCH_OMAP2430) || defined(CONFIG_ARCH_OMAP3) ||\
+defined(CONFIG_ARCH_OMAP4)
 	case 3:
 		rxdma_id = spi3_rxdma_id;
 		txdma_id = spi3_txdma_id;
 		num_chipselect = 2;
 		break;
 #endif
-#ifdef CONFIG_ARCH_OMAP3
+#if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
 	case 4:
 		rxdma_id = spi4_rxdma_id;
 		txdma_id = spi4_txdma_id;
