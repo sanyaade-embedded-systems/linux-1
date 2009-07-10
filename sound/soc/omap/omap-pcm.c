@@ -30,6 +30,7 @@
 
 #include <mach/dma.h>
 #include "omap-pcm.h"
+#include "mcpdm.h"
 
 static const struct snd_pcm_hardware omap_pcm_hardware = {
 	.info			= SNDRV_PCM_INFO_MMAP |
@@ -37,7 +38,7 @@ static const struct snd_pcm_hardware omap_pcm_hardware = {
 				  SNDRV_PCM_INFO_INTERLEAVED |
 				  SNDRV_PCM_INFO_PAUSE |
 				  SNDRV_PCM_INFO_RESUME,
-	.formats		= SNDRV_PCM_FMTBIT_S16_LE,
+	.formats		= SNDRV_PCM_FMTBIT_S32_LE,
 	.period_bytes_min	= 32,
 	.period_bytes_max	= 64 * 1024,
 	.periods_min		= 2,
@@ -146,7 +147,7 @@ static int omap_pcm_prepare(struct snd_pcm_substream *substream)
 	 * Note: Regardless of interface data formats supported by OMAP McBSP
 	 * or EAC blocks, internal representation is always fixed 16-bit/sample
 	 */
-	dma_params.data_type			= OMAP_DMA_DATA_TYPE_S16;
+	dma_params.data_type			= OMAP_DMA_DATA_TYPE_S32;
 	dma_params.trigger			= dma_data->dma_req;
 	dma_params.sync_mode			= OMAP_DMA_SYNC_ELEMENT;
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -170,7 +171,7 @@ static int omap_pcm_prepare(struct snd_pcm_substream *substream)
 	 * we can transfer the whole ALSA buffer with single DMA transfer but
 	 * still can get an interrupt at each period bounary
 	 */
-	dma_params.elem_count	= snd_pcm_lib_period_bytes(substream) / 2;
+	dma_params.elem_count	= snd_pcm_lib_period_bytes(substream) / 4;
 	dma_params.frame_count	= runtime->periods;
 	omap_set_dma_params(prtd->dma_ch, &dma_params);
 
