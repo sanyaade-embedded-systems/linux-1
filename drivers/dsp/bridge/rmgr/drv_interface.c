@@ -688,9 +688,6 @@ static int bridge_ioctl(struct inode *ip, struct file *filp, unsigned int code,
 
 	GT_0trace(driverTrace, GT_ENTER, " -> driver_ioctl\n");
 
-	/* Deduct one for the CMD_BASE. */
-	code = (code - 1);
-
 	status = copy_from_user(&pBufIn, (union Trapped_Args *)args,
 				sizeof(union Trapped_Args));
 
