@@ -124,6 +124,7 @@
 #define KEYPAD_SUB_CHIP_ID SUB_CHIP_ID2
 #define BCI_SUB_CHIP_ID SUB_CHIP_ID3
 #define RTC_SUB_CHIP_ID SUB_CHIP_ID3
+#define REG_SUB_CHIP_ID SUB_CHIP_ID3
 
 /* Last - for index max*/
 #define TWL4030_MODULE_LAST		TWL4030_MODULE_SECURED_REG
@@ -463,7 +464,7 @@ add_regulator_linked(int num, struct regulator_init_data *pdata,
 	}
 
 	/* NOTE:  we currently ignore regulator IRQs, e.g. for short circuits */
-	return add_numbered_child(3, "twl4030_reg", num,
+	return add_numbered_child(REG_SUB_CHIP_ID, "twl_reg", num,
 		pdata, sizeof(*pdata), false, 0, 0);
 }
 
