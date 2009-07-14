@@ -528,7 +528,7 @@ add_children(struct twl_platform_data *pdata, unsigned long features)
 		 * Eventually, Linux might become more aware of such
 		 * HW security concerns, and "least privilege".
 		 */
-		child = add_child(RTC_SUB_CHIP_ID, "twl4030_rtc",
+		child = add_child(RTC_SUB_CHIP_ID, "twl_rtc",
 				NULL, 0,
 				true, pdata->irq_base + RTC_INTR_OFFSET, 0);
 		if (IS_ERR(child))
