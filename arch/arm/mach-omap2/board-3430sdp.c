@@ -88,7 +88,7 @@ static int sdp3430_keymap[] = {
 	0
 };
 
-static struct twl4030_keypad_data sdp3430_kp_data = {
+static struct twl_keypad_data sdp3430_kp_data = {
 	.rows		= 5,
 	.cols		= 6,
 	.keymap		= sdp3430_keymap,
@@ -198,7 +198,7 @@ static int sdp3430_batt_table[] = {
 4040,   3910,   3790,   3670,   3550
 };
 
-static struct twl4030_bci_platform_data sdp3430_bci_data = {
+static struct twl_bci_platform_data sdp3430_bci_data = {
 	.battery_tmp_tbl	= sdp3430_batt_table,
 	.tblsize		= ARRAY_SIZE(sdp3430_batt_table),
 };
@@ -260,7 +260,7 @@ static int sdp3430_twl_gpio_setup(struct device *dev,
 	return 0;
 }
 
-static struct twl4030_gpio_platform_data sdp3430_gpio_data = {
+static struct twl_gpio_platform_data sdp3430_gpio_data = {
 	.gpio_base	= OMAP_MAX_GPIO_LINES,
 	.irq_base	= TWL4030_GPIO_IRQ_BASE,
 	.irq_end	= TWL4030_GPIO_IRQ_END,
@@ -269,11 +269,11 @@ static struct twl4030_gpio_platform_data sdp3430_gpio_data = {
 	.setup		= sdp3430_twl_gpio_setup,
 };
 
-static struct twl4030_usb_data sdp3430_usb_data = {
+static struct twl_usb_data sdp3430_usb_data = {
 	.usb_mode	= T2_USB_MODE_ULPI,
 };
 
-static struct twl4030_madc_platform_data sdp3430_madc_data = {
+static struct twl_madc_platform_data sdp3430_madc_data = {
 	.irq_line	= 1,
 };
 
@@ -409,7 +409,7 @@ static struct regulator_init_data sdp3430_vpll2 = {
 	.consumer_supplies	= &sdp3430_vdvi_supply,
 };
 
-static struct twl4030_platform_data sdp3430_twldata = {
+static struct twl_platform_data sdp3430_twldata = {
 	.irq_base	= TWL4030_IRQ_BASE,
 	.irq_end	= TWL4030_IRQ_END,
 

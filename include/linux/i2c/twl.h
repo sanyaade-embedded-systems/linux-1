@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef __TWL4030_H_
-#define __TWL4030_H_
+#ifndef __TWL_H_
+#define __TWL_H_
 
 /*
  * Using the twl4030 core we address registers using a pair
@@ -66,20 +66,53 @@
 #define TWL4030_MODULE_RTC		0x14
 #define TWL4030_MODULE_SECURED_REG	0x15
 
+#ifdef CONFIG_TWL4030_CORE
+#define TWL_MODULE_USB		TWL4030_MODULE_USB
+#define TWL_MODULE_AUDIO_VOICE	TWL4030_MODULE_AUDIO_VOICE
+#define TWL_MODULE_GPIO		TWL4030_MODULE_GPIO
+#define TWL_MODULE_INTBR		TWL4030_MODULE_INTBR
+#define TWL_MODULE_PIH		TWL4030_MODULE_PIH
+#define TWL_MODULE_TEST		TWL4030_MODULE_TEST
+#define TWL_MODULE_KEYPAD		TWL4030_MODULE_KEYPAD
+#define TWL_MODULE_MADC		TWL4030_MODULE_MADC
+#define TWL_MODULE_INTERRUPTS	TWL4030_MODULE_INTERRUPTS
+#define TWL_MODULE_LED		TWL4030_MODULE_LED
+#define TWL_MODULE_MAIN_CHARGE	TWL4030_MODULE_MAIN_CHARGE
+#define TWL_MODULE_PRECHARGE	TWL4030_MODULE_PRECHARGE
+#define TWL_MODULE_PWM0		TWL4030_MODULE_PWM0
+#define TWL_MODULE_PWM1		TWL4030_MODULE_PWM1
+#define TWL_MODULE_PWMA		TWL4030_MODULE_PWMA
+#define TWL_MODULE_PWMB		TWL4030_MODULE_PWMB
+#define TWL_MODULE_BACKUP		TWL4030_MODULE_BACKUP
+#define TWL_MODULE_INT		TWL4030_MODULE_INT
+#define TWL_MODULE_PM_MASTER	TWL4030_MODULE_PM_MASTER
+#define TWL_MODULE_PM_RECEIVER	TWL4030_MODULE_PM_RECEIVER
+#define TWL_MODULE_RTC		TWL4030_MODULE_RTC
+#define TWL_MODULE_SECURED_REG	TWL4030_MODULE_SECURED_REG
+
+#define GPIO_INTR_OFFSET	0
+#define KEYPAD_INTR_OFFSET	1
+#define BCI_INTR_OFFSET	2
+#define MADC_INTR_OFFSET	3
+#define USB_INTR_OFFSET	4
+#define BCI_PRES_INTR_OFFSET	9
+#define USB_PRES_INTR_OFFSET	10
+#define RTC_INTR_OFFSET	11
+#endif
 /*
  * Read and write single 8-bit registers
  */
-int twl4030_i2c_write_u8(u8 mod_no, u8 val, u8 reg);
-int twl4030_i2c_read_u8(u8 mod_no, u8 *val, u8 reg);
+int twl_i2c_write_u8(u8 mod_no, u8 val, u8 reg);
+int twl_i2c_read_u8(u8 mod_no, u8 *val, u8 reg);
 
 /*
  * Read and write several 8-bit registers at once.
  *
- * IMPORTANT:  For twl4030_i2c_write(), allocate num_bytes + 1
+ * IMPORTANT:  For twl_i2c_write(), allocate num_bytes + 1
  * for the value, and populate your data starting at offset 1.
  */
-int twl4030_i2c_write(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
-int twl4030_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
+int twl_i2c_write(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
+int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 
 /*----------------------------------------------------------------------*/
 
@@ -265,13 +298,13 @@ int twl4030_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 
 /*----------------------------------------------------------------------*/
 
-struct twl4030_bci_platform_data {
+struct twl_bci_platform_data {
 	int *battery_tmp_tbl;
 	unsigned int tblsize;
 };
 
 /* TWL4030_GPIO_MAX (18) GPIOs, with interrupts */
-struct twl4030_gpio_platform_data {
+struct twl_gpio_platform_data {
 	int		gpio_base;
 	unsigned	irq_base, irq_end;
 
@@ -298,11 +331,11 @@ struct twl4030_gpio_platform_data {
 				unsigned gpio, unsigned ngpio);
 };
 
-struct twl4030_madc_platform_data {
+struct twl_madc_platform_data {
 	int		irq_line;
 };
 
-struct twl4030_keypad_data {
+struct twl_keypad_data {
 	int rows;
 	int cols;
 	int *keymap;
@@ -311,22 +344,22 @@ struct twl4030_keypad_data {
 	unsigned int rep:1;
 };
 
-enum twl4030_usb_mode {
+enum twl_usb_mode {
 	T2_USB_MODE_ULPI = 1,
 	T2_USB_MODE_CEA2011_3PIN = 2,
 };
 
-struct twl4030_usb_data {
-	enum twl4030_usb_mode	usb_mode;
+struct twl_usb_data {
+	enum twl_usb_mode	usb_mode;
 };
 
-struct twl4030_platform_data {
+struct twl_platform_data {
 	unsigned				irq_base, irq_end;
-	struct twl4030_bci_platform_data	*bci;
-	struct twl4030_gpio_platform_data	*gpio;
-	struct twl4030_madc_platform_data	*madc;
-	struct twl4030_keypad_data		*keypad;
-	struct twl4030_usb_data			*usb;
+	struct twl_bci_platform_data	*bci;
+	struct twl_gpio_platform_data	*gpio;
+	struct twl_madc_platform_data	*madc;
+	struct twl_keypad_data		*keypad;
+	struct twl_usb_data			*usb;
 
 	/* LDO regulators */
 	struct regulator_init_data		*vdac;

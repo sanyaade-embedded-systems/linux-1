@@ -180,7 +180,7 @@ static int pandora_keypad_map[] = {
 	KEY(5, 2, KEY_FN),
 };
 
-static struct twl4030_keypad_data pandora_kp_data = {
+static struct twl_keypad_data pandora_kp_data = {
 	.rows		= 8,
 	.cols		= 6,
 	.keymap		= pandora_keypad_map,
@@ -240,7 +240,7 @@ static int omap3pandora_twl_gpio_setup(struct device *dev,
 	return 0;
 }
 
-static struct twl4030_gpio_platform_data omap3pandora_gpio_data = {
+static struct twl_gpio_platform_data omap3pandora_gpio_data = {
 	.gpio_base	= OMAP_MAX_GPIO_LINES,
 	.irq_base	= TWL4030_GPIO_IRQ_BASE,
 	.irq_end	= TWL4030_GPIO_IRQ_END,
@@ -277,11 +277,11 @@ static struct regulator_init_data pandora_vmmc2 = {
 	.consumer_supplies	= &pandora_vmmc2_supply,
 };
 
-static struct twl4030_usb_data omap3pandora_usb_data = {
+static struct twl_usb_data omap3pandora_usb_data = {
 	.usb_mode	= T2_USB_MODE_ULPI,
 };
 
-static struct twl4030_platform_data omap3pandora_twldata = {
+static struct twl_platform_data omap3pandora_twldata = {
 	.irq_base	= TWL4030_IRQ_BASE,
 	.irq_end	= TWL4030_IRQ_END,
 	.gpio		= &omap3pandora_gpio_data,
