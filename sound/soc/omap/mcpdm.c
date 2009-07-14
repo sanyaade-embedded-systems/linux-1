@@ -80,29 +80,49 @@ void omap_mcpdm_reg_dump(void)
 }
 EXPORT_SYMBOL(omap_mcpdm_reg_dump);
 
-void omap_mcpdm_start(int links)
+void omap_mcpdm_reset(int links, int reset)
 {
 	int ctrl = omap_mcpdm_read(MCPDM_CTRL);
 
-	if (links & MCPDM_UPLINK)
-		ctrl &= ~SW_UP_RST;
+	if (links & MCPDM_UPLINK) {
+		if (reset)
+			ctrl &= ~SW_UP_RST;
+		else
+			ctrl |= SW_UP_RST;
+	}
 
-	if (links & MCPDM_DOWNLINK)
-		ctrl &= ~SW_DN_RST;
+	if (links & MCPDM_DOWNLINK) {
+		if (reset)
+			ctrl &= ~SW_DN_RST;
+		else
+			ctrl |= SW_DN_RST;
+	}
+
+	omap_mcpdm_write(MCPDM_CTRL, ctrl);
+}
+EXPORT_SYMBOL(omap_mcpdm_reset);
+
+void omap_mcpdm_start(int stream)
+{
+	int ctrl = omap_mcpdm_read(MCPDM_CTRL);
+
+	if (stream)
+		ctrl |= mcpdm->up_channels;
+	else
+		ctrl |= mcpdm->dn_channels;
 
 	omap_mcpdm_write(MCPDM_CTRL, ctrl);
 }
 EXPORT_SYMBOL(omap_mcpdm_start);
 
-void omap_mcpdm_stop(int links)
+void omap_mcpdm_stop(int stream)
 {
 	int ctrl = omap_mcpdm_read(MCPDM_CTRL);
 
-	if (links & MCPDM_UPLINK)
-		ctrl |= SW_UP_RST;
-
-	if (links & MCPDM_DOWNLINK)
-		ctrl |= SW_DN_RST;
+	if (stream)
+		ctrl &= ~mcpdm->up_channels;
+	else
+		ctrl &= ~mcpdm->dn_channels;
 
 	omap_mcpdm_write(MCPDM_CTRL, ctrl);
 }
@@ -150,15 +170,13 @@ int omap_mcpdm_set_uplink(struct omap_mcpdm_link *uplink)
 
 	/* Set pdm out format */
 	ctrl = omap_mcpdm_read(MCPDM_CTRL);
+	ctrl &= ~PDMOUTFORMAT;
 	ctrl |= uplink->format & PDMOUTFORMAT;
 
-	/* Enable uplink channels */
-	ctrl |= uplink->channels & (PDM_UP_MASK | PDM_STATUS_MASK);
-	omap_mcpdm_write(MCPDM_CTRL, ctrl);
+	/* Uplink channels */
+	mcpdm->up_channels = uplink->channels & (PDM_UP_MASK | PDM_STATUS_MASK);
 
-	/* Calculate number of uplink channels */
-	mcpdm->up_channels = omap_mcpdm_get_channels(MCPDM_UPLINK,
-					uplink->channels);
+	omap_mcpdm_write(MCPDM_CTRL, ctrl);
 
 	return 0;
 }
@@ -184,24 +202,68 @@ int omap_mcpdm_set_downlink(struct omap_mcpdm_link *downlink)
 
 	omap_mcpdm_write(MCPDM_FIFO_CTRL_DN, downlink->threshold);
 
-	/* Configure DMA controller */
+	/* Enable DMA request generation */
 	omap_mcpdm_write(MCPDM_DMAENABLE_SET, DMA_DN_ENABLE);
 
 	/* Set pdm out format */
 	ctrl = omap_mcpdm_read(MCPDM_CTRL);
+	ctrl &= ~PDMOUTFORMAT;
 	ctrl |= downlink->format & PDMOUTFORMAT;
 
-	/* Enable uplink channels */
-	ctrl |= downlink->channels & (PDM_DN_MASK | PDM_CMD_MASK);
-	omap_mcpdm_write(MCPDM_CTRL, ctrl);
+	/* Downlink channels */
+	mcpdm->dn_channels = downlink->channels & (PDM_DN_MASK | PDM_CMD_MASK);
 
-	/* Calculate number of downlink channels  */
-	mcpdm->dn_channels = omap_mcpdm_get_channels(MCPDM_DOWNLINK,
-			downlink->channels);
+	omap_mcpdm_write(MCPDM_CTRL, ctrl);
 
 	return 0;
 }
 EXPORT_SYMBOL(omap_mcpdm_set_downlink);
+
+int omap_mcpdm_clr_uplink(struct omap_mcpdm_link *uplink)
+{
+	int irq_mask = 0;
+
+	if (!uplink)
+		return -EINVAL;
+
+	/* Disable irq request generation */
+	irq_mask |= uplink->irq_mask & UPLINK_IRQ_MASK;
+	omap_mcpdm_write(MCPDM_IRQENABLE_CLR, irq_mask);
+
+	/* Disable DMA request generation */
+	omap_mcpdm_write(MCPDM_DMAENABLE_CLR, DMA_UP_ENABLE);
+
+	/* Clear Downlink channels */
+	mcpdm->up_channels = 0;
+
+	mcpdm->uplink = NULL;
+
+	return 0;
+}
+EXPORT_SYMBOL(omap_mcpdm_clr_uplink);
+
+int omap_mcpdm_clr_downlink(struct omap_mcpdm_link *downlink)
+{
+	int irq_mask = 0;
+
+	if (!downlink)
+		return -EINVAL;
+
+	/* Disable irq request generation */
+	irq_mask |= downlink->irq_mask & DOWNLINK_IRQ_MASK;
+	omap_mcpdm_write(MCPDM_IRQENABLE_CLR, irq_mask);
+
+	/* Disable DMA request generation */
+	omap_mcpdm_write(MCPDM_DMAENABLE_CLR, DMA_DN_ENABLE);
+
+	/* clear Downlink channels */
+	mcpdm->dn_channels = 0;
+
+	mcpdm->downlink = NULL;
+
+	return 0;
+}
+EXPORT_SYMBOL(omap_mcpdm_clr_downlink);
 
 static irqreturn_t omap_mcpdm_irq_handler(int irq, void *dev_id)
 {
@@ -212,20 +274,20 @@ static irqreturn_t omap_mcpdm_irq_handler(int irq, void *dev_id)
 	switch (irq_status) {
 	case DN_IRQ_FULL:
 	case DN_IRQ_EMTPY:
-		dev_dbg(mcpdm_irq->dev, "DN FIFO error %x\n", irq_status);
-		omap_mcpdm_stop(MCPDM_DOWNLINK);
+		dev_err(mcpdm_irq->dev, "DN FIFO error %x\n", irq_status);
+		omap_mcpdm_reset(MCPDM_DOWNLINK, 0);
 		omap_mcpdm_set_downlink(mcpdm_irq->downlink);
-		omap_mcpdm_start(MCPDM_DOWNLINK);
+		omap_mcpdm_reset(MCPDM_DOWNLINK, 1);
 		break;
 	case DN_IRQ:
 		dev_dbg(mcpdm_irq->dev, "DN write request\n");
 		break;
 	case UP_IRQ_FULL:
 	case UP_IRQ_EMPTY:
-		dev_dbg(mcpdm_irq->dev, "UP FIFO error %x\n", irq_status);
-		omap_mcpdm_stop(MCPDM_UPLINK);
+		dev_err(mcpdm_irq->dev, "UP FIFO error %x\n", irq_status);
+		omap_mcpdm_reset(MCPDM_UPLINK, 0);
 		omap_mcpdm_set_uplink(mcpdm_irq->uplink);
-		omap_mcpdm_start(MCPDM_UPLINK);
+		omap_mcpdm_reset(MCPDM_UPLINK, 1);
 		break;
 	case UP_IRQ:
 		dev_dbg(mcpdm_irq->dev, "UP write request\n");
