@@ -294,6 +294,19 @@ static void omap_mcbsp_init(void)
 	omap_cfg_reg(Y4_4430_McBSP1_FSX);
 }
 
+static void omap_abe_init(void)
+{
+	/* McPDM */
+	omap_cfg_reg(P_4430_ABE_PDM_UL_DATA);
+	omap_cfg_reg(P_4430_ABE_PDM_DL_DATA);
+	omap_cfg_reg(P_4430_ABE_PDM_FRAME);
+	omap_cfg_reg(P_4430_ABE_PDM_LB_CLK);
+	omap_cfg_reg(P_4430_ABE_PDM_CLKS);
+
+	/* twl6030 audio power-on */
+	omap_cfg_reg(P_4430_GPIO_11);
+}
+
 static void __init omap_4430sdp_init(void)
 {
 	omap4_i2c_init();
@@ -305,7 +318,7 @@ static void __init omap_4430sdp_init(void)
 	spi_register_board_info(sdp4430_spi_board_info,
 				ARRAY_SIZE(sdp4430_spi_board_info));
 	omap_mcbsp_init();
-
+	omap_abe_init();
 }
 
 static void __init omap_4430sdp_map_io(void)
