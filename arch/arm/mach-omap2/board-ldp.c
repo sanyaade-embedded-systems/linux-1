@@ -101,7 +101,7 @@ static int ldp_twl4030_keymap[] = {
 	0
 };
 
-static struct twl4030_keypad_data ldp_kp_twl4030_data = {
+static struct twl_keypad_data ldp_kp_twl4030_data = {
 	.rows		= 6,
 	.cols		= 6,
 	.keymap		= ldp_twl4030_keymap,
@@ -294,17 +294,17 @@ static struct omap_board_config_kernel ldp_config[] __initdata = {
 	{ OMAP_TAG_LCD,		&ldp_lcd_config },
 };
 
-static struct twl4030_usb_data ldp_usb_data = {
+static struct twl_usb_data ldp_usb_data = {
 	.usb_mode	= T2_USB_MODE_ULPI,
 };
 
-static struct twl4030_gpio_platform_data ldp_gpio_data = {
+static struct twl_gpio_platform_data ldp_gpio_data = {
 	.gpio_base	= OMAP_MAX_GPIO_LINES,
 	.irq_base	= TWL4030_GPIO_IRQ_BASE,
 	.irq_end	= TWL4030_GPIO_IRQ_END,
 };
 
-static struct twl4030_madc_platform_data ldp_madc_data = {
+static struct twl_madc_platform_data ldp_madc_data = {
 	.irq_line	= 1,
 };
 
@@ -327,7 +327,7 @@ static struct regulator_init_data ldp_vmmc1 = {
 	.consumer_supplies	= &ldp_vmmc1_supply,
 };
 
-static struct twl4030_platform_data ldp_twldata = {
+static struct twl_platform_data ldp_twldata = {
 	.irq_base	= TWL4030_IRQ_BASE,
 	.irq_end	= TWL4030_IRQ_END,
 
