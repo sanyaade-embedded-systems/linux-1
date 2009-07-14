@@ -144,10 +144,13 @@ struct omap_mcpdm {
 };
 
 void omap_mcpdm_reg_dump(void);
-void omap_mcpdm_start(int links);
-void omap_mcpdm_stop(int links);
+void omap_mcpdm_reset(int links, int reset);
+void omap_mcpdm_start(int stream);
+void omap_mcpdm_stop(int stream);
 int omap_mcpdm_set_uplink(struct omap_mcpdm_link *uplink);
 int omap_mcpdm_set_downlink(struct omap_mcpdm_link *downlink);
+int omap_mcpdm_clr_uplink(struct omap_mcpdm_link *uplink);
+int omap_mcpdm_clr_downlink(struct omap_mcpdm_link *downlink);
 int omap_mcpdm_request(void);
 void omap_mcpdm_free(void);
 int omap_mcpdm_set_offset(int offset1, int offset2);
