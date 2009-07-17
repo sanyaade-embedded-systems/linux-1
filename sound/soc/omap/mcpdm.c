@@ -86,16 +86,16 @@ void omap_mcpdm_reset(int links, int reset)
 
 	if (links & MCPDM_UPLINK) {
 		if (reset)
-			ctrl &= ~SW_UP_RST;
-		else
 			ctrl |= SW_UP_RST;
+		else
+			ctrl &= ~SW_UP_RST;
 	}
 
 	if (links & MCPDM_DOWNLINK) {
 		if (reset)
-			ctrl &= ~SW_DN_RST;
-		else
 			ctrl |= SW_DN_RST;
+		else
+			ctrl &= ~SW_DN_RST;
 	}
 
 	omap_mcpdm_write(MCPDM_CTRL, ctrl);
@@ -271,13 +271,17 @@ static irqreturn_t omap_mcpdm_irq_handler(int irq, void *dev_id)
 	int irq_status;
 
 	irq_status = omap_mcpdm_read(MCPDM_IRQSTATUS);
+
+	/* Acknowledge irq event */
+	omap_mcpdm_write(MCPDM_IRQSTATUS, irq_status);
+
 	switch (irq_status) {
 	case DN_IRQ_FULL:
 	case DN_IRQ_EMTPY:
 		dev_err(mcpdm_irq->dev, "DN FIFO error %x\n", irq_status);
-		omap_mcpdm_reset(MCPDM_DOWNLINK, 0);
-		omap_mcpdm_set_downlink(mcpdm_irq->downlink);
 		omap_mcpdm_reset(MCPDM_DOWNLINK, 1);
+		omap_mcpdm_set_downlink(mcpdm_irq->downlink);
+		omap_mcpdm_reset(MCPDM_DOWNLINK, 0);
 		break;
 	case DN_IRQ:
 		dev_dbg(mcpdm_irq->dev, "DN write request\n");
@@ -285,16 +289,14 @@ static irqreturn_t omap_mcpdm_irq_handler(int irq, void *dev_id)
 	case UP_IRQ_FULL:
 	case UP_IRQ_EMPTY:
 		dev_err(mcpdm_irq->dev, "UP FIFO error %x\n", irq_status);
-		omap_mcpdm_reset(MCPDM_UPLINK, 0);
-		omap_mcpdm_set_uplink(mcpdm_irq->uplink);
 		omap_mcpdm_reset(MCPDM_UPLINK, 1);
+		omap_mcpdm_set_uplink(mcpdm_irq->uplink);
+		omap_mcpdm_reset(MCPDM_UPLINK, 0);
 		break;
 	case UP_IRQ:
 		dev_dbg(mcpdm_irq->dev, "UP write request\n");
 		break;
 	}
-
-	omap_mcpdm_write(MCPDM_IRQSTATUS, irq_status);
 
 	return IRQ_HANDLED;
 }
@@ -338,6 +340,7 @@ void omap_mcpdm_free(void)
 	if (mcpdm->free) {
 		dev_err(mcpdm->dev, "McPDM interface is already free\n");
 		spin_unlock(&mcpdm->lock);
+		return;
 	}
 	mcpdm->free = 1;
 	spin_unlock(&mcpdm->lock);
