@@ -42,6 +42,7 @@
 #define REG_YEARS_REG                            0x05
 #define REG_WEEKS_REG                            0x06
 
+#ifdef CONFIG_TWL4030_CORE
 #define REG_ALARM_SECONDS_REG                    0x07
 #define REG_ALARM_MINUTES_REG                    0x08
 #define REG_ALARM_HOURS_REG                      0x09
@@ -55,6 +56,26 @@
 
 #define REG_RTC_COMP_LSB_REG                     0x10
 #define REG_RTC_COMP_MSB_REG                     0x11
+#endif
+
+#ifdef CONFIG_TWL6030_CORE
+#define REG_ALARM_SECONDS_REG		0x08
+#define REG_ALARM_MINUTES_REG		0x09
+#define REG_ALARM_HOURS_REG		0x0A
+#define REG_ALARM_DAYS_REG		0x0B
+#define REG_ALARM_MONTHS_REG		0x0C
+#define REG_ALARM_YEARS_REG		0x0D
+
+#define REG_RTC_CTRL_REG		0x10
+#define REG_RTC_STATUS_REG		0x11
+#define REG_RTC_INTERRUPTS_REG		0x12
+
+#define REG_RTC_COMP_LSB_REG		0x13
+#define REG_RTC_COMP_MSB_REG		0x14
+#define REG_RTC_RESET_STATUS_REG	0x16
+
+#define TWL_MODULE_RTC TWL6030_MODULE_RTC
+#endif
 
 /* RTC_CTRL_REG bitfields */
 #define BIT_RTC_CTRL_REG_STOP_RTC_M              0x01
@@ -352,6 +373,7 @@ static irqreturn_t twl_rtc_interrupt(int irq, void *rtc)
 	if (res)
 		goto out;
 
+#ifdef CONFIG_TWL4030_CORE
 	/* Clear on Read enabled. RTC_IT bit of TWL4030_INT_PWR_ISR1
 	 * needs 2 reads to clear the interrupt. One read is done in
 	 * do_twl_pwrirq(). Doing the second read, to clear
@@ -367,6 +389,7 @@ static irqreturn_t twl_rtc_interrupt(int irq, void *rtc)
 			&rd_reg, TWL4030_INT_PWR_ISR1);
 	if (res)
 		goto out;
+#endif
 
 	/* Notify RTC core on event */
 	rtc_update_irq(rtc, 1, events);
