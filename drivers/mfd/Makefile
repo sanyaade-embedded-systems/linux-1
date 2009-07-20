@@ -23,6 +23,7 @@ obj-$(CONFIG_TPS65010)		+= tps65010.o
 obj-$(CONFIG_MENELAUS)		+= menelaus.o
 
 obj-$(CONFIG_TWL4030_CORE)	+= twl-core.o twl4030-irq.o
+obj-$(CONFIG_TWL6030_CORE)	+= twl-core.o twl6030-irq.o
 
 obj-$(CONFIG_MFD_CORE)		+= mfd-core.o
 
