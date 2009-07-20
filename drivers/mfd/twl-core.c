@@ -130,7 +130,7 @@
 #define TWL4030_MODULE_LAST		TWL4030_MODULE_SECURED_REG
 #define TWL_MODULE_LAST TWL4030_MODULE_LAST
 
-/* Base Address defns for twl4030_map[] */
+/* Base Address defns for twl_map[] */
 
 /* subchip/slave 0 - USB ID */
 #define TWL4030_BASEADD_USB		0x0000
@@ -165,6 +165,47 @@
 /* Triton Core internal information (END) */
 
 
+#ifdef CONFIG_TWL6030_CORE
+#define TWL6030_MODULE_LAST TWL6030_MODULE_AUDIO
+#define TWL_MODULE_LAST TWL6030_MODULE_LAST
+
+#define RTC_SUB_CHIP_ID		SUB_CHIP_ID0
+#define REG_SUB_CHIP_ID		SUB_CHIP_ID0
+#define USB_SUB_CHIP_ID		SUB_CHIP_ID1
+#define MADC_SUB_CHIP_ID	SUB_CHIP_ID1
+#define BCI_SUB_CHIP_ID		SUB_CHIP_ID1
+#define GPIO_SUB_CHIP_ID	0 /* NOT SUPPORTED IN TWL6030 */
+#define KEYPAD_SUB_CHIP_ID	0 /* ADDED FOR COMPILATION ONLY */
+
+/* subchip/slave 0 0x48 - POWER */
+#define TWL6030_BASEADD_RTC		0x0000
+#define TWL6030_BASEADD_MEM		0x0017
+#define TWL6030_BASEADD_PM_MASTER	0x001F
+#define TWL6030_BASEADD_PM_SLAVE_MISC	0x0030
+#define TWL6030_BASEADD_PM_SLAVE_SMPS	0x0040
+#define TWL6030_BASEADD_PM_SLAVE_LDO	0x0080
+#define TWL6030_BASEADD_PM_SLAVE_RES	0x00AD
+#define TWL6030_BASEADD_PM_MISC		0x00E3
+#define TWL6030_BASEADD_PM_PUPD		0x00F0
+
+/* subchip/slave 1 0x49 - FEATURE */
+#define TWL6030_BASEADD_USB		0x0000
+#define TWL6030_BASEADD_GPADC_CTRL	0x0030
+#define TWL6030_BASEADD_GPADC_RT	0x0035
+#define TWL6030_BASEADD_GPADC		0x005D
+#define TWL6030_BASEADD_AUX		0x0090
+#define TWL6030_BASEADD_PWM		0x00BA
+#define TWL6030_BASEADD_GASGAUGE	0x00C0
+#define TWL6030_BASEADD_PIH		0x00D0
+#define TWL6030_BASEADD_CHARGER		0x00E0
+
+/* subchip/slave 2 0x4A - DFT */
+#define TWL6030_BASEADD_DIEID		0x00C0
+
+/* subchip/slave 3 0x4B - AUDIO */
+#define TWL6030_BASEADD_AUDIO		0x0000
+#endif /* CONFIG_TWL6030_CORE */
+
 /* Few power values */
 #define R_CFG_BOOT			0x05
 #define R_PROTECT_KEY			0x0E
@@ -190,7 +231,7 @@
 /* is driver active, bound to a chip? */
 static bool inuse;
 
-/* Structure for each TWL4030 Slave */
+/* Structure for each TWL4030/TWL6030 Slave */
 struct twl_client {
 	struct i2c_client *client;
 	u8 address;
@@ -212,7 +253,7 @@ struct twl_mapping {
 };
 
 #ifdef CONFIG_TWL4030_CORE
-static struct twl_mapping twl4030_map[TWL4030_MODULE_LAST + 1] = {
+static struct twl_mapping twl_map[TWL4030_MODULE_LAST + 1] = {
 	/*
 	 * NOTE:  don't change this table without updating the
 	 * <linux/i2c/twl4030.h> defines for TWL4030_MODULE_*
@@ -247,12 +288,45 @@ static struct twl_mapping twl4030_map[TWL4030_MODULE_LAST + 1] = {
 };
 #endif
 
+#ifdef CONFIG_TWL6030_CORE
+static struct twl_mapping twl_map[TWL6030_MODULE_LAST + 1] = {
+	/*
+	 * NOTE:  don't change this table without updating the
+	 * <linux/i2c/twl6030.h> defines for TWL6030_MODULE_*
+	 * so they continue to match the order in this table.
+	 */
+	{ SUB_CHIP_ID0, TWL6030_BASEADD_RTC },
+	{ SUB_CHIP_ID0, TWL6030_BASEADD_MEM },
+	{ SUB_CHIP_ID0, TWL6030_BASEADD_PM_MASTER },
+	{ SUB_CHIP_ID0, TWL6030_BASEADD_PM_SLAVE_MISC },
+	{ SUB_CHIP_ID0, TWL6030_BASEADD_PM_SLAVE_SMPS },
+	{ SUB_CHIP_ID0, TWL6030_BASEADD_PM_SLAVE_LDO },
+	{ SUB_CHIP_ID0, TWL6030_BASEADD_PM_SLAVE_RES },
+	{ SUB_CHIP_ID0, TWL6030_BASEADD_PM_MISC },
+	{ SUB_CHIP_ID0, TWL6030_BASEADD_PM_PUPD },
+
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_USB },
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_GPADC_CTRL },
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_GPADC_RT },
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_GPADC },
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_AUX },
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_PWM },
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_GASGAUGE },
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_PIH },
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_CHARGER },
+
+	{ SUB_CHIP_ID2, TWL6030_BASEADD_DIEID },
+
+	{ SUB_CHIP_ID3, TWL6030_BASEADD_AUDIO },
+};
+#endif
+
 /*----------------------------------------------------------------------*/
 
 /* Exported Functions */
 
 /**
- * twl_i2c_write - Writes a n bit register in TWL4030
+ * twl_i2c_write - Writes a n bit register in TWL4030/TWL6030
  * @mod_no: module number
  * @value: an array of num_bytes+1 containing data to write
  * @reg: register address (just offset will do)
@@ -274,7 +348,7 @@ int twl_i2c_write(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes)
 		pr_err("%s: invalid module number %d\n", DRIVER_NAME, mod_no);
 		return -EPERM;
 	}
-	sid = twl4030_map[mod_no].sid;
+	sid = twl_map[mod_no].sid;
 	twl = &twl_modules[sid];
 
 	if (unlikely(!inuse)) {
@@ -292,7 +366,7 @@ int twl_i2c_write(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes)
 	msg->flags = 0;
 	msg->buf = value;
 	/* over write the first byte of buffer with the register address */
-	*value = twl4030_map[mod_no].base + reg;
+	*value = twl_map[mod_no].base + reg;
 	ret = i2c_transfer(twl->client->adapter, twl->xfer_msg, 1);
 	mutex_unlock(&twl->xfer_lock);
 
@@ -304,7 +378,7 @@ int twl_i2c_write(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes)
 EXPORT_SYMBOL(twl_i2c_write);
 
 /**
- * twl_i2c_read - Reads a n bit register in TWL4030
+ * twl_i2c_read - Reads a n bit register in TWL4030/TWL6030
  * @mod_no: module number
  * @value: an array of num_bytes containing data to be read
  * @reg: register address (just offset will do)
@@ -324,7 +398,7 @@ int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes)
 		pr_err("%s: invalid module number %d\n", DRIVER_NAME, mod_no);
 		return -EPERM;
 	}
-	sid = twl4030_map[mod_no].sid;
+	sid = twl_map[mod_no].sid;
 	twl = &twl_modules[sid];
 
 	if (unlikely(!inuse)) {
@@ -337,7 +411,7 @@ int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes)
 	msg->addr = twl->address;
 	msg->len = 1;
 	msg->flags = 0;	/* Read the register value */
-	val = twl4030_map[mod_no].base + reg;
+	val = twl_map[mod_no].base + reg;
 	msg->buf = &val;
 	/* [MSG2] fill the data rx buffer */
 	msg = &twl->xfer_msg[1];
@@ -356,7 +430,7 @@ int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes)
 EXPORT_SYMBOL(twl_i2c_read);
 
 /**
- * twl_i2c_write_u8 - Writes a 8 bit register in TWL4030
+ * twl_i2c_write_u8 - Writes a 8 bit register in TWL4030/TWL6030
  * @mod_no: module number
  * @value: the value to be written 8 bit
  * @reg: register address (just offset will do)
@@ -375,7 +449,7 @@ int twl_i2c_write_u8(u8 mod_no, u8 value, u8 reg)
 EXPORT_SYMBOL(twl_i2c_write_u8);
 
 /**
- * twl_i2c_read_u8 - Reads a 8 bit register from TWL4030
+ * twl_i2c_read_u8 - Reads a 8 bit register from TWL4030/TWL6030
  * @mod_no: module number
  * @value: the value read 8 bit
  * @reg: register address (just offset will do)
@@ -826,6 +900,7 @@ static const struct i2c_device_id twl_ids[] = {
 	{ "tps65950", 0 },		/* catalog version of twl5030 */
 	{ "tps65930", TPS_SUBSET },	/* fewer LDOs and DACs; no charger */
 	{ "tps65920", TPS_SUBSET },	/* fewer LDOs; no codec or charger */
+	{ "twl6030", 0 },	/* "Phoenix power chip" */
 	{ /* end of list */ },
 };
 MODULE_DEVICE_TABLE(i2c, twl_ids);
