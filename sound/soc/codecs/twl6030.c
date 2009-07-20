@@ -38,6 +38,11 @@
 
 #include "twl6030.h"
 
+/* codec private data */
+struct twl6030_priv_data {
+	unsigned int sysclk;
+};
+
 /*
  * twl6030 register cache & default register settings
  */
@@ -52,10 +57,10 @@ static const u8 twl6030_reg[TWL6030_CACHEREGNUM] = {
 	0x00, /* TWL6030_HPPLLCTL	0x07	*/
 	0x00, /* TWL6030_LPPLLCTL	0x08	*/
 	0x00, /* TWL6030_LPPLLDIV	0x09	*/
-	0x54, /* TWL6030_AMICBCTL	0x0A	*/
+	0x00, /* TWL6030_AMICBCTL	0x0A	*/
 	0x00, /* TWL6030_DMICBCTL	0x0B	*/
-	0x09, /* TWL6030_MICLCTL	0x0C	*/
-	0x09, /* TWL6030_MICRCTL	0x0D	*/
+	0x00, /* TWL6030_MICLCTL	0x0C	*/
+	0x00, /* TWL6030_MICRCTL	0x0D	*/
 	0x00, /* TWL6030_MICGAIN	0x0E	*/
 	0x1B, /* TWL6030_LINEGAIN	0x0F	*/
 	0x00, /* TWL6030_HSLCTL		0x10	*/
@@ -172,6 +177,29 @@ static void twl6030_power_down(struct snd_soc_codec *codec)
 	twl6030_write_reg_cache(codec, TWL6030_REG_NCPCTL, 0x00);
 	twl6030_write_reg_cache(codec, TWL6030_REG_LDOCTL, 0x00);
 	twl6030_write_reg_cache(codec, TWL6030_REG_LPPLLCTL, 0x00);
+}
+
+/* set headset dac and driver power mode */
+static int headset_power_mode(struct snd_soc_codec *codec, int high_perf)
+{
+	int hslctl, hsrctl;
+	int  mask = TWL6030_HSDRVMODEL | TWL6030_HSDACMODEL;
+
+	hslctl = twl6030_read_reg_cache(codec, TWL6030_REG_HSLCTL);
+	hsrctl = twl6030_read_reg_cache(codec, TWL6030_REG_HSRCTL);
+
+	if (high_perf) {
+		hslctl &= ~mask;
+		hsrctl &= ~mask;
+	} else {
+		hslctl |= mask;
+		hsrctl |= mask;
+	}
+
+	twl6030_write(codec, TWL6030_REG_HSLCTL, hslctl);
+	twl6030_write(codec, TWL6030_REG_HSRCTL, hsrctl);
+
+	return 0;
 }
 
 /*
@@ -415,28 +443,47 @@ static int twl6030_hw_params(struct snd_pcm_substream *substream,
 			   struct snd_pcm_hw_params *params,
 			   struct snd_soc_dai *dai)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
+	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6030_priv_data *twl6030_priv = codec->private_data;
+	int rate, format;
 
 	/* the sample rates handled by codec at A-D and D-A
 	 * conversions are 44100 and 48000, but the dai requires
 	 * input rates of twice those values
 	 */
-	switch (params_rate(params)) {
+	rate = params_rate(params);
+	switch (rate) {
 	case 88200:
+		if (twl6030_priv->sysclk != 17640000) {
+			printk(KERN_ERR "TWL6030 hw params: rate %d "
+				"not supported at current sysclk %d\n",
+				rate, twl6030_priv->sysclk);
+			return -EINVAL;
+		}
 		break;
 	case 96000:
+		if (twl6030_priv->sysclk != 19200000) {
+			printk(KERN_ERR "TWL6030 hw params: rate %d "
+				"not supported at current sysclk %d\n",
+				rate, twl6030_priv->sysclk);
+			return -EINVAL;
+		}
 		break;
 	default:
 		printk(KERN_ERR "TWL6030 hw params: unknown rate %d\n",
-			params_rate(params));
+			rate);
 		return -EINVAL;
 	}
 
 	/* the sample lenght handled by codec at A-D and D-A
 	 * conversion is 16-bits, but the dai requires 32-bits
 	 */
-	if (params_format(params) != SNDRV_PCM_FORMAT_S32_LE) {
+	format = params_format(params);
+	if (format != SNDRV_PCM_FORMAT_S32_LE) {
 		printk(KERN_ERR "TWL6030 hw params: unknown format %d\n",
-			params_format(params));
+			format);
 		return -EINVAL;
 	}
 
@@ -447,46 +494,120 @@ static int twl6030_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 		int clk_id, unsigned int freq, int dir)
 {
 	struct snd_soc_codec *codec = codec_dai->codec;
+	struct twl6030_priv_data *twl6030_priv = codec->private_data;
 	u8 hppll, lppll;
 
+	lppll = twl6030_read_reg_cache(codec, TWL6030_REG_LPPLLCTL);
 	hppll = twl6030_read_reg_cache(codec, TWL6030_REG_HPPLLCTL);
-	hppll &= TWL6030_HPLLRST;
 
-	switch (freq) {
-	case 12000000:
-		/* MCLK input, PLL enabled */
-		hppll = TWL6030_MCLK_12000KHZ
-			| TWL6030_HPLLSQRBP
-			| TWL6030_HPLLENA;
+	switch (clk_id) {
+	case TWL6030_SYSCLK_SEL_LPPLL:
+		if (freq != 32768) {
+			printk(KERN_ERR "TWL6030: set sysclk: invalid freq %d\n",
+				freq);
+			return -EINVAL;
+		}
+
+		/* CLK32K input requires low-power PLL */
+		lppll |= TWL6030_LPLLENA | TWL6030_LPLLSEL;
+		twl6030_write(codec, TWL6030_REG_LPPLLCTL, lppll);
+		mdelay(5);
+		lppll &= ~TWL6030_HPLLSEL;
+		twl6030_write(codec, TWL6030_REG_LPPLLCTL, lppll);
+
+		/* headset dac and driver must be in low-power mode */
+		headset_power_mode(codec, 0);
+
+		hppll &= ~TWL6030_HPLLENA;
+		twl6030_write(codec, TWL6030_REG_HPPLLCTL, hppll);
 		break;
-	case 19200000:
-		/* MCLK input, PLL disabled */
-		hppll = TWL6030_MCLK_19200KHZ
-			| TWL6030_HPLLSQRBP
-			| TWL6030_HPLLBP;
+	case TWL6030_SYSCLK_SEL_HPPLL:
+		switch (freq) {
+		case 12000000:
+			hppll = TWL6030_MCLK_12000KHZ;
+			break;
+		case 26000000:
+			hppll = TWL6030_MCLK_26000KHZ;
+		}
+
+		/* 12 and 26 MHz freqs require high-performance PLL */
+		hppll |= TWL6030_HPLLSQRBP | TWL6030_HPLLENA;
+		twl6030_write(codec, TWL6030_REG_HPPLLCTL, hppll);
+		udelay(500);
+
+		/* headset dac and driver must be in high-performance mode */
+		headset_power_mode(codec, 1);
+
+		lppll |= TWL6030_HPLLSEL;
+		twl6030_write(codec, TWL6030_REG_LPPLLCTL, lppll);
+		lppll &= ~TWL6030_LPLLENA;
+		twl6030_write(codec, TWL6030_REG_LPPLLCTL, lppll);
+
+		/* only 19.2 MHz can be generated by HPPLL */
+		twl6030_priv->sysclk = 19200000;
 		break;
-	case 26000000:
-		/* MCLK input, PLL enabled */
-		hppll = TWL6030_MCLK_26000KHZ
-			| TWL6030_HPLLSQRBP
-			| TWL6030_HPLLENA;
-		break;
-	case 38400000:
-		/* clk slicer input, PLL disabled */
-		hppll = TWL6030_MCLK_38400KHZ
-			| TWL6030_HPLLBP;
+	case TWL6030_SYSCLK_SEL_MCLK:
+		switch (freq) {
+		case 19200000:
+			hppll = TWL6030_MCLK_19200KHZ | TWL6030_HPLLSQRBP;
+			break;
+		case 38400000:
+			hppll = TWL6030_MCLK_38400KHZ;
+			break;
+		default:
+			printk(KERN_ERR "TWL6030: set sysclk: invalid freq %d\n",
+				freq);
+			return -EINVAL;
+		}
+
+		/* 19.2 and 38.4 MHz freqs don't require PLL */
+		hppll |= TWL6030_HPLLBP;
+		twl6030_write(codec, TWL6030_REG_HPPLLCTL, hppll);
+		udelay(500);
+
+		/* headset dac and driver must be in high-performance mode */
+		headset_power_mode(codec, 1);
+
+		lppll |= TWL6030_HPLLSEL;
+		twl6030_write(codec, TWL6030_REG_LPPLLCTL, lppll);
+		lppll &= ~TWL6030_LPLLENA;
+		twl6030_write(codec, TWL6030_REG_LPPLLCTL, lppll);
+
+		/* only 19.2 MHz can be generated by MCLK */
+		twl6030_priv->sysclk = 19200000;
 		break;
 	default:
-		printk(KERN_ERR "TWL6030 set sysclk: unknown rate %d\n",
-			freq);
+		printk(KERN_ERR "TWL6030 set sysclk: unknown clk_id: %d\n",
+			clk_id);
 		return -EINVAL;
 	}
 
-	twl6030_write(codec, TWL6030_REG_HPPLLCTL, hppll);
+	return 0;
+}
 
-	/* Disable LPPLL and select HPPLL */
-	lppll = TWL6030_HPLLSEL;
-	twl6030_write(codec, TWL6030_REG_LPPLLCTL, lppll);
+static int twl6030_set_dai_pll(struct snd_soc_dai *codec_dai, int pll_id,
+				unsigned int freq_in, unsigned int freq_out)
+{
+	struct snd_soc_codec *codec = codec_dai->codec;
+	struct twl6030_priv_data *twl6030_priv = codec->private_data;
+	int div;
+
+	if (!freq_in || !freq_out)
+		return -EINVAL;
+
+	/* div = round(freq_out / freq_in) */
+	div = (freq_out + (freq_in >> 2)) / freq_in;
+
+	if (pll_id == TWL6030_LPPLL_ID) {
+		if (div < 512) {
+			printk(KERN_ERR "TWL6030 set pll: invalid divider %d\n",
+				div);
+			return -EINVAL;
+		}
+
+		twl6030_write(codec, TWL6030_REG_LPPLLDIV, div - 512);
+		twl6030_priv->sysclk = freq_out;
+	}
 
 	return 0;
 }
@@ -509,6 +630,7 @@ static int twl6030_set_dai_fmt(struct snd_soc_dai *codec_dai,
 static struct snd_soc_dai_ops twl6030_dai_ops = {
 	.hw_params	= twl6030_hw_params,
 	.set_sysclk	= twl6030_set_dai_sysclk,
+	.set_pll	= twl6030_set_dai_pll,
 	.set_fmt	= twl6030_set_dai_fmt,
 };
 
@@ -613,11 +735,17 @@ static int twl6030_probe(struct platform_device *pdev)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec;
+	struct twl6030_priv_data *twl6030_priv;
 
 	codec = kzalloc(sizeof(struct snd_soc_codec), GFP_KERNEL);
 	if (codec == NULL)
 		return -ENOMEM;
 
+	twl6030_priv = kzalloc(sizeof(struct snd_soc_codec), GFP_KERNEL);
+	if (twl6030_priv == NULL)
+		return -ENOMEM;
+
+	codec->private_data = twl6030_priv;
 	socdev->card->codec = codec;
 	mutex_init(&codec->mutex);
 	INIT_LIST_HEAD(&codec->dapm_widgets);
@@ -638,6 +766,7 @@ static int twl6030_remove(struct platform_device *pdev)
 	twl6030_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	snd_soc_free_pcms(socdev);
 	snd_soc_dapm_free(socdev);
+	kfree(codec->private_data);
 	kfree(codec);
 
 	return 0;
