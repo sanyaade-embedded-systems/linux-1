@@ -360,6 +360,7 @@ int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 #define TWL4030_INT_PWR_EDR2		0x6
 #define TWL4030_INT_PWR_SIH_CTRL	0x7
 
+
 /*----------------------------------------------------------------------*/
 
 /* Power bus message definitions */
@@ -478,18 +479,25 @@ struct twl_platform_data {
 	struct twl_keypad_data		*keypad;
 	struct twl_usb_data			*usb;
 
-	/* LDO regulators */
+	/* LDO regulators common to TWL4030/TWL6030 */
 	struct regulator_init_data		*vdac;
+	struct regulator_init_data		*vaux1;
+	struct regulator_init_data		*vaux2;
+	struct regulator_init_data		*vaux3;
+	/* TWL4030 LDO regulators */
 	struct regulator_init_data		*vpll1;
 	struct regulator_init_data		*vpll2;
 	struct regulator_init_data		*vmmc1;
 	struct regulator_init_data		*vmmc2;
 	struct regulator_init_data		*vsim;
-	struct regulator_init_data		*vaux1;
-	struct regulator_init_data		*vaux2;
-	struct regulator_init_data		*vaux3;
 	struct regulator_init_data		*vaux4;
-
+	/* TWL6030 LDO regulators */
+	struct regulator_init_data              *vmmc;
+	struct regulator_init_data              *vpp;
+	struct regulator_init_data              *vusim;
+	struct regulator_init_data              *vana;
+	struct regulator_init_data              *vcxio;
+	struct regulator_init_data              *vusb;
 	/* REVISIT more to come ... _nothing_ should be hard-wired */
 };
 
