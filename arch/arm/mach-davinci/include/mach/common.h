@@ -12,6 +12,8 @@
 #ifndef __ARCH_ARM_MACH_DAVINCI_COMMON_H
 #define __ARCH_ARM_MACH_DAVINCI_COMMON_H
 
+#include <linux/cpufreq.h>
+
 struct sys_timer;
 
 extern struct sys_timer davinci_timer;
@@ -68,6 +70,7 @@ struct davinci_soc_info {
 	struct emac_platform_data	*emac_pdata;
 	dma_addr_t			sram_dma;
 	unsigned			sram_len;
+	void (*init_cpufreq_table) (struct cpufreq_frequency_table **);
 };
 
 extern struct davinci_soc_info davinci_soc_info;
