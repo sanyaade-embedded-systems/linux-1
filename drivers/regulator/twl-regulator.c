@@ -52,27 +52,38 @@ struct twlreg_info {
  * The first three registers of all power resource banks help hardware to
  * manage the various resource groups.
  */
+/* Common offset in TWL4030/6030 */
 #define VREG_GRP		0
+/* TWL4030 register offsets */
 #define VREG_TYPE		1
 #define VREG_REMAP		2
-#define VREG_DEDICATED		3	/* LDO control */
-
+#define VREG_DEDICATED		3
+/* TWL6030 register offsets */
+#define VREG_TRANS		1
+#define VREG_STATE		2
+#define VREG_VOLTAGE		3
+/* TWL6030 Misc register offsets */
+#define VREG_BC_ALL		1
+#define VREG_BC_REF		2
+#define VREG_BC_PROC		3
+#define VREG_BC_CLK_RST		4
 
 static inline int
-twlreg_read(struct twlreg_info *info, unsigned offset)
+twlreg_read(struct twlreg_info *info, unsigned slave_subgp, unsigned offset)
 {
 	u8 value;
 	int status;
 
-	status = twl_i2c_read_u8(TWL_MODULE_PM_RECEIVER,
+	status = twl_i2c_read_u8(slave_subgp,
 			&value, info->base + offset);
 	return (status < 0) ? status : value;
 }
 
 static inline int
-twlreg_write(struct twlreg_info *info, unsigned offset, u8 value)
+twlreg_write(struct twlreg_info *info, unsigned slave_subgp, unsigned offset,
+						 u8 value)
 {
-	return twl_i2c_write_u8(TWL_MODULE_PM_RECEIVER,
+	return twl_i2c_write_u8(slave_subgp,
 			value, info->base + offset);
 }
 
@@ -82,17 +93,23 @@ twlreg_write(struct twlreg_info *info, unsigned offset, u8 value)
 
 static int twlreg_grp(struct regulator_dev *rdev)
 {
-	return twlreg_read(rdev_get_drvdata(rdev), VREG_GRP);
+	return twlreg_read(rdev_get_drvdata(rdev), TWL_MODULE_PM_SLAVE_LDO,
+								 VREG_GRP);
 }
 
 /*
  * Enable/disable regulators by joining/leaving the P1 (processor) group.
  * We assume nobody else is updating the DEV_GRP registers.
  */
-
+#ifdef CONFIG_TWL4030_CORE
 #define P3_GRP		BIT(7)		/* "peripherals" */
 #define P2_GRP		BIT(6)		/* secondary processor, modem, etc */
 #define P1_GRP		BIT(5)		/* CPU/Linux */
+#elif CONFIG_TWL6030_CORE
+#define P3_GRP		BIT(2)		/* secondary processor, modem, etc */
+#define P2_GRP		BIT(1)		/* "peripherals" */
+#define P1_GRP		BIT(0)		/* CPU/Linux */
+#endif
 
 static int twlreg_is_enabled(struct regulator_dev *rdev)
 {
@@ -109,12 +126,12 @@ static int twlreg_enable(struct regulator_dev *rdev)
 	struct twlreg_info	*info = rdev_get_drvdata(rdev);
 	int			grp;
 
-	grp = twlreg_read(info, VREG_GRP);
+	grp = twlreg_read(info, TWL_MODULE_PM_SLAVE_LDO, VREG_GRP);
 	if (grp < 0)
 		return grp;
 
 	grp |= P1_GRP;
-	return twlreg_write(info, VREG_GRP, grp);
+	return twlreg_write(info, TWL_MODULE_PM_SLAVE_LDO, VREG_GRP, grp);
 }
 
 static int twlreg_disable(struct regulator_dev *rdev)
@@ -122,12 +139,12 @@ static int twlreg_disable(struct regulator_dev *rdev)
 	struct twlreg_info	*info = rdev_get_drvdata(rdev);
 	int			grp;
 
-	grp = twlreg_read(info, VREG_GRP);
+	grp = twlreg_read(info, TWL_MODULE_PM_SLAVE_LDO, VREG_GRP);
 	if (grp < 0)
 		return grp;
 
 	grp &= ~P1_GRP;
-	return twlreg_write(info, VREG_GRP, grp);
+	return twlreg_write(info, TWL_MODULE_PM_SLAVE_LDO, VREG_GRP, grp);
 }
 
 static int twlreg_get_status(struct regulator_dev *rdev)
@@ -260,7 +277,29 @@ static const u16 VSIM_VSEL_table[] = {
 static const u16 VDAC_VSEL_table[] = {
 	1200, 1300, 1800, 1800,
 };
-
+static const u16 VAUX1_6030_VSEL_table[] = {
+	1000, 1300, 1800, 2500,
+	2800, 2900, 3000, 3000,
+};
+static const u16 VAUX2_6030_VSEL_table[] = {
+	1200, 1800, 2500, 2750,
+	2800, 2800, 2800, 2800,
+};
+static const u16 VAUX3_6030_VSEL_table[] = {
+	1000, 1200, 1300, 1800,
+	2500, 2800, 3000, 3000,
+};
+static const u16 VMMC_VSEL_table[] = {
+	1200, 1800, 2800, 2900,
+	3000, 3000, 3000, 3000,
+};
+static const u16 VPP_VSEL_table[] = {
+	1800, 1900, 2000, 2100,
+	2200, 2300, 2400, 2500,
+};
+static const u16 VUSIM_VSEL_table[] = {
+	1200, 1800, 2500, 2900,
+};
 
 static int twlldo_list_voltage(struct regulator_dev *rdev, unsigned index)
 {
@@ -288,7 +327,8 @@ twlldo_set_voltage(struct regulator_dev *rdev, int min_uV, int max_uV)
 
 		/* use the first in-range value */
 		if (min_uV <= uV && uV <= max_uV)
-			return twlreg_write(info, VREG_DEDICATED, vsel);
+			return twlreg_write(info, TWL_MODULE_PM_SLAVE_LDO,
+							VREG_VOLTAGE, vsel);
 	}
 
 	return -EDOM;
@@ -297,7 +337,8 @@ twlldo_set_voltage(struct regulator_dev *rdev, int min_uV, int max_uV)
 static int twlldo_get_voltage(struct regulator_dev *rdev)
 {
 	struct twlreg_info	*info = rdev_get_drvdata(rdev);
-	int			vsel = twlreg_read(info, VREG_DEDICATED);
+	int		vsel = twlreg_read(info, TWL_MODULE_PM_SLAVE_LDO,
+								VREG_VOLTAGE);
 
 	if (vsel < 0)
 		return vsel;
@@ -316,9 +357,10 @@ static struct regulator_ops twlldo_ops = {
 	.disable	= twlreg_disable,
 	.is_enabled	= twlreg_is_enabled,
 
+#ifdef CONFIG_TWL4030_CORE
 	.set_mode	= twlreg_set_mode,
-
 	.get_status	= twlreg_get_status,
+#endif
 };
 
 /*----------------------------------------------------------------------*/
@@ -349,9 +391,10 @@ static struct regulator_ops twlfixed_ops = {
 	.disable	= twlreg_disable,
 	.is_enabled	= twlreg_is_enabled,
 
+#ifdef CONFIG_TWL4030_CORE
 	.set_mode	= twlreg_set_mode,
-
 	.get_status	= twlreg_get_status,
+#endif
 };
 
 /*----------------------------------------------------------------------*/
@@ -360,6 +403,10 @@ static struct regulator_ops twlfixed_ops = {
 		TWL_ADJUSTABLE_LDO(label, offset, num, TWL4030)
 #define TWL4030_FIXED_LDO(label, offset, mVolts, num) \
 		TWL_FIXED_LDO(label, offset, mVolts, num, TWL4030)
+#define TWL6030_ADJUSTABLE_LDO(label, offset, num) \
+		TWL_ADJUSTABLE_LDO(label, offset, num, TWL6030)
+#define TWL6030_FIXED_LDO(label, offset, mVolts, num) \
+		TWL_FIXED_LDO(label, offset, mVolts, num, TWL6030)
 
 #define TWL_ADJUSTABLE_LDO(label, offset, num, family) { \
 	.base = offset, \
@@ -395,6 +442,7 @@ static struct regulator_ops twlfixed_ops = {
  * software control over them after boot.
  */
 static struct twlreg_info twl_regs[] = {
+#ifdef CONFIG_TWL4030_CORE
 	TWL4030_ADJUSTABLE_LDO(VAUX1, 0x17, 1),
 	TWL4030_ADJUSTABLE_LDO(VAUX2_4030, 0x1b, 2),
 	TWL4030_ADJUSTABLE_LDO(VAUX2, 0x1b, 2),
@@ -420,6 +468,30 @@ static struct twlreg_info twl_regs[] = {
 	TWL4030_FIXED_LDO(VUSB1V8, 0x74, 1800, 18),
 	TWL4030_FIXED_LDO(VUSB3V1, 0x77, 3100, 19),
 	/* VUSBCP is managed *only* by the USB subchip */
+#elif CONFIG_TWL6030_CORE
+       TWL6030_ADJUSTABLE_LDO(VAUX1_6030, 0x84, 1),
+       TWL6030_ADJUSTABLE_LDO(VAUX2_6030, 0x88, 2),
+       TWL6030_ADJUSTABLE_LDO(VAUX3_6030, 0x8c, 3),
+       TWL6030_ADJUSTABLE_LDO(VMMC, 0x98, 4),
+       TWL6030_ADJUSTABLE_LDO(VPP, 0x9c, 5),
+       /*
+       TWL6030_ADJUSTABLE_LDO(VRTC, 0x00, 6),
+       */
+       TWL6030_ADJUSTABLE_LDO(VUSIM, 0xa4, 7),
+       /* SMPS
+       TWL6030_SMPS(VDD1, 0x4b, 8),
+       TWL6030_SMPS(VDD2, 0x55, 9),
+       TWL6030_SMPS(VDD3, 0x63, 10),
+       TWL6030_SMPS(VMEM, 0x00, 11),
+       TWL6030_SMPS(V1V29, 0x00, 12),
+       TWL6030_SMPS(V1V8, 0x00, 13),
+       TWL6030_SMPS(V2V1, 0x00, 14),
+       */
+       TWL6030_FIXED_LDO(VANA, 0x80, 2100, 15),
+       TWL6030_FIXED_LDO(VCXIO, 0x90, 1800, 16),
+       TWL6030_FIXED_LDO(VDAC, 0x94, 1800, 17),
+       TWL6030_FIXED_LDO(VUSB, 0xa0, 3300, 18)
+#endif
 };
 
 static int twlreg_probe(struct platform_device *pdev)

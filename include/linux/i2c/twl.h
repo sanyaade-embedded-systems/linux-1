@@ -87,6 +87,7 @@
 #define TWL_MODULE_INT		TWL4030_MODULE_INT
 #define TWL_MODULE_PM_MASTER	TWL4030_MODULE_PM_MASTER
 #define TWL_MODULE_PM_RECEIVER	TWL4030_MODULE_PM_RECEIVER
+#define TWL_MODULE_PM_SLAVE_LDO TWL_MODULE_PM_RECEIVER
 #define TWL_MODULE_RTC		TWL4030_MODULE_RTC
 #define TWL_MODULE_SECURED_REG	TWL4030_MODULE_SECURED_REG
 
@@ -406,6 +407,12 @@ int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 #define MSG_SINGULAR(devgrp, id, state) \
 	((devgrp) << 13 | 0 << 12 | (id) << 4 | (state))
 
+#define MSG_BROADCAST_ALL(devgrp, state) \
+	((devgrp) << 5 | (state))
+
+#define MSG_BROADCAST_REF MSG_BROADCAST_ALL
+#define MSG_BROADCAST_PROV MSG_BROADCAST_ALL
+#define MSG_BROADCAST__CLK_RST MSG_BROADCAST_ALL
 /*----------------------------------------------------------------------*/
 
 struct twl_bci_platform_data {
@@ -516,6 +523,7 @@ int twl4030_sih_setup(int module);
  * VIO is generally fixed.
  */
 
+/* TWL4030 SMPS/LDO's */
 /* EXTERNAL dc-to-dc buck converters */
 #define TWL4030_REG_VDD1	0
 #define TWL4030_REG_VDD2	1
@@ -541,6 +549,33 @@ int twl4030_sih_setup(int module);
 #define TWL4030_REG_VUSB1V5	17
 #define TWL4030_REG_VUSB1V8	18
 #define TWL4030_REG_VUSB3V1	19
+
+/* TWL6030 SMPS/LDO's */
+/* EXTERNAL dc-to-dc buck convertor contollable via SR */
+#define TWL6030_REG_VDD1	0
+#define TWL6030_REG_VDD2	1
+#define TWL6030_REG_VDD3	2
+
+/* Non SR compliant dc-to-dc buck convertors */
+#define	TWL6030_REG_VMEM	3
+#define TWL6030_REG_V2V1	4
+#define	TWL6030_REG_V1V29	5
+#define TWL6030_REG_V1V8	6
+
+/* EXTERNAL LDOs */
+#define TWL6030_REG_VAUX1_6030	7
+#define TWL6030_REG_VAUX2_6030	8
+#define TWL6030_REG_VAUX3_6030	9
+#define TWL6030_REG_VMMC	10
+#define TWL6030_REG_VPP		11
+#define TWL6030_REG_VUSIM	12
+#define TWL6030_REG_VANA	13
+#define TWL6030_REG_VCXIO	14
+#define TWL6030_REG_VDAC	15
+#define TWL6030_REG_VUSB	16
+
+/* INTERNAL LDOs */
+#define TWL6030_REG_VRTC	17
 
 int twl_int_mask_reset(u8 bit_mask, u8 offset);
 int twl_int_mask_set(u8 bit_mask, u8 offset);
