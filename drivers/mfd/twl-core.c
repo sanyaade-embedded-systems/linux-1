@@ -89,7 +89,7 @@
 #define twl_has_madc()	false
 #endif
 
-#if defined(CONFIG_RTC_DRV_TWL4030) || defined(CONFIG_RTC_DRV_TWL4030_MODULE)
+#if defined(CONFIG_RTC_DRV_TWL) || defined(CONFIG_RTC_DRV_TWL_MODULE)
 #define twl_has_rtc()	true
 #else
 #define twl_has_rtc()	false
