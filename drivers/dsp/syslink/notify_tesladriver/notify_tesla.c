@@ -30,6 +30,7 @@
 #include <syslink/notify_tesladriver.h>
 #include <syslink/gt.h>
 #include <syslink/notify_dispatcher.h>
+#include <syslink/atomic_linux.h>
 
 
 
@@ -59,6 +60,13 @@
 #define PROC_DUCATI 1
 #define PROC_GPP    2
 
+/*FIXME MOVE THIS TO  A SUITABLE HEADER */
+#define NOTIFYDRIVERSHM_MODULEID           (u32) 0xb9d4
+
+/* Macro to make a correct module magic number with refCount */
+#define NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(x) \
+				((NOTIFYDRIVERSHM_MODULEID << 12u) | (x))
+
 irqreturn_t(*irq_handler)(int, void *, struct pt_regs *);
 EXPORT_SYMBOL(irq_handler);
 
@@ -84,18 +92,16 @@ struct notify_tesladrv_object {
  *           module specific information.
  */
 struct notify_tesladrv_module {
+	atomic_t ref_count;
 	struct notify_tesladrv_config cfg;
 	struct notify_tesladrv_config def_cfg;
 	struct notify_tesladrv_params def_inst_params;
-	bool is_setup;
 	struct mutex *gate_handle;
 } ;
 
 
 static struct notify_tesladrv_module notify_tesladriver_state = {
-	.is_setup = false,
 	.gate_handle = NULL,
-	.def_cfg.gate_handle = NULL,
 	.def_inst_params.shared_addr = 0x0,
 	.def_inst_params.shared_addr_size = 0x0,
 	.def_inst_params.num_events = NOTIFYSHMDRV_MAX_EVENTS,
@@ -133,8 +139,16 @@ void notify_tesladrv_getconfig(struct notify_tesladrv_config *cfg)
 {
 	BUG_ON(cfg == NULL);
 
-	memcpy(cfg,
-		&(notify_tesladriver_state.def_cfg),
+	if (atomic_cmpmask_and_lt(&(notify_tesladriver_state.ref_count),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(1))
+								== true)
+		memcpy(cfg,
+			&(notify_tesladriver_state.def_cfg),
+			sizeof(struct notify_tesladrv_config));
+	else
+		memcpy(cfg,
+		&(notify_tesladriver_state.cfg),
 		sizeof(struct notify_tesladrv_config));
 }
 EXPORT_SYMBOL(notify_tesladrv_getconfig);
@@ -196,6 +210,14 @@ void notify_tesladrv_params_init(struct notify_driver_object *handle,
 {
 	struct notify_tesladrv_object *driver_obj;
 	BUG_ON(params == NULL);
+
+	if (atomic_cmpmask_and_lt(&(notify_tesladriver_state.ref_count),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(1))
+								== true) {
+		/*FIXME not intialized to be returned */
+		BUG_ON(1);
+	}
 	if (handle == NULL) {
 		memcpy(params,
 			&(notify_tesladriver_state.def_inst_params),
@@ -224,7 +246,7 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 	struct notify_tesladrv_object *driver_obj = NULL;
 	struct notify_driver_object *drv_handle = NULL;
 	struct notify_drv_eventlist *event_list = NULL;
-	struct notify_shmdrv_proc_ctrl *ctrl_ptr = NULL;
+	volatile struct notify_shmdrv_proc_ctrl *ctrl_ptr = NULL;
 	struct notify_driver_attrs drv_attrs;
 	struct notify_interface fxn_table;
 	int proc_id;
@@ -237,7 +259,14 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 
 	BUG_ON(driver_name == NULL);
 	BUG_ON(params == NULL);
-	BUG_ON(notify_tesladriver_state.is_setup == false);
+
+	if (atomic_cmpmask_and_lt(&(notify_tesladriver_state.ref_count),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(1))
+								== true) {
+		/*FIXME not intialized to be returned */
+		goto func_end;
+	}
 
 	if (params->num_events > NOTIFYSHMDRV_MAX_EVENTS) {
 		status = -EINVAL;
@@ -446,6 +475,13 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 	int interrupt_no;
 	int mbx_ret_val = 0;
 
+	if (atomic_cmpmask_and_lt(&(notify_tesladriver_state.ref_count),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(1))
+								== true) {
+		/*FIXME not intialized to be returned */
+		return -1;
+	}
 
 	WARN_ON(handlePtr == NULL);
 	if (handlePtr == NULL)
@@ -530,14 +566,28 @@ int notify_tesladrv_destroy(void)
 {
 
 	int status = 0;
-	WARN_ON(notify_tesladriver_state.is_setup != true);
 
-	/* Check if the gate_handle was created internally. */
-	if (notify_tesladriver_state.cfg.gate_handle == NULL) {
+	if (atomic_cmpmask_and_lt(&(notify_tesladriver_state.ref_count),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(1))
+								== true) {
+		/* FIXME Invalid state to be reuurned. */
+		return -1;
+	}
+
+	if (atomic_dec_return(&(notify_tesladriver_state.ref_count)) ==
+				NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0)) {
+
+		/* Check if the gate_handle was created internally. */
+
 		if (notify_tesladriver_state.gate_handle != NULL)
 			kfree(notify_tesladriver_state.gate_handle);
 	}
-	notify_tesladriver_state.is_setup = false;
+	/* FIXME- Why do we need to reset this if we already
+	 *	decremented it to 0 */
+	atomic_set(&(notify_tesladriver_state.ref_count),
+		NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0));
+
 	return status;
 }
 EXPORT_SYMBOL(notify_tesladrv_destroy);
@@ -570,22 +620,30 @@ int notify_tesladrv_setup(struct notify_tesladrv_config *cfg)
 		cfg = &tmpCfg;
 	}
 
-	if (cfg->gate_handle != NULL)
-		notify_tesladriver_state.gate_handle = cfg->gate_handle;
-	else {
-		notify_tesladriver_state.gate_handle =
-					kmalloc(sizeof(struct mutex),
-						      GFP_KERNEL);
-		mutex_init(notify_tesladriver_state.gate_handle);
+	/* Init the ref_count to 0 */
+	atomic_cmpmask_and_set(&(notify_tesladriver_state.ref_count),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0),
+					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0));
+
+	if (atomic_inc_return(&(notify_tesladriver_state.ref_count)) !=
+		NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(1u)) {
+		/* FIXME Already exists status to be returned. */
+		return -1;
 	}
 
+	/* Create a default gate handle here */
+	notify_tesladriver_state.gate_handle =
+			kmalloc(sizeof(struct mutex), GFP_KERNEL);
+			mutex_init(notify_tesladriver_state.gate_handle);
+
+
 	if (notify_tesladriver_state.gate_handle == NULL) {
+		atomic_set(&(notify_tesladriver_state.ref_count),
+				NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0));
 		status = -ENOMEM;
 	} else {
 		memcpy(&notify_tesladriver_state.cfg,
 		       cfg, sizeof(struct notify_tesladrv_config));
-		notify_tesladriver_state.is_setup = true;
-
 	}
 
 	return status;
@@ -611,8 +669,8 @@ int  notify_tesladrv_register_event(
 	struct notify_drv_eventlist *event_list;
 	struct notify_tesladrv_object *driver_object;
 	struct notify_shmdrv_eventreg *reg_chart;
-	struct notify_shmdrv_ctrl *ctrl_ptr;
-	struct notify_shmdrv_event_entry *self_event_chart;
+	volatile struct notify_shmdrv_ctrl *ctrl_ptr;
+	volatile struct notify_shmdrv_event_entry *self_event_chart;
 	int i;
 	int j;
 	BUG_ON(handle == NULL);
@@ -729,9 +787,9 @@ int notify_tesladrv_unregister_event(
 	struct notify_tesladrv_object *driver_object;
 	struct notify_drv_eventlist *event_list;
 	struct notify_shmdrv_eventreg *reg_chart;
-	struct notify_shmdrv_ctrl *ctrl_ptr = NULL;
+	volatile struct notify_shmdrv_ctrl *ctrl_ptr = NULL;
 	struct notify_drv_eventlistner   unreg_info;
-	struct notify_shmdrv_event_entry *self_event_chart;
+	volatile struct notify_shmdrv_event_entry *self_event_chart;
 	int i;
 	int j;
 
@@ -815,7 +873,7 @@ int notify_tesladrv_sendevent(struct notify_driver_object *handle,
 {
 	int status = 0;
 	struct notify_tesladrv_object *driver_object;
-	struct notify_shmdrv_ctrl *ctrl_ptr;
+	volatile struct notify_shmdrv_ctrl *ctrl_ptr;
 	int max_poll_count;
 
 	struct mbox_config *mbox_hw_config = ntfy_disp_get_config();
@@ -947,7 +1005,7 @@ static void notify_tesladrv_isr(void *ref_data)
 	struct notify_shmdrv_eventreg *reg_chart;
 	int event_no;
 	struct notify_tesladrv_object *drv_object;
-	struct notify_shmdrv_proc_ctrl *ctrl_ptr;
+	volatile struct notify_shmdrv_proc_ctrl *ctrl_ptr;
 	struct mbox_config *mbox_hw_config = ntfy_disp_get_config();
 	unsigned long int mbox_module_no = mbox_hw_config->mbox_modules;
 	signed long int mbx_ret_val = 0;

@@ -59,7 +59,7 @@ struct notify_tesladrv_params {
 
 
 struct notify_tesladrv_config {
-	void *gate_handle;
+	u32 reserved;
 };
 
 
