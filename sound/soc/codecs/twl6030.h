@@ -64,6 +64,16 @@
 
 #define TWL6030_CACHEREGNUM		(TWL6030_REG_STATUS + 1)
 
+/* INTID (0x03) fields */
+
+#define TWL6030_THINT			0x01
+#define TWL6030_PLUGINT			0x02
+#define TWL6030_UNPLUGINT		0x04
+#define TWL6030_HOOKINT			0x08
+#define TWL6030_HFINT			0x10
+#define TWL6030_VIBINT			0x20
+#define TWL6030_READYINT		0x40
+
 /* HPPLLCTL (0x07) fields */
 
 #define TWL6030_HPLLENA			0x01
@@ -105,8 +115,15 @@
 extern struct snd_soc_dai twl6030_dai;
 extern struct snd_soc_codec_device soc_codec_dev_twl6030;
 
+irqreturn_t twl6030_naudint_handler(int irq, void *data);
+void twl6030_naudint_work(struct work_struct *work);
+
 struct twl6030_setup_data {
 	void (*codec_enable)(int enable);
+	int irq;
+	struct work_struct audint_work;
+	struct completion ready_completion;
+	struct snd_soc_codec *codec;
 };
 
 #endif /* End of __TWL6030_H__ */
