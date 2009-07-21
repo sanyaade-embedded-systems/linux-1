@@ -23,6 +23,7 @@
  */
 
 #include <linux/dma-mapping.h>
+#include <linux/delay.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -31,6 +32,8 @@
 #include <mach/dma.h>
 #include "omap-pcm.h"
 #include "mcpdm.h"
+
+#define VIRTIO_SDP4430
 
 static const struct snd_pcm_hardware omap_pcm_hardware = {
 	.info			= SNDRV_PCM_INFO_MMAP |
@@ -75,6 +78,9 @@ static void omap_pcm_dma_irq(int ch, u16 stat, void *data)
 		spin_unlock_irqrestore(&prtd->lock, flags);
 	}
 
+#ifdef VIRTIO_SDP4430
+	udelay(300);
+#endif
 	snd_pcm_period_elapsed(substream);
 }
 
