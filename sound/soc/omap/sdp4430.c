@@ -20,6 +20,7 @@
  */
 
 #include <linux/clk.h>
+#include <linux/irq.h>
 #include <linux/platform_device.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -175,6 +176,7 @@ static void twl6030_codec_enable(int enable)
 
 static struct twl6030_setup_data twl6030_setup = {
 	.codec_enable = twl6030_codec_enable,
+	.irq = INT_44XX_AUDINT_IRQ,
 };
 
 /* Audio machine driver */
@@ -220,12 +222,26 @@ static int __init sdp4430_soc_init(void)
 
 	gpio_direction_output(TWL6030_AUDPWRON_GPIO, 0);
 
-	ret = platform_device_add(sdp4430_snd_device);
+	/* audio interrupt */
+	INIT_WORK(&twl6030_setup.audint_work, twl6030_naudint_work);
+
+	init_completion(&(twl6030_setup.ready_completion));
+
+	ret = request_irq(twl6030_setup.irq,
+		twl6030_naudint_handler,
+		IRQF_TRIGGER_HIGH | IRQF_DISABLED,
+		"soc-audio",
+		&twl6030_setup);
 	if (ret)
 		goto err2;
 
-	return 0;
+	ret = platform_device_add(sdp4430_snd_device);
+	if (ret)
+		goto err3;
 
+	return 0;
+err3:
+	free_irq(twl6030_setup.irq, &twl6030_setup);
 err2:
 	gpio_free(TWL6030_AUDPWRON_GPIO);
 err1:
@@ -238,6 +254,7 @@ module_init(sdp4430_soc_init);
 
 static void __exit sdp4430_soc_exit(void)
 {
+	free_irq(twl6030_setup.irq, &twl6030_setup);
 	gpio_free(TWL6030_AUDPWRON_GPIO);
 	platform_device_unregister(sdp4430_snd_device);
 }
