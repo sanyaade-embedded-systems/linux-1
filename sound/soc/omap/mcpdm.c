@@ -33,14 +33,14 @@
 
 #include "mcpdm.h"
 
-struct omap_mcpdm *mcpdm;
+static struct omap_mcpdm *mcpdm;
 
-void omap_mcpdm_write(u16 reg, u32 val)
+static void omap_mcpdm_write(u16 reg, u32 val)
 {
 	__raw_writel(val, mcpdm->io_base + reg);
 }
 
-int omap_mcpdm_read(u16 reg)
+static int omap_mcpdm_read(u16 reg)
 {
 	return __raw_readl(mcpdm->io_base + reg);
 }
@@ -128,7 +128,7 @@ void omap_mcpdm_stop(int stream)
 }
 EXPORT_SYMBOL(omap_mcpdm_stop);
 
-int omap_mcpdm_get_channels(int links, int channels)
+static int omap_mcpdm_get_channels(int links, int channels)
 {
 	int count;
 
@@ -468,7 +468,7 @@ static struct omap_mcpdm_platform_data mcpdm_pdata = {
 	.irq = INT_44XX_MCPDM_IRQ,
 };
 
-int __init omap_mcpdm_init(void)
+static int __init omap_mcpdm_init(void)
 {
 	int ret;
 	struct platform_device *device;
