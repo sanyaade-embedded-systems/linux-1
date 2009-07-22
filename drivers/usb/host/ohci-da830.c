@@ -16,10 +16,10 @@
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 
-#include <asm/hardware.h>
-#include <asm/arch/usb.h>
+#include <mach/hardware.h>
+#include <mach/usb.h>
 
-#ifndef CONFIG_ARCH_DAVINCI_DA830
+#ifndef CONFIG_ARCH_DAVINCI_DA8XX
 #error "This file is DA830 bus glue.  Define CONFIG_ARCH_DAVINCI_DA830."
 #endif
 
@@ -37,8 +37,6 @@ static void ohci_da830_clock(int on)
 
 	cfgchip2 = __raw_readl(CFGCHIP2);
 	if (on) {
-		clk_enable(usb11_clk);
-
 		/*
 		 * If USB 1.1 reference clock is sourced from USB 2.0 PHY, we
 		 * need to enable the USB 2.0 module clocking, start its PHY,
@@ -46,26 +44,47 @@ static void ohci_da830_clock(int on)
 		 */
 		if (!(cfgchip2 & CFGCHIP2_USB1PHYCLKMUX)) {
 			clk_enable(usb20_clk);
+			if(!(cfgchip2 & CFGCHIP2_PHY_PLLON)) {
+				cfgchip2 &= ~(CFGCHIP2_RESET |
+						CFGCHIP2_PHYPWRDN);
+				cfgchip2 |= CFGCHIP2_PHY_PLLON |
+						CFGCHIP2_REFFREQ_24MHZ;
+				__raw_writel(cfgchip2, CFGCHIP2);
 
-			cfgchip2 &= ~(CFGCHIP2_RESET | CFGCHIP2_PHYPWRDN);
-			cfgchip2 |= CFGCHIP2_PHY_PLLON;
-			__raw_writel(cfgchip2, CFGCHIP2);
-
-			pr_info("Waiting for USB PHY clock good...\n");
-			while (!(__raw_readl(CFGCHIP2) & CFGCHIP2_PHYCLKGD))
+				pr_info("Waiting for USB PHY clock good...\n");
+				while (!(__raw_readl(CFGCHIP2) &
+					CFGCHIP2_PHYCLKGD))
 				cpu_relax();
+			}
 		}
+
+		clk_enable(usb11_clk);
 
 		/* Enable USB 1.1 PHY */
 		cfgchip2 |= CFGCHIP2_USB1SUSPENDM;
 	} else {
 		clk_disable(usb11_clk);
-		if (!(cfgchip2 & CFGCHIP2_USB1PHYCLKMUX))
+		if (!(cfgchip2 & CFGCHIP2_USB1PHYCLKMUX)) {
 			clk_disable(usb20_clk);
+
+		/* Need to power down the USB0 phy but currently no way to
+		 * know whether it is being used by other applications.  Need
+		 * clk_ infrastructure support here which is currently not
+		 * available.
+		 */
+#if 0
+			if (usb20_clk->usecount == 0) {
+				cfgchip2 &= ~CFGCHIP2_PHY_PLLON;
+				cfgchip2 |=  CFGCHIP2_PHYPWRDN |
+						CFGCHIP2_OTGPWRDN;
+			}
+#endif
+		}
 
 		/* Disable USB 1.1 PHY */
 		cfgchip2 &= ~CFGCHIP2_USB1SUSPENDM;
 	}
+
 	__raw_writel(cfgchip2, CFGCHIP2);
 }
 
@@ -95,7 +114,7 @@ static int ohci_da830_init(struct usb_hcd *hcd)
 	ohci_da830_clock(1);
 
 	/*
-	 * DA830 only has 1 port connected to the pins but its HC root hub
+	 * DA8XX only has 1 port connected to the pins but its HC root hub
 	 * register A reports 2 ports, thus we'll have to override it...
 	 */
 	ohci->num_ports = 1;
@@ -235,7 +254,7 @@ check_port:
 }
 
 /*
- * We don't have OTG but the Mentor USB core in DA830 does have it, so we
+ * We don't have OTG but the Mentor USB core in DA8XX does have it, so we
  * have to define an empty function to silence the warning in ohci-hcd.c...
  */
 #ifdef CONFIG_USB_OTG
@@ -244,7 +263,7 @@ static void start_hnp(struct ohci_hcd *ohci) {}
 
 static const struct hc_driver ohci_da830_hc_driver = {
 	.description		= hcd_name,
-	.product_desc		= "DA830 OHCI",
+	.product_desc		= "DA8XX OHCI",
 	.hcd_priv_size		= sizeof(struct ohci_hcd),
 
 	/*
@@ -278,7 +297,7 @@ static const struct hc_driver ohci_da830_hc_driver = {
 	 */
 	.hub_status_data	= ohci_da830_hub_status_data,
 	.hub_control		= ohci_da830_hub_control,
-	.hub_irq_enable 	= ohci_rhsc_enable,
+	//.hub_irq_enable 	= ohci_rhsc_enable,
 #ifdef	CONFIG_PM
 	.bus_suspend		= ohci_bus_suspend,
 	.bus_resume		= ohci_bus_resume,
@@ -290,7 +309,7 @@ static const struct hc_driver ohci_da830_hc_driver = {
 
 
 /**
- * usb_hcd_da830_probe - initialize DA830-based HCDs
+ * usb_hcd_da830_probe - initialize DA8XX-based HCDs
  * Context: !in_interrupt()
  *
  * Allocates basic resources for this USB host controller, and
@@ -318,7 +337,7 @@ static int usb_hcd_da830_probe(const struct hc_driver *driver,
 		goto err0;
 	}
 
-	hcd = usb_create_hcd(driver, &pdev->dev, pdev->dev.bus_id);
+	hcd = usb_create_hcd(driver, &pdev->dev, dev_name(&pdev->dev));
 	if (!hcd) {
 		error = -ENOMEM;
 		goto err1;
@@ -338,7 +357,7 @@ static int usb_hcd_da830_probe(const struct hc_driver *driver,
 		goto err2;
 	}
 
-	hcd->regs = (void __iomem *)(long)IO_ADDRESS(hcd->rsrc_start);
+	hcd->regs = (void __iomem *)(long)IO_ADDRESS((u32)hcd->rsrc_start);
 
 	ohci_hcd_init(hcd_to_ohci(hcd));
 
@@ -370,7 +389,7 @@ err0:
 }
 
 /**
- * usb_hcd_da830_remove - shutdown processing for DA830-based HCDs
+ * usb_hcd_da830_remove - shutdown processing for DA8XX-based HCDs
  * @dev: USB Host Controller being removed
  * Context: !in_interrupt()
  *

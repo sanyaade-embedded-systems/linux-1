@@ -1047,7 +1047,7 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER		usb_hcd_pnx4008_driver
 #endif
 
-#ifdef CONFIG_ARCH_DAVINCI_DA830
+#ifdef CONFIG_ARCH_DAVINCI_DA8XX
 #include "ohci-da830.c"
 #define PLATFORM_DRIVER		ohci_hcd_da830_driver
 #endif
