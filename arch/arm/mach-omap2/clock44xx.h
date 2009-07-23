@@ -446,6 +446,121 @@ static struct clk per_dpll_hs_ck = {
 	.recalc         = &omap2_fixed_divisor_recalc,
 };
 
+/* CM1_ABE clocks */
+
+static const struct clksel_rate dpll_abe_x2_ck_rates[] = {
+	{ .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 2, .val = 1, .flags = RATE_IN_443X },
+	{ .div = 4, .val = 2, .flags = RATE_IN_443X },
+	{ .div = 0 },
+};
+
+static const struct clksel abe_ck_clksel[] = {
+	{ .parent = &dpll_abe_x2_ck, .rates = dpll_abe_x2_ck_rates },
+	{ .parent = NULL },
+};
+
+static struct clk abe_ck = {
+	.name		= "abe_ck",
+	.ops		= &clkops_null,
+	.init		= &omap2_init_clksel_parent,
+	.parent		= &dpll_abe_x2_ck,
+	.clksel_reg	= OMAP4430_CM_CLKSEL_ABE,
+	.clksel_mask	= OMAP4430_CLKSEL_OPP_MASK,
+	.clksel		= abe_ck_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static const struct clksel_rate abe_ck_rates[] = {
+	{ .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 2, .val = 1, .flags = RATE_IN_443X },
+	{ .div = 0 },
+};
+
+static const struct clksel aess_fck_clksel[] = {
+	{ .parent = &abe_ck, .rates = abe_ck_rates },
+	{ .parent = NULL },
+};
+
+static struct clk aess_fck = {
+	.name		= "aess_fck",
+	.ops		= &clkops_null,
+	.init		= &omap2_init_clksel_parent,
+	.parent		= &abe_ck,
+	.clksel_reg	= OMAP4430_CM1_ABE_AESS_CLKCTRL,
+	.clksel_mask	= OMAP4430_CLKSEL_AESS_FCLK_MASK,
+	.clksel		= aess_fck_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct clk abe_lp_ck = {
+	.name 		= "abe_lp_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_abe_x2_ck,
+	.fixed_div	= 16,
+	.recalc	 = &omap2_fixed_divisor_recalc,
+};
+
+static struct clk abe_24m_fck = {
+	.name 		= "abe_24m_fck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_abe_x2_ck,
+	.fixed_div	= 16,
+	.recalc	 = &omap2_fixed_divisor_recalc,
+};
+
+static struct clk abe_gpt5_fck = {
+	.name		= "abe_gpt5_fck",
+	.ops		= &clkops_omap2_dflt_wait,
+	.parent		= &sys_ck,
+	.init		= &omap2_init_clksel_parent,
+	.enable_reg	= OMAP4430_CM1_ABE_TIMER5_CLKCTRL,
+	.enable_bit	= OMAP4430_EN_GPT_SHIFT,
+	.clksel_reg	= OMAP4430_CM1_ABE_TIMER5_CLKCTRL,
+	.clksel_mask	= OMAP4430_GPTIMER_CLKSEL_MASK,
+	.clksel		= omap443x_gpt_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct clk abe_gpt6_fck = {
+	.name		= "abe_gpt6_fck",
+	.ops		= &clkops_omap2_dflt_wait,
+	.parent		= &sys_ck,
+	.init		= &omap2_init_clksel_parent,
+	.enable_reg	= OMAP4430_CM1_ABE_TIMER6_CLKCTRL,
+	.enable_bit	= OMAP4430_EN_GPT_SHIFT,
+	.clksel_reg	= OMAP4430_CM1_ABE_TIMER6_CLKCTRL,
+	.clksel_mask	= OMAP4430_GPTIMER_CLKSEL_MASK,
+	.clksel		= omap443x_gpt_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct clk abe_gpt7_fck = {
+	.name		= "abe_gpt7_fck",
+	.ops		= &clkops_omap2_dflt_wait,
+	.parent		= &sys_ck,
+	.init		= &omap2_init_clksel_parent,
+	.enable_reg	= OMAP4430_CM1_ABE_TIMER7_CLKCTRL,
+	.enable_bit	= OMAP4430_EN_GPT_SHIFT,
+	.clksel_reg	= OMAP4430_CM1_ABE_TIMER7_CLKCTRL,
+	.clksel_mask	= OMAP4430_GPTIMER_CLKSEL_MASK,
+	.clksel		= omap443x_gpt_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct clk abe_gpt8_fck = {
+	.name		= "abe_gpt8_fck",
+	.ops		= &clkops_omap2_dflt_wait,
+	.parent		= &sys_ck,
+	.init		= &omap2_init_clksel_parent,
+	.enable_reg	= OMAP4430_CM1_ABE_TIMER8_CLKCTRL,
+	.enable_bit	= OMAP4430_EN_GPT_SHIFT,
+	.clksel_reg	= OMAP4430_CM1_ABE_TIMER8_CLKCTRL,
+	.clksel_mask	= OMAP4430_GPTIMER_CLKSEL_MASK,
+	.clksel		= omap443x_gpt_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
 /* DPLL PER */
 
 static const struct clksel_rate per_dpll_hs_ck_rates[] = {
