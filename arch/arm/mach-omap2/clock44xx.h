@@ -460,6 +460,14 @@ static struct clk per_dpll_hs_ck = {
 	.recalc         = &omap2_fixed_divisor_recalc,
 };
 
+static struct clk usb_dpll_hs_ck = {
+	.name 		= "usb_dpll_hs_ck",
+	.ops		= &clkops_null,
+	.parent		= &core_dpll_hs_ck,
+	.fixed_div	= 2,
+	.recalc		= &omap2_fixed_divisor_recalc,
+};
+
 /* CM1_ABE clocks */
 
 static const struct clksel_rate dpll_abe_x2_ck_rates[] = {
@@ -1338,6 +1346,69 @@ static struct clk unipro1_phy_fck = {
 	.name		= "unipro1_phy_fck",
 	.ops		= &clkops_null,
 	.parent         = &dpll_unipro_x2m2_ck,
+	.recalc		= &followparent_recalc,
+};
+
+/* USB DPLL */
+
+static struct dpll_data dpll_usb_dd = {
+	.mult_div1_reg	= OMAP4430_CM_CLKSEL_DPLL_USB,
+	.mult_mask	= OMAP4430_CM2_USB_DPLL_MULT_MASK,
+	.div1_mask	= OMAP4430_CM2_USB_DPLL_DIV_MASK,
+	.clk_bypass	= &usb_dpll_hs_ck,
+	.clk_ref	= &dpll_sys_ref_ck,
+	.control_reg	= OMAP4430_CM_CLKMODE_DPLL_USB,
+	.enable_mask	= OMAP4430_DPLL_EN_MASK,
+	.modes		= (1 << DPLL_LOW_POWER_BYPASS) | (1 << DPLL_LOCKED),
+	.autoidle_reg	= OMAP4430_CM_AUTOIDLE_DPLL_USB,
+	.autoidle_mask	= OMAP4430_AUTO_DPLL_MODE_MASK,
+	.idlest_reg	= OMAP4430_CM_IDLEST_DPLL_USB,
+	.idlest_mask	= OMAP4430_ST_DPLL_CLK_MASK,
+};
+
+static struct clk dpll_usb_ck = {
+	.name		= "dpll_usb_ck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_sys_ref_ck,
+	.dpll_data	= &dpll_usb_dd,
+	.round_rate	= &omap2_dpll_round_rate,
+	.set_rate	= &omap4_noncore_dpll_set_rate,
+	.recalc		= &omap4_dpll_recalc,
+};
+
+static const struct clksel dpll_usb_m2_clksel[] = {
+	{ .parent = &dpll_usb_ck, .rates = div_mx_dpll_rates },
+	{ .parent = NULL }
+};
+
+static struct clk dpll_usb_m2_ck = {
+	.name		= "dpll_usb_m2_ck",
+	.ops		= &clkops_null,
+	.init		= &omap2_init_clksel_parent,
+	.clksel_reg	= OMAP4430_CM_DIV_M2_DPLL_USB,
+	.clksel_mask	= OMAP4430_USB_DPLL_CLKOUT_DIV_MASK,
+	.clksel		= dpll_usb_m2_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct clk init_480m_fck = {
+	.name		= "init_480m_fck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_usb_m2_ck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk dpll_usb_clkdcoldo = {
+	.name		= "dpll_usb_clkdcoldo",
+	.ops		= &clkops_null,
+	.parent		= &dpll_usb_ck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk init_960m_fck = {
+	.name		= "init_960m_fck",
+	.ops		= &clkops_null,
+	.parent		= &dpll_usb_clkdcoldo,
 	.recalc		= &followparent_recalc,
 };
 
