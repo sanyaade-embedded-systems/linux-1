@@ -67,9 +67,9 @@ static int dpi_set_dispc_clk(bool is_tft, unsigned long pck_req,
 		unsigned long *fck, int *lck_div, int *pck_div)
 {
 	struct dispc_clock_info cinfo;
-	int r;
+	int r = 0;
 
-	r = dispc_calc_clock_div(is_tft, pck_req, &cinfo);
+/*	r = dispc_calc_clock_div(is_tft, pck_req, &cinfo); */
 	if (r)
 		return r;
 
@@ -282,7 +282,7 @@ static int dpi_check_timings(struct omap_dss_device *dssdev,
 			struct omap_video_timings *timings)
 {
 	bool is_tft;
-	int r;
+	int r = 0;
 	int lck_div, pck_div;
 	unsigned long fck;
 	unsigned long pck;
@@ -311,9 +311,9 @@ static int dpi_check_timings(struct omap_dss_device *dssdev,
 #else
 	{
 		struct dispc_clock_info cinfo;
-		r = dispc_calc_clock_div(is_tft, timings->pixel_clock * 1000,
-				&cinfo);
-
+/*		r = dispc_calc_clock_div(is_tft, timings->pixel_clock * 1000,
+ *				&cinfo);
+ */
 		if (r)
 			return r;
 

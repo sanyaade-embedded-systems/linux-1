@@ -40,8 +40,10 @@
 
 #include "dss.h"
 
-/* DISPC */
-#define DISPC_BASE			0x48050400
+/* DSS */
+#define DSS_BASE		0x48042000
+/* DISPLAY CONTROLLER */
+#define DISPC_BASE		0x48043000
 
 #define DISPC_SZ_REGS			SZ_1K
 
@@ -503,11 +505,13 @@ void dispc_go(enum omap_channel channel)
 		bit = 0; /* LCDENABLE */
 	else
 		bit = 1; /* DIGITALENABLE */
+	REG_FLD_MOD(DISPC_CONTROL, 1, 0, 0);
 
 	/* if the channel is not enabled, we don't need GO */
-	if (REG_GET(DISPC_CONTROL, bit, bit) == 0)
+/*	if (REG_GET(DISPC_CONTROL, bit, bit) == 0)
 		goto end;
 
+*/
 	if (channel == OMAP_DSS_CHANNEL_LCD)
 		bit = 5; /* GOLCD */
 	else
@@ -965,6 +969,8 @@ static void dispc_read_plane_fifo_sizes(void)
 		if (cpu_is_omap24xx())
 			size = FLD_GET(dispc_read_reg(fsz_reg[plane]), 8, 0);
 		else if (cpu_is_omap34xx())
+			size = FLD_GET(dispc_read_reg(fsz_reg[plane]), 10, 0);
+		else if (cpu_is_omap44xx())
 			size = FLD_GET(dispc_read_reg(fsz_reg[plane]), 10, 0);
 		else
 			BUG();
@@ -1713,7 +1719,7 @@ void dispc_enable_lcd_out(bool enable)
 	}
 
 	_enable_lcd_out(enable);
-
+/*
 	if (!enable && is_on) {
 		if (!wait_for_completion_timeout(&frame_done_completion,
 					msecs_to_jiffies(100)))
@@ -1726,7 +1732,7 @@ void dispc_enable_lcd_out(bool enable)
 		if (r)
 			DSSERR("failed to unregister FRAMEDONE isr\n");
 	}
-
+*/
 	enable_clocks(0);
 }
 
@@ -3099,6 +3105,12 @@ int dispc_init(void)
 		dispc.dpll4_m4_ck = clk_get(NULL, "dpll4_m4_ck");
 		if (IS_ERR(dispc.dpll4_m4_ck)) {
 			DSSERR("Failed to get dpll4_m4_ck\n");
+			return -ENODEV;
+		}
+	} else if (cpu_is_omap44xx()) {
+		dispc.dpll4_m4_ck = clk_get(NULL, "dpll4_m4_ck");
+			if (IS_ERR(dispc.dpll4_m4_ck)) {
+				DSSERR("Failed to get dpll4_m4_ck\n");
 			return -ENODEV;
 		}
 	}
