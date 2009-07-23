@@ -32,7 +32,10 @@
 #include <mach/display.h>
 #include "dss.h"
 
-#define DSS_BASE			0x48050000
+/* DSS */
+#define DSS_BASE                        0x48042000
+/* DISPLAY CONTROLLER */
+#define DISPC_BASE                      0x48041000
 
 #define DSS_SZ_REGS			SZ_512
 
@@ -312,7 +315,7 @@ int dss_init(bool skip_init)
 	REG_FLD_MOD(DSS_CONTROL, 1, 3, 3);	/* venc clock 4x enable */
 	REG_FLD_MOD(DSS_CONTROL, 0, 2, 2);	/* venc clock mode = normal */
 #endif
-
+/*
 	r = request_irq(INT_24XX_DSS_IRQ,
 			cpu_is_omap24xx()
 			? dss_irq_handler_omap2
@@ -323,7 +326,7 @@ int dss_init(bool skip_init)
 		DSSERR("omap2 dss: request_irq failed\n");
 		goto fail1;
 	}
-
+*/
 	dss_save_context();
 
 	rev = dss_read_reg(DSS_REVISION);
