@@ -53,6 +53,34 @@ static struct clk slimbus_ck = {
 	.flags		= RATE_FIXED,
 };
 
+static struct clk phy_clkout_ck = {
+	.name		= "phy_clkout_ck",
+	.ops		= &clkops_null,
+	.rate		= 12000000,
+	.flags		= RATE_FIXED,
+};
+
+static struct clk xclk_60m_otg_ck = {
+	.name		= "xclk_60m_otg_ck",
+	.ops		= &clkops_null,
+	.rate		= 60000000,
+	.flags		= RATE_FIXED,
+};
+
+static struct clk xclk_60m_hsp1_ck = {
+	.name		= "xclk_60m_hsp1_ck",
+	.ops		= &clkops_null,
+	.rate		= 12000000,
+	.flags		= RATE_FIXED,
+};
+
+static struct clk xclk_60m_hsp2_ck = {
+	.name		= "xclk_60m_hsp2_ck",
+	.ops		= &clkops_null,
+	.rate		= 12000000,
+	.flags		= RATE_FIXED,
+};
+
 static struct clk virt_12m_ck = {
 	.name		= "virt_12m_ck",
 	.ops		= &clkops_null,
@@ -1410,6 +1438,170 @@ static struct clk init_960m_fck = {
 	.ops		= &clkops_null,
 	.parent		= &dpll_usb_clkdcoldo,
 	.recalc		= &followparent_recalc,
+};
+
+/* CM1_USB nodes */
+
+static const struct clksel_rate init_480m_fck_rates[] = {
+	{ .div = 1, .val = 0, .flags = RATE_IN_443X },
+	{ .div = 8, .val = 1, .flags = RATE_IN_443X | DEFAULT_RATE},
+	{ .div = 0 }
+};
+
+static const struct clksel init_60m_fck_clksel[] = {
+	{ .parent = &init_480m_fck, .rates = init_480m_fck_rates },
+	{ .parent = NULL }
+};
+
+static struct clk init_60m_fck = {
+	.name		= "init_60m_fck",
+	.ops		= &clkops_null,
+	.parent	 	= &init_480m_fck,
+	.clksel_reg	= OMAP4430_CM_CLKSEL_USB_60MHZ,
+	.clksel_mask	= OMAP4430_USB_60MHZ_CLKSEL_MASK,
+	.clksel	 	= init_60m_fck_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static struct clk utmi_p3_fck = {
+	.name		= "utmi_p3_fck",
+	.ops		= &clkops_null,
+	.parent		= &init_480m_fck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk init_60m_p1_fck = {
+	.name		= "init_60m_p1_fck",
+	.ops		= &clkops_null,
+	.parent		= &init_480m_fck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk init_60m_p2_fck = {
+	.name		= "init_60m_p2_fck",
+	.ops		= &clkops_null,
+	.parent		= &init_480m_fck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk utmi_root_gfck = {
+	.name		= "utmi_root_gfck",
+	.ops		= &clkops_null,
+	.parent		= &init_480m_fck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk tll_ch0_fck = {
+	.name		= "tll_ch0_fck",
+	.ops		= &clkops_null,
+	.parent		= &init_480m_fck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk tll_ch1_fck = {
+	.name		= "tll_ch1_fck",
+	.ops		= &clkops_null,
+	.parent		= &init_480m_fck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk tll_ch2_fck = {
+	.name		= "tll_ch2_fck",
+	.ops		= &clkops_null,
+	.parent		= &init_480m_fck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk hsic_p1_480m_fck = {
+	.name		= "hsic_p1_480m_fck",
+	.ops		= &clkops_null,
+	.parent		= &init_480m_fck,
+	.recalc		= &followparent_recalc,
+};
+
+static struct clk hsic_p2_480m_fck = {
+	.name		= "hsic_p2_480m_fck",
+	.ops		= &clkops_null,
+	.parent		= &init_480m_fck,
+	.recalc		= &followparent_recalc,
+};
+
+static const struct clksel_rate phy_clkout_ck_rates[] = {
+	{ .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel_rate xclk_60m_otg_ck_rates[] = {
+	{ .div = 1, .val = 1, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel otg_60m_fck_clksel[] = {
+	{ .parent = &phy_clkout_ck, .rates = phy_clkout_ck_rates },
+	{ .parent = &xclk_60m_otg_ck, .rates = xclk_60m_otg_ck_rates },
+	{ .parent = NULL }
+};
+
+static struct clk otg_60m_fck = {
+	.name		= "otg_60m_fck",
+	.ops		= &clkops_null,
+	.parent	 	= &phy_clkout_ck,
+	.clksel_reg	= OMAP4430_CM_L3INIT_USB_OTG_CLKCTRL,
+	.clksel_mask	= OMAP4430_CLKSEL_60M_MASK,
+	.clksel	 	= otg_60m_fck_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static const struct clksel_rate init_60m_p1_fck_rates[] = {
+	{ .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel_rate xclk_60m_hsp1_ck_rates[] = {
+	{ .div = 1, .val = 1, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel utmi_p1_fck_clksel[] = {
+	{ .parent = &init_60m_p1_fck, .rates = init_60m_p1_fck_rates },
+	{ .parent = &xclk_60m_hsp1_ck, .rates = xclk_60m_hsp1_ck_rates },
+	{ .parent = NULL }
+};
+
+static struct clk utmi_p1_fck = {
+	.name		= "utmi_p1_fck",
+	.ops		= &clkops_null,
+	.parent	 	= &init_60m_p1_fck,
+	.clksel_reg	= OMAP4430_CM_L3INIT_USB_HOST_CLKCTRL,
+	.clksel_mask	= OMAP4430_CLKSEL_UTMI_P1_MASK,
+	.clksel	 	= utmi_p1_fck_clksel,
+	.recalc		= &omap2_clksel_recalc,
+};
+
+static const struct clksel_rate init_60m_p2_fck_rates[] = {
+	{ .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel_rate xclk_60m_hsp2_ck_rates[] = {
+	{ .div = 1, .val = 1, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel utmi_p2_fck_clksel[] = {
+	{ .parent = &init_60m_p2_fck, .rates = init_60m_p2_fck_rates },
+	{ .parent = &xclk_60m_hsp2_ck, .rates = xclk_60m_hsp2_ck_rates },
+	{ .parent = NULL }
+};
+
+static struct clk utmi_p2_fck = {
+	.name		= "utmi_p2_fck",
+	.ops		= &clkops_null,
+	.parent	 	= &init_60m_p2_fck,
+	.clksel_reg	= OMAP4430_CM_L3INIT_USB_HOST_CLKCTRL,
+	.clksel_mask	= OMAP4430_CLKSEL_UTMI_P2_MASK,
+	.clksel	 	= utmi_p2_fck_clksel,
+	.recalc		= &omap2_clksel_recalc,
 };
 
 /* CM1 nodes */
