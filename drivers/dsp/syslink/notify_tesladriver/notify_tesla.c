@@ -252,7 +252,6 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 	volatile struct notify_shmdrv_proc_ctrl *ctrl_ptr = NULL;
 	struct notify_driver_attrs drv_attrs;
 	struct notify_interface fxn_table;
-	int proc_id;
 	int i;
 	unsigned long int num_events = NOTIFYNONSHMDRV_MAX_EVENTS;
 	int slot = false;
