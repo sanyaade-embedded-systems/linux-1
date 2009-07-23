@@ -56,7 +56,7 @@
 #define OMAP44XX_UHH_CONFIG_BASE       (L4_44XX_BASE + 0x64000)
 #define OMAP44XX_OHCI_BASE             (L4_44XX_BASE + 0x64800)
 #define OMAP44XX_EHCI_BASE             (L4_44XX_BASE + 0x64C00)
-
+#define OMAP44xx_MAILBOX_BASE		(L4_44XX_BASE + 0xF4000)
 
 #endif /* __ASM_ARCH_OMAP44XX_H */
 
