@@ -39,6 +39,10 @@ endif
 obj-$(CONFIG_ARCH_OMAP2)		+= clock24xx.o
 obj-$(CONFIG_ARCH_OMAP3)		+= clock34xx.o
 
+# MAILBOX
+obj-$(CONFIG_OMAP_MBOX_FWK)	+= mailbox_mach.o
+mailbox_mach-objs		:= mailbox.o
+
 iommu-y					+= iommu2.o
 iommu-$(CONFIG_ARCH_OMAP3)		+= omap3-iommu.o
 iommu-$(CONFIG_ARCH_OMAP4)              += omap4-iommu.o
