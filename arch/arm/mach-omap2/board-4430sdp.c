@@ -32,6 +32,7 @@
 #include <mach/timer-gp.h>
 #include <asm/hardware/gic.h>
 #include <asm/hardware/cache-l2x0.h>
+#include <linux/i2c/twl.h>
 
 static int ts_gpio;
 
@@ -146,9 +147,28 @@ static int __init omap_l2_cache_init(void)
 }
 early_initcall(omap_l2_cache_init);
 #endif
+
+#ifdef CONFIG_TWL6030_CORE
+static struct twl_platform_data sdp4430_twldata = {
+	.irq_base	= TWL6030_IRQ_BASE,
+	.irq_end	= TWL6030_IRQ_END,
+};
+#endif
+
+static struct i2c_board_info __initdata sdp4430_i2c_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("twl6030", 0x48),
+		.flags = I2C_CLIENT_WAKE,
+		.irq = INT_44XX_SYS_NIRQ,
+#ifdef CONFIG_TWL6030_CORE
+		.platform_data = &sdp4430_twldata,
+#endif
+	},
+};
 static int __init omap4_i2c_init(void)
 {
-	omap_register_i2c_bus(1, 2600, NULL, 0);
+	omap_register_i2c_bus(1, 2600, sdp4430_i2c_boardinfo,
+				ARRAY_SIZE(sdp4430_i2c_boardinfo));
 	omap_register_i2c_bus(2, 400, NULL, 0);
 	omap_register_i2c_bus(3, 400, NULL, 0);
 	return 0;

@@ -491,6 +491,22 @@ CONFIG_SSB_POSSIBLE=y
 # CONFIG_MFD_TC6387XB is not set
 # CONFIG_MFD_TC6393XB is not set
 # CONFIG_MEDIA_SUPPORT is not set
+CONFIG_TWL6030_CORE=y
+
+#
+# Multimedia devices
+#
+
+#
+# Multimedia core support
+#
+# CONFIG_VIDEO_DEV is not set
+# CONFIG_VIDEO_MEDIA is not set
+
+#
+# Multimedia drivers
+#
+CONFIG_DAB=y
 
 #
 # Graphics support
@@ -518,7 +534,8 @@ CONFIG_DUMMY_CONSOLE=y
 # CONFIG_ACCESSIBILITY is not set
 # CONFIG_NEW_LEDS is not set
 CONFIG_RTC_LIB=y
-# CONFIG_RTC_CLASS is not set
+CONFIG_RTC_CLASS=y
+CONFIG_RTC_DRV_TWL=y
 # CONFIG_DMADEVICES is not set
 # CONFIG_AUXDISPLAY is not set
 # CONFIG_REGULATOR is not set
@@ -539,6 +556,7 @@ CONFIG_JBD=y
 # CONFIG_REISERFS_FS is not set
 # CONFIG_JFS_FS is not set
 # CONFIG_FS_POSIX_ACL is not set
+CONFIG_FILE_LOCKING=y
 # CONFIG_XFS_FS is not set
 # CONFIG_GFS2_FS is not set
 # CONFIG_BTRFS_FS is not set
