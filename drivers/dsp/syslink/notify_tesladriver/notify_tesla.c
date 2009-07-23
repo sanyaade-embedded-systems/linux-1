@@ -23,13 +23,13 @@
 #include <linux/list.h>
 #include <linux/io.h>
 #include <linux/module.h>
+#include <mach/mailbox.h>
 
 #include <syslink/notify_driver.h>
 #include <syslink/notifydefs.h>
 #include <syslink/notify_driverdefs.h>
 #include <syslink/notify_tesladriver.h>
 #include <syslink/gt.h>
-#include <syslink/notify_dispatcher.h>
 #include <syslink/atomic_linux.h>
 
 
@@ -114,7 +114,10 @@ static struct notify_tesladrv_module notify_tesladriver_state = {
 
 
 
-static void notify_tesladrv_isr(void *ref_data);
+struct omap_mbox *tesla_mbox;
+static struct notify_tesladrv_object *tesla_isr_params[NOTIFY_MAX_DRIVERS];
+static void notify_tesladrv_isr(void *ntfy_msg);
+static void notify_tesladrv_isr_callback(void *ref_data, void* ntfy_msg);
 
 
 
@@ -252,10 +255,7 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 	int proc_id;
 	int i;
 	unsigned long int num_events = NOTIFYNONSHMDRV_MAX_EVENTS;
-	struct mbox_config *mbox_hw_config;
-	int mbox_module_no;
-	int interrupt_no;
-	int mbx_ret_val;
+	int slot = false;
 
 	BUG_ON(driver_name == NULL);
 	BUG_ON(params == NULL);
@@ -406,37 +406,34 @@ struct notify_driver_object *notify_tesladrv_create(char *driver_name,
 	/* Enable all events initially.*/
 	ctrl_ptr->reg_mask.enable_mask = 0xFFFFFFFF;
 
+	tesla_mbox = omap_mbox_get("mailbox-1");
+	if (tesla_mbox == NULL) {
+		status = -ENODEV;
+		goto func_end;
+	}
+	tesla_mbox->rxq->callback = (int (*)(void *))notify_tesladrv_isr;
 
-	mbox_hw_config = ntfy_disp_get_config();
-	mbox_module_no = mbox_hw_config->mbox_modules;
-	interrupt_no = mbox_hw_config->interrupt_lines[mbox_module_no-1];
-
-
-	mbx_ret_val = ntfy_disp_bind_interrupt(interrupt_no,
-			       (void *)notify_mailbx0_user0_isr, NULL);
 	/*Set up the ISR on the Modena-Tesla FIFO */
-	if (mbx_ret_val == 0) {
-		proc_id = PROC_TESLA;
-		mbx_ret_val = ntfy_disp_register(mbox_module_no,
-						 (NOTIFYDRV_TESLA_RECV_MBX * 2),
-						 (void *)notify_tesladrv_isr,
-						 (void *)driver_obj);
 
-		if (mbx_ret_val == 0) {
-
-			mbx_ret_val = ntfy_disp_interrupt_enable(
-			      mbox_module_no, (NOTIFYDRV_TESLA_RECV_MBX * 2));
+	for (i = 0; i < NOTIFY_MAX_DRIVERS; i++) {
+		if (tesla_isr_params[i] == NULL) {
+			slot = true;
+			break;
 		}
 	}
 
+	if ((!slot) || (i == NOTIFY_MAX_DRIVERS)) {
+		/*FIXME: set a proper error value */
+		printk(KERN_ERR "Error: no free slots\n");
+		status = -ENODEV;
+		goto func_end;
+	}
+	tesla_isr_params[i] = (void *)driver_obj;
+	omap_mbox_enable_irq(tesla_mbox, IRQ_RX);
+
 
 	/*Set up the ISR on the Modena-Ducati FIFO */
-	if (mbx_ret_val != 0) {
-		status = -ENODEV;
-		WARN_ON(1);
-		goto func_end;
-	} else
-		status = 0;
+	status = 0;
 
 
 	if (status == 0) {
@@ -470,10 +467,6 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 	struct notify_drv_eventlist *event_list;
 	short int i;
 	int proc_id;
-	struct mbox_config *mbox_hw_config;
-	int mbox_module_no;
-	int interrupt_no;
-	int mbx_ret_val = 0;
 
 	if (atomic_cmpmask_and_lt(&(notify_tesladriver_state.ref_count),
 					NOTIFYDRIVERSHM_MAKE_MAGICSTAMP(0),
@@ -492,9 +485,7 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 	WARN_ON((*handlePtr)->driver_object == NULL);
 
 	/*Uninstall the ISRs & Disable the Mailbox interrupt.*/
-	mbox_hw_config = ntfy_disp_get_config();
-	mbox_module_no = mbox_hw_config->mbox_modules;
-	interrupt_no = mbox_hw_config->interrupt_lines[mbox_module_no-1];
+
 
 	if (drv_handle != NULL) {
 		status = notify_unregister_driver(drv_handle);
@@ -539,16 +530,30 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 		/* Check if ISR was created. */
 		/*Remove the ISR on the Modena-Tesla FIFO */
 		proc_id = PROC_TESLA;
-		ntfy_disp_interrupt_disable(mbox_module_no,
-					    (NOTIFYDRV_TESLA_RECV_MBX * 2));
-		ntfy_disp_unregister(mbox_module_no,
-				     (NOTIFYDRV_TESLA_RECV_MBX * 2));
+
+		omap_mbox_disable_irq(tesla_mbox, IRQ_RX);
+
+		if (mutex_lock_interruptible(
+			notify_tesladriver_state.gate_handle) != 0)
+			WARN_ON(1);
+
+		for (i = 0; i < NOTIFY_MAX_DRIVERS; i++) {
+			if (tesla_isr_params[i] == (void *)driver_obj) {
+				tesla_isr_params[i] = NULL;
+				break;
+			}
+		}
+		mutex_unlock(notify_tesladriver_state.gate_handle);
+
+		if (i == NOTIFY_MAX_DRIVERS) {
+			printk(KERN_ERR "Error: No handle to delete\n");
+			/*FIXME: Exit gracefully */
+			WARN_ON(1);
+		}
 
 		/*Remove the generic ISR */
-		mbx_ret_val = ntfy_disp_unbind_interrupt(interrupt_no);
-
-		if (mbx_ret_val != 0)
-			WARN_ON(1);
+		omap_mbox_put(tesla_mbox);
+		tesla_mbox = NULL;
 
 		kfree(driver_obj);
 		driver_obj = NULL;
@@ -613,6 +618,7 @@ EXPORT_SYMBOL(notify_tesladrv_destroy);
 int notify_tesladrv_setup(struct notify_tesladrv_config *cfg)
 {
 	int status = 0;
+	int i = 0;
 	struct notify_tesladrv_config tmpCfg;
 
 	if (cfg == NULL) {
@@ -646,6 +652,8 @@ int notify_tesladrv_setup(struct notify_tesladrv_config *cfg)
 		       cfg, sizeof(struct notify_tesladrv_config));
 	}
 
+	for (i = 0; i < NOTIFY_MAX_DRIVERS; i++)
+		tesla_isr_params[i] = NULL;
 	return status;
 }
 EXPORT_SYMBOL(notify_tesladrv_setup);
@@ -876,9 +884,6 @@ int notify_tesladrv_sendevent(struct notify_driver_object *handle,
 	volatile struct notify_shmdrv_ctrl *ctrl_ptr;
 	int max_poll_count;
 
-	struct mbox_config *mbox_hw_config = ntfy_disp_get_config();
-	int mbox_module_no = mbox_hw_config->mbox_modules;
-	int mbx_ret_val = 0;
 	BUG_ON(handle ==  NULL);
 	BUG_ON(handle->driver_object == NULL);
 
@@ -888,8 +893,7 @@ int notify_tesladrv_sendevent(struct notify_driver_object *handle,
 	ctrl_ptr = driver_object->ctrl_ptr;
 	max_poll_count = driver_object->params.send_event_poll_count;
 
-	mbx_ret_val = ntfy_disp_send(mbox_module_no,
-				     NOTIFYDRV_TESLA_SEND_MBX, payload);
+	omap_mbox_msg_send(tesla_mbox, payload);
 	return status;
 }
 
@@ -899,11 +903,9 @@ int notify_tesladrv_sendevent(struct notify_driver_object *handle,
 */
 void *notify_tesladrv_disable(struct notify_driver_object *handle, u16 proc_id)
 {
-	int mbx_ret_val = KErrNone;
-	struct mbox_config *mbox_hw_config = ntfy_disp_get_config();
-	int mbox_module_no = mbox_hw_config->mbox_modules;
-	mbx_ret_val = ntfy_disp_interrupt_disable(mbox_module_no,
-			(NOTIFYDRV_TESLA_RECV_MBX * 2));
+
+	omap_mbox_disable_irq(tesla_mbox, IRQ_RX);
+
 	return NULL; /*No flags to be returned. */
 }
 
@@ -915,17 +917,13 @@ void *notify_tesladrv_disable(struct notify_driver_object *handle, u16 proc_id)
 int notify_tesladrv_restore(struct notify_driver_object *handle,
 					u32 key, u16 proc_id)
 {
-	int mbx_ret_val = 0;
-	struct mbox_config *mbox_hw_config = ntfy_disp_get_config();
-	int mbox_module_no = mbox_hw_config->mbox_modules;
 
 	(void) handle;
 	(void) key;
 	(void) proc_id;
 	/*Enable the receive interrupt for Tesla */
-	mbx_ret_val = ntfy_disp_interrupt_enable(mbox_module_no,
-			(NOTIFYDRV_TESLA_RECV_MBX * 2));
-	return mbx_ret_val;
+	omap_mbox_enable_irq(tesla_mbox, IRQ_RX);
+	return 0;
 }
 
 /*
@@ -991,12 +989,26 @@ int notify_tesladrv_debug(struct notify_driver_object *handle)
 	return status;
 }
 
+
+
+static void notify_tesladrv_isr(void *ntfy_msg)
+{
+	int i = 0;
+	for (i = 0; i < NOTIFY_MAX_DRIVERS; i++) {
+		if (tesla_isr_params[i] != NULL) {
+			notify_tesladrv_isr_callback(tesla_isr_params[i],
+							ntfy_msg);
+		}
+	}
+}
+EXPORT_SYMBOL(notify_tesladrv_isr);
+
 /*
 * brief     This function implements the interrupt service routine for the
 *            interrupt received from the DSP.
 *
 */
-static void notify_tesladrv_isr(void *ref_data)
+static void notify_tesladrv_isr_callback(void *ref_data, void *ntfy_msg)
 {
 	int payload = 0;
 	int i = 0;
@@ -1006,10 +1018,6 @@ static void notify_tesladrv_isr(void *ref_data)
 	int event_no;
 	struct notify_tesladrv_object *drv_object;
 	volatile struct notify_shmdrv_proc_ctrl *ctrl_ptr;
-	struct mbox_config *mbox_hw_config = ntfy_disp_get_config();
-	unsigned long int mbox_module_no = mbox_hw_config->mbox_modules;
-	signed long int mbx_ret_val = 0;
-	int num_messages = 0;
 	int num_events = 0;
 
 	drv_object = (struct notify_tesladrv_object *) ref_data;
@@ -1028,11 +1036,8 @@ static void notify_tesladrv_isr(void *ref_data)
 		if (event_no != (unsigned long int) -1) {
 			if (test_bit(event_no, (unsigned long *)
 				&ctrl_ptr->reg_mask.enable_mask) == 1) {
-				mbx_ret_val = ntfy_disp_read(mbox_module_no,
-						NOTIFYDRV_TESLA_RECV_MBX,
-						&payload,
-						&num_messages, false);
-				BUG_ON(mbx_ret_val != 0);
+				payload = (int)ntfy_msg;
+
 				temp  = drv_object->event_list[event_no].
 					listeners.next;
 
@@ -1060,7 +1065,6 @@ static void notify_tesladrv_isr(void *ref_data)
 		}
 	} while ((event_no != (unsigned long int) -1) && (i < num_events));
 }
-EXPORT_SYMBOL(notify_tesladrv_isr);
 
 /*
 * brief     This function searchs for a element the List.
