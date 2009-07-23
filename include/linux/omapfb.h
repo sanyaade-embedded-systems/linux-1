@@ -25,8 +25,9 @@
 #define __OMAPFB_H
 
 #include <linux/fb.h>
-#include <linux/ioctl.h>
-#include <linux/types.h>
+
+#include <asm/ioctl.h>
+#include <asm/types.h>
 
 /* IOCTL commands. */
 
@@ -182,11 +183,21 @@ struct omapfb_memory_read {
 	void __user *buffer;
 };
 
+struct omapfb_ovl_colormode {
+      	__u8 overlay_idx;
+      	__u8 mode_idx;
+      	__u32 bits_per_pixel;
+	__u32 nonstd;
+       	struct fb_bitfield red;
+       	struct fb_bitfield green;+
+       	struct fb_bitfield blue;
+       	struct fb_bitfield transp;
+};
+
 #ifdef __KERNEL__
 
 #include <linux/completion.h>
 #include <linux/interrupt.h>
-#include <linux/fb.h>
 #include <linux/mutex.h>
 
 #include <mach/board.h>
@@ -297,8 +308,8 @@ typedef int (*omapfb_notifier_callback_t)(struct notifier_block *,
 					  void *fbi);
 
 struct omapfb_mem_region {
-	dma_addr_t	paddr;
-	void		*vaddr;
+	u32		paddr;
+	void __iomem	*vaddr;
 	unsigned long	size;
 	u8		type;		/* OMAPFB_PLANE_MEM_* */
 	enum omapfb_color_format format;/* OMAPFB_COLOR_* */
@@ -372,7 +383,7 @@ struct omapfb_plane_struct {
 struct omapfb_device {
 	int			state;
 	int                     ext_lcdc;               /* Using external
-							 LCD controller */
+							  LCD controller */
 	struct mutex		rqueue_mutex;
 
 	int			palette_size;
@@ -382,7 +393,7 @@ struct omapfb_device {
 	const struct lcd_ctrl	*ctrl;			/* LCD controller */
 	const struct lcd_ctrl	*int_ctrl;		/* internal LCD ctrl */
 	struct lcd_ctrl_extif	*ext_if;		/* LCD ctrl external
-							interface */
+								interface */
 	struct device		*dev;
 	struct fb_var_screeninfo	new_var;	/* for mode changes */
 
@@ -424,4 +435,3 @@ extern void omapfb_set_ctrl_platform_data(void *pdata);
 #endif /* __KERNEL__ */
 
 #endif /* __OMAPFB_H */
-

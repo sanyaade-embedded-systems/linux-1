@@ -56,7 +56,7 @@
 #define REG_MAP_MASK(_page_nr) \
 	(1 << ((_page_nr) & (sizeof(unsigned long) * 8 - 1)))
 
-#if defined(CONFIG_FB_OMAP2) || defined(CONFIG_FB_OMAP2_MODULE)
+/* #if defined(CONFIG_FB_OMAP2) || defined(CONFIG_FB_OMAP2_MODULE) */
 
 /* postponed regions are used to temporarily store region information at boot
  * time when we cannot yet allocate the region list */
@@ -628,5 +628,5 @@ void __init omap2_set_sram_vram(u32 size, u32 start)
 	omapfb_sram_vram_size = size;
 }
 
-#endif
+/*#endif */
 

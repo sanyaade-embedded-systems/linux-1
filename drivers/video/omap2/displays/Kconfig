@@ -36,4 +36,8 @@ config PANEL_ACX565AKM
         help
           LCD Panel used in RX51
 
+config LCD_4430SDP
+       	tristate "OMAP4 LCD Panel"
+       	help
+      	 LCD Panel used in OMAP4
 endmenu

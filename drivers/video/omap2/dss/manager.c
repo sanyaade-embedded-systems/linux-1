@@ -1100,7 +1100,7 @@ static void dss_apply_irq_handler(void *data, u32 mask)
 			DISPC_IRQ_VSYNC	| DISPC_IRQ_EVSYNC_ODD |
 			DISPC_IRQ_EVSYNC_EVEN);
 	dss_cache.irq_enabled = false;
-
+	}
 end:
 	spin_unlock(&dss_cache.lock);
 }
@@ -1469,4 +1469,12 @@ struct omap_overlay_manager *omap_dss_get_overlay_manager(int num)
 	return NULL;
 }
 EXPORT_SYMBOL(omap_dss_get_overlay_manager);
+
+#ifdef L4_EXAMPLE
+static int ovl_mgr_apply_l4(struct omap_overlay_manager *mgr)
+{
+      	 DSSDBG("omap_dss_mgr_apply_l4(%s)\n", mgr->name);
+      	 return 0;
+}
+#endif
 

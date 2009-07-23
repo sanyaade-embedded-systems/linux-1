@@ -1570,11 +1570,12 @@ int omapfb_fb_init(struct omapfb2_device *fbdev, struct fb_info *fbi)
 	fbi->flags = FBINFO_FLAG_DEFAULT;
 	fbi->pseudo_palette = fbdev->pseudo_palette;
 
-	strncpy(fix->id, MODULE_NAME, sizeof(fix->id));
+/*	strncpy(fix->id, MODULE_NAME, sizeof(fix->id)); */
 
 	if (ofbi->region.size == 0) {
 		memset(&fbi->fix, 0, sizeof(fbi->fix));
 		memset(&fbi->var, 0, sizeof(fbi->var));
+		clear_fb_info(fbi);
 		return 0;
 	}
 
