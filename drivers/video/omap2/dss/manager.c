@@ -1092,7 +1092,7 @@ static void dss_apply_irq_handler(void *data, u32 mask)
 
 	/* keep running as long as there are busy managers, so that
 	 * we can collect overlay-applied information */
-	for (i = 0; i < num_mgrs; ++i) {
+	for (i = 0; i < num_mgrs; ++i) 
 		if (mgr_busy[i])
 			goto end;
 
@@ -1100,7 +1100,7 @@ static void dss_apply_irq_handler(void *data, u32 mask)
 			DISPC_IRQ_VSYNC	| DISPC_IRQ_EVSYNC_ODD |
 			DISPC_IRQ_EVSYNC_EVEN);
 	dss_cache.irq_enabled = false;
-	}
+
 end:
 	spin_unlock(&dss_cache.lock);
 }

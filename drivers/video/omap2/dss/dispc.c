@@ -40,10 +40,17 @@
 
 #include "dss.h"
 
-/** DSS */
-#define DSS_BASE               0x48042000
-/* DISPLAY CONTROLLER */
-#define DISPC_BASE             0x48043000
+#ifndef CONFIG_ARCH_OMAP4
+       	/* DSS */
+       	#define DSS_BASE                0x48042000
+       	/* DISPLAY CONTROLLER */
+       	#define DISPC_BASE              0x48043000
+#else
+       	/* DSS */
+       	#define DSS_BASE      	      	0x48042000
+       	/* DISPLAY CONTROLLER */
+       	#define DISPC_BASE           	0x48043000
+#endif
 
 #define DISPC_SZ_REGS			SZ_1K
 
@@ -972,7 +979,7 @@ static void dispc_read_plane_fifo_sizes(void)
 		else if (cpu_is_omap34xx())
 			size = FLD_GET(dispc_read_reg(fsz_reg[plane]), 10, 0);
 		else if (cpu_is_omap44xx())
-                        size = FLD_GET(dispc_read_reg(fsz_reg[plane]), 10, 0);
+                        size = FLD_GET(dispc_read_reg(fsz_reg[plane]), 15, 0);
 		else
 			BUG();
 		dispc.fifo_size[plane] = size;
@@ -1001,10 +1008,13 @@ void dispc_setup_plane_fifo(enum omap_plane plane, u32 low, u32 high)
 
 	if (cpu_is_omap24xx())
 		dispc_write_reg(ftrs_reg[plane],
-				FLD_VAL(high, 24, 16) | FLD_VAL(low, 8, 0));
-	else
-		dispc_write_reg(ftrs_reg[plane],
-				FLD_VAL(high, 27, 16) | FLD_VAL(low, 11, 0));
+			FLD_VAL(high, 24, 16) | FLD_VAL(low, 8, 0));
+	else if (cpu_is_omap34xx())
+               	dispc_write_reg(ftrs_reg[plane],
+                     	FLD_VAL(high, 27, 16) | FLD_VAL(low, 11, 0));
+       	else /* cpu is omap44xx */
+               	dispc_write_reg(ftrs_reg[plane],
+                       	FLD_VAL(high, 31, 16) | FLD_VAL(low, 15, 0));
 
 	enable_clocks(0);
 }
@@ -1720,7 +1730,7 @@ void dispc_enable_lcd_out(bool enable)
 	}
 
 	_enable_lcd_out(enable);
-/*
+
 	if (!enable && is_on) {
 		if (!wait_for_completion_timeout(&frame_done_completion,
 					msecs_to_jiffies(100)))
@@ -1733,7 +1743,7 @@ void dispc_enable_lcd_out(bool enable)
 		if (r)
 			DSSERR("failed to unregister FRAMEDONE isr\n");
 	}
-*/
+
 	enable_clocks(0);
 }
 
@@ -2524,6 +2534,32 @@ retry:
 					goto found;
 			}
 		}
+       	}  else if (cpu_is_omap44xx()) {
+               	for (cur.fck_div = 16; cur.fck_div > 0; --cur.fck_div) {
+                       	cur.fck = prate / cur.fck_div * 2;
+
+                     	if (cur.fck > DISPC_MAX_FCK)
+                               	continue;
+
+                     	if (min_fck_per_pck &&
+                               cur.fck < req_pck * min_fck_per_pck)
+                               	continue;
+
+                       	match = 1;
+
+                       	find_lck_pck_divs(is_tft, req_pck, cur.fck,
+                               	&cur.lck_div, &cur.pck_div);
+
+                       	cur.lck = cur.fck / cur.lck_div;
+                       	cur.pck = cur.lck / cur.pck_div;
+
+                       	if (abs(cur.pck - req_pck) < abs(best.pck - req_pck)) {
+                               	best = cur;
+
+                               	if (cur.pck == req_pck)
+                                       	goto found;
+                       	}
+               	}
 	} else {
 		BUG();
 	}
