@@ -9,7 +9,7 @@
  *
  * Contributors:
  * 	Sameer Venkatraman <sameerv@ti.com>
- * 	Mohit Jalori <mjalori@ti.com>
+ * 	Mohit Jalori
  * 	Sergio Aguirre <saaguirre@ti.com>
  * 	Sakari Ailus <sakari.ailus@nokia.com>
  * 	Tuukka Toivonen <tuukka.o.toivonen@nokia.com>
@@ -155,11 +155,6 @@ struct isp_reg {
 /**
  * struct isp_interface_config - ISP interface configuration.
  * @ccdc_par_ser: ISP interface type. 0 - Parallel, 1 - CSIA, 2 - CSIB to CCDC.
- * @par_bridge: CCDC Bridge input control. Parallel interface.
- *                  0 - Disable, 1 - Enable, first byte->cam_d(bits 7 to 0)
- *                  2 - Enable, first byte -> cam_d(bits 15 to 8)
- * @par_clk_pol: Pixel clock polarity on the parallel interface.
- *                    0 - Non Inverted, 1 - Inverted
  * @dataline_shift: Data lane shifter.
  *                      0 - No Shift, 1 - CAMEXT[13 to 2]->CAM[11 to 0]
  *                      2 - CAMEXT[13 to 4]->CAM[9 to 0]
@@ -170,11 +165,27 @@ struct isp_reg {
  * @strobe: Strobe related parameter.
  * @prestrobe: PreStrobe related parameter.
  * @shutter: Shutter related parameter.
- * @hskip: Horizontal Start Pixel performed in Preview module.
- * @vskip: Vertical Start Line performed in Preview module.
+ * @prev_sph: Horizontal Start Pixel performed in Preview module.
+ * @prev_slv: Vertical Start Line performed in Preview module.
  * @wenlog: Store the value for the sensor specific wenlog field.
  * @wait_hs_vs: Wait for this many hs_vs before anything else in the beginning.
  * @pixelclk: Pixel data rate from sensor.
+ * @par_bridge: CCDC Bridge input control. Parallel interface.
+ *                  0 - Disable, 1 - Enable, first byte->cam_d(bits 7 to 0)
+ *                  2 - Enable, first byte -> cam_d(bits 15 to 8)
+ * @par_clk_pol: Pixel clock polarity on the parallel interface.
+ *                    0 - Non Inverted, 1 - Inverted
+ * @crc: Use cyclic redundancy check.
+ * @mode: (?)
+ * @edge: Falling or rising edge
+ * @signalling: Use strobe mode (only valid for CCP2 mode)
+ * @strobe_clock_inv: Strobe/clock signal inversion.
+ * @vs_edge: Type of edge used for detecting VSync signal.
+ * @channel: Logical channel number used in transmission.
+ * @vpclk: Video port output clock.
+ * @data_start: Start vertical position of the region of interest.
+ * @data_size: Vertical size of the region of interest.
+ * @format: V4L2 format which matches with the transmitted frame data.
  */
 struct isp_interface_config {
 	enum isp_interface_type ccdc_par_ser;
@@ -201,14 +212,22 @@ struct isp_interface_config {
 			unsigned strobe_clock_inv:1;
 			unsigned vs_edge:1;
 			unsigned channel:3;
-			unsigned vpclk:2;	/* Video port output clock */
+			unsigned vpclk:2;
 			unsigned int data_start;
 			unsigned int data_size;
-			u32 format;		/* V4L2_PIX_FMT_* */
+			u32 format;
 		} csi;
 	} u;
 };
 
+/**
+ * struct isp_buf - ISP buffer information structure.
+ * @isp_addr: MMU mapped address (a.k.a. device address) of the buffer.
+ * @complete: Pointer to function used to handle the buffer once its complete
+ * @vb: Pointer to associated video buffer structure.
+ * @priv: Private pointer to send to associated complete handling function.
+ * @vb_state: Current ISP video buffer state.
+ */
 struct isp_buf {
 	dma_addr_t isp_addr;
 	void (*complete)(struct videobuf_buffer *vb, void *priv);
@@ -233,17 +252,21 @@ struct isp_buf {
 #define ISP_BUF_MARK_QUEUED(bufs)			\
 	(bufs)->queue = ((bufs)->queue + 1) % NUM_BUFS;
 
+/**
+ * struct isp_bufs - ISP internal buffer queue list.
+ * @isp_addr_capture: Array of addresses for the ISP buffers inside the list.
+ * @lock: For handling current buffer
+ * @buf: Array of ISP buffers inside the list.
+ * @queue: Next slot to queue a buffer.
+ * @done: Buffer that is being processed.
+ * @wait_hs_vs: Wait for this many hs_vs before anything else.
+ */
 struct isp_bufs {
 	dma_addr_t isp_addr_capture[VIDEO_MAX_FRAME];
-	spinlock_t lock;	/* For handling current buffer */
-	/* queue full: (ispsg.queue + 1) % NUM_BUFS == ispsg.done
-	   queue empty: ispsg.queue == ispsg.done */
+	spinlock_t lock;
 	struct isp_buf buf[NUM_BUFS];
-	/* Next slot to queue a buffer. */
 	int queue;
-	/* Buffer that is being processed. */
 	int done;
-	/* Wait for this many hs_vs before anything else. */
 	int wait_hs_vs;
 };
 
@@ -267,14 +290,36 @@ struct isp_irq {
 	void *isp_callbk_arg2[CBK_END];
 };
 
+/**
+ * struct isp_pipeline - ISP pipeline description.
+ * @modules: ISP submodules in use.
+ * @pix: Output pixel format details in v4l2_pix_format structure.
+ * @ccdc_in_w: CCDC input width.
+ * @ccdc_in_h: CCDC input height.
+ * @ccdc_out_w: CCDC output width (with extra padding pixels).
+ * @ccdc_out_h: CCDC output height.
+ * @ccdc_out_w_img: CCDC output width.
+ * @ccdc_in: CCDC input source.
+ * @ccdc_out: CCDC output destination.
+ * @prv_out_w: Preview output width (with extra padding pixels).
+ * @prv_out_h: Preview output height (with extra padding pixels).
+ * @prv_out_w_img: Preview output width.
+ * @prv_out_h_img: Preview output height.
+ * @prv_in: Preview input source.
+ * @prv_out: Preview output destination.
+ * @rsz_crop: Resizer crop region.
+ * @rsz_out_w: Resizer output width (with extra padding pixels).
+ * @rsz_out_h: Resizer output height.
+ * @rsz_out_w_img: Resizer output width (valid image region).
+ */
 struct isp_pipeline {
-	unsigned int modules;		/* modules in use */
-	struct v4l2_pix_format pix;	/* output pix */
-	unsigned int ccdc_in_w;		/* ccdc input width */
-	unsigned int ccdc_in_h;		/* ccdc input height */
+	unsigned int modules;
+	struct v4l2_pix_format pix;
+	unsigned int ccdc_in_w;
+	unsigned int ccdc_in_h;
 	unsigned int ccdc_out_w;
 	unsigned int ccdc_out_h;
-	unsigned int ccdc_out_w_img;	/* ccdc output image width */
+	unsigned int ccdc_out_w_img;
 	enum ccdc_input ccdc_in;
 	enum ccdc_output ccdc_out;
 	unsigned int prv_out_w;
@@ -294,12 +339,44 @@ struct isp_pipeline {
 	(!((isp)->pipeline.modules & OMAP_ISP_PREVIEW))
 
 /**
- * struct isp - Structure for storing ISP Control module information
- * @lock: Spinlock to sync between isr and processes.
- * @isp_mutex: Semaphore used to get access to the ISP.
- * @ref_count: Reference counter.
- * @cam_ick: Pointer to ISP Interface clock.
- * @cam_fck: Pointer to ISP Functional clock.
+ * struct isp_device - ISP device structure.
+ * @dev: Device pointer specific to the OMAP3 ISP.
+ * @isp_obj: ISP information structure.
+ * @irq_num: Currently used IRQ number.
+ * @mmio_base: Array with kernel base addresses for ioremapped ISP register
+ *             regions.
+ * @mmio_base_phys: Array with physical L4 bus addresses for ISP register
+ *                  regions.
+ * @mmio_size: Array with ISP register regions size in bytes.
+ * @lock: Spinlock for handling registered ISP callbacks.
+ * @h3a_lock: Spinlock for handling H3a (Not used) (?)
+ * @isp_mutex: Mutex for serializing requests to ISP.
+ * @ref_count: Reference count for handling multiple ISP requests.
+ * @cam_ick: Pointer to camera interface clock structure.
+ * @cam_mclk: Pointer to camera functional clock structure.
+ * @cam_fck: Pointer to camera functional clock structure. (outdated)
+ * @csi2_fck: Pointer to camera CSI2 complexIO clock structure.
+ * @l3_ick: Pointer to OMAP3 L3 bus interface clock.
+ * @config: Pointer to currently set ISP interface configuration.
+ * @tmp_buf: ISP MMU mapped temporary buffer address used for 34xx Workaround
+ *           for CCDC->PRV->RSZ datapath errata.
+ * @tmp_buf_size: ISP MMU mapped temporary buffer size used for 34xx Workaround
+ *                for CCDC->PRV->RSZ datapath errata.
+ * @tmp_buf_offset: ISP MMU mapped temporary buffer line offset used for 34xx
+ *                  Workaround for CCDC->PRV->RSZ datapath errata.
+ * @bufs: Internal ISP buffer queue list.
+ * @irq: Currently attached ISP ISR callbacks information structure.
+ * @pipeline: Currently used internal ISP pipeline information.
+ * @interrupts: ISP interrupts staged for deferred enabling.
+ * @running: Current running/stopped status of ISP.
+ * @isp_af: Pointer to current settings for ISP AutoFocus SCM.
+ * @isp_hist: Pointer to current settings for ISP Histogram SCM.
+ * @isp_h3a: Pointer to current settings for ISP Auto Exposure and
+ *           White Balance SCM.
+ * @isp_res: Pointer to current settings for ISP Resizer.
+ * @isp_prev: Pointer to current settings for ISP Preview.
+ * @isp_ccdc: Pointer to current settings for ISP CCDC.
+ * @iommu: Pointer to requested IOMMU instance for ISP.
  *
  * This structure is used to store the OMAP ISP Information.
  */
