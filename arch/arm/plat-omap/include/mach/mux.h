@@ -870,6 +870,13 @@ enum omap44xx_index {
 	Y3_4430_McBSP1_DR,
 	Y4_4430_McBSP1_FSX,
 
+	P_4430_ABE_PDM_UL_DATA,
+	P_4430_ABE_PDM_DL_DATA,
+	P_4430_ABE_PDM_FRAME,
+	P_4430_ABE_PDM_LB_CLK,
+	P_4430_ABE_PDM_CLKS,
+
+	P_4430_GPIO_11,
 };
 
 struct omap_mux_cfg {
