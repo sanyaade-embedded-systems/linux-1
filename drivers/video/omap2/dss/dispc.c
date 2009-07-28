@@ -3144,12 +3144,6 @@ int dispc_init(void)
 			DSSERR("Failed to get dpll4_m4_ck\n");
 			return -ENODEV;
 		}
- 	} else if (cpu_is_omap44xx()) {
-               dispc.dpll4_m4_ck = clk_get(NULL, "dpll4_m4_ck");
-               if (IS_ERR(dispc.dpll4_m4_ck)) {
-                      	DSSERR("Failed to get dpll4_m4_ck\n");
-                       	return -ENODEV;
-               	}	
 	}
 
 
