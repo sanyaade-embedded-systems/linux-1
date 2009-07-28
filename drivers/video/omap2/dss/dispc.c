@@ -42,14 +42,14 @@
 
 #ifndef CONFIG_ARCH_OMAP4
 	/* DSS */
+	#define DSS_BASE		0x48050000
+	/* DISPLAY CONTROLLER */
+	#define DISPC_BASE		0x48050400
+#else
+	/* DSS */
 	#define DSS_BASE		0x48042000
 	/* DISPLAY CONTROLLER */
 	#define DISPC_BASE		0x48043000
-#else
-	/* DSS */
-	#define DSS_BASE			0x48042000
-	/* DISPLAY CONTROLLER */
-	#define DISPC_BASE			0x48043000
 #endif
 
 #define DISPC_SZ_REGS			SZ_1K
