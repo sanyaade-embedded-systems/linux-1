@@ -89,12 +89,14 @@ static int omap2_mbox_startup(struct omap_mbox *mbox)
 {
 	unsigned int l;
 
-	mbox_ick_handle = clk_get(NULL, "mailboxes_ick");
-	if (IS_ERR(mbox_ick_handle)) {
-		printk(KERN_ERR "Could not get mailboxes_ick\n");
-		return -ENODEV;
-	}
+	if (!cpu_is_omap44xx()) {
+		mbox_ick_handle = clk_get(NULL, "mailboxes_ick");
+		if (IS_ERR(mbox_ick_handle)) {
+			printk(KERN_ERR "Could not get mailboxes_ick\n");
+			return -ENODEV;
+		}
 	clk_enable(mbox_ick_handle);
+	}
 
 	l = mbox_read_reg(MAILBOX_REVISION);
 	pr_info("omap mailbox rev %d.%d\n", (l & 0xf0) >> 4, (l & 0x0f));
@@ -111,8 +113,12 @@ static int omap2_mbox_startup(struct omap_mbox *mbox)
 
 static void omap2_mbox_shutdown(struct omap_mbox *mbox)
 {
-	clk_disable(mbox_ick_handle);
-	clk_put(mbox_ick_handle);
+	if (!cpu_is_omap44xx()) {
+		clk_disable(mbox_ick_handle);
+		clk_put(mbox_ick_handle);
+	} else {
+	printk(KERN_ERR "OMAP4 clocks are not modeled");
+	}
 }
 
 /* Mailbox FIFO handle functions */
