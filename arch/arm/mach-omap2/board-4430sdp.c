@@ -18,7 +18,9 @@
 #include <linux/io.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
+#include <linux/input.h>
 
+#include <mach/keypad.h>
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -34,7 +36,67 @@
 #include <linux/i2c/twl.h>
 #include <linux/regulator/machine.h>
 
+#define OMAP4_KBDOCP_BASE               0x4A31C000
+
 static int ts_gpio;
+
+static int omap_keymap[] = {
+	KEY(0, 0, KEY_SENDFILE),
+	KEY(0, 1, KEY_1),
+	KEY(0, 2, KEY_4),
+	KEY(0, 3, KEY_7),
+	KEY(1, 0, KEY_END),
+	KEY(1, 1, KEY_2),
+	KEY(1, 2, KEY_5),
+	KEY(1, 3, KEY_8),
+	KEY(1, 4, KEY_0),
+	KEY(2, 1, KEY_3),
+	KEY(2, 2, KEY_6),
+	KEY(2, 3, KEY_9),
+	KEY(3, 1, KEY_HOME),
+	KEY(3, 2, KEY_BACK),
+	KEY(3, 3, KEY_VOLUMEUP),
+	KEY(3, 4, KEY_VOLUMEDOWN),
+	KEY(4, 0, KEY_UP),
+	KEY(4, 1, KEY_RIGHT),
+	KEY(4, 2, KEY_LEFT),
+	KEY(4, 3, KEY_DOWN),
+	KEY(0, 4, KEY_DOT),
+	KEY(2, 4, KEY_LEFT),
+	KEY(4, 4, KEY_ENTER),
+	KEY(5, 0, KEY_SCROLLUP),
+	KEY(5, 1, KEY_SCROLLDOWN),
+	KEY(5, 2, KEY_RIGHT),
+	KEY(5, 3, KEY_RECORD),
+	0,
+};
+
+static struct resource omap_kp_resources[] = {
+	[0] = {
+		.start	= OMAP4_KBDOCP_BASE,
+		.end	= OMAP4_KBDOCP_BASE,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct omap_kp_platform_data omap_kp_data = {
+	.rows		= 5,
+	.cols		= 6,
+	.keymap		= omap_keymap,
+	.keymapsize	= ARRAY_SIZE(omap_keymap),
+	.delay		= 4,
+	.rep		= 1,
+};
+
+static struct platform_device omap_kp_device = {
+	.name		= "omap-keypad",
+	.id		= -1,
+	.dev		= {
+		.platform_data = &omap_kp_data,
+	},
+	.num_resources  = ARRAY_SIZE(omap_kp_resources),
+	.resource       = omap_kp_resources,
+};
 
 static struct omap2_mcspi_device_config tsc2046_mcspi_config = {
 	.turbo_mode     = 0,
@@ -60,6 +122,7 @@ static struct platform_device sdp4430_lcd_device = {
 
 static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_lcd_device,
+	&omap_kp_device,
 };
 
 static struct omap_uart_config sdp4430_uart_config __initdata = {
@@ -293,6 +356,22 @@ static void omap_mcbsp_init(void)
 	omap_cfg_reg(Y2_4430_McBSP1_DX);
 	omap_cfg_reg(Y4_4430_McBSP1_FSX);
 }
+void omap_kp_init(void)
+{
+	omap_cfg_reg(PAD0_4430_UNIPRO_TX0);
+	omap_cfg_reg(PAD1_4430_UNIPRO_TY0);
+	omap_cfg_reg(PAD0_4430_UNIPRO_TX1);
+	omap_cfg_reg(PAD1_4430_UNIPRO_TY1);
+	omap_cfg_reg(PAD0_4430_UNIPRO_TX2);
+	omap_cfg_reg(PAD1_4430_UNIPRO_TY2);
+
+	omap_cfg_reg(PAD0_4430_UNIPRO_RX0);
+	omap_cfg_reg(PAD1_4430_UNIPRO_RY0);
+	omap_cfg_reg(PAD0_4430_UNIPRO_RX1);
+	omap_cfg_reg(PAD1_4430_UNIPRO_RY1);
+	omap_cfg_reg(PAD0_4430_UNIPRO_RX2);
+	omap_cfg_reg(PAD1_4430_UNIPRO_RY2);
+}
 
 static void __init omap_4430sdp_init(void)
 {
@@ -305,6 +384,7 @@ static void __init omap_4430sdp_init(void)
 	spi_register_board_info(sdp4430_spi_board_info,
 				ARRAY_SIZE(sdp4430_spi_board_info));
 	omap_mcbsp_init();
+	omap_kp_init();
 
 }
 
