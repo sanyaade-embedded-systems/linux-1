@@ -385,20 +385,46 @@ NA
 	None of the DPLL set_rate and recalc functions are implemented.
 
 -Audio
-	Added TWL6030 ALSA SoC codec driver
+	Phoenix Audio
 	Support for Low Power and High Performance modes of TWL6030 codec
 	Basic support for audio interrupt: power-up sequence completion
-	Added McPDM base and SoC platform drivers
-	Added SDP4430 ALSA SoC machine driver
+	McPDM (Downlink channels 0 & 1)
+	Handsfree output
+	Formats:
+		- Sample rate: 44.1 and 48 KHz, 96 KHz.
+		- Bits per sample: 16 and 32
+
+	Not supported:
+	McPDM downlink channels 2, 3, & 4
+	Handsfree output
+	Formats:
+		-Sample rate: 88.2 KHz
+
+	Rate conversion (96 KHz):
+	ALSA framework automatically converts samples to the correct
+	sample rate and format supported by the codec. However, this
+	does currently work for 44.1KHz.
+
+	To use 44.1 KHz sample rate:
+	-Add to alsa.conf:
+		pcm.rate96k {
+			type plug
+			slave {
+				pcm "hw:0.0"
+				rate 96000
+				format S32_LE
+			}
+		}
+	-Reproduce file using: #aplay -D rate96k "file.wav"
+
 	Additional Comments:
 	- 44.1/48 kHz are supported only with ALSA automatic rate/format
 	conversion
 	- Signed 32-bits LE format at 88.2/96 kHz is supported without
 	conversion
-	- Validated with ALSA aplay utility using a period size of
-	 100 frames
 	- twl6030 i2c bus 1 speed was reduced to 400 kbits/s to match codec
 	requirements
+	- For rate conversion, use aplay with option: -D rate96k
 
 -Video
 	Basic Frame Buffer support.
