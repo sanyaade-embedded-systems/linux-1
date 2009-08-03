@@ -25,8 +25,9 @@
 
 #include <mach/gpio.h>
 #include <mach/mux.h>
-#include <mach/omapfb.h>
 #include <asm/mach-types.h>
+
+#include "omapfb.h"
 
 #define LCD_ENABLE       144
 
