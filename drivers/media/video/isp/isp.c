@@ -2234,6 +2234,7 @@ static void isp_save_ctx(struct device *dev)
 	isph3a_save_context(dev);
 	isppreview_save_context(dev);
 	ispresizer_save_context(dev);
+	ispcsi2_save_context(dev);
 }
 
 /**
@@ -2255,6 +2256,7 @@ static void isp_restore_ctx(struct device *dev)
 	isph3a_restore_context(dev);
 	isppreview_restore_context(dev);
 	ispresizer_restore_context(dev);
+	ispcsi2_restore_context(dev);
 }
 
 /**
