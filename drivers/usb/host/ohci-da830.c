@@ -375,6 +375,9 @@ static int usb_hcd_da830_probe(const struct hc_driver *driver,
 		if (!error)
 			return 0;
 	}
+
+	platform_set_drvdata (pdev, hcd);
+	return 0;
 err4:
 	usb_remove_hcd(hcd);
 err3:
