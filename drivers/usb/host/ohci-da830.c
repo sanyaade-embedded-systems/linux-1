@@ -405,7 +405,9 @@ usb_hcd_da830_remove(struct usb_hcd *hcd, struct platform_device *pdev)
 {
 	struct da830_ohci_root_hub *hub	= pdev->dev.platform_data;
 
-	hub->ocic_notify(NULL);
+	if (hub->ocic_notify)
+		hub->ocic_notify(NULL);
+
 	usb_remove_hcd(hcd);
 	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 	usb_put_hcd(hcd);
