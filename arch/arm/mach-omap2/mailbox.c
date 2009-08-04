@@ -70,6 +70,7 @@ struct omap_mbox2_priv {
 };
 
 static struct clk *mbox_ick_handle;
+static int mbox_configured;
 
 static void omap2_mbox_enable_irq(struct omap_mbox *mbox,
 				  omap_mbox_type_t irq);
@@ -88,37 +89,45 @@ static inline void mbox_write_reg(u32 val, size_t ofs)
 static int omap2_mbox_startup(struct omap_mbox *mbox)
 {
 	unsigned int l;
-
-	if (!cpu_is_omap44xx()) {
-		mbox_ick_handle = clk_get(NULL, "mailboxes_ick");
-		if (IS_ERR(mbox_ick_handle)) {
-			printk(KERN_ERR "Could not get mailboxes_ick\n");
-			return -ENODEV;
+	if (!mbox_configured) {
+		if (!cpu_is_omap44xx()) {
+			mbox_ick_handle = clk_get(NULL, "mailboxes_ick");
+			if (IS_ERR(mbox_ick_handle)) {
+				printk(KERN_ERR "Could not get"
+					"mailboxes_ick\n");
+				return -ENODEV;
+			}
+			clk_enable(mbox_ick_handle);
 		}
-	clk_enable(mbox_ick_handle);
+
+		l = mbox_read_reg(MAILBOX_REVISION);
+		pr_info("omap mailbox rev %d.%d\n",
+				(l & 0xf0) >> 4, (l & 0x0f));
+
+		/* set smart-idle & autoidle */
+		l = mbox_read_reg(MAILBOX_SYSCONFIG);
+		l |= 0x00000011;
+		mbox_write_reg(l, MAILBOX_SYSCONFIG);
 	}
-
-	l = mbox_read_reg(MAILBOX_REVISION);
-	pr_info("omap mailbox rev %d.%d\n", (l & 0xf0) >> 4, (l & 0x0f));
-
-	/* set smart-idle & autoidle */
-	l = mbox_read_reg(MAILBOX_SYSCONFIG);
-	l |= 0x00000011;
-	mbox_write_reg(l, MAILBOX_SYSCONFIG);
-
+	mbox_configured++;
 	omap2_mbox_enable_irq(mbox, IRQ_RX);
 
 	return 0;
 }
 
 static void omap2_mbox_shutdown(struct omap_mbox *mbox)
-{
+{	if (mbox_configured > 0)
+		mbox_configured--;
 	if (!cpu_is_omap44xx()) {
-		clk_disable(mbox_ick_handle);
-		clk_put(mbox_ick_handle);
+		if (!mbox_configured) {
+			clk_disable(mbox_ick_handle);
+			clk_put(mbox_ick_handle);
+			mbox_ick_handle = NULL;
+		}
 	} else {
-	printk(KERN_ERR "OMAP4 clocks are not modeled");
+		printk(KERN_ERR "OMAP4 clocks are not modeled");
 	}
+
 }
 
 /* Mailbox FIFO handle functions */
