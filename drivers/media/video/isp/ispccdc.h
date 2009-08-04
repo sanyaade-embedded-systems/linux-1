@@ -132,18 +132,12 @@ struct ispccdc_refmt {
 
 /**
  * struct isp_ccdc_device - Structure for the CCDC module to store its own
-			    information
+ *			    information
  * @ccdc_inuse: Flag to determine if CCDC has been reserved or not (0 or 1).
- * @ccdcout_w: CCDC output width.
- * @ccdcout_h: CCDC output height.
- * @ccdcin_w: CCDC input width.
- * @ccdcin_h: CCDC input height.
  * @ccdcin_woffset: CCDC input horizontal offset.
  * @ccdcin_hoffset: CCDC input vertical offset.
  * @crop_w: Crop width.
  * @crop_h: Crop weight.
- * @ccdc_inpfmt: CCDC input format.
- * @ccdc_outfmt: CCDC output format.
  * @vpout_en: Video port output enable.
  * @wen: Data write enable.
  * @exwen: External data write enable.
@@ -151,7 +145,18 @@ struct ispccdc_refmt {
  * @ccdcslave: CCDC slave mode enable.
  * @syncif_ipmod: Image
  * @obclamp_en: Data input format.
+ * @lsc_enable: Pending enable of the LSC.
+ * @lsc_initialized: Is LSC initialized?
+ * @lsc_state: Enable state of the LSC.
  * @mutexlock: Mutex used to get access to the CCDC.
+ * @wenlog: Write Enable logic to use against valid data signal.
+ * @lsc_gain_table_tmp: Pointer to Virtual address of temporary LSC table.
+ * @lsc_ispmmu_addr: ISP MMU mapped address of the current used LSC table.
+ * @lsc_gain_table: Virtual address of the current used LSC table.
+ * @lsc_config: Pointer to LSC configuration structure.
+ * @fpc_table_add_m: ISP MMU mapped address of the current used FPC table.
+ * @fpc_table_add: Virtual address of the current used FPC table.
+ * @dev: Device pointer specific to the OMAP3 ISP.
  */
 struct isp_ccdc_device {
 	u8 ccdc_inuse;
