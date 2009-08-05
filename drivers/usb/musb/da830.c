@@ -37,6 +37,8 @@
 #include "musb_core.h"
 #include "cppi41_dma.h"
 
+extern void usb_nop_xceiv_register(void);
+
 /*
  * DA830 specific definitions
  */
@@ -190,17 +192,17 @@ static void otg_timer(unsigned long _musb)
 	DBG(7, "Poll devctl %02x (%s)\n", devctl, otg_state_string(musb));
 
 	spin_lock_irqsave(&musb->lock, flags);
-	switch (musb->xceiv.state) {
+	switch (musb->xceiv->state) {
 	case OTG_STATE_A_WAIT_BCON:
 		devctl &= ~MUSB_DEVCTL_SESSION;
 		musb_writeb(musb->mregs, MUSB_DEVCTL, devctl);
 
 		devctl = musb_readb(musb->mregs, MUSB_DEVCTL);
 		if (devctl & MUSB_DEVCTL_BDEVICE) {
-			musb->xceiv.state = OTG_STATE_B_IDLE;
+			musb->xceiv->state = OTG_STATE_B_IDLE;
 			MUSB_DEV_MODE(musb);
 		} else {
-			musb->xceiv.state = OTG_STATE_A_IDLE;
+			musb->xceiv->state = OTG_STATE_A_IDLE;
 			MUSB_HST_MODE(musb);
 		}
 		break;
@@ -215,7 +217,7 @@ static void otg_timer(unsigned long _musb)
 			mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
 			break;
 		}
-		musb->xceiv.state = OTG_STATE_A_WAIT_VRISE;
+		musb->xceiv->state = OTG_STATE_A_WAIT_VRISE;
 		musb_writel(musb->ctrl_base, USB_INTR_SRC_SET_REG,
 			    MUSB_INTR_VBUSERROR << USB_INTR_USB_SHIFT);
 		break;
@@ -240,7 +242,7 @@ static void otg_timer(unsigned long _musb)
 		if (devctl & MUSB_DEVCTL_BDEVICE)
 			mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
 		else
-			musb->xceiv.state = OTG_STATE_A_IDLE;
+			musb->xceiv->state = OTG_STATE_A_IDLE;
 		break;
 	default:
 		break;
@@ -260,7 +262,7 @@ void musb_platform_try_idle(struct musb *musb, unsigned long timeout)
 
 	/* Never idle if active, or when VBUS timeout is not set as host */
 	if (musb->is_active || (musb->a_wait_bcon == 0 &&
-				musb->xceiv.state == OTG_STATE_A_WAIT_BCON)) {
+				musb->xceiv->state == OTG_STATE_A_WAIT_BCON)) {
 		DBG(4, "%s active, deleting timer\n", otg_state_string(musb));
 		del_timer(&otg_workaround);
 		last_timer = jiffies;
@@ -358,21 +360,21 @@ static irqreturn_t da830_interrupt(int irq, void *hci)
 			 * devctl.
 			 */
 			musb->int_usb &= ~MUSB_INTR_VBUSERROR;
-			musb->xceiv.state = OTG_STATE_A_WAIT_VFALL;
+			musb->xceiv->state = OTG_STATE_A_WAIT_VFALL;
 			mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
 			WARNING("VBUS error workaround (delay coming)\n");
 		} else if (is_host_enabled(musb) && drvvbus) {
 			musb->is_active = 1;
 			MUSB_HST_MODE(musb);
-			musb->xceiv.default_a = 1;
-			musb->xceiv.state = OTG_STATE_A_WAIT_VRISE;
+			musb->xceiv->default_a = 1;
+			musb->xceiv->state = OTG_STATE_A_WAIT_VRISE;
 			portstate(musb->port1_status |= USB_PORT_STAT_POWER);
 			del_timer(&otg_workaround);
 		} else {
 			musb->is_active = 0;
 			MUSB_DEV_MODE(musb);
-			musb->xceiv.default_a = 0;
-			musb->xceiv.state = OTG_STATE_B_IDLE;
+			musb->xceiv->default_a = 0;
+			musb->xceiv->state = OTG_STATE_B_IDLE;
 			portstate(musb->port1_status &= ~USB_PORT_STAT_POWER);
 		}
 
@@ -393,7 +395,7 @@ static irqreturn_t da830_interrupt(int irq, void *hci)
 		musb_writel(reg_base, USB_END_OF_INTR_REG, 0);
 
 	/* Poll for ID change */
-	if (is_otg_enabled(musb) && musb->xceiv.state == OTG_STATE_B_IDLE)
+	if (is_otg_enabled(musb) && musb->xceiv->state == OTG_STATE_B_IDLE)
 		mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
 
 	spin_unlock_irqrestore(&musb->lock, flags);
@@ -472,6 +474,9 @@ int __init musb_platform_init(struct musb *musb)
 	/* Reset the controller */
 	musb_writel(reg_base, USB_CTRL_REG, USB_SOFT_RESET_MASK);
 
+	usb_nop_xceiv_register();
+	musb->xceiv = otg_get_transceiver();
+
 	/* Start the on-chip PHY and its PLL. */
 	phy_on();
 
@@ -493,7 +498,7 @@ int musb_platform_exit(struct musb *musb)
 		del_timer_sync(&otg_workaround);
 
 	/* Delay to avoid problems with module reload... */
-	if (is_host_enabled(musb) && musb->xceiv.default_a) {
+	if (is_host_enabled(musb) && musb->xceiv->default_a) {
 		u8 devctl, warn = 0;
 		int delay;
 
@@ -518,5 +523,8 @@ int musb_platform_exit(struct musb *musb)
 	}
 done:
 	phy_off();
+	otg_put_transceiver (musb->xceiv);
+	usb_nop_xceiv_unregister();
+
 	return 0;
 }
