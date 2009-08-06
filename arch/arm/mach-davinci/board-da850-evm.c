@@ -820,11 +820,6 @@ static __init void da850_evm_usb_init(void)
 		pr_warning("%s: USB 2.0 registration failed: %d\n",
 			   __func__, ret);
 
-#ifdef CONFIG_USB_TI_CPPI41_DMA
-	/* Initialize the platform specific CPPI infrastrucure */
-	cppi41_init();
-#endif
-
 	ret = da8xx_pinmux_setup(da850_evm_usb11_pins);
 	if (ret) {
 		pr_warning("%s: USB 1.1 PinMux setup failed: %d\n",
