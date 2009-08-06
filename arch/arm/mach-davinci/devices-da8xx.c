@@ -574,4 +574,5 @@ int __init cppi41_init(void)
 
 	return 0;
 }
+EXPORT_SYMBOL(cppi41_init);
 #endif
