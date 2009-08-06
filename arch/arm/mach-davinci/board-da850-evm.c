@@ -389,10 +389,6 @@ static __init void da850_evm_init(void)
 #if  defined(CONFIG_USB_MUSB_HDRC) || defined(CONFIG_USB_MUSB_HDRC_MODULE)
 	/* Setup the USB0 interface w.r.t platform infrastructure */
 	setup_usb(500, 8);
-#ifdef CONFIG_USB_TI_CPPI41_DMA
-	/* Initialize the platform specific CPPI infrastrucure */
-	cppi41_init();
-#endif
 #endif
 }
 

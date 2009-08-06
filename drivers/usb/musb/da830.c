@@ -485,6 +485,9 @@ int __init musb_platform_init(struct musb *musb)
 	if (!rev)
 		return -ENODEV;
 
+#ifdef CONFIG_USB_TI_CPPI41_DMA
+	cppi41_init();
+#endif
 	if (is_host_enabled(musb))
 		setup_timer(&otg_workaround, otg_timer, (unsigned long) musb);
 
