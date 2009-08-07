@@ -710,3 +710,8 @@ unsigned long cppi41_queue_pop(const struct cppi41_queue_obj *queue_obj);
  * Returns 0 if valid descriptor, -EINVAL otherwise.
  */
 int cppi41_get_teardown_info(unsigned long addr, u32 *info);
+
+/* cppi41_free_teardown_queue - Pop all teardown descriptors of a given dma
+ *                              block
+ */
+void cppi41_free_teardown_queue(int dma_num);

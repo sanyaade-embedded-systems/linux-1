@@ -310,6 +310,9 @@ static int cppi41_controller_stop(struct dma_controller *controller)
 
 	cppi = container_of(controller, struct cppi41, controller);
 
+	/* pop all the teardwon descriptor queued to tdQueue */
+	cppi41_free_teardown_queue(usb_cppi41_info.dma_block);
+
 	/* Free the teardown completion queue */
 	if (cppi41_queue_free(usb_cppi41_info.q_mgr, cppi->teardownQNum))
 		DBG(1, "ERROR: failed to free teardown completion queue\n");
@@ -855,20 +858,41 @@ static int usb_check_teardown(struct cppi41_channel *cppi_ch,
 static void usb_tx_ch_teardown(struct cppi41_channel *tx_ch)
 {
 	struct cppi41 *cppi = tx_ch->channel.private_data;
+	struct musb *musb = cppi->musb;
+	void __iomem *reg_base = musb->ctrl_base;
+	u32 td_reg, timeout = 0xfffff;
+	u8 ep_num = tx_ch->ch_num + 1;
 	unsigned long pd_addr;
 
 	/* Initiate teardown for Tx DMA channel */
 	cppi41_dma_ch_teardown(&tx_ch->dma_ch_obj);
 
-	do {
 		/* Wait for a descriptor to be queued and pop it... */
-		do {
+	do {
+		td_reg  = musb_readl(reg_base, USB_TEARDOWN_REG);
+		td_reg |= USB_TX_TDOWN_MASK(ep_num);
+		musb_writel(reg_base, USB_TEARDOWN_REG, td_reg);
 			pd_addr = cppi41_queue_pop(&cppi->queue_obj);
-		} while (!pd_addr);
+	} while (!pd_addr && timeout--);
 
+	if (pd_addr) {
 		dprintk("Descriptor (%08lx) popped from teardown completion "
 			"queue\n", pd_addr);
-	} while (!usb_check_teardown(tx_ch, pd_addr));
+
+		if (usb_check_teardown(tx_ch, pd_addr)) {
+			dprintk("Teardown Desc (%p) rcvd\n", pd_addr);
+		} else
+			dprintk("Invalid PD (%08lx) popped from teardown "
+			   "completion queue\n", pd_addr);
+	} else {
+		/*
+		 * Previous implementations had an issue in not returning the
+		 * teardown descriptor.  Just check for that case and flag
+		 * error output if it occurs
+		 */
+		if (timeout <= 0)
+			ERR("Teardown Desc not rcvd\n");
+	}
 }
 
 /*
@@ -880,21 +904,30 @@ static void usb_tx_ch_teardown(struct cppi41_channel *tx_ch)
 static void usb_rx_ch_teardown(struct cppi41_channel *rx_ch)
 {
 	struct cppi41 *cppi = rx_ch->channel.private_data;
+	u32 timeout = 0xfffff;
+	struct usb_pkt_desc *curr_pd;
+	unsigned long pd_addr;
 
 	cppi41_dma_ch_default_queue(&rx_ch->dma_ch_obj, 0, cppi->teardownQNum);
 
 	/* Initiate teardown for Rx DMA channel */
 	cppi41_dma_ch_teardown(&rx_ch->dma_ch_obj);
 
-	while (1) {
-		struct usb_pkt_desc *curr_pd;
-		unsigned long pd_addr;
-
+	do {
 		/* Wait for a descriptor to be queued and pop it... */
 		do {
 			pd_addr = cppi41_queue_pop(&cppi->queue_obj);
-		} while (!pd_addr);
+		} while (!pd_addr && timeout--);
 
+		if (timeout <= 0) {
+			/*
+			 * Previous implementations had an issue in not
+			 * returning the teardown descriptor.  Just check for
+			 * that case and flag error output if it occurs
+			 */
+			ERR("teardown Desc not found\n");
+			break;
+		}
 		dprintk("Descriptor (%08lx) popped from teardown completion "
 			"queue\n", pd_addr);
 
@@ -902,7 +935,7 @@ static void usb_rx_ch_teardown(struct cppi41_channel *rx_ch)
 		 * We might have popped a completed Rx PD, so check if the
 		 * physical address is within the PD region first.  If it's
 		 * not the case, it must be a teardown descriptor...
-		 * */
+		 */
 		curr_pd = usb_get_pd_ptr(cppi, pd_addr);
 		if (curr_pd == NULL) {
 			if (usb_check_teardown(rx_ch, pd_addr))
@@ -925,7 +958,8 @@ static void usb_rx_ch_teardown(struct cppi41_channel *rx_ch)
 		 * this is protected by critical section.
 		 */
 		usb_put_free_pd(cppi, curr_pd);
-	}
+
+	} while (0);
 
 	/* Now restore the default Rx completion queue... */
 	cppi41_dma_ch_default_queue(&rx_ch->dma_ch_obj, usb_cppi41_info.q_mgr,
@@ -993,12 +1027,14 @@ static int cppi41_channel_abort(struct dma_channel *channel)
 		csr  = musb_readw(epio, MUSB_TXCSR);
 		csr |= MUSB_TXCSR_FLUSHFIFO | MUSB_TXCSR_H_WZC_BITS;
 		musb_writew(epio, MUSB_TXCSR, csr);
+		musb_writew(epio, MUSB_TXCSR, csr);
 	} else { /* Rx */
 		dprintk("Rx channel teardown, cppi_ch = %p\n", cppi_ch);
 
 		/* Flush FIFO of the endpoint */
 		csr  = musb_readw(epio, MUSB_RXCSR);
 		csr |= MUSB_RXCSR_FLUSHFIFO | MUSB_RXCSR_H_WZC_BITS;
+		musb_writew(epio, MUSB_RXCSR, csr);
 		musb_writew(epio, MUSB_RXCSR, csr);
 
 		/* Issue CPPI FIFO teardown for Rx channel */

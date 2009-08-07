@@ -573,6 +573,21 @@ void cppi41_dma_ch_disable(struct cppi41_dma_ch_obj *dma_ch_obj)
 }
 EXPORT_SYMBOL(cppi41_dma_ch_disable);
 
+/* cppi41_free_teardown_queue - Pop all teardown descriptors of a given dma
+ *				block
+ */
+void cppi41_free_teardown_queue(int dma_num)
+{
+	unsigned long td_addr;
+
+	do {
+		td_addr = cppi41_queue_pop(&dma_teardown[dma_num].queue_obj);
+		if (td_addr != 0)
+			DBG("pop tdDesc(%p) from tdQueue\n", td_addr);
+	} while (td_addr != 0);
+}
+EXPORT_SYMBOL(cppi41_free_teardown_queue);
+
 /**
  * alloc_queue - allocate a queue in the given range
  * @allocated:	pointer to the bitmap of the allocated queues
