@@ -60,6 +60,7 @@ struct usb_pkt_desc {
 	struct usb_pkt_desc *next_pd_ptr;
 	u8 ch_num;
 	u8 ep_num;
+	u8 eop;
 };
 
 /**
@@ -690,7 +691,17 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 	struct cppi41_host_pkt_desc *hw_desc;
 	u32 length = rx_ch->length - rx_ch->curr_offset;
 	u32 pkt_size = rx_ch->pkt_size;
+	u32 max_rx_transfer = 128 * 1024;
+	u32 i, n_bd , pkt_len;
 
+	if (is_peripheral_active(cppi->musb)) {
+		max_rx_transfer = 512;
+		cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
+		pkt_len = 0;
+		if (rx_ch->length < max_rx_transfer)
+			pkt_len = rx_ch->length;
+		cppi41_set_ep_size(rx_ch, pkt_len);
+	} else {
 	/*
 	 * Rx can use the generic RNDIS mode where we can probably fit this
 	 * transfer in one PD and one IRQ (or two with a short packet).
@@ -708,20 +719,41 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
 		cppi41_autoreq_update(rx_ch, USB_NO_AUTOREQ);
 	}
+	}
 
 	DBG(4, "RX DMA%u, %s, maxpkt %u, addr %#x, rec'd %u/%u\n",
 	    rx_ch->ch_num, rx_ch->dma_mode ? "accelerated" : "transparent",
 	    pkt_size, rx_ch->start_addr + rx_ch->curr_offset,
 	    rx_ch->curr_offset, rx_ch->length);
 
+	/* calculate number of bd required */
+	n_bd = (length + max_rx_transfer - 1)/max_rx_transfer;
+
+	for (i = 0; i < n_bd; ++i) {
 	/* Get Rx packet descriptor from the free pool */
 	curr_pd = usb_get_free_pd(cppi);
 	if (curr_pd == NULL) {
 		/* Shouldn't ever happen! */
 		ERR("No Rx PDs\n");
-		return 0;
+			goto sched;
 	}
 
+		pkt_len = (length > max_rx_transfer) ? max_rx_transfer : length;
+		hw_desc = &curr_pd->hw_desc;
+		hw_desc->orig_buf_ptr = rx_ch->start_addr + rx_ch->curr_offset;
+		hw_desc->orig_buf_len = pkt_len;
+		curr_pd->ch_num = rx_ch->ch_num;
+		curr_pd->ep_num = rx_ch->end_pt->epnum;
+		curr_pd->eop = (length -= pkt_len) ? 0 : 1;
+		rx_ch->curr_offset += pkt_len;
+
+		/* Push the free Rx packet descriptor
+		to the free descriptor/buffer queue */
+		cppi41_queue_push(&rx_ch->queue_obj, curr_pd->dma_addr,
+			USB_CPPI41_DESC_ALIGN, 0);
+	}
+
+sched:
 	/*
 	 * HCD arranged ReqPkt for the first packet.
 	 * We arrange it for all but the last one.
@@ -734,25 +766,9 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		musb_writew(epio, MUSB_RXCSR, csr);
 	}
 
-	if (length < pkt_size)
-		pkt_size = length;
-
-	hw_desc = &curr_pd->hw_desc;
-	hw_desc->orig_buf_ptr = rx_ch->start_addr + rx_ch->curr_offset;
-	hw_desc->orig_buf_len = pkt_size;
-
-	curr_pd->ch_num = rx_ch->ch_num;
-	curr_pd->ep_num = rx_ch->end_pt->epnum;
-
-	rx_ch->curr_offset += pkt_size;
-
-	/*
-	 * Push the free Rx packet descriptor
-	 * to the free descriptor/buffer queue.
-	 */
-	cppi41_queue_push(&rx_ch->queue_obj, curr_pd->dma_addr,
-			  USB_CPPI41_DESC_ALIGN, 0);
-
+	/* enable schedular if not enabled */
+	if (is_peripheral_active(cppi->musb) && (n_bd > 0))
+		cppi41_enable_sched_rx();
 	return 1;
 }
 
@@ -1225,6 +1241,15 @@ static void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 		rx_ch = &cppi->rx_cppi_ch[ch_num];
 		rx_ch->channel.actual_len += length;
 
+		if (curr_pd->eop) {
+			curr_pd->eop = 0;
+			if (is_peripheral_active(cppi->musb)) {
+				/* disable the rx dma schedular  */
+				cppi41_disable_sched_rx();
+				musb_dma_completion(cppi->musb, ep_num, 0);
+			}
+		}
+
 		/*
 		 * Return Rx PD to the software list --
 		 * this is protected by critical section
@@ -1237,8 +1262,11 @@ static void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 
 			/* Rx completion routine callback */
 			musb_dma_completion(cppi->musb, ep_num, 0);
-		} else
+		} else {
+			if (is_peripheral_active(cppi->musb) &&
+				((rx_ch->length - rx_ch->curr_offset) > 0))
 			cppi41_next_rx_segment(rx_ch);
+		}
 	}
 }
 

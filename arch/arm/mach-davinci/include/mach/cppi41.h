@@ -711,7 +711,21 @@ unsigned long cppi41_queue_pop(const struct cppi41_queue_obj *queue_obj);
  */
 int cppi41_get_teardown_info(unsigned long addr, u32 *info);
 
-/* cppi41_free_teardown_queue - Pop all teardown descriptors of a given dma
- *                              block
+/**
+ * cppi41_free_teardown_queue - Pop all teardown descriptors of a given dma
+ *                              blocka
+ * @dma_num	Number of the DMA block
+ *
+ * This functions frees all the tear down descriptors in the given dma block.
  */
 void cppi41_free_teardown_queue(int dma_num);
+/**
+ * cppi41_dma_sched_tbl_init - Update the Schedular table with the given data
+ *
+ * @dmanum	Number of DMa block
+ * @qmgr	Queue Manager Number
+ * @sch_tbl	Scheduler Table adderss
+ * @tblsz	Size of Scheduler table
+ *
+ */
+int cppi41_dma_sched_tbl_init(u8 dmanum, u8 qmgr, u8 *sch_tbl, u8 tblsz);
