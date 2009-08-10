@@ -360,6 +360,10 @@ static irqreturn_t da830_interrupt(int irq, void *hci)
 			cppi41_completion(musb, rx, tx);
 			ret = IRQ_HANDLED;
 		}
+
+		/* handle the starvation interrupt bit:28 */
+		if (pend0 & 0x10000000)
+			ret = IRQ_HANDLED;
 	}
 
 	/* Acknowledge and handle non-CPPI interrupts */
