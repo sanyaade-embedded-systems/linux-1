@@ -106,7 +106,6 @@ __acquires(ep->musb->lock)
 {
 	struct musb_request	*req;
 	struct musb		*musb;
-	int			busy = ep->busy;
 
 	req = to_musb_request(request);
 
@@ -115,7 +114,6 @@ __acquires(ep->musb->lock)
 		req->request.status = status;
 	musb = req->musb;
 
-	ep->busy = 1;
 	spin_unlock(&musb->lock);
 	if (is_dma_capable()) {
 		if (req->mapped) {
@@ -146,7 +144,7 @@ __acquires(ep->musb->lock)
 				request->status);
 	req->request.complete(&req->ep->end_point, &req->request);
 	spin_lock(&musb->lock);
-	ep->busy = busy;
+	ep->busy = 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -193,7 +191,10 @@ static void nuke(struct musb_ep *ep, const int status)
 		req = container_of(ep->req_list.next, struct musb_request,
 				request.list);
 		musb_g_giveback(ep, &req->request, status);
+		ep->busy = 1;
 	}
+
+	ep->busy = 0;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -294,6 +295,8 @@ static void txstate(struct musb *musb, struct musb_request *req)
 	DBG(4, "hw_ep%d, maxpacket %d, fifo count %d, txcsr %03x\n",
 			epnum, musb_ep->packet_sz, fifo_count,
 			csr);
+
+	musb_ep->busy = 1;
 
 #ifndef	CONFIG_MUSB_PIO_ONLY
 	if (is_dma_capable() && musb_ep->dma) {
@@ -441,7 +444,7 @@ void musb_g_tx(struct musb *musb, u8 epnum)
 				musb->dma_controller->channel_abort(dma);
 			}
 
-			if (request)
+			if (request && musb_ep->busy)
 				musb_g_giveback(musb_ep, request, -EPIPE);
 
 			break;
@@ -592,6 +595,7 @@ static void rxstate(struct musb *musb, struct musb_request *req)
 
 	csr = musb_readw(epio, MUSB_RXCSR);
 
+	musb_ep->busy = 1;
 	if ((is_cppi_enabled() || is_cppi41_enabled()) && musb_ep->dma) {
 		struct dma_controller	*c = musb->dma_controller;
 		struct dma_channel	*channel = musb_ep->dma;
@@ -771,7 +775,7 @@ void musb_g_rx(struct musb *musb, u8 epnum)
 		csr &= ~MUSB_RXCSR_P_SENTSTALL;
 		musb_writew(epio, MUSB_RXCSR, csr);
 
-		if (request)
+		if (request && musb_ep->busy)
 			musb_g_giveback(musb_ep, request, -EPIPE);
 		goto done;
 	}
@@ -1262,6 +1266,7 @@ int musb_gadget_set_halt(struct usb_ep *ep, int value)
 
 	/* cannot portably stall with non-empty FIFO */
 	request = to_musb_request(next_request(musb_ep));
+#if 0
 	if (value && musb_ep->is_in) {
 		csr = musb_readw(epio, MUSB_TXCSR);
 		if (csr & MUSB_TXCSR_FIFONOTEMPTY) {
@@ -1271,7 +1276,7 @@ int musb_gadget_set_halt(struct usb_ep *ep, int value)
 		}
 
 	}
-
+#endif
 	/* set/clear the stall and toggle bits */
 	DBG(2, "%s: %s stall\n", ep->name, value ? "set" : "clear");
 	if (musb_ep->is_in) {
