@@ -115,7 +115,8 @@ EXPORT_SYMBOL(cppi41_queue_mgr_init);
 int cppi41_dma_sched_tbl_init(u8 dmanum, u8 qmgr, u8 *sch_tbl, u8 tblsz)
 {
 	struct cppi41_dma_block *dma_block;
-	int num_reg, k, i, val = 0, j;
+	int num_reg, k, i, j;
+	u32 val;
 
 	dma_block = (struct cppi41_dma_block *)&cppi41_dma_block[dmanum];
 
@@ -127,7 +128,6 @@ int cppi41_dma_sched_tbl_init(u8 dmanum, u8 qmgr, u8 *sch_tbl, u8 tblsz)
 				val |= sch_tbl[k] << 24;
 		}
 
-		val = sch_tbl[i];
 		__raw_writel(val, dma_block->sched_table_base +
 			DMA_SCHED_TABLE_WORD_REG(i));
 	}

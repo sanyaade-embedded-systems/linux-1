@@ -90,9 +90,10 @@ const struct usb_cppi41_info usb_cppi41_info = {
 #define CPPI41_TOT_CH (USB_CPPI41_NUM_CH * 2)
 int cppi41_disable_sched_rx(void)
 {
-	u16 numch = 7, blknum = usb_cppi41_info.dma_block;
+	u16 numch = CPPI41_TOT_CH, blknum = usb_cppi41_info.dma_block;
 	u8 dma_sched_table[CPPI41_TOT_CH] = {0x02, 0x81, 0x01, 0x0,
 						0x83, 0x03, 0x82};
+
 	cppi41_dma_sched_tbl_init(blknum, usb_cppi41_info.q_mgr,
 			dma_sched_table, numch);
 	return 0;
@@ -100,7 +101,7 @@ int cppi41_disable_sched_rx(void)
 
 int cppi41_enable_sched_rx(void)
 {
-	u16 numch = 8, blknum = usb_cppi41_info.dma_block;
+	u16 numch = CPPI41_TOT_CH, blknum = usb_cppi41_info.dma_block;
 	u8 dma_sched_table[CPPI41_TOT_CH] = {0x81, 0x01, 0x80, 0x0,
 						0x83, 0x03, 0x82, 0x02};
 
@@ -364,6 +365,7 @@ static irqreturn_t da830_interrupt(int irq, void *hci)
 		/* handle the starvation interrupt bit:28 */
 		if (pend0 & 0x10000000)
 			ret = IRQ_HANDLED;
+
 	}
 
 	/* Acknowledge and handle non-CPPI interrupts */
