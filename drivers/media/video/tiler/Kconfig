@@ -1,0 +1,18 @@
+
+
+menuconfig dmm_tiler
+	bool "dmm_tiler"
+	default y
+
+if dmm_tiler
+
+config DMM_TILER
+        tristate "dmm_tiler"
+        default m
+        help
+           dmm tiler driver
+endif
+
+
+
+
