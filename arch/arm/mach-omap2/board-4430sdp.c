@@ -373,6 +373,12 @@ void omap_kp_init(void)
 	omap_cfg_reg(PAD1_4430_UNIPRO_RY2);
 }
 
+static void omap_phoenix_init(void)
+{
+	omap_cfg_reg(PAD1_4430_SYS_NIRQ1);
+	omap_cfg_reg(PAD0_4430_SYS_NIRQ2);
+}
+
 static void __init omap_4430sdp_init(void)
 {
 	omap4_i2c_init();
@@ -385,6 +391,7 @@ static void __init omap_4430sdp_init(void)
 				ARRAY_SIZE(sdp4430_spi_board_info));
 	omap_mcbsp_init();
 	omap_kp_init();
+	omap_phoenix_init();
 
 }
 
