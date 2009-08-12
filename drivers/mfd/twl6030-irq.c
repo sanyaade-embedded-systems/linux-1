@@ -57,13 +57,13 @@ static int twl6030_interrupt_mapping[24] = {
 	RTC_INTR_OFFSET,	/* Bit 4	RTC_ALARM		*/
 	RTC_INTR_OFFSET,	/* Bit 5	RTC_PERIOD		*/
 	HOTDIE_INTR_OFFSET,	/* Bit 6	HOT_DIE			*/
-	RSV_INTR_OFFSET,  	/* Bit 7	Reserved		*/
+	SMPSLDO_INTR_OFFSET,	/* Bit 7	VXXX_SHORT		*/
 
-	SMPSLDO_INTR_OFFSET,	/* Bit 8	VXXX_SHORT		*/
-	SMPSLDO_INTR_OFFSET,	/* Bit 9	VMMC_SHORT		*/
-	SMPSLDO_INTR_OFFSET,	/* Bit 10	VUSIM_SHORT		*/
-	SIMDETECT_INTR_OFFSET,	/* Bit 11	SIM			*/
-	MMCDETECT_INTR_OFFSET,	/* Bit 12	MMC			*/
+	SMPSLDO_INTR_OFFSET,	/* Bit 8	VMMC_SHORT		*/
+	SMPSLDO_INTR_OFFSET,	/* Bit 9	VUSIM_SHORT		*/
+	SIMDETECT_INTR_OFFSET,	/* Bit 10	SIM			*/
+	MMCDETECT_INTR_OFFSET,	/* Bit 11	MMC			*/
+	RSV_INTR_OFFSET,  	/* Bit 12	Reserved		*/
 	GPADC_INTR_OFFSET,	/* Bit 13	GPADC_RT_EOC		*/
 	GPADC_INTR_OFFSET,	/* Bit 14	GPADC_SW_EOC		*/
 	GASGAUGE_INTR_OFFSET,	/* Bit 15	CC_AUTOCAL		*/
@@ -244,6 +244,8 @@ int twl_init_irq(int irq_num, unsigned irq_base, unsigned irq_end)
 			REG_INT_STS_A, 3); /* clear INT_STS_A,B,C */
 
 	ret |= twl_int_mask_reset(TWL6030_RTC_INT_MASK, REG_INT_MSK_LINE_A);
+	ret |= twl_int_mask_reset(TWL6030_MMCDETECT_INT_MASK, \
+					REG_INT_MSK_LINE_B);
 
 	twl6030_irq_base = irq_base;
 
