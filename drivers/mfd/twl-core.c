@@ -102,6 +102,12 @@
 #define twl_has_rtc()	false
 #endif
 
+#if defined(CONFIG_TWL6030_CORE) /* FIXME add MMC CONFIG*/
+#define twl_has_mmc()   true
+#else
+#define twl_has_mmc()   false
+#endif
+
 #if defined(CONFIG_TWL4030_USB) || defined(CONFIG_TWL4030_USB_MODULE)
 #define twl_has_usb()	true
 #else
@@ -178,6 +184,7 @@
 
 #define RTC_SUB_CHIP_ID		SUB_CHIP_ID0
 #define REG_SUB_CHIP_ID		SUB_CHIP_ID0
+#define MMC_SUB_CHIP_ID		SUB_CHIP_ID0
 #define USB_SUB_CHIP_ID		SUB_CHIP_ID1
 #define MADC_SUB_CHIP_ID	SUB_CHIP_ID1
 #define BCI_SUB_CHIP_ID		SUB_CHIP_ID1
@@ -192,7 +199,7 @@
 #define TWL6030_BASEADD_PM_SLAVE_SMPS	0x0040
 #define TWL6030_BASEADD_PM_SLAVE_LDO	0x0080
 #define TWL6030_BASEADD_PM_SLAVE_RES	0x00AD
-#define TWL6030_BASEADD_PM_MISC		0x00E3
+#define TWL6030_BASEADD_PM_MISC		0x00E2
 #define TWL6030_BASEADD_PM_PUPD		0x00F0
 
 /* subchip/slave 1 0x49 - FEATURE */
@@ -616,6 +623,16 @@ add_children(struct twl_platform_data *pdata, unsigned long features)
 		if (IS_ERR(child))
 			return PTR_ERR(child);
 	}
+
+#ifdef CONFIG_TWL6030_CORE
+	if (twl_has_mmc()) {
+		child = add_child(MMC_SUB_CHIP_ID, "twl_mmc",
+			NULL, 0, true,
+			pdata->irq_base + MMCDETECT_INTR_OFFSET, 0);
+		if (IS_ERR(child))
+			return PTR_ERR(child);
+	}
+#endif
 
 	if (twl_has_usb() && pdata->usb) {
 		child = add_child(USB_SUB_CHIP_ID, "twl4030_usb",
