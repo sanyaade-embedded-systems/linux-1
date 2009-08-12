@@ -886,6 +886,8 @@ enum omap44xx_index {
 	PAD0_4430_UNIPRO_RX2,
 	PAD1_4430_UNIPRO_RY2,
 
+	PAD1_4430_SYS_NIRQ1,
+	PAD0_4430_SYS_NIRQ2,
 };
 
 struct omap_mux_cfg {
