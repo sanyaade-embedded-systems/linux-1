@@ -283,6 +283,10 @@ static const char *v4l2_ioctls[] = {
 
 	[_IOC_NR(VIDIOC_DBG_G_CHIP_IDENT)] = "VIDIOC_DBG_G_CHIP_IDENT",
 	[_IOC_NR(VIDIOC_S_HW_FREQ_SEEK)]   = "VIDIOC_S_HW_FREQ_SEEK",
+
+	[_IOC_NR(VIDIOC_S_COL_SPC_CONV)]   = "VIDIOC_S_COL_SPC_CONV",
+	[_IOC_NR(VIDIOC_G_COL_SPC_CONV)]   = "VIDIOC_G_COL_SPC_CONV",
+
 #endif
 	[_IOC_NR(VIDIOC_ENUM_DV_PRESETS)]  = "VIDIOC_ENUM_DV_PRESETS",
 	[_IOC_NR(VIDIOC_S_DV_PRESET)]	   = "VIDIOC_S_DV_PRESET",
@@ -1939,6 +1943,26 @@ static long __video_do_ioctl(struct file *file,
 				break;
 			}
 		}
+		break;
+	}
+
+	/*---------------Color space conversion------------------------------*/
+	case VIDIOC_S_COL_SPC_CONV:
+	{
+		struct v4l2_color_space_conversion *p = arg;
+		if (!ops->vidioc_s_color_space_conv)
+			break;
+
+		ret = ops->vidioc_s_color_space_conv(file, fh, p);
+		break;
+	}
+
+	case VIDIOC_G_COL_SPC_CONV:
+	{
+		struct v4l2_color_space_conversion *p = arg;
+		if (!ops->vidioc_g_color_space_conv)
+			break;
+		ret = ops->vidioc_g_color_space_conv(file, fh, p);
 		break;
 	}
 
