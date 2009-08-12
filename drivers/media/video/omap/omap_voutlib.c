@@ -18,20 +18,15 @@
  *
  */
 
-#include <linux/init.h>
 #include <linux/module.h>
-#include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/kernel.h>
-#include <linux/vmalloc.h>
-#include <linux/slab.h>
-#include <linux/sched.h>
-#include <linux/smp_lock.h>
-#include <linux/kdev_t.h>
 #include <linux/types.h>
-#include <linux/wait.h>
 #include <linux/videodev2.h>
-#include <linux/semaphore.h>
+
+MODULE_AUTHOR("Texas Instruments.");
+MODULE_DESCRIPTION("OMAP Video library");
+MODULE_LICENSE("GPL");
 
 /* Return the default overlay cropping rectangle in crop given the image
  * size in pix and the video display size in fbuf.  The default
@@ -260,7 +255,3 @@ void omap_vout_new_format(struct v4l2_pix_format *pix,
 	win->w.top = ((fbuf->fmt.height - win->w.height) >> 1) & ~1;
 }
 EXPORT_SYMBOL_GPL(omap_vout_new_format);
-
-MODULE_AUTHOR("Texas Instruments.");
-MODULE_DESCRIPTION("OMAP Video library");
-MODULE_LICENSE("GPL");
