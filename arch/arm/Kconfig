@@ -1477,6 +1477,8 @@ source "drivers/uio/Kconfig"
 
 source "drivers/staging/Kconfig"
 
+source "drivers/media/video/tiler/Kconfig"
+
 endmenu
 
 source "fs/Kconfig"
