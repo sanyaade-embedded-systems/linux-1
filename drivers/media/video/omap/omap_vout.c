@@ -30,37 +30,35 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
-#include <linux/delay.h>
 #include <linux/errno.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/vmalloc.h>
-#include <linux/slab.h>
-#include <linux/sched.h>
-#include <linux/smp_lock.h>
 #include <linux/interrupt.h>
 #include <linux/kdev_t.h>
 #include <linux/types.h>
 #include <linux/wait.h>
 #include <linux/videodev2.h>
-#include <linux/pci.h>
 #include <linux/platform_device.h>
-#include <media/videobuf-dma-sg.h>
-#include <linux/input.h>
 #include <linux/dma-mapping.h>
+#include <linux/irq.h>
+
+#include <media/videobuf-dma-sg.h>
 #include <media/v4l2-dev.h>
 #include <media/v4l2-ioctl.h>
-#include <mach/display.h>
-#include <linux/io.h>
-#include <linux/irq.h>
-#include <linux/semaphore.h>
+#include <media/v4l2-common.h>
+#include <media/v4l2-device.h>
+
 #include <asm/processor.h>
 #include <mach/dma.h>
+#include <mach/vram.h>
 #include <mach/vrfb.h>
-#include <media/v4l2-common.h>
 #include <mach/display.h>
 #include "omap_voutlib.h"
 #include "omap_voutdef.h"
+MODULE_AUTHOR("Texas Instruments.");
+MODULE_DESCRIPTION("OMAP Video for Linux Video out driver");
+MODULE_LICENSE("GPL");
 
 #define OMAP_VIDEO1 0
 #define OMAP_VIDEO2 1
@@ -186,16 +184,17 @@ const static struct v4l2_fmtdesc omap_formats[] = {
 	 },
 };
 
-#define NUM_OUTPUT_FORMATS (sizeof(omap_formats)/sizeof(omap_formats[0]))
+#define NUM_OUTPUT_FORMATS (ARRAY_SIZE(omap_formats))
 
 /* Allocate buffers */
 static unsigned long omap_vout_alloc_buffer(u32 buf_size, u32 *phys_addr)
 {
 	unsigned long virt_addr, addr;
-	u32 size;
+	u32 order, size;
 
 	size = PAGE_ALIGN(buf_size);
-	virt_addr = (u32) alloc_pages_exact(size, GFP_KERNEL | GFP_DMA);
+	order = get_order(size);
+	virt_addr = __get_free_pages(GFP_KERNEL | GFP_DMA, order);
 	addr = virt_addr;
 	if (virt_addr) {
 		while (size > 0) {
@@ -213,20 +212,21 @@ static void omap_vout_free_buffer(unsigned long virtaddr, u32 phys_addr,
 			 u32 buf_size)
 {
 	unsigned long addr = virtaddr;
-	u32 size;
+	u32 order, size;
 
 	size = PAGE_ALIGN(buf_size);
+	order = get_order(size);
 	while (size > 0) {
 		ClearPageReserved(virt_to_page(addr));
 		addr += PAGE_SIZE;
 		size -= PAGE_SIZE;
 	}
-	free_pages_exact((void *) virtaddr, size);
+	free_pages((unsigned long) virtaddr, order);
 }
 
 /* Function for allocating video buffers */
 static int omap_vout_allocate_vrfb_buffers(struct omap_vout_device *vout,
-		int count)
+		int count, int startindex)
 {
 	int i, j;
 
@@ -235,6 +235,11 @@ static int omap_vout_allocate_vrfb_buffers(struct omap_vout_device *vout,
 			vout->smsshado_virt_addr[i] =
 				omap_vout_alloc_buffer(vout->smsshado_size,
 						&vout->smsshado_phy_addr[i]);
+		}
+		if (!vout->smsshado_virt_addr[i] && startindex != -1) {
+			if (V4L2_MEMORY_MMAP == vout->memory
+				&& i >= startindex)
+				break;
 		}
 		if (!vout->smsshado_virt_addr[i]) {
 			for (j = 0; j < i; j++) {
@@ -255,20 +260,13 @@ static int omap_vout_allocate_vrfb_buffers(struct omap_vout_device *vout,
 }
 
 /* Try format */
-static int omap_vout_try_format(struct v4l2_pix_format *pix,
-				struct v4l2_pix_format *def_pix)
+static int omap_vout_try_format(struct v4l2_pix_format *pix)
 {
 	int ifmt, bpp = 0;
 
-	if (pix->width > VID_MAX_WIDTH)
-		pix->width = VID_MAX_WIDTH;
-	if (pix->height > VID_MAX_HEIGHT)
-		pix->height = VID_MAX_HEIGHT;
-
-	if (pix->width <= VID_MIN_WIDTH)
-		pix->width = def_pix->width;
-	if (pix->height <= VID_MIN_HEIGHT)
-		pix->height = def_pix->height;
+	pix->height = clamp(pix->height, (u32)VID_MIN_HEIGHT,
+			(u32)VID_MAX_HEIGHT);
+	pix->width = clamp(pix->width, (u32)VID_MIN_WIDTH, (u32)VID_MAX_WIDTH);
 
 	for (ifmt = 0; ifmt < NUM_OUTPUT_FORMATS; ifmt++) {
 		if (pix->pixelformat == omap_formats[ifmt].pixelformat)
@@ -365,11 +363,14 @@ static void omap_vout_vrfb_dma_tx_callback(int lch, u16 ch_status, void *data)
 /* Release the VRFB context once the module exits */
 static void omap_vout_release_vrfb(struct omap_vout_device *vout)
 {
+#ifndef CONFIG_ARCH_OMAP4
+/* TODO: this is temporary disabling of vrfb to test V4L2: needs to be
+   corrected for future
+*/
 	int i;
-
 	for (i = 0; i < 4; i++)
 		omap_vrfb_release_ctx(&vout->vrfb_context[i]);
-
+#endif
 	if (vout->vrfb_dma_tx.req_status == DMA_CHAN_ALLOTED) {
 		vout->vrfb_dma_tx.req_status = DMA_CHAN_NOT_ALLOTED;
 		omap_free_dma(vout->vrfb_dma_tx.dma_ch);
@@ -378,23 +379,34 @@ static void omap_vout_release_vrfb(struct omap_vout_device *vout)
 }
 
 /* Return true if rotation is 90 or 270 */
-static inline int rotate_90_or_270(int rotation)
+static inline int rotate_90_or_270(struct omap_vout_device *vout)
 {
-	return rotation == 1 || rotation == 3;
+	return (vout->rotation == dss_rotation_90_degree ||
+		vout->rotation == dss_rotation_270_degree);
 }
 
 /* Return true if rotation is enabled */
-static inline int rotation_enabled(int rotation)
+static inline int rotation_enabled(struct omap_vout_device *vout)
 {
-	return rotation != -1;
+	return vout->rotation || vout->mirror;
 }
 
 /* Reverse the rotation degree if mirroring is enabled */
-static inline int rotation_with_mirror(int rotation)
+static inline int calc_rotation(struct omap_vout_device *vout)
 {
-	return (rotation == 1) ? 3 :
-		(rotation == 3) ? 1 :
-		(rotation == 2) ? 0 : 2;
+	if (!vout->mirror)
+		return vout->rotation;
+
+	switch (vout->rotation) {
+	case dss_rotation_90_degree:
+		return dss_rotation_270_degree;
+	case dss_rotation_270_degree:
+		return dss_rotation_90_degree;
+	case dss_rotation_180_degree:
+		return dss_rotation_0_degree;
+	default:
+		return dss_rotation_180_degree;
+	}
 }
 
 /* Free the V4L2 buffers */
@@ -433,70 +445,48 @@ static void omap_vout_free_vrfb_buffers(struct omap_vout_device *vout)
 static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 			  unsigned int *count, unsigned int startindex)
 {
-	int i, j;
+	int i;
 
 	/* Allocate the VRFB buffers only if the buffers are not
 	 * allocated during init time.
 	 */
-	if ((rotation_enabled(vout->rotation)) &&
-			!vout->vrfb_static_allocation) {
-		for (i = 0; i < *count; i++) {
-			if (!vout->smsshado_virt_addr[i]) {
-				vout->smsshado_virt_addr[i] =
-					omap_vout_alloc_buffer(
-						vout->smsshado_size,
-						&vout->smsshado_phy_addr[i]);
-			}
-			if (!vout->smsshado_virt_addr[i]) {
-				if (V4L2_MEMORY_MMAP == vout->memory
-						&& i >= startindex)
-					break;
-				for (j = 0; j < i; j++) {
-					omap_vout_free_buffer(
-						vout->smsshado_virt_addr[j],
-						vout->smsshado_phy_addr[j],
-						vout->smsshado_size);
-					vout->smsshado_virt_addr[j] = 0;
-					vout->smsshado_phy_addr[j] = 0;
-				}
-				*count = 0;
-				return -ENOMEM;
-			}
+	if ((rotation_enabled(vout)) &&
+			!vout->vrfb_static_allocation)
+		if (omap_vout_allocate_vrfb_buffers(vout, *count, startindex))
+			return -ENOMEM;
 
-			memset((void *) vout->smsshado_virt_addr[i], 0,
-					vout->smsshado_size);
-		}
-	}
+#ifndef CONFIG_ARCH_OMAP4
+/* TODO: this is temporary disabling of vrfb to test V4L2: needs to be
+ corrected for future
+*/
 	for (i = 0; i < *count; i++) {
 			omap_vrfb_setup(&vout->vrfb_context[i],
 				vout->smsshado_phy_addr[i],
 				vout->pix.width, vout->pix.height,
 				vout->dss_mode);
 	}
+#endif
 	return 0;
 }
 
 /* Convert V4L2 rotation to DSS rotation
  * V4L2 understand 0, 90, 180, 270.
  * convert to 0, 1, 2 and 3 repsectively for DSS */
-static int v4l2_rot_to_dss_rot(int v4l2_rotation, int *dss_rotation,
-		int mirror)
+static int v4l2_rot_to_dss_rot(int v4l2_rotation, enum dss_rotation *rotation,
+		bool mirror)
 {
 	switch (v4l2_rotation) {
 	case 90:
-		*dss_rotation = 1;
+		*rotation = dss_rotation_90_degree;
 		return 0;
 	case 180:
-		*dss_rotation = 2;
+		*rotation = dss_rotation_180_degree;
 		return 0;
 	case 270:
-		*dss_rotation = 3;
+		*rotation = dss_rotation_270_degree;
 		return 0;
 	case 0:
-		if (mirror)
-			*dss_rotation = 0;
-		else
-			*dss_rotation = -1;
+		*rotation = dss_rotation_0_degree;
 		return 0;
 	default:
 		return -EINVAL;
@@ -512,9 +502,8 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 {
 	struct v4l2_pix_format *pix = &(vout->pix);
 	struct v4l2_rect *crop = &(vout->crop);
-	struct v4l2_window *win = &(vout->win);
-	int rotation;
-	int mirroring = vout->mirror;
+	enum dss_rotation rotation;
+	bool mirroring = vout->mirror;
 	int vr_ps = 1, ps = 2, temp_ps = 2;
 	int offset = 0, ctop = 0, cleft = 0, line_length = 0;
 	struct omapvideo_info *ovid;
@@ -529,21 +518,11 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 		return -1;
 	cur_display = ovl->manager->device;
 
-	if ((cur_display->type == OMAP_DISPLAY_TYPE_VENC) &&
-	    ((win->w.width == crop->width)
-	     && (win->w.height == crop->height)))
-		vout->flicker_filter = 1;
-	else
-		vout->flicker_filter = 0;
-
-	if (1 == vout->mirror)
-		rotation = rotation_with_mirror(vout->rotation);
-	else
-		rotation = vout->rotation;
+	rotation = calc_rotation(vout);
 
 	if (V4L2_PIX_FMT_YUYV == pix->pixelformat ||
 	    V4L2_PIX_FMT_UYVY == pix->pixelformat) {
-		if (rotation_enabled(vout->rotation)) {
+		if (rotation_enabled(vout)) {
 			/*
 			 * ps    - Actual pixel size for YUYV/UYVY for
 			 *              VRFB/Mirroring is 4 bytes
@@ -562,7 +541,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	}
 	vout->ps = ps;
 	vout->vr_ps = vr_ps;
-	if (rotation_enabled(vout->rotation)) {
+	if (rotation_enabled(vout)) {
 		line_length = MAX_PIXELS_PER_LINE;
 		ctop = (pix->height - crop->height) - crop->top;
 		cleft = (pix->width - crop->width) - crop->left;
@@ -571,7 +550,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	}
 	vout->line_length = line_length;
 	switch (rotation) {
-	case 1:
+	case dss_rotation_90_degree:
 		offset = vout->vrfb_context[0].yoffset *
 			vout->vrfb_context[0].bytespp;
 		temp_ps = ps / vr_ps;
@@ -584,7 +563,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 				((crop->width / (vr_ps)) - 1) * ps);
 		}
 		break;
-	case 2:
+	case dss_rotation_180_degree:
 		offset = ((MAX_PIXELS_PER_LINE * vout->vrfb_context[0].yoffset *
 			vout->vrfb_context[0].bytespp) +
 			(vout->vrfb_context[0].xoffset *
@@ -599,7 +578,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 				(crop->height - 1) * ps);
 		}
 		break;
-	case 3:
+	case dss_rotation_270_degree:
 		offset = MAX_PIXELS_PER_LINE * vout->vrfb_context[0].xoffset *
 			vout->vrfb_context[0].bytespp;
 		temp_ps = ps / vr_ps;
@@ -613,7 +592,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 				 ps);
 		}
 		break;
-	case 0:
+	case dss_rotation_0_degree:
 		if (mirroring == 0) {
 			*cropped_offset = (line_length * ps) *
 				crop->top + (crop->left / vr_ps) * ps;
@@ -624,17 +603,12 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 		}
 		break;
 	default:
-		if (mirroring == 0) {
-			*cropped_offset =
-			    line_length * ps * crop->top + crop->left * ps;
-		} else {
-			*cropped_offset = (line_length * ps * crop->top) /
-				vr_ps + (crop->left * ps) / vr_ps +
-				((crop->width / vr_ps) - 1) * ps;
-		}
+		*cropped_offset = (line_length * ps * crop->top) /
+			vr_ps + (crop->left * ps) / vr_ps +
+			((crop->width / vr_ps) - 1) * ps;
 		break;
 	}
-	v4l2_dbg(1, debug, vout->dev->driver,
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
 	"%s Offset:%x\n", __func__, *cropped_offset);
 	return 0;
 }
@@ -664,7 +638,7 @@ int omapvid_init(struct omap_vout_device *vout, u32 addr)
 		outh = win->w.height;
 		switch (rotation) {
 
-		case 1:
+		case dss_rotation_90_degree:
 			/* Invert the height and widht for 90
 			 * and 270 degree rotation
 			 */
@@ -676,14 +650,14 @@ int omapvid_init(struct omap_vout_device *vout, u32 addr)
 			posx = win->w.top;
 			break;
 
-		case 2:
+		case dss_rotation_180_degree:
 			posx = (timing->x_res - win->w.width) -
 				win->w.left;
 			posy = (timing->y_res - win->w.height) -
 				win->w.top;
 			break;
 
-		case 3:
+		case dss_rotation_270_degree:
 			temp = outw;
 			outw = outh;
 			outh = temp;
@@ -714,7 +688,6 @@ int omapvid_apply_changes(struct omap_vout_device *vout)
 {
 	struct omapvideo_info *ovid = &(vout->vid_info);
 	struct omap_overlay *ovl;
-	struct omap_dss_device *device;
 	int i;
 
 	for (i = 0; i < ovid->num_overlays; i++) {
@@ -722,12 +695,6 @@ int omapvid_apply_changes(struct omap_vout_device *vout)
 		if (!ovl->manager || !ovl->manager->device)
 			return -EINVAL;
 		ovl->manager->apply(ovl->manager);
-		if (ovl->manager->device->update) {
-			device = ovl->manager->device;
-			device->update(device, 0, 0,
-				       device->panel.timings.x_res,
-				       device->panel.timings.y_res);
-		}
 	}
 	return 0;
 
@@ -740,7 +707,8 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 {
 	int r = 0;
 	enum omap_color_mode mode = 0;
-	int rotation, mirror;
+	enum dss_rotation rotation;
+	bool mirror;
 	int cropheight, cropwidth, pixheight, pixwidth;
 	struct omap_overlay_info info;
 
@@ -763,7 +731,7 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 	/* Setup the input plane parameters according to
 	 * rotation value selected.
 	 */
-	if (rotate_90_or_270(vout->rotation)) {
+	if (rotate_90_or_270(vout)) {
 		cropheight = vout->crop.width;
 		cropwidth = vout->crop.height;
 		pixheight = vout->pix.width;
@@ -786,7 +754,8 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 	info.pos_y = posy;
 	info.out_width = outw;
 	info.out_height = outh;
-	if (!rotation_enabled(vout->rotation)) {
+	info.global_alpha = vout->win.global_alpha;
+	if (!rotation_enabled(vout)) {
 		info.rotation = 0;
 		info.rotation_type = OMAP_DSS_ROT_DMA;
 		info.screen_width = pixwidth;
@@ -796,7 +765,7 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 		info.screen_width = 2048;
 	}
 
-	v4l2_dbg(1, debug, vout->dev->driver,
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
 	"%s info.enable=%d info.addr=%x info.width=%d\n info.height=%d \
 	info.color_mode=%d info.rotation=%d info.mirror=%d\n \
 	info.posx=%d info.posy=%d info.out_width = %d info.out_height=%d\n \
@@ -873,15 +842,24 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 	if (V4L2_MEMORY_MMAP == vout->memory && *count < startindex)
 		*count = startindex;
 
-	if ((rotation_enabled(vout->rotation)) && *count > 4)
+#if defined CONFIG_ARCH_OMAP4
+	vout->rotation = 0;
+	printk(KERN_WARNING VOUT_NAME
+		" setting rotation to 0 in buffer setup\n");
+#endif
+	if ((rotation_enabled(vout))
+			&& *count > 4)
 		*count = 4;
 
+#ifndef CONFIG_ARCH_OMAP4
+/* TODO: this is temporary disabling of vrfb to test V4L2: needs to be
+ corrected for future*/
 	/* If rotation is enabled, allocate memory for VRFB space also */
-	if (rotation_enabled(vout->rotation)) {
+	if (rotation_enabled(vout)) {
 		if (omap_vout_vrfb_buffer_setup(vout, count, startindex))
 			return -ENOMEM;
 	}
-
+#endif
 	if (V4L2_MEMORY_MMAP != vout->memory)
 		return 0;
 
@@ -895,7 +873,10 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 		virt_addr = omap_vout_alloc_buffer(vout->buffer_size,
 				&phy_addr);
 		if (!virt_addr) {
-			if (!rotation_enabled(vout->rotation))
+			printk(KERN_WARNING VOUT_NAME
+				"Memory not available: virt address "
+				"problem in buffer setup\n");
+			if (!rotation_enabled(vout))
 				break;
 			/* Free the VRFB buffers if no space for V4L2 buffers */
 			for (j = i; j < *count; j++) {
@@ -959,12 +940,14 @@ static int omap_vout_buffer_prepare(struct videobuf_queue *q,
 			    enum v4l2_field field)
 {
 	struct omap_vout_device *vout = q->priv_data;
+	struct videobuf_dmabuf *dmabuf = NULL;
+#ifndef CONFIG_ARCH_OMAP4
 	u32 dest_frame_index = 0, src_element_index = 0;
 	u32 dest_element_index = 0, src_frame_index = 0;
 	u32 elem_count = 0, frame_count = 0, pixsize = 2;
-	struct videobuf_dmabuf *dmabuf = NULL;
-	int rotation;
-
+	enum dss_rotation rotation;
+	struct vid_vrfb_dma *tx;
+#endif
 	if (VIDEOBUF_NEEDS_INIT == vb->state) {
 		vb->width = vout->pix.width;
 		vb->height = vout->pix.height;
@@ -990,12 +973,13 @@ static int omap_vout_buffer_prepare(struct videobuf_queue *q,
 			(dma_addr_t) omap_vout_uservirt_to_phys(vb->baddr);
 	}
 
-	if (!rotation_enabled(vout->rotation)) {
+	if (!rotation_enabled(vout)) {
 		dmabuf = videobuf_to_dma(q->bufs[vb->i]);
 
 		vout->queued_buf_addr[vb->i] = (u8 *) dmabuf->bus_addr;
 		return 0;
 	}
+#ifndef CONFIG_ARCH_OMAP4
 	dmabuf = videobuf_to_dma(q->bufs[vb->i]);
 	/* If rotation is enabled, copy input buffer into VRFB
 	 * memory space using DMA. We are copying input buffer
@@ -1018,44 +1002,38 @@ static int omap_vout_buffer_prepare(struct videobuf_queue *q,
 	/* Number of elements per frame */
 	elem_count = vout->pix.width * vout->bpp;
 	frame_count = vout->pix.height;
-	vout->vrfb_dma_tx.tx_status = 0;
-	omap_set_dma_transfer_params(vout->vrfb_dma_tx.dma_ch,
-			OMAP_DMA_DATA_TYPE_S32, (elem_count / 4), frame_count,
-			OMAP_DMA_SYNC_ELEMENT, vout->vrfb_dma_tx.dev_id, 0x0);
+	tx = &vout->vrfb_dma_tx;
+	tx->tx_status = 0;
+	omap_set_dma_transfer_params(tx->dma_ch, OMAP_DMA_DATA_TYPE_S32,
+			(elem_count / 4), frame_count, OMAP_DMA_SYNC_ELEMENT,
+			tx->dev_id, 0x0);
 	/* src_port required only for OMAP1 */
-	omap_set_dma_src_params(vout->vrfb_dma_tx.dma_ch, 0,
-			OMAP_DMA_AMODE_POST_INC, dmabuf->bus_addr,
-			src_element_index, src_frame_index);
+	omap_set_dma_src_params(tx->dma_ch, 0, OMAP_DMA_AMODE_POST_INC,
+			dmabuf->bus_addr, src_element_index, src_frame_index);
 	/*set dma source burst mode for VRFB */
-	omap_set_dma_src_burst_mode(vout->vrfb_dma_tx.dma_ch,
-			OMAP_DMA_DATA_BURST_16);
-	if (vout->mirror)
-		rotation = rotation_with_mirror(vout->rotation);
-	else
-		rotation = vout->rotation;
+	omap_set_dma_src_burst_mode(tx->dma_ch, OMAP_DMA_DATA_BURST_16);
+	rotation = calc_rotation(vout);
 
 	/* dest_port required only for OMAP1 */
-	omap_set_dma_dest_params(vout->vrfb_dma_tx.dma_ch, 0,
-			OMAP_DMA_AMODE_DOUBLE_IDX,
-			vout->vrfb_context[vb->i].paddr[0],
-			dest_element_index, dest_frame_index);
+	omap_set_dma_dest_params(tx->dma_ch, 0, OMAP_DMA_AMODE_DOUBLE_IDX,
+			vout->vrfb_context[vb->i].paddr[0], dest_element_index,
+			dest_frame_index);
 	/*set dma dest burst mode for VRFB */
-	omap_set_dma_dest_burst_mode(vout->vrfb_dma_tx.dma_ch,
-			OMAP_DMA_DATA_BURST_16);
+	omap_set_dma_dest_burst_mode(tx->dma_ch, OMAP_DMA_DATA_BURST_16);
 	omap_dma_set_global_params(DMA_DEFAULT_ARB_RATE, 0x20, 0);
 
-	omap_start_dma(vout->vrfb_dma_tx.dma_ch);
-	interruptible_sleep_on_timeout(&vout->vrfb_dma_tx.wait,
-			VRFB_TX_TIMEOUT);
+	omap_start_dma(tx->dma_ch);
+	interruptible_sleep_on_timeout(&tx->wait, VRFB_TX_TIMEOUT);
 
-	if (vout->vrfb_dma_tx.tx_status == 0) {
-		omap_stop_dma(vout->vrfb_dma_tx.dma_ch);
+	if (tx->tx_status == 0) {
+		omap_stop_dma(tx->dma_ch);
 		return -EINVAL;
 	}
 	/* Store buffers physical address into an array. Addresses
 	 * from this array will be used to configure DSS */
 	vout->queued_buf_addr[vb->i] = (u8 *)
 		vout->vrfb_context[vb->i].paddr[rotation];
+#endif
 	return 0;
 }
 
@@ -1094,7 +1072,7 @@ static void omap_vout_vm_open(struct vm_area_struct *vma)
 {
 	struct omap_vout_device *vout = vma->vm_private_data;
 
-	v4l2_dbg(1, debug, vout->dev->driver,
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
 	"vm_open [vma=%08lx-%08lx]\n", vma->vm_start, vma->vm_end);
 	vout->mmap_count++;
 }
@@ -1103,7 +1081,7 @@ static void omap_vout_vm_close(struct vm_area_struct *vma)
 {
 	struct omap_vout_device *vout = vma->vm_private_data;
 
-	v4l2_dbg(1, debug, vout->dev->driver,
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
 	"vm_close [vma=%08lx-%08lx]\n", vma->vm_start, vma->vm_end);
 	vout->mmap_count--;
 }
@@ -1119,12 +1097,11 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 	struct videobuf_queue *q = &vout->vbq;
 	unsigned long size = (vma->vm_end - vma->vm_start);
 	unsigned long start = vma->vm_start;
-	struct page *cpage;
 	int i;
 	void *pos;
 	struct videobuf_dmabuf *dmabuf = NULL;
 
-	v4l2_dbg(1, debug, vout->dev->driver,
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
 		" %s pgoff=0x%lx, start=0x%lx, end=0x%lx\n", __func__,
 		vma->vm_pgoff, vma->vm_start, vma->vm_end);
 
@@ -1139,7 +1116,7 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 	}
 
 	if (VIDEO_MAX_FRAME == i) {
-		v4l2_dbg(1, debug, vout->dev->driver,
+		v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
 		"offset invalid [offset=0x%lx]\n",
 			(vma->vm_pgoff << PAGE_SHIFT));
 		return -EINVAL;
@@ -1152,22 +1129,19 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 	vma->vm_private_data = (void *) vout;
 	dmabuf = videobuf_to_dma(q->bufs[i]);
 
-	pos = (void *)(dmabuf->bus_addr);
-
+	pos = dmabuf->vmalloc;
+	vma->vm_pgoff = virt_to_phys((void *)pos) >> PAGE_SHIFT;
 	while (size > 0) {
-		cpage = pfn_to_page(((unsigned int) pos) >> PAGE_SHIFT);
-		if (vm_insert_page(vma, start, cpage)) {
-			printk(KERN_ERR "vout_mmap: Failed to insert bus_addr"
-							"page to VMA \n");
+		unsigned long pfn;
+		pfn = virt_to_phys((void *) pos) >> PAGE_SHIFT;
+		if (remap_pfn_range(vma, start, pfn, PAGE_SIZE, PAGE_SHARED))
 			return -EAGAIN;
-			}
 		start += PAGE_SIZE;
 		pos += PAGE_SIZE;
 		size -= PAGE_SIZE;
 	}
-	vma->vm_flags &= ~VM_IO; /* using shared anonymous pages */
 	vout->mmap_count++;
-	v4l2_dbg(1, debug, vout->dev->driver, "Exiting %s\n", __func__);
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev, "Exiting %s\n", __func__);
 	return 0;
 }
 
@@ -1180,7 +1154,7 @@ static int omap_vout_release(struct file *file)
 	struct omapvideo_info *ovid;
 	unsigned int r;
 
-	v4l2_dbg(1, debug, vout->dev->driver, "Entering %s\n", __func__);
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev, "Entering %s\n", __func__);
 	ovid = &(vout->vid_info);
 
 	if (!vout)
@@ -1230,7 +1204,7 @@ static int omap_vout_release(struct file *file)
 
 	if (vout->buffer_allocated)
 		videobuf_mmap_free(q);
-	v4l2_dbg(1, debug, vout->dev->driver, "Exiting %s\n", __func__);
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev, "Exiting %s\n", __func__);
 	return r;
 }
 
@@ -1240,7 +1214,7 @@ static int omap_vout_open(struct file *file)
 	struct videobuf_queue *q;
 
 	vout = video_drvdata(file);
-	v4l2_dbg(1, debug, vout->dev->driver, "Entering %s\n", __func__);
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev, "Entering %s\n", __func__);
 
 	if (vout == NULL)
 		return -ENODEV;
@@ -1264,7 +1238,7 @@ static int omap_vout_open(struct file *file)
 	videobuf_queue_sg_init(q, &video_vbq_ops, NULL, &vout->vbq_lock,
 			       vout->type, V4L2_FIELD_NONE, sizeof
 			       (struct videobuf_buffer), vout);
-	v4l2_dbg(1, debug, vout->dev->driver, "Exiting %s\n", __func__);
+	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev, "Exiting %s\n", __func__);
 	return 0;
 }
 
@@ -1305,8 +1279,7 @@ static int vidioc_g_fmt_vid_out(struct file *file, void *fh,
 {
 	struct omap_vout_device *vout = fh;
 
-	struct v4l2_pix_format *pix = &f->fmt.pix;
-	*pix = vout->pix;
+	f->fmt.pix = vout->pix;
 	return 0;
 
 }
@@ -1333,7 +1306,7 @@ static int vidioc_try_fmt_vid_out(struct file *file, void *fh,
 	vout->fbuf.fmt.height = timing->y_res;
 	vout->fbuf.fmt.width = timing->x_res;
 
-	omap_vout_try_format(&f->fmt.pix, &vout->fbuf.fmt);
+	omap_vout_try_format(&f->fmt.pix);
 	return 0;
 }
 
@@ -1362,9 +1335,14 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 	}
 	timing = &ovl->manager->device->panel.timings;
 
+#ifdef CONFIG_ARCH_OMAP4
+	if (rotation_enabled(vout))
+		vout->rotation = -1;
+#endif
+ /* TODO: check if TILER ADAPTATION is needed here. */
 	/* We dont support RGB24-packed mode if vrfb rotation
 	 * is enabled*/
-	if ((rotation_enabled(vout->rotation)) &&
+	if ((rotation_enabled(vout)) &&
 			f->fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24) {
 		mutex_unlock(&vout->lock);
 		return -EINVAL;
@@ -1372,7 +1350,7 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 
 	/* get the framebuffer parameters */
 
-	if (rotate_90_or_270(vout->rotation)) {
+	if (rotate_90_or_270(vout)) {
 		vout->fbuf.fmt.height = timing->x_res;
 		vout->fbuf.fmt.width = timing->y_res;
 	} else {
@@ -1382,7 +1360,7 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 
 	/* change to samller size is OK */
 
-	bpp = omap_vout_try_format(&f->fmt.pix, &vout->fbuf.fmt);
+	bpp = omap_vout_try_format(&f->fmt.pix);
 	f->fmt.pix.sizeimage = f->fmt.pix.width * f->fmt.pix.height * bpp;
 
 	/* try & set the new output format */
@@ -1423,6 +1401,8 @@ static int vidioc_try_fmt_vid_overlay(struct file *file, void *fh,
 
 	if (vout->vid == OMAP_VIDEO1)
 		win->global_alpha = 255;
+	else
+		win->global_alpha = f->fmt.win.global_alpha;
 	return 0;
 }
 
@@ -1431,15 +1411,19 @@ static int vidioc_s_fmt_vid_overlay(struct file *file, void *fh,
 {
 	struct omap_vout_device *vout = fh;
 	int err = -EINVAL;
+	struct omap_overlay *ovl;
+	struct omapvideo_info *ovid;
 	struct v4l2_window *win = &f->fmt.win;
 
 	mutex_lock(&vout->lock);
+	ovid = &vout->vid_info;
+	ovl = ovid->overlays[0];
 	err = omap_vout_new_window(&vout->crop, &vout->win, &vout->fbuf, win);
 	if (err) {
 		mutex_unlock(&vout->lock);
 		return err;
 	}
-	if (vout->vid == OMAP_VIDEO1)
+	if (ovl->id == OMAP_DSS_VIDEO1)
 		vout->win.global_alpha = 255;
 	else
 		vout->win.global_alpha = f->fmt.win.global_alpha;
@@ -1473,8 +1457,9 @@ static int vidioc_g_fmt_vid_overlay(struct file *file, void *fh,
 	struct omap_vout_device *vout = fh;
 	struct omap_overlay *ovl;
 	struct omapvideo_info *ovid;
-	struct v4l2_window *win = &f->fmt.win;
 	struct omap_overlay_manager_info info;
+	struct v4l2_window *win = &f->fmt.win;
+	u32 key_value =  0;
 
 	ovid = &(vout->vid_info);
 	ovl = ovid->overlays[0];
@@ -1483,12 +1468,11 @@ static int vidioc_g_fmt_vid_overlay(struct file *file, void *fh,
 	win->field = vout->win.field;
 	win->global_alpha = vout->win.global_alpha;
 
-	if (!ovl->manager || !ovl->manager->get_manager_info)
-		return -EINVAL;
-
-	ovl->manager->get_manager_info(ovl->manager, &info);
-	win->chromakey = info.trans_key;
-
+	if (ovl->manager && ovl->manager->get_manager_info) {
+		ovl->manager->get_manager_info(ovl->manager, &info);
+		key_value = info.trans_key;
+	}
+	win->chromakey = key_value;
 	return 0;
 }
 
@@ -1547,7 +1531,7 @@ static int vidioc_s_crop(struct file *file, void *fh,
 	/* get the display device attached to the overlay */
 	timing = &ovl->manager->device->panel.timings;
 
-	if (rotate_90_or_270(vout->rotation)) {
+	if (rotate_90_or_270(vout)) {
 		vout->fbuf.fmt.height = timing->x_res;
 		vout->fbuf.fmt.width = timing->y_res;
 	} else {
@@ -1596,12 +1580,9 @@ static int vidioc_g_ctrl(struct file *file, void *fh, struct v4l2_control *ctrl)
 		return 0;
 	case V4L2_CID_BG_COLOR:
 	{
-		struct omapvideo_info *ovid;
-		struct omap_overlay *ovl;
 		struct omap_overlay_manager_info info;
-
-		ovid = &(vout->vid_info);
-		ovl = ovid->overlays[0];
+		struct omap_overlay *ovl;
+		ovl = vout->vid_info.overlays[0];
 
 		if (!ovl->manager || !ovl->manager->get_manager_info)
 			return -EINVAL;
@@ -1629,13 +1610,15 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 		int rotation = a->value;
 
 		mutex_lock(&vout->lock);
-		if ((v4l2_rot_to_dss_rot(rotation, &vout->rotation,
-				vout->mirror))) {
+
+		if (rotation &&
+			vout->pix.pixelformat == V4L2_PIX_FMT_RGB24) {
 			mutex_unlock(&vout->lock);
 			return -EINVAL;
 		}
-		if (vout->pix.pixelformat == V4L2_PIX_FMT_RGB24 &&
-				rotation_enabled(vout->rotation)) {
+
+		if ((v4l2_rot_to_dss_rot(rotation, &vout->rotation,
+				vout->mirror))) {
 			mutex_unlock(&vout->lock);
 			return -EINVAL;
 		}
@@ -1646,11 +1629,9 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 	case V4L2_CID_BG_COLOR:
 	{
 		unsigned int  color = a->value;
-		struct omapvideo_info *ovid;
+		struct omap_overlay_manager_info info;;
 		struct omap_overlay *ovl;
-		struct omap_overlay_manager_info info;
-		ovid = &(vout->vid_info);
-		ovl = ovid->overlays[0];
+		ovl = vout->vid_info.overlays[0];
 
 		mutex_lock(&vout->lock);
 		if (!ovl->manager || !ovl->manager->get_manager_info) {
@@ -1659,7 +1640,10 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 		}
 		ovl->manager->get_manager_info(ovl->manager, &info);
 		info.default_color = color;
-		ovl->manager->set_manager_info(ovl->manager, &info);
+		if (ovl->manager->set_manager_info(ovl->manager, &info)) {
+			mutex_unlock(&vout->lock);
+			return -EINVAL;
+		}
 
 		vout->control[1].value = color;
 		mutex_unlock(&vout->lock);
@@ -1679,13 +1663,6 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 			mutex_unlock(&vout->lock);
 			return -EINVAL;
 		}
-		/* Use VRFB if mirroring is enabled */
-		if (mirror && !rotation_enabled(vout->rotation))
-			vout->rotation = 0;
-		/* Disabled VRFB if mirroring is disabled */
-		if (!mirror && vout->rotation == 0)
-			vout->rotation = -1;
-
 		vout->mirror = mirror;
 		vout->control[2].value = mirror;
 		mutex_unlock(&vout->lock);
@@ -1706,6 +1683,9 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 	unsigned int i, num_buffers = 0;
 	int ret = 0;
 	struct videobuf_dmabuf *dmabuf = NULL;
+
+	printk(KERN_INFO VOUT_NAME
+			"entered REQbuf: \n");
 
 	if ((req->type != V4L2_BUF_TYPE_VIDEO_OUTPUT) || (req->count < 0))
 		return -EINVAL;
@@ -1788,8 +1768,12 @@ static int vidioc_qbuf(struct file *file, void *fh,
 	struct videobuf_queue *q = &vout->vbq;
 	int ret = 0;
 
+	printk(KERN_INFO VOUT_NAME
+		"entered qbuf: buffer address: %x \n", (unsigned int) buffer);
+
 	if ((V4L2_BUF_TYPE_VIDEO_OUTPUT != buffer->type) ||
 			(buffer->index >= vout->buffer_allocated) ||
+
 			(q->bufs[buffer->index]->memory != buffer->memory)) {
 		return -EINVAL;
 	}
@@ -1800,7 +1784,7 @@ static int vidioc_qbuf(struct file *file, void *fh,
 		}
 	}
 
-	if ((rotation_enabled(vout->rotation)) &&
+	if ((rotation_enabled(vout)) &&
 			vout->vrfb_dma_tx.req_status == DMA_CHAN_NOT_ALLOTED) {
 		printk(KERN_WARNING VOUT_NAME
 				"DMA Channel not allocated for Rotation\n");
@@ -1817,6 +1801,9 @@ static int vidioc_dqbuf(struct file *file, void *fh,
 	struct omap_vout_device *vout = fh;
 	struct videobuf_queue *q = &vout->vbq;
 	int ret = 0;
+
+	printk(KERN_INFO VOUT_NAME
+		"entered DQbuf: buffer address: %x \n", (unsigned int) b);
 
 	if (!vout->streaming)
 		return -EINVAL;
@@ -1835,14 +1822,19 @@ static int vidioc_streamon(struct file *file, void *fh,
 {
 	struct omap_vout_device *vout = fh;
 	struct videobuf_queue *q = &vout->vbq;
-	unsigned int count ;
 	u32 addr = 0;
 	int r = 0;
 	int t;
 	struct omapvideo_info *ovid = &(vout->vid_info);
 	u32 mask = 0;
 
+	printk(KERN_INFO VOUT_NAME
+		"entered streamon-before mutex lock \n\n");
+
 	mutex_lock(&vout->lock);
+
+	printk(KERN_INFO VOUT_NAME
+		"streamon: mutex acquired\n");
 
 	if (vout->streaming) {
 		mutex_unlock(&vout->lock);
@@ -1881,11 +1873,8 @@ static int vidioc_streamon(struct file *file, void *fh,
 	addr = (unsigned long) vout->queued_buf_addr[vout->cur_frm->i]
 	+ vout->cropped_offset;
 
-	count = vout->buffer_allocated;
-	omap_vout_vrfb_buffer_setup(vout, &count, 0);
-
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-			DISPC_IRQ_EVSYNC_ODD;
+			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE;
 
 	omap_dispc_register_isr(omap_vout_isr, vout, mask);
 
@@ -1924,7 +1913,7 @@ static int vidioc_streamoff(struct file *file, void *fh,
 
 	if (!vout->streaming)
 		return -EINVAL;
-	if (vout->streaming) {
+
 		vout->streaming = 0;
 		mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD;
@@ -1945,7 +1934,6 @@ static int vidioc_streamoff(struct file *file, void *fh,
 					return r;
 				}
 			}
-		}
 
 		/* Turn of the pipeline */
 		r = omapvid_apply_changes(vout);
@@ -2005,14 +1993,16 @@ static int vidioc_s_fbuf(struct file *file, void *fh,
 	    ovl->manager->set_manager_info) {
 		ovl->manager->get_manager_info(ovl->manager, &info);
 		info.trans_enabled = enable;
+		info.trans_key_type = key_type;
 		info.trans_key = vout->win.chromakey;
-		ovl->manager->set_manager_info(ovl->manager, &info);
+		if (ovl->manager->set_manager_info(ovl->manager, &info))
+			return -EINVAL;
 	}
 
 	if (a->flags & V4L2_FBUF_FLAG_LOCAL_ALPHA) {
 		vout->fbuf.flags |= V4L2_FBUF_FLAG_LOCAL_ALPHA;
 		enable = 1;
-	} else if (!(a->flags & V4L2_FBUF_FLAG_LOCAL_ALPHA)) {
+	} else {
 		vout->fbuf.flags &= ~V4L2_FBUF_FLAG_LOCAL_ALPHA;
 		enable = 0;
 	}
@@ -2020,7 +2010,8 @@ static int vidioc_s_fbuf(struct file *file, void *fh,
 	    ovl->manager->set_manager_info) {
 		ovl->manager->get_manager_info(ovl->manager, &info);
 		info.alpha_enabled = enable;
-		ovl->manager->set_manager_info(ovl->manager, &info);
+		if (ovl->manager->set_manager_info(ovl->manager, &info))
+			return -EINVAL;
 	}
 
 	return 0;
@@ -2030,9 +2021,10 @@ static int vidioc_g_fbuf(struct file *file, void *fh,
 		struct v4l2_framebuffer *a)
 {
 	struct omap_vout_device *vout = fh;
+	struct omap_overlay_manager_info info;
 	struct omapvideo_info *ovid;
 	struct omap_overlay *ovl;
-	struct omap_overlay_manager_info info;
+	enum omap_dss_trans_key_type key_type;
 
 	ovid = &(vout->vid_info);
 	ovl = ovid->overlays[0];
@@ -2044,13 +2036,14 @@ static int vidioc_g_fbuf(struct file *file, void *fh,
 
 	if (ovl->manager && ovl->manager->get_manager_info) {
 		ovl->manager->get_manager_info(ovl->manager, &info);
-		if (info.trans_enabled) {
 			if (info.trans_key_type == OMAP_DSS_COLOR_KEY_VID_SRC)
 				a->flags |= V4L2_FBUF_FLAG_SRC_CHROMAKEY;
 			if (info.trans_key_type == OMAP_DSS_COLOR_KEY_GFX_DST)
 				a->flags |= V4L2_FBUF_FLAG_CHROMAKEY;
 
-		}
+	}
+	if (ovl->manager && ovl->manager->get_manager_info) {
+		ovl->manager->get_manager_info(ovl->manager, &info);
 		if (info.alpha_enabled)
 			a->flags |= V4L2_FBUF_FLAG_LOCAL_ALPHA;
 	}
@@ -2154,9 +2147,8 @@ static int __init omap_vout_setup_video_data(struct omap_vout_device *vout)
 	vfd->ioctl_ops = &vout_ioctl_ops;
 
 	strlcpy(vfd->name, VOUT_NAME, sizeof(vfd->name));
-#ifndef CONFIG_ARCH_OMAP4
-	vfd->vfl_type = VID_TYPE_OVERLAY | VID_TYPE_CHROMAKEY;
-#endif
+	vfd->vfl_type = VFL_TYPE_GRABBER;
+
 	/* need to register for a VID_HARDWARE_* ID in videodev.h */
 	vfd->fops = &omap_vout_fops;
 	mutex_init(&vout->lock);
@@ -2170,14 +2162,18 @@ static int __init omap_vout_setup_video_data(struct omap_vout_device *vout)
 static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 		int vid_num)
 {
-	struct omap2video_device *vid_dev = platform_get_drvdata(pdev);
+	struct v4l2_device *v4l2_dev = platform_get_drvdata(pdev);
+	struct omap2video_device *vid_dev = container_of(v4l2_dev, struct
+			omap2video_device, v4l2_dev);
 	struct omap_vout_device *vout;
-	int i, j, r = 0;
-	int image_width, image_height;
+	int i, r = 0;
 	unsigned numbuffers;
 	struct video_device *vfd;
+#ifndef CONFIG_ARCH_OMAP4 /* TODO: related to rotation */
+	int j;
+	int image_width, image_height;
 	int static_vrfb_allocation = 0, vrfb_num_bufs = 4;
-
+#endif
 	vout = vid_dev->vouts[vid_num];
 	vfd = vout->vfd;
 
@@ -2195,6 +2191,8 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 		}
 	}
 
+#ifndef CONFIG_ARCH_OMAP4
+/*TODO: removal of vrfb for OMAP4 V4L2 testing: to be cleaned.*/
 	for (i = 0; i < 4; i++) {
 
 		if (omap_vrfb_request_ctx(&vout->vrfb_context[i])) {
@@ -2251,12 +2249,13 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 	/* statically allocated the VRFB buffer is done through
 	   commands line aruments */
 	if (static_vrfb_allocation) {
-		if (omap_vout_allocate_vrfb_buffers(vout, vrfb_num_bufs)) {
+		if (omap_vout_allocate_vrfb_buffers(vout, vrfb_num_bufs, -1)) {
 			r =  -ENOMEM;
 			goto free_buffers;
 		}
 		vout->vrfb_static_allocation = 1;
 	}
+#endif
 	return 0;
 
 free_buffers:
@@ -2276,8 +2275,10 @@ static int __init omap_vout_create_video_devices(struct platform_device *pdev)
 	int r = 0, k;
 	struct omap_vout_device *vout;
 	struct video_device *vfd = NULL;
-	struct omap2video_device *vid_dev = platform_get_drvdata(pdev);
+	struct v4l2_device *v4l2_dev = platform_get_drvdata(pdev);
 
+	struct omap2video_device *vid_dev = container_of(v4l2_dev, struct
+			omap2video_device, v4l2_dev);
 	for (k = 0; k < pdev->num_resources; k++) {
 
 		vout = kmalloc(sizeof(struct omap_vout_device), GFP_KERNEL);
@@ -2289,11 +2290,14 @@ static int __init omap_vout_create_video_devices(struct platform_device *pdev)
 
 		memset(vout, 0, sizeof(struct omap_vout_device));
 
-		vout->dev = &pdev->dev;
 		vout->vid = k;
 		vid_dev->vouts[k] = vout;
-		vout->vid_info.vid_dev = vid_dev;
-		vout->vid_info.overlays[0] = vid_dev->overlays[k + 1];
+		vout->vid_dev = vid_dev;
+		if (pdev->num_resources == 1)
+			vout->vid_info.overlays[0] = vid_dev->overlays[k + 2];
+		else
+			/* Else select video1 and video2 one by one. */
+			vout->vid_info.overlays[0] = vid_dev->overlays[k + 1];
 		vout->vid_info.num_overlays = 1;
 		vout->vid_info.id = k + 1;
 		vid_dev->num_videos++;
@@ -2333,7 +2337,9 @@ static int __init omap_vout_create_video_devices(struct platform_device *pdev)
 		else
 			goto success;
 error2:
+#ifndef CONFIG_ARCH_OMAP4
 	omap_vout_release_vrfb(vout);
+#endif
 	omap_vout_free_buffers(vout);
 error1:
 	video_device_release(vfd);
@@ -2353,10 +2359,12 @@ success:
 /* Driver functions */
 static int omap_vout_remove(struct platform_device *pdev)
 {
-
-	struct omap2video_device *vid_dev = platform_get_drvdata(pdev);
+	struct v4l2_device *v4l2_dev = platform_get_drvdata(pdev);
+	struct omap2video_device *vid_dev = container_of(v4l2_dev, struct
+			omap2video_device, v4l2_dev);
 	int k;
 
+	v4l2_device_unregister(v4l2_dev);
 	for (k = 0; k < pdev->num_resources; k++)
 		omap_vout_cleanup_device(vid_dev->vouts[k]);
 
@@ -2376,7 +2384,7 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 	struct omap2video_device *vid_dev = NULL;
 	struct omap_overlay *ovl;
 	struct omap_dss_device *def_display;
-	struct omap_dss_device *display = NULL;
+	struct omap_dss_device *dssdev;
 
 	if (pdev->num_resources == 0) {
 		dev_err(&pdev->dev, "probed for an unknown device\n");
@@ -2390,21 +2398,15 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 		return r;
 	}
 
-	platform_set_drvdata(pdev, vid_dev);
-
 	vid_dev->num_displays = 0;
-	for_each_dss_dev(display) {
-		omap_dss_get_device(display);
-		if (!display) {
-			dev_err(&pdev->dev, "probed for an unknown device\n");
-			r = -EINVAL;
-			goto error0;
-		}
-		vid_dev->displays[vid_dev->num_displays++] = display;
+	dssdev = NULL;
+	for_each_dss_dev(dssdev) {
+		omap_dss_get_device(dssdev);
+		vid_dev->displays[vid_dev->num_displays++] = dssdev;
 	}
 
 	if (vid_dev->num_displays == 0) {
-		dev_err(&pdev->dev, "probed for an unknown device\n");
+		dev_err(&pdev->dev, "no displays\n");
 		r = -EINVAL;
 		goto error0;
 	}
@@ -2425,38 +2427,50 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 		if (ovl->manager && ovl->manager->device) {
 			def_display = ovl->manager->device;
 		} else {
-			dev_err(&pdev->dev, "probed for an unknown device\n");
-			r = -EINVAL;
-			goto error0;
+			dev_warn(&pdev->dev, "cannot find display\n");
+			def_display = NULL;
 		}
-		r = def_display->enable(def_display);
-		if (r) {
+		if (def_display) {
+			r = def_display->enable(def_display);
+			if (r) {
 			/* Here we are not considering a error as display may be
 			enabled by frame buffer driver */
-			printk(KERN_WARNING VOUT_NAME
-					"Display already enabled\n");
-		}
+				dev_warn(&pdev->dev,
+					"'%s' Display already enabled\n",
+					def_display->name);
+			}
 		/* set the update mode */
-		if (def_display->caps & OMAP_DSS_DISPLAY_CAP_MANUAL_UPDATE) {
+			if (def_display->caps &
+				OMAP_DSS_DISPLAY_CAP_MANUAL_UPDATE) {
 #ifdef CONFIG_FB_OMAP2_FORCE_AUTO_UPDATE
-			if (def_display->set_update_mode)
-				def_display->set_update_mode(def_display,
+				if (def_display->set_update_mode)
+					def_display->set_update_mode(
+						def_display,
 						OMAP_DSS_UPDATE_AUTO);
-			if (def_display->enable_te)
-				def_display->enable_te(def_display, 1);
+				if (def_display->enable_te)
+					def_display->enable_te(def_display, 1);
 #else
-			if (def_display->set_update_mode)
-				def_display->set_update_mode(def_display,
+				if (def_display->set_update_mode)
+					def_display->set_update_mode(
+						def_display,
 						OMAP_DSS_UPDATE_MANUAL);
-			if (def_display->enable_te)
-				def_display->enable_te(def_display, 0);
+				if (def_display->enable_te)
+					def_display->enable_te(def_display, 0);
 #endif
-		} else {
-			if (def_display->set_update_mode)
-				def_display->set_update_mode(def_display,
+			} else {
+				if (def_display->set_update_mode)
+					def_display->set_update_mode(
+						def_display,
 						OMAP_DSS_UPDATE_AUTO);
+			}
 		}
-	 }
+	}
+
+	if (v4l2_device_register(&pdev->dev, &vid_dev->v4l2_dev) < 0) {
+		printk(KERN_ERR VOUT_NAME
+			"v4l2_device_register unsuccessful\n");
+		return -ENODEV;
+	}
 
 	r = omap_vout_create_video_devices(pdev);
 	if (r)
@@ -2497,8 +2511,14 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 	struct omap_overlay *ovl;
 	struct omap_dss_device *cur_display;
 
+	printk(KERN_INFO VOUT_NAME
+		"entered vout isr \n");
+
 	if (!vout->streaming)
 		return;
+
+	printk(KERN_INFO VOUT_NAME
+		"starting processing \n");
 
 	ovid = &(vout->vid_info);
 	ovl = ovid->overlays[0];
@@ -2507,8 +2527,15 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 		return;
 	cur_display = ovl->manager->device;
 
+	printk(KERN_INFO VOUT_NAME
+		" isr: before vbq_lock \n");
+
 	spin_lock(&vout->vbq_lock);
 	do_gettimeofday(&timevalue);
+
+	printk(KERN_INFO VOUT_NAME
+		" isr: after spin_lock and gettime \n");
+
 	if (cur_display->type == OMAP_DISPLAY_TYPE_DPI) {
 		if (!(irqstatus & DISPC_IRQ_VSYNC))
 			return;
@@ -2626,15 +2653,17 @@ static void omap_vout_cleanup_device(struct omap_vout_device *vout)
 		}
 	}
 
+#ifndef CONFIG_ARCH_OMAP4
 	omap_vout_release_vrfb(vout);
-
+#endif
 	omap_vout_free_buffers(vout);
+#ifndef CONFIG_ARCH_OMAP4
 	/* Free the VRFB buffer if allocated
 	 * init time
 	 */
 	if (vout->vrfb_static_allocation)
 		omap_vout_free_vrfb_buffers(vout);
-
+#endif
 	kfree(vout);
 }
 
@@ -2653,10 +2682,6 @@ static void omap_vout_cleanup(void)
 {
 	platform_driver_unregister(&omap_vout_driver);
 }
-
-MODULE_AUTHOR("Texas Instruments.");
-MODULE_DESCRIPTION("OMAP Video for Linux Video out driver");
-MODULE_LICENSE("GPL");
 
 late_initcall(omap_vout_init);
 module_exit(omap_vout_cleanup);

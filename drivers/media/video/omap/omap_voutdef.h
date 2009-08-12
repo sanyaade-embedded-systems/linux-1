@@ -22,6 +22,23 @@
 #define RGB_VRFB_BPP    1
 #define MAX_CID			3
 
+#define MAC_VRFB_CTXS  4
+#define MAX_VOUT_DEV   2
+#define MAX_OVLS       3
+#define MAX_DISPLAYS   3
+#define MAX_MANAGERS   3
+
+/* Enum for Rotation
+ * DSS understands rotation in 0, 1, 2, 3 context
+ * while V4L2 driver understands it as 0, 90, 180, 270
+ */
+enum dss_rotation {
+	dss_rotation_0_degree   = 0,
+	dss_rotation_90_degree  = 1,
+	dss_rotation_180_degree = 2,
+	dss_rotation_270_degree = 3,
+};
+
 /*
  * This structure is used to store the DMA transfer parameters
  * for VRFB hidden buffer
@@ -37,33 +54,32 @@ struct vid_vrfb_dma {
 struct omapvideo_info {
 	int id;
 	int num_overlays;
-	struct omap_overlay *overlays[3];
-	struct omap2video_device *vid_dev;
+	struct omap_overlay *overlays[MAX_OVLS];
 };
 
 struct omap2video_device {
-	struct device *dev;
 	struct mutex  mtx;
 
 	int state;
 
+	struct v4l2_device v4l2_dev;
 	int num_videos;
-	struct omap_vout_device *vouts[10];
+	struct omap_vout_device *vouts[MAX_VOUT_DEV];
 
 	int num_displays;
-	struct omap_dss_device *displays[10];
+	struct omap_dss_device *displays[MAX_DISPLAYS];
 	int num_overlays;
-	struct omap_overlay *overlays[10];
+	struct omap_overlay *overlays[MAX_OVLS];
 	int num_managers;
-	struct omap_overlay_manager *managers[10];
+	struct omap_overlay_manager *managers[MAX_MANAGERS];
 };
 
 /* per-device data structure */
 struct omap_vout_device {
 
 	struct omapvideo_info vid_info;
-	struct device *dev;
 	struct video_device *vfd;
+	struct omap2video_device *vid_dev;
 	int vid;
 	int opened;
 
@@ -99,8 +115,8 @@ struct omap_vout_device {
 
 	/* V4L2 control structure for different control id */
 	struct v4l2_control control[MAX_CID];
-	int rotation;
-	int mirror;
+	enum dss_rotation rotation;
+	bool mirror;
 	int flicker_filter;
 	/* V4L2 control structure for different control id */
 
@@ -108,9 +124,9 @@ struct omap_vout_device {
 	int vrfb_bpp; /* bytes per pixel with respect to VRFB */
 
 	struct vid_vrfb_dma vrfb_dma_tx;
-	unsigned int smsshado_phy_addr[4];
-	unsigned int smsshado_virt_addr[4];
-	struct vrfb vrfb_context[4];
+	unsigned int smsshado_phy_addr[MAC_VRFB_CTXS];
+	unsigned int smsshado_virt_addr[MAC_VRFB_CTXS];
+	struct vrfb vrfb_context[MAC_VRFB_CTXS];
 	bool vrfb_static_allocation;
 	unsigned int smsshado_size;
 	unsigned char pos;
@@ -119,7 +135,7 @@ struct omap_vout_device {
 	enum v4l2_memory memory;
 	struct videobuf_buffer *cur_frm, *next_frm;
 	struct list_head dma_queue;
-	u8 *queued_buf_addr[32];
+	u8 *queued_buf_addr[VIDEO_MAX_FRAME];
 	u32 cropped_offset;
 	s32 tv_field1_offset;
 	void *isr_handle;
