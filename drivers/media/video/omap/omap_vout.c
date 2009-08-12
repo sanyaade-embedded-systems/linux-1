@@ -2154,8 +2154,9 @@ static int __init omap_vout_setup_video_data(struct omap_vout_device *vout)
 	vfd->ioctl_ops = &vout_ioctl_ops;
 
 	strlcpy(vfd->name, VOUT_NAME, sizeof(vfd->name));
+#ifndef CONFIG_ARCH_OMAP4
 	vfd->vfl_type = VID_TYPE_OVERLAY | VID_TYPE_CHROMAKEY;
-
+#endif
 	/* need to register for a VID_HARDWARE_* ID in videodev.h */
 	vfd->fops = &omap_vout_fops;
 	mutex_init(&vout->lock);
