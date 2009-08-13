@@ -25,7 +25,7 @@
 #include <mach/board.h>
 
 #include "mmc-twl4030.h"
-
+#include <linux/i2c/twl.h>
 
 #if defined(CONFIG_REGULATOR) && \
 	(defined(CONFIG_MMC_OMAP_HS) || defined(CONFIG_MMC_OMAP_HS_MODULE))
@@ -34,6 +34,7 @@ static u16 control_pbias_offset;
 static u16 control_devconf1_offset;
 
 #define HSMMC_NAME_LEN	9
+#define REG_SIMCTRL	0x09
 
 static struct twl_mmc_controller {
 	struct omap_mmc_platform_data	*mmc;
@@ -50,19 +51,37 @@ static struct twl_mmc_controller {
 
 static int twl_mmc_card_detect(int irq)
 {
-	unsigned i;
+	if (!cpu_is_omap44xx())	{
+		unsigned i;
+		for (i = 0; i < ARRAY_SIZE(hsmmc); i++) {
+			struct omap_mmc_platform_data *mmc;
 
-	for (i = 0; i < ARRAY_SIZE(hsmmc); i++) {
-		struct omap_mmc_platform_data *mmc;
+			mmc = hsmmc[i].mmc;
+			if (!mmc)
+				continue;
+			if (irq != mmc->slots[0].card_detect_irq)
+				continue;
 
-		mmc = hsmmc[i].mmc;
-		if (!mmc)
-			continue;
-		if (irq != mmc->slots[0].card_detect_irq)
-			continue;
-
-		/* NOTE: assumes card detect signal is active-low */
-		return !gpio_get_value_cansleep(mmc->slots[0].switch_pin);
+			/* NOTE: assumes card detect signal is active-low */
+			return !gpio_get_value_cansleep
+					(mmc->slots[0].switch_pin);
+		}
+	} else {
+		/* BIT0 of REG_SIMCTRL
+		 * 0 - Card not present
+		 * 1 - Card present
+		 */
+		u8 read_reg;
+		unsigned res;
+		res = twl_i2c_read_u8(TWL6030_MODULE_PM_MISC,
+					&read_reg, REG_SIMCTRL);
+		if (res < 0) {
+			printk(KERN_ERR"%s: i2c_read fail at %x \n",
+						__func__, REG_SIMCTRL);
+			return -1;
+		} else {
+			return !(read_reg & 0x01);
+		}
 	}
 	return -ENOSYS;
 }
@@ -375,31 +394,50 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 		mmc->dma_mask = 0xffffffff;
 		mmc->init = twl_mmc_late_init;
 
-		/* note: twl4030 card detect GPIOs can disable VMMCx ... */
-		if (gpio_is_valid(c->gpio_cd)) {
+		if (!cpu_is_omap44xx()) {
+			/* note: twl4030 card detect GPIOs can disable
+			 * VMMCx ...
+			 */
+			if (gpio_is_valid(c->gpio_cd)) {
+				mmc->cleanup = twl_mmc_cleanup;
+				mmc->suspend = twl_mmc_suspend;
+				mmc->resume = twl_mmc_resume;
+
+				mmc->slots[0].switch_pin = c->gpio_cd;
+				mmc->slots[0].card_detect_irq =
+							gpio_to_irq(c->gpio_cd);
+				if (c->cover_only)
+					mmc->slots[0].get_cover_state =
+							twl_mmc_get_cover_state;
+				else
+					mmc->slots[0].card_detect =
+							twl_mmc_card_detect;
+			} else
+				mmc->slots[0].switch_pin = -EINVAL;
+
+			/* write protect normally uses an OMAP gpio */
+			if (gpio_is_valid(c->gpio_wp)) {
+				gpio_request(c->gpio_wp, "mmc_wp");
+				gpio_direction_input(c->gpio_wp);
+
+				mmc->slots[0].gpio_wp = c->gpio_wp;
+				mmc->slots[0].get_ro = twl_mmc_get_ro;
+			} else
+				mmc->slots[0].gpio_wp = -EINVAL;
+		} else {
+			/* Dummy Initialization for OMAP4 */
+			mmc->init = twl_mmc_late_init;
 			mmc->cleanup = twl_mmc_cleanup;
 			mmc->suspend = twl_mmc_suspend;
 			mmc->resume = twl_mmc_resume;
-
+			mmc->slots[0].switch_pin = NULL;
+			mmc->slots[0].get_cover_state = NULL;
 			mmc->slots[0].switch_pin = c->gpio_cd;
-			mmc->slots[0].card_detect_irq = gpio_to_irq(c->gpio_cd);
-			if (c->cover_only)
-				mmc->slots[0].get_cover_state = twl_mmc_get_cover_state;
-			else
-				mmc->slots[0].card_detect = twl_mmc_card_detect;
-		} else
-			mmc->slots[0].switch_pin = -EINVAL;
-
-		/* write protect normally uses an OMAP gpio */
-		if (gpio_is_valid(c->gpio_wp)) {
-			gpio_request(c->gpio_wp, "mmc_wp");
-			gpio_direction_input(c->gpio_wp);
-
-			mmc->slots[0].gpio_wp = c->gpio_wp;
-			mmc->slots[0].get_ro = twl_mmc_get_ro;
-		} else
-			mmc->slots[0].gpio_wp = -EINVAL;
-
+			mmc->slots[0].card_detect_irq = 373;
+			mmc->slots[0].card_detect = twl_mmc_card_detect;
+			mmc->slots[0].gpio_wp = NULL;
+			mmc->slots[0].get_ro = NULL;
+		}
 		/* NOTE:  MMC slots should have a Vcc regulator set up.
 		 * This may be from a TWL4030-family chip, another
 		 * controllable regulator, or a fixed supply.
