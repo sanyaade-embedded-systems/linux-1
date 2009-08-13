@@ -77,12 +77,29 @@
 #define TWL6030_MCLK_38400KHZ		(3 << 5)
 #define TWL6030_MCLK_MSK		0x60
 
+#define TWL6030_SYSCLK_SEL_LPPLL	1
+#define TWL6030_SYSCLK_SEL_HPPLL	2
+#define TWL6030_SYSCLK_SEL_MCLK		3
+
 /* LPPLLCTL (0x08) fields */
 
 #define TWL6030_LPLLENA			0x01
 #define TWL6030_LPLLRST			0x02
 #define TWL6030_LPLLSEL			0x04
-#define TWL6030_FIN			0x08
+#define TWL6030_LPLLFIN			0x08
 #define TWL6030_HPLLSEL			0x10
+
+#define TWL6030_HPPLL_ID		1
+#define TWL6030_LPPLL_ID		2
+
+/* HSLCTL (0x10) fields */
+
+#define TWL6030_HSDACMODEL		0x02
+#define TWL6030_HSDRVMODEL		0x08
+
+/* HSRCTL (0x11) fields */
+
+#define TWL6030_HSDACMODER		0x02
+#define TWL6030_HSDRVMODER		0x08
 
 #endif /* End of __TWL6030_H__ */
