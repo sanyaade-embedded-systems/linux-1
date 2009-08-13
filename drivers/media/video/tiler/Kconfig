@@ -8,7 +8,7 @@ if dmm_tiler
 
 config DMM_TILER
         tristate "dmm_tiler"
-        default m
+        default y
         help
            dmm tiler driver
 endif
