@@ -6,7 +6,7 @@ config SND_OMAP_SOC_MCBSP
 	tristate
 	select OMAP_MCBSP
 
-config SND_OMAP_SOC_MCPDM
+config SND_OMAP_SOC_ABE
 	tristate
 
 config SND_OMAP_SOC_N810
