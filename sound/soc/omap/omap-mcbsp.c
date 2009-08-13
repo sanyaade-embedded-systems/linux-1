@@ -238,6 +238,10 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 		substream->stream ? "Audio Capture" : "Audio Playback";
 	omap_mcbsp_dai_dma_params[id][substream->stream].dma_req = dma;
 	omap_mcbsp_dai_dma_params[id][substream->stream].port_addr = port;
+	omap_mcbsp_dai_dma_params[id][substream->stream].data_type =
+							OMAP_DMA_DATA_TYPE_S16;
+	omap_mcbsp_dai_dma_params[id][substream->stream].sync_mode =
+							OMAP_DMA_SYNC_ELEMENT;
 	cpu_dai->dma_data = &omap_mcbsp_dai_dma_params[id][substream->stream];
 
 	if (mcbsp_data->configured) {
