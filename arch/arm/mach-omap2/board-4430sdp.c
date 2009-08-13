@@ -34,6 +34,7 @@
 #include <mach/timer-gp.h>
 #include <asm/hardware/gic.h>
 #include <linux/i2c/twl.h>
+#include "mmc-twl4030.h"
 #include <linux/regulator/machine.h>
 
 #define OMAP4_KBDOCP_BASE               0x4A31C000
@@ -175,6 +176,35 @@ static struct spi_board_info sdp4430_spi_board_info[] __initdata = {
 #endif
 };
 
+static struct twl4030_hsmmc_info mmc[] = {
+	{
+		.mmc            = 1,
+		/* 8 bits (default) requires S6.3 == ON,
+		 * so the SIM card isn't used; else 4 bits.
+		 */
+		.wires          = 8,
+		.gpio_wp        = 4,
+	},
+	{}	/* Terminator */
+};
+
+static struct regulator_consumer_supply sdp4430_vmmc_supply = {
+	.supply                 = "vmmc",
+};
+
+static int __init sdp4430_mmc_init(void)
+{
+	/* Hard Coding Values for testing */
+	printk(KERN_INFO"sdp4430_mmc_init\n");
+	mmc[0].gpio_cd = 373;
+	twl4030_mmc_init(mmc);
+	/* link regulators to MMC adapters ... we "know" the
+	 * regulators will be set up only *after* we return.
+	 */
+	sdp4430_vmmc_supply.dev = mmc[0].dev;
+	return 0;
+}
+
 static void __init omap_4430sdp_init_irq(void)
 {
 	omap2_init_common_hw(NULL, NULL);
@@ -236,6 +266,8 @@ static struct regulator_init_data sdp4430_vmmc = {
 					| REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
+	.num_consumer_supplies  = 1,
+	.consumer_supplies      = &sdp4430_vmmc_supply,
 };
 
 static struct regulator_init_data sdp4430_vpp = {
@@ -390,6 +422,7 @@ static void __init omap_4430sdp_init(void)
 	spi_register_board_info(sdp4430_spi_board_info,
 				ARRAY_SIZE(sdp4430_spi_board_info));
 	omap_mcbsp_init();
+	sdp4430_mmc_init();
 	omap_kp_init();
 	omap_phoenix_init();
 
