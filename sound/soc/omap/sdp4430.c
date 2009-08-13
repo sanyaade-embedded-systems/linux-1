@@ -42,15 +42,41 @@
 static struct snd_soc_card snd_soc_sdp4430;
 
 static int sdp4430_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+			struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->dai->codec_dai;
+	int rate, clk_id, pll_id, freq_in, freq_out;
 	int ret;
 
+	rate = params_rate(params);
+	switch (rate) {
+	case 44100:
+		clk_id = TWL6030_SYSCLK_SEL_LPPLL;
+		pll_id = TWL6030_LPPLL_ID;
+		freq_in = 32768;
+		freq_out = 17640000;
+		break;
+	case 48000:
+		clk_id = TWL6030_SYSCLK_SEL_HPPLL;
+		pll_id = TWL6030_HPPLL_ID;
+		freq_in = 12000000;
+		freq_out = 19200000;
+		break;
+	default:
+		printk(KERN_ERR "unknown rate %d\n", rate);
+		return -EINVAL;
+	}
+
+	/* Set the codec pll divider */
+	ret = snd_soc_dai_set_pll(codec_dai, pll_id, freq_in, freq_out);
+	if (ret < 0) {
+		printk(KERN_ERR "can't set codec pll frequency\n");
+		return ret;
+	}
+
 	/* Set the codec system clock for DAC and ADC */
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 12000000,
-					    SND_SOC_CLOCK_IN);
+	ret = snd_soc_dai_set_sysclk(codec_dai, clk_id, freq_in, SND_SOC_CLOCK_IN);
 	if (ret < 0) {
 		printk(KERN_ERR "can't set codec system clock\n");
 		return ret;
