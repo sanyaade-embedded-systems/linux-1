@@ -29,6 +29,9 @@ struct omap_pcm_dma_data {
 	char		*name;		/* stream identifier */
 	int		dma_req;	/* DMA request line */
 	unsigned long	port_addr;	/* transmit/receive register */
+	int		data_type;	/* data type 8,16,32 */
+	int		sync_mode;	/* sync mode: element, packet */
+	int		packet_size;	/* packet size only in PACKET mode */
 };
 
 extern struct snd_soc_platform omap_soc_platform;
