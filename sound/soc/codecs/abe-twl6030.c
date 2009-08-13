@@ -44,6 +44,7 @@
 
 /* codec private data */
 struct twl6030_priv_data {
+	int codec_powered;
 	unsigned int sysclk;
 };
 
@@ -55,7 +56,7 @@ static const u8 twl6030_reg[TWL6030_CACHEREGNUM] = {
 	0x4B, /* TWL6030_ASICID (ro)	0x01	*/
 	0x00, /* TWL6030_ASICREV (ro)	0x02	*/
 	0x00, /* TWL6030_INTID		0x03	*/
-	0x41, /* TWL6030_INTMR		0x04	*/
+	0x00, /* TWL6030_INTMR		0x04	*/
 	0x00, /* TWL6030_NCPCTRL	0x05	*/
 	0x00, /* TWL6030_LDOCTL		0x06	*/
 	0x00, /* TWL6030_HPPLLCTL	0x07	*/
@@ -128,6 +129,23 @@ static inline void twl6030_write_reg_cache(struct snd_soc_codec *codec,
 }
 
 /*
+ * read from twl6030 hardware register
+ */
+static int twl6030_read(struct snd_soc_codec *codec,
+			unsigned int reg)
+{
+	u8 value;
+
+	if (reg > TWL6030_CACHEREGNUM)
+		return -EIO;
+
+	twl_i2c_read_u8(TWL6030_MODULE_AUDIO, &value, reg);
+	twl6030_write_reg_cache(codec, reg, value);
+
+	return value;
+}
+
+/*
  * write to the twl6030 register space
  */
 static int twl6030_write(struct snd_soc_codec *codec,
@@ -165,27 +183,89 @@ static void twl6030_init_chip(struct snd_soc_codec *codec)
 static void twl6030_power_up(struct snd_soc_codec *codec)
 {
 	struct snd_soc_device *socdev = codec->socdev;
+	struct twl6030_priv_data *priv = codec->private_data;
 	struct twl6030_setup_data *setup = socdev->codec_data;
+
+	if (priv->codec_powered)
+		return;
 
 	setup->codec_enable(1);
 
+	/* wait for ready interrupt */
+	wait_for_completion(&setup->ready_completion);
+
 	/* sync registers updated during power-up sequence */
-	twl6030_write_reg_cache(codec, TWL6030_REG_NCPCTL, 0x81);
-	twl6030_write_reg_cache(codec, TWL6030_REG_LDOCTL, 0x45);
-	twl6030_write_reg_cache(codec, TWL6030_REG_LPPLLCTL, 0x01);
+	twl6030_read(codec, TWL6030_REG_NCPCTL);
+	twl6030_read(codec, TWL6030_REG_LDOCTL);
+	twl6030_read(codec, TWL6030_REG_LPPLLCTL);
 }
 
 static void twl6030_power_down(struct snd_soc_codec *codec)
 {
 	struct snd_soc_device *socdev = codec->socdev;
+	struct twl6030_priv_data *priv = codec->private_data;
 	struct twl6030_setup_data *setup = socdev->codec_data;
 
 	setup->codec_enable(0);
+	udelay(500);
 
 	/* sync registers updated during power-down sequence */
-	twl6030_write_reg_cache(codec, TWL6030_REG_NCPCTL, 0x00);
-	twl6030_write_reg_cache(codec, TWL6030_REG_LDOCTL, 0x00);
-	twl6030_write_reg_cache(codec, TWL6030_REG_LPPLLCTL, 0x00);
+	twl6030_read(codec, TWL6030_REG_NCPCTL);
+	twl6030_read(codec, TWL6030_REG_LDOCTL);
+	twl6030_read(codec, TWL6030_REG_LPPLLCTL);
+
+	priv->codec_powered = 0;
+}
+
+/* audio interrupt handler */
+irqreturn_t twl6030_naudint_handler(int irq, void *data)
+{
+	struct twl6030_setup_data *setup = data;
+
+	schedule_work(&setup->audint_work);
+
+	/* disable audint irq to let workqueue to execute */
+	disable_irq_nosync(irq);
+
+	return IRQ_HANDLED;
+}
+
+void twl6030_naudint_work(struct work_struct *work)
+{
+	struct snd_soc_codec *codec;
+	struct twl6030_setup_data *setup;
+	struct twl6030_priv_data *priv;
+	u8 intid;
+
+	setup = container_of(work, struct twl6030_setup_data, audint_work);
+	codec = setup->codec;
+	priv = codec->private_data;
+
+	twl_i2c_read_u8(TWL6030_MODULE_AUDIO, &intid, TWL6030_REG_INTID);
+
+	switch (intid) {
+	case TWL6030_THINT:
+		dev_alert(codec->dev, "die temperature over-limit detection\n");
+		break;
+	case TWL6030_PLUGINT:
+	case TWL6030_UNPLUGINT:
+	case TWL6030_HOOKINT:
+		break;
+	case TWL6030_HFINT:
+		dev_alert(codec->dev, "hf drivers over current detection\n");
+		break;
+	case TWL6030_VIBINT:
+		dev_alert(codec->dev, "vib drivers over current detection\n");
+		break;
+	case TWL6030_READYINT:
+		priv->codec_powered = 1;
+		complete(&setup->ready_completion);
+		break;
+	default:
+		dev_err(codec->dev, "unknown twl6030 audio interrupt\n");
+	}
+
+	enable_irq(setup->irq);
 }
 
 /* set headset dac and driver power mode */
@@ -766,6 +846,7 @@ static int abe_twl6030_resume(struct platform_device *pdev)
 static int abe_twl6030_init(struct snd_soc_device *socdev)
 {
 	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6030_setup_data *setup = socdev->codec_data;
 	int ret = 0;
 
 	dev_info(codec->dev, "ABE-TWL6030 Audio Codec init\n");
@@ -789,6 +870,14 @@ static int abe_twl6030_init(struct snd_soc_device *socdev)
 		dev_err(codec->dev, "failed to create pcms\n");
 		goto pcm_err;
 	}
+
+	/* platform setup data is required for power-off/off the device */
+	if (setup == NULL) {
+		dev_err(codec->dev, "platform setup data missing\n");
+		goto pcm_err;
+	}
+
+	setup->codec = codec;
 
 	/* power on device */
 	abe_twl6030_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
