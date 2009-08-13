@@ -25,11 +25,19 @@
 
 #define OMAP24XX_NR_MMC		2
 #define OMAP34XX_NR_MMC		3
+#define OMAP44XX_NR_MMC		5
 #define OMAP2420_MMC_SIZE	OMAP1_MMC_SIZE
 #define HSMMC_SIZE		0x200
 #define OMAP2_MMC1_BASE		0x4809c000
 #define OMAP2_MMC2_BASE		0x480b4000
 #define OMAP3_MMC3_BASE		0x480ad000
+#define OMAP4_MMC1_BASE		0x4809c100
+#define OMAP4_MMC2_BASE		0x480b4100
+#define OMAP4_MMC3_BASE		0x480ad100
+#define OMAP4_MMC4_BASE         0x480d1100
+#define OMAP4_MMC5_BASE         0x480d5100
+#define HSMMC5                  (1 << 4)
+#define HSMMC4                  (1 << 3)
 #define HSMMC3			(1 << 2)
 #define HSMMC2			(1 << 1)
 #define HSMMC1			(1 << 0)

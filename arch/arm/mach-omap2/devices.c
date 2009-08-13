@@ -399,7 +399,7 @@ static inline void omap_init_sha1_md5(void) { }
 
 /*-------------------------------------------------------------------------*/
 
-#ifdef CONFIG_ARCH_OMAP3
+#if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
 
 #define MMCHS_SYSCONFIG			0x0010
 #define MMCHS_SYSCONFIG_SWRESET		(1 << 1)
@@ -426,8 +426,8 @@ static struct platform_device dummy_pdev = {
  **/
 static void __init omap_hsmmc_reset(void)
 {
-	u32 i, nr_controllers = cpu_is_omap34xx() ? OMAP34XX_NR_MMC :
-		OMAP24XX_NR_MMC;
+	u32 i, nr_controllers = cpu_is_omap44xx() ? OMAP44XX_NR_MMC :
+		(cpu_is_omap34xx() ? OMAP34XX_NR_MMC : OMAP24XX_NR_MMC);
 
 	for (i = 0; i < nr_controllers; i++) {
 		u32 v, base = 0;
@@ -436,13 +436,32 @@ static void __init omap_hsmmc_reset(void)
 
 		switch (i) {
 		case 0:
-			base = OMAP2_MMC1_BASE;
+			if (!cpu_is_omap44xx())
+				base = OMAP2_MMC1_BASE;
+			else
+				base = OMAP4_MMC1_BASE;
 			break;
 		case 1:
-			base = OMAP2_MMC2_BASE;
+			if (!cpu_is_omap44xx())
+				base = OMAP2_MMC2_BASE;
+			else
+				base = OMAP4_MMC2_BASE;
 			break;
 		case 2:
-			base = OMAP3_MMC3_BASE;
+			if (!cpu_is_omap44xx())
+				base = OMAP3_MMC3_BASE;
+			else
+				base = OMAP4_MMC3_BASE;
+			break;
+		case 3:
+			if (!cpu_is_omap44xx())
+				return;
+			base = OMAP4_MMC4_BASE;
+			break;
+		case 4:
+			if (!cpu_is_omap44xx())
+				return;
+			base = OMAP4_MMC5_BASE;
 			break;
 		}
 
@@ -515,6 +534,63 @@ static inline void omap2_mmc_mux(struct omap_mmc_platform_data *mmc_controller,
 			omap_ctrl_writel(v, OMAP2_CONTROL_DEVCONF0);
 		}
 	}
+	if (cpu_is_omap44xx()) {
+		switch (controller_nr) {
+		case 0:
+			/* MMCC1 MUX configure */
+			omap_cfg_reg(A1_4430_MMC1_CLK);
+			omap_cfg_reg(C1_4430_MMC1_CMD);
+			omap_cfg_reg(D0_4430_MMC1_DAT0);
+			omap_cfg_reg(D1_4430_MMC1_DAT1);
+			omap_cfg_reg(D2_4430_MMC1_DAT2);
+			omap_cfg_reg(D3_4430_MMC1_DAT3);
+			omap_cfg_reg(D4_4430_MMC1_DAT4);
+			omap_cfg_reg(D5_4430_MMC1_DAT5);
+			omap_cfg_reg(D6_4430_MMC1_DAT6);
+			omap_cfg_reg(D7_4430_MMC1_DAT7);
+			break;
+		case 1:
+			/*MMC2 MUX configure */
+			omap_cfg_reg(A1_4430_MMC2_CLK);
+			omap_cfg_reg(C1_4430_MMC2_CMD);
+			omap_cfg_reg(D0_4430_MMC2_DAT0);
+			omap_cfg_reg(D1_4430_MMC2_DAT1);
+			omap_cfg_reg(D2_4430_MMC2_DAT2);
+			omap_cfg_reg(D3_4430_MMC2_DAT3);
+			omap_cfg_reg(D4_4430_MMC2_DAT4);
+			omap_cfg_reg(D5_4430_MMC2_DAT5);
+			omap_cfg_reg(D6_4430_MMC2_DAT6);
+			omap_cfg_reg(D7_4430_MMC2_DAT7);
+			break;
+		case 2:
+			/*MMC3 MUX configure */
+			omap_cfg_reg(A1_4430_MMC3_CLK);
+			omap_cfg_reg(C1_4430_MMC3_CMD);
+			omap_cfg_reg(D0_4430_MMC3_DAT0);
+			omap_cfg_reg(D1_4430_MMC3_DAT1);
+			omap_cfg_reg(D2_4430_MMC3_DAT2);
+			omap_cfg_reg(D3_4430_MMC3_DAT3);
+			break;
+		case 3:
+			/*MMC4 MUX configure */
+			omap_cfg_reg(A1_4430_MMC4_CLK);
+			omap_cfg_reg(C1_4430_MMC4_CMD);
+			omap_cfg_reg(D0_4430_MMC4_DAT0);
+			omap_cfg_reg(D1_4430_MMC4_DAT1);
+			omap_cfg_reg(D2_4430_MMC4_DAT2);
+			omap_cfg_reg(D3_4430_MMC4_DAT3);
+			break;
+		case 4:
+			/*MMC5 MUX configure */
+			omap_cfg_reg(A1_4430_MMC5_CLK);
+			omap_cfg_reg(C1_4430_MMC5_CMD);
+			omap_cfg_reg(D0_4430_MMC5_DAT0);
+			omap_cfg_reg(D1_4430_MMC5_DAT1);
+			omap_cfg_reg(D2_4430_MMC5_DAT2);
+			omap_cfg_reg(D3_4430_MMC2_DAT3);
+			break;
+		}
+	}
 }
 
 void __init omap2_init_mmc(struct omap_mmc_platform_data **mmc_data,
@@ -534,18 +610,45 @@ void __init omap2_init_mmc(struct omap_mmc_platform_data **mmc_data,
 
 		switch (i) {
 		case 0:
-			base = OMAP2_MMC1_BASE;
-			irq = INT_24XX_MMC_IRQ;
+			if (!cpu_is_omap44xx()) {
+				base = OMAP2_MMC1_BASE;
+				irq = INT_24XX_MMC_IRQ;
+			} else {
+				base = OMAP4_MMC1_BASE;
+				irq = INT_44XX_MMC_IRQ;
+			}
 			break;
 		case 1:
-			base = OMAP2_MMC2_BASE;
-			irq = INT_24XX_MMC2_IRQ;
+			if (!cpu_is_omap44xx()) {
+				base = OMAP2_MMC2_BASE;
+				irq = INT_24XX_MMC2_IRQ;
+			} else {
+				base = OMAP4_MMC2_BASE;
+				irq = INT_44XX_MMC2_IRQ;
+			}
 			break;
 		case 2:
-			if (!cpu_is_omap34xx())
+			if (!cpu_is_omap34xx() || !cpu_is_omap44xx())
 				return;
-			base = OMAP3_MMC3_BASE;
-			irq = INT_34XX_MMC3_IRQ;
+			if (!cpu_is_omap44xx()) {
+				base = OMAP3_MMC3_BASE;
+				irq = INT_34XX_MMC3_IRQ;
+			} else {
+				base = OMAP4_MMC3_BASE;
+				irq = INT_44XX_MMC3_IRQ;
+			}
+			break;
+		case 3:
+			if (!cpu_is_omap44xx())
+				return;
+			base = OMAP4_MMC4_BASE;
+			irq = INT_44XX_MMC4_IRQ;
+			break;
+		case 4:
+			if (!cpu_is_omap44xx())
+				return;
+			base = OMAP4_MMC5_BASE;
+			irq = INT_44XX_MMC5_IRQ;
 			break;
 		default:
 			continue;

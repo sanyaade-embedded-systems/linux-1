@@ -335,6 +335,7 @@
 #define OMAP44XX_DMA_UART4_DMA_TX      55      /* S_DMA_54 */
 #define OMAP44XX_DMA_UART4_DMA_RX      56      /* S_DMA_55 */
 #define OMAP44XX_DMA_MMC4_DMA_TX       57      /* S_DMA_56 */
+#define OMAP44XX_DMA_MMC4_DMA_RX       58      /* S_DMA_57 */
 #define OMAP44XX_DMA_MMC5_DMA_TX       59      /* S_DMA_58 */
 #define OMAP44XX_DMA_MMC5_DMA_RX       60      /* S_DMA_59 */
 #define OMAP44XX_DMA_MCPDM_UP          65      /* S_DMA_64 */
