@@ -1,10 +1,7 @@
 /*
- * omap-pcm.h
+ * ALSA SoC ABE-TWL6030 codec driver
  *
- * Copyright (C) 2008 Nokia Corporation
- *
- * Contact: Jarkko Nikula <jhnikula@gmail.com>
- *          Peter Ujfalusi <peter.ujfalusi@nokia.com>
+ * Author:      Misael Lopez Cruz <x0052729@ti.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,18 +19,21 @@
  *
  */
 
-#ifndef __OMAP_PCM_H__
-#define __OMAP_PCM_H__
+#ifndef __ABE_TWL6030_H__
+#define __ABE_TWL6030_H__
 
-struct omap_pcm_dma_data {
-	char		*name;		/* stream identifier */
-	int		dma_req;	/* DMA request line */
-	unsigned long	port_addr;	/* transmit/receive register */
-	int		data_type;	/* data type 8,16,32 */
-	int		sync_mode;	/* sync mode: element, packet */
-	int		packet_size;	/* packet size only in PACKET mode */
+extern struct snd_soc_dai abe_dai[];
+extern struct snd_soc_codec_device soc_codec_dev_abe_twl6030;
+
+irqreturn_t twl6030_naudint_handler(int irq, void *data);
+void twl6030_naudint_work(struct work_struct *work);
+
+struct twl6030_setup_data {
+	void (*codec_enable)(int enable);
+	int irq;
+	struct work_struct audint_work;
+	struct completion ready_completion;
+	struct snd_soc_codec *codec;
 };
 
-extern struct snd_soc_platform omap_soc_platform;
-
-#endif
+#endif /* End of __ABE_TWL6030_H__ */
