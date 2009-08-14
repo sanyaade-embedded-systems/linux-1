@@ -97,6 +97,16 @@ static struct plat_serial8250_port serial_platform_data[] = {
 		.regshift	= 2,
 		.uartclk	= OMAP24XX_BASE_BAUD * 16,
 	}, {
+#ifdef CONFIG_ARCH_OMAP4
+		.membase	= IO_ADDRESS(OMAP_UART4_BASE),
+		.mapbase	= OMAP_UART4_BASE,
+		.irq		= 70,
+		.flags		= UPF_BOOT_AUTOCONF,
+		.iotype		= UPIO_MEM,
+		.regshift	= 2,
+		.uartclk	= OMAP24XX_BASE_BAUD * 16,
+	}, {
+#endif
 		.flags		= 0
 	}
 };
@@ -197,11 +207,16 @@ static inline void omap_uart_enable_clocks(struct omap_uart_state *uart)
 {
 	if (uart->clocked)
 		return;
-
-	clk_enable(uart->ick);
-	clk_enable(uart->fck);
-	uart->clocked = 1;
-	omap_uart_restore_context(uart);
+	/*
+	 * FIX-ME: Replace with correct clk node when clk
+	 * framework is available
+	 */
+	if (!cpu_is_omap44xx()) {
+		clk_enable(uart->ick);
+		clk_enable(uart->fck);
+		uart->clocked = 1;
+		omap_uart_restore_context(uart);
+	}
 }
 
 #ifdef CONFIG_PM
@@ -511,23 +526,30 @@ void __init omap_serial_init(void)
 			continue;
 		}
 
-		sprintf(name, "uart%d_ick", i+1);
-		uart->ick = clk_get(NULL, name);
-		if (IS_ERR(uart->ick)) {
-			printk(KERN_ERR "Could not get uart%d_ick\n", i+1);
-			uart->ick = NULL;
+		/*
+		 * FIX-ME: Replace with correct clk node when clk
+		 * framework is available
+		 */
+		if (!cpu_is_omap44xx()) {
+			sprintf(name, "uart%d_ick", i+1);
+			uart->ick = clk_get(NULL, name);
+			if (IS_ERR(uart->ick)) {
+				printk(KERN_ERR "Could not get uart%d_ick\n", \
+							 i+1);
+				uart->ick = NULL;
+			}
+
+			sprintf(name, "uart%d_fck", i+1);
+			uart->fck = clk_get(NULL, name);
+			if (IS_ERR(uart->fck)) {
+				printk(KERN_ERR "Could not get uart%d_fck\n", \
+							i+1);
+				uart->fck = NULL;
+			}
+
+			if (!uart->ick || !uart->fck)
+				continue;
 		}
-
-		sprintf(name, "uart%d_fck", i+1);
-		uart->fck = clk_get(NULL, name);
-		if (IS_ERR(uart->fck)) {
-			printk(KERN_ERR "Could not get uart%d_fck\n", i+1);
-			uart->fck = NULL;
-		}
-
-		if (!uart->ick || !uart->fck)
-			continue;
-
 		uart->num = i;
 		p->private_data = uart;
 		uart->p = p;
