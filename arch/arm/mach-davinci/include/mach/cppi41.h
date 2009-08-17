@@ -188,6 +188,12 @@
 #define DMA_SCHED_TABLE_WORD_REG(n)	((n) << 2)
 
 /*
+ * CPPI 4.1 configuration data
+ */
+#define USB_CPPI41_QMGR_REG0_MAX_SIZE		0x10000
+#define USB_CPPI41_QMGR_REG0_ALLOC_SIZE		0x3fff
+
+/*
  * CPPI 4.1 Host Packet Descriptor
  */
 struct cppi41_host_pkt_desc {
@@ -483,6 +489,12 @@ struct cppi41_queue_obj {
 };
 
 /**
+ * cppi41_deinit - CPPI 4.1 dma module de-initialization.
+ * returns none
+ */
+void cppi41_deinit(void);
+
+/**
  * cppi41_queue_mgr_init - CPPI 4.1 queue manager initialization.
  * @q_mgr:	the queue manager to initialize
  * @rgn0_base:	linking RAM region 0 physical address
@@ -491,6 +503,15 @@ struct cppi41_queue_obj {
  * Returns 0 on success, error otherwise.
  */
 int cppi41_queue_mgr_init(u8 q_mgr, dma_addr_t rgn0_base, u16 rgn0_size);
+
+/**
+ * cppi41_queue_mgr_deinit - CPPI 4.1 queue manager de-initialization.
+ * @q_mgr:      the queue manager number to de-initialize
+ *
+ * Returns None.
+ */
+void cppi41_queue_mgr_deinit(u8 q_mgr);
+
 
 /*
  * CPPI 4.1 Queue Manager Memory Region Allocation and De-allocation APIs.
@@ -538,6 +559,16 @@ int cppi41_mem_rgn_free(u8 q_mgr, u8 mem_rgn);
  */
 int __init cppi41_dma_block_init(u8 dma_num, u8 q_mgr, u8 num_order,
 				 u8 *sched_tbl, u8 tbl_size);
+
+/**
+ * cppi41_dma_block_deinit - CPPI 4.1 DMA block de-initialization.
+ * @dma_num:    number of the DMA block
+ * @q_mgr:      the queue manager in which to allocate the free teardown
+ *              descriptor queue
+ *
+ * Returns none.
+ */
+void cppi41_dma_block_deinit(u8 dma_num, u8 q_mgr);
 
 /*
  * CPPI 4.1 DMA Channel Management APIs

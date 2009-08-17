@@ -525,6 +525,7 @@ EXPORT_SYMBOL(cppi41_dma_block);
 /* Queues 0 to 27 are pre-assigned, others are spare */
 static const u32 assigned_queues[] = { 0x0fffffff, 0 };
 
+
 /* Queue manager information */
 struct cppi41_queue_mgr cppi41_queue_mgr[CPPI41_NUM_QUEUE_MGR] = {
 	[0] = {
@@ -555,24 +556,52 @@ u8 dma_sched_table[] = {
 int __init cppi41_init(void)
 {
 	u16 numch, order;
+	u8 q_mgr, dma_num = 0;
 
-	/* Allocate memory for region 0 */
-	cppi41_queue_mgr[0].ptr_rgn0 = dma_alloc_coherent(NULL, 0x10000,
-						&cppi41_queue_mgr[0].
+	for (q_mgr = 0; q_mgr < CPPI41_NUM_QUEUE_MGR; ++q_mgr) {
+		/* Allocate memory for region 0 */
+		cppi41_queue_mgr[q_mgr].ptr_rgn0 = dma_alloc_coherent(NULL,
+						USB_CPPI41_QMGR_REG0_MAX_SIZE,
+						&cppi41_queue_mgr[q_mgr].
 						phys_ptr_rgn0,
 						GFP_KERNEL | GFP_DMA);
-	/* Initialize Queue Manager 0, alloc for region 0 */
-	cppi41_queue_mgr_init(0, cppi41_queue_mgr[0].phys_ptr_rgn0, 0x3fff);
+		/* Initialize Queue Manager 0, alloc for region 0 */
+		cppi41_queue_mgr_init(q_mgr,
+			cppi41_queue_mgr[q_mgr].phys_ptr_rgn0,
+			USB_CPPI41_QMGR_REG0_ALLOC_SIZE);
 
-	numch =  USB_CPPI41_NUM_CH * 2;
-	order = get_count_order(numch);
+		numch =  USB_CPPI41_NUM_CH * 2;
+		order = get_count_order(numch);
 
-	if (order < 5)
-		order = 5;
+		if (order < 5)
+			order = 5;
 
-	cppi41_dma_block_init(0, 0, order, dma_sched_table, numch);
-
+		cppi41_dma_block_init(dma_num, q_mgr, order,
+			dma_sched_table, numch);
+	}
 	return 0;
 }
 EXPORT_SYMBOL(cppi41_init);
+
+void cppi41_deinit(void)
+{
+	u8 q_mgr = 0, dma_block = 0;
+
+	for (q_mgr = 0; q_mgr < CPPI41_NUM_QUEUE_MGR; ++q_mgr) {
+		/* deinit dma block */
+		cppi41_dma_block_deinit(dma_block, q_mgr);
+
+		/* deinit queue manager */
+		cppi41_queue_mgr_deinit(q_mgr);
+
+		/* free the allocated region0 memory */
+		dma_free_coherent(NULL, USB_CPPI41_QMGR_REG0_MAX_SIZE,
+			cppi41_queue_mgr[q_mgr].ptr_rgn0,
+			cppi41_queue_mgr[q_mgr].phys_ptr_rgn0);
+
+		cppi41_queue_mgr[q_mgr].phys_ptr_rgn0 = 0;
+		cppi41_queue_mgr[q_mgr].ptr_rgn0 = 0;
+	}
+}
+EXPORT_SYMBOL(cppi41_deinit);
 #endif
