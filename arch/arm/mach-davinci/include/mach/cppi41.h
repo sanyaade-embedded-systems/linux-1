@@ -288,6 +288,8 @@ struct cppi41_teardown_desc {
 /* CPPI 4.1 configuration for DA8xx */
 #define CPPI41_NUM_QUEUE_MGR		1	/* 4  max */
 #define CPPI41_NUM_DMA_BLOCK		4	/* 64 max */
+#define CPPI41_DMACH_TX_DIR		1
+#define CPPI41_DMACH_RX_DIR		0
 
 /**
  * struct cppi41_queue - Queue Tuple
@@ -760,3 +762,28 @@ void cppi41_free_teardown_queue(int dma_num);
  *
  */
 int cppi41_dma_sched_tbl_init(u8 dmanum, u8 qmgr, u8 *sch_tbl, u8 tblsz);
+
+/**
+ * cppi41_schedtbl_add_dma_ch - add a dma channel to schedular table
+ *
+ * @dmanum      Number of DMa block
+ * @qmgr        Queue Manager Number
+ * @dma_ch	dma channel number
+ * @is_tx       transmit (is_tx=1) or recieve(is_tx=0)
+ *
+ * returns	number of channel in schedular table
+ */
+int cppi41_schedtbl_add_dma_ch(u8 dmanum, u8 qmgr, u8 dma_ch, u8 is_tx);
+
+/**
+ * cppi41_schedtbl_remove_dma_ch - remove a dma channel from schedular table
+ *
+ * @dmanum      Number of DMa block
+ * @qmgr        Queue Manager Number
+ * @dma_ch      dma channel number
+ * @is_tx       transmit (is_tx=1) or recieve(is_tx=0)
+ *
+ * returns      number of channel in schedular table
+ */
+int cppi41_schedtbl_remove_dma_ch(u8 dmanum, u8 qmgr, u8 dma_ch, u8 is_tx);
+
