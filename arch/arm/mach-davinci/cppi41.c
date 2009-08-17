@@ -42,7 +42,9 @@
 static struct {
 	void *virt_addr;
 	dma_addr_t phys_addr;
+	u32 size;
 } linking_ram[CPPI41_NUM_QUEUE_MGR];
+EXPORT_SYMBOL(linking_ram);
 
 static u32 *allocated_queues[CPPI41_NUM_QUEUE_MGR];
 
@@ -80,10 +82,12 @@ int __init cppi41_queue_mgr_init(u8 q_mgr, dma_addr_t rgn0_base, u16 rgn0_size)
 	    q_mgr_regs + QMGR_LINKING_RAM_RGN0_SIZE_REG,
 	    __raw_readl(q_mgr_regs + QMGR_LINKING_RAM_RGN0_SIZE_REG));
 
-	ptr = dma_alloc_coherent(NULL, 0x10000 - rgn0_size * 4,
+	linking_ram[q_mgr].size = USB_CPPI41_QMGR_REG0_MAX_SIZE - rgn0_size * 4;
+	ptr = dma_alloc_coherent(NULL, linking_ram[q_mgr].size,
 				 &linking_ram[q_mgr].phys_addr,
 				 GFP_KERNEL | GFP_DMA);
 	if (ptr == NULL) {
+		linking_ram[q_mgr].size = 0;
 		printk(KERN_ERR "ERROR: %s: Unable to allocate "
 		       "linking RAM.\n", __func__);
 		return -ENOMEM;
@@ -111,6 +115,22 @@ int __init cppi41_queue_mgr_init(u8 q_mgr, dma_addr_t rgn0_base, u16 rgn0_size)
 	return 0;
 }
 EXPORT_SYMBOL(cppi41_queue_mgr_init);
+
+void cppi41_queue_mgr_deinit(u8 q_mgr)
+{
+	/* free the allocated linking ram memory */
+	dma_free_coherent(NULL, linking_ram[q_mgr].size,
+		linking_ram[q_mgr].virt_addr, linking_ram[q_mgr].phys_addr);
+
+	linking_ram[q_mgr].virt_addr = 0;
+	linking_ram[q_mgr].phys_addr = 0;
+	linking_ram[q_mgr].size = 0;
+
+	/* free the queue bit map memory */
+	kzfree(allocated_queues[q_mgr]);
+	allocated_queues[q_mgr] = 0;
+}
+EXPORT_SYMBOL(cppi41_queue_mgr_deinit);
 
 int cppi41_dma_sched_tbl_init(u8 dmanum, u8 qmgr, u8 *sch_tbl, u8 tblsz)
 {
@@ -257,6 +277,21 @@ free_queue:
 }
 EXPORT_SYMBOL(cppi41_dma_block_init);
 
+void cppi41_dma_block_deinit(u8 dma_num, u8 q_mgr)
+{
+	/* pop all the teardown descriptors from teardown queue */
+	cppi41_free_teardown_queue(dma_num);
+	dma_teardown[dma_num].queue_obj.base_addr = NULL;
+
+	/* free the teardown descripotr memory */
+	dma_free_coherent(NULL, dma_teardown[dma_num].rgn_size,
+		dma_teardown[dma_num].virt_addr,
+		dma_teardown[dma_num].phys_addr);
+
+	dma_teardown[dma_num].virt_addr = 0;
+	dma_teardown[dma_num].phys_addr = 0;
+}
+EXPORT_SYMBOL(cppi41_dma_block_deinit);
 /*
  * cppi41_mem_rgn_alloc - allocate a memory region within the queue manager
  */

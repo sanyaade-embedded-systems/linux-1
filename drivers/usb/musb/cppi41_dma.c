@@ -311,9 +311,6 @@ static int cppi41_controller_stop(struct dma_controller *controller)
 
 	cppi = container_of(controller, struct cppi41, controller);
 
-	/* pop all the teardwon descriptor queued to tdQueue */
-	cppi41_free_teardown_queue(usb_cppi41_info.dma_block);
-
 	/* Free the teardown completion queue */
 	if (cppi41_queue_free(usb_cppi41_info.q_mgr, cppi->teardownQNum))
 		DBG(1, "ERROR: failed to free teardown completion queue\n");
@@ -1158,6 +1155,9 @@ void dma_controller_destroy(struct dma_controller *controller)
 
 	/* Free the CPPI object */
 	kfree(cppi);
+
+	/* deinit cppi41 dma */
+	cppi41_deinit();
 }
 
 static void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
