@@ -765,7 +765,8 @@ sched:
 
 	/* enable schedular if not enabled */
 	if (is_peripheral_active(cppi->musb) && (n_bd > 0))
-		cppi41_enable_sched_rx();
+		cppi41_schedtbl_add_dma_ch(0, 0, rx_ch->ch_num,
+			CPPI41_DMACH_RX_DIR);
 	return 1;
 }
 
@@ -1245,7 +1246,8 @@ static void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 			curr_pd->eop = 0;
 			if (is_peripheral_active(cppi->musb)) {
 				/* disable the rx dma schedular  */
-				cppi41_disable_sched_rx();
+				cppi41_schedtbl_remove_dma_ch(0, 0, ch_num,
+						CPPI41_DMACH_RX_DIR);
 				musb_dma_completion(cppi->musb, ep_num, 0);
 			}
 		}

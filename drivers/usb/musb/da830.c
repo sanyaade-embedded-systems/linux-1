@@ -86,30 +86,6 @@ const struct usb_cppi41_info usb_cppi41_info = {
 
 #endif /* CONFIG_USB_TI_CPPI41_DMA */
 
-#ifdef CONFIG_USB_TI_CPPI41_DMA
-#define CPPI41_TOT_CH (USB_CPPI41_NUM_CH * 2)
-int cppi41_disable_sched_rx(void)
-{
-	u16 numch = CPPI41_TOT_CH, blknum = usb_cppi41_info.dma_block;
-	u8 dma_sched_table[CPPI41_TOT_CH] = {0x02, 0x81, 0x01, 0x0,
-						0x83, 0x03, 0x82};
-
-	cppi41_dma_sched_tbl_init(blknum, usb_cppi41_info.q_mgr,
-			dma_sched_table, numch);
-	return 0;
-}
-
-int cppi41_enable_sched_rx(void)
-{
-	u16 numch = CPPI41_TOT_CH, blknum = usb_cppi41_info.dma_block;
-	u8 dma_sched_table[CPPI41_TOT_CH] = {0x81, 0x01, 0x80, 0x0,
-						0x83, 0x03, 0x82, 0x02};
-
-	cppi41_dma_sched_tbl_init(blknum, usb_cppi41_info.q_mgr,
-			dma_sched_table, numch);
-	return 0;
-}
-#endif
 
 /*
  * REVISIT (PM): we should be able to keep the PHY in low power mode most
