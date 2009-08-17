@@ -164,17 +164,24 @@ config OMAP_DM_TIMER
 
 choice
 	prompt "Low-level debug console UART"
-	depends on ARCH_OMAP
+	depends on ARCH_OMAP && DEBUG_LL
 	default OMAP_LL_DEBUG_UART1
+	default OMAP_LL_DEBUG_UART_EXT if MACH_OMAP_ZOOM2
 
 config OMAP_LL_DEBUG_UART1
 	bool "UART1"
+	depends on !MACH_OMAP_ZOOM2
 
 config OMAP_LL_DEBUG_UART2
 	bool "UART2"
+	depends on !MACH_OMAP_ZOOM2
 
 config OMAP_LL_DEBUG_UART3
 	bool "UART3"
+	depends on !MACH_OMAP_ZOOM2
+
+config OMAP_LL_DEBUG_UART_EXT
+	bool "UART_EXT"
 
 endchoice
 
