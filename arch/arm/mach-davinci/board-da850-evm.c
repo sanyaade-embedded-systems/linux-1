@@ -385,6 +385,10 @@ static __init void da850_evm_init(void)
 	if (ret)
 		pr_warning("da850_evm_init: OHCI registration failed: %d\n",
 				ret);
+#if  defined(CONFIG_USB_MUSB_HDRC) || defined(CONFIG_USB_MUSB_HDRC_MODULE)
+	/* Setup the USB0 interface w.r.t platform infrastructure */
+	setup_usb(500, 8);
+#endif
 }
 
 #ifdef CONFIG_SERIAL_8250_CONSOLE

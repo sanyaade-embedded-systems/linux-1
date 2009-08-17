@@ -25,6 +25,7 @@ config ARCH_DAVINCI_DM355
 
 config CPPI41
 	bool "CPPI 4.1 support"
+	depends on ARCH_DAVINCI_DA8XX && USB_TI_CPPI41_DMA
 	help
 	  Configure this option to include the CPPI 4.1 support.
 

@@ -14,7 +14,7 @@
 #include <mach/hardware.h>
 #include <mach/irqs.h>
 #include <mach/cputype.h>
-
+#include <mach/da8xx.h>
 #define DAVINCI_USB_OTG_BASE 0x01C64000
 
 #if defined(CONFIG_USB_MUSB_HDRC) || defined(CONFIG_USB_MUSB_HDRC_MODULE)
@@ -94,6 +94,11 @@ void __init setup_usb(unsigned mA, unsigned potpgt_msec)
 		/* Override the defaults as DM6467 uses different IRQs. */
 		usb_dev.resource[1].start = IRQ_DM646X_USBINT;
 		usb_dev.resource[2].start = IRQ_DM646X_USBDMAINT;
+	} else if (cpu_is_davinci_da850() || cpu_is_davinci_da830()) {
+		usb_dev.resource[0].start = DA8XX_USB0_BASE;
+		usb_dev.resource[0].end   = DA8XX_USB0_BASE + 0x5ff;
+		usb_dev.resource[1].start = IRQ_DA8XX_USB_INT;
+		usb_data.clock = "USB20CLK";
 	} else	/* other devices don't have dedicated CPPI IRQ */
 		usb_dev.num_resources = 2;
 
