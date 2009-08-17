@@ -22,6 +22,7 @@
 #include <mach/time.h>
 #include <mach/da8xx.h>
 #include <video/da8xx-fb.h>
+#include <mach/usb.h>
 
 #include "clock.h"
 
@@ -448,3 +449,36 @@ int __init da8xx_register_mmcsd0(struct davinci_mmc_config *config)
 	da8xx_mmcsd0_device.dev.platform_data = config;
 	return platform_device_register(&da8xx_mmcsd0_device);
 }
+
+struct da830_ohci_root_hub da850_ohci_rh_data = {0, 0, 0, 0, 1};
+static struct resource da850_ohci_resources[] = {
+	{
+		/* physical address */
+		.start  =       DA8XX_USB1_BASE,
+		.end    =       DA8XX_USB1_BASE + 0xfff,
+		.flags  =       IORESOURCE_MEM,
+	},
+	{
+		.start  =       IRQ_DA8XX_IRQN,
+		.flags  =       IORESOURCE_IRQ,
+	}
+};
+
+static u64 da8xx_usb1_dma_mask = ~(u32)0;
+static struct platform_device da850_ohci_device = {
+	.name   = "ohci",
+	.id     = -1,
+	.dev = {
+		.platform_data          = &da850_ohci_rh_data,
+		.dma_mask               = &da8xx_usb1_dma_mask,
+		.coherent_dma_mask      = 0xffffffff,
+	},
+	.num_resources  = ARRAY_SIZE(da850_ohci_resources),
+	.resource       = da850_ohci_resources,
+};
+
+int __init da8xx_register_ohci(void)
+{
+	return platform_device_register(&da850_ohci_device);
+}
+

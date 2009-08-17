@@ -317,6 +317,20 @@ static struct clk aemif_clk = {
 	.flags		= ALWAYS_ENABLED,
 };
 
+static struct clk usb20_clk = {
+	.name           = "USB20CLK",
+	.parent         = &pll0_sysclk2,
+	.lpsc           = DA8XX_LPSC1_USB20,
+	.psc_ctlr       = 1,
+};
+
+static struct clk usb11_clk = {
+	.name           = "USB11CLK",
+	.parent         = &pll0_sysclk4,
+	.lpsc           = DA8XX_LPSC1_USB11,
+	.psc_ctlr       = 1,
+};
+
 static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"ref",		&ref_clk),
 	CLK(NULL,		"pll0",		&pll0_clk),
@@ -358,6 +372,8 @@ static struct davinci_clk da850_clks[] = {
 	CLK("da8xx_lcdc.0",	NULL,		&lcdc_clk),
 	CLK("davinci_mmc.0",	NULL,		&mmcsd_clk),
 	CLK(NULL,		"aemif",	&aemif_clk),
+	CLK(NULL,		"USB20CLK",	&usb20_clk),
+	CLK(NULL,		"USB11CLK",	&usb11_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 
@@ -592,6 +608,10 @@ const short da850_nor_pins[] __initdata = {
 	DA850_EMA_A_14, DA850_EMA_A_15, DA850_EMA_A_16, DA850_EMA_A_17,
 	DA850_EMA_A_18, DA850_EMA_A_19, DA850_EMA_A_20, DA850_EMA_A_21,
 	DA850_EMA_A_22, DA850_EMA_A_23,
+	-1
+};
+
+const short da850_usb11_pins[] __initdata = {
 	-1
 };
 
