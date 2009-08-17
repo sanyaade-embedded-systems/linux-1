@@ -373,7 +373,7 @@ static __init void da850_evm_init(void)
 		pr_warning("da850_evm_init: lcdc registration failed: %d\n",
 				ret);
 
-#ifdef CONFIG_USB_OHCI_HCD
+#if defined(CONFIG_USB_OHCI_HCD) || defined(CONFIG_USB_OHCI_HCD_MODULE)
 	/* Own the VBUS line for USB1 interface */
 	ret = da8xx_pinmux_setup(da850_usb11_pins);
 	if (ret)
