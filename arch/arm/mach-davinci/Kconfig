@@ -23,6 +23,11 @@ config ARCH_DAVINCI_DM355
 	select AINTC
 	select ARCH_DAVINCI_DMx
 
+config CPPI41
+	bool "CPPI 4.1 support"
+	help
+	  Configure this option to include the CPPI 4.1 support.
+
 config ARCH_DAVINCI_DM646x
         bool "DaVinci 646x based system"
 	select AINTC
