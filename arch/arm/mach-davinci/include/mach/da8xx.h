@@ -78,6 +78,9 @@ int da8xx_register_lcdc(void);
 int da8xx_register_mmcsd0(struct davinci_mmc_config *config);
 void __init da8xx_init_mcasp(int id, struct snd_platform_data *pdata);
 int da8xx_register_ohci(void);
+#ifdef CONFIG_USB_TI_CPPI41_DMA
+int cppi41_init(void);
+#endif
 
 extern struct platform_device da8xx_serial_device;
 extern struct emac_platform_data da8xx_emac_pdata;
