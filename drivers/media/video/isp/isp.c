@@ -1537,15 +1537,6 @@ static int isp_vbq_sync(struct videobuf_buffer *vb, int when)
 	return 0;
 }
 
-void isp_set_hs_vs(int hs_vs)
-{
-	struct isp_bufs *bufs = &isp_obj.bufs;
-
-	bufs->wait_hs_vs = hs_vs;
-	return;
-}
-EXPORT_SYMBOL(isp_set_hs_vs);
-
 /**
  * isp_buf_init - Initialize the internal buffer queue handling.
  * @dev: Device pointer specific to the OMAP3 ISP.
