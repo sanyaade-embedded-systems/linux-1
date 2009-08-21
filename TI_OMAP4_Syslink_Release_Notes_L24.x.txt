@@ -3,7 +3,7 @@ OMAP4 Syslink List Handoff
 ================================================================================
 
 Author		: Ramesh Gupta G / Suman Anna
-Date		: June 30 2009
+Date		: August 21 2009
 
 ===========
 Summary:
@@ -60,7 +60,7 @@ contact TI counter part.
 =======
 Setup:
 =======
-Virtio : VPOM4430_1.09a + patch3
+Virtio : VPOM4430_1.09a + patch17
 CCS: Version 3.3 with VPOM simulator. For more information on CCS availability
 please contact TI.
 CCSv4 with VPOM simulator is also supported.
