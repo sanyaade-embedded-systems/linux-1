@@ -2,8 +2,8 @@
 OMAP4 Syslink List Handoff
 ================================================================================
 
-Author		: Ramesh Gupta G / Suman Anna
-Date		: June 30 2009
+Author		: Hari Kanigeri
+Date		: August 21 2009
 
 ===========
 Summary:
@@ -60,8 +60,8 @@ contact TI counter part.
 =======
 Setup:
 =======
-Virtio : VPOM4430_1.09a + patch3
-CCS: Version 3.3 with VPOM simulator. For more information on CCS availability
+Virtio : VPOM4430_1.09a + patch17
+CCS: Version 4 with VPOM simulator. For more information on CCS availability
 please contact TI.
 CCSv4 with VPOM simulator is also supported.
 
@@ -98,17 +98,18 @@ From the Kernel sources run below commands.
 
 	6. Select drivers under
 		Deivice Drivers -->Sys_Link  --->
-						<M>  OMAP IPC Module
+						<M>  Syslink ProcMgr
+						<M>  Proc4430
 						<M>  OMAP Notify Module
-						<M>  Mailbox Dispatcher
 						<M>  OMAP Notify Tesla Module
 						<M>  OMAP Notify Ducati Module
-						<M>  Syslink Procmgr
-						<M>  Proc 4430
+						<M>  Syslink IPC Module
+						<*>  Enable SysManager setup.
 		Device Drivers --><M> DSP Bridge driver-->
 						[M]   DSP Bridge Debug Support
 
 		Select DSP Bridge Debug Support option as above.
+		<it is advisable to buld the above modules as part of kernel image>
 	7. Save Configuration
 
 	8. Build the kernel by running below commands.
@@ -137,37 +138,34 @@ From the Kernel sources run below commands.
 	16. Notify module (omap_notify.ko) is built under folder
 		drivers/dsp/syslink/omap_notify/
 
-	17. notify dispatcher is (notify_disp.ko) is built under folder
-		drivers/dsp/syslink/notify_dispatcher
-
-	18. notify tesla driver (notify_tesladriver.ko) is built under folder
+	17. notify tesla driver (notify_tesladriver.ko) is built under folder
 		drivers/dsp/syslink/notify_tesladriver
 
-	19. notify dispatcher is (notify_ducatidriver.ko) is built under folder
+	18. notify dispatcher is (notify_ducatidriver.ko) is built under folder
 		drivers/dsp/syslink/notify_ducatidriver
 
-	20. syslink proc4430 module for ducati(syslink_proci4430.ko) is built under folder
+	19. syslink proc4430 module for ducati(syslink_proci4430.ko) is built under folder
 		drivers/dsp/syslink/procmgr/proc4430/
 
-	21. syslink proc module (syslink_proc.ko) is built under folder
+	20. syslink proc module (syslink_proc.ko) is built under folder
 		drivers/dsp/syslink/procmgr/
 
-	22. syslink ipc module for ducati (syslink_ipc.ko) is built under folder
+	21. syslink ipc module for ducati (syslink_ipc.ko) is built under folder
 		drivers/dsp/syslink/multicore_ipc/
 
-	23. copy all these drivers to the target file system
+	22. copy all these drivers to the target file system
 		(ram disk file system)along with the tesla binaries
 
-	24. To build all of the above drivers as part of the Kernel,
+	23. To build all of the above drivers as part of the Kernel,
 		select the drivers and run "make uImage"
 
 =================================================================================
 Important Notes:
 	1.bridgedriver depends on dspbridge driver, omap_notify
-		notify_tesladriver and notify_dispatcher drivers
+		notify_tesladriver
 	2. notify_ducatidriver depends on
-		omap_notify,notify_dispatcher and syslink_proc4430 drivers.
-	3. syslink_ipc driver depends on omap_notify, notify_dispatcher,
+		omap_notify and syslink_proc4430 drivers.
+	3. syslink_ipc driver depends on omap_notify, 
 		notify_ducatidriver, syslink_proc and syslink_proc4430 drivers.
 =================================================================================
 
@@ -272,8 +270,6 @@ Running Tesla Samples
 
 		insmod omap_notify.ko
 
-		insmod notify_disp.ko
-
 		insmod notify_tesladriver.ko
 
 		insmod dspbridge.ko
@@ -359,8 +355,6 @@ Running Syslink Samples
 
 		insmod omap_notify.ko
 
-		insmod notify_disp.ko
-
 		insmod notify_ducatidriver.ko
 
 		insmod syslink_proc.ko
@@ -391,7 +385,7 @@ Running Syslink Samples
 
 	6. Run the samples by running the corresponding .out files
 
-		eg: ./messagequ.out
+		eg: ./messageq.out
 
 	7. Load the Ducati baseimage when prompted using CCS.
 
@@ -428,8 +422,6 @@ to boot the Core1 as well.
 		ignore this step
 
 		insmod omap_notify.ko
-
-		insmod notify_disp.ko
 
 		insmod syslink_proc4430.ko
 
@@ -553,74 +545,14 @@ Tesla Bridge
 ==============
 Features Introduced
 --------------------------
-- Fixed checkpatch errors and warnings for all modules under syslink.
-- Dynamic Loading Support has been added.
-- Bridge Trace Support has been added.
-- All basic bridge features, messaging, processor copy streaming, dmmcopy,
-	zerocopy messaging in static and dynamic loading are validated.
+-- Syslink migrated to kernel 2.6.31-rc5 
+-- New Tools for Ducati & Tesla: BIOS-6.20.02.42_eng, XDC 3.15.03.64_eng, 
+   FC 3.00.00.44_eng, IPC-1.00.03.52_eng. Code Gen Tools same as
+   last release CGT 4.6.0B1 & CGT 7.0.0B1 
+-- Tesla Bridge DOFF build updated to build DLLs in any path. 
+-- SysMgr stable. Validated with all samples.  
+-- Basic Tesla Bridge samples (both static and dynamic) have been validated. 
+-- Basic Ducati Syslink IPC (Notify, MessageQ) and RCM samples have been validated. 
+-- TILER sample validated with the latest Tiler drop
 
-==============
-Syslink
-==============
-- RCM server and client works on Chiron, Ducati SYSM3 and APPM3.
-- Added load support by Proc manager.
-- All modules can be built along with the Kernel.
-- All modules are working as expected.
-- Userspace binary image loader utility is implemented for loading images on
-	Ducati.
-
-Ducati Bridge
-==============
-- Elf Image support.
-- Ducati MMU Programming.
-- Page table entries updation.
-- Loading and running a Ducati image.
-- Validation using notify ping sample
-- BIOS30 and XDC39 Support.
-- IPC33 and FC36-RCM alignment.
-
-
-Important Notes
---------------------
-	- Set the bootargs to use only 54M, this is required for Ducati testing.
-		Run below command in u-boot prompt.
-
-	set bootargs root=/dev/ram0 rw mem=54M console=ttyS0,115200n8
-	initrd=0x81600000,20M ramdisk_size=20480
-
-	- One need to have CCS to start the Ducati processors as the Virtio doesn't have
-		the PRCM support to reset Ducati processors.
-	- Code Composer Studio is required to write the Start DSP Address to the
-		PC register
-	* CCS_v3.3_SR9_79.exe or CCS_v3.3_SR10_80.exe or CCS_v3.3_SR11
-	* Install ccs_VPOMAP4_1.00.02.zip located at
-		C:\Virtio\Platforms\VPOM4430\CCS
-	* Use Tesla - VPOMAP 4 Platform Simulator.
-	* Please contact your TI representative for further information on
-		Code Composer Studio (CCS)
-
-	- Basic Validation for Tesla Bridge was done with samples in
-	Static and dynamic mode:
-		Dmmcopy, Zcmsg, Strmcopy, Scale and Ping
-	- Basic validation for Ducati image with loading ducati imeges
-		and Notify ping sample.
-
-==================================
-Issues Resolved
-==================================
-	- NONE
-
-==================================
-Known Issues
-==================================
-	1. Running dynamic samples second time failing, one has to restart
-		Virtio for running another dyncamic sample.
-	2. Due to mailbox changes in Virtio1.06a version, Bridge 24.0.8 release
-		is not backward compatible with Virtio versions < 1.06a.
-	3. Notipy ping sample some times not working because of timing issues.
-		Need to have break points in Ducati side.
-	4. CCS is required to start Ducati processors (SYSM3/APPM3), as the
-		current Virtio doesn't have the PRCM support to reset Ducati Processors.
-	5. ping sample is not working in dynamic mode in Tesla due to dependant
-		library issue this is been tracked by internal tracking number id:
-		OMAPS00202802
+	
