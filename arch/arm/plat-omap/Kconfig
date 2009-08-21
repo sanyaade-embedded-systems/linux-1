@@ -119,8 +119,9 @@ config OMAP_MBOX_FWK
 	  DSP, IVA1.0 and IVA2 in OMAP1/2/3.
 
 config OMAP_IOMMU
-	tristate
-
+	tristate "iommu"
+    depends on ARCH_OMAP
+	default y
 choice
         prompt "System timer"
 	default OMAP_MPU_TIMER
