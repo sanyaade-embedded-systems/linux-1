@@ -117,6 +117,13 @@ obj-$(CONFIG_VIDEO_CX2341X) += cx2341x.o
 
 obj-$(CONFIG_VIDEO_CAFE_CCIC) += cafe_ccic.o
 
+obj-y				+= isp/
+obj-$(CONFIG_VIDEO_OMAP3) += omap34xxcam.o
+
+obj-$(CONFIG_VIDEO_MT9P012)     += mt9p012.o
+obj-$(CONFIG_VIDEO_DW9710)	+= dw9710.o
+obj-$(CONFIG_VIDEO_OV3640)	+= ov3640.o
+
 obj-$(CONFIG_USB_DABUSB)        += dabusb.o
 obj-$(CONFIG_USB_OV511)         += ov511.o
 obj-$(CONFIG_USB_SE401)         += se401.o
