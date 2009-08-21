@@ -3078,7 +3078,7 @@ static void _omap_dispc_initial_config(void)
 
 	/* L3 firewall setting: enable access to OCM RAM */
 	if (cpu_is_omap24xx())
-		__raw_writel(0x402000b0, IO_ADDRESS(0x680050a0));
+		__raw_writel(0x402000b0, OMAP2_IO_ADDRESS(0x680050a0));
 
 	_dispc_setup_color_conv_coef();
 
