@@ -33,7 +33,7 @@ Virtio version used: VPOM4430_1.09a + VPOM4430_1.09a_Patch17.var
 All drivers planned for this release are working as expected and
 overall platform stability is good.
 
-current L24.0.10 support:
+current L24.0.11 support:
 	SMP OS Kernel boot-up on with UART, GPTimers, McBSP, McSPI, I2c,
 	GPIO, WATCHDOG, Keypad, Phoenix PM IC, RTC, ALSA AUDIO.
 
@@ -354,7 +354,8 @@ NOTE: The kernel binary used is arch/arm/boot/uImage and
 
 4.1 New Features
 
-NA
+	MMC/eMMC/SD
+	Tiler
 
 4.2 Supported Features
 
@@ -376,6 +377,7 @@ NA
 	Phoenix core
 	RTC
 	KEYPAD
+	MMC/eMMC/SD
 
 - Power related
 	Clock nodes in PRM/CM1/CM2 modules modelled.
@@ -402,6 +404,8 @@ NA
 -Video
 	Basic Frame Buffer support.
 
+-Display
+	Tiler
 
 4.3 Postponed Features
 
