@@ -468,6 +468,8 @@ static __init void da850_evm_init(void)
 
 	da850_init_spi1(NULL, 1, da850_spi_board_info,
 			ARRAY_SIZE(da850_spi_board_info));
+
+	da8xx_register_rtc();
 }
 
 #ifdef CONFIG_SERIAL_8250_CONSOLE

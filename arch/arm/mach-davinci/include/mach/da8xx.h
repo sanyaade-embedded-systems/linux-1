@@ -82,6 +82,7 @@ void __init da8xx_init_mcasp(int id, struct snd_platform_data *pdata);
 int da8xx_register_ohci(void);
 void da850_init_spi1(unsigned char *chip_sel, unsigned int num_sel,
 	struct spi_board_info *info, unsigned num_dev);
+void da8xx_register_rtc(void);
 #ifdef CONFIG_USB_TI_CPPI41_DMA
 int cppi41_init(void);
 #endif

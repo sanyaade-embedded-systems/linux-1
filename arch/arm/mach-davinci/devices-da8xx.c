@@ -662,3 +662,28 @@ void __init da850_init_spi1(unsigned char* chip_sel, unsigned int num_sel,
 	pdata->num_chipselect = num_sel;
 	platform_device_register(&da850_spi_pdev1);
 }
+
+static struct resource da8xx_rtc_resources[] = {
+	[0] = {		/* registers */
+		.start  = 0x01c23000,
+		.end    = 0x01c23000 + SZ_4K - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+	[1] = {		/* interrupt */
+		.start  = IRQ_DA8XX_RTC,
+		.end    = IRQ_DA8XX_RTC,
+		.flags  = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device da8xx_rtc_device = {
+	.name		= "rtc-da8xx",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(da8xx_rtc_resources),
+	.resource	= da8xx_rtc_resources,
+};
+
+void __init da8xx_register_rtc(void)
+{
+        (void) platform_device_register(&da8xx_rtc_device);
+}
