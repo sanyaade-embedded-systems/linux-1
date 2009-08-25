@@ -261,10 +261,6 @@ static struct platform_device omap3_evm_dss_device = {
 	},
 };
 
-static struct omap_uart_platform_data omap3_evm_uart_config __initdata = {
-	.enabled_uarts	= ((1 << 0) | (1 << 1) | (1 << 2)),
-};
-
 static struct twl4030_hsmmc_info mmc[] = {
 	{
 		.mmc		= 1,
@@ -516,7 +512,7 @@ static void __init omap3_evm_init(void)
 	spi_register_board_info(omap3evm_spi_board_info,
 				ARRAY_SIZE(omap3evm_spi_board_info));
 
-	omap_serial_init(&omap3_evm_uart_config);
+	omap_serial_init();
 	usb_musb_init();
 	usb_ehci_init(EHCI_HCD_OMAP_MODE_PHY, true, true, 57, 61);
 	ads7846_dev_init();

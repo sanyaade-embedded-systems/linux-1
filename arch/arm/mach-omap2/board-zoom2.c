@@ -118,10 +118,6 @@ static void __init omap_zoom2_init_irq(void)
 	omap_gpio_init();
 }
 
-static struct omap_uart_platform_data zoom2_uart_config __initdata = {
-	.enabled_uarts	= ((1 << 0) | (1 << 1) | (1 << 2)),
-};
-
 static struct omap_board_config_kernel zoom2_config[] __initdata = {
 };
 
@@ -361,7 +357,7 @@ static void __init omap_zoom2_init(void)
 	platform_add_devices(zoom2_devices, ARRAY_SIZE(zoom2_devices));
 	omap_board_config = zoom2_config;
 	omap_board_config_size = ARRAY_SIZE(zoom2_config);
-	omap_serial_init(&zoom2_uart_config);
+	omap_serial_init();
 	omap_zoom2_debugboard_init();
 	usb_musb_init();
 	ldp_flash_init();
