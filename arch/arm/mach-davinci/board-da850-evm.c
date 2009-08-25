@@ -23,6 +23,9 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/physmap.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/flash.h>
+#include <linux/spi/davinci_spi_master.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -141,6 +144,73 @@ static struct platform_device da850_evm_nandflash_device = {
 	},
 	.num_resources	= ARRAY_SIZE(da850_evm_nandflash_resource),
 	.resource	= da850_evm_nandflash_resource,
+};
+
+static struct mtd_partition spi_flash_partitions[] = {
+	[0] = {
+		.name = "U-Boot",
+		.offset = 0,
+		.size = SZ_256K,
+		.mask_flags = MTD_WRITEABLE,
+	},
+	[1] = {
+		.name = "U-Boot Environment",
+		.offset = MTDPART_OFS_APPEND,
+		.size = SZ_64K,
+		.mask_flags = MTD_WRITEABLE,
+	},
+	[2] = {
+		.name = "Linux",
+		.offset = MTDPART_OFS_NXTBLK,
+		.size = SZ_8M - (SZ_256K + SZ_64K + SZ_64K),
+		.mask_flags = 0,
+	},
+	[3] = {
+		.name = "MAC Address",
+		.offset = MTDPART_OFS_NXTBLK,
+		.size = SZ_64K,
+		.mask_flags = MTD_WRITEABLE,
+		.setup = davinci_get_mac_addr,
+		.context = (void *)0,
+	},
+};
+
+struct davinci_spi_config_t m25p64_spi_cfg = {
+	.wdelay         = 0,
+	.odd_parity     = 0,
+	.parity_enable  = 0,
+	.wait_enable    = 0,
+	.lsb_first      = 0,
+	.timer_disable  = 0,
+	.clk_high       = 0,
+	.phase_in       = 1,
+	.clk_internal   = 1,
+	.loop_back      = 0,
+	.cs_hold        = 1,
+	.intr_level     = 0,
+	.pin_op_modes   = SPI_OPMODE_SPISCS_4PIN,
+#ifndef CONFIG_SPI_INTERRUPT
+	.poll_mode      = 1,
+#endif
+};
+
+static struct flash_platform_data spi_flash_data = {
+	.name = "m25p80",
+	.parts = spi_flash_partitions,
+	.nr_parts = ARRAY_SIZE(spi_flash_partitions),
+	.type = "m25p64",
+};
+
+static struct spi_board_info da850_spi_board_info[] = {
+	[0] = {
+		.modalias = "m25p80",
+		.platform_data = &spi_flash_data,
+		.controller_data = &m25p64_spi_cfg,
+		.mode = SPI_MODE_0,
+		.max_speed_hz = 30000000,       /* max sample rate at 3V */
+		.bus_num = 1,
+		.chip_select = 0,
+	},
 };
 
 static struct davinci_i2c_platform_data da850_evm_i2c_0_pdata = {
@@ -390,6 +460,14 @@ static __init void da850_evm_init(void)
 	/* Setup the USB0 interface w.r.t platform infrastructure */
 	setup_usb(500, 8);
 #endif
+
+	ret = da8xx_pinmux_setup(da850_spi1_pins);
+	if (ret)
+		pr_warning("da850_evm_init: spi1 mux setup failed: %d\n",
+				ret);
+
+	da850_init_spi1(NULL, 1, da850_spi_board_info,
+			ARRAY_SIZE(da850_spi_board_info));
 }
 
 #ifdef CONFIG_SERIAL_8250_CONSOLE

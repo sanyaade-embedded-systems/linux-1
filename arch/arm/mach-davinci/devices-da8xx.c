@@ -16,6 +16,7 @@
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/serial_8250.h>
+#include <linux/spi/davinci_spi_master.h>
 
 #include <mach/cputype.h>
 #include <mach/common.h>
@@ -605,3 +606,59 @@ void cppi41_deinit(void)
 }
 EXPORT_SYMBOL(cppi41_deinit);
 #endif
+
+static struct davinci_spi_platform_data da850_spi_pdata1 = {
+	.version = DAVINCI_SPI_VERSION_2,
+	.clk_name = "SPICLK"
+};
+
+static struct resource da850_spi_resources1[] = {
+	[0] = {
+		.start = 0x01F0E000,
+		.end = 0x01F0E000 + 0xfff,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_DA8XX_SPINT1,
+		.end = IRQ_DA8XX_SPINT1,
+		.flags = IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start = EDMA_CTLR_CHAN(0, 18),
+		.end = EDMA_CTLR_CHAN(0, 18),
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_RX_CHAN,
+	},
+	[3] = {
+		.start = EDMA_CTLR_CHAN(0, 19),
+		.end = EDMA_CTLR_CHAN(0, 19),
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_TX_CHAN,
+	},
+	[4] = {
+		.start = 1,
+		.end = 1,
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_EVENT_Q,
+	},
+};
+
+static struct platform_device da850_spi_pdev1 = {
+	.name = "dm_spi",
+	.id = 1,
+	.resource = da850_spi_resources1,
+	.num_resources = ARRAY_SIZE(da850_spi_resources1),
+	.dev = {
+		.platform_data = &da850_spi_pdata1,
+	},
+};
+
+void __init da850_init_spi1(unsigned char* chip_sel, unsigned int num_sel,
+	struct spi_board_info *info, unsigned num_dev)
+{
+	struct davinci_spi_platform_data *pdata =
+			da850_spi_pdev1.dev.platform_data;
+
+	spi_register_board_info(info, num_dev);
+
+	pdata->chip_sel = chip_sel;
+	pdata->num_chipselect = num_sel;
+	platform_device_register(&da850_spi_pdev1);
+}

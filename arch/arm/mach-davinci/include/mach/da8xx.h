@@ -11,6 +11,8 @@
 #ifndef __ASM_ARCH_DAVINCI_DA8XX_H
 #define __ASM_ARCH_DAVINCI_DA8XX_H
 
+#include <linux/spi/spi.h>
+
 #include <mach/serial.h>
 #include <mach/edma.h>
 #include <mach/i2c.h>
@@ -78,6 +80,8 @@ int da8xx_register_lcdc(void);
 int da8xx_register_mmcsd0(struct davinci_mmc_config *config);
 void __init da8xx_init_mcasp(int id, struct snd_platform_data *pdata);
 int da8xx_register_ohci(void);
+void da850_init_spi1(unsigned char *chip_sel, unsigned int num_sel,
+	struct spi_board_info *info, unsigned num_dev);
 #ifdef CONFIG_USB_TI_CPPI41_DMA
 int cppi41_init(void);
 #endif
@@ -122,6 +126,7 @@ extern const short da850_mmcsd0_pins[];
 extern const short da850_nand_pins[];
 extern const short da850_nor_pins[];
 extern const short da850_usb11_pins[];
+extern const short da850_spi1_pins[];
 
 int da8xx_pinmux_setup(const short pins[]);
 
