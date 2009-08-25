@@ -62,6 +62,10 @@ MODULE_LICENSE("GPL");
 
 #define OMAP_VIDEO1 0
 #define OMAP_VIDEO2 1
+#ifdef CONFIG_ARCH_OMAP4
+#define OMAP_VIDEO3	2
+#endif
+
 
 /* configuration macros */
 #define VOUT_NAME		"omap_vout"
@@ -69,7 +73,11 @@ MODULE_LICENSE("GPL");
 #define QQVGA_WIDTH		160
 #define QQVGA_HEIGHT		120
 
+#ifdef CONFIG_ARCH_OMAP4
+#define NUM_OF_VIDEO_CHANNELS	3
+#else
 #define NUM_OF_VIDEO_CHANNELS	2
+#endif
 
 #define VID_MAX_WIDTH		1280	/* Largest width */
 #define VID_MAX_HEIGHT		720/* Largest height */
@@ -93,6 +101,10 @@ static u32 video1_numbuffers = 3;
 static u32 video2_numbuffers = 3;
 static u32 video1_bufsize = OMAP_VOUT_MAX_BUF_SIZE;
 static u32 video2_bufsize = OMAP_VOUT_MAX_BUF_SIZE;
+#ifdef CONFIG_ARCH_OMAP4
+static u32 video3_numbuffers = 3;
+static u32 video3_bufsize = OMAP_VOUT_MAX_BUF_SIZE;
+#endif
 static u32 vid1_static_vrfb_alloc;
 static u32 vid2_static_vrfb_alloc;
 static int debug;
@@ -113,6 +125,16 @@ MODULE_PARM_DESC(video1_bufsize, "Size of the buffer to be allocated for \
 module_param(video2_bufsize, uint, S_IRUGO);
 MODULE_PARM_DESC(video2_bufsize, "Size of the buffer to be allocated for \
 		video2 device");
+
+#ifdef CONFIG_ARCH_OMAP4
+module_param(video3_numbuffers, uint, S_IRUGO);
+MODULE_PARM_DESC(video3_numbuffers, "Number of buffers to be allocated at \
+		init time for Video3 device.");
+
+module_param(video3_bufsize, uint, S_IRUGO);
+MODULE_PARM_DESC(video1_bufsize, "Size of the buffer to be allocated for \
+		video3 device");
+#endif
 
 module_param(vid1_static_vrfb_alloc, bool, S_IRUGO);
 MODULE_PARM_DESC(vid1_static_vrfb_alloc, "Static allocation of the VRFB \
@@ -415,9 +437,18 @@ static void omap_vout_free_buffers(struct omap_vout_device *vout)
 	int i, numbuffers;
 
 	/* Allocate memory for the buffes */
-	numbuffers = (vout->vid) ?  video2_numbuffers : video1_numbuffers;
-	vout->buffer_size = (vout->vid) ? video2_bufsize : video1_bufsize;
-
+#ifdef CONFIG_ARCH_OMAP4
+	if (OMAP_VIDEO3 == vout->vid) {
+		numbuffers = video3_numbuffers;
+		vout->buffer_size = video3_bufsize;
+	} else
+#endif
+	{
+		numbuffers = (vout->vid)	? video2_numbuffers
+						: video1_numbuffers;
+		vout->buffer_size = (vout->vid) ? video2_bufsize
+						: video1_bufsize;
+	}
 	for (i = 0; i < numbuffers; i++) {
 		omap_vout_free_buffer(vout->buf_virt_addr[i],
 			 vout->buf_phy_addr[i], vout->buffer_size);
@@ -805,7 +836,7 @@ static enum omap_color_mode video_mode_to_dss_mode(struct omap_vout_device
 	case V4L2_PIX_FMT_RGB24:
 		return OMAP_DSS_COLOR_RGB24P;
 
-	case V4L2_PIX_FMT_RGB32:
+	case V4L2_PIX_FMT_RGB32: /* TODO: OMAP4: check this ??*/
 		return (vout->vid == OMAP_VIDEO1) ?
 			OMAP_DSS_COLOR_RGB24U : OMAP_DSS_COLOR_ARGB32;
 	case V4L2_PIX_FMT_BGR32:
@@ -837,12 +868,18 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 	if (V4L2_BUF_TYPE_VIDEO_OUTPUT != q->type)
 		return -EINVAL;
 
+#ifdef CONFIG_ARCH_OMAP4
+	if (OMAP_VIDEO3 == vout->vid)
+		startindex = video3_numbuffers;
+	else
+#endif
 	startindex = (vout->vid == OMAP_VIDEO1) ?
 		video1_numbuffers : video2_numbuffers;
+
 	if (V4L2_MEMORY_MMAP == vout->memory && *count < startindex)
 		*count = startindex;
 
-#if defined CONFIG_ARCH_OMAP4
+#ifdef CONFIG_ARCH_OMAP4
 	vout->rotation = 0;
 	printk(KERN_WARNING VOUT_NAME
 		" setting rotation to 0 in buffer setup\n");
@@ -865,8 +902,14 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 
 	/* Now allocated the V4L2 buffers */
 	*size = vout->buffer_size;
-	startindex = (vout->vid == OMAP_VIDEO1) ?
-		video1_numbuffers : video2_numbuffers;
+
+#ifdef CONFIG_ARCH_OMAP4
+		if (OMAP_VIDEO3 == vout->vid)
+			startindex = video3_numbuffers;
+		else
+#endif
+			startindex = (vout->vid == OMAP_VIDEO1) ?
+			video1_numbuffers : video2_numbuffers;
 	for (i = startindex; i < *count; i++) {
 		vout->buffer_size = *size;
 
@@ -901,8 +944,13 @@ static void omap_vout_free_allbuffers(struct omap_vout_device *vout)
 {
 	int num_buffers = 0, i;
 
-	num_buffers = (vout->vid == OMAP_VIDEO1) ?
-		video1_numbuffers : video2_numbuffers;
+#ifdef CONFIG_ARCH_OMAP4
+	if (OMAP_VIDEO3 == vout->vid)
+		num_buffers = video3_numbuffers;
+	else
+#endif
+		num_buffers = (vout->vid == OMAP_VIDEO1) ?
+			video1_numbuffers : video2_numbuffers;
 	for (i = num_buffers; i < vout->buffer_allocated; i++) {
 		if (vout->buf_virt_addr[i]) {
 			omap_vout_free_buffer(vout->buf_virt_addr[i],
@@ -1337,7 +1385,7 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 
 #ifdef CONFIG_ARCH_OMAP4
 	if (rotation_enabled(vout))
-		vout->rotation = -1;
+		vout->rotation = 0;
 #endif
  /* TODO: check if TILER ADAPTATION is needed here. */
 	/* We dont support RGB24-packed mode if vrfb rotation
@@ -1708,8 +1756,15 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 			mutex_unlock(&vout->lock);
 			return -EBUSY;
 		}
-		num_buffers = (vout->vid == OMAP_VIDEO1) ?
-			video1_numbuffers : video2_numbuffers;
+
+#ifdef CONFIG_ARCH_OMAP4
+		if (OMAP_VIDEO3 == vout->vid)
+			num_buffers = video3_numbuffers;
+		else
+#endif
+			num_buffers = (vout->vid == OMAP_VIDEO1) ?
+				video1_numbuffers : video2_numbuffers;
+
 		for (i = num_buffers; i < vout->buffer_allocated; i++) {
 			dmabuf = videobuf_to_dma(q->bufs[i]);
 			omap_vout_free_buffer((u32)dmabuf->vmalloc,
@@ -1828,13 +1883,7 @@ static int vidioc_streamon(struct file *file, void *fh,
 	struct omapvideo_info *ovid = &(vout->vid_info);
 	u32 mask = 0;
 
-	printk(KERN_INFO VOUT_NAME
-		"entered streamon-before mutex lock \n\n");
-
 	mutex_lock(&vout->lock);
-
-	printk(KERN_INFO VOUT_NAME
-		"streamon: mutex acquired\n");
 
 	if (vout->streaming) {
 		mutex_unlock(&vout->lock);
@@ -1874,7 +1923,7 @@ static int vidioc_streamon(struct file *file, void *fh,
 	+ vout->cropped_offset;
 
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE;
+			DISPC_IRQ_EVSYNC_ODD;
 
 	omap_dispc_register_isr(omap_vout_isr, vout, mask);
 
@@ -2177,8 +2226,18 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 	vout = vid_dev->vouts[vid_num];
 	vfd = vout->vfd;
 
-	numbuffers = (vid_num == 0) ? video1_numbuffers : video2_numbuffers;
-	vout->buffer_size = (vid_num == 0) ? video1_bufsize : video2_bufsize;
+#ifdef CONFIG_ARCH_OMAP4
+	if (OMAP_VIDEO3 == vid_num) {
+		numbuffers = video3_numbuffers;
+		vout->buffer_size = video3_bufsize;
+	} else
+#endif
+	{
+		numbuffers = (vid_num == 0)	? video1_numbuffers
+						: video2_numbuffers;
+		vout->buffer_size = (vid_num == 0)	? video1_bufsize
+							: video2_bufsize;
+	}
 	printk(KERN_INFO VOUT_NAME "Buffer Size = %d\n", vout->buffer_size);
 	for (i = 0; i < numbuffers; i++) {
 		vout->buf_virt_addr[i] =
@@ -2293,6 +2352,7 @@ static int __init omap_vout_create_video_devices(struct platform_device *pdev)
 		vout->vid = k;
 		vid_dev->vouts[k] = vout;
 		vout->vid_dev = vid_dev;
+/* TODO: OMAP4: check?? */
 		if (pdev->num_resources == 1)
 			vout->vid_info.overlays[0] = vid_dev->overlays[k + 2];
 		else
@@ -2419,10 +2479,10 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 	for (i = 0; i < vid_dev->num_managers; i++)
 		vid_dev->managers[i] = omap_dss_get_overlay_manager(i);
 
-	/* Get the Video1 overlay and video2 overlay.
+	/* Get the Video1, video2 (and Video3 for OMAP4) overlay.
 	 * Setup the Display attached to that overlays
 	 */
-	 for (i = 1; i < 3; i++) {
+	 for (i = 1; i < (NUM_OF_VIDEO_CHANNELS + 1); i++) {
 		ovl = omap_dss_get_overlay(i);
 		if (ovl->manager && ovl->manager->device) {
 			def_display = ovl->manager->device;
@@ -2511,14 +2571,8 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 	struct omap_overlay *ovl;
 	struct omap_dss_device *cur_display;
 
-	printk(KERN_INFO VOUT_NAME
-		"entered vout isr \n");
-
 	if (!vout->streaming)
 		return;
-
-	printk(KERN_INFO VOUT_NAME
-		"starting processing \n");
 
 	ovid = &(vout->vid_info);
 	ovl = ovid->overlays[0];
@@ -2527,14 +2581,8 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 		return;
 	cur_display = ovl->manager->device;
 
-	printk(KERN_INFO VOUT_NAME
-		" isr: before vbq_lock \n");
-
 	spin_lock(&vout->vbq_lock);
 	do_gettimeofday(&timevalue);
-
-	printk(KERN_INFO VOUT_NAME
-		" isr: after spin_lock and gettime \n");
 
 	if (cur_display->type == OMAP_DISPLAY_TYPE_DPI) {
 		if (!(irqstatus & DISPC_IRQ_VSYNC))
