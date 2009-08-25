@@ -336,7 +336,6 @@ static struct regulator_consumer_supply sdp3430_vdda_dac_supply = {
 };
 
 static struct platform_device *sdp3430_devices[] __initdata = {
-	&sdp3430_lcd_device,
 	&sdp3430_camkit_device,
 	&sdp3430_dss_device,
 };
