@@ -42,6 +42,7 @@
 #include <mach/control.h>
 #include <mach/usb.h>
 #include <mach/keypad.h>
+#include <mach/board-ldp.h>
 
 #include "mmc-twl4030.h"
 
@@ -404,6 +405,7 @@ static void __init omap_ldp_init(void)
 	ads7846_dev_init();
 	omap_serial_init(&ldp_uart_config);
 	usb_musb_init();
+	ldp_flash_init();
 
 	twl4030_mmc_init(mmc);
 	/* link regulators to MMC adapters */

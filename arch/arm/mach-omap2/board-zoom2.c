@@ -22,6 +22,7 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 
+#include <mach/board-ldp.h>
 #include <mach/common.h>
 #include <mach/usb.h>
 #include <mach/keypad.h>
@@ -363,6 +364,7 @@ static void __init omap_zoom2_init(void)
 	omap_serial_init(&zoom2_uart_config);
 	omap_zoom2_debugboard_init();
 	usb_musb_init();
+	ldp_flash_init();
 	zoom2_cam_init();
 }
 
