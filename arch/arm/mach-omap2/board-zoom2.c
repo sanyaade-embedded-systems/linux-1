@@ -13,10 +13,11 @@
 #include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
-#include <linux/gpio.h>
 #include <linux/i2c/twl4030.h>
 #include <linux/regulator/machine.h>
 #include <linux/io.h>
+#include <linux/interrupt.h>
+#include <linux/synaptics_i2c_rmi.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -26,6 +27,8 @@
 #include <mach/common.h>
 #include <mach/usb.h>
 #include <mach/keypad.h>
+#include <mach/mux.h>
+#include <mach/gpio.h>
 
 #include "mmc-twl4030.h"
 
@@ -46,6 +49,8 @@ extern void zoom2_cam_init(void);
 #include <media/lv8093.h>
 extern struct imx046_platform_data zoom2_lv8093_platform_data;
 #endif
+
+#define OMAP_SYNAPTICS_GPIO		163
 
 /* Zoom2 has Qwerty keyboard*/
 static int zoom2_twl4030_keymap[] = {
@@ -320,7 +325,41 @@ static struct i2c_board_info __initdata zoom2_i2c_boardinfo[] = {
 	},
 };
 
+static void synaptics_dev_init(void)
+{
+	/* Set the ts_gpio pin mux */
+	omap_cfg_reg(H18_34XX_GPIO163);
+
+	if (gpio_request(OMAP_SYNAPTICS_GPIO, "touch") < 0) {
+		printk(KERN_ERR "can't get synaptics pen down GPIO\n");
+		return;
+	}
+	gpio_direction_input(OMAP_SYNAPTICS_GPIO);
+	omap_set_gpio_debounce(OMAP_SYNAPTICS_GPIO, 1);
+	omap_set_gpio_debounce_time(OMAP_SYNAPTICS_GPIO, 0xa);
+}
+
+static int synaptics_power(int power_state)
+{
+	/* TODO: synaptics is powered by vbatt */
+	return 0;
+}
+
+static struct synaptics_i2c_rmi_platform_data synaptics_platform_data[] = {
+	{
+		.version	= 0x0,
+		.power		= &synaptics_power,
+		.flags		= SYNAPTICS_SWAP_XY,
+		.irqflags	= IRQF_TRIGGER_LOW,
+	}
+};
+
 static struct i2c_board_info __initdata zoom2_i2c_boardinfo2[] = {
+	{
+		I2C_BOARD_INFO(SYNAPTICS_I2C_RMI_NAME,  0x20),
+		.platform_data = &synaptics_platform_data,
+		.irq = OMAP_GPIO_IRQ(OMAP_SYNAPTICS_GPIO),
+	},
 #if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
 	{
 		I2C_BOARD_INFO("imx046", IMX046_I2C_ADDR),
@@ -357,6 +396,7 @@ static void __init omap_zoom2_init(void)
 	platform_add_devices(zoom2_devices, ARRAY_SIZE(zoom2_devices));
 	omap_board_config = zoom2_config;
 	omap_board_config_size = ARRAY_SIZE(zoom2_config);
+	synaptics_dev_init();
 	omap_serial_init();
 	omap_zoom2_debugboard_init();
 	usb_musb_init();
