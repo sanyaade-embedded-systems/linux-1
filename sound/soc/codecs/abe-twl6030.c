@@ -671,8 +671,6 @@ static int abe_mm_hw_params(struct snd_pcm_substream *substream,
 
 	rate = params_rate(params);
 	switch (rate) {
-	case 44100:
-		break;
 	case 48000:
 		break;
 	default:
@@ -752,7 +750,7 @@ struct snd_soc_dai abe_dai[] = {
 			.stream_name = "Playback",
 			.channels_min = 2,
 			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
+			.rates = SNDRV_PCM_RATE_48000,
 			.formats = ABE_FORMATS,
 		},
 		.capture = {
@@ -771,7 +769,7 @@ struct snd_soc_dai abe_dai[] = {
 			.stream_name = "Playback",
 			.channels_min = 2,
 			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
+			.rates = SNDRV_PCM_RATE_48000,
 			.formats = ABE_FORMATS,
 		},
 		.ops = &abe_mm_dai_ops,
