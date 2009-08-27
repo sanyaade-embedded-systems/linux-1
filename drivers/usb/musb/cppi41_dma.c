@@ -690,14 +690,24 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 	u32 pkt_size = rx_ch->pkt_size;
 	u32 max_rx_transfer = 128 * 1024;
 	u32 i, n_bd , pkt_len;
+	struct usb_gadget_driver *gadget_driver;
 
 	if (is_peripheral_active(cppi->musb)) {
-		max_rx_transfer = 512;
-		cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
-		pkt_len = 0;
-		if (rx_ch->length < max_rx_transfer)
-			pkt_len = rx_ch->length;
-		cppi41_set_ep_size(rx_ch, pkt_len);
+		gadget_driver = cppi->musb->gadget_driver;
+		/* TODO: temporary fix for CDC/RNDIS which needs to be in
+		 * GENERIC_RNDIS mode. Without this RNDIS gadget taking
+		 * more then 2K ms for a 64 byte pings.
+		 */
+		if (!strcmp(gadget_driver->driver.name, "g_ether")) {
+			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
+			pkt_len = 0;
+			if (rx_ch->length < max_rx_transfer)
+				pkt_len = rx_ch->length;
+			cppi41_set_ep_size(rx_ch, pkt_len);
+		} else {
+			max_rx_transfer = rx_ch->pkt_size;
+			cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
+		}
 	} else {
 	/*
 	 * Rx can use the generic RNDIS mode where we can probably fit this
@@ -1242,7 +1252,7 @@ static void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 		rx_ch = &cppi->rx_cppi_ch[ch_num];
 		rx_ch->channel.actual_len += length;
 
-		if (curr_pd->eop) {
+		if ((curr_pd->eop) || (length < rx_ch->pkt_size)) {
 			curr_pd->eop = 0;
 			if (is_peripheral_active(cppi->musb)) {
 				/* disable the rx dma schedular  */
