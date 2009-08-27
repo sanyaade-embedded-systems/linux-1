@@ -53,12 +53,6 @@ static int sdp4430_hw_params(struct snd_pcm_substream *substream,
 
 	rate = params_rate(params);
 	switch (rate) {
-	case 44100:
-		clk_id = TWL6030_SYSCLK_SEL_LPPLL;
-		pll_id = TWL6030_LPPLL_ID;
-		freq_in = 32768;
-		freq_out = 17640000;
-		break;
 	case 48000:
 		clk_id = TWL6030_SYSCLK_SEL_HPPLL;
 		pll_id = TWL6030_HPPLL_ID;
