@@ -141,7 +141,7 @@ const abe_port_t abe_port_init [MAXNBABEPORTS] ={
 		{{CBPr_DMA_RTX2*ATC_SIZE,dmem_vx_ul,(dmem_vx_ul_size/2),
 		1 * SCHED_LOOP_8kHz,  DEFAULT_THR_WRITE,ABE_DMASTATUS_RAW,
 		(1<<2)}}},
-	{CIRCULAR_BUFFER_PERIPHERAL_R__2,  4},
+	{CIRCULAR_BUFFER_PERIPHERAL_R__2,  2},
 	{ASRC2, 0},
 	"VX_UL"
 },
@@ -170,7 +170,7 @@ const abe_port_t abe_port_init [MAXNBABEPORTS] ={
 		{{CBPr_DMA_RTX1*ATC_SIZE,dmem_vx_dl,dmem_vx_dl_size,
 		1 * SCHED_LOOP_8kHz,  DEFAULT_THR_READ ,ABE_DMASTATUS_RAW,
 		(1<<1)}}},
-	{CIRCULAR_BUFFER_PERIPHERAL_R__1, 4},
+	{CIRCULAR_BUFFER_PERIPHERAL_R__1, 2},
 	{ASRC1, 0},
 	"VX_DL"
 },

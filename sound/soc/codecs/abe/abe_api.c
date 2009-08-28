@@ -297,7 +297,7 @@ void abe_default_configuration (abe_uint32 use_case)
 
 			/* Voice and multimedia audio router init */
 			abe_block_copy (COPY_FROM_HOST_TO_ABE,
-				ABE_DMEM, D_aUplinkRouting_ADDR + 12,
+				ABE_DMEM, D_aUplinkRouting_ADDR,
 				(abe_uint32 *)abe_router_ul_table_init_1,
 				sizeof (abe_router_ul_table_init_1));
 
