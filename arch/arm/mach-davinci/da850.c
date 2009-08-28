@@ -338,6 +338,14 @@ static struct clk spi1_clk = {
 	.psc_ctlr	= 1,
 };
 
+
+static struct clk sata_clk = {
+	.name           = "ahci",
+	.parent         = &pll0_sysclk2,
+	.lpsc           = DA850_LPSC1_SATA,
+	.psc_ctlr       = 1,
+};
+
 static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"ref",		&ref_clk),
 	CLK(NULL,		"pll0",		&pll0_clk),
@@ -381,6 +389,7 @@ static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"aemif",	&aemif_clk),
 	CLK(NULL,		"USB20CLK",	&usb20_clk),
 	CLK(NULL,		"USB11CLK",	&usb11_clk),
+	CLK(NULL,		"ahci",		&sata_clk),
 	CLK("dm_spi.1",		NULL,		&spi1_clk),
 	CLK(NULL,		NULL,		NULL),
 };
@@ -630,6 +639,10 @@ const short da850_usb11_pins[] __initdata = {
 
 const short da850_spi1_pins[] __initdata = {
 	DA850_SPI1_CS_0, DA850_SPI1_CLK, DA850_SPI1_SOMI, DA850_SPI1_SIMO,
+	-1
+};
+
+const short da850_sata_pins[] __initdata = {
 	-1
 };
 

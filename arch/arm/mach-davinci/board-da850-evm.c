@@ -470,6 +470,11 @@ static __init void da850_evm_init(void)
 			ARRAY_SIZE(da850_spi_board_info));
 
 	da8xx_register_rtc();
+	
+	ret = da8xx_register_sata();
+	if (ret)
+		pr_warning("da850_evm_init: sata registration failed: %d\n",
+				ret);
 }
 
 #ifdef CONFIG_SERIAL_8250_CONSOLE

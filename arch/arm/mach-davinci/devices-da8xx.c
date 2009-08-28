@@ -687,3 +687,32 @@ void __init da8xx_register_rtc(void)
 {
         (void) platform_device_register(&da8xx_rtc_device);
 }
+
+static struct resource da850_ahci_resources[] = {
+	{
+		.start	=	DA850_SATA_BASE,
+		.end	=	DA850_SATA_BASE + 0x1fff,
+		.flags	=	IORESOURCE_MEM,
+	},
+	{
+		.start	=	IRQ_DA850_SATAINT,
+		.flags	=	IORESOURCE_IRQ,
+	}
+};
+
+static int da850_ahci_data = 8;
+static struct platform_device da850_ahci_device = {
+	.name	=	"ahci",
+	.id	=	-1,
+	.dev	=	{
+				.platform_data = &da850_ahci_data,
+				.coherent_dma_mask = 0xffffffff,
+			},
+	.num_resources	=	ARRAY_SIZE(da850_ahci_resources),
+	.resource	=	da850_ahci_resources,
+};
+
+int __init da8xx_register_sata(void)
+{
+	return platform_device_register(&da850_ahci_device);
+}

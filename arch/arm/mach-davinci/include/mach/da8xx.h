@@ -47,6 +47,8 @@
 #define DA8XX_AEMIF_CTL_BASE	0x68000000
 #define DA8XX_USB1_BASE		0x01E25000
 #define DA8XX_USB0_BASE		0x01E00000
+#define DA850_SATA_BASE		0x01E18000
+#define DA850_SATA_CLK_PWRDN	0x01E2C018
 
 #define PINMUX0			0x00
 #define PINMUX1			0x04
@@ -86,6 +88,7 @@ void da8xx_register_rtc(void);
 #ifdef CONFIG_USB_TI_CPPI41_DMA
 int cppi41_init(void);
 #endif
+int da8xx_register_sata(void);
 
 extern struct platform_device da8xx_serial_device;
 extern struct emac_platform_data da8xx_emac_pdata;
@@ -128,6 +131,7 @@ extern const short da850_nand_pins[];
 extern const short da850_nor_pins[];
 extern const short da850_usb11_pins[];
 extern const short da850_spi1_pins[];
+extern const short da850_sata_pins[];
 
 int da8xx_pinmux_setup(const short pins[]);
 
