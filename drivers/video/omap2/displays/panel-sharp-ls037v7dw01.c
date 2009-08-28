@@ -22,6 +22,7 @@
 #include <linux/device.h>
 #include <linux/regulator/consumer.h>
 #include <linux/err.h>
+#include <linux/gpio.h>
 
 #include <mach/display.h>
 
@@ -81,16 +82,62 @@ static void sharp_ls_panel_remove(struct omap_dss_device *dssdev)
 
 	kfree(sd);
 }
+#define PM_RECEIVER             TWL4030_MODULE_PM_RECEIVER
+#define TWL4030_MODULE_PM_RECEIVER      0x13
+#define TWL4030_VAUX3_DEV_GRP           0x1F
+#define TWL4030_VAUX3_DEDICATED         0x22
+
+#define ENABLE_VAUX3_DEDICATED  0x03
+#define ENABLE_VAUX3_DEV_GRP    0x20
+
+#define ENABLE_VPLL2_DEDICATED          0x05
+#define ENABLE_VPLL2_DEV_GRP            0xE0
+#define TWL4030_VPLL2_DEV_GRP           0x33
+#define TWL4030_VPLL2_DEDICATED         0x36
+
+extern twl4030_i2c_write_u8 ();
+
+#define t2_out(c, r, v) twl4030_i2c_write_u8(c, r, v)
+
+#define SDP2430_LCD_PANEL_BACKLIGHT_GPIO        91
+#define SDP2430_LCD_PANEL_ENABLE_GPIO           154
+#define SDP3430_LCD_PANEL_BACKLIGHT_GPIO        24
+#define SDP3430_LCD_PANEL_ENABLE_GPIO           28
+
+static unsigned backlight_gpio;
+static unsigned enable_gpio;
+
 
 static int sharp_ls_panel_enable(struct omap_dss_device *dssdev)
 {
 	struct sharp_data *sd = dev_get_drvdata(&dssdev->dev);
 	int r = 0;
+        u8 ded_val, ded_reg;
+        u8 grp_val, grp_reg;
 
 	/* wait couple of vsyncs until enabling the LCD */
 	msleep(50);
 
-	regulator_enable(sd->vdvi_reg);
+//	regulator_enable(sd->vdvi_reg);
+
+        ded_reg = TWL4030_VAUX3_DEDICATED;
+        ded_val = ENABLE_VAUX3_DEDICATED;
+        grp_reg = TWL4030_VAUX3_DEV_GRP;
+        grp_val = ENABLE_VAUX3_DEV_GRP;
+
+        t2_out(PM_RECEIVER, ENABLE_VPLL2_DEDICATED,
+                             TWL4030_VPLL2_DEDICATED);
+        t2_out(PM_RECEIVER, ENABLE_VPLL2_DEV_GRP,
+                             TWL4030_VPLL2_DEV_GRP);
+
+        gpio_set_value(enable_gpio, 1);
+        gpio_set_value(backlight_gpio, 1);
+
+        if (0 != t2_out(PM_RECEIVER, ded_val, ded_reg))
+                return -EIO;
+        if (0 != t2_out(PM_RECEIVER, grp_val, grp_reg))
+                return -EIO;
+
 
 	if (dssdev->platform_enable)
 		r = dssdev->platform_enable(dssdev);
@@ -105,7 +152,7 @@ static void sharp_ls_panel_disable(struct omap_dss_device *dssdev)
 	if (dssdev->platform_disable)
 		dssdev->platform_disable(dssdev);
 
-	regulator_disable(sd->vdvi_reg);
+//	regulator_disable(sd->vdvi_reg);
 
 	/* wait at least 5 vsyncs after disabling the LCD */
 
@@ -140,6 +187,14 @@ static struct omap_dss_driver sharp_ls_driver = {
 
 static int __init sharp_ls_panel_drv_init(void)
 {
+       enable_gpio    = SDP3430_LCD_PANEL_ENABLE_GPIO;
+       backlight_gpio = SDP3430_LCD_PANEL_BACKLIGHT_GPIO;
+
+        gpio_request(enable_gpio, "LCD enable");        /* LCD panel */
+        gpio_request(backlight_gpio, "LCD bl");         /* LCD backlight */
+        gpio_direction_output(enable_gpio, 0);
+        gpio_direction_output(backlight_gpio, 0);
+
 	return omap_dss_register_driver(&sharp_ls_driver);
 }
 
