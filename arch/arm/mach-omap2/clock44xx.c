@@ -35,6 +35,8 @@
 #include "cm1-regbits-44xx.h"
 #include "cm2-regbits-44xx.h"
 
+static const struct clkops clkops_noncore_dpll_ops;
+
 #include "clock44xx.h"
 
 struct omap_clk {
@@ -189,6 +191,11 @@ static struct clk_functions omap2_clk_functions = {
 	.clk_set_rate		= omap2_clk_set_rate,
 	.clk_set_parent		= omap2_clk_set_parent,
 	.clk_disable_unused	= omap2_clk_disable_unused,
+};
+
+static const struct clkops clkops_noncore_dpll_ops = {
+	.enable		= &omap3_noncore_dpll_enable,
+	.disable	= &omap3_noncore_dpll_disable,
 };
 
 void omap2_clk_prepare_for_reboot(void)
