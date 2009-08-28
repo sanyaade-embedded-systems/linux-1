@@ -124,22 +124,22 @@ static struct clk virt_38_4m_ck = {
 };
 
 static const struct clksel_rate sys_clk_12m_rates[] = {
-	{ .div = 1, .val = 0, .flags = RATE_IN_443X | DEFAULT_RATE },
-	{ .div = 0 }
-};
-
-static const struct clksel_rate sys_clk_13m_rates[] = {
 	{ .div = 1, .val = 1, .flags = RATE_IN_443X | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
-static const struct clksel_rate sys_clk_19_2m_rates[] = {
+static const struct clksel_rate sys_clk_13m_rates[] = {
 	{ .div = 1, .val = 2, .flags = RATE_IN_443X | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
-static const struct clksel_rate sys_clk_26m_rates[] = {
+static const struct clksel_rate sys_clk_19_2m_rates[] = {
 	{ .div = 1, .val = 3, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 0 }
+};
+
+static const struct clksel_rate sys_clk_26m_rates[] = {
+	{ .div = 1, .val = 4, .flags = RATE_IN_443X | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
@@ -149,7 +149,7 @@ static const struct clksel_rate sys_clk_27m_rates[] = {
 };
 
 static const struct clksel_rate sys_clk_38_4m_rates[] = {
-	{ .div = 1, .val = 4, .flags = RATE_IN_443X | DEFAULT_RATE },
+	{ .div = 1, .val = 6, .flags = RATE_IN_443X | DEFAULT_RATE },
 	{ .div = 0 }
 };
 
