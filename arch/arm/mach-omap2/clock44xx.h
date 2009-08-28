@@ -411,7 +411,7 @@ static struct dpll_data dpll_abe_dd = {
 
 static struct clk dpll_abe_ck = {
 	.name           = "dpll_abe_ck",
-	.ops            = &clkops_null,
+	.ops		= &clkops_noncore_dpll_ops,
 	.init		= &omap2_init_dpll_parent,
 	.parent         = &abe_dpll_alwon_ck,
 	.dpll_data      = &dpll_abe_dd,
@@ -862,7 +862,7 @@ static struct dpll_data dpll_per_dd = {
 
 static struct clk dpll_per_ck = {
 	.name           = "dpll_per_ck",
-	.ops            = &clkops_null,
+	.ops		= &clkops_noncore_dpll_ops,
 	.init		= &omap2_init_dpll_parent,
 	.parent         = &dpll_sys_ref_ck,
 	.dpll_data      = &dpll_per_dd,
@@ -1209,7 +1209,7 @@ static const struct clksel mpu_dpll_hs_ck_clksel[] = {
 
 static struct clk mpu_dpll_hs_ck = {
 	.name 		= "mpu_dpll_hs_ck",
-	.ops            = &clkops_null,
+	.ops		= &clkops_null,
 	.init           = &omap2_init_clksel_parent,
 	.parent         = &core_x2_ck,
 	.clksel_reg     = OMAP4430_CM_BYPCLK_DPLL_MPU,
@@ -1238,7 +1238,7 @@ static struct dpll_data dpll_mpu_dd = {
 
 static struct clk dpll_mpu_ck = {
 	.name           = "dpll_mpu_ck",
-	.ops            = &clkops_null,
+	.ops            = &clkops_noncore_dpll_ops,
 	.init		= &omap2_init_dpll_parent,
 	.parent         = &dpll_sys_ref_ck,
 	.dpll_data      = &dpll_mpu_dd,
@@ -1279,7 +1279,7 @@ static const struct clksel iva_dpll_hs_ck_clksel[] = {
 
 static struct clk iva_dpll_hs_ck = {
 	.name 		= "iva_dpll_hs_ck",
-	.ops            = &clkops_null,
+	.ops		= &clkops_null,
 	.init           = &omap2_init_clksel_parent,
 	.parent         = &core_x2_ck,
 	.clksel_reg     = OMAP4430_CM_BYPCLK_DPLL_IVA,
@@ -1308,7 +1308,7 @@ static struct dpll_data dpll_iva_dd = {
 
 static struct clk dpll_iva_ck = {
 	.name           = "dpll_iva_ck",
-	.ops            = &clkops_null,
+	.ops            = &clkops_noncore_dpll_ops,
 	.init		= &omap2_init_clksel_parent,
 	.parent         = &dpll_sys_ref_ck,
 	.dpll_data      = &dpll_iva_dd,
@@ -1387,7 +1387,7 @@ static struct dpll_data dpll_unipro_dd = {
 
 static struct clk dpll_unipro_ck = {
 	.name           = "dpll_unipro_ck",
-	.ops            = &clkops_null,
+	.ops		= &clkops_noncore_dpll_ops,
 	.init		= &omap2_init_dpll_parent,
 	.parent         = &dpll_sys_ref_ck,
 	.dpll_data      = &dpll_unipro_dd,
@@ -1448,7 +1448,7 @@ static struct dpll_data dpll_usb_dd = {
 
 static struct clk dpll_usb_ck = {
 	.name		= "dpll_usb_ck",
-	.ops		= &clkops_null,
+	.ops		= &clkops_noncore_dpll_ops,
 	.init		= &omap2_init_dpll_parent,
 	.parent		= &dpll_sys_ref_ck,
 	.dpll_data	= &dpll_usb_dd,
