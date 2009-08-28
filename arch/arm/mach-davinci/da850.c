@@ -338,12 +338,25 @@ static struct clk spi1_clk = {
 	.psc_ctlr	= 1,
 };
 
-
 static struct clk sata_clk = {
 	.name           = "ahci",
 	.parent         = &pll0_sysclk2,
 	.lpsc           = DA850_LPSC1_SATA,
 	.psc_ctlr       = 1,
+};
+
+static struct clk mcbsp0_clk = {
+	.name		= "mcbsp0",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA850_LPSC1_MCBSP0,
+	.psc_ctlr	= 1,
+};
+
+static struct clk mcbsp1_clk = {
+	.name		= "mcbsp1",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA850_LPSC1_MCBSP1,
+	.psc_ctlr	= 1,
 };
 
 static struct davinci_clk da850_clks[] = {
@@ -391,6 +404,8 @@ static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"USB11CLK",	&usb11_clk),
 	CLK(NULL,		"ahci",		&sata_clk),
 	CLK("dm_spi.1",		NULL,		&spi1_clk),
+	CLK("davinci-mcbsp.0",	NULL,		&mcbsp0_clk),
+	CLK("davinci-mcbsp.1",	NULL,		&mcbsp1_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 
@@ -548,6 +563,22 @@ static const struct mux_config da850_pins[] = {
 	MUX_CFG(DA850, GPIO8_10,	18,	28,	15,	8,	false)
 	MUX_CFG(DA850, GPIO4_0,		10,	28,	15,	8,	false)
 	MUX_CFG(DA850, GPIO4_1,		10,	24,	15,	8,	false)
+	/* McBSP0 function */
+	MUX_CFG(DA850,	MCBSP0_CLKR,	2,	4,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP0_CLKX,	2,	8,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP0_FSR,	2,	12,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP0_FSX,	2,	16,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP0_DR,	2,	20,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP0_DX,	2,	24,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP0_CLKS,	2,	28,	15,	0,	false)
+	/* McBSP1 function */
+	MUX_CFG(DA850,	MCBSP1_CLKR,	1,	4,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP1_CLKX,	1,	8,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP1_FSR,	1,	12,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP1_FSX,	1,	16,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP1_DR,	1,	20,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP1_DX,	1,	24,	15,	2,	false)
+	MUX_CFG(DA850,	MCBSP1_CLKS,	1,	28,	15,	2,	false)
 #endif
 };
 
@@ -643,6 +674,18 @@ const short da850_spi1_pins[] __initdata = {
 };
 
 const short da850_sata_pins[] __initdata = {
+	-1
+};
+
+const short da850_mcbsp0_pins[] __initdata = {
+	DA850_MCBSP0_CLKR, DA850_MCBSP0_CLKX, DA850_MCBSP0_FSR,
+	DA850_MCBSP0_FSX, DA850_MCBSP0_DR, DA850_MCBSP0_DX, DA850_MCBSP0_CLKS,
+	-1
+};
+
+const short da850_mcbsp1_pins[] __initdata = {
+	DA850_MCBSP1_CLKR, DA850_MCBSP1_CLKX, DA850_MCBSP1_FSR,
+	DA850_MCBSP1_FSX, DA850_MCBSP1_DR, DA850_MCBSP1_DX, DA850_MCBSP1_CLKS,
 	-1
 };
 

@@ -248,6 +248,14 @@ static struct snd_platform_data da850_evm_snd_data = {
 	.rxnumevt	= 1,
 };
 
+static struct davinci_mcbsp_platform_data da850_mcbsp0_config = {
+	.inst	= 0,
+};
+
+static struct davinci_mcbsp_platform_data da850_mcbsp1_config = {
+	.inst	= 1,
+};
+
 static int da850_evm_mmc_get_ro(int index)
 {
 	return gpio_get_value(DA850_MMCSD_WP_PIN);
@@ -326,6 +334,25 @@ static void __init da850_evm_init_nor(void)
 #define HAS_MMC 1
 #else
 #define HAS_MMC 0
+#endif
+
+#if defined(CONFIG_DAVINCI_MCBSP0)
+#define HAS_MCBSP0 1
+#else
+#define HAS_MCBSP0 0
+#endif
+
+#if defined(CONFIG_DAVINCI_MCBSP1)
+#define HAS_MCBSP1 1
+#else
+#define HAS_MCBSP1 0
+#endif
+
+#if defined(CONFIG_TI_DAVINCI_EMAC) || \
+	defined(CONFIG_TI_DAVINCI_EMAC_MODULE)
+#define HAS_EMAC 1
+#else
+#define HAS_EMAC 0
 #endif
 
 static __init void da850_evm_init(void)
@@ -442,6 +469,25 @@ static __init void da850_evm_init(void)
 	if (ret)
 		pr_warning("da850_evm_init: lcdc registration failed: %d\n",
 				ret);
+
+	if (HAS_MCBSP0) {
+		if (HAS_EMAC)
+			pr_warning("WARNING: both MCBSP0 and EMAC are "
+				"enabled, but they share pins.\n"
+				"\tDisable one of them.\n");
+
+		ret = da850_init_mcbsp(&da850_mcbsp0_config);
+		if (ret)
+			pr_warning("da850_evm_init: mcbsp0 registration"
+					"failed: %d\n",	ret);
+	}
+
+	if (HAS_MCBSP1) {
+		ret = da850_init_mcbsp(&da850_mcbsp1_config);
+		if (ret)
+			pr_warning("da850_evm_init: mcbsp1 registration"
+					" failed: %d\n", ret);
+	}
 
 #if defined(CONFIG_USB_OHCI_HCD) || defined(CONFIG_USB_OHCI_HCD_MODULE)
 	/* Own the VBUS line for USB1 interface */

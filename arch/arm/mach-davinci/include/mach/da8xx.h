@@ -19,6 +19,7 @@
 #include <mach/emac.h>
 #include <mach/asp.h>
 #include <mach/mmc.h>
+#include <mach/mcbsp.h>
 
 /*
  * The cp_intc interrupt controller for the da8xx isn't in the same
@@ -89,6 +90,7 @@ void da8xx_register_rtc(void);
 int cppi41_init(void);
 #endif
 int da8xx_register_sata(void);
+int da850_init_mcbsp(struct davinci_mcbsp_platform_data *pdata);
 
 extern struct platform_device da8xx_serial_device;
 extern struct emac_platform_data da8xx_emac_pdata;
@@ -132,6 +134,8 @@ extern const short da850_nor_pins[];
 extern const short da850_usb11_pins[];
 extern const short da850_spi1_pins[];
 extern const short da850_sata_pins[];
+extern const short da850_mcbsp0_pins[];
+extern const short da850_mcbsp1_pins[];
 
 int da8xx_pinmux_setup(const short pins[]);
 
