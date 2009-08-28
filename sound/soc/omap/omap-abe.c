@@ -277,7 +277,7 @@ struct snd_soc_dai omap_abe_dai[] = {
 			.formats = OMAP_ABE_FORMATS,
 		},
 		.capture = {
-			.channels_min = 2,
+			.channels_min = 1,
 			.channels_max = 2,
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 			.formats = OMAP_ABE_FORMATS,

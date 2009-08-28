@@ -786,7 +786,7 @@ struct snd_soc_dai abe_dai[] = {
 		},
 		.capture = {
 			.stream_name = "Capture",
-			.channels_min = 2,
+			.channels_min = 1,
 			.channels_max = 2,
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 			.formats = ABE_FORMATS,
