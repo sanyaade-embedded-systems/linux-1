@@ -16,6 +16,7 @@
 #include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/cpufreq.h>
+#include <linux/regulator/consumer.h>
 
 #include <asm/mach/map.h>
 
@@ -938,6 +939,8 @@ struct da850_opp {
 	unsigned int	prediv;
 	unsigned int	mult;
 	unsigned int	postdiv;
+	unsigned int	cvdd_min; /* in uV */
+	unsigned int	cvdd_max; /* in uV */
 };
 
 static const struct da850_opp da850_opp_300 = {
@@ -945,6 +948,8 @@ static const struct da850_opp da850_opp_300 = {
 	.prediv		= 1,
 	.mult		= 25,
 	.postdiv	= 2,
+	.cvdd_min	= 1140000,
+	.cvdd_max	= 1320000,
 };
 
 static const struct da850_opp da850_opp_200 = {
@@ -952,6 +957,8 @@ static const struct da850_opp da850_opp_200 = {
 	.prediv		= 1,
 	.mult		= 25,
 	.postdiv	= 3,
+	.cvdd_min	= 1050000,
+	.cvdd_max	= 1160000,
 };
 
 static const struct da850_opp da850_opp_96 = {
@@ -959,6 +966,8 @@ static const struct da850_opp da850_opp_96 = {
 	.prediv		= 1,
 	.mult		= 20,
 	.postdiv	= 5,
+	.cvdd_min	= 950000,
+	.cvdd_max	= 1050000,
 };
 
 #define OPP(freq) 		\
@@ -1054,6 +1063,40 @@ static int da850_round_armrate(struct clk *clk, unsigned long rate)
 {
 	return clk->rate;
 }
+#endif
+
+#ifdef CONFIG_REGULATOR
+static struct regulator *cvdd;
+
+static int da850_set_voltage(unsigned int index)
+{
+	struct da850_opp *opp;
+
+	if (!cvdd)
+		return -ENODEV;
+
+	opp = (struct da850_opp *) da850_freq_table[index].index;
+
+	return regulator_set_voltage(cvdd, opp->cvdd_min, opp->cvdd_max);
+}
+
+static int __init da850_regulator_init(void)
+{
+	int ret = 0;
+
+	cvdd = regulator_get(NULL, "cvdd");
+	if (WARN(IS_ERR(cvdd), "Unable to obtain voltage regulator for CVDD;"
+					" voltage scaling unsupported\n")) {
+		ret = PTR_ERR(cvdd);
+		goto out;
+	}
+
+	davinci_soc_info.set_new_voltage = da850_set_voltage;
+
+out:
+	return ret;
+}
+device_initcall(da850_regulator_init);
 #endif
 
 static struct davinci_soc_info davinci_soc_info_da850 = {
