@@ -102,7 +102,15 @@ static int davinci_target(struct cpufreq_policy *policy,
 
 	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
+	/* if moving to higher frequency, up the voltage beforehand */
+	if (davinci_soc_info.set_new_voltage && freqs.new > freqs.old)
+		davinci_soc_info.set_new_voltage(idx);
+
 	ret = clk_set_rate(armclk, idx);
+
+	/* if moving to lower freq, lower the voltage after lowering freq */
+	if (davinci_soc_info.set_new_voltage && freqs.new < freqs.old)
+		davinci_soc_info.set_new_voltage(idx);
 
 	cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 

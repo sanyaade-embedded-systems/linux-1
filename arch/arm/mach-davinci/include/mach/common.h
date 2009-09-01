@@ -71,6 +71,7 @@ struct davinci_soc_info {
 	dma_addr_t			sram_dma;
 	unsigned			sram_len;
 	void (*init_cpufreq_table) (struct cpufreq_frequency_table **);
+	int (*set_new_voltage) (unsigned int index);
 };
 
 extern struct davinci_soc_info davinci_soc_info;
