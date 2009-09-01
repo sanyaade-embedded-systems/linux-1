@@ -1003,37 +1003,22 @@ static int da850_round_armrate(struct clk *clk, unsigned long rate)
 	return ret * 1000;
 }
 
-static int da850_set_armrate(struct clk *clk, unsigned long armrate)
+static int da850_set_armrate(struct clk *clk, unsigned long index)
 {
 	struct clk *pllclk = &pll0_clk;
 
-	return clk_set_rate(pllclk, armrate);
+	return clk_set_rate(pllclk, index);
 }
 
-static int da850_set_pll0rate(struct clk *clk, unsigned long armrate)
+static int da850_set_pll0rate(struct clk *clk, unsigned long index)
 {
-	int i;
 	unsigned int prediv, mult, postdiv;
 	struct da850_opp *opp;
 	struct pll_data *pll = clk->pll_data;
 	unsigned int v;
 	int ret;
 
-	/* convert to KHz */
-	armrate /= 1000;
-
-	for (i = 0; da850_freq_table[i].frequency != CPUFREQ_TABLE_END; i++) {
-		if (armrate == da850_freq_table[i].frequency)
-			break;
-	}
-
-	if (da850_freq_table[i].frequency == CPUFREQ_TABLE_END) {
-		printk(KERN_WARNING "%s: Unsupported ARM clock rate %ld\n",
-							__func__, armrate);
-		return -EINVAL;
-	}
-
-	opp = (struct da850_opp *) da850_freq_table[i].index;
+	opp = (struct da850_opp *) da850_freq_table[index].index;
 	prediv = opp->prediv;
 	mult = opp->mult;
 	postdiv = opp->postdiv;

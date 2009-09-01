@@ -74,6 +74,7 @@ static int davinci_target(struct cpufreq_policy *policy,
 {
 	struct cpufreq_freqs freqs;
 	int ret = 0;
+	unsigned int idx;
 
 	/*
 	 * Ensure desired rate is within allowed range.  Some govenors
@@ -90,12 +91,19 @@ static int davinci_target(struct cpufreq_policy *policy,
 
 	if (freqs.old == freqs.new)
 		return ret;
-	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 #ifdef CONFIG_CPU_FREQ_DEBUG
 	printk(KERN_DEBUG "cpufreq-davinci: transition: %u --> %u\n",
 	       freqs.old, freqs.new);
 #endif
-	ret = clk_set_rate(armclk, freqs.new * 1000);
+	if (cpufreq_frequency_table_target(policy, freq_table, freqs.new,
+							relation, &idx)) {
+		return -EINVAL;
+	}
+
+	cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
+
+	ret = clk_set_rate(armclk, idx);
+
 	cpufreq_notify_transition(&freqs, CPUFREQ_POSTCHANGE);
 
 	return ret;
@@ -128,8 +136,6 @@ static int __init davinci_cpu_init(struct cpufreq_policy *policy)
 		policy->cpuinfo.min_freq = policy->min;
 		policy->cpuinfo.max_freq = policy->max;
 	}
-
-	clk_set_rate(armclk, policy->cpuinfo.max_freq * 1000);
 
 	policy->min = policy->cpuinfo.min_freq;
 	policy->max = policy->cpuinfo.max_freq;
