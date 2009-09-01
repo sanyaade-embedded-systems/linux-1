@@ -64,6 +64,18 @@ extern struct ov3640_platform_data sdp3430_ov3640_platform_data;
 extern struct dw9710_platform_data sdp3430_dw9710_platform_data;
 #endif
 
+#if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
+extern struct tps61059_platform_data sdp3430_tps61059_data;
+
+static struct platform_device sdp3430_tps61059_device = {
+	.name		= "tps61059",
+	.id		= -1,
+	.dev		= {
+		.platform_data	= &sdp3430_tps61059_data,
+	},
+};
+#endif
+
 extern void sdp3430_cam_init(void);
 
 #define SDP3430_TS_GPIO_IRQ_SDPV1	3
@@ -338,6 +350,9 @@ static struct regulator_consumer_supply sdp3430_vdda_dac_supply = {
 static struct platform_device *sdp3430_devices[] __initdata = {
 	&sdp3430_camkit_device,
 	&sdp3430_dss_device,
+#if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
+	&sdp3430_tps61059_device,
+#endif
 };
 
 static void __init omap_3430sdp_init_irq(void)

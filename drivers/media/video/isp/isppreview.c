@@ -996,7 +996,21 @@ void isppreview_config_gammacorrn(struct isp_prev_device *isp_prev,
 EXPORT_SYMBOL_GPL(isppreview_config_gammacorrn);
 
 /**
- * isppreview_config_luma_enhancement - Sets the Luminance Enhancement table.
+ * isppreview_set_luma_enhancement - Stores the Luminance Enhancement table.
+ * @ytable: Structure containing the table for Luminance Enhancement table.
+ **/
+void isppreview_set_luma_enhancement(struct isp_prev_device *isp_prev,
+				     u32 *ytable)
+{
+	int i;
+
+	for (i = 0; i < ISPPRV_YENH_TBL_SIZE; i++)
+		isp_prev->params.ytable[i] = ytable[i];
+}
+EXPORT_SYMBOL_GPL(isppreview_set_luma_enhancement);
+
+/**
+ * isppreview_config_luma_enhancement - Writes the Luminance Enhancement table.
  * @ytable: Structure containing the table for Luminance Enhancement table.
  **/
 void isppreview_config_luma_enhancement(struct isp_prev_device *isp_prev,
@@ -1537,7 +1551,7 @@ int isppreview_try_pipeline(struct isp_prev_device *isp_prev,
 		pipe->prv_out_w_img -= 1;
 
 	/* FIXME: This doesn't apply for prv -> rsz. */
-	pipe->prv_out_w = ALIGN(pipe->prv_out_w, 0x20);
+	pipe->prv_out_w = ALIGN(pipe->prv_out_w_img, 0x20);
 
 	return 0;
 }
@@ -1892,7 +1906,9 @@ int __init isp_preview_init(struct device *dev)
 	params->csup.gain = FLR_CSUP_GAIN;
 	params->csup.thres = FLR_CSUP_THRES;
 	params->csup.hypf_en = 0;
-	params->ytable = luma_enhance_table;
+	params->ytable = kzalloc(sizeof(u32) * ISPPRV_YENH_TBL_SIZE,
+				 GFP_KERNEL);
+	isppreview_set_luma_enhancement(isp_prev, luma_enhance_table);
 	params->nf.spread = FLR_NF_STRGTH;
 	memcpy(params->nf.table, noise_filter_table, sizeof(params->nf.table));
 	params->dcor.couplet_mode_en = 1;
@@ -1932,4 +1948,16 @@ int __init isp_preview_init(struct device *dev)
 	spin_lock_init(&isp_prev->lock);
 
 	return 0;
+}
+
+/**
+ * isp_preview_cleanup - Module Cleanup.
+ **/
+void isp_preview_cleanup(struct device *dev)
+{
+	struct isp_device *isp = dev_get_drvdata(dev);
+	struct isp_prev_device *isp_prev = &isp->isp_prev;
+	struct prev_params *params = &isp_prev->params;
+
+	kfree(params->ytable);
 }
