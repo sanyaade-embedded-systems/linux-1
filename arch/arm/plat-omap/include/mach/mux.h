@@ -893,6 +893,8 @@ enum omap34xx_index {
 	A24_34XX_GPIO94,
 	C25_34XX_GPIO96,
 	T8_34XX_GPIO55,
+	/* SYS_NIRQ T2 INT1 */
+	AF26_34XX_SYS_NIRQ,
 };
 
 struct omap_mux_cfg {

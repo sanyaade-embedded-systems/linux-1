@@ -42,7 +42,6 @@
 #include <mach/control.h>
 #include <mach/usb.h>
 #include <mach/keypad.h>
-#include <mach/board-ldp.h>
 
 #include "mmc-twl4030.h"
 
@@ -50,15 +49,6 @@
 #define LDP_SMSC911X_GPIO	152
 #define DEBUG_BASE		0x08000000
 #define LDP_ETHR_START		DEBUG_BASE
-
-#include <media/v4l2-int-device.h>
-
-#if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
-#include <media/ov3640.h>
-extern struct ov3640_platform_data ldp_ov3640_platform_data;
-#endif
-
-extern void ldp_cam_init(void);
 
 static struct resource ldp_smsc911x_resources[] = {
 	[0] = {
@@ -278,14 +268,6 @@ static inline void __init ldp_init_smsc911x(void)
 	gpio_direction_input(eth_gpio);
 }
 
-static void __init omap_ldp_init_irq(void)
-{
-	omap2_init_common_hw(NULL, NULL);
-	omap_init_irq();
-	omap_gpio_init();
-	ldp_init_smsc911x();
-}
-
 static struct platform_device ldp_lcd_device = {
 	.name		= "ldp_lcd",
 	.id		= -1,
@@ -298,6 +280,16 @@ static struct omap_lcd_config ldp_lcd_config __initdata = {
 static struct omap_board_config_kernel ldp_config[] __initdata = {
 	{ OMAP_TAG_LCD,		&ldp_lcd_config },
 };
+
+static void __init omap_ldp_init_irq(void)
+{
+	omap_board_config = ldp_config;
+	omap_board_config_size = ARRAY_SIZE(ldp_config);
+	omap2_init_common_hw(NULL, NULL, NULL, NULL, NULL);
+	omap_init_irq();
+	omap_gpio_init();
+	ldp_init_smsc911x();
+}
 
 static struct twl4030_usb_data ldp_usb_data = {
 	.usb_mode	= T2_USB_MODE_ULPI,
@@ -353,21 +345,11 @@ static struct i2c_board_info __initdata ldp_i2c_boardinfo[] = {
 	},
 };
 
-static struct i2c_board_info __initdata ldp_i2c_boardinfo_2[] = {
-#if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
-	{
-		I2C_BOARD_INFO("ov3640", OV3640_I2C_ADDR),
-		.platform_data = &ldp_ov3640_platform_data,
-	},
-#endif
-};
-
 static int __init omap_i2c_init(void)
 {
 	omap_register_i2c_bus(1, 2600, ldp_i2c_boardinfo,
 			ARRAY_SIZE(ldp_i2c_boardinfo));
-	omap_register_i2c_bus(2, 400, ldp_i2c_boardinfo_2,
-			ARRAY_SIZE(ldp_i2c_boardinfo_2));
+	omap_register_i2c_bus(2, 400, NULL, 0);
 	omap_register_i2c_bus(3, 400, NULL, 0);
 	return 0;
 }
@@ -392,8 +374,6 @@ static void __init omap_ldp_init(void)
 {
 	omap_i2c_init();
 	platform_add_devices(ldp_devices, ARRAY_SIZE(ldp_devices));
-	omap_board_config = ldp_config;
-	omap_board_config_size = ARRAY_SIZE(ldp_config);
 	ts_gpio = 54;
 	ldp_spi_board_info[0].irq = gpio_to_irq(ts_gpio);
 	spi_register_board_info(ldp_spi_board_info,
@@ -401,12 +381,10 @@ static void __init omap_ldp_init(void)
 	ads7846_dev_init();
 	omap_serial_init();
 	usb_musb_init();
-	ldp_flash_init();
 
 	twl4030_mmc_init(mmc);
 	/* link regulators to MMC adapters */
 	ldp_vmmc1_supply.dev = mmc[0].dev;
-	ldp_cam_init();
 }
 
 static void __init omap_ldp_map_io(void)

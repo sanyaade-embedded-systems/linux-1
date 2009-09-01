@@ -64,6 +64,37 @@ config OMAP_DEBUG_CLOCKDOMAIN
 	  for every clockdomain register write.  However, the
 	  extra detail costs some memory.
 
+config OMAP_SMARTREFLEX
+	bool "SmartReflex support"
+	depends on ARCH_OMAP34XX && TWL4030_CORE && PM
+	help
+	  Say Y if you want to enable SmartReflex.
+
+	  SmartReflex can perform continuous dynamic voltage
+	  scaling around the nominal operating point voltage
+	  according to silicon characteristics and operating
+	  conditions. Enabling SmartReflex reduces power
+	  consumption.
+
+	  Please note, that by default SmartReflex is only
+	  initialized. To enable the automatic voltage
+	  compensation for VDD1 and VDD2, user must write 1 to
+	  /sys/power/sr_vddX_autocomp, where X is 1 or 2.
+
+config OMAP_SMARTREFLEX_TESTING
+	bool "Smartreflex testing support"
+	depends on OMAP_SMARTREFLEX
+	default n
+	help
+	  Say Y if you want to enable SmartReflex testing with SW hardcoded
+	  NVALUES intead of E-fuse NVALUES set in factory silicon testing.
+
+	  In some devices the E-fuse values have not been set, even though
+	  SmartReflex modules are included. Using these hardcoded values set
+	  in software, one can test the SmartReflex features without E-fuse.
+
+	  WARNING: Enabling this option may cause your device to hang!
+
 config OMAP_RESET_CLOCKS
 	bool "Reset unused clocks during boot"
 	depends on ARCH_OMAP
@@ -147,6 +178,13 @@ config OMAP_32K_TIMER
 
 endchoice
 
+config OMAP3_DEBOBS
+	bool "OMAP3 Debug observability support"
+	depends on ARCH_OMAP3 && DEBUG_FS
+	default n
+	help
+	  Use ETK pads for debug observability
+
 config OMAP_32K_TIMER_HZ
        int "Kernel internal timer frequency for 32KHz timer"
        range 32 1024
@@ -193,6 +231,23 @@ config OMAP_SERIAL_WAKE
 	  Select this option if you want to have your system wake up
 	  to data on the serial RX line. This allows you to wake the
 	  system from serial console.
+
+choice
+	prompt "OMAP PM layer selection"
+	depends on ARCH_OMAP
+	default OMAP_PM_NOOP
+
+config OMAP_PM_NONE
+	bool "No PM layer"
+
+config OMAP_PM_NOOP
+	bool "No-op/debug PM layer"
+
+config OMAP_PM_SRF
+	depends on PM
+	bool "PM layer implemented using SRF"
+
+endchoice
 
 endmenu
 
