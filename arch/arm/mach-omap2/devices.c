@@ -456,12 +456,14 @@ static void __init omap_hsmmc_reset(void)
 		case 3:
 			if (!cpu_is_omap44xx())
 				return;
-			base = OMAP4_MMC4_BASE;
+			else
+				base = OMAP4_MMC4_BASE;
 			break;
 		case 4:
 			if (!cpu_is_omap44xx())
 				return;
-			base = OMAP4_MMC5_BASE;
+			else
+				base = OMAP4_MMC5_BASE;
 			break;
 		}
 
@@ -628,7 +630,7 @@ void __init omap2_init_mmc(struct omap_mmc_platform_data **mmc_data,
 			}
 			break;
 		case 2:
-			if (!cpu_is_omap34xx() || !cpu_is_omap44xx())
+			if (!cpu_is_omap34xx() && !cpu_is_omap44xx())
 				return;
 			if (!cpu_is_omap44xx()) {
 				base = OMAP3_MMC3_BASE;
