@@ -34,7 +34,7 @@ static u16 control_pbias_offset;
 static u16 control_devconf1_offset;
 
 #define HSMMC_NAME_LEN	9
-#define REG_SIMCTRL	0x09
+#define REG_SIMCTRL	0x0C
 
 static struct twl_mmc_controller {
 	struct omap_mmc_platform_data	*mmc;
@@ -47,7 +47,7 @@ static struct twl_mmc_controller {
 	struct regulator		*vcc;
 	struct regulator		*vcc_aux;
 	char				name[HSMMC_NAME_LEN + 1];
-} hsmmc[OMAP34XX_NR_MMC];
+} hsmmc[OMAP44XX_NR_MMC];
 
 static int twl_mmc_card_detect(int irq)
 {
@@ -80,7 +80,7 @@ static int twl_mmc_card_detect(int irq)
 						__func__, REG_SIMCTRL);
 			return -1;
 		} else {
-			return !(read_reg & 0x01);
+			return read_reg & 0x1;
 		}
 	}
 	return -ENOSYS;
@@ -347,7 +347,7 @@ static int twl_mmc23_set_power(struct device *dev, int slot, int power_on, int v
 	return ret;
 }
 
-static struct omap_mmc_platform_data *hsmmc_data[OMAP34XX_NR_MMC] __initdata;
+static struct omap_mmc_platform_data *hsmmc_data[OMAP44XX_NR_MMC] __initdata;
 
 void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 {
@@ -433,7 +433,11 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 			mmc->slots[0].switch_pin = NULL;
 			mmc->slots[0].get_cover_state = NULL;
 			mmc->slots[0].switch_pin = c->gpio_cd;
-			mmc->slots[0].card_detect_irq = 373;
+			/* HardCoding Phoenix number for only MMC1 */
+			if (c->mmc == 1)
+				mmc->slots[0].card_detect_irq = 373;
+			else
+				mmc->slots[0].card_detect_irq = 0;
 			mmc->slots[0].card_detect = twl_mmc_card_detect;
 			mmc->slots[0].gpio_wp = NULL;
 			mmc->slots[0].get_ro = NULL;
@@ -461,6 +465,14 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 			/* off-chip level shifting, or none */
 			mmc->slots[0].set_power = twl_mmc23_set_power;
 			break;
+		case 4:
+			/* off-chip level shifting, or none */
+			mmc->slots[0].set_power = twl_mmc23_set_power;
+			break;
+		case 5:
+			/* off-chip level shifting, or none */
+			mmc->slots[0].set_power = twl_mmc23_set_power;
+			break;
 		default:
 			pr_err("MMC%d configuration not supported!\n", c->mmc);
 			kfree(mmc);
@@ -469,7 +481,7 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 		hsmmc_data[c->mmc - 1] = mmc;
 	}
 
-	omap2_init_mmc(hsmmc_data, OMAP34XX_NR_MMC);
+	omap2_init_mmc(hsmmc_data, OMAP44XX_NR_MMC);
 
 	/* pass the device nodes back to board setup code */
 	for (c = controllers; c->mmc; c++) {
