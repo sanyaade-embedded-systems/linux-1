@@ -107,7 +107,6 @@ static inline void lcdc_write(unsigned int val, unsigned int addr)
 }
 
 struct da8xx_fb_par {
-	wait_queue_head_t da8xx_wq;
 	resource_size_t p_palette_base;
 	unsigned char *v_palette_base;
 	struct clk *lcdc_clk;
@@ -199,14 +198,9 @@ static int lcd_disable_raster(struct da8xx_fb_par *par)
 	u32 reg;
 
 	reg = lcdc_read(LCD_RASTER_CTRL_REG);
-	if (reg & LCD_RASTER_ENABLE) {
+	if (reg & LCD_RASTER_ENABLE)
 		lcdc_write(reg & ~LCD_RASTER_ENABLE, LCD_RASTER_CTRL_REG);
-		ret = wait_event_interruptible_timeout(par->da8xx_wq,
-						!lcdc_read(LCD_STAT_REG) &
-						LCD_END_OF_FRAME0, WSI_TIMEOUT);
-		if (ret == 0)
-			ret = -ETIMEDOUT;
-	}
+
 	return ret;
 }
 
@@ -255,7 +249,7 @@ static int lcd_cfg_dma(int burst_size)
 	default:
 		return -EINVAL;
 	}
-	lcdc_write(reg | LCD_END_OF_FRAME_INT_ENA, LCD_DMA_CTRL_REG);
+	lcdc_write(reg, LCD_DMA_CTRL_REG);
 
 	return 0;
 }
@@ -529,7 +523,6 @@ static int lcd_init(struct da8xx_fb_par *par, const struct lcd_ctrl_config *cfg,
 static irqreturn_t lcdc_irq_handler(int irq, void *arg)
 {
 	u32 stat = lcdc_read(LCD_STAT_REG);
-	struct da8xx_fb_par *par = arg;
 	u32 reg;
 
 	if ((stat & LCD_SYNC_LOST) && (stat & LCD_FIFO_UNDERFLOW)) {
@@ -540,7 +533,6 @@ static irqreturn_t lcdc_irq_handler(int irq, void *arg)
 	} else
 		lcdc_write(stat, LCD_STAT_REG);
 
-	wake_up_interruptible(&par->da8xx_wq);
 	return IRQ_HANDLED;
 }
 
@@ -773,8 +765,6 @@ static int __init fb_probe(struct platform_device *device)
 	da8xx_fb_fix.line_length = (lcdc_info->width * lcd_cfg->bpp) / 8;
 
 	par->lcdc_clk = fb_clk;
-
-	init_waitqueue_head(&par->da8xx_wq);
 
 	par->irq = platform_get_irq(device, 0);
 	if (par->irq < 0) {
