@@ -185,23 +185,64 @@ static struct twl4030_hsmmc_info mmc[] = {
 		.wires          = 8,
 		.gpio_wp        = 4,
 	},
+	{
+		.mmc            = 2,
+		.wires          = 8,
+		.gpio_wp        = 7,
+	},
+	{
+		.mmc            = 3,
+		.wires          = 8,
+		.gpio_wp        = 4,
+	},
+	{
+		.mmc            = 4,
+		.wires          = 8,
+		.gpio_wp        = 4,
+	},
+	{
+		.mmc            = 5,
+		.wires          = 8,
+		.gpio_wp        = 4,
+	},
 	{}	/* Terminator */
 };
 
-static struct regulator_consumer_supply sdp4430_vmmc_supply = {
-	.supply                 = "vmmc",
+static struct regulator_consumer_supply sdp4430_vmmc_supply[] = {
+	{
+		.supply = "vmmc",
+	},
+	{
+		.supply = "vmmc",
+	},
+	{
+		.supply = "vmmc",
+	},
+	{
+		.supply = "vmmc",
+	},
+	{
+		.supply = "vmmc",
+	},
 };
 
 static int __init sdp4430_mmc_init(void)
 {
 	/* Hard Coding Values for testing */
-	printk(KERN_INFO"sdp4430_mmc_init\n");
 	mmc[0].gpio_cd = 373;
+	mmc[1].gpio_cd = 0;
+	mmc[2].gpio_cd = 1;
+	mmc[3].gpio_cd = 2;
+	mmc[4].gpio_cd = 3;
 	twl4030_mmc_init(mmc);
 	/* link regulators to MMC adapters ... we "know" the
 	 * regulators will be set up only *after* we return.
 	 */
-	sdp4430_vmmc_supply.dev = mmc[0].dev;
+	sdp4430_vmmc_supply[0].dev = mmc[0].dev;
+	sdp4430_vmmc_supply[1].dev = mmc[1].dev;
+	sdp4430_vmmc_supply[2].dev = mmc[2].dev;
+	sdp4430_vmmc_supply[3].dev = mmc[3].dev;
+	sdp4430_vmmc_supply[4].dev = mmc[4].dev;
 	return 0;
 }
 
@@ -255,6 +296,7 @@ static struct regulator_init_data sdp4430_vaux3 = {
 	},
 };
 
+/* VMMC1 for MMC1 card */
 static struct regulator_init_data sdp4430_vmmc = {
 	.constraints = {
 		.min_uV		 	= 1200000,
@@ -266,7 +308,7 @@ static struct regulator_init_data sdp4430_vmmc = {
 					| REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies  = 1,
+	.num_consumer_supplies  = 5,
 	.consumer_supplies      = &sdp4430_vmmc_supply,
 };
 
