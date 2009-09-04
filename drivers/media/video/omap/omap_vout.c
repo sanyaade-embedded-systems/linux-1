@@ -547,7 +547,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	vout->line_length = line_length;
 	switch (rotation) {
 	case dss_rotation_90_degree:
-		offset = vout->vrfb_context[0].yoffset *
+		offset = vout->vrfb_context[0].xoffset *
 			vout->vrfb_context[0].bytespp;
 		temp_ps = ps / vr_ps;
 		if (mirroring == 0) {
@@ -575,7 +575,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 		}
 		break;
 	case dss_rotation_270_degree:
-		offset = MAX_PIXELS_PER_LINE * vout->vrfb_context[0].xoffset *
+		offset = MAX_PIXELS_PER_LINE * vout->vrfb_context[0].yoffset *
 			vout->vrfb_context[0].bytespp;
 		temp_ps = ps / vr_ps;
 		if (mirroring == 0) {
@@ -1842,15 +1842,16 @@ static int vidioc_streamon(struct file *file, void *fh,
 
 	vout->first_int = 1;
 
-	if (omap_vout_calculate_offset(vout)) {
-		mutex_unlock(&vout->lock);
-		return -EINVAL;
-	}
 	addr = (unsigned long) vout->queued_buf_addr[vout->cur_frm->i]
 	+ vout->cropped_offset;
 
 	count = vout->buffer_allocated;
 	omap_vout_vrfb_buffer_setup(vout, &count, 0);
+
+	if (omap_vout_calculate_offset(vout)) {
+		mutex_unlock(&vout->lock);
+		return -EINVAL;
+	}
 
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD;
