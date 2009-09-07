@@ -17,6 +17,7 @@
 #include <linux/console.h>
 #include <linux/i2c.h>
 #include <linux/i2c/at24.h>
+#include <linux/i2c/pca953x.h>
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/mtd/mtd.h>
@@ -503,6 +504,61 @@ static int __init pmic_tps65070_init(void)
 #define HAS_EMAC 0
 #endif
 
+static int gpio_exp_setup(struct i2c_client *client, unsigned gpio,
+						unsigned ngpio, void *c)
+{
+	int sel_a, sel_b, sel_c;
+
+	sel_a = gpio + 7;
+	sel_b = gpio + 6;
+	sel_c = gpio + 5;
+
+	/* deselect all fucntionalities */
+	gpio_request(sel_a, "sel_a");
+	gpio_direction_output(sel_a, 1);
+
+	gpio_request(sel_b, "sel_b");
+	gpio_direction_output(sel_b, 1);
+
+	gpio_request(sel_c, "sel_c");
+	gpio_direction_output(sel_c, 1);
+
+	/* enable CHAR LCD */
+	gpio_request(sel_a, "sel_a");
+	gpio_direction_output(sel_a, 0);
+
+	gpio_request(sel_b, "sel_b");
+	gpio_direction_output(sel_b, 0);
+
+	gpio_request(sel_c, "sel_c");
+	gpio_direction_output(sel_c, 0);
+
+	return 0;
+}
+
+static int gpio_exp_teardown(struct i2c_client *client, unsigned gpio,
+						unsigned ngpio, void *c)
+{
+	gpio_free(gpio + 5);
+	gpio_free(gpio + 6);
+	gpio_free(gpio + 7);
+
+	return 0;
+}
+
+static struct pca953x_platform_data gpio_exp = {
+	.gpio_base	= DAVINCI_N_GPIO,
+	.setup		= gpio_exp_setup,
+	.teardown	= gpio_exp_teardown,
+};
+
+static struct i2c_board_info __initdata i2c_info[] =  {
+	{
+		I2C_BOARD_INFO("tca6416", 0x20),
+		.platform_data = &gpio_exp,
+	},
+};
+
 static __init void da850_evm_init(void)
 {
 	struct davinci_soc_info *soc_info = &davinci_soc_info;
@@ -532,6 +588,8 @@ static __init void da850_evm_init(void)
 	if (ret)
 		pr_warning("da850_evm_init: edma registration failed: %d\n",
 				ret);
+
+	i2c_register_board_info(1, i2c_info, ARRAY_SIZE(i2c_info));
 
 	ret = da8xx_pinmux_setup(da850_i2c0_pins);
 	if (ret)
