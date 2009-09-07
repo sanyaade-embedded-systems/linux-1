@@ -169,6 +169,17 @@ config DAVINCI_MCBSP1
 	depends on DAVINCI_MCBSP
 	default n
 
+config DA850_RMII
+	bool "Use RMII Ethernet PHY on DA850/OMAP-L138 EVM"
+	depends on MACH_DAVINCI_DA850_EVM
+	help
+	  Say Y if you want to use the RMII PHY on the EVM. This PHY is
+	  found on the UI daughter card that is supplied with the EVM.
+	  NOTE: Please take care while choosing this option, MII PHY will
+	  not be functional if RMII mode is selected. This also affects
+	  the operation of video devices as they are pin multiplexed with
+	  RMII pins.
+
 endmenu
 
 endif

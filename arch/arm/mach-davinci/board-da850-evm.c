@@ -37,6 +37,7 @@
 #include <mach/cp_intc.h>
 #include <mach/da8xx.h>
 #include <mach/nand.h>
+#include <mach/mux.h>
 
 #define DA850_EVM_PHY_MASK		0x1
 #define DA850_EVM_MDIO_FREQUENCY	2200000 /* PHY bus frequency */
@@ -46,6 +47,8 @@
 
 #define DA850_MMCSD_CD_PIN		GPIO_TO_PIN(4, 0)
 #define DA850_MMCSD_WP_PIN		GPIO_TO_PIN(4, 1)
+
+#define DA850_EMAC_RMII_PIN		GPIO_TO_PIN(2, 6)
 
 static struct mtd_partition da850_evm_norflash_partition[] = {
 	{
@@ -504,9 +507,17 @@ static int __init pmic_tps65070_init(void)
 #define HAS_EMAC 0
 #endif
 
+#if defined(CONFIG_PARPORT_DA8XX) || \
+	defined(CONFIG_PARPORT_DA8XX_MODULE)
+#define HAS_CHAR_LCD 1
+#else
+#define HAS_CHAR_LCD 0
+#endif
+
 static int gpio_exp_setup(struct i2c_client *client, unsigned gpio,
 						unsigned ngpio, void *c)
 {
+	struct davinci_soc_info *soc_info = &davinci_soc_info;
 	int sel_a, sel_b, sel_c;
 
 	sel_a = gpio + 7;
@@ -523,15 +534,19 @@ static int gpio_exp_setup(struct i2c_client *client, unsigned gpio,
 	gpio_request(sel_c, "sel_c");
 	gpio_direction_output(sel_c, 1);
 
-	/* enable CHAR LCD */
-	gpio_request(sel_a, "sel_a");
-	gpio_direction_output(sel_a, 0);
-
-	gpio_request(sel_b, "sel_b");
-	gpio_direction_output(sel_b, 0);
-
-	gpio_request(sel_c, "sel_c");
-	gpio_direction_output(sel_c, 0);
+	if (soc_info->emac_pdata->rmii_en) {
+		/* enable RMII */
+		gpio_direction_output(sel_a, 0);
+		gpio_direction_output(sel_b, 1);
+		gpio_direction_output(sel_c, 1);
+	} else if (HAS_CHAR_LCD) {
+		/* enable CHAR LCD */
+		gpio_direction_output(sel_a, 0);
+		gpio_direction_output(sel_b, 0);
+		gpio_direction_output(sel_c, 0);
+	} else {
+		/* do nothing */
+	}
 
 	return 0;
 }
@@ -559,10 +574,55 @@ static struct i2c_board_info __initdata i2c_info[] =  {
 	},
 };
 
+static void __init da850_evm_config_emac(u8 rmii_en)
+{
+	void __iomem *cfg_chip3_base;
+	int ret;
+	u32 val;
+
+	cfg_chip3_base = DA8XX_SYSCFG_VIRT(DA8XX_CFGCHIP3_REG);
+
+	/* configure the CFGCHIP3 register for RMII or MII */
+	val = readl(cfg_chip3_base);
+	if (rmii_en)
+		val |= BIT(8);
+	else
+		val &= ~BIT(8);
+
+	writel(val, cfg_chip3_base);
+
+	if (!rmii_en)
+		ret = da8xx_pinmux_setup(da850_cpgmac_pins);
+	else
+		ret = da8xx_pinmux_setup(da850_rmii_pins);
+	if (ret)
+		pr_warning("da850_evm_init: cpgmac/rmii mux setup failed: %d\n",
+				ret);
+
+	if (rmii_en) {
+		/* Disable MII clock */
+		davinci_cfg_reg(DA850_GPIO2_6);
+		gpio_request(DA850_EMAC_RMII_PIN, "mdio_clk_en");
+		gpio_direction_output(DA850_EMAC_RMII_PIN, 1);
+	}
+}
+
 static __init void da850_evm_init(void)
 {
 	struct davinci_soc_info *soc_info = &davinci_soc_info;
 	int ret;
+
+#ifdef CONFIG_DA850_RMII
+	if (HAS_CHAR_LCD)
+		pr_warning("WARNING: both Character LCD and RMII are "
+			"enabled, but only one can work.\n"
+			"\tUse MII support on base board instead of "
+			"RMII.\n");
+	else
+		soc_info->emac_pdata->rmii_en = 1;
+#else
+	soc_info->emac_pdata->rmii_en = 0;
+#endif
 
 	ret = pmic_tps65070_init();
 	if (ret)
@@ -603,13 +663,7 @@ static __init void da850_evm_init(void)
 
 	soc_info->emac_pdata->phy_mask = DA850_EVM_PHY_MASK;
 	soc_info->emac_pdata->mdio_max_freq = DA850_EVM_MDIO_FREQUENCY;
-	soc_info->emac_pdata->rmii_en = 0;
-
-	ret = da8xx_pinmux_setup(da850_cpgmac_pins);
-	if (ret)
-		pr_warning("da850_evm_init: cpgmac mux setup failed: %d\n",
-				ret);
-
+	da850_evm_config_emac(soc_info->emac_pdata->rmii_en);
 	ret = da8xx_register_emac();
 	if (ret)
 		pr_warning("da850_evm_init: emac registration failed: %d\n",
