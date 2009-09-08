@@ -13,7 +13,7 @@
 #define __ASM_ARCH_USB_H
 
 /* DA8xx has 5 CFGCHIP registers */
-#define DA830_CFGCHIP(n)	(DA8XX_BOOT_CFG_BASE + 0x17c + (n) * 4)
+#define DA830_CFGCHIP(n)	(DA8XX_SYSCFG_BASE + 0x17c + (n) * 4)
 
 /* DA8xx CFGCHIP2 (USB 2.0 PHY Control) register bits */
 #define CFGCHIP2_PHYCLKGD	(1 << 17)

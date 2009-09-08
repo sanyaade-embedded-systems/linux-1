@@ -38,6 +38,17 @@
 #include <mach/da8xx.h>
 #include <mach/nand.h>
 #include <mach/mux.h>
+#include <mach/usb.h>
+
+#if defined(CONFIG_USB_OHCI_HCD) || defined(CONFIG_USB_OHCI_HCD_MODULE)
+static int da850_evm_usb1_vbus(unsigned port, int on);
+static irqreturn_t da850_usb1_oc_handler(int irq, void *dev);
+static int da850_evm_usb1_ocic_notify(da830_ocic_handler_t handler);
+static int da850_evm_usb1_get_oci(unsigned port);
+extern struct da830_ohci_root_hub da850_ohci_rh_data;
+da830_ocic_handler_t usb1_root_hub_oc;
+static int usb1_oci;
+#endif
 
 #define DA850_EVM_PHY_MASK		0x1
 #define DA850_EVM_MDIO_FREQUENCY	2200000 /* PHY bus frequency */
@@ -49,6 +60,9 @@
 #define DA850_MMCSD_WP_PIN		GPIO_TO_PIN(4, 1)
 
 #define DA850_EMAC_RMII_PIN		GPIO_TO_PIN(2, 6)
+
+#define DA850_USB1_VBUS_PIN		GPIO_TO_PIN(2, 4)
+#define DA850_USB1_OC_PIN		GPIO_TO_PIN(6, 13)
 
 static struct mtd_partition da850_evm_norflash_partition[] = {
 	{
@@ -760,6 +774,25 @@ static __init void da850_evm_init(void)
 	if (ret)
 		pr_warning("da850_evm_init: usb1 mux setup failed: %d\n",
 				ret);
+
+	if (gpio_request(DA850_USB1_VBUS_PIN, "USB1 VBUS\n") < 0)
+		pr_warning("da850_evm_init: usb1 vbus gpio ownership failed\n");
+
+	if (gpio_request(DA850_USB1_OC_PIN, "USB1 OC\n") < 0)
+		pr_warning("da850_evm_init: usb1 oc gpio ownership failed\n");
+
+	gpio_direction_output(DA850_USB1_VBUS_PIN, 0);
+	gpio_direction_output(DA850_USB1_OC_PIN, 1);
+
+	if (request_irq(gpio_to_irq(DA850_USB1_OC_PIN), da850_usb1_oc_handler,
+			0, "usb1_oc_handler", NULL))
+		pr_warning("da850_evm_init: usb1 OC irq registration failed\n");
+
+	set_irq_type(gpio_to_irq(DA850_USB1_OC_PIN), IRQ_TYPE_LEVEL_LOW);
+
+	da850_ohci_rh_data.set_power = da850_evm_usb1_vbus;
+	da850_ohci_rh_data.ocic_notify = da850_evm_usb1_ocic_notify;
+	da850_ohci_rh_data.get_oci = da850_evm_usb1_get_oci;
 #endif
 
 	ret = da8xx_register_ohci();
@@ -808,6 +841,49 @@ static void __init da850_evm_map_io(void)
 {
 	da850_init();
 }
+
+#if defined(CONFIG_USB_OHCI_HCD) || defined(CONFIG_USB_OHCI_HCD_MODULE)
+/*
+ * USB1 VBUS control on OMAPL138 EVM.  This functiion uses the GPIO2[4] line
+ * to control the USB1 VBUS line.
+ */
+static int da850_evm_usb1_vbus(unsigned port, int on)
+{
+	if (on)
+		usb1_oci = 0;
+
+	gpio_set_value(DA850_USB1_VBUS_PIN, on);
+	return 0;
+}
+
+/*
+ * Call the related OHCI module handler in the event of a OC condition.
+ * OC indication is provided by GPIO6[13] line.
+ */
+static irqreturn_t da850_usb1_oc_handler(int irq, void *dev)
+{
+	usb1_oci = 1;
+	usb1_root_hub_oc(&da850_ohci_rh_data, 0);
+	return IRQ_HANDLED;
+}
+
+/*
+ * Register for a OHCI OC handler
+ */
+static int da850_evm_usb1_ocic_notify(da830_ocic_handler_t handler)
+{
+	usb1_root_hub_oc = handler;
+	return 0;
+}
+
+/*
+ * Provide the OC status for the root hub port.
+ */
+static int da850_evm_usb1_get_oci(unsigned port)
+{
+	return usb1_oci;
+}
+#endif
 
 MACHINE_START(DAVINCI_DA850_EVM, "DaVinci DA850/OMAP-L138 EVM")
 	.phys_io	= IO_PHYS,

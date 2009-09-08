@@ -902,6 +902,10 @@ enum davinci_da850_index {
 	DA850_MCBSP1_DR,
 	DA850_MCBSP1_DX,
 	DA850_MCBSP1_CLKS,
+
+	/* USB1 VBUS gpio */
+	DA850_GPIO2_4,
+	DA850_GPIO6_13,
 };
 
 #ifdef CONFIG_DAVINCI_MUX
