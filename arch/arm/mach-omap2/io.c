@@ -33,7 +33,6 @@
 #include <mach/sdrc.h>
 #include <mach/gpmc.h>
 
-#ifndef CONFIG_ARCH_OMAP4	/* FIXME: Remove this once clkdev is ready */
 #include "clock.h"
 
 #include <mach/powerdomain.h>
@@ -42,7 +41,6 @@
 
 #include <mach/clockdomain.h>
 #include "clockdomains.h"
-#endif
 /*
  * The machine specific code may provide the extra mapping besides the
  * default mapping provided here.
@@ -280,12 +278,12 @@ void __init omap2_init_common_hw(struct omap_sdrc_params *sdrc_cs0,
 				 struct omap_sdrc_params *sdrc_cs1)
 {
 	omap2_mux_init();
-#ifndef CONFIG_ARCH_OMAP4 /* FIXME: Remove this once the clkdev is ready */
+#ifndef CONFIG_ARCH_OMAP4 /* FIXME: Remove this once the clkdm/pwrdm f/w is ready */
 	pwrdm_init(powerdomains_omap);
 	clkdm_init(clockdomains_omap, clkdm_pwrdm_autodeps);
-	omap2_clk_init();
 	omap2_sdrc_init(sdrc_cs0, sdrc_cs1);
 	_omap2_init_reprogram_sdrc();
 #endif
+	omap2_clk_init();
 	gpmc_init();
 }
