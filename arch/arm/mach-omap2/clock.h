@@ -36,6 +36,17 @@
 #define OMAP3XXX_EN_DPLL_FRBYPASS		0x6
 #define OMAP3XXX_EN_DPLL_LOCKED			0x7
 
+/* OMAP4xxx CM_CLKMODE_DPLL*.EN_*_DPLL bits - for omap2_get_dpll_rate() */
+#define	OMAP4XXX_EN_DPLL_MNBYPASS		0x4
+#define OMAP4XXX_EN_DPLL_LPBYPASS		0x5
+#define OMAP4XXX_EN_DPLL_FRBYPASS		0x6
+#define OMAP4XXX_EN_DPLL_LOCKED			0x7
+
+/* CM_CLKEN_PLL*.EN* bit values - not all are available for every DPLL */
+#define DPLL_LOW_POWER_STOP		0x1
+#define DPLL_LOW_POWER_BYPASS		0x5
+#define DPLL_LOCKED			0x7
+
 int omap2_clk_init(void);
 int omap2_clk_enable(struct clk *clk);
 void omap2_clk_disable(struct clk *clk);
@@ -63,10 +74,13 @@ unsigned long omap2_fixed_divisor_recalc(struct clk *clk);
 long omap2_clksel_round_rate(struct clk *clk, unsigned long target_rate);
 int omap2_clksel_set_rate(struct clk *clk, unsigned long rate);
 u32 omap2_get_dpll_rate(struct clk *clk);
+void omap2_init_dpll_parent(struct clk *clk);
 int omap2_wait_clock_ready(void __iomem *reg, u32 cval, const char *name);
 void omap2_clk_prepare_for_reboot(void);
 int omap2_dflt_clk_enable(struct clk *clk);
 void omap2_dflt_clk_disable(struct clk *clk);
+int omap3_noncore_dpll_enable(struct clk *clk);
+void omap3_noncore_dpll_disable(struct clk *clk);
 void omap2_clk_dflt_find_companion(struct clk *clk, void __iomem **other_reg,
 				   u8 *other_bit);
 void omap2_clk_dflt_find_idlest(struct clk *clk, void __iomem **idlest_reg,

@@ -196,21 +196,6 @@ void omap2_clk_prepare_for_reboot(void)
 	return;
 }
 
-static int omap4_noncore_dpll_set_rate(struct clk *clk, unsigned long rate)
-{
-	return 0;
-}
-
-static unsigned long omap4_clkoutx2_recalc(struct clk *clk)
-{
-	return 0;
-}
-
-static unsigned long omap4_dpll_recalc(struct clk *clk)
-{
-	return 0;
-}
-
 static int __init omap2_clk_arch_init(void)
 {
 	if (!mpurate)
