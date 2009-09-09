@@ -54,11 +54,6 @@ static int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate);
 static struct clk dpll1_fck;
 static struct clk dpll2_fck;
 
-/* CM_CLKEN_PLL*.EN* bit values - not all are available for every DPLL */
-#define DPLL_LOW_POWER_STOP		0x1
-#define DPLL_LOW_POWER_BYPASS		0x5
-#define DPLL_LOCKED			0x7
-
 /* PRM CLOCKS */
 
 /* According to timer32k.c, this is a 32768Hz clock, not a 32000Hz clock. */

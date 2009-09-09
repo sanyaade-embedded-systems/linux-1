@@ -19,9 +19,9 @@
 #include "prm.h"
 #include "prm-regbits-44xx.h"
 
-static unsigned long omap4_dpll_recalc(struct clk *clk);
-static unsigned long omap4_clkoutx2_recalc(struct clk *clk);
-static int omap4_noncore_dpll_set_rate(struct clk *clk, unsigned long rate);
+unsigned long omap3_dpll_recalc(struct clk *clk);
+unsigned long omap3_clkoutx2_recalc(struct clk *clk);
+int omap3_noncore_dpll_set_rate(struct clk *clk, unsigned long rate);
 
 /* Maximum DPLL multiplier, divider values for OMAP4 */
 #define OMAP4_MAX_DPLL_MULT	2048
@@ -415,15 +415,15 @@ static struct clk dpll_abe_ck = {
 	.parent         = &abe_dpll_alwon_ck,
 	.dpll_data      = &dpll_abe_dd,
 	.round_rate     = &omap2_dpll_round_rate,
-	.set_rate       = &omap4_noncore_dpll_set_rate,
-	.recalc         = &omap4_dpll_recalc,
+	.set_rate       = &omap3_noncore_dpll_set_rate,
+	.recalc         = &omap3_dpll_recalc,
 };
 
 static struct clk dpll_abe_x2_ck = {
 	.name           = "dpll_abe_x2_ck",
 	.ops            = &clkops_null,
 	.parent         = &dpll_abe_ck,
-	.recalc         = &omap4_clkoutx2_recalc,
+	.recalc         = &omap3_clkoutx2_recalc,
 };
 
 static const struct clksel dpll_abe_m2_clksel[] = {
@@ -865,15 +865,15 @@ static struct clk dpll_per_ck = {
 	.parent         = &dpll_sys_ref_ck,
 	.dpll_data      = &dpll_per_dd,
 	.round_rate     = &omap2_dpll_round_rate,
-	.set_rate       = &omap4_noncore_dpll_set_rate,
-	.recalc         = &omap4_dpll_recalc,
+	.set_rate       = &omap3_noncore_dpll_set_rate,
+	.recalc         = &omap3_dpll_recalc,
 };
 
 static struct clk dpll_per_x2_ck = {
 	.name           = "dpll_per_x2_ck",
 	.ops            = &clkops_null,
 	.parent         = &dpll_per_ck,
-	.recalc         = &omap4_clkoutx2_recalc,
+	.recalc         = &omap3_clkoutx2_recalc,
 };
 
 static const struct clksel dpll_per_m2_clksel[] = {
@@ -1060,15 +1060,15 @@ static struct clk dpll_core_ck = {
 	.parent         = &dpll_sys_ref_ck,
 	.dpll_data      = &dpll_core_dd,
 	.round_rate     = &omap2_dpll_round_rate,
-	.set_rate       = &omap4_noncore_dpll_set_rate,
-	.recalc         = &omap4_dpll_recalc,
+	.set_rate       = &omap3_noncore_dpll_set_rate,
+	.recalc         = &omap3_dpll_recalc,
 };
 
 static struct clk dpll_core_x2_ck = {
 	.name           = "dpll_core_x2_ck",
 	.ops            = &clkops_null,
 	.parent         = &dpll_core_ck,
-	.recalc         = &omap4_clkoutx2_recalc,
+	.recalc         = &omap3_clkoutx2_recalc,
 };
 
 static const struct clksel dpll_core_m2_clksel[] = {
@@ -1239,8 +1239,8 @@ static struct clk dpll_mpu_ck = {
 	.parent         = &dpll_sys_ref_ck,
 	.dpll_data      = &dpll_mpu_dd,
 	.round_rate     = &omap2_dpll_round_rate,
-	.set_rate       = &omap4_noncore_dpll_set_rate,
-	.recalc         = &omap4_dpll_recalc,
+	.set_rate       = &omap3_noncore_dpll_set_rate,
+	.recalc         = &omap3_dpll_recalc,
 };
 
 static const struct clksel dpll_mpu_m2_clksel[] = {
@@ -1308,15 +1308,15 @@ static struct clk dpll_iva_ck = {
 	.parent         = &dpll_sys_ref_ck,
 	.dpll_data      = &dpll_iva_dd,
 	.round_rate     = &omap2_dpll_round_rate,
-	.set_rate       = &omap4_noncore_dpll_set_rate,
-	.recalc         = &omap4_dpll_recalc,
+	.set_rate       = &omap3_noncore_dpll_set_rate,
+	.recalc         = &omap3_dpll_recalc,
 };
 
 static struct clk dpll_iva_x2_ck = {
 	.name           = "dpll_iva_x2_ck",
 	.ops            = &clkops_null,
 	.parent         = &dpll_iva_ck,
-	.recalc         = &omap4_clkoutx2_recalc,
+	.recalc         = &omap3_clkoutx2_recalc,
 };
 
 static const struct clksel dpll_iva_x2mx_clksel[] = {
@@ -1385,15 +1385,15 @@ static struct clk dpll_unipro_ck = {
 	.parent         = &dpll_sys_ref_ck,
 	.dpll_data      = &dpll_unipro_dd,
 	.round_rate     = &omap2_dpll_round_rate,
-	.set_rate       = &omap4_noncore_dpll_set_rate,
-	.recalc         = &omap4_dpll_recalc,
+	.set_rate       = &omap3_noncore_dpll_set_rate,
+	.recalc         = &omap3_dpll_recalc,
 };
 
 static struct clk dpll_unipro_x2_ck = {
 	.name           = "dpll_unipro_x2_ck",
 	.ops            = &clkops_null,
 	.parent         = &dpll_unipro_ck,
-	.recalc         = &omap4_clkoutx2_recalc,
+	.recalc         = &omap3_clkoutx2_recalc,
 };
 
 static const struct clksel dpll_unipro_x2mx_clksel[] = {
@@ -1445,8 +1445,8 @@ static struct clk dpll_usb_ck = {
 	.parent		= &dpll_sys_ref_ck,
 	.dpll_data	= &dpll_usb_dd,
 	.round_rate	= &omap2_dpll_round_rate,
-	.set_rate	= &omap4_noncore_dpll_set_rate,
-	.recalc		= &omap4_dpll_recalc,
+	.set_rate	= &omap3_noncore_dpll_set_rate,
+	.recalc		= &omap3_dpll_recalc,
 };
 
 static const struct clksel dpll_usb_m2_clksel[] = {
