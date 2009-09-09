@@ -46,6 +46,7 @@
 struct twl6030_priv_data {
 	int codec_powered;
 	unsigned int sysclk;
+	int configure;
 };
 
 /*
@@ -655,7 +656,12 @@ static int twl6030_set_dai_pll(struct snd_soc_dai *codec_dai, int pll_id,
 static int abe_mm_startup(struct snd_pcm_substream *substream,
 			struct snd_soc_dai *dai)
 {
-	abe_default_configuration(UC2_VOICE_CALL_AND_IHF_MMDL);
+	struct snd_soc_codec *codec = dai->codec;
+	struct twl6030_priv_data *twl6030_priv = codec->private_data;
+
+	if (!twl6030_priv->configure++)
+		abe_default_configuration(UC2_VOICE_CALL_AND_IHF_MMDL);
+
 	return 0;
 }
 
