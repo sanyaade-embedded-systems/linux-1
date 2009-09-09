@@ -679,9 +679,10 @@ static int abe_mm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	if (!substream->stream) {
-		/* Circular buffer 0 (MM_DL path) write pointer address
+		/*
+		 * Circular buffer 0 (MM_DL path) write pointer address
 		 * increases by 2 to avoid loosing DMA request
-	 	 */
+		 */
 		dst_ptr = (unsigned int*) (ABE_DMEM_BASE_ADDRESS_MPU + 0x100);
 		*dst_ptr = 0x1a004800;
 
@@ -712,6 +713,7 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
+	unsigned int *dst_ptr;
 	int rate, format;
 
 	rate = params_rate(params);
@@ -723,6 +725,18 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 	default:
 		dev_err(codec->dev, "hw params: unknown rate %d\n", rate);
 		return -EINVAL;
+	}
+
+	if (!substream->stream) {
+		/*
+		 * Circular buffer 0 (MM_DL path) write pointer address
+		 * increases by 2 to avoid loosing DMA request
+		 */
+		dst_ptr = (unsigned int*) (ABE_DMEM_BASE_ADDRESS_MPU + 0x100);
+		*dst_ptr = 0x1a004800;
+
+		dst_ptr = (unsigned int*) (ABE_DMEM_BASE_ADDRESS_MPU + 0x108);
+		*dst_ptr = 0x04000c00;
 	}
 
 	format = params_format(params);
