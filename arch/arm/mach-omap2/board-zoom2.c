@@ -609,6 +609,11 @@ static struct platform_device *zoom2_devices[] __initdata = {
 	/*&zoom2_vout_device,*/
 };
 
+static void enable_board_wakeup_source(void)
+{
+	omap_cfg_reg(AF26_34XX_SYS_NIRQ);
+}
+
 static void __init omap_zoom2_init(void)
 {
 	omap_i2c_init();
@@ -622,6 +627,7 @@ static void __init omap_zoom2_init(void)
 	ldp_flash_init();
 	zoom2_cam_init();
 	zoom2_lcd_tv_panel_init();
+	enable_board_wakeup_source();
 }
 
 static struct map_desc zoom2_io_desc[] __initdata = {
