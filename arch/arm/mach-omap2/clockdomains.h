@@ -1,10 +1,12 @@
 /*
- * OMAP2/3 clockdomains
+ * OMAP2/3/4 clockdomains
  *
  * Copyright (C) 2008 Texas Instruments, Inc.
  * Copyright (C) 2008 Nokia Corporation
  *
  * Written by Paul Walmsley
+ *
+ * Updated with the OMAP4 specific Clock Domains by Abhijit Pagare
  */
 
 #ifndef __ARCH_ARM_MACH_OMAP2_CLOCKDOMAINS_H
@@ -12,8 +14,19 @@
 
 #include <mach/clockdomain.h>
 
+#include "prcm-common.h"
+#include "prm.h"
+#include "prm-regbits-24xx.h"
+#include "prm-regbits-34xx.h"
+#include "prm-regbits-44xx.h"
+#include "cm.h"
+#include "cm-regbits-24xx.h"
+#include "cm-regbits-34xx.h"
+#include "cm1-regbits-44xx.h"
+#include "cm2-regbits-44xx.h"
+
 /*
- * OMAP2/3-common clockdomains
+ * OMAP2/3/4-common clockdomains
  *
  * Even though the 2420 has a single PRCM module from the
  * interconnect's perspective, internally it does appear to have
@@ -25,19 +38,15 @@
 static struct clockdomain wkup_clkdm = {
 	.name		= "wkup_clkdm",
 	.pwrdm		= { .name = "wkup_pwrdm" },
-	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP24XX | CHIP_IS_OMAP3430),
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP24XX | CHIP_IS_OMAP3430 \
+						| CHIP_IS_OMAP4430),
 };
 
 static struct clockdomain prm_clkdm = {
 	.name		= "prm_clkdm",
 	.pwrdm		= { .name = "wkup_pwrdm" },
-	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP24XX | CHIP_IS_OMAP3430),
-};
-
-static struct clockdomain cm_clkdm = {
-	.name		= "cm_clkdm",
-	.pwrdm		= { .name = "core_pwrdm" },
-	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP24XX | CHIP_IS_OMAP3430),
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP24XX | CHIP_IS_OMAP3430 \
+						| CHIP_IS_OMAP4430),
 };
 
 /*
@@ -96,6 +105,12 @@ static struct clockdomain mdm_clkdm = {
 
 #if defined(CONFIG_ARCH_OMAP24XX)
 
+static struct clockdomain cm_clkdm = {
+	.name		= "cm_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP24XX),
+};
+
 static struct clockdomain dsp_clkdm = {
 	.name		= "dsp_clkdm",
 	.pwrdm		= { .name = "dsp_pwrdm" },
@@ -144,6 +159,12 @@ static struct clockdomain dss_24xx_clkdm = {
  */
 
 #if defined(CONFIG_ARCH_OMAP34XX)
+
+static struct clockdomain cm_clkdm = {
+	.name		= "cm_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
+};
 
 static struct clockdomain mpu_34xx_clkdm = {
 	.name		= "mpu_clkdm",
@@ -293,10 +314,192 @@ static struct clockdomain dpll5_clkdm = {
 #endif   /* CONFIG_ARCH_OMAP34XX */
 
 /*
+ * 44xx clockdomains
+ */
+
+/* The Flags will be populated later */
+
+#if defined(CONFIG_ARCH_OMAP4)
+
+static struct clockdomain cm1_clkdm = {
+	.name		= "cm1_clkdm",
+	.pwrdm		= { .name = "pd_alwon_core_pwrdm" },
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cm2_clkdm = {
+	.name		= "cm2_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_dsp_clkdm = {
+	.name		= "cd_dsp_clkdm",
+	.pwrdm		= { .name = "dsp_pwrdm" },
+	.clktrctrl_mask	= OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP_SWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_std_efuse_clkdm = {
+	.name		= "cd_std_efuse_clkdm",
+	.pwrdm		= { .name = "std_effuse_pwrdm" },
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_cortexa9_clkdm = {
+	.name		= "cd_cortexa9_clkdm",
+	.pwrdm		= { .name = "mpu_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_FORCE_WAKEUP | CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_l4_per_clkdm = {
+	.name		= "cd_l4_per_clkdm",
+	.pwrdm		= { .name = "pd_l4_per_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP_SWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_l3_init_clkdm = {
+	.name		= "cd_l3_init_clkdm",
+	.pwrdm		= { .name = "pd_l3_init_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP_SWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_ivahd_clkdm = {
+	.name		= "cd_ivahd_clkdm",
+	.pwrdm		= { .name = "ivahd_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP_SWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_sgx_clkdm = {
+	.name		= "cd_sgx_clkdm",
+	.pwrdm		= { .name = "pd_sgx_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP_SWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_emu_clkdm = {
+	.name		= "cd_emu_clkdm",
+	.pwrdm		= { .name = "pd_emu_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_FORCE_WAKEUP | CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_dss_clkdm = {
+	.name		= "cd_dss_clkdm",
+	.pwrdm		= { .name = "pd_dss_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP_SWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_l4_cfg_clkdm = {
+	.name		= "cd_l4_cfg_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_l3_instr_clkdm = {
+	.name		= "cd_l3_instr_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_l3_2_clkdm = {
+	.name		= "cd_l3_2_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_l3_1_clkdm = {
+	.name		= "cd_l3_1_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_emif_clkdm = {
+	.name		= "cd_emif_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_FORCE_WAKEUP | CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_cortexm3_clkdm = {
+	.name		= "cd_cortexm3_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP_SWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_dma_clkdm = {
+	.name		= "cd_dma_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_FORCE_WAKEUP | CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_d2d_clkdm = {
+	.name		= "cd_d2d_clkdm",
+	.pwrdm		= { .name = "core_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_FORCE_WAKEUP | CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_cam_clkdm = {
+	.name		= "cd_cam_clkdm",
+	.pwrdm		= { .name = "pd_cam_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP_SWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_abe_clkdm = {
+	.name		= "cd_abe_clkdm",
+	.pwrdm		= { .name = "pd_audio_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_HWSUP_SWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+static struct clockdomain cd_l4_alwon_core_clkdm = {
+	.name		= "cd_l4_alwon_core_clkdm",
+	.pwrdm		= { .name = "pd_alwon_core_pwrdm" },
+	.clktrctrl_mask = OMAP4430_CLKTRCTRL_MASK,
+	.flags		= CLKDM_CAN_FORCE_WAKEUP | CLKDM_CAN_HWSUP,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+};
+
+#endif
+
+/*
  * Clockdomain-powerdomain hwsup dependencies (34XX only)
  */
 
 static struct clkdm_pwrdm_autodep clkdm_pwrdm_autodeps[] = {
+
+#ifdef CONFIG_ARCH_OMAP34xx
 	{
 		.pwrdm	   = { .name = "mpu_pwrdm" },
 		.omap_chip = OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
@@ -308,6 +511,9 @@ static struct clkdm_pwrdm_autodep clkdm_pwrdm_autodeps[] = {
 	{
 		.pwrdm	   = { .name = NULL },
 	}
+#endif
+
+/* The dependencies for OMAP4 will be populated later */
 };
 
 /*
@@ -317,7 +523,6 @@ static struct clkdm_pwrdm_autodep clkdm_pwrdm_autodeps[] = {
 static struct clockdomain *clockdomains_omap[] = {
 
 	&wkup_clkdm,
-	&cm_clkdm,
 	&prm_clkdm,
 
 #ifdef CONFIG_ARCH_OMAP2420
@@ -331,6 +536,7 @@ static struct clockdomain *clockdomains_omap[] = {
 #endif
 
 #ifdef CONFIG_ARCH_OMAP24XX
+	&cm_clkdm,
 	&dsp_clkdm,
 	&gfx_24xx_clkdm,
 	&core_l3_24xx_clkdm,
@@ -339,6 +545,7 @@ static struct clockdomain *clockdomains_omap[] = {
 #endif
 
 #ifdef CONFIG_ARCH_OMAP34XX
+	&cm_clkdm,
 	&mpu_34xx_clkdm,
 	&neon_clkdm,
 	&iva2_clkdm,
@@ -359,6 +566,30 @@ static struct clockdomain *clockdomains_omap[] = {
 	&dpll5_clkdm,
 #endif
 
+#ifdef CONFIG_ARCH_OMAP4
+	&cm1_clkdm,
+	&cm2_clkdm,
+	&cd_dsp_clkdm,
+	&cd_std_efuse_clkdm,
+	&cd_cortexa9_clkdm,
+	&cd_l4_per_clkdm,
+	&cd_l3_init_clkdm,
+	&cd_ivahd_clkdm,
+	&cd_sgx_clkdm,
+	&cd_emu_clkdm,
+	&cd_dss_clkdm,
+	&cd_l4_cfg_clkdm,
+	&cd_l3_instr_clkdm,
+	&cd_l3_2_clkdm,
+	&cd_l3_1_clkdm,
+	&cd_emif_clkdm,
+	&cd_cortexm3_clkdm,
+	&cd_dma_clkdm,
+	&cd_d2d_clkdm,
+	&cd_cam_clkdm,
+	&cd_abe_clkdm,
+	&cd_l4_alwon_core_clkdm,
+#endif
 	NULL,
 };
 

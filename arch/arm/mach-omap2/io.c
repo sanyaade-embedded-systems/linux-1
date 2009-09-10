@@ -279,8 +279,8 @@ void __init omap2_init_common_hw(struct omap_sdrc_params *sdrc_cs0,
 {
 	omap2_mux_init();
 	pwrdm_init(powerdomains_omap);
-#ifndef CONFIG_ARCH_OMAP4 /* FIXME: Remove it once clkdm/pwrdm f/w is ready */
 	clkdm_init(clockdomains_omap, clkdm_pwrdm_autodeps);
+#ifndef CONFIG_ARCH_OMAP4
 	omap2_sdrc_init(sdrc_cs0, sdrc_cs1);
 	_omap2_init_reprogram_sdrc();
 #endif
