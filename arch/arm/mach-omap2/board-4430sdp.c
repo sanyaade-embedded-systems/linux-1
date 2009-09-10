@@ -28,6 +28,7 @@
 #include <mach/control.h>
 #include <mach/timer-gp.h>
 #include <asm/hardware/gic.h>
+#include <asm/hardware/cache-l2x0.h>
 
 static struct platform_device sdp4430_lcd_device = {
 	.name		= "sdp4430_lcd",
@@ -70,6 +71,16 @@ static void __init omap_4430sdp_init_irq(void)
 
 static void __init omap_4430sdp_init(void)
 {
+#ifdef CONFIG_CACHE_L2X0
+	void __iomem *l2cache_base = IO_ADDRESS(OMAP44XX_L2CACHE_BASE);
+
+	/* set RAM latencies to 1 cycle for eASIC */
+	writel(0, l2cache_base + L2X0_TAG_LATENCY_CTRL);
+	writel(0, l2cache_base + L2X0_DATA_LATENCY_CTRL);
+	/* 16KB way size, 8-way associativity, parity disabled
+	* Bits:  .. 0 0 0 0 1 00 1 0 1 001 0 000 0 .... .... .... */
+	l2x0_init(l2cache_base, 0x02520000, 0xc0000fff);
+#endif
 	platform_add_devices(sdp4430_devices, ARRAY_SIZE(sdp4430_devices));
 	omap_board_config = sdp4430_config;
 	omap_board_config_size = ARRAY_SIZE(sdp4430_config);

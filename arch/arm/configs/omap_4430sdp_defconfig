@@ -229,7 +229,7 @@ CONFIG_HAS_TLS_REG=y
 # CONFIG_ARM_ERRATA_458693 is not set
 # CONFIG_ARM_ERRATA_460075 is not set
 CONFIG_ARM_GIC=y
-
+# CONFIG_CACHE_L2X0 is not set
 #
 # Bus support
 #
