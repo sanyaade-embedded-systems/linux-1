@@ -8,6 +8,7 @@
  * Written by Tony Lindgren <tony.lindgren@nokia.com>
  *
  * Some pieces of code Copyright (C) 2005 Texas Instruments, Inc.
+ * Upgraded with OMAP4 support by Abhijit Pagare <abhijitpagare@ti.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -35,7 +36,10 @@ static void __iomem *cm2_base;
 u32 omap_prcm_get_reset_sources(void)
 {
 	/* XXX This presumably needs modification for 34XX */
-	return prm_read_mod_reg(WKUP_MOD, RM_RSTST) & 0x7f;
+	if (cpu_is_omap24xx() | cpu_is_omap34xx())
+		return prm_read_mod_reg(WKUP_MOD, OMAP2_RM_RSTST) & 0x7f;
+	if (cpu_is_omap44xx())
+		return prm_read_mod_reg(WKUP_MOD, OMAP4_RM_RSTST) & 0x7f;
 }
 EXPORT_SYMBOL(omap_prcm_get_reset_sources);
 
@@ -49,10 +53,17 @@ void omap_prcm_arch_reset(char mode)
 		prcm_offs = WKUP_MOD;
 	else if (cpu_is_omap34xx())
 		prcm_offs = OMAP3430_GR_MOD;
+	else if (cpu_is_omap44xx())
+		prcm_offs = OMAP4430_DEVICE_MOD;
 	else
 		WARN_ON(1);
 
-	prm_set_mod_reg_bits(OMAP_RST_DPLL3, prcm_offs, RM_RSTCTRL);
+	if (cpu_is_omap24xx() | cpu_is_omap34xx())
+		prm_set_mod_reg_bits(OMAP_RST_DPLL3, prcm_offs,
+						 OMAP2_RM_RSTCTRL);
+	if (cpu_is_omap44xx())
+		prm_set_mod_reg_bits(OMAP_RST_DPLL3, prcm_offs,
+						 OMAP4_RM_RSTCTRL);
 }
 
 static inline u32 __omap_prcm_read(void __iomem *base, s16 module, u16 reg)
