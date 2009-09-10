@@ -6,6 +6,8 @@
  *
  * Written by Paul Walmsley and Jouni Högander
  *
+ * Added OMAP4 specific support by Abhijit Pagare <abhijitpagare@ti.com>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -352,7 +354,12 @@ static int omap2_clkdm_clktrctrl_read(struct clockdomain *clkdm)
 	if (!clkdm)
 		return -EINVAL;
 
-	v = cm_read_mod_reg(clkdm->pwrdm.ptr->prcm_offs, CM_CLKSTCTRL);
+	if (cpu_is_omap24xx() | cpu_is_omap34xx())
+		v = cm_read_mod_reg(clkdm->pwrdm.ptr->prcm_offs,
+					OMAP2_CM_CLKSTCTRL);
+	if (cpu_is_omap44xx())
+		v = cm_read_mod_reg(clkdm->pwrdm.ptr->prcm_offs,
+					OMAP4_CM_CLKSTCTRL);
 	v &= clkdm->clktrctrl_mask;
 	v >>= __ffs(clkdm->clktrctrl_mask);
 
@@ -384,16 +391,19 @@ int omap2_clkdm_sleep(struct clockdomain *clkdm)
 	if (cpu_is_omap24xx()) {
 
 		cm_set_mod_reg_bits(OMAP24XX_FORCESTATE,
-				    clkdm->pwrdm.ptr->prcm_offs, PM_PWSTCTRL);
+			 clkdm->pwrdm.ptr->prcm_offs, OMAP2_PM_PWSTCTRL);
 
-	} else if (cpu_is_omap34xx()) {
+	} else if (cpu_is_omap34xx() | cpu_is_omap44xx()) {
 
 		u32 v = (OMAP34XX_CLKSTCTRL_FORCE_SLEEP <<
 			 __ffs(clkdm->clktrctrl_mask));
 
+	if (cpu_is_omap34xx())
 		cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask, v,
-				    clkdm->pwrdm.ptr->prcm_offs, CM_CLKSTCTRL);
-
+			 clkdm->pwrdm.ptr->prcm_offs, OMAP2_CM_CLKSTCTRL);
+	if (cpu_is_omap44xx())
+		cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask, v,
+			 clkdm->pwrdm.ptr->prcm_offs, OMAP4_CM_CLKSTCTRL);
 	} else {
 		BUG();
 	};
@@ -426,16 +436,19 @@ int omap2_clkdm_wakeup(struct clockdomain *clkdm)
 	if (cpu_is_omap24xx()) {
 
 		cm_clear_mod_reg_bits(OMAP24XX_FORCESTATE,
-				      clkdm->pwrdm.ptr->prcm_offs, PM_PWSTCTRL);
+			 clkdm->pwrdm.ptr->prcm_offs, OMAP2_PM_PWSTCTRL);
 
-	} else if (cpu_is_omap34xx()) {
+	} else if (cpu_is_omap34xx() | cpu_is_omap44xx()) {
 
 		u32 v = (OMAP34XX_CLKSTCTRL_FORCE_WAKEUP <<
 			 __ffs(clkdm->clktrctrl_mask));
 
+	if (cpu_is_omap34xx())
 		cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask, v,
-				    clkdm->pwrdm.ptr->prcm_offs, CM_CLKSTCTRL);
-
+			 clkdm->pwrdm.ptr->prcm_offs, OMAP2_CM_CLKSTCTRL);
+	if (cpu_is_omap44xx())
+		cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask, v,
+			clkdm->pwrdm.ptr->prcm_offs, OMAP4_CM_CLKSTCTRL);
 	} else {
 		BUG();
 	};
@@ -474,16 +487,21 @@ void omap2_clkdm_allow_idle(struct clockdomain *clkdm)
 
 	if (cpu_is_omap24xx())
 		v = OMAP24XX_CLKSTCTRL_ENABLE_AUTO;
-	else if (cpu_is_omap34xx())
+	else if (cpu_is_omap34xx() | cpu_is_omap44xx())
 		v = OMAP34XX_CLKSTCTRL_ENABLE_AUTO;
 	else
 		BUG();
 
-
-	cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask,
-			    v << __ffs(clkdm->clktrctrl_mask),
-			    clkdm->pwrdm.ptr->prcm_offs,
-			    CM_CLKSTCTRL);
+	if (cpu_is_omap24xx() | cpu_is_omap34xx())
+		cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask,
+			v << __ffs(clkdm->clktrctrl_mask),
+			clkdm->pwrdm.ptr->prcm_offs,
+			OMAP2_CM_CLKSTCTRL);
+	if (cpu_is_omap44xx())
+		cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask,
+			v << __ffs(clkdm->clktrctrl_mask),
+			clkdm->pwrdm.ptr->prcm_offs,
+			OMAP4_CM_CLKSTCTRL);
 }
 
 /**
@@ -513,14 +531,19 @@ void omap2_clkdm_deny_idle(struct clockdomain *clkdm)
 
 	if (cpu_is_omap24xx())
 		v = OMAP24XX_CLKSTCTRL_DISABLE_AUTO;
-	else if (cpu_is_omap34xx())
+	else if (cpu_is_omap34xx() | cpu_is_omap44xx())
 		v = OMAP34XX_CLKSTCTRL_DISABLE_AUTO;
 	else
 		BUG();
 
-	cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask,
-			    v << __ffs(clkdm->clktrctrl_mask),
-			    clkdm->pwrdm.ptr->prcm_offs, CM_CLKSTCTRL);
+	if (cpu_is_omap24xx() | cpu_is_omap34xx())
+		cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask,
+			v << __ffs(clkdm->clktrctrl_mask),
+			clkdm->pwrdm.ptr->prcm_offs, OMAP2_CM_CLKSTCTRL);
+	if (cpu_is_omap44xx())
+		cm_rmw_mod_reg_bits(clkdm->clktrctrl_mask,
+			v << __ffs(clkdm->clktrctrl_mask),
+			clkdm->pwrdm.ptr->prcm_offs, OMAP4_CM_CLKSTCTRL);
 
 	if (atomic_read(&clkdm->usecount) > 0)
 		_clkdm_del_autodeps(clkdm);
@@ -565,8 +588,9 @@ int omap2_clkdm_clk_enable(struct clockdomain *clkdm, struct clk *clk)
 
 	v = omap2_clkdm_clktrctrl_read(clkdm);
 
-	if ((cpu_is_omap34xx() && v == OMAP34XX_CLKSTCTRL_ENABLE_AUTO) ||
-	    (cpu_is_omap24xx() && v == OMAP24XX_CLKSTCTRL_ENABLE_AUTO))
+	if (((cpu_is_omap34xx() | cpu_is_omap44xx()) \
+			&& v == OMAP34XX_CLKSTCTRL_ENABLE_AUTO) \
+		|| (cpu_is_omap24xx() && v == OMAP24XX_CLKSTCTRL_ENABLE_AUTO))
 		_clkdm_add_autodeps(clkdm);
 	else
 		omap2_clkdm_wakeup(clkdm);
@@ -618,7 +642,8 @@ int omap2_clkdm_clk_disable(struct clockdomain *clkdm, struct clk *clk)
 
 	v = omap2_clkdm_clktrctrl_read(clkdm);
 
-	if ((cpu_is_omap34xx() && v == OMAP34XX_CLKSTCTRL_ENABLE_AUTO) ||
+	if (((cpu_is_omap34xx() | cpu_is_omap44xx()) \
+			&& v == OMAP34XX_CLKSTCTRL_ENABLE_AUTO) ||
 	    (cpu_is_omap24xx() && v == OMAP24XX_CLKSTCTRL_ENABLE_AUTO))
 		_clkdm_del_autodeps(clkdm);
 	else
