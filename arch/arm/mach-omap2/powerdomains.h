@@ -76,6 +76,7 @@
  * 3430ES1 PM_WKDEP_GFX: adds IVA2, removes CORE
  * 3430ES2 PM_WKDEP_SGX: adds IVA2, removes CORE
  */
+#ifndef CONFIG_ARCH_OMAP4
 static struct pwrdm_dep gfx_sgx_wkdeps[] = {
 	{
 		.pwrdm_name = "core_pwrdm",
@@ -110,42 +111,22 @@ static struct pwrdm_dep cam_gfx_sleepdeps[] = {
 	},
 	{ NULL },
 };
-
+#endif
 
 #include "powerdomains24xx.h"
 #include "powerdomains34xx.h"
+#include "powerdomains44xx.h"
 
 
 /*
- * OMAP2/3 common powerdomains
+ * OMAP2/3/4 common powerdomains
  */
-
-/*
- * The GFX powerdomain is not present on 3430ES2, but currently we do not
- * have a macro to filter it out at compile-time.
- */
-static struct powerdomain gfx_pwrdm = {
-	.name		  = "gfx_pwrdm",
-	.prcm_offs	  = GFX_MOD,
-	.omap_chip	  = OMAP_CHIP_INIT(CHIP_IS_OMAP24XX |
-					   CHIP_IS_OMAP3430ES1),
-	.wkdep_srcs	  = gfx_sgx_wkdeps,
-	.sleepdep_srcs	  = cam_gfx_sleepdeps,
-	.pwrsts		  = PWRSTS_OFF_RET_ON,
-	.pwrsts_logic_ret = PWRDM_POWER_RET,
-	.banks		  = 1,
-	.pwrsts_mem_ret	  = {
-		[0] = PWRDM_POWER_RET, /* MEMRETSTATE */
-	},
-	.pwrsts_mem_on	  = {
-		[0] = PWRDM_POWER_ON,  /* MEMONSTATE */
-	},
-};
 
 static struct powerdomain wkup_pwrdm = {
 	.name		= "wkup_pwrdm",
 	.prcm_offs	= WKUP_MOD,
-	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP24XX | CHIP_IS_OMAP3430),
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP24XX | CHIP_IS_OMAP3430 | \
+					CHIP_IS_OMAP4430),
 	.dep_bit	= OMAP_EN_WKUP_SHIFT,
 };
 
@@ -153,21 +134,22 @@ static struct powerdomain wkup_pwrdm = {
 
 /* As powerdomains are added or removed above, this list must also be changed */
 static struct powerdomain *powerdomains_omap[] __initdata = {
-
-	&gfx_pwrdm,
 	&wkup_pwrdm,
 
 #ifdef CONFIG_ARCH_OMAP24XX
+	&gfx_pwrdm,
 	&dsp_pwrdm,
 	&mpu_24xx_pwrdm,
 	&core_24xx_pwrdm,
 #endif
 
 #ifdef CONFIG_ARCH_OMAP2430
+	&gfx_pwrdm,
 	&mdm_pwrdm,
 #endif
 
 #ifdef CONFIG_ARCH_OMAP34XX
+	&gfx_pwrdm,
 	&iva2_pwrdm,
 	&mpu_34xx_pwrdm,
 	&neon_pwrdm,
@@ -186,6 +168,23 @@ static struct powerdomain *powerdomains_omap[] __initdata = {
 	&dpll5_pwrdm,
 #endif
 
+#ifdef CONFIG_ARCH_OMAP4
+	&dsp_44xx_pwrdm,
+	&std_efuse_44xx_pwrdm,
+	&mpu_44xx_pwrdm,
+	&pd_l4_per_44xx_pwrdm,
+	&pd_l3_init_44xx_pwrdm,
+	&ivahd_44xx_pwrdm,
+	&pd_sgx_44xx_pwrdm,
+	&pd_emu_44xx_pwrdm,
+	&pd_dss_44xx_pwrdm,
+	&pd_core_44xx_pwrdm,
+	&pd_cam_44xx_pwrdm,
+	&pd_audio_44xx_pwrdm,
+	&pd_alwon_mpu_44xx_pwrdm,
+	&pd_alwon_dsp_44xx_pwrdm,
+	&pd_alwon_core_44xx_pwrdm,
+#endif
 	NULL
 };
 

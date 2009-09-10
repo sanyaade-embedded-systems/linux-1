@@ -28,8 +28,11 @@
 
 #include "cm.h"
 #include "cm-regbits-34xx.h"
+#include "cm1-regbits-44xx.h"
+#include "cm2-regbits-44xx.h"
 #include "prm.h"
 #include "prm-regbits-34xx.h"
+#include "prm-regbits-44xx.h"
 
 #include <mach/cpu.h>
 #include <mach/powerdomain.h>
