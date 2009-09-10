@@ -110,6 +110,24 @@ static struct pwrdm_dep core_24xx_wkdeps[] = {
 
 /* Powerdomains */
 
+static struct powerdomain gfx_pwrdm = {
+	.name			= "gfx_pwrdm",
+	.prcm_offs		= GFX_MOD,
+	.omap_chip		= OMAP_CHIP_INIT(CHIP_IS_OMAP24XX | \
+					CHIP_IS_OMAP3430ES1),
+	.wkdep_srcs		= gfx_sgx_wkdeps,
+	.sleepdep_srcs		= cam_gfx_sleepdeps,
+	.pwrsts			= PWRSTS_OFF_RET_ON,
+	.pwrsts_logic_ret	= PWRDM_POWER_RET,
+	.banks			= 1,
+	.pwrsts_mem_ret		= {
+		[0] = PWRDM_POWER_RET, /* MEMRETSTATE */
+	},
+	.pwrsts_mem_on		= {
+		[0] = PWRDM_POWER_ON,  /* MEMONSTATE */
+	},
+};
+
 static struct powerdomain dsp_pwrdm = {
 	.name		  = "dsp_pwrdm",
 	.prcm_offs	  = OMAP24XX_DSP_MOD,
