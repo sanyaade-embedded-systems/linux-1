@@ -195,11 +195,8 @@ void omap_mcbsp_register_board_cfg(struct omap_mcbsp_platform_data *config,
 #if defined(CONFIG_MMC_OMAP) || defined(CONFIG_MMC_OMAP_MODULE) || \
 	defined(CONFIG_MMC_OMAP_HS) || defined(CONFIG_MMC_OMAP_HS_MODULE)
 
-#if defined(CONFIG_ARCH_OMAP4)
-#define OMAP_MMC_NR_RES		5
-#elif defined(CONFIG_ARCH_OMAP3)
 #define OMAP_MMC_NR_RES		2
-#endif
+
 /*
  * Register MMC devices. Called from mach-omap1 and mach-omap2 device init.
  */
