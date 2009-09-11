@@ -932,7 +932,8 @@ static int dsi_pll_calc_ddrfreq(unsigned long clk_freq,
 		cur.clkin = dss_clk_fck2;
 		cur.highfreq = 0;
 	} else {
-		cur.clkin = dispc_pclk_rate();
+		/* TODO: Add support for LCD2 */
+		cur.clkin = dispc_pclk_rate(OMAP_DSS_CHANNEL_LCD);
 		if (cur.clkin < 32000000)
 			cur.highfreq = 0;
 		else
@@ -2273,7 +2274,9 @@ static int dsi_proto_config(struct omap_dss_device *dssdev)
 	r = FLD_MOD(r, 1, 2, 2);	/* ECC_RX_EN */
 	r = FLD_MOD(r, 1, 3, 3);	/* TX_FIFO_ARBITRATION */
 
-	div = dispc_lclk_rate() / dispc_pclk_rate();
+	/* TODO: Change for LCD2 support */
+	div = dispc_lclk_rate(OMAP_DSS_CHANNEL_LCD) /
+				dispc_pclk_rate(OMAP_DSS_CHANNEL_LCD);
 	r = FLD_MOD(r, div == 2 ? 0 : 1, 4, 4);	/* VP_CLK_RATIO */
 	r = FLD_MOD(r, buswidth, 7, 6); /* VP_DATA_BUS_WIDTH */
 	r = FLD_MOD(r, 0, 8, 8);	/* VP_CLK_POL */
@@ -2750,7 +2753,8 @@ static int dsi_update_thread(void *data)
 #endif
 			}
 
-			dispc_set_lcd_size(w, h);
+			dispc_set_lcd_size(OMAP_DSS_CHANNEL_LCD, w, h);
+			/* TODO: Correct this while adding support for LCD2 */
 		}
 
  /* XXX We don't need to send the update area coords to the
@@ -2787,7 +2791,8 @@ static int dsi_update_thread(void *data)
 						x, y, w, h);
 
 				dispc_enable_sidle();
-				dispc_enable_lcd_out(0);
+				/* TODO: update for LCD2 support */
+				dispc_enable_lcd_out(OMAP_DSS_CHANNEL_LCD, 0);
 			} else {
 				dsi_handle_framedone();
 				dsi_perf_show("DISPC");
@@ -2827,13 +2832,15 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 		DSSERR("can't get FRAMEDONE irq\n");
 		return r;
 	}
+	/* TODO: Change here for LCD2 support*/
+	dispc_set_lcd_display_type(OMAP_DSS_CHANNEL_LCD,
+					OMAP_DSS_LCD_DISPLAY_TFT);
 
-	dispc_set_lcd_display_type(OMAP_DSS_LCD_DISPLAY_TFT);
-
-	dispc_set_parallel_interface_mode(OMAP_DSS_PARALLELMODE_DSI);
+	dispc_set_parallel_interface_mode(OMAP_DSS_CHANNEL_LCD,
+					OMAP_DSS_PARALLELMODE_DSI);
 	dispc_enable_fifohandcheck(1);
 
-	dispc_set_tft_data_lines(dssdev->ctrl.pixel_size);
+	dispc_set_tft_data_lines(OMAP_DSS_CHANNEL_LCD, dssdev->ctrl.pixel_size);
 
 	{
 		struct omap_video_timings timings = {
@@ -2845,7 +2852,7 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 			.vbp		= 0,
 		};
 
-		dispc_set_lcd_timings(&timings);
+		dispc_set_lcd_timings(OMAP_DSS_CHANNEL_LCD, &timings);
 	}
 
 	return 0;
