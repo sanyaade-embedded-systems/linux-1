@@ -331,7 +331,7 @@ static struct omap_clk omap34xx_clks[] = {
  */
 #define SDRC_MPURATE_LOOPS		96
 
- * omap3430es2_clk_ssi_find_idlest - return CM_IDLEST info for SSI
+/* omap3430es2_clk_ssi_find_idlest - return CM_IDLEST info for SSI
  * @clk: struct clk * being enabled
  * @idlest_reg: void __iomem ** to store CM_IDLEST reg address into
  * @idlest_bit: pointer to a u8 to store the CM_IDLEST bit shift into
@@ -397,7 +397,6 @@ static void omap3430es2_clk_hsotgusb_find_idlest(struct clk *clk,
 	*idlest_bit = OMAP3430ES2_ST_HSOTGUSB_IDLE_SHIFT;
 }
 
-/**
 static int omap3_dpll4_set_rate(struct clk *clk, unsigned long rate)
 {
 	/*

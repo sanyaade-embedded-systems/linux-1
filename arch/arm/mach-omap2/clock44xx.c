@@ -220,6 +220,12 @@ int __init omap2_clk_init(void)
 	/* u32 clkrate; */
 	u32 cpu_clkflg;
 
+	/*
+	 * FIXME: This is needed only on Virtio.
+	 * set the sysclk speed to 38.4Mhz.
+	 */
+	__raw_writel(0x6, OMAP4430_CM_SYS_CLKSEL);
+
 	if (cpu_is_omap44xx()) {
 		cpu_mask = RATE_IN_443X;
 		cpu_clkflg = CK_443X;
