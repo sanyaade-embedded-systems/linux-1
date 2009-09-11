@@ -436,22 +436,13 @@ static void __init omap_hsmmc_reset(void)
 
 		switch (i) {
 		case 0:
-			if (!cpu_is_omap44xx())
-				base = OMAP2_MMC1_BASE;
-			else
-				base = OMAP4_MMC1_BASE;
+			base = OMAP2_MMC1_BASE;
 			break;
 		case 1:
-			if (!cpu_is_omap44xx())
-				base = OMAP2_MMC2_BASE;
-			else
-				base = OMAP4_MMC2_BASE;
+			base = OMAP2_MMC2_BASE;
 			break;
 		case 2:
-			if (!cpu_is_omap44xx())
-				base = OMAP3_MMC3_BASE;
-			else
-				base = OMAP4_MMC3_BASE;
+			base = OMAP3_MMC3_BASE;
 			break;
 		case 3:
 			if (!cpu_is_omap44xx())
@@ -467,6 +458,8 @@ static void __init omap_hsmmc_reset(void)
 			break;
 		}
 
+		if (cpu_is_omap44xx())
+			base += OMAP4_MMC_REG_OFFSET;
 		dummy_pdev.id = i;
 		dev_set_name(&dummy_pdev.dev, "mmci-omap-hs.%d", i);
 		iclk = clk_get(dev, "ick");
@@ -612,44 +605,29 @@ void __init omap2_init_mmc(struct omap_mmc_platform_data **mmc_data,
 
 		switch (i) {
 		case 0:
-			if (!cpu_is_omap44xx()) {
-				base = OMAP2_MMC1_BASE;
-				irq = INT_24XX_MMC_IRQ;
-			} else {
-				base = OMAP4_MMC1_BASE;
-				irq = INT_44XX_MMC_IRQ;
-			}
+			base = OMAP2_MMC1_BASE;
+			irq = INT_24XX_MMC_IRQ;
 			break;
 		case 1:
-			if (!cpu_is_omap44xx()) {
-				base = OMAP2_MMC2_BASE;
-				irq = INT_24XX_MMC2_IRQ;
-			} else {
-				base = OMAP4_MMC2_BASE;
-				irq = INT_44XX_MMC2_IRQ;
-			}
+			base = OMAP2_MMC2_BASE;
+			irq = INT_24XX_MMC2_IRQ;
 			break;
 		case 2:
 			if (!cpu_is_omap34xx() && !cpu_is_omap44xx())
 				return;
-			if (!cpu_is_omap44xx()) {
-				base = OMAP3_MMC3_BASE;
-				irq = INT_34XX_MMC3_IRQ;
-			} else {
-				base = OMAP4_MMC3_BASE;
-				irq = INT_44XX_MMC3_IRQ;
-			}
+			base = OMAP3_MMC3_BASE;
+			irq = INT_34XX_MMC3_IRQ;
 			break;
 		case 3:
 			if (!cpu_is_omap44xx())
 				return;
-			base = OMAP4_MMC4_BASE;
+			base = OMAP4_MMC4_BASE + OMAP4_MMC_REG_OFFSET;
 			irq = INT_44XX_MMC4_IRQ;
 			break;
 		case 4:
 			if (!cpu_is_omap44xx())
 				return;
-			base = OMAP4_MMC5_BASE;
+			base = OMAP4_MMC5_BASE + OMAP4_MMC_REG_OFFSET;
 			irq = INT_44XX_MMC5_IRQ;
 			break;
 		default:
@@ -659,8 +637,15 @@ void __init omap2_init_mmc(struct omap_mmc_platform_data **mmc_data,
 		if (cpu_is_omap2420()) {
 			size = OMAP2420_MMC_SIZE;
 			name = "mmci-omap";
+		} else if (cpu_is_omap44xx()) {
+			if (i < 3) {
+				base += OMAP4_MMC_REG_OFFSET;
+				irq += IRQ_GIC_START;
+			}
+			size = OMAP4_HSMMC_SIZE;
+			name = "mmci-omap-hs";
 		} else {
-			size = HSMMC_SIZE;
+			size = OMAP3_HSMMC_SIZE;
 			name = "mmci-omap-hs";
 		}
 		omap_mmc_add(name, i, base, size, irq, mmc_data[i]);
