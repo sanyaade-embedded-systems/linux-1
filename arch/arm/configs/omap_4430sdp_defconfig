@@ -300,7 +300,7 @@ CONFIG_CMDLINE="root=/dev/ram0 rw mem=128M console=ttyS0,115200n8 initrd=0x81600
 #
 CONFIG_VFP=y
 CONFIG_VFPv3=y
-# CONFIG_NEON is not set
+CONFIG_NEON=y
 
 #
 # Userspace binary formats
