@@ -17,7 +17,7 @@
 #ifndef _DMM_DEF_H
 #define _DMM_DEF_H
 
-#include "dmm.h"
+#include "tiler.h"
 
 #define DMM_4KiB_SIZE			(4096)
 #define DMM_TILER_CONT_WIDTH_8		(16384)
@@ -148,14 +148,14 @@ enum dmmPATEngineAccessT {
 
 /** @enum dmmPATRefillMethodT
 * Defining enumarated identifiers for possible PAT area refill methods. */
-enum dmmPATRefillMethodT{
+enum dmmPATRefillMethodT {
 	MANUAL,
 	AUTO
 };
 
 /** @struc PATAreaT
 * Structure defining PAT page-area register. */
-struct PATAreaT{
+struct PATAreaT {
 	int x0:8;
 	int y0:8;
 	int x1:8;

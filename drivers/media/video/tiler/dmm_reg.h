@@ -17,13 +17,13 @@
 #define DMM_REG_H
 
 #define BITS_32(in_NbBits) \
-  ((((int)1 << in_NbBits) - 1) | ((int)1 << in_NbBits))
+  ((((unsigned long)1 << in_NbBits) - 1) | ((unsigned long)1 << in_NbBits))
 
 #define BITFIELD_32(in_UpBit, in_LowBit) \
   (BITS_32(in_UpBit) & ~((BITS_32(in_LowBit)) >> 1))
 
 #define BITFIELD BITFIELD_32
 
-extern unsigned long *dmmvabase;
+extern unsigned long *dmm_virt_base_addr;
 #endif
 

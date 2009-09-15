@@ -90,7 +90,7 @@ enum errorCodeT dmm_tiler_alias_orientation_get(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_peg_priority_set(signed long initiatorID,
-					unsigned long prio);
+				     unsigned long prio);
 
 /* ========================================================================== */
 /**
@@ -113,7 +113,7 @@ enum errorCodeT dmm_peg_priority_set(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_peg_priority_get(signed long initiatorID,
-					unsigned long *prio);
+				     unsigned long *prio);
 
 /* ========================================================================== */
 /**
@@ -148,9 +148,9 @@ enum errorCodeT dmm_peg_priority_get(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
-				 signed long dmmPatAreaSel,
-				 enum dmmPATRefillMethodT refillType,
-				 int forcedRefill);
+				    signed long dmmPatAreaSel,
+				    enum dmmPATRefillMethodT refillType,
+				    int forcedRefill);
 
 /* ========================================================================== */
 /**
@@ -244,7 +244,7 @@ enum errorCodeT dmm_pat_refill_engine_config_get(signed long dmmPatEngineSel,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_view_set(signed long initiatorID,
-			      signed long patViewIndx);
+				 signed long patViewIndx);
 
 /* ========================================================================== */
 /**
@@ -268,7 +268,7 @@ enum errorCodeT dmm_pat_view_set(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_view_get(signed long initiatorID,
-			      signed long *patViewIndx);
+				 signed long *patViewIndx);
 
 /* ========================================================================== */
 /**
@@ -299,10 +299,10 @@ enum errorCodeT dmm_pat_view_get(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_view_map_config(signed long patViewMapIndx,
-				    enum dmmMemoryAccessT memoryAccessMode,
-				    unsigned long contX,
-				    enum dmmPATTranslationT transType,
-				    unsigned long dmmPATViewBase);
+					enum dmmMemoryAccessT memoryAccessMode,
+					unsigned long contX,
+					enum dmmPATTranslationT transType,
+					unsigned long dmmPATViewBase);
 
 /* ========================================================================== */
 /**
@@ -335,10 +335,10 @@ enum errorCodeT dmm_pat_view_map_config(signed long patViewMapIndx,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_view_map_config_get(signed long patViewMapIndx,
-				       enum dmmMemoryAccessT memoryAccessMode,
-				       unsigned long *contX,
-				       enum dmmPATTranslationT *transType,
-				       unsigned long *dmmPATViewBase);
+		enum dmmMemoryAccessT memoryAccessMode,
+		unsigned long *contX,
+		enum dmmPATTranslationT *transType,
+		unsigned long *dmmPATViewBase);
 
 /* ========================================================================== */
 /**
@@ -370,12 +370,12 @@ enum errorCodeT dmm_pat_view_map_config_get(signed long patViewMapIndx,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_lisa_memory_map_config(signed long lisaMemMapIndx,
-				       unsigned long sysAddr,
-				       enum dmmMemSectionSizeT sysSize,
-				       enum dmmMemSdrcIntlModeT sdrcIntl,
-				       unsigned long sdrcAddrspc,
-				       enum dmmMemSectionMappingT sdrcMap,
-				       unsigned long sdrcAddr);
+		unsigned long sysAddr,
+		enum dmmMemSectionSizeT sysSize,
+		enum dmmMemSdrcIntlModeT sdrcIntl,
+		unsigned long sdrcAddrspc,
+		enum dmmMemSectionMappingT sdrcMap,
+		unsigned long sdrcAddr);
 
 /* ========================================================================== */
 /**
@@ -434,7 +434,7 @@ enum errorCodeT dmm_lisa_memory_map_config_get(signed long lisaMemMapIndx,
  * @see errorCodeT for further detail.
  */
 /* ========================================================================== */
-enum errorCodeT dmm_engage_lisa_lock();
+enum errorCodeT dmm_engage_lisa_lock(void);
 
 /* ========================================================================== */
 /**
@@ -532,7 +532,7 @@ enum errorCodeT dmm_pat_irq_mode_get(struct dmmPATIrqEventsT *patIrqEvnt);
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_irq_status_get(struct dmmPATIrqEventsT *patIrqEvnt,
-				   int clrEvents);
+				       int clrEvents);
 
 /* ========================================================================== */
 /**
@@ -579,12 +579,12 @@ enum errorCodeT dmm_pat_irq_status_get(struct dmmPATIrqEventsT *patIrqEvnt,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_module_config(struct dmmTILERConfigLstT *tilerConf,
-				struct dmmPEGConfigLstT *pegConf,
-				struct dmmLISAConfigLstT *lisaConf,
-				struct dmmPATEngineConfigLstT *patEngineConf,
-				struct dmmPATViewConfigLstT *patViewCOnf,
-				struct dmmPATViewMapConfigLstT *patViewMapConf,
-				unsigned long *dmmSysConfig);
+				 struct dmmPEGConfigLstT *pegConf,
+				 struct dmmLISAConfigLstT *lisaConf,
+				 struct dmmPATEngineConfigLstT *patEngineConf,
+				 struct dmmPATViewConfigLstT *patViewCOnf,
+				 struct dmmPATViewMapConfigLstT *patViewMapConf,
+				 unsigned long *dmmSysConfig);
 
 /* ========================================================================== */
 /**
@@ -628,13 +628,13 @@ enum errorCodeT dmm_module_config(struct dmmTILERConfigLstT *tilerConf,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_module_get_config(struct dmmTILERConfigLstT *tilerConf,
-			struct dmmPEGConfigLstT *pegConf,
-			struct dmmLISAConfigLstT *lisaConf,
-			struct dmmPATEngineConfigLstT *patEngineConf,
-			struct dmmPATViewConfigLstT *patViewCOnf,
-			struct dmmPATViewMapConfigLstT *patViewMapConf,
-			struct dmmPATStatusLstT *patAreaStatus,
-			unsigned long *dmmSysConfig);
+				struct dmmPEGConfigLstT *pegConf,
+				struct dmmLISAConfigLstT *lisaConf,
+				struct dmmPATEngineConfigLstT *patEngineConf,
+				struct dmmPATViewConfigLstT *patViewCOnf,
+				struct dmmPATViewMapConfigLstT *patViewMapConf,
+				struct dmmPATStatusLstT *patAreaStatus,
+				unsigned long *dmmSysConfig);
 
 /* ========================================================================== */
 /**
@@ -678,7 +678,7 @@ enum errorCodeT dmm_pat_irq_config_set(struct dmmPATIrqConfigLstT *irqMaskConf);
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_irq_config_get(struct dmmPATIrqConfigLstT *irqMaskConf,
-				   struct dmmPATIrqConfigLstT *irqStatusConf);
+				    struct dmmPATIrqConfigLstT *irqStatusConf);
 
 /* ========================================================================== */
 /**
@@ -709,10 +709,10 @@ enum errorCodeT dmm_pat_irq_config_get(struct dmmPATIrqConfigLstT *irqMaskConf,
  */
 /* ========================================================================== */
 int dmm_instance_init(void *dmmInstanceCtxPtr,
-		    signed long contXSize,
-		    signed long contYSize,
-		    void *hMSP,
-		    void *usrAppData);
+		      signed long contXSize,
+		      signed long contYSize,
+		      void *hMSP,
+		      void *usrAppData);
 
 /* ========================================================================== */
 /**
@@ -761,11 +761,11 @@ int dmm_instance_deinit(void *dmmInstanceCtxPtr);
  */
 /* ========================================================================== */
 enum errorCodeT dmm_copy2tiler_alias_view(void *destPtr,
-				       void *srcPtr,
-				       signed long width,
-				       signed long height,
-				       signed long stride,
-				       enum dmmMemoryAccessT accType);
+		void *srcPtr,
+		signed long width,
+		signed long height,
+		signed long stride,
+		enum dmmMemoryAccessT accType);
 
 /* ========================================================================== */
 /**
@@ -793,9 +793,9 @@ enum errorCodeT dmm_copy2tiler_alias_view(void *destPtr,
  */
 /* ========================================================================== */
 void *dmm_virtual_buffer_manipulations(void *dmmInstanceCtxPtr,
-				     void *sysPtr,
-				     struct PATAreaT *affectedArea,
-				     struct PATAreaT *destinationArea);
+				       void *sysPtr,
+				       struct PATAreaT *affectedArea,
+				       struct PATAreaT *destinationArea);
 
 #endif /* _DMM_DRV_H */
 

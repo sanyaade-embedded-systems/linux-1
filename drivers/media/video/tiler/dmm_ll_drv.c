@@ -22,6 +22,9 @@
 #include "dmm_reg.h"
 MODULE_LICENSE("GPL v2");
 
+#define tilerdump(x) /* printk(KERN_NOTICE "%s::%s():%d: %lx\n",
+			__FILE__, __func__, __LINE__, (unsigned long)x); */
+
 /* ========================================================================== */
 /**
  *  dmm_tiler_alias_orientation_set()
@@ -29,8 +32,8 @@ MODULE_LICENSE("GPL v2");
  * @brief  Set specific TILER alias orientation setting per initiator ID
  *  (alias view).
  *
- * @param initiatorID - signed long - [in] OCP id of DMM transfer initiator which
- *  alias view will be editted.
+ * @param initiatorID - signed long - [in] OCP id of DMM transfer initiator
+ *  which alias view will be editted.
  *
  * @param viewOrientation - dmmViewOrientT - [in] New alias view orientation
  *  setting.
@@ -45,15 +48,17 @@ MODULE_LICENSE("GPL v2");
  */
 /* ========================================================================== */
 enum errorCodeT dmm_tiler_alias_orientation_set(signed long initiatorID,
-				       struct dmmViewOrientT viewOrientation)
+		struct dmmViewOrientT viewOrientation)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
-	unsigned long *reg = NULL;
+	void __iomem *reg = NULL;
 
-	reg = (unsigned long)dmmvabase | (0x220ul);
+	reg = (void __iomem *)((unsigned long)dmm_virt_base_addr |
+		(0x220ul));
 	__raw_writel(0x88888888, reg);
 
-	reg = (unsigned long)dmmvabase | (0x220ul+0x4);
+	reg = (void __iomem *)((unsigned long)dmm_virt_base_addr |
+		(0x220ul+0x4));
 	__raw_writel(0x88888888, reg);
 
 	return eCode;
@@ -82,7 +87,7 @@ enum errorCodeT dmm_tiler_alias_orientation_set(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_tiler_alias_orientation_get(signed long initiatorID,
-				       struct dmmViewOrientT *viewOrientation)
+		struct dmmViewOrientT *viewOrientation)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 	return eCode;
@@ -109,7 +114,7 @@ enum errorCodeT dmm_tiler_alias_orientation_get(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_peg_priority_set(signed long initiatorID,
-					unsigned long prio)
+				     unsigned long prio)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 	return eCode;
@@ -136,7 +141,7 @@ enum errorCodeT dmm_peg_priority_set(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_peg_priority_get(signed long initiatorID,
-					unsigned long *prio)
+				     unsigned long *prio)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 	return eCode;
@@ -173,12 +178,12 @@ enum errorCodeT dmm_peg_priority_get(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
-			    signed long dmmPatAreaSel,
-			    enum dmmPATRefillMethodT refillType,
-			    int forcedRefill)
+				    signed long dmmPatAreaSel,
+				    enum dmmPATRefillMethodT refillType,
+				    int forcedRefill)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
-	unsigned long *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned long regval = 0xffffffff;
 	unsigned long writeval = 0xffffffff;
 	unsigned long f = 0xffffffff; /* field */
@@ -186,9 +191,10 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 
 	struct dmmPATStatusT areaStat;
 
+	tilerdump(0);
 	if (forcedRefill == 0) {
 		eCode = dmm_pat_refill_area_status_get(
-			dmmPatAreaSel, &areaStat);
+				dmmPatAreaSel, &areaStat);
 
 		if (eCode == DMM_NO_ERROR) {
 			if (areaStat.ready == 0 || areaStat.engineRunning) {
@@ -202,80 +208,90 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 		eCode = DMM_WRONG_PARAM;
 	} else if (eCode == DMM_NO_ERROR) {
 		if (refillType == AUTO) {
-			reg = (unsigned long)dmmvabase | (0x500ul + 0x0);
+			reg = (void __iomem *)
+				((unsigned long)dmm_virt_base_addr |
+				(0x500ul + 0x0));
 			regval = __raw_readl(reg);
 			f  = BITFIELD(31, 4);
 			fp = 4;
-			writeval = regval & (~(f)) |
+			writeval = (regval & (~(f))) |
 				   ((((unsigned long)patDesc) << fp) & f);
 			__raw_writel(writeval, reg);
 		} else if (refillType == MANUAL) {
-			reg = (unsigned long)dmmvabase | (0x500ul + 0x0);
+			reg = (void __iomem *)
+				((unsigned long)dmm_virt_base_addr |
+				(0x500ul + 0x0));
 			regval = __raw_readl(reg);
 			f  = BITFIELD(31, 4);
 			fp = 4;
-			writeval = regval & (~(f)) |
+			writeval = (regval & (~(f))) |
 				   ((((unsigned long)NULL) << fp) & f);
 			__raw_writel(writeval, reg);
-
-			reg = (unsigned long)dmmvabase | (0x500ul + 0x4);
+			reg = (void __iomem *)
+				((unsigned long)dmm_virt_base_addr |
+				(0x500ul + 0x4));
 			regval = __raw_readl(reg);
 			f  = BITFIELD(30, 24);
 			fp = 24;
-			writeval = regval & (~(f)) |
-				   (((patDesc->area.y1) << fp) & f);
+			writeval = (regval & (~(f))) |
+				   ((((char)patDesc->area.y1) << fp) & f);
 			__raw_writel(writeval, reg);
 
+			regval = __raw_readl(reg);
 			f  = BITFIELD(23, 16);
 			fp = 16;
-			writeval = regval & (~(f)) |
-				   (((patDesc->area.x1) << fp) & f);
+			writeval = (regval & (~(f))) |
+				   ((((char)patDesc->area.x1) << fp) & f);
 			__raw_writel(writeval, reg);
 
+			regval = __raw_readl(reg);
 			f  = BITFIELD(14, 8);
 			fp = 8;
-			writeval = regval & (~(f)) |
-				   (((patDesc->area.y0) << fp) & f);
+			writeval = (regval & (~(f))) |
+				   ((((char)patDesc->area.y0) << fp) & f);
 			__raw_writel(writeval, reg);
 
+			regval = __raw_readl(reg);
 			f  = BITFIELD(7, 0);
 			fp = 0;
-			writeval = regval & (~(f)) |
-				   (((patDesc->area.x0) << fp) & f);
+			writeval = (regval & (~(f))) |
+				   ((((char)patDesc->area.x0) << fp) & f);
 			__raw_writel(writeval, reg);
-
 			/* Apply 4 bit lft shft to counter the 4 bit rt shft */
-			reg = (unsigned long)dmmvabase | (0x500ul + 0xc);
+			reg = (void __iomem *)
+			((unsigned long)dmm_virt_base_addr | (0x500ul + 0xc));
 			regval = __raw_readl(reg);
 			f  = BITFIELD(31, 4);
 			fp = 4;
-			writeval = regval & (~(f)) |
-			((((unsigned long)(patDesc->data >> 4)) << fp) & f);
+			writeval = (regval & (~(f))) |
+				((((unsigned long)(patDesc->data >> 4)) <<
+								fp) & f);
 			__raw_writel(writeval, reg);
-
-			reg = (unsigned long)dmmvabase | (0x500ul + 0x8);
+			reg = (void __iomem *)
+				((unsigned long)dmm_virt_base_addr |
+				(0x500ul + 0x8));
 			regval = __raw_readl(reg);
 			f  = BITFIELD(31, 28);
 			fp = 28;
-			writeval = regval & (~(f)) |
+			writeval = (regval & (~(f))) |
 				   (((patDesc->ctrl.initiator) << fp) & f);
 			__raw_writel(writeval, reg);
 
 			f  = BITFIELD(16, 16);
 			fp = 16;
-			writeval = regval & (~(f)) |
+			writeval = (regval & (~(f))) |
 				   (((patDesc->ctrl.sync) << fp) & f);
 			__raw_writel(writeval, reg);
 
 			f  = BITFIELD(6, 4);
 			fp = 4;
-			writeval = regval & (~(f)) |
+			writeval = (regval & (~(f))) |
 				   (((patDesc->ctrl.direction) << fp) & f);
 			__raw_writel(writeval, reg);
 
 			f  = BITFIELD(0, 0);
 			fp = 0;
-			writeval = regval & (~(f)) |
+			writeval = (regval & (~(f))) |
 				   (((patDesc->ctrl.start) << fp) & f);
 			__raw_writel(writeval, reg);
 		} else {
@@ -283,7 +299,7 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 		}
 		if (eCode == DMM_NO_ERROR) {
 			eCode = dmm_pat_refill_area_status_get(dmmPatAreaSel,
-							  &areaStat);
+							       &areaStat);
 
 			if (eCode == DMM_NO_ERROR) {
 				if (areaStat.validDescriptor == 0) {
@@ -295,8 +311,8 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 			while (!areaStat.done && !areaStat.ready &&
 					eCode == DMM_NO_ERROR) {
 				eCode = dmm_pat_refill_area_status_get(
-					dmmPatAreaSel,
-					&areaStat);
+						dmmPatAreaSel,
+						&areaStat);
 			}
 
 			if (areaStat.error) {
@@ -305,6 +321,7 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 			}
 		}
 	}
+	tilerdump(0);
 	return eCode;
 }
 
@@ -331,20 +348,20 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_refill_area_status_get(signed long dmmPatAreaStatSel,
-				     struct dmmPATStatusT *areaStatus)
+		struct dmmPATStatusT *areaStatus)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 
 	unsigned long stat = 0xffffffff;
-	unsigned long *statreg = NULL;
+	void __iomem *statreg = (void __iomem *)
+				((unsigned long)dmm_virt_base_addr | 0x4c0ul);
 
 	if (dmmPatAreaStatSel >= 0 && dmmPatAreaStatSel <= 3) {
-		statreg = (unsigned long)dmmvabase | 0x4c0ul;
 		stat = __raw_readl(statreg);
 
 		areaStatus->remainingLinesCounter = stat & BITFIELD(24, 16);
 		areaStatus->error = (enum dmmPATStatusErrT)
-			(stat & BITFIELD(15, 10));
+				    (stat & BITFIELD(15, 10));
 		areaStatus->linkedReconfig = stat & BITFIELD(4, 4);
 		areaStatus->done = stat & BITFIELD(3, 3);
 		areaStatus->engineRunning = stat & BITFIELD(2, 2);
@@ -380,12 +397,13 @@ enum errorCodeT dmm_pat_refill_area_status_get(signed long dmmPatAreaStatSel,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_refill_engine_config(signed long dmmPatEngineSel,
-				    enum dmmPATEngineAccessT engineMode)
+		enum dmmPATEngineAccessT engineMode)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
-	unsigned long *reg = NULL;
+	void __iomem *reg = NULL;
 
-	reg = (unsigned long)dmmvabase | (0x410ul);
+	reg = (void __iomem *)((unsigned long)dmm_virt_base_addr |
+								(0x410ul));
 	__raw_writel(0x00000000, reg);
 
 	return eCode;
@@ -413,7 +431,7 @@ enum errorCodeT dmm_pat_refill_engine_config(signed long dmmPatEngineSel,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_refill_engine_config_get(signed long dmmPatEngineSel,
-				       enum dmmPATEngineAccessT *engineMode)
+		enum dmmPATEngineAccessT *engineMode)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 	return eCode;
@@ -440,18 +458,20 @@ enum errorCodeT dmm_pat_refill_engine_config_get(signed long dmmPatEngineSel,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_view_set(signed long initiatorID,
-					signed long patViewIndx)
+				 signed long patViewIndx)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
-	unsigned long *reg = NULL;
+	void __iomem *reg = NULL;
 
 	if (patViewIndx < 0 || patViewIndx > 3) {
 		eCode = DMM_WRONG_PARAM;
 	} else {
-		reg = (unsigned long)dmmvabase | (0x420ul);
+		reg = (void __iomem *)
+			((unsigned long)dmm_virt_base_addr | (0x420ul));
 		__raw_writel(0xDDDDDDDD, reg);
 
-		reg = (unsigned long)dmmvabase | (0x420ul+0x4);
+		reg = (void __iomem *)
+			((unsigned long)dmm_virt_base_addr | (0x420ul+0x4));
 		__raw_writel(0xDDDDDDDD, reg);
 	}
 
@@ -480,7 +500,7 @@ enum errorCodeT dmm_pat_view_set(signed long initiatorID,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_view_get(
-			signed long initiatorID, signed long *patViewIndx)
+	signed long initiatorID, signed long *patViewIndx)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 	return eCode;
@@ -515,20 +535,22 @@ enum errorCodeT dmm_pat_view_get(
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_view_map_config(signed long patViewMapIndx,
-			       enum dmmMemoryAccessT memoryAccessMode,
-			       unsigned long contX,
-			       enum dmmPATTranslationT transType,
-			       unsigned long dmmPATViewBase)
+					enum dmmMemoryAccessT memoryAccessMode,
+					unsigned long contX,
+					enum dmmPATTranslationT transType,
+					unsigned long dmmPATViewBase)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
-	unsigned long *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned long regval = 0xffffffff;
 
-	reg = (unsigned long)dmmvabase | (0x460ul);
+	reg = (void __iomem *)((unsigned long)dmm_virt_base_addr |
+								(0x460ul));
 	regval = __raw_readl(reg);
 	__raw_writel(0xFFFFFFFF, reg);
 
-	reg = (unsigned long)dmmvabase | (0x440ul);
+	reg = (void __iomem *)((unsigned long)dmm_virt_base_addr |
+								(0x440ul));
 	regval = __raw_readl(reg);
 	__raw_writel(0x80808080, reg);
 
@@ -536,10 +558,10 @@ enum errorCodeT dmm_pat_view_map_config(signed long patViewMapIndx,
 }
 
 enum errorCodeT dmm_pat_view_map_config_get(signed long patViewMapIndx,
-				  enum dmmMemoryAccessT memoryAccessMode,
-				  unsigned long *contX,
-				  enum dmmPATTranslationT *transType,
-				  unsigned long *dmmPATViewBase)
+		enum dmmMemoryAccessT memoryAccessMode,
+		unsigned long *contX,
+		enum dmmPATTranslationT *transType,
+		unsigned long *dmmPATViewBase)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 	return eCode;
@@ -575,32 +597,33 @@ enum errorCodeT dmm_pat_view_map_config_get(signed long patViewMapIndx,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_lisa_memory_map_config(signed long lisaMemMapIndx,
-				  unsigned long sysAddr,
-				  enum dmmMemSectionSizeT sysSize,
-				  enum dmmMemSdrcIntlModeT sdrcIntl,
-				  unsigned long sdrcAddrspc,
-				  enum dmmMemSectionMappingT sdrcMap,
-				  unsigned long sdrcAddr)
+		unsigned long sysAddr,
+		enum dmmMemSectionSizeT sysSize,
+		enum dmmMemSdrcIntlModeT sdrcIntl,
+		unsigned long sdrcAddrspc,
+		enum dmmMemSectionMappingT sdrcMap,
+		unsigned long sdrcAddr)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
-	unsigned long *reg = NULL;
+	void __iomem *reg = NULL;
 
 	if (lisaMemMapIndx != 0)
 		printk(KERN_WARNING "lisaMemMapIndx != 0\n");
 
-	reg = (unsigned long)dmmvabase | (0x40ul + (0x4*lisaMemMapIndx));
+	reg = (void __iomem *)((unsigned long)dmm_virt_base_addr |
+					(0x40ul + (0x4*lisaMemMapIndx)));
 	__raw_writel(0x80710100, reg);
 
 	return eCode;
 }
 
 enum errorCodeT dmm_lisa_memory_map_config_get(signed long lisaMemMapIndx,
-				     unsigned long *sysAddr,
-				     enum dmmMemSectionSizeT *sysSize,
-				     enum dmmMemSdrcIntlModeT *sdrcIntl,
-				     unsigned long *sdrcAddrspc,
-				     enum dmmMemSectionMappingT *sdrcMap,
-				     unsigned long *sdrcAddr)
+		unsigned long *sysAddr,
+		enum dmmMemSectionSizeT *sysSize,
+		enum dmmMemSdrcIntlModeT *sdrcIntl,
+		unsigned long *sdrcAddrspc,
+		enum dmmMemSectionMappingT *sdrcMap,
+		unsigned long *sdrcAddr)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 	return eCode;
@@ -624,18 +647,19 @@ enum errorCodeT dmm_lisa_memory_map_config_get(signed long lisaMemMapIndx,
 /* ========================================================================== */
 enum errorCodeT dmm_engage_lisa_lock()
 {
-	unsigned long *reg = NULL;
+	void __iomem *reg = NULL;
 	unsigned long regval = 0xffffffff;
 	unsigned long writeval = 0xffffffff;
 	unsigned long f = 0xffffffff; /* field */
 	unsigned long fp = 0xffffffff; /* field position */
 
-	reg = (unsigned long)dmmvabase | (0x1cul);
+	reg = (void __iomem *)((unsigned long)dmm_virt_base_addr |
+								(0x1cul));
 	regval = __raw_readl(reg);
 
 	f  = BITFIELD(0, 0);
 	fp = 0;
-	writeval = regval & (~(f)) | (((0x1ul) << fp) & f);
+	writeval = (regval & (~(f))) | (((0x1ul) << fp) & f);
 	__raw_writel(writeval, reg);
 
 	return DMM_NO_ERROR;
@@ -656,9 +680,10 @@ enum errorCodeT dmm_sys_config_get(unsigned long *dmmIdleMode)
 enum errorCodeT dmm_pat_irq_mode_set(struct dmmPATIrqEventsT *patIrqEvnt)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
-	unsigned long *reg = NULL;
+	void __iomem *reg = NULL;
 
-	reg = (unsigned long)dmmvabase | (0x4a0ul);
+	reg = (void __iomem *)((unsigned long)dmm_virt_base_addr |
+								(0x4a0ul));
 
 	__raw_writel(0x0000FFFF, reg); /* clr all irq registers */
 	return eCode;
@@ -671,7 +696,7 @@ enum errorCodeT dmm_pat_irq_mode_get(struct dmmPATIrqEventsT *patIrqEvnt)
 }
 
 enum errorCodeT dmm_pat_irq_status_get(struct dmmPATIrqEventsT *patIrqEvnt,
-					int clrEvents)
+				       int clrEvents)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 	return eCode;
