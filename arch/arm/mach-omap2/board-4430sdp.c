@@ -447,6 +447,19 @@ void omap_kp_init(void)
 	omap_cfg_reg(PAD1_4430_UNIPRO_RY2);
 }
 
+static void omap_abe_init(void)
+{
+	/* mcpdm */
+	omap_cfg_reg(AG25_4430_ABE_PDM_UL_DATA);
+	omap_cfg_reg(AF25_4430_ABE_PDM_DL_DATA);
+	omap_cfg_reg(AE25_4430_ABE_PDM_FRAME);
+	omap_cfg_reg(AF26_4430_ABE_PDM_LB_CLK);
+	omap_cfg_reg(AH26_4430_ABE_PDM_CLKS);
+
+	/* twl6030 audio power-on */
+	omap_cfg_reg(AA27_4430_GPIO_127);
+}
+
 static void omap_phoenix_init(void)
 {
 	omap_cfg_reg(PAD1_4430_SYS_NIRQ1);
@@ -466,6 +479,7 @@ static void __init omap_4430sdp_init(void)
 	omap_mcbsp_init();
 	sdp4430_mmc_init();
 	omap_kp_init();
+	omap_abe_init();
 	omap_phoenix_init();
 
 }
