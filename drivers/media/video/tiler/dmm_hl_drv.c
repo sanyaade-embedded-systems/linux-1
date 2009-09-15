@@ -21,29 +21,10 @@
 #include "dmm_def.h"
 #include "dmm_2d_alloc.h"
 #include "dmm_prv.h"
-#include "dmm.h"
+#include "tiler.h"
 
-unsigned long *va;
-
-/* ========================================================================== */
-/**
- *  dmm_get_context_pointer()
- *
- * @brief  Returns a pointer to the Tiler context structure.
- *
- * @return void * Pointer to the Tiler context structure
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see dmmInstanceCtxT for further detail.
- */
-/* ========================================================================== */
-void *dmm_get_context_pointer()
-{
-	return &dmmInstanceCtxStatic;
-}
+#define tilerdump(x) /* printk(KERN_NOTICE "%s::%s():%d: %lx\n",
+			__FILE__, __func__, __LINE__, (unsigned long)x); */
 
 /* ========================================================================== */
 /**
@@ -92,12 +73,12 @@ void *dmm_get_context_pointer()
 /* ========================================================================== */
 /* DHS */
 enum errorCodeT dmm_module_config(struct dmmTILERConfigLstT *tilerConf,
-				struct dmmPEGConfigLstT *pegConf,
-				struct dmmLISAConfigLstT *lisaConf,
-				struct dmmPATEngineConfigLstT *patEngineConf,
-				struct dmmPATViewConfigLstT *patViewCOnf,
-				struct dmmPATViewMapConfigLstT *patViewMapConf,
-				unsigned long *dmmSysConfig)
+				 struct dmmPEGConfigLstT *pegConf,
+				 struct dmmLISAConfigLstT *lisaConf,
+				 struct dmmPATEngineConfigLstT *patEngineConf,
+				 struct dmmPATViewConfigLstT *patViewCOnf,
+				 struct dmmPATViewMapConfigLstT *patViewMapConf,
+				 unsigned long *dmmSysConfig)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 
@@ -110,42 +91,42 @@ enum errorCodeT dmm_module_config(struct dmmTILERConfigLstT *tilerConf,
 
 	while (pegConf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_peg_priority_set(pegConf->prioConf.initiatorId,
-					  pegConf->prioConf.prio);
+					     pegConf->prioConf.prio);
 		pegConf = pegConf->nextConf;
 	}
 
 	while (lisaConf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_lisa_memory_map_config(
-					lisaConf->mapConf.lisaMemMapIndx,
-					lisaConf->mapConf.sysAddr,
-					lisaConf->mapConf.sysSize,
-					lisaConf->mapConf.sdrcIntl,
-					lisaConf->mapConf.sdrcAddrspc,
-					lisaConf->mapConf.sdrcMap,
-					lisaConf->mapConf.sdrcAddr);
+				lisaConf->mapConf.lisaMemMapIndx,
+				lisaConf->mapConf.sysAddr,
+				lisaConf->mapConf.sysSize,
+				lisaConf->mapConf.sdrcIntl,
+				lisaConf->mapConf.sdrcAddrspc,
+				lisaConf->mapConf.sdrcMap,
+				lisaConf->mapConf.sdrcAddr);
 		lisaConf = lisaConf->nextConf;
 	}
 
 	while (patEngineConf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_pat_refill_engine_config(
-			patEngineConf->engineConf.dmmPatEngineSel,
-			patEngineConf->engineConf.engineMode);
+				patEngineConf->engineConf.dmmPatEngineSel,
+				patEngineConf->engineConf.engineMode);
 		patEngineConf = patEngineConf->nextConf;
 	}
 
 	while (patViewCOnf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_pat_view_set(patViewCOnf->aliasViewConf.initiatorId,
-				      patViewCOnf->aliasViewConf.viewIndex);
+					 patViewCOnf->aliasViewConf.viewIndex);
 		patViewCOnf = patViewCOnf->nextConf;
 	}
 
 	while (patViewMapConf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_pat_view_map_config(
-			patViewMapConf->viewConf.patViewMapIndx,
-			patViewMapConf->viewConf.memoryAccessMode,
-			patViewMapConf->viewConf.contX,
-			patViewMapConf->viewConf.transType,
-			patViewMapConf->viewConf.dmmPATViewBase);
+				patViewMapConf->viewConf.patViewMapIndx,
+				patViewMapConf->viewConf.memoryAccessMode,
+				patViewMapConf->viewConf.contX,
+				patViewMapConf->viewConf.transType,
+				patViewMapConf->viewConf.dmmPATViewBase);
 		patViewMapConf = patViewMapConf->nextConf;
 	}
 
@@ -197,71 +178,70 @@ enum errorCodeT dmm_module_config(struct dmmTILERConfigLstT *tilerConf,
  * dmmPATViewMapConfigLstT for further detail.
  */
 /* ========================================================================== */
-/* DHS */
 enum errorCodeT dmm_module_get_config(struct dmmTILERConfigLstT *tilerConf,
-			struct dmmPEGConfigLstT *pegConf,
-			struct dmmLISAConfigLstT *lisaConf,
-			struct dmmPATEngineConfigLstT *patEngineConf,
-			struct dmmPATViewConfigLstT *patViewCOnf,
-			struct dmmPATViewMapConfigLstT *patViewMapConf,
-			struct dmmPATStatusLstT *patAreaStatus,
-			unsigned long *dmmSysConfig)
+				 struct dmmPEGConfigLstT *pegConf,
+				 struct dmmLISAConfigLstT *lisaConf,
+				 struct dmmPATEngineConfigLstT *patEngineConf,
+				 struct dmmPATViewConfigLstT *patViewCOnf,
+				 struct dmmPATViewMapConfigLstT *patViewMapConf,
+				 struct dmmPATStatusLstT *patAreaStatus,
+				 unsigned long *dmmSysConfig)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 
 	while (tilerConf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_tiler_alias_orientation_get(
-			tilerConf->aliasConf.initiatorId,
-			&(tilerConf->aliasConf.orient));
+				tilerConf->aliasConf.initiatorId,
+				&(tilerConf->aliasConf.orient));
 		tilerConf = tilerConf->nextConf;
 	}
 
 	while (pegConf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_peg_priority_get(pegConf->prioConf.initiatorId,
-					  &(pegConf->prioConf.prio));
+					     &(pegConf->prioConf.prio));
 		pegConf = pegConf->nextConf;
 	}
 
 	while (lisaConf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_lisa_memory_map_config_get(
-			lisaConf->mapConf.lisaMemMapIndx,
-			&(lisaConf->mapConf.sysAddr),
-			&(lisaConf->mapConf.sysSize),
-			&(lisaConf->mapConf.sdrcIntl),
-			&(lisaConf->mapConf.sdrcAddrspc),
-			&(lisaConf->mapConf.sdrcMap),
-			&(lisaConf->mapConf.sdrcAddr));
+				lisaConf->mapConf.lisaMemMapIndx,
+				&(lisaConf->mapConf.sysAddr),
+				&(lisaConf->mapConf.sysSize),
+				&(lisaConf->mapConf.sdrcIntl),
+				&(lisaConf->mapConf.sdrcAddrspc),
+				&(lisaConf->mapConf.sdrcMap),
+				&(lisaConf->mapConf.sdrcAddr));
 		lisaConf = lisaConf->nextConf;
 	}
 
 	while (patEngineConf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_pat_refill_engine_config_get(
-			patEngineConf->engineConf.dmmPatEngineSel,
-			&(patEngineConf->engineConf.engineMode));
+				patEngineConf->engineConf.dmmPatEngineSel,
+				&(patEngineConf->engineConf.engineMode));
 		patEngineConf = patEngineConf->nextConf;
 	}
 
 	while (patViewCOnf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_pat_view_get(
-			patViewCOnf->aliasViewConf.initiatorId,
-			&(patViewCOnf->aliasViewConf.viewIndex));
+				patViewCOnf->aliasViewConf.initiatorId,
+				&(patViewCOnf->aliasViewConf.viewIndex));
 		patViewCOnf = patViewCOnf->nextConf;
 	}
 
 	while (patViewMapConf != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_pat_view_map_config_get(
-			patViewMapConf->viewConf.patViewMapIndx,
-			patViewMapConf->viewConf.memoryAccessMode,
-			&(patViewMapConf->viewConf.contX),
-			&(patViewMapConf->viewConf.transType),
-			&(patViewMapConf->viewConf.dmmPATViewBase));
+				patViewMapConf->viewConf.patViewMapIndx,
+				patViewMapConf->viewConf.memoryAccessMode,
+				&(patViewMapConf->viewConf.contX),
+				&(patViewMapConf->viewConf.transType),
+				&(patViewMapConf->viewConf.dmmPATViewBase));
 		patViewMapConf = patViewMapConf->nextConf;
 	}
 
 	while (patAreaStatus != NULL && eCode == DMM_NO_ERROR) {
 		eCode = dmm_pat_refill_area_status_get(
-			patAreaStatus->areaSelect,
-			&(patAreaStatus->patAreaStatus));
+				patAreaStatus->areaSelect,
+				&(patAreaStatus->patAreaStatus));
 
 		patAreaStatus = patAreaStatus->nextConf;
 	}
@@ -325,7 +305,7 @@ enum errorCodeT dmm_pat_irq_config_set(struct dmmPATIrqConfigLstT *irqMaskConf)
  */
 /* ========================================================================== */
 enum errorCodeT dmm_pat_irq_config_get(struct dmmPATIrqConfigLstT *irqMaskConf,
-				   struct dmmPATIrqConfigLstT *irqStatusConf)
+				      struct dmmPATIrqConfigLstT *irqStatusConf)
 {
 	enum errorCodeT eCode = DMM_NO_ERROR;
 
@@ -336,8 +316,8 @@ enum errorCodeT dmm_pat_irq_config_get(struct dmmPATIrqConfigLstT *irqMaskConf,
 
 	while (irqStatusConf != NULL &&  eCode == DMM_NO_ERROR) {
 		eCode = dmm_pat_irq_status_get(
-			&(irqStatusConf->irqConf.irqEvnts),
-			irqStatusConf->irqConf.clrEvents);
+				&(irqStatusConf->irqConf.irqEvnts),
+				irqStatusConf->irqConf.clrEvents);
 		irqStatusConf = irqStatusConf->nextConf;
 	}
 
@@ -364,16 +344,16 @@ enum errorCodeT dmm_pat_irq_config_get(struct dmmPATIrqConfigLstT *irqMaskConf,
 /* ========================================================================== */
 /* DHS */
 enum errorCodeT dmm_pat_start_refill(
-			struct dmmTILERContPageAreaT *bufferMappedZone)
+	struct dmmTILERContPageAreaT *bufferMappedZone)
 {
 	struct PATDescrT areaDesc;
 
 	areaDesc.area.x0 = bufferMappedZone->x0 + bufferMappedZone->xPageOfst;
 	areaDesc.area.y0 = bufferMappedZone->y0 + bufferMappedZone->yPageOfst;
 	areaDesc.area.x1 = bufferMappedZone->x0 + bufferMappedZone->xPageOfst +
-		bufferMappedZone->xPageCount - 1;
+			   bufferMappedZone->xPageCount - 1;
 	areaDesc.area.y1 = bufferMappedZone->y0 + bufferMappedZone->yPageOfst +
-		bufferMappedZone->yPageCount - 1;
+			   bufferMappedZone->yPageCount - 1;
 
 	areaDesc.ctrl.direction = 0;
 	areaDesc.ctrl.initiator = 0;
@@ -385,6 +365,7 @@ enum errorCodeT dmm_pat_start_refill(
 
 	areaDesc.data = (unsigned long)(bufferMappedZone->patPageEntries);
 
+	tilerdump(0);
 	return dmm_pat_area_refill(&areaDesc, 0, MANUAL, 0);
 }
 
@@ -411,8 +392,8 @@ enum errorCodeT dmm_pat_start_refill(
 /* ========================================================================== */
 /* DHS */
 enum errorCodeT dmm_pat_phy2virt_mapping(
-				struct dmmTILERContPageAreaT *bufferMappedZone,
-				void *custmPagesPtr)
+	struct dmmTILERContPageAreaT *bufferMappedZone,
+	void *custmPagesPtr)
 {
 	unsigned long bfrPages;
 	enum errorCodeT eCode = DMM_NO_ERROR;
@@ -423,11 +404,12 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 	if (bfrPages == 0) {
 		eCode = DMM_SYS_ERROR;
 	} else {
-
+		tilerdump(0);
 		if (dmm_tiler_populate_pat_page_entry_data(bfrPages,
-			&(bufferMappedZone->patPageEntries),
-			&(bufferMappedZone->patPageEntriesSpace),
-			custmPagesPtr) != DMM_NO_ERROR) {
+				&(bufferMappedZone->patPageEntries),
+				&(bufferMappedZone->patPageEntriesSpace),
+				custmPagesPtr
+							  ) != DMM_NO_ERROR) {
 			eCode = DMM_SYS_ERROR;
 			return eCode;
 		}
@@ -436,7 +418,7 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 			bufferMappedZone->patCustomPages = 1;
 		else
 			bufferMappedZone->patCustomPages = 0;
-
+		tilerdump(0);
 		eCode = dmm_pat_start_refill(bufferMappedZone);
 	}
 
@@ -470,49 +452,34 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
  * @see errorCodeT for further detail.
  */
 /* ========================================================================== */
-/* DHS */
 enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 		unsigned long **pageEntries,
 		unsigned long **pageEntriesSpace,
 		void *custmPagesPtr)
 {
 	signed long iter;
-	unsigned long *tmpva = NULL;
 
-	unsigned long *patAreaEntries =
-		(unsigned long *)vmalloc(numPages*4 + 16);
-
-	va = (unsigned long *)vmalloc((numPages/4)*4096);
-	memset(va, 0x0, (numPages/4)*4096);
-	tmpva = va;
-
-
+	unsigned long *patAreaEntries = kmalloc(
+		(size_t)(numPages*4 + 16), GFP_KERNEL);
+		/* Must be 16-byte aligned. */
+	memset(patAreaEntries, 0x0, (numPages*4 + 16));
 	*pageEntriesSpace = patAreaEntries;
 
-	patAreaEntries =
-		(unsigned long *)((((unsigned long)patAreaEntries) + 15) & ~15);
+
+	patAreaEntries = (unsigned long *)
+				((((unsigned long)patAreaEntries) + 15) & ~15);
 
 	if (custmPagesPtr == NULL) {
-		unsigned int *pa = NULL;
-		struct page *pg  = NULL;
-		pg = kmalloc(sizeof(struct page), GFP_KERNEL);
-		memset(pg, 0x0, sizeof(struct page));
-		pg = vmalloc_to_page(va);
-		pa = page_to_phys(pg);
-		patAreaEntries[0] = pa;
-
-		va += 1024;
-		for (iter = 1; iter < numPages/4; iter++) {
-			pg = vmalloc_to_page(va);
-			pa = page_to_phys(pg);
-			patAreaEntries[iter] = pa;
-			va += 1024;
-		}
-		va = tmpva;
-	} else {
 		for (iter = 0; iter < numPages; iter++) {
 			patAreaEntries[iter] =
-			(unsigned long)(((unsigned long *)custmPagesPtr)[iter]);
+					(unsigned long)dmm_get_phys_page();
+			if (patAreaEntries[iter] == 0x0)
+				return DMM_SYS_ERROR;
+		}
+	} else {
+		for (iter = 0; iter < numPages; iter++) {
+			patAreaEntries[iter] = (unsigned long)
+				(((unsigned long *)custmPagesPtr)[iter]);
 		}
 	}
 
@@ -535,11 +502,11 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
  *
  * @param affectedArea - PATAreaT* - [in] Area that will be affected.
  *
- * @param destX - unsigned char - [in] Destination coordinate X.
+ * @param destX - unsigned short - [in] Destination coordinate X.
  *
- * @param destY - unsigned char - [in] Destination coordinate Y.
+ * @param destY - unsigned short - [in] Destination coordinate Y.
  *
- * @param stride - unsigned char - [in] Stride of the area.
+ * @param stride - unsigned short - [in] Stride of the area.
  *
  * @return errorCodeT
  *
@@ -553,19 +520,19 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 enum errorCodeT dmm_tiler_swap_pat_page_entry_data(unsigned long numPages,
 		unsigned long *pageEntries,
 		struct PATAreaT *affectedArea,
-		unsigned char destX,
-		unsigned char destY,
-		unsigned char stride)
+		unsigned short destX,
+		unsigned short destY,
+		unsigned short stride)
 {
-	unsigned char row;
-	unsigned char column;
+	unsigned short row;
+	unsigned short column;
 	unsigned long entrySwap;
 
-	unsigned char startX = affectedArea->x0;
-	unsigned char startY = affectedArea->y0;
+	unsigned short startX = affectedArea->x0;
+	unsigned short startY = affectedArea->y0;
 
-	unsigned char endX = affectedArea->x1 + 1;
-	unsigned char enxY = affectedArea->y1 + 1;
+	unsigned short endX = affectedArea->x1 + 1;
+	unsigned short enxY = affectedArea->y1 + 1;
 
 	signed short ofstX = destX - startX;
 	signed short ofstY = destY - startY;
@@ -623,12 +590,12 @@ enum errorCodeT dmm_tiler_swap_pat_page_entry_data(unsigned long numPages,
 /* ========================================================================== */
 /* DHS */
 enum errorCodeT dmm_tiler_container_map_area(
-		struct dmmTILERContCtxT *dmmTilerCtx,
-		unsigned short sizeWidth,
-		unsigned short sizeHeight,
-		enum dmmMemoryAccessT contMod,
-		void **allocedPtr,
-		struct dmmTILERContPageAreaT **bufferMappedZone)
+	struct dmmTILERContCtxT *dmmTilerCtx,
+	unsigned long sizeWidth,
+	unsigned long sizeHeight,
+	enum dmmMemoryAccessT contMod,
+	void **allocedPtr,
+	struct dmmTILERContPageAreaT **bufferMappedZone)
 {
 	struct dmmTILERContPageAreaT areaRequest;
 
@@ -637,58 +604,115 @@ enum errorCodeT dmm_tiler_container_map_area(
 	signed long pageDimmensionY = 0;
 	unsigned long    accessMode = 0;
 	unsigned long addrShiftAlign = 0;
+	unsigned short tiled_pages_per_ss_page = 0;
 
+	tilerdump(0);
 	switch (contMod) {
 	case MODE_8_BIT:
 		accessMode = 0;
 		pageDimmensionX = DMM_PAGE_DIMM_X_MODE_8;
 		pageDimmensionY = DMM_PAGE_DIMM_Y_MODE_8;
 		addrShiftAlign = DMM_HOR_Y_ADDRSHIFT_8;
+		tiled_pages_per_ss_page = DMM_4KiB_SIZE / pageDimmensionX;
 		break;
 	case MODE_16_BIT:
 		accessMode = 1;
 		pageDimmensionX = DMM_PAGE_DIMM_X_MODE_16;
 		pageDimmensionY = DMM_PAGE_DIMM_Y_MODE_16;
 		addrShiftAlign = DMM_HOR_Y_ADDRSHIFT_16;
+		tiled_pages_per_ss_page = DMM_4KiB_SIZE / pageDimmensionX / 2;
 		break;
 	case MODE_32_BIT:
 		accessMode = 2;
 		pageDimmensionX = DMM_PAGE_DIMM_X_MODE_32;
 		pageDimmensionY = DMM_PAGE_DIMM_Y_MODE_32;
 		addrShiftAlign = DMM_HOR_Y_ADDRSHIFT_32;
+		tiled_pages_per_ss_page = DMM_4KiB_SIZE / pageDimmensionX / 4;
 		break;
 	case MODE_PAGE:
 		accessMode = 3;
-		pageDimmensionX = DMM_PAGE_DIMM_X_MODE_8;
-		pageDimmensionY = DMM_PAGE_DIMM_Y_MODE_8;
-		sizeHeight = DMM_PAGE_DIMM_Y_MODE_8;
-		sizeWidth =
-			((sizeWidth + DMM_4KiB_SIZE - 1)/DMM_4KiB_SIZE)*
-			DMM_PAGE_DIMM_X_MODE_8;
-		addrShiftAlign = DMM_HOR_Y_ADDRSHIFT_8;
+		pageDimmensionX = 64;/*DMM_PAGE_DIMM_X_MODE_8;*/ /* 64 */
+		pageDimmensionY = 64;/*DMM_PAGE_DIMM_Y_MODE_8;*/ /* 64 */
+		/* ((width + 4096 - 1) / 4096) */
+		sizeWidth = ((sizeWidth + DMM_4KiB_SIZE - 1)/DMM_4KiB_SIZE);
+		tiled_pages_per_ss_page = 1;
+
+		/* for 1D blocks larger than the container width, we need to
+		   allocate multiple rows */
+		if (sizeWidth > dmmTilerCtx->contSizeX) {
+			sizeHeight = (sizeWidth + dmmTilerCtx->contSizeX - 1) /
+							dmmTilerCtx->contSizeX;
+			sizeWidth = dmmTilerCtx->contSizeX;
+		} else {
+			sizeHeight = 1;
+		}
+
+		sizeHeight *= pageDimmensionX;
+		sizeWidth  *= pageDimmensionY;
+
+		addrShiftAlign = DMM_HOR_Y_ADDRSHIFT_8; /* 14 */
 		break;
 	default:
 		eCode = DMM_WRONG_PARAM;
 		break;
 	}
 
-	areaRequest.x1 = (sizeWidth + pageDimmensionX - 1)/pageDimmensionX - 1;
-	areaRequest.y1 = (sizeHeight + pageDimmensionY - 1)/pageDimmensionY - 1;
+	areaRequest.x1 = (sizeWidth + pageDimmensionX - 1) /
+							pageDimmensionX - 1;
+	areaRequest.y1 = (sizeHeight + pageDimmensionY - 1) /
+							pageDimmensionY - 1;
 
-	*bufferMappedZone = alloc_2d_area(dmmTilerCtx, &areaRequest);
+	/* fill out to page boundaries */
+	if (1)
+		printk(KERN_ERR "areaRequest(%u (was %u%%%u) by %u)\n",
+			     (areaRequest.x1 + 64) & ~63, areaRequest.x1 + 1,
+			     tiled_pages_per_ss_page, areaRequest.y1 + 1);
 
-	DBG_OVERLAP_TEST(dmmTilerCtx);
+	/* since all containers are collapsed, we need to take the most
+	   conservative value for pages per SS page */
+	tiled_pages_per_ss_page = 64;
+	areaRequest.x1 = ((areaRequest.x1 + tiled_pages_per_ss_page) &
+			  ~(tiled_pages_per_ss_page - 1)) - 1;
+	tilerdump(0);
 
-	if (eCode == DMM_NO_ERROR) {
-		*allocedPtr =
-			DMM_COMPOSE_TILER_ALIAS_PTR(
-			((*bufferMappedZone)->x0*pageDimmensionX) |
-			(((*bufferMappedZone)->y0*pageDimmensionY)<<
-			addrShiftAlign), accessMode);
-	} else {
-		*allocedPtr = NULL;
+	if (areaRequest.x1 > dmmTilerCtx->contSizeX ||
+			areaRequest.y1 > dmmTilerCtx->contSizeY) {
+		eCode = DMM_WRONG_PARAM;
 	}
 
+	if (eCode == DMM_NO_ERROR) {
+		*bufferMappedZone = alloc_2d_area(dmmTilerCtx, &areaRequest);
+		/* if we could not allocate, we set the return code */
+		if (*bufferMappedZone == NULL)
+			eCode = DMM_SYS_ERROR;
+	}
+
+	/* DBG_OVERLAP_TEST(dmmTilerCtx); */
+	tilerdump(0);
+	if (eCode == DMM_NO_ERROR) {
+		tilerdump(0);
+		if (accessMode == 0) {
+			*allocedPtr =
+				DMM_COMPOSE_TILER_ALIAS_PTR(
+				(((*bufferMappedZone)->x0 << 6) |
+				((*bufferMappedZone)->y0 << 20)), accessMode);
+		} else if (accessMode == 3) {
+			*allocedPtr =
+				DMM_COMPOSE_TILER_ALIAS_PTR(
+				(((*bufferMappedZone)->x0 |
+				((*bufferMappedZone)->y0 << 8)) << 12),
+				accessMode);
+		} else {
+			*allocedPtr =
+				DMM_COMPOSE_TILER_ALIAS_PTR(
+				(((*bufferMappedZone)->x0 << 7) |
+				((*bufferMappedZone)->y0 << 20)), accessMode);
+		}
+		tilerdump(0);
+	} else {
+		tilerdump(0);
+		*allocedPtr = NULL;
+	}
 	return eCode;
 }
 
@@ -714,8 +738,8 @@ enum errorCodeT dmm_tiler_container_map_area(
 /* ========================================================================== */
 /* DHS */
 enum errorCodeT dmm_tiler_container_unmap_area(
-		struct dmmTILERContCtxT *dmmTilerCtx,
-		struct dmmTILERContPageAreaT *bufferMappedZone)
+	struct dmmTILERContCtxT *dmmTilerCtx,
+	struct dmmTILERContPageAreaT *bufferMappedZone)
 {
 	if (dealloc_2d_area(dmmTilerCtx, bufferMappedZone) != 1)
 		return DMM_WRONG_PARAM;
@@ -749,35 +773,67 @@ struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
 	unsigned long X;
 	unsigned long Y;
 	enum dmmMemoryAccessT accessModeM;
+	struct dmmTILERContPageAreaT *found = NULL;
 
+	tilerdump(sysPtr);
 	accessModeM = DMM_GET_ACC_MODE(sysPtr);
 
 	if (DMM_GET_ROTATED(sysPtr) == 0) {
-		if (accessModeM == MODE_8_BIT || accessModeM == MODE_PAGE) {
+		tilerdump(0);
+		if (accessModeM == MODE_PAGE) {
+			X = ((long)sysPtr & 0x7FFFFFF) >> 12;
+			Y = X / 256;
+			X = X & 255;
+		} else if (accessModeM == MODE_8_BIT) {
 			X = DMM_HOR_X_PAGE_COOR_GET_8(sysPtr);
 			Y = DMM_HOR_Y_PAGE_COOR_GET_8(sysPtr);
+			tilerdump(0);
 		} else if (accessModeM == MODE_16_BIT) {
+			tilerdump(0);
 			X = DMM_HOR_X_PAGE_COOR_GET_16(sysPtr);
 			Y = DMM_HOR_Y_PAGE_COOR_GET_16(sysPtr);
 		} else if (accessModeM == MODE_32_BIT) {
+			tilerdump(0);
 			X = DMM_HOR_X_PAGE_COOR_GET_32(sysPtr);
 			Y = DMM_HOR_Y_PAGE_COOR_GET_32(sysPtr);
 		}
 	} else {
-		if (accessModeM == MODE_8_BIT || accessModeM == MODE_PAGE) {
+		tilerdump(0);
+		if (accessModeM == MODE_PAGE) {
+			X = ((long)sysPtr & 0x7FFFFFF) >> 12;
+			Y = X / 256;
+			X = X & 255;
+		} else if (accessModeM == MODE_8_BIT) {
+			tilerdump(0);
 			X = DMM_VER_X_PAGE_COOR_GET_8(sysPtr);
 			Y = DMM_VER_Y_PAGE_COOR_GET_8(sysPtr);
 		} else if (accessModeM == MODE_16_BIT) {
+			tilerdump(0);
 			X = DMM_VER_X_PAGE_COOR_GET_16(sysPtr);
 			Y = DMM_VER_Y_PAGE_COOR_GET_16(sysPtr);
 		} else if (accessModeM == MODE_32_BIT) {
+			tilerdump(0);
 			X = DMM_VER_X_PAGE_COOR_GET_32(sysPtr);
 			Y = DMM_VER_Y_PAGE_COOR_GET_32(sysPtr);
 		}
 	}
 
-	return search_2d_area(dmmTilerCtx, X, Y, DMM_GET_X_INVERTED(sysPtr),
-		DMM_GET_Y_INVERTED(sysPtr));
+	tilerdump(dmmTilerCtx);
+	tilerdump(X);
+	tilerdump(Y);
+	tilerdump(DMM_GET_X_INVERTED(sysPtr));
+	tilerdump(DMM_GET_Y_INVERTED(sysPtr));
+	printk(KERN_ERR " ? %p => x=%ld,y=%ld\n", sysPtr, X, Y);
+	found = search_2d_area(dmmTilerCtx, X, Y, DMM_GET_X_INVERTED(sysPtr),
+						DMM_GET_Y_INVERTED(sysPtr));
+	if (found) {
+		printk(KERN_ERR " >(x=%d-%d=%d+%d,y=%d-%d=%d+%d)\n",
+		found->x0, found->x1, found->xPageCount,
+							found->xPageOfst,
+		found->y0, found->y1, found->yPageCount,
+							found->yPageOfst);
+	}
+	return found;
 }
 
 /* ========================================================================== */
@@ -808,19 +864,18 @@ struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
  * @see dmmTILERContCtxT for further detail.
  */
 /* ========================================================================== */
-/* DHS */
 int dmm_instance_init(void *dmmInstanceCtxPtr,
-		    signed long contXSize,
-		    signed long contYSize,
-		    void *hMSP,
-		    void *usrAppData)
+		      signed long contXSize,
+		      signed long contYSize,
+		      void *hMSP,
+		      void *usrAppData)
 {
 	struct dmmTILERContCtxT *dmmTilerCtx =
 		&((struct dmmInstanceCtxT *)dmmInstanceCtxPtr)->dmmTilerCtx;
 	struct dmmHwdCtxT *dmmHwdCtx =
 		&((struct dmmInstanceCtxT *)dmmInstanceCtxPtr)->dmmHwdCtx;
-	struct MSP_Dmm_eventNotificationT *dmmMspCtx =
-		&((struct dmmInstanceCtxT *)dmmInstanceCtxPtr)->dmmMspCtx;
+	/* struct MSP_Dmm_eventNotificationT * dmmMspCtx =
+	&((struct dmmInstanceCtxT*)dmmInstanceCtxPtr)->dmmMspCtx; */
 
 	if (contXSize > 256 || contYSize > 128)
 		return 0;
@@ -838,13 +893,22 @@ int dmm_instance_init(void *dmmInstanceCtxPtr,
 		dmmTilerCtx->contSizeX = contXSize;
 		dmmTilerCtx->contSizeY = contYSize;
 
+		/* Hwi_Params_init (&dmmHwdCtx->dmmIrqIntParams); */
+		/* dmmHwdCtx->dmmIrqIntHandle =
+		Hwi_create (DMM_PAT_AREA_IRQ, dmmPatIrqHandler,
+		&dmmHwdCtx->dmmIrqIntParams, NULL); */
+
 		dmmHwdCtx->patIrqEvnt0.irqAreaSelect = 0;
 		dmmHwdCtx->patIrqEvnt1.irqAreaSelect = 1;
 		dmmHwdCtx->patIrqEvnt2.irqAreaSelect = 2;
 		dmmHwdCtx->patIrqEvnt3.irqAreaSelect = 3;
 
-		dmmMspCtx->hMSP = hMSP;
-		dmmMspCtx->usrAppData = usrAppData;
+		/* dmmMspCtx->hMSP = hMSP; */
+		/* dmmMspCtx->usrAppData = usrAppData; */
+		/* dmmMspCtx->usrCallback = usrCallback; */
+
+		if (dmm_phys_page_rep_init() != DMM_NO_ERROR)
+			return 0;
 	}
 
 	dmmHwdCtx->dmmOpenInstances++;
@@ -877,18 +941,16 @@ int dmm_instance_deinit(void *dmmInstanceCtxPtr)
 		&((struct dmmInstanceCtxT *)dmmInstanceCtxPtr)->dmmHwdCtx;
 	struct MSP_Dmm_eventNotificationT *dmmMspCtx =
 		&((struct dmmInstanceCtxT *)dmmInstanceCtxPtr)->dmmMspCtx;
-
 	dmmHwdCtx->dmmOpenInstances--;
-
 	if (dmmHwdCtx->dmmOpenInstances < 0)
 		return 0;
 
 	if (dmmHwdCtx->dmmOpenInstances == 0) {
-
 		while (dmmTilerCtx->usdArList != NULL) {
 			if (dmm_tiler_container_unmap_area(
-				dmmTilerCtx, &(dmmTilerCtx->usdArList->pgAr)) !=
-				DMM_NO_ERROR)
+					dmmTilerCtx,
+					&(dmmTilerCtx->usdArList->pgAr)) !=
+					DMM_NO_ERROR)
 				return 0;
 		}
 
@@ -960,11 +1022,11 @@ void dmm_pat_irq_handler(unsigned long data)
  */
 /* ========================================================================== */
 enum errorCodeT dmm_copy2tiler_alias_view(void *destPtr,
-				       void *srcPtr,
-				       signed long width,
-				       signed long height,
-				       signed long stride,
-				       enum dmmMemoryAccessT accType)
+		void *srcPtr,
+		signed long width,
+		signed long height,
+		signed long stride,
+		enum dmmMemoryAccessT accType)
 {
 	signed long row;
 
@@ -974,7 +1036,7 @@ enum errorCodeT dmm_copy2tiler_alias_view(void *destPtr,
 		unsigned char *srcPtr8 = (unsigned char *)srcPtr;
 		for (row = 0; row < height; row++) {
 			memcpy(&destPtr8[row*DMM_TILER_CONT_WIDTH_8],
-				srcPtr8, width);
+			       srcPtr8, width);
 			srcPtr8 += stride;
 		}
 	}
@@ -984,7 +1046,7 @@ enum errorCodeT dmm_copy2tiler_alias_view(void *destPtr,
 		unsigned short *srcPtr16 = (unsigned short *)srcPtr;
 		for (row = 0; row < height; row++) {
 			memcpy(&destPtr16[row*DMM_TILER_CONT_WIDTH_16],
-				srcPtr16, width*2);
+			       srcPtr16, width*2);
 			srcPtr16 += stride;
 		}
 	}
@@ -994,7 +1056,7 @@ enum errorCodeT dmm_copy2tiler_alias_view(void *destPtr,
 		unsigned long *srcPtr32 = (unsigned long *)srcPtr;
 		for (row = 0; row < height; row++) {
 			memcpy(&destPtr32[row*DMM_TILER_CONT_WIDTH_32],
-				srcPtr32, width*4);
+			       srcPtr32, width*4);
 			srcPtr32 += stride;
 		}
 	}
@@ -1057,7 +1119,7 @@ enum errorCodeT dmm_copy_from_tiler_alias_view(void *destPtr,
 		unsigned char *srcPtr8 = (unsigned char *)srcPtr;
 		for (row = 0; row < height; row++) {
 			memcpy(destPtr8, &srcPtr8[row*DMM_TILER_CONT_WIDTH_8],
-				width);
+			       width);
 			destPtr8 += stride;
 		}
 	}
@@ -1067,8 +1129,8 @@ enum errorCodeT dmm_copy_from_tiler_alias_view(void *destPtr,
 		unsigned short *srcPtr16 = (unsigned short *)srcPtr;
 		for (row = 0; row < height; row++) {
 			memcpy(destPtr16,
-				&srcPtr16[row*DMM_TILER_CONT_WIDTH_16],
-				width*2);
+			       &srcPtr16[row*DMM_TILER_CONT_WIDTH_16],
+			       width*2);
 			destPtr16 += stride;
 		}
 	}
@@ -1078,8 +1140,8 @@ enum errorCodeT dmm_copy_from_tiler_alias_view(void *destPtr,
 		unsigned long *srcPtr32 = (unsigned long *)srcPtr;
 		for (row = 0; row < height; row++) {
 			memcpy(destPtr32,
-				&srcPtr32[row*DMM_TILER_CONT_WIDTH_32],
-				width*4);
+			       &srcPtr32[row*DMM_TILER_CONT_WIDTH_32],
+			       width*4);
 			destPtr32 += stride;
 		}
 	}
@@ -1126,30 +1188,30 @@ enum errorCodeT dmm_copy_from_tiler_alias_view(void *destPtr,
  */
 /* ========================================================================== */
 void *dmm_virtual_buffer_manipulations(void *dmmInstanceCtxPtr,
-				     void *sysPtr,
-				     struct PATAreaT *affectedArea,
-				     struct PATAreaT *destinationArea)
+				       void *sysPtr,
+				       struct PATAreaT *affectedArea,
+				       struct PATAreaT *destinationArea)
 {
-	unsigned long bfrPages;
-	struct dmmTILERContPageAreaT *bufferMappedZone;
+	unsigned long bfrPages = 0x0;
+	struct dmmTILERContPageAreaT *bufferMappedZone = NULL;
 	enum errorCodeT eCode = DMM_NO_ERROR;
 	struct dmmTILERContCtxT *dmmTilerCtx =
 		&((struct dmmInstanceCtxT *)dmmInstanceCtxPtr)->dmmTilerCtx;
 
-	enum dmmMemoryAccessT accessModeM;
-	struct dmmViewOrientT orient;
-	unsigned long addrAlignment;
-	unsigned long contWidth;
-	unsigned long contHeight;
+	enum dmmMemoryAccessT accessModeM = -1;
+	struct dmmViewOrientT orient = {0};
+	unsigned long addrAlignment = 0x0;
+	unsigned long contWidth = 0x0;
+	unsigned long contHeight = 0x0;
 
 	bufferMappedZone = dmm_tiler_get_area_from_sysptr(dmmTilerCtx, sysPtr);
 	bfrPages =
 		(bufferMappedZone->xPageCount)*(bufferMappedZone->yPageCount);
 
 	eCode = dmm_tiler_swap_pat_page_entry_data(bfrPages,
-		bufferMappedZone->patPageEntries, affectedArea,
-		destinationArea->x0, destinationArea->y0,
-		bufferMappedZone->xPageCount);
+			bufferMappedZone->patPageEntries, affectedArea,
+			destinationArea->x0, destinationArea->y0,
+			bufferMappedZone->xPageCount);
 
 	eCode = dmm_pat_start_refill(bufferMappedZone);
 
@@ -1197,13 +1259,16 @@ void *dmm_virtual_buffer_manipulations(void *dmmInstanceCtxPtr,
 
 	if (orient.dmm90Rotate) {
 		sysPtr = (void *)((destinationArea->x0*contHeight +
-			destinationArea->y0) << ((unsigned long)addrAlignment));
+				destinationArea->y0) <<
+						((unsigned long)addrAlignment));
 	} else {
 		sysPtr = (void *)((destinationArea->y0*contWidth +
-			destinationArea->x0) << ((unsigned long)addrAlignment));
+				destinationArea->x0) <<
+						((unsigned long)addrAlignment));
 	}
 	sysPtr = DMM_COMPOSE_TILER_PTR(sysPtr, orient.dmm90Rotate,
-		orient.dmmYInvert, orient.dmmXInvert, accessModeM);
+				orient.dmmYInvert,
+						orient.dmmXInvert, accessModeM);
 
 	return sysPtr;
 }

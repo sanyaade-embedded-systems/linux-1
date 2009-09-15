@@ -17,6 +17,11 @@
 #ifndef _DMM_2D_ALLOC_H
 #define _DMM_2D_ALLOC_H
 
+enum MSP_BOOL {
+	MSP_FALSE = 0,
+	MSP_TRUE
+};
+
 enum SideAffinity {
 	PSA_NONE,
 	PSA_LEFT,
@@ -26,14 +31,14 @@ enum SideAffinity {
 };
 
 struct dmmTILERContPageAreaT {
-	unsigned char x0;
-	unsigned char y0;
-	unsigned char x1;
-	unsigned char y1;
-	unsigned char xPageOfst;
-	unsigned char yPageOfst;
-	unsigned char xPageCount;
-	unsigned char yPageCount;
+	unsigned short x0;
+	unsigned short y0;
+	unsigned short x1;
+	unsigned short y1;
+	unsigned short xPageOfst;
+	unsigned short yPageOfst;
+	unsigned short xPageCount;
+	unsigned short yPageCount;
 	enum SideAffinity fitToSide;
 	int patCustomPages;
 	unsigned long *patPageEntriesSpace;
@@ -59,8 +64,6 @@ struct dmmTILERContCtxT {
 	struct dmmTILERContPageAreaSpecT tmpArSelect;
 };
 
-extern unsigned long *va;
-
 /* ========================================================================== */
 /**
  *  alloc2DArea()
@@ -81,8 +84,8 @@ extern unsigned long *va;
  */
 /* ========================================================================== */
 struct dmmTILERContPageAreaT *alloc_2d_area(
-					struct dmmTILERContCtxT *dmmTilerCtx,
-					struct dmmTILERContPageAreaT *areaReq);
+	struct dmmTILERContCtxT *dmmTilerCtx,
+	struct dmmTILERContPageAreaT *areaReq);
 
 /* ========================================================================== */
 /**
@@ -103,8 +106,8 @@ struct dmmTILERContPageAreaT *alloc_2d_area(
  * @see
  */
 /* ========================================================================== */
-int dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
-			struct dmmTILERContPageAreaT *areaRem);
+enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
+			 struct dmmTILERContPageAreaT *areaRem);
 
 /* ========================================================================== */
 /**
@@ -133,11 +136,11 @@ int dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
  */
 /* ========================================================================== */
 struct dmmTILERContPageAreaT *search_2d_area(
-					struct dmmTILERContCtxT *dmmTilerCtx,
-					signed long X,
-					signed long Y,
-					int xInvert,
-					int yInvert);
+	struct dmmTILERContCtxT *dmmTilerCtx,
+	signed long X,
+	signed long Y,
+	enum MSP_BOOL xInvert,
+	enum MSP_BOOL yInvert);
 
 #endif /* _DMM_2D_ALLOC_H */
 
