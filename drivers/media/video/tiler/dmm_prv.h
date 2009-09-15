@@ -24,7 +24,7 @@
 #define DMM__DMM    DMM__DMM
 #define DMM_PAT_AREA_IRQ (0)
 
-#define DMM_MNGD_PHYS_PAGES        (5)
+#define DMM_MNGD_PHYS_PAGES        (256)
 
 #define DMM_TILE_DIMM_X_MODE_8    (32)
 #define DMM_TILE_DIMM_Y_MODE_8    (32)
@@ -46,20 +46,20 @@
 
 #define DMM_HOR_X_ADDRSHIFT_8            (0)
 #define DMM_HOR_X_ADDRMASK_8            (0x3FFF)
-#define DMM_HOR_X_COOR_GET_8(x) (((unsigned long)x >> DMM_HOR_X_ADDRSHIFT_8) & \
-				DMM_HOR_X_ADDRMASK_8)
-#define DMM_HOR_X_PAGE_COOR_GET_8(x) (DMM_HOR_X_COOR_GET_8(x) /                \
-				DMM_PAGE_DIMM_X_MODE_8)
+#define DMM_HOR_X_COOR_GET_8(x)\
+	(((unsigned long)x >> DMM_HOR_X_ADDRSHIFT_8) & DMM_HOR_X_ADDRMASK_8)
+#define DMM_HOR_X_PAGE_COOR_GET_8(x)\
+				(DMM_HOR_X_COOR_GET_8(x)/DMM_PAGE_DIMM_X_MODE_8)
 
 #define DMM_HOR_Y_ADDRSHIFT_8            (14)
 #define DMM_HOR_Y_ADDRMASK_8            (0x1FFF)
-#define DMM_HOR_Y_COOR_GET_8(x)	(((unsigned long)x >> DMM_HOR_Y_ADDRSHIFT_8) & \
-				DMM_HOR_Y_ADDRMASK_8)
-#define DMM_HOR_Y_PAGE_COOR_GET_8(x)	(DMM_HOR_Y_COOR_GET_8(x) /             \
-				DMM_PAGE_DIMM_Y_MODE_8)
+#define DMM_HOR_Y_COOR_GET_8(x)\
+	(((unsigned long)x >> DMM_HOR_Y_ADDRSHIFT_8) & DMM_HOR_Y_ADDRMASK_8)
+#define DMM_HOR_Y_PAGE_COOR_GET_8(x)\
+				(DMM_HOR_Y_COOR_GET_8(x)/DMM_PAGE_DIMM_Y_MODE_8)
 
-#define DMM_HOR_X_ADDRSHIFT_16            (0)
-#define DMM_HOR_X_ADDRMASK_16            (0x7FFF)
+#define DMM_HOR_X_ADDRSHIFT_16            (1)
+#define DMM_HOR_X_ADDRMASK_16            (0x7FFE)
 #define DMM_HOR_X_COOR_GET_16(x)        (((unsigned long)x >> \
 				DMM_HOR_X_ADDRSHIFT_16) & DMM_HOR_X_ADDRMASK_16)
 #define DMM_HOR_X_PAGE_COOR_GET_16(x)    (DMM_HOR_X_COOR_GET_16(x) /           \
@@ -72,8 +72,8 @@
 #define DMM_HOR_Y_PAGE_COOR_GET_16(x)    (DMM_HOR_Y_COOR_GET_16(x) /           \
 				DMM_PAGE_DIMM_Y_MODE_16)
 
-#define DMM_HOR_X_ADDRSHIFT_32            (0)
-#define DMM_HOR_X_ADDRMASK_32            (0x7FFF)
+#define DMM_HOR_X_ADDRSHIFT_32            (2)
+#define DMM_HOR_X_ADDRMASK_32            (0x7FFC)
 #define DMM_HOR_X_COOR_GET_32(x)        (((unsigned long)x >>                  \
 				DMM_HOR_X_ADDRSHIFT_32) & DMM_HOR_X_ADDRMASK_32)
 #define DMM_HOR_X_PAGE_COOR_GET_32(x)    (DMM_HOR_X_COOR_GET_32(x) /           \
@@ -86,19 +86,21 @@
 #define DMM_HOR_Y_PAGE_COOR_GET_32(x)    (DMM_HOR_Y_COOR_GET_32(x) /           \
 				DMM_PAGE_DIMM_Y_MODE_32)
 
+/* :TODO: to be determined */
+
 #define DMM_VER_X_ADDRSHIFT_8            (14)
 #define DMM_VER_X_ADDRMASK_8            (0x1FFF)
-#define DMM_VER_X_COOR_GET_8(x)            (((unsigned long)x >>               \
-				DMM_VER_X_ADDRSHIFT_8) & DMM_VER_X_ADDRMASK_8)
-#define DMM_VER_X_PAGE_COOR_GET_8(x)    (DMM_VER_X_COOR_GET_8(x) /             \
-				DMM_PAGE_DIMM_X_MODE_8)
+#define DMM_VER_X_COOR_GET_8(x)\
+	(((unsigned long)x >> DMM_VER_X_ADDRSHIFT_8) & DMM_VER_X_ADDRMASK_8)
+#define DMM_VER_X_PAGE_COOR_GET_8(x)\
+				(DMM_VER_X_COOR_GET_8(x)/DMM_PAGE_DIMM_X_MODE_8)
 
 #define DMM_VER_Y_ADDRSHIFT_8            (0)
 #define DMM_VER_Y_ADDRMASK_8            (0x3FFF)
-#define DMM_VER_Y_COOR_GET_8(x)            (((unsigned long)x >>               \
-				DMM_VER_Y_ADDRSHIFT_8) & DMM_VER_Y_ADDRMASK_8)
-#define DMM_VER_Y_PAGE_COOR_GET_8(x)    (DMM_VER_Y_COOR_GET_8(x) /             \
-				DMM_PAGE_DIMM_Y_MODE_8)
+#define DMM_VER_Y_COOR_GET_8(x)\
+	(((unsigned long)x >> DMM_VER_Y_ADDRSHIFT_8) & DMM_VER_Y_ADDRMASK_8)
+#define DMM_VER_Y_PAGE_COOR_GET_8(x)\
+				(DMM_VER_Y_COOR_GET_8(x)/DMM_PAGE_DIMM_Y_MODE_8)
 
 #define DMM_VER_X_ADDRSHIFT_16            (14)
 #define DMM_VER_X_ADDRMASK_16            (0x1FFF)
@@ -131,33 +133,33 @@
 #define DMM_TILER_ALIAS_BASE    (0x60000000)
 #define DMM_ALIAS_VIEW_CLEAR    (~0xE0000000)
 
-#define DMM_ACC_MODE_SHIFT        (27)
-#define DMM_ACC_MODE_MASK        (3)
-#define DMM_GET_ACC_MODE(x)        ((enum dmmMemoryAccessT)(((unsigned long)x &\
+#define DMM_ACC_MODE_SHIFT  (27)
+#define DMM_ACC_MODE_MASK   (3)
+#define DMM_GET_ACC_MODE(x) ((enum dmmMemoryAccessT)\
+		(((unsigned long)x &\
 		(DMM_ACC_MODE_MASK<<DMM_ACC_MODE_SHIFT))>>DMM_ACC_MODE_SHIFT))
 
 #define DMM_X_INVERT_SHIFT        (29)
-#define DMM_GET_X_INVERTED(x)    ((((unsigned long)x &                         \
-				(1<<DMM_X_INVERT_SHIFT)) > 0) ? 1 : 0)
+#define DMM_GET_X_INVERTED(x)\
+		((((unsigned long)x & (1<<DMM_X_INVERT_SHIFT)) > 0) ? 1 : 0)
 
 #define DMM_Y_INVERT_SHIFT        (30)
-#define DMM_GET_Y_INVERTED(x)    ((((unsigned long)x &                         \
-				(1<<DMM_Y_INVERT_SHIFT)) > 0) ? 1 : 0)
+#define DMM_GET_Y_INVERTED(x)\
+		((((unsigned long)x & (1<<DMM_Y_INVERT_SHIFT)) > 0) ? 1 : 0)
 
 #define DMM_ROTATION_SHIFT        (31)
-#define DMM_GET_ROTATED(x)        ((((unsigned long)x &                        \
-		((unsigned long)1<<DMM_ROTATION_SHIFT)) > 0) ? 1 : 0)
+#define DMM_GET_ROTATED(x)\
+((((unsigned long)x & ((unsigned long)1<<DMM_ROTATION_SHIFT)) > 0) ? 1 : 0)
 
-#define DMM_COMPOSE_TILER_ALIAS_PTR(x, accM) ((void *)(DMM_TILER_ALIAS_BASE |  \
-		(unsigned long)x | (accM << DMM_ACC_MODE_SHIFT)))
-#define DMM_COMPOSE_TILER_PTR(x, rot, yInv, xInv, accM)                        \
-	((void *)((unsigned long)x | (rot << DMM_ROTATION_SHIFT) |             \
-	(yInv << DMM_Y_INVERT_SHIFT) | (xInv << DMM_X_INVERT_SHIFT) |          \
-	(accM << DMM_ACC_MODE_SHIFT)))
+#define DMM_COMPOSE_TILER_ALIAS_PTR(x, accM)\
+((void *)(DMM_TILER_ALIAS_BASE | \
+			(unsigned long)x | (accM << DMM_ACC_MODE_SHIFT)))
+#define DMM_COMPOSE_TILER_PTR(x, rot, yInv, xInv, accM)\
+((void *)((unsigned long)x | (rot << DMM_ROTATION_SHIFT) |\
+(yInv << DMM_Y_INVERT_SHIFT) | (xInv << DMM_X_INVERT_SHIFT) |\
+(accM << DMM_ACC_MODE_SHIFT)))
 
 /*--------data declarations -----------------------------------*/
-extern struct dmmInstanceCtxT dmmInstanceCtxStatic;
-
 /** @struc dmmPhysPgLLT
 * Structure defining Dmm physical memory pages managment linked list. */
 struct dmmPhysPgLLT {
@@ -193,7 +195,7 @@ enum dmmPatRefillManipT {
 };
 
 #ifdef __DMM_DEBUG_BUILD__
-#define DBG_OVERLAP_TEST(x) overlappingTest(x)
+#define DBG_OVERLAP_TEST(x) overlapping_test(x)
 
 struct DMM_rStruct_t {
 	unsigned long DMM_REVISION;
@@ -272,23 +274,6 @@ struct DMM_rStruct_t {
 /*--------function prototypes ---------------------------------*/
 /* ========================================================================== */
 /**
- *  dmm_get_context_pointer()
- *
- * @brief  Returns a pointer to the Tiler context structure.
- *
- * @return void * Pointer to the Tiler context structure
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see dmmInstanceCtxT for further detail.
- */
-/* ========================================================================== */
-void *dmm_get_context_pointer();
-
-/* ========================================================================== */
-/**
  *  dmm_tiler_container_map_area()
  *
  * @brief  Allocates a 2D TILER buffer - virtual 2D allocation,
@@ -322,12 +307,12 @@ void *dmm_get_context_pointer();
  */
 /* ========================================================================== */
 enum errorCodeT dmm_tiler_container_map_area(
-		struct dmmTILERContCtxT *dmmTilerCtx,
-		unsigned short sizeWidth,
-		unsigned short sizeHeight,
-		enum dmmMemoryAccessT contMod,
-		void **allocedPtr,
-		struct dmmTILERContPageAreaT **bufferMappedZone);
+	struct dmmTILERContCtxT *dmmTilerCtx,
+	unsigned long sizeWidth,
+	unsigned long sizeHeight,
+	enum dmmMemoryAccessT contMod,
+	void **allocedPtr,
+	struct dmmTILERContPageAreaT **bufferMappedZone);
 
 /* ========================================================================== */
 /**
@@ -375,11 +360,11 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long bfrSize,
  *
  * @param affectedArea - PATAreaT* - [in] Area that will be affected.
  *
- * @param destX - unsigned char - [in] Destination coordinate X.
+ * @param destX - unsigned short - [in] Destination coordinate X.
  *
- * @param destY - unsigned char - [in] Destination coordinate Y.
+ * @param destY - unsigned short - [in] Destination coordinate Y.
  *
- * @param stride - unsigned char - [in] Stride of the area.
+ * @param stride - unsigned short - [in] Stride of the area.
  *
  * @return errorCodeT
  *
@@ -393,9 +378,9 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long bfrSize,
 enum errorCodeT dmm_tiler_swap_pat_page_entry_data(unsigned long numPages,
 		unsigned long *pageEntries,
 		struct PATAreaT *affectedArea,
-		unsigned char destX,
-		unsigned char destY,
-		unsigned char stride);
+		unsigned short destX,
+		unsigned short destY,
+		unsigned short stride);
 
 /* ========================================================================== */
 /**
@@ -418,8 +403,8 @@ enum errorCodeT dmm_tiler_swap_pat_page_entry_data(unsigned long numPages,
  */
 /* ========================================================================== */
 enum errorCodeT dmm_tiler_container_unmap_area(
-		struct dmmTILERContCtxT *dmmTilerCtx,
-		struct dmmTILERContPageAreaT *bufferMappedZone);
+	struct dmmTILERContCtxT *dmmTilerCtx,
+	struct dmmTILERContPageAreaT *bufferMappedZone);
 
 /* ========================================================================== */
 /**
@@ -504,7 +489,7 @@ struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
  * @see errorCodeT for further detail.
  */
 /* ========================================================================== */
-enum errorCodeT dmm_phys_page_rep_init();
+enum errorCodeT dmm_phys_page_rep_init(void);
 
 /* ========================================================================== */
 /**
@@ -522,7 +507,7 @@ enum errorCodeT dmm_phys_page_rep_init();
  * @see errorCodeT for further detail.
  */
 /* ========================================================================== */
-/* enum errorCodeT dmmPhysPageRepDeinit(); */
+enum errorCodeT dmm_phys_page_rep_deinit(void);
 
 /* ========================================================================== */
 /**
@@ -540,7 +525,7 @@ enum errorCodeT dmm_phys_page_rep_init();
  * @see
  */
 /* ========================================================================== */
-unsigned long *dmm_get_phys_page();
+unsigned long *dmm_get_phys_page(void);
 
 /* ========================================================================== */
 /**
@@ -625,7 +610,7 @@ enum errorCodeT dmm_pat_start_refill(
  * @see
  */
 /* ========================================================================== */
-void dmm_enter_critical_section();
+void dmm_enter_critical_section(void);
 
 /* ========================================================================== */
 /**
@@ -642,7 +627,7 @@ void dmm_enter_critical_section();
  * @see
  */
 /* ========================================================================== */
-void dmm_leave_critical_section();
+void dmm_leave_critical_section(void);
 
 /* ========================================================================== */
 /**
