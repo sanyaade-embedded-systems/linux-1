@@ -64,7 +64,6 @@ obj-$(CONFIG_MACH_OMAP_APOLLON)		+= board-apollon.o
 obj-$(CONFIG_MACH_OMAP3_BEAGLE)		+= board-omap3beagle.o \
 					   mmc-twl4030.o
 obj-$(CONFIG_MACH_OMAP_LDP)		+= board-ldp.o \
-					   board-ldp-flash.o \
 					   mmc-twl4030.o \
 					   board-ldp-camera.o
 obj-$(CONFIG_MACH_OVERO)		+= board-overo.o \
@@ -82,7 +81,6 @@ obj-$(CONFIG_MACH_NOKIA_RX51)		+= board-rx51.o \
 					   board-rx51-peripherals.o \
 					   mmc-twl4030.o
 obj-$(CONFIG_MACH_OMAP_ZOOM2)		+= board-zoom2.o \
-					   board-ldp-flash.o \
 					   mmc-twl4030.o \
 					   board-zoom-debugboard.o \
 					   board-zoom2-camera.o
