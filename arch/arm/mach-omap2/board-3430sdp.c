@@ -44,6 +44,7 @@
 #include <mach/gpmc-smc91x.h>
 #include <mach/clock.h>
 
+#include "board-sdp.h"
 #include "sdram-qimonda-hyb18m512160af-6.h"
 #include "mmc-twl4030.h"
 #include "pm.h"
@@ -815,6 +816,7 @@ static void __init omap_3430sdp_init(void)
 	omap_serial_init();
 	usb_musb_init();
 	board_smc91x_init();
+	sdp_flash_init();
 	usb_ehci_init(EHCI_HCD_OMAP_MODE_PHY, true, true, 57, 61);
 	sdp3430_cam_init();
 	sdp3430_display_init();
