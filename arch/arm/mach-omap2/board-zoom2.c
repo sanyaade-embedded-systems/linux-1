@@ -23,6 +23,7 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 
+#include <mach/board-zoom.h>
 #include <mach/common.h>
 #include <mach/usb.h>
 #include <mach/keypad.h>
@@ -716,6 +717,7 @@ static void __init omap_zoom2_init(void)
 	zoom2_cam_init();
 	zoom2_lcd_tv_panel_init();
 	enable_board_wakeup_source();
+	zoom_flash_init();
 }
 
 static struct map_desc zoom2_io_desc[] __initdata = {
