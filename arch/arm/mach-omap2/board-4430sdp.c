@@ -418,7 +418,7 @@ static struct i2c_board_info __initdata sdp4430_i2c_boardinfo[] = {
 
 static int __init omap4_i2c_init(void)
 {
-	omap_register_i2c_bus(1, 2600, sdp4430_i2c_boardinfo,
+	omap_register_i2c_bus(1, 400, sdp4430_i2c_boardinfo,
 				ARRAY_SIZE(sdp4430_i2c_boardinfo));
 	omap_register_i2c_bus(2, 400, NULL, 0);
 	omap_register_i2c_bus(3, 400, NULL, 0);
@@ -446,6 +446,19 @@ void omap_kp_init(void)
 	omap_cfg_reg(PAD1_4430_UNIPRO_RY1);
 	omap_cfg_reg(PAD0_4430_UNIPRO_RX2);
 	omap_cfg_reg(PAD1_4430_UNIPRO_RY2);
+}
+
+static void omap_abe_init(void)
+{
+	/* mcpdm */
+	omap_cfg_reg(AG25_4430_ABE_PDM_UL_DATA);
+	omap_cfg_reg(AF25_4430_ABE_PDM_DL_DATA);
+	omap_cfg_reg(AE25_4430_ABE_PDM_FRAME);
+	omap_cfg_reg(AF26_4430_ABE_PDM_LB_CLK);
+	omap_cfg_reg(AH26_4430_ABE_PDM_CLKS);
+
+	/* twl6030 audio power-on */
+	omap_cfg_reg(AA27_4430_GPIO_127);
 }
 
 static void omap_phoenix_init(void)
@@ -477,6 +490,7 @@ static void __init omap_4430sdp_init(void)
 	omap_mcbsp_init();
 	sdp4430_mmc_init();
 	omap_kp_init();
+	omap_abe_init();
 	omap_phoenix_init();
 
 }
