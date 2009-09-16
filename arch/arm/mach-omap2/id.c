@@ -226,8 +226,11 @@ void __init omap2_check_revision(void)
 	else if (cpu_is_omap34xx())
 		omap34xx_check_revision();
 	else if (cpu_is_omap44xx()) {
+		/* omap44xx_check_revision() should
+		 * be defined above and then called
+		 * from here.
+		 */
 		printk(KERN_INFO "FIXME: CPU revision = OMAP4430\n");
-		return;
 	} else
 		pr_err("OMAP revision unknown, please fix!\n");
 
@@ -252,6 +255,8 @@ void __init omap2_check_revision(void)
 			omap_chip.oc |= CHIP_IS_OMAP3430ES3_0;
 		else if (omap_rev() == OMAP3430_REV_ES3_1)
 			omap_chip.oc |= CHIP_IS_OMAP3430ES3_1;
+	} else if (cpu_is_omap44xx()) {
+		omap_chip.oc |= CHIP_IS_OMAP4430;
 	} else {
 		pr_err("Uninitialized omap_chip, please fix!\n");
 	}

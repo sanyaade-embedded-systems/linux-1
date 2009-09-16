@@ -1,12 +1,14 @@
 /*
  * arch/arm/plat-omap/include/mach/clockdomain.h
  *
- * OMAP2/3 clockdomain framework functions
+ * OMAP2/3/4 clockdomain framework functions
  *
  * Copyright (C) 2008 Texas Instruments, Inc.
  * Copyright (C) 2008 Nokia Corporation
  *
  * Written by Paul Walmsley
+ *
+ * Updated with OMAP4 specific supprot by Abhijit Pagare <abhijitpagare@ti.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -34,7 +36,7 @@
 #define OMAP24XX_CLKSTCTRL_DISABLE_AUTO		0x0
 #define OMAP24XX_CLKSTCTRL_ENABLE_AUTO		0x1
 
-/* OMAP3XXX CM_CLKSTCTRL_*.CLKTRCTRL_* register bit values */
+/* OMAP3XXX and OMAP44xx CM_CLKSTCTRL_*.AUTOSTATE_* register bit values */
 #define OMAP34XX_CLKSTCTRL_DISABLE_AUTO		0x0
 #define OMAP34XX_CLKSTCTRL_FORCE_SLEEP		0x1
 #define OMAP34XX_CLKSTCTRL_FORCE_WAKEUP		0x2

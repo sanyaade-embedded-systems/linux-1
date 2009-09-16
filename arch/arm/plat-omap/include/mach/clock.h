@@ -65,6 +65,10 @@ struct dpll_data {
 	u8			recal_en_bit;
 	u8			recal_st_bit;
 #  endif
+
+#if defined(CONFIG_ARCH_OMAP4)
+	struct clk		*clk_hsd_bypass;
+#endif
 };
 
 #endif
@@ -156,6 +160,7 @@ extern const struct clkops clkops_null;
 #define RATE_IN_243X		(1 << 2)
 #define RATE_IN_343X		(1 << 3)	/* rates common to all 343X */
 #define RATE_IN_3430ES2		(1 << 4)	/* 3430ES2 rates only */
+#define	RATE_IN_443X		(1 << 5)
 
 #define RATE_IN_24XX		(RATE_IN_242X | RATE_IN_243X)
 
