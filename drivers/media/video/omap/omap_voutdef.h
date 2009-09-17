@@ -128,7 +128,6 @@ struct omap_vout_device {
 
 	int bpp; /* bytes per pixel */
 	int vrfb_bpp; /* bytes per pixel with respect to VRFB */
-
 	struct vid_vrfb_dma vrfb_dma_tx;
 	unsigned int smsshado_phy_addr[MAC_VRFB_CTXS];
 	unsigned int smsshado_virt_addr[MAC_VRFB_CTXS];
