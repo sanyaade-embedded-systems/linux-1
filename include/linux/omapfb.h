@@ -189,7 +189,7 @@ struct omapfb_ovl_colormode {
       	__u32 bits_per_pixel;
 	__u32 nonstd;
        	struct fb_bitfield red;
-       	struct fb_bitfield green;+
+       	struct fb_bitfield green;
        	struct fb_bitfield blue;
        	struct fb_bitfield transp;
 };
