@@ -541,6 +541,12 @@ static int __init pmic_tps65070_init(void)
 #define HAS_CHAR_LCD 0
 #endif
 
+#if defined(CONFIG_SND_DA850_SOC_EVM)
+#define HAS_MCASP 1
+#else
+#define HAS_MCASP 0
+#endif
+
 static int gpio_exp_setup(struct i2c_client *client, unsigned gpio,
 						unsigned ngpio, void *c)
 {
@@ -740,13 +746,6 @@ static __init void da850_evm_init(void)
 	__raw_writel(0, IO_ADDRESS(DA8XX_UART1_BASE) + 0x30);
 	__raw_writel(0, IO_ADDRESS(DA8XX_UART0_BASE) + 0x30);
 
-	ret = da8xx_pinmux_setup(da850_mcasp_pins);
-	if (ret)
-		pr_warning("da850_evm_init: mcasp mux setup failed: %d\n",
-				ret);
-
-	da8xx_init_mcasp(0, &da850_evm_snd_data);
-
 	ret = da8xx_pinmux_setup(da850_lcdcntl_pins);
 	if (ret)
 		pr_warning("da850_evm_init: lcdcntl mux setup failed: %d\n",
@@ -779,6 +778,20 @@ static __init void da850_evm_init(void)
 		if (ret)
 			pr_warning("da850_evm_init: mcbsp1 registration"
 					" failed: %d\n", ret);
+	}
+
+	if (HAS_MCASP) {
+		if ((HAS_MCBSP0 || HAS_MCBSP1))
+			pr_warning("WARNING: both McASP and McBSP are enabled, "
+					"but they share pins.\n"
+					"\tDisable one of them.\n");
+
+		ret = da8xx_pinmux_setup(da850_mcasp_pins);
+		if (ret)
+			pr_warning("da850_evm_init: mcasp mux setup failed:"
+					"%d\n", ret);
+
+		da8xx_init_mcasp(0, &da850_evm_snd_data);
 	}
 
 #if defined(CONFIG_USB_OHCI_HCD) || defined(CONFIG_USB_OHCI_HCD_MODULE)

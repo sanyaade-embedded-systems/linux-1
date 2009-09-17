@@ -153,7 +153,7 @@ config DAVINCI_RESET_CLOCKS
 
 config DAVINCI_MCBSP
 	bool "DaVinci McBSP (serial API) support"
-	depends on ARCH_DAVINCI && !SND_DAVINCI_SOC
+	depends on ARCH_DAVINCI
 	default n
 	help
 	  Say Y if you want to use McBSP on DaVinci platforns as a
