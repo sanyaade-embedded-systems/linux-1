@@ -117,3 +117,5 @@ obj-$(CONFIG_NOTIFY_DUCATI)     += dsp/syslink/notify_ducatidriver/
 obj-$(CONFIG_SYSLINK_PROC)      += dsp/syslink/procmgr/
 obj-$(CONFIG_SYSLINK_PROC4430)  += dsp/syslink/procmgr/proc4430/
 obj-$(CONFIG_MPU_BRIDGE)        += dsp/bridge/
+obj-y				+= ieee802154/
+obj-$(CONFIG_DMM_TILER)		+= media/

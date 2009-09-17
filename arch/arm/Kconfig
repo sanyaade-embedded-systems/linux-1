@@ -1481,6 +1481,8 @@ source "drivers/dsp/syslink/Kconfig"
 
 source "drivers/dsp/bridge/Kconfig"
 
+source "drivers/media/video/tiler/Kconfig"
+
 endmenu
 
 source "fs/Kconfig"
