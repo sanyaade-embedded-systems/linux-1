@@ -21,6 +21,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/io.h>
+#include <linux/omapfb.h>
 #include <linux/clk.h>
 
 #include <asm/tlb.h>
@@ -28,7 +29,6 @@
 #include <asm/mach/map.h>
 
 #include <mach/mux.h>
-#include <mach/omapfb.h>
 #include <mach/sram.h>
 #include <mach/sdrc.h>
 #include <mach/gpmc.h>

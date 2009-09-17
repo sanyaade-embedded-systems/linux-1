@@ -384,6 +384,42 @@ static void omap_init_rng(void)
 static inline void omap_init_rng(void) {}
 #endif
 
+#ifdef CONFIG_ARCH_OMAP4
+#define NUM_VOUT_RESOURCES 4
+#else
+#define NUM_VOUT_RESOURCES 3
+#endif
+
+#if defined(CONFIG_VIDEO_OMAP_VIDEOOUT) || \
+	defined(CONFIG_VIDEO_OMAP_VIDEOOUT_MODULE)
+
+#ifdef CONFIG_FB_OMAP2
+static struct resource
+	sdp4430_vout_resource[NUM_VOUT_RESOURCES - CONFIG_FB_OMAP2_NUM_FBS]
+			= {
+			};
+#else
+static struct resource sdp4430_vout_resource[NUM_VOUT_RESOURCES - 1] = {
+};
+#endif
+
+#undef NUM_VOUT_RESOURCES
+
+static struct platform_device sdp4430_vout_device = {
+	.name           = "omap_vout",
+	.num_resources  = ARRAY_SIZE(sdp4430_vout_resource),
+	.resource       = &sdp4430_vout_resource[0],
+	.id             = -1,
+};
+
+static void omap_init_vout(void)
+{
+	(void) platform_device_register(&sdp4430_vout_device);
+}
+#else
+static inline void omap_init_vout(void) {}
+#endif
+
 /*
  * This gets called after board-specific INIT_MACHINE, and initializes most
  * on-chip peripherals accessible on this board (except for few like USB):
@@ -414,6 +450,7 @@ static int __init omap_init_devices(void)
 	omap_init_uwire();
 	omap_init_wdt();
 	omap_init_rng();
+	omap_init_vout();
 	return 0;
 }
 arch_initcall(omap_init_devices);

@@ -26,6 +26,7 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <mach/mux.h>
+#include <mach/display.h>
 
 #include <mach/mcspi.h>
 #include <mach/board.h>
@@ -117,22 +118,53 @@ static struct omap2_mcspi_device_config dummy2_mcspi_config = {
 };
 #endif
 
-static struct platform_device sdp4430_lcd_device = {
-	.name		= "sdp4430_lcd",
-	.id		= -1,
+static struct omap_lcd_config sdp4430_lcd_config __initdata = {
+       	.ctrl_name      = "internal",
+};
+
+static int sdp4430_panel_enable_lcd(void) {
+   	return 0;	
+}	
+
+static int sdp4430_panel_disable_lcd(void) {
+       	return 0;	
+}	
+
+static void __init sdp4430_display_init(void) {
+       	return;
+}	
+static struct omap_dss_device sdp4430_lcd_device = {
+       	.name                   =       "sdp4430_lcd",
+       	.driver_name            =       "sdp4430_panel",
+       	.type                   =       OMAP_DISPLAY_TYPE_DPI,
+       	.phy.dpi.data_lines     =       16,
+       	.platform_enable        =       sdp4430_panel_enable_lcd,
+       	.platform_disable       =       sdp4430_panel_disable_lcd,
+};
+
+static struct omap_dss_device *sdp4430_dss_devices[] = {
+	&sdp4430_lcd_device,
+};
+static struct omap_dss_board_info sdp4430_dss_data = {
+       	.num_devices = ARRAY_SIZE(sdp4430_dss_devices),
+        .devices = sdp4430_dss_devices,
+        .default_device = &sdp4430_lcd_device,
+};
+static struct platform_device sdp4430_dss_device = {
+        .name           =       "omapdss",
+        .id             =       -1,
+        .dev            = {
+                        .platform_data = &sdp4430_dss_data,
+        },
 };
 
 static struct platform_device *sdp4430_devices[] __initdata = {
-	&sdp4430_lcd_device,
+        &sdp4430_dss_device,
 	&omap_kp_device,
 };
 
 static struct omap_uart_config sdp4430_uart_config __initdata = {
 	.enabled_uarts	= (1 << 0) | (1 << 1) | (1 << 2) | (1 << 3),
-};
-
-static struct omap_lcd_config sdp4430_lcd_config __initdata = {
-	.ctrl_name	= "internal",
 };
 
 static struct omap_board_config_kernel sdp4430_config[] __initdata = {
@@ -489,6 +521,7 @@ static void __init omap_4430sdp_init(void)
 				ARRAY_SIZE(sdp4430_spi_board_info));
 	omap_mcbsp_init();
 	sdp4430_mmc_init();
+	sdp4430_display_init();
 	omap_kp_init();
 	omap_abe_init();
 	omap_phoenix_init();

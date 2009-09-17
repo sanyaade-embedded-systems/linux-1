@@ -27,9 +27,9 @@
 #include <linux/platform_device.h>
 #include <linux/mm.h>
 #include <linux/uaccess.h>
+#include <linux/omapfb.h>
 
 #include <mach/dma.h>
-#include <mach/omapfb.h>
 
 #include "lcdc.h"
 #include "dispc.h"
@@ -577,7 +577,11 @@ static int set_fb_var(struct fb_info *fbi,
 	var->grayscale		= 0;
 
 	/* pixclock in ps, the rest in pixclock */
+#ifndef CONFIG_MACH_OMAP_4430SDP
 	var->pixclock		= 10000000 / (panel->pixel_clock / 100);
+#else
+	var->pixclock           = 0;
+#endif
 	var->left_margin	= panel->hfp;
 	var->right_margin	= panel->hbp;
 	var->upper_margin	= panel->vfp;

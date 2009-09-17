@@ -554,6 +554,7 @@ struct v4l2_framebuffer {
 #define V4L2_FBUF_CAP_LOCAL_ALPHA	0x0010
 #define V4L2_FBUF_CAP_GLOBAL_ALPHA	0x0020
 #define V4L2_FBUF_CAP_LOCAL_INV_ALPHA	0x0040
+#define V4L2_FBUF_CAP_SRC_CHROMAKEY	0x0080
 /*  Flags for the 'flags' field. */
 #define V4L2_FBUF_FLAG_PRIMARY		0x0001
 #define V4L2_FBUF_FLAG_OVERLAY		0x0002
@@ -561,6 +562,7 @@ struct v4l2_framebuffer {
 #define V4L2_FBUF_FLAG_LOCAL_ALPHA	0x0008
 #define V4L2_FBUF_FLAG_GLOBAL_ALPHA	0x0010
 #define V4L2_FBUF_FLAG_LOCAL_INV_ALPHA	0x0020
+#define V4L2_FBUF_FLAG_SRC_CHROMAKEY	0x0040
 
 struct v4l2_clip {
 	struct v4l2_rect        c;
@@ -899,9 +901,11 @@ enum v4l2_colorfx {
 	V4L2_COLORFX_SEPIA	= 2,
 };
 #define V4L2_CID_AUTOBRIGHTNESS			(V4L2_CID_BASE+32)
+#define V4L2_CID_ROTATE				(V4L2_CID_BASE+33)
+#define V4L2_CID_BG_COLOR			(V4L2_CID_BASE+34)
 
 /* last CID + 1 */
-#define V4L2_CID_LASTP1                         (V4L2_CID_BASE+33)
+#define V4L2_CID_LASTP1                         (V4L2_CID_BASE+35)
 
 /*  MPEG-class control IDs defined by V4L2 */
 #define V4L2_CID_MPEG_BASE 			(V4L2_CTRL_CLASS_MPEG | 0x900)
@@ -1210,6 +1214,18 @@ struct v4l2_hw_freq_seek {
 	__u32		      seek_upward;
 	__u32		      wrap_around;
 	__u32		      reserved[8];
+};
+
+/*
+ * Color conversion
+ * User needs to pass pointer to color conversion matrix
+ * defined by hardware
+ */
+struct v4l2_color_space_conversion {
+	__s32 coefficients[3][3];
+	__s32 const_factor;
+	__s32 input_offs[3];
+	__s32 output_offs[3];
 };
 
 /*
@@ -1551,6 +1567,9 @@ struct v4l2_dbg_chip_ident {
 #endif
 
 #define VIDIOC_S_HW_FREQ_SEEK	 _IOW('V', 82, struct v4l2_hw_freq_seek)
+#define VIDIOC_S_COL_SPC_CONV _IOW('V', 83, struct v4l2_color_space_conversion)
+#define VIDIOC_G_COL_SPC_CONV _IOR('V', 84, struct v4l2_color_space_conversion)
+
 /* Reminder: when adding new ioctls please add support for them to
    drivers/media/video/v4l2-compat-ioctl32.c as well! */
 
