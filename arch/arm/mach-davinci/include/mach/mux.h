@@ -884,6 +884,7 @@ enum davinci_da850_index {
 	DA850_GPIO2_15,
 	DA850_GPIO4_0,
 	DA850_GPIO4_1,
+	DA850_GPIO7_4,
 
 	/* McBSP0 function */
 	DA850_MCBSP0_CLKR,
