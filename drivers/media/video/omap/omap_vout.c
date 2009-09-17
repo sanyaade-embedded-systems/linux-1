@@ -52,7 +52,13 @@
 #include <asm/processor.h>
 #include <mach/dma.h>
 #include <mach/vram.h>
+
+#ifdef CONFIG_ARCH_OMAP4 /* TODO: correct this!*/
+#include "../tiler/dmm_def.h"
+#endif
 #include <mach/vrfb.h>
+
+
 #include <mach/display.h>
 #include "omap_voutlib.h"
 #include "omap_voutdef.h"
@@ -107,7 +113,7 @@ static u32 video3_bufsize = OMAP_VOUT_MAX_BUF_SIZE;
 #endif
 static u32 vid1_static_vrfb_alloc;
 static u32 vid2_static_vrfb_alloc;
-static int debug;
+static int debug = 1;
 
 /* Module parameters */
 module_param(video1_numbuffers, uint, S_IRUGO);
@@ -233,6 +239,7 @@ static unsigned long omap_vout_alloc_buffer(u32 buf_size, u32 *phys_addr)
 	*phys_addr = (u32) virt_to_phys((void *) virt_addr);
 	return virt_addr;
 }
+
 
 /* Free buffers */
 static void omap_vout_free_buffer(unsigned long virtaddr, u32 phys_addr,
@@ -513,6 +520,70 @@ static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 #endif
 	return 0;
 }
+
+/* Allocate the buffers for  TILER space.  Ideally, the buffers will be ONLY
+ in tiler space, with different rotated views available by just a convert.
+ */
+static int omap_vout_tiler_buffer_setup(struct omap_vout_device *vout,
+			  unsigned int *count, unsigned int startindex)
+{
+	int i, j;
+	enum tiler_fmt fmt;
+
+	printk(KERN_INFO VOUT_NAME "tiler buffer setup:\n");
+	printk(KERN_INFO VOUT_NAME "count - %d, start -%d :\n",
+			*count, startindex);
+
+	if (OMAP_DSS_COLOR_NV12 == vout->dss_mode)
+		fmt = TILFMT_16BIT; /* TODO:  add code for 8-bit second buffer*/
+	else
+		fmt = TILFMT_16BIT;
+
+	for (i = 0; i < *count; i++) {
+		if (!vout->buf_phy_addr[i]) {
+
+			if (DMM_NO_ERROR != tiler_alloc_buf(fmt,
+					vout->pix.width, vout->pix.height,
+					&vout->buf_phy_addr[i])) {
+				vout->buf_phy_addr[i] = 0;
+			} else
+				printk(KERN_INFO VOUT_NAME
+					" tiler buffer[%d] = 0x%lx\n", i,
+					vout->buf_phy_addr[i]);
+
+		}
+		if (!vout->buf_phy_addr[i] && startindex != -1) {
+			if (V4L2_MEMORY_MMAP == vout->memory
+				&& i >= startindex)
+				break; /* TODO: check this logic */
+		}
+		if (!vout->buf_phy_addr[i]) {
+			for (j = 0; j < i; j++) {
+				tiler_free_buf(vout->buf_phy_addr[j]);
+				vout->buf_phy_addr[j] = 0;
+			}
+			*count = 0;
+			return -ENOMEM;
+		}
+/*
+		memset((void *) vout->buf_phy_addr[i], 0,
+				vout->smsshado_size);
+*/
+	}
+	return 0;
+}
+
+/* Free tiler buffers */
+static void omap_vout_free_tiler_buffers(struct omap_vout_device *vout)
+{
+	int j;
+
+	for (j = 0; j < vout->buffer_allocated; j++) {
+		tiler_free_buf(vout->buf_phy_addr[j]);
+		vout->buf_phy_addr[j] = 0;
+	}
+}
+
 
 /* Convert V4L2 rotation to DSS rotation
  * V4L2 understand 0, 90, 180, 270.
@@ -825,8 +896,13 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 		info.screen_width = pixwidth;
 	} else {
 		info.rotation = vout->rotation;
+#ifdef CONFIG_ARCH_OMAP4
+	info.rotation_type = OMAP_DSS_ROT_TILER;
+	info.screen_width = 2048; /* Check this? */
+#else
 		info.rotation_type = OMAP_DSS_ROT_VRFB;
 		info.screen_width = 2048;
+#endif
 	}
 
 	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
@@ -910,6 +986,14 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 		return -EINVAL;
 
 #ifdef CONFIG_ARCH_OMAP4
+		vout->rotation = 0;
+	printk(KERN_WARNING VOUT_NAME
+		" setting rotation to 0 in buffer setup\n");
+#endif
+
+
+#ifdef NORMAL_BUFFER_ALLOCATE_V4L2
+#ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_VIDEO3 == vout->vid)
 		startindex = video3_numbuffers;
 	else
@@ -920,36 +1004,21 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 	if (V4L2_MEMORY_MMAP == vout->memory && *count < startindex)
 		*count = startindex;
 
-#ifdef CONFIG_ARCH_OMAP4
-	vout->rotation = 0;
-	printk(KERN_WARNING VOUT_NAME
-		" setting rotation to 0 in buffer setup\n");
-#endif
 	if ((rotation_enabled(vout))
 			&& *count > 4)
 		*count = 4;
 
 #ifndef CONFIG_ARCH_OMAP4
-/* TODO: this is temporary disabling of vrfb to test V4L2: needs to be
- corrected for future*/
 	/* If rotation is enabled, allocate memory for VRFB space also */
 	if (rotation_enabled(vout)) {
 		if (omap_vout_vrfb_buffer_setup(vout, count, startindex))
 			return -ENOMEM;
 	}
-#endif
-	if (V4L2_MEMORY_MMAP != vout->memory)
-		return 0;
 
 	/* Now allocated the V4L2 buffers */
 	*size = vout->buffer_size;
 
-#ifdef CONFIG_ARCH_OMAP4
-		if (OMAP_VIDEO3 == vout->vid)
-			startindex = video3_numbuffers;
-		else
-#endif
-			startindex = (vout->vid == OMAP_VIDEO1) ?
+	startindex = (vout->vid == OMAP_VIDEO1) ?
 			video1_numbuffers : video2_numbuffers;
 	for (i = startindex; i < *count; i++) {
 		vout->buffer_size = *size;
@@ -976,6 +1045,24 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 		vout->buf_phy_addr[i] = phy_addr;
 	}
 	*count = vout->buffer_allocated = i;
+#endif /* CONFIG_ARCH_OMAP4 */
+#endif
+
+	/* TODO: do the buffer allocation here - from Tiler */
+	/* tiler_alloc_buf to be called here
+	pre-requisites: rotation, format?
+	based on that buffers will be allocated.
+	*/
+	/* Now allocated the V4L2 buffers */
+/*  TODO: Make sure the buffer_size calculation
+happens according to pix_format, and width */
+
+	*size = vout->buffer_size = (vout->pix.height * 4096);
+	if (omap_vout_tiler_buffer_setup(vout, count, 0))
+			return -ENOMEM;
+
+	if (V4L2_MEMORY_MMAP != vout->memory)
+		return 0;
 	return 0;
 }
 
@@ -1044,6 +1131,8 @@ static int omap_vout_buffer_prepare(struct videobuf_queue *q,
 		vb->field = field;
 	}
 	vb->state = VIDEOBUF_PREPARED;
+
+#ifdef NORMAL_BUFFER_ALLOCATE_V4L2
 	/* if user pointer memory mechanism is used, get the physical
 	 * address of the buffer
 	 */
@@ -1121,7 +1210,15 @@ static int omap_vout_buffer_prepare(struct videobuf_queue *q,
 	/* Store buffers physical address into an array. Addresses
 	 * from this array will be used to configure DSS */
 	vout->queued_buf_addr[vb->i] = (u8 *)
-		vout->vrfb_context[vb->i].paddr[rotation];
+				vout->vrfb_context[vb->i].paddr[rotation];
+#endif
+#else /* TILER to be used */
+
+	/* TODO: Check if puv address also needs to be added here?
+		here, we need to use the physical address given by Tiler:
+	*/
+	dmabuf = videobuf_to_dma(q->bufs[vb->i]);
+	vout->queued_buf_addr[vb->i] = (u8 *) dmabuf->bus_addr;
 #endif
 	return 0;
 }
@@ -1219,6 +1316,8 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 	dmabuf = videobuf_to_dma(q->bufs[i]);
 
 	pos = dmabuf->vmalloc;
+
+#ifdef NORMAL_BUFFER_ALLOCATE_V4L2
 	vma->vm_pgoff = virt_to_phys((void *)pos) >> PAGE_SHIFT;
 	while (size > 0) {
 		unsigned long pfn;
@@ -1229,6 +1328,19 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 		pos += PAGE_SIZE;
 		size -= PAGE_SIZE;
 	}
+#else
+	while (size > 0) {
+		if (remap_pfn_range(vma,
+			start,
+			(unsigned long)pos >> PAGE_SHIFT,
+			4096, vma->vm_page_prot))
+			return -EAGAIN;
+		start += 4096;
+		size -= 4096;
+		pos += 2*64*256; /* TODO: check for 8-bit, NV12, Page mode? */
+	}
+
+#endif
 	vout->mmap_count++;
 	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev, "Exiting %s\n", __func__);
 	return 0;
@@ -1846,7 +1958,11 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 	vout->buffer_allocated = req->count;
 	for (i = 0; i < req->count; i++) {
 		dmabuf = videobuf_to_dma(q->bufs[i]);
+#ifdef CONFIG_ARCH_OMAP4
+	dmabuf->vmalloc = (void *) vout->buf_phy_addr[i];
+#else
 		dmabuf->vmalloc = (void *) vout->buf_virt_addr[i];
+#endif
 		dmabuf->bus_addr = (dma_addr_t) vout->buf_phy_addr[i];
 		dmabuf->sglen = 1;
 	}
@@ -2272,6 +2388,7 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 	vout = vid_dev->vouts[vid_num];
 	vfd = vout->vfd;
 
+#ifdef NORMAL_BUFFER_ALLOCATE_V4L2
 #ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_VIDEO3 == vid_num) {
 		numbuffers = video3_numbuffers;
@@ -2295,9 +2412,6 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 			goto free_buffers;
 		}
 	}
-
-#ifndef CONFIG_ARCH_OMAP4
-/*TODO: removal of vrfb for OMAP4 V4L2 testing: to be cleaned.*/
 	for (i = 0; i < 4; i++) {
 
 		if (omap_vrfb_request_ctx(&vout->vrfb_context[i])) {
@@ -2360,7 +2474,10 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 		}
 		vout->vrfb_static_allocation = 1;
 	}
-#endif
+#endif /* NORMAL_BUFFER_ALLOCATE_V4L2 */
+
+/* NOTE: OMAP4, if TILER allocation, then nothing to pre-allocate */
+
 	return 0;
 
 free_buffers:
@@ -2751,7 +2868,10 @@ static void omap_vout_cleanup_device(struct omap_vout_device *vout)
 	omap_vout_release_vrfb(vout);
 #endif
 	omap_vout_free_buffers(vout);
-#ifndef CONFIG_ARCH_OMAP4
+#ifdef CONFIG_ARCH_OMAP4
+	omap_vout_free_tiler_buffers(vout);
+			/* TODO: check if this needs to be done? */
+#else
 	/* Free the VRFB buffer if allocated
 	 * init time
 	 */
