@@ -1697,6 +1697,66 @@ static s32 pixinc(int pixels, u8 ps)
 		BUG();
 }
 
+static void calc_tiler_row_rotation(u8 rotation,
+		u16 width, u16 height,
+		enum omap_color_mode color_mode,
+		s32 *row_inc)
+{
+	u8 ps = 1;
+	DSSDBG("calc_rot(%d): %dx%d\n", rotation, width, height);
+
+	switch (color_mode) {
+	case OMAP_DSS_COLOR_RGB16:
+	case OMAP_DSS_COLOR_ARGB16:
+
+	case OMAP_DSS_COLOR_YUV2:
+	case OMAP_DSS_COLOR_UYVY:
+		ps = 2;
+		break;
+
+	case OMAP_DSS_COLOR_RGB24P:
+	case OMAP_DSS_COLOR_RGB24U:
+	case OMAP_DSS_COLOR_ARGB32:
+	case OMAP_DSS_COLOR_RGBA32:
+	case OMAP_DSS_COLOR_RGBX32:
+		ps = 4;
+		break;
+/* TODO: need to add special case for NV12 */
+	default:
+		BUG();
+		return;
+	}
+
+	switch (rotation) {
+	case 0:
+	case 2:
+		if (1 == ps)
+			*row_inc = 16384 - (width);
+		else
+			*row_inc = 32768 - (width * ps);
+		break;
+
+	case 1:
+	case 3:
+		if (3 == ps)
+			*row_inc = 16384 - (width * ps);
+		else
+			*row_inc = 8192 - (width * ps);
+		break;
+
+	default:
+		BUG();
+		return;
+	}
+
+	printk(KERN_INFO
+		" colormode: %d, rotation: %d, ps: %d, width: %d,"
+		" height: %d, row_inc:%d\n",
+		color_mode, rotation, ps, width, height, *row_inc);
+
+	return;
+}
+
 static void calc_vrfb_rotation_offset(u8 rotation, bool mirror,
 		u16 screen_width,
 		u16 width, u16 height,
@@ -2036,6 +2096,8 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	u16 frame_height = height;
 	unsigned int field_offset = 0;
 
+	u32 val;
+
 	if (paddr == 0)
 		return -EINVAL;
 
@@ -2164,12 +2226,17 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	if (fieldmode)
 		field_offset = 1;
 #ifdef CONFIG_ARCH_OMAP4 /*TODO: OMAP4: check ?! */
-	if (OMAP_DSS_COLOR_NV12 == color_mode) {
-		row_inc = 0x1;
-		pix_inc = 0x1;
-		offset0 = 0x0;
-		offset1 = 0x0;
-	} else
+	pix_inc = 0x1;
+	offset0 = 0x0;
+	offset1 = 0x0;
+	calc_tiler_row_rotation(rotation, width, frame_height,
+						color_mode, &row_inc);
+	/* TODO: Hack for BURSTMODE to 2D*/
+
+	val = dispc_read_reg(dispc_reg_att[plane]);
+	val = FLD_MOD(val, 1, 29, 29);
+	dispc_write_reg(dispc_reg_att[plane], val);
+
 #else
 	if (rotation_type == OMAP_DSS_ROT_DMA)
 		calc_dma_rotation_offset(rotation, mirror,
