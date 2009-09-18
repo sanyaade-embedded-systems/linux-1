@@ -46,6 +46,8 @@ static int do_blktrans_request(struct mtd_blktrans_ops *tr,
 {
 	unsigned long block, nsect;
 	char *buf;
+	struct bio_vec *bvec;
+	struct req_iterator iter;
 
 	block = blk_rq_pos(req) << 9 >> tr->blkshift;
 	nsect = blk_rq_cur_bytes(req) >> tr->blkshift;
@@ -68,6 +70,8 @@ static int do_blktrans_request(struct mtd_blktrans_ops *tr,
 		for (; nsect > 0; nsect--, block++, buf += tr->blksize)
 			if (tr->readsect(dev, block, buf))
 				return -EIO;
+		rq_for_each_segment(bvec, req, iter)
+			flush_dcache_page(bvec->bv_page);
 		return 0;
 
 	case WRITE:
