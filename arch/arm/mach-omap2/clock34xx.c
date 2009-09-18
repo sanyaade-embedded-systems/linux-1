@@ -340,7 +340,7 @@ static struct omap_clk omap34xx_clks[] = {
  * SDRC_MPURATE_LOOPS: Number of MPU loops to execute at
  * 2^MPURATE_BASE_SHIFT MHz for SDRC to stabilize
  */
-#define SDRC_MPURATE_LOOPS		96
+#define SDRC_MPURATE_LOOPS		24
 
 /**
  * omap3430es2_clk_ssi_find_idlest - return CM_IDLEST info for SSI
