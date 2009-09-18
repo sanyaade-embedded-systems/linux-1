@@ -208,7 +208,7 @@ __dma_alloc(struct device *dev, size_t size, dma_addr_t *handle, gfp_t gfp,
 	{
 		void *ptr = page_address(page);
 		memset(ptr, 0, size);
-		dmac_flush_range(ptr, ptr + size);
+		smp_dma_flush_range(ptr, ptr + size);
 		outer_flush_range(__pa(ptr), __pa(ptr) + size);
 	}
 
@@ -528,15 +528,15 @@ static void dma_cache_maint_contiguous(struct page *page, unsigned long offset,
 
 	switch (direction) {
 	case DMA_FROM_DEVICE:		/* invalidate only */
-		inner_op = dmac_inv_range;
+		inner_op = smp_dma_inv_range;
 		outer_op = outer_inv_range;
 		break;
 	case DMA_TO_DEVICE:		/* writeback only */
-		inner_op = dmac_clean_range;
+		inner_op = smp_dma_clean_range;
 		outer_op = outer_clean_range;
 		break;
 	case DMA_BIDIRECTIONAL:		/* writeback and invalidate */
-		inner_op = dmac_flush_range;
+		inner_op = smp_dma_flush_range;
 		outer_op = outer_flush_range;
 		break;
 	default:

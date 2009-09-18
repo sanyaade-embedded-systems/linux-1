@@ -516,6 +516,11 @@ config CPU_CACHE_VIPT
 config CPU_CACHE_FA
 	bool
 
+config CPU_NO_CACHE_BCAST
+	bool
+	depends on SMP
+	default y if CPU_V6
+
 if MMU
 # The copy-page model
 config CPU_COPY_V3

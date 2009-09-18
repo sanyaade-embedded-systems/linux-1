@@ -280,6 +280,35 @@ extern void dmac_flush_range(const void *, const void *);
 
 #endif
 
+#ifdef CONFIG_CPU_NO_CACHE_BCAST
+enum smp_dma_cache_type {
+	SMP_DMA_CACHE_INV,
+	SMP_DMA_CACHE_CLEAN,
+	SMP_DMA_CACHE_FLUSH,
+};
+
+extern void smp_dma_cache_op(int type, const void *start, const void *end);
+
+static inline void smp_dma_inv_range(const void *start, const void *end)
+{
+	smp_dma_cache_op(SMP_DMA_CACHE_INV, start, end);
+}
+
+static inline void smp_dma_clean_range(const void *start, const void *end)
+{
+	smp_dma_cache_op(SMP_DMA_CACHE_CLEAN, start, end);
+}
+
+static inline void smp_dma_flush_range(const void *start, const void *end)
+{
+	smp_dma_cache_op(SMP_DMA_CACHE_FLUSH, start, end);
+}
+#else
+#define smp_dma_inv_range		dmac_inv_range
+#define smp_dma_clean_range		dmac_clean_range
+#define smp_dma_flush_range		dmac_flush_range
+#endif
+
 #ifdef CONFIG_OUTER_CACHE
 
 extern struct outer_cache_fns outer_cache;
