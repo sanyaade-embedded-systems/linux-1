@@ -91,6 +91,18 @@ void flush_cache_range(struct vm_area_struct *vma, unsigned long start, unsigned
 #ifdef CONFIG_ARM_ERRATA_411920
 		v6_icache_inval_all();
 #endif
+		return;
+	}
+
+	if (vma->vm_flags & VM_EXEC) {
+		/*
+		 * Increment the task's preempt_count so that in_atomic() is
+		 * true and do_page_fault() does not try to map pages in. If a
+		 * page isn't mapped yet, it will be ignored.
+		 */
+		inc_preempt_count();
+		flush_cache_user_range(vma, start, end);
+		dec_preempt_count();
 	}
 }
 
