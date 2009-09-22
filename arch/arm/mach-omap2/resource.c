@@ -1,9 +1,11 @@
 /*
- * linux/arch/arm/mach-omap2/resource34xx.c
- * OMAP3 resource init/change_level/validate_level functions
+ * linux/arch/arm/mach-omap2/resource.c
+ * OMAP3 and OMAP4 resource init/change_level/validate_level functions
  *
  * Copyright (C) 2007-2008 Texas Instruments, Inc.
  * Rajendra Nayak <rnayak@ti.com>
+ *
+ * Refined for OMAP4 support by Abhijit Pagare <abhijitpagare@ti.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,11 +21,13 @@
 #include <linux/pm_qos_params.h>
 #include <linux/cpufreq.h>
 #include <linux/delay.h>
+#include <mach/cpu.h>
 #include <mach/powerdomain.h>
 #include <mach/clockdomain.h>
 #include <mach/omap34xx.h>
+#include <mach/omap44xx.h>
 #include "smartreflex.h"
-#include "resource34xx.h"
+#include "resource.h"
 #include "pm.h"
 #include "cm.h"
 #include "cm-regbits-34xx.h"
@@ -31,6 +35,7 @@
 #ifndef CONFIG_CPU_IDLE
 #warning MPU latency constraints require CONFIG_CPU_IDLE to function!
 #endif
+
 
 /**
  * init_latency - Initializes the mpu/core latency resource.
@@ -95,7 +100,7 @@ void init_pd_latency(struct shared_resource *resp)
 	struct pd_latency_db *pd_lat_db;
 
 	resp->no_of_users = 0;
-/*	Uncomment Once PM support is enabled for OMAP4
+/*	Uncomment this when PM/OFF mode Support comes in
 	if (enable_off_mode)
 		resp->curr_level = PD_LATENCY_OFF;
 	else
@@ -134,10 +139,9 @@ int set_pd_latency(struct shared_resource *resp, u32 latency)
 			break;
 		}
 	}
-
-/*	Uncomment Once PM support is enabled on OMAP4
+/*	Uncomment this when PM/OFF mode Support comes in
 	if (!enable_off_mode && pd_lat_level == PD_LATENCY_OFF)
-		pd_lat_level = PD_LATENCY_RET;
+	pd_lat_level = PD_LATENCY_RET;
  */
 	resp->curr_level = pd_lat_level;
 	set_pwrdm_state(pwrdm, pd_lat_level);
@@ -148,13 +152,18 @@ static struct shared_resource *vdd1_resp;
 static struct shared_resource *vdd2_resp;
 static struct device dummy_mpu_dev;
 static struct device dummy_dsp_dev;
-static struct device vdd2_dev;
 static int vdd1_lock;
 static int vdd2_lock;
 static struct clk *dpll1_clk, *dpll2_clk, *dpll3_clk;
 static int curr_vdd1_opp;
 static int curr_vdd2_opp;
 static DEFINE_MUTEX(dvfs_mutex);
+
+static struct device vdd2_dev;
+static struct shared_resource *vdd3_resp;
+static struct device vdd3_dev;
+static int vdd3_lock;
+static int curr_vdd3_opp;
 
 static unsigned short get_opp(struct omap_opp *opp_freq_table,
 		unsigned long freq)
@@ -189,18 +198,43 @@ void init_opp(struct shared_resource *resp)
 	*/
 	if (strcmp(resp->name, "vdd1_opp") == 0) {
 		vdd1_resp = resp;
-		dpll1_clk = clk_get(NULL, "dpll1_ck");
-		dpll2_clk = clk_get(NULL, "dpll2_ck");
+		if (cpu_is_omap34xx()) {
+			dpll1_clk = clk_get(NULL, "dpll1_ck");
+			dpll2_clk = clk_get(NULL, "dpll2_ck");
+		} else if (cpu_is_omap44xx())
+			dpll1_clk = clk_get(NULL, "dpll_mpu_ck");
+		else
+			printk(KERN_ERR "Invalid CPU type\n");
+
 		resp->curr_level = get_opp(mpu_opps + MAX_VDD1_OPP,
 				dpll1_clk->rate);
 		curr_vdd1_opp = resp->curr_level;
 	} else if (strcmp(resp->name, "vdd2_opp") == 0) {
 		vdd2_resp = resp;
-		dpll3_clk = clk_get(NULL, "dpll3_m2_ck");
-		l3_clk = clk_get(NULL, "l3_ick");
-		resp->curr_level = get_opp(l3_opps + MAX_VDD2_OPP,
+		if (cpu_is_omap34xx()) {
+			dpll3_clk = clk_get(NULL, "dpll3_m2_ck");
+			l3_clk = clk_get(NULL, "l3_ick");
+			resp->curr_level = get_opp(l3_opps + MAX_VDD2_OPP,
 				l3_clk->rate);
-		curr_vdd2_opp = resp->curr_level;
+			curr_vdd2_opp = resp->curr_level;
+		} else if (cpu_is_omap44xx()) {
+			dpll2_clk = clk_get(NULL, "dpll_iva_ck");
+			resp->curr_level = get_opp(dsp_opps + MAX_VDD2_OPP,
+					dpll2_clk->rate);
+			curr_vdd2_opp = resp->curr_level;
+		} else
+			printk(KERN_ERR "Invalid CPU type\n");
+	} else if (strcmp(resp->name, "vdd3_opp") == 0) {
+		if (cpu_is_omap44xx()) {
+			vdd3_resp = resp;
+			dpll3_clk = clk_get(NULL, "dpll_core_ck");
+			l3_clk = clk_get(NULL, "l3_ick");
+			resp->curr_level = get_opp(l3_opps + MAX_VDD3_OPP,
+				l3_clk->rate);
+			curr_vdd3_opp = resp->curr_level;
+		} else
+			printk(KERN_ERR "%s not supported for this CPU type\n",
+							 resp->name);
 	}
 	return;
 }
@@ -213,6 +247,9 @@ int resource_access_opp_lock(int res, int delta)
 	} else if (res == VDD2_OPP) {
 		vdd2_lock += delta;
 		return vdd2_lock;
+	} else if (res == VDD3_OPP) {
+		vdd3_lock += delta;
+		return vdd3_lock;
 	}
 	return -EINVAL;
 }
@@ -243,30 +280,45 @@ static int program_opp_freq(int res, int target_level, int current_level)
 {
 	int ret = 0, l3_div;
 	int *curr_opp;
+	/* Remove once Scratchpad is enabled in OMAP4
+	 *	lock_scratchpad_sem();
+	 */
 
-/*	Uncomment after scratchpad is enabled
-	lock_scratchpad_sem();
- */
 	if (res == VDD1_OPP) {
 		curr_opp = &curr_vdd1_opp;
 		clk_set_rate(dpll1_clk, mpu_opps[target_level].rate);
-		clk_set_rate(dpll2_clk, dsp_opps[target_level].rate);
+		if (cpu_is_omap34xx())
+			clk_set_rate(dpll2_clk, dsp_opps[target_level].rate);
 #ifndef CONFIG_CPU_FREQ
 		/*Update loops_per_jiffy if processor speed is being changed*/
 		loops_per_jiffy = compute_lpj(loops_per_jiffy,
 			mpu_opps[current_level].rate/1000,
 			mpu_opps[target_level].rate/1000);
 #endif
-	} else {
+	} else if (res == VDD2_OPP) {
 		curr_opp = &curr_vdd2_opp;
-		l3_div = cm_read_mod_reg(CORE_MOD, CM_CLKSEL) &
-			OMAP3430_CLKSEL_L3_MASK;
-		ret = clk_set_rate(dpll3_clk,
+		if (cpu_is_omap34xx()) {
+			l3_div = cm_read_mod_reg(CORE_MOD, CM_CLKSEL) &
+				OMAP3430_CLKSEL_L3_MASK;
+			ret = clk_set_rate(dpll3_clk,
 				l3_opps[target_level].rate * l3_div);
+		} else if (cpu_is_omap44xx())
+			clk_set_rate(dpll2_clk, dsp_opps[target_level].rate);
+		else
+			printk(KERN_ERR "Invalid CPU type\n");
+	} else if (res == VDD3_OPP) {
+		if (cpu_is_omap44xx()) {
+			curr_opp = &curr_vdd3_opp;
+			l3_div = 1;
+			ret = clk_set_rate(dpll3_clk,
+			l3_opps[target_level].rate * l3_div);
+		} else
+			printk(KERN_ERR "VDD3_OPP not supported for"
+						" this CPU type\n");
 	}
 	if (ret) {
-		/* Uncomment after scratchpad is enabled
-		unlock_scratchpad_sem();
+		/* Remove once Scratchpad is enabled in OMAP4
+		 *	unlock_scratchpad_sem();
 		 */
 		return current_level;
 	}
@@ -275,11 +327,9 @@ static int program_opp_freq(int res, int target_level, int current_level)
 	omap3_save_scratchpad_contents();
 #endif
 */
-
-/*	Uncomment after scratchpad is enabled
-	unlock_scratchpad_sem();
- */
-
+	/* Remove once Scratchpad is enabled in OMAP4
+	 *	unlock_scratchpad_sem();
+	 */
 	*curr_opp = target_level;
 	return target_level;
 }
@@ -317,6 +367,7 @@ static int program_opp(int res, struct omap_opp *opp, int target_level,
 int resource_set_opp_level(int res, u32 target_level, int flags)
 {
 	unsigned long mpu_freq, mpu_old_freq;
+	unsigned long dsp_freq, dsp_old_freq;
 #ifdef CONFIG_CPU_FREQ
 	struct cpufreq_freqs freqs_notify;
 #endif
@@ -326,6 +377,8 @@ int resource_set_opp_level(int res, u32 target_level, int flags)
 		resp = vdd1_resp;
 	else if (res == VDD2_OPP)
 		resp = vdd2_resp;
+	else if (res == VDD3_OPP)
+		resp = vdd3_resp;
 	else
 		return 0;
 
@@ -358,8 +411,23 @@ int resource_set_opp_level(int res, u32 target_level, int flags)
 		/* Send a post notification to CPUFreq */
 		cpufreq_notify_transition(&freqs_notify, CPUFREQ_POSTCHANGE);
 #endif
-	} else {
-		if (!(flags & OPP_IGNORE_LOCK) && vdd2_lock) {
+	} else if (res == VDD2_OPP) {
+		if (flags != OPP_IGNORE_LOCK && vdd2_lock) {
+			mutex_unlock(&dvfs_mutex);
+			return 0;
+		}
+		if (cpu_is_omap34xx())
+			resp->curr_level = program_opp(res, l3_opps,
+					 target_level, resp->curr_level);
+		else if (cpu_is_omap44xx()) {
+			dsp_old_freq = dsp_opps[resp->curr_level].rate;
+			dsp_freq = dsp_opps[target_level].rate;
+			resp->curr_level = program_opp(res, dsp_opps,
+				 target_level, resp->curr_level);
+		} else
+			printk(KERN_ERR "Invalid CPU type\n");
+	} else if (res == VDD3_OPP) {
+		if (!(flags & OPP_IGNORE_LOCK) && vdd3_lock) {
 			mutex_unlock(&dvfs_mutex);
 			return 0;
 		}
@@ -377,8 +445,16 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 	int ind;
 
 	if (resp == vdd1_resp) {
-		if (target_level < 3)
-			resource_release("vdd2_opp", &vdd2_dev);
+		if (target_level == RES_PERFORMANCE_DEFAULTLEVEL)
+			target_level = VDD1_OPP1;
+		if (target_level < 3) {
+			if (cpu_is_omap34xx())
+				resource_release("vdd2_opp", &vdd2_dev);
+			else if (cpu_is_omap44xx())
+				resource_release("vdd3_opp", &vdd3_dev);
+			else
+				printk(KERN_ERR "Invalid CPU type\n");
+		}
 
 		resource_set_opp_level(VDD1_OPP, target_level, 0);
 		/*
@@ -386,25 +462,68 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 		 * is at 100Mhz or above.
 		 * throughput in KiB/s for 100 Mhz = 100 * 1000 * 4.
 		 */
-		if (target_level >= 3)
-			resource_request("vdd2_opp", &vdd2_dev, 400000);
+		if (target_level >= 3) {
+			if (cpu_is_omap34xx())
+				resource_request("vdd2_opp", &vdd2_dev, 400000);
+			else if (cpu_is_omap44xx())
+				resource_request("vdd3_opp", &vdd3_dev, 400000);
+			else
+				printk(KERN_ERR "Invalid CPU type\n");
+		}
 
 	} else if (resp == vdd2_resp) {
-		tput = target_level;
+		if (cpu_is_omap34xx()) {
+			if (target_level == RES_PERFORMANCE_DEFAULTLEVEL)
+				target_level = VDD2_OPP2;
+			tput = target_level;
 
-		/* Convert the tput in KiB/s to Bus frequency in MHz */
-		req_l3_freq = (tput * 1000)/4;
+			/* Convert the tput in KiB/s to
+			 * Bus frequency in MHz
+			 */
+			req_l3_freq = (tput * 1000)/4;
 
-		for (ind = 2; ind <= MAX_VDD2_OPP; ind++)
-			if ((l3_opps + ind)->rate >= req_l3_freq) {
-				target_level = ind;
-				break;
-			}
+			for (ind = 2; ind <= MAX_VDD2_OPP; ind++)
+				if ((l3_opps + ind)->rate >= req_l3_freq) {
+					target_level = ind;
+					break;
+				}
 
-		/* Set the highest OPP possible */
-		if (ind > MAX_VDD2_OPP)
-			target_level = ind-1;
-		resource_set_opp_level(VDD2_OPP, target_level, 0);
+			/* Set the highest OPP possible */
+			if (ind > MAX_VDD2_OPP)
+				target_level = ind-1;
+				resource_set_opp_level(VDD2_OPP,
+							 target_level, 0);
+		} else if (cpu_is_omap44xx()) {
+				if (target_level ==
+						 RES_PERFORMANCE_DEFAULTLEVEL)
+					target_level = VDD2_OPP1;
+				resource_set_opp_level(VDD2_OPP,
+							 target_level, 0);
+		} else
+			printk(KERN_ERR "Invalid CPU type\n");
+	} else if (resp == vdd3_resp) {
+		if (cpu_is_omap44xx()) {
+			if (target_level == RES_PERFORMANCE_DEFAULTLEVEL)
+				target_level = 200000;
+
+			tput = target_level;
+
+			/* Convert the tput in KiB/s to Bus frequency in MHz */
+			req_l3_freq = (tput * 1000)/4;
+
+			for (ind = 2; ind <= MAX_VDD3_OPP; ind++)
+				if ((l3_opps + ind)->rate >= req_l3_freq) {
+					target_level = ind;
+					break;
+				}
+
+			/* Set the highest OPP possible */
+			if (ind > MAX_VDD3_OPP)
+				target_level = ind-1;
+			resource_set_opp_level(VDD3_OPP, target_level, 0);
+		} else
+			printk(KERN_ERR "%s not supported for this CPU type\n",
+						 resp->name);
 	}
 	return 0;
 }
@@ -440,13 +559,13 @@ void init_freq(struct shared_resource *resp)
 		resp->curr_level = mpu_opps[curr_vdd1_opp].rate;
 	else if (strcmp(resp->name, "dsp_freq") == 0)
 		/* DSP freq in Mhz */
-		resp->curr_level = dsp_opps[curr_vdd1_opp].rate;
+		resp->curr_level = dsp_opps[curr_vdd2_opp].rate;
 	return;
 }
 
 int set_freq(struct shared_resource *resp, u32 target_level)
 {
-	unsigned int vdd1_opp;
+	unsigned int vdd1_opp, vdd2_opp;
 
 	if (!mpu_opps || !dsp_opps)
 		return 0;
@@ -455,9 +574,10 @@ int set_freq(struct shared_resource *resp, u32 target_level)
 		vdd1_opp = get_opp(mpu_opps + MAX_VDD1_OPP, target_level);
 		resource_request("vdd1_opp", &dummy_mpu_dev, vdd1_opp);
 	} else if (strcmp(resp->name, "dsp_freq") == 0) {
-		vdd1_opp = get_opp(dsp_opps + MAX_VDD1_OPP, target_level);
-		resource_request("vdd1_opp", &dummy_dsp_dev, vdd1_opp);
+		vdd2_opp = get_opp(dsp_opps + MAX_VDD2_OPP, target_level);
+		resource_request("vdd2_opp", &dummy_dsp_dev, vdd2_opp);
 	}
+
 	resp->curr_level = target_level;
 	return 0;
 }
