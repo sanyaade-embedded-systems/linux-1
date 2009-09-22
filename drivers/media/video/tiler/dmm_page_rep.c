@@ -97,7 +97,8 @@ void dmm_phys_page_rep_refil(void)
 			tmpPgNode->nextPhysPg = NULL;
 			tmpPgNode->prevPhysPg = NULL;
 			tmpPgNode->physPgPtr =
-				(unsigned long *)__get_free_page(GFP_KERNEL);
+				(unsigned long *)__get_free_page(
+							GFP_KERNEL | GFP_DMA);
 
 			/* add to end */
 			if (freePagesStack != NULL) {
