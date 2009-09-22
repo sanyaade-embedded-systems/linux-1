@@ -5,7 +5,7 @@
 # Common support
 obj-y := id.o io.o control.o mux.o devices.o serial.o gpmc.o timer-gp.o clock.o prcm.o
 
-omap-2-3-common				= irq.o sdrc.o
+omap-2-3-common				= irq.o sdrc.o omap_hwmod.o
 prcm-common				= powerdomain.o
 clock-common				= clockdomain.o
 
@@ -36,10 +36,19 @@ obj-$(CONFIG_ARCH_OMAP3)		+= pm34xx.o sleep34xx.o
 obj-$(CONFIG_PM_DEBUG)			+= pm-debug.o
 endif
 
+#To be placed appropriately once PM is defined for OMAP4
+obj-$(CONFIG_ARCH_OMAP4)		+= pm34xx.o omap_hwmod.o
+
+# PRCM
+obj-$(CONFIG_ARCH_OMAP2)		+= cm.o
+obj-$(CONFIG_ARCH_OMAP3)		+= cm.o
+
 # Clock framework
 obj-$(CONFIG_ARCH_OMAP2)		+= clock24xx.o
 obj-$(CONFIG_ARCH_OMAP3)		+= clock34xx.o
 obj-$(CONFIG_ARCH_OMAP4)		+= clock44xx.o
+
+obj-$(CONFIG_OMAP_PM_SRF)		+= resource34xx.o
 
 # MAILBOX
 obj-$(CONFIG_OMAP_MBOX_FWK)	+= mailbox_mach.o

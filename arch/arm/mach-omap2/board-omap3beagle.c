@@ -46,6 +46,7 @@
 #include <mach/timer-gp.h>
 
 #include "mmc-twl4030.h"
+#include "omap3-opp.h"
 
 #define GPMC_CS0_BASE  0x60
 #define GPMC_CS_SIZE   0x30
@@ -283,7 +284,8 @@ static int __init omap3_beagle_i2c_init(void)
 static void __init omap3_beagle_init_irq(void)
 {
 	omap2_init_common_hw(mt46h32m32lf6_sdrc_params,
-			     mt46h32m32lf6_sdrc_params);
+			 mt46h32m32lf6_sdrc_params, omap3_mpu_rate_table,
+			 omap3_dsp_rate_table, omap3_l3_rate_table);
 	omap_init_irq();
 #ifdef CONFIG_OMAP_32K_TIMER
 	omap2_gp_clockevent_set_gptimer(12);

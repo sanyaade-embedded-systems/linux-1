@@ -11,6 +11,13 @@
 #ifndef __ARCH_ARM_MACH_OMAP2_PM_H
 #define __ARCH_ARM_MACH_OMAP2_PM_H
 
+#include <mach/powerdomain.h>
+
+extern int set_pwrdm_state(struct powerdomain *pwrdm, u32 state);
+
+
+#define OPP_IGNORE_LOCK 0x1
+
 #ifdef CONFIG_PM_DEBUG
 extern void omap2_pm_dump(int mode, int resume, unsigned int us);
 extern int omap2_pm_debug;

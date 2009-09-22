@@ -42,6 +42,8 @@
 #include <mach/clockdomain.h>
 #include "clockdomains.h"
 #include <dspbridge/host_os.h>
+#include <mach/omap-pm.h>
+
 /*
  * The machine specific code may provide the extra mapping besides the
  * default mapping provided here.
@@ -283,9 +285,13 @@ static int __init _omap2_init_reprogram_sdrc(void)
 }
 
 void __init omap2_init_common_hw(struct omap_sdrc_params *sdrc_cs0,
-				 struct omap_sdrc_params *sdrc_cs1)
+				 struct omap_sdrc_params *sdrc_cs1,
+				 struct omap_opp *mpu_opps,
+				 struct omap_opp *dsp_opps,
+				 struct omap_opp *l3_opps)
 {
 	omap2_mux_init();
+	omap_pm_if_early_init(mpu_opps, dsp_opps, l3_opps);
 	pwrdm_init(powerdomains_omap);
 	clkdm_init(clockdomains_omap, clkdm_pwrdm_autodeps);
 #ifndef CONFIG_ARCH_OMAP4
@@ -293,5 +299,6 @@ void __init omap2_init_common_hw(struct omap_sdrc_params *sdrc_cs0,
 	_omap2_init_reprogram_sdrc();
 #endif
 	omap2_clk_init();
+	omap_pm_if_init();
 	gpmc_init();
 }
