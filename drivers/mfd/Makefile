@@ -24,6 +24,7 @@ obj-$(CONFIG_MENELAUS)		+= menelaus.o
 
 obj-$(CONFIG_TWL4030_CORE)	+= twl-core.o twl4030-irq.o
 obj-$(CONFIG_TWL6030_CORE)	+= twl-core.o twl6030-irq.o
+obj-$(CONFIG_TWL6030_GPADC)	+= twl6030-gpadc.o
 
 obj-$(CONFIG_MFD_CORE)		+= mfd-core.o
 
