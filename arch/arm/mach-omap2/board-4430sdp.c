@@ -421,6 +421,10 @@ static struct regulator_init_data sdp4430_vusb = {
 	},
 };
 
+static struct twl_madc_platform_data sdp4430_gpadc_data = {
+	.irq_line	= 1,
+};
+
 static struct twl_platform_data sdp4430_twldata = {
 	.irq_base	= TWL6030_IRQ_BASE,
 	.irq_end	= TWL6030_IRQ_END,
@@ -436,7 +440,9 @@ static struct twl_platform_data sdp4430_twldata = {
 	.vaux1		= &sdp4430_vaux1,
 	.vaux2		= &sdp4430_vaux2,
 	.vaux3		= &sdp4430_vaux3,
+	.madc		= &sdp4430_gpadc_data,
 };
+
 #endif
 
 static struct i2c_board_info __initdata sdp4430_i2c_boardinfo[] = {
