@@ -38,6 +38,7 @@
 #include <linux/i2c/twl.h>
 #include "mmc-twl4030.h"
 #include <linux/regulator/machine.h>
+#include "omap4-opp.h"
 
 #define OMAP4_KBDOCP_BASE               0x4A31C000
 
@@ -281,7 +282,8 @@ static int __init sdp4430_mmc_init(void)
 
 static void __init omap_4430sdp_init_irq(void)
 {
-	omap2_init_common_hw(NULL, NULL);
+	omap2_init_common_hw(NULL, NULL, omap4_mpu_rate_table,
+			 omap4_dsp_rate_table, omap4_l3_rate_table);
 #ifdef CONFIG_OMAP_32K_TIMER
 	omap2_gp_clockevent_set_gptimer(1);
 #endif

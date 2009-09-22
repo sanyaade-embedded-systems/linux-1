@@ -6,6 +6,8 @@
  *
  * Author: Santosh Shilimkar <santosh.shilimkar@ti.com>
  *
+ * Updated with VDD OPP support by Abhijit Pagare <abhijitpagare@ti.com>
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -49,6 +51,40 @@
 #define OMAP44XX_VA_L2CACHE_BASE	0x48242000
 
 #define OMAP44xx_MAILBOX_BASE		(L4_44XX_BASE + 0xF4000)
+
+#ifdef CONFIG_ARCH_OMAP4
+/* VDD OPP identifiers */
+#define VDD1_OPP		0x1
+#define VDD2_OPP		0x2
+#define VDD3_OPP		0x3
+
+/* VDD1 OPPS */
+#define VDD1_OPP1		0x1
+#define VDD1_OPP2		0x2
+#define VDD1_OPP3		0x3
+#define VDD1_OPP4		0x4
+#define VDD1_OPP5		0x5
+
+/* VDD2 OPPS */
+#define VDD2_OPP1		0x1
+#define VDD2_OPP2		0x2
+#define VDD2_OPP3		0x3
+#define VDD2_OPP4		0x4
+#define VDD2_OPP5		0x5
+
+/* VDD3 OPPS */
+#define VDD3_OPP1		0x1
+#define VDD3_OPP2		0x2
+#define VDD3_OPP3		0x3
+
+#define MIN_VDD1_OPP		VDD1_OPP1
+#define MAX_VDD1_OPP		VDD1_OPP5
+#define MIN_VDD2_OPP		VDD2_OPP1
+#define MAX_VDD2_OPP		VDD2_OPP5
+#define MIN_VDD3_OPP		VDD2_OPP1
+#define MAX_VDD3_OPP		VDD2_OPP3
+
+#endif
 
 #endif /* __ASM_ARCH_OMAP44XX_H */
 
