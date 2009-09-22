@@ -121,6 +121,14 @@ config TWL6030_CORE
 	  These multi-function chips are meant for OMAP4 processors,
 	  providing power management, RTC, a USB transciever and a GPADC.
 
+config TWL6030_GPADC
+	tristate "TWL6030 GPADC (General Purpose A/D Convertor) Support"
+	depends on TWL6030_CORE
+	default n
+	help
+	  Say yes here if you want support for the TWL6030 General Purpose
+	  A/D Convertor.
+
 config MFD_TMIO
 	bool
 	default n
