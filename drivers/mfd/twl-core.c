@@ -90,7 +90,8 @@
 #define twl_has_6030regulator()	false
 #endif
 
-#if defined(CONFIG_TWL4030_MADC) || defined(CONFIG_TWL4030_MADC_MODULE)
+#if defined(CONFIG_TWL4030_MADC) || defined(CONFIG_TWL4030_MADC_MODULE) ||\
+    defined(CONFIG_TWL6030_GPADC) || defined(CONFIG_TWL6030_GPADC_MODULE)
 #define twl_has_madc()	true
 #else
 #define twl_has_madc()	false
@@ -602,7 +603,7 @@ add_children(struct twl_platform_data *pdata, unsigned long features)
 	}
 
 	if (twl_has_madc() && pdata->madc) {
-		child = add_child(MADC_SUB_CHIP_ID, "twl4030_madc",
+		child = add_child(MADC_SUB_CHIP_ID, "twl_madc",
 				pdata->madc, sizeof(*pdata->madc),
 				true, pdata->irq_base + MADC_INTR_OFFSET, 0);
 		if (IS_ERR(child))
