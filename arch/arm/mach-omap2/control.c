@@ -19,17 +19,19 @@
 #include <mach/control.h>
 
 static void __iomem *omap2_ctrl_base;
+static void __iomem *omap2_ctrl_base1;
 
-#define OMAP_CTRL_REGADDR(reg)		(omap2_ctrl_base + (reg))
+#define OMAP_CTRL_REGADDR(reg)		(omap2_ctrl_base1 + (reg))
 
 void __init omap2_set_globals_control(struct omap_globals *omap2_globals)
 {
 	omap2_ctrl_base = omap2_globals->ctrl;
+	omap2_ctrl_base1 = omap2_globals->ctrl;
 }
 
 void __iomem *omap_ctrl_base_get(void)
 {
-	return omap2_ctrl_base;
+	return omap2_ctrl_base1;
 }
 
 u8 omap_ctrl_readb(u16 offset)
