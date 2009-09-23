@@ -576,12 +576,26 @@ add_children(struct twl_platform_data *pdata, unsigned long features)
 	struct device	*usb_transceiver = NULL;
 
 	if (twl_has_bci() && pdata->bci && !(features & TPS_SUBSET)) {
-		child = add_child(BCI_SUB_CHIP_ID, "twl4030_bci",
+#if defined(CONFIG_TWL4030_CORE)
+		child = add_child(BCI_SUB_CHIP_ID, "twl_bci",
 				pdata->bci, sizeof(*pdata->bci),
 				false,
 				/* irq0 = CHG_PRES, irq1 = BCI */
 				pdata->irq_base + BCI_PRES_INTR_OFFSET,
 				pdata->irq_base + BCI_INTR_OFFSET);
+#elif defined(CONFIG_TWL6030_CORE)
+		child = add_child(BCI_SUB_CHIP_ID, "twl_charger_ctrl",
+				pdata->bci, sizeof(*pdata->bci),
+				false,
+				pdata->irq_base + CHARGER_INTR_OFFSET, 0);
+		if (IS_ERR(child))
+			return PTR_ERR(child);
+
+		child = add_child(BCI_SUB_CHIP_ID, "twl_charger_fault",
+				pdata->bci, sizeof(*pdata->bci),
+				false,
+				pdata->irq_base + CHARGER_INTR_OFFSET, 0);
+#endif
 		if (IS_ERR(child))
 			return PTR_ERR(child);
 	}
