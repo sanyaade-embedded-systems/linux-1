@@ -96,6 +96,8 @@
 # define OMAP_32KSYNCT_BASE		0x49020000
 #elif defined(CONFIG_ARCH_OMAP3430)
 # define OMAP_32KSYNCT_BASE		0x48320000
+#elif defined(CONFIG_ARCH_OMAP3630)
+# define OMAP_32KSYNCT_BASE		0x48320000
 #else
 # error Unknown OMAP device
 #endif

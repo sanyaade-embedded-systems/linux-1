@@ -19,9 +19,18 @@ config ARCH_OMAP34XX
 	bool "OMAP34xx Based System"
 	depends on ARCH_OMAP3
 
+config ARCH_OMAP36XX
+	bool "OMAP36xx Based System"
+	depends on ARCH_OMAP3
+
 config ARCH_OMAP3430
 	bool "OMAP3430 support"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+	select ARCH_OMAP_OTG
+
+config ARCH_OMAP3630
+	bool "OMAP3630 Support"
+	depends on ARCH_OMAP3 && ARCH_OMAP34XX && ARCH_OMAP36XX
 	select ARCH_OMAP_OTG
 
 comment "OMAP Board Type"
@@ -72,6 +81,10 @@ config MACH_OMAP3_PANDORA
 config MACH_OMAP_3430SDP
 	bool "OMAP 3430 SDP board"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+
+config MACH_OMAP_3630SDP
+	bool "OMAP 3630 SDP board"
+	depends on ARCH_OMAP3 && ARCH_OMAP34XX && ARCH_OMAP36XX
 
 config MACH_NOKIA_N8X0
 	bool "Nokia N800/N810"

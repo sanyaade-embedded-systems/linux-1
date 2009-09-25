@@ -56,6 +56,8 @@ int omap_type(void)
 		val = omap_ctrl_readl(OMAP24XX_CONTROL_STATUS);
 	else if (cpu_is_omap34xx())
 		val = omap_ctrl_readl(OMAP343X_CONTROL_STATUS);
+	else if (cpu_is_omap36xx())
+		val = omap_ctrl_readl(OMAP343X_CONTROL_STATUS);
 	else {
 		pr_err("Cannot detect omap type!\n");
 		goto out;
@@ -212,6 +214,28 @@ out:
 	pr_info("OMAP%04x %s\n", omap_rev() >> 16, rev_name);
 }
 
+void __init omap36xx_check_revision(void)
+{
+	u32 idcode;
+	u16 hawkeye;
+	u8 rev;
+	char *rev_name = "ES1.0";
+
+	idcode = read_tap_reg(OMAP_TAP_IDCODE);
+	hawkeye = (idcode >> 12) & 0xffff;
+	rev = (idcode >> 28) & 0xff;
+
+	if (hawkeye == 0xb891) {
+		switch (rev) {
+		case 0:
+			omap_revision = OMAP3630_REV_ES1_0;
+			break;
+		default:
+			rev_name = "Unknown revision\n";
+		}
+	}
+}
+
 /*
  * Try to detect the exact revision of the omap we're running on
  */
@@ -225,6 +249,8 @@ void __init omap2_check_revision(void)
 		omap24xx_check_revision();
 	else if (cpu_is_omap34xx())
 		omap34xx_check_revision();
+	else if (cpu_is_omap36xx())
+		omap36xx_check_revision();
 	else if (cpu_is_omap44xx()) {
 		printk(KERN_INFO "FIXME: CPU revision = OMAP4430\n");
 		return;
@@ -252,6 +278,10 @@ void __init omap2_check_revision(void)
 			omap_chip.oc |= CHIP_IS_OMAP3430ES3_0;
 		else if (omap_rev() == OMAP3430_REV_ES3_1)
 			omap_chip.oc |= CHIP_IS_OMAP3430ES3_1;
+	} else if (cpu_is_omap363x()) {
+		omap_chip.oc = CHIP_IS_OMAP3630;
+		if (omap_rev() == OMAP3630_REV_ES1_0)
+			omap_chip.oc |= CHIP_IS_OMAP3630ES1;
 	} else {
 		pr_err("Uninitialized omap_chip, please fix!\n");
 	}

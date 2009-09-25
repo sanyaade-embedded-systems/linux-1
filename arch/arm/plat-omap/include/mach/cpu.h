@@ -157,10 +157,12 @@ IS_OMAP_CLASS(15xx, 0x15)
 IS_OMAP_CLASS(16xx, 0x16)
 IS_OMAP_CLASS(24xx, 0x24)
 IS_OMAP_CLASS(34xx, 0x34)
+IS_OMAP_CLASS(36xx, 0x36)
 
 IS_OMAP_SUBCLASS(242x, 0x242)
 IS_OMAP_SUBCLASS(243x, 0x243)
 IS_OMAP_SUBCLASS(343x, 0x343)
+IS_OMAP_SUBCLASS(363x, 0x363)
 
 #define cpu_is_omap7xx()		0
 #define cpu_is_omap15xx()		0
@@ -170,6 +172,8 @@ IS_OMAP_SUBCLASS(343x, 0x343)
 #define cpu_is_omap243x()		0
 #define cpu_is_omap34xx()		0
 #define cpu_is_omap343x()		0
+#define cpu_is_omap36xx()		0
+#define cpu_is_omap363x()		0
 #define cpu_is_omap44xx()		0
 #define cpu_is_omap443x()		0
 
@@ -245,6 +249,14 @@ IS_OMAP_SUBCLASS(343x, 0x343)
 #  undef  cpu_is_omap343x
 #  define cpu_is_omap343x()		1
 # endif
+# if defined(CONFIG_ARCH_OMAP36XX)
+#  undef  cpu_is_omap36xx
+#  define cpu_is_omap36xx()		1
+# endif
+# if defined(CONFIG_ARCH_OMAP363X)
+#  undef  cpu_is_omap363x
+#  define cpu_is_omap363x()		1
+# endif
 #endif
 
 /*
@@ -287,6 +299,7 @@ IS_OMAP_TYPE(2422, 0x2422)
 IS_OMAP_TYPE(2423, 0x2423)
 IS_OMAP_TYPE(2430, 0x2430)
 IS_OMAP_TYPE(3430, 0x3430)
+IS_OMAP_TYPE(3630, 0x3630)
 
 #define cpu_is_omap310()		0
 #define cpu_is_omap730()		0
@@ -302,6 +315,7 @@ IS_OMAP_TYPE(3430, 0x3430)
 #define cpu_is_omap2423()		0
 #define cpu_is_omap2430()		0
 #define cpu_is_omap3430()		0
+#define cpu_is_omap3630()		0
 
 /*
  * Whether we have MULTI_OMAP1 or not, we still need to distinguish
@@ -354,6 +368,11 @@ IS_OMAP_TYPE(3430, 0x3430)
 # define cpu_is_omap3430()		is_omap3430()
 #endif
 
+#if defined(CONFIG_ARCH_OMAP36XX)
+# undef  cpu_is_omap3630
+# define cpu_is_omap3630()		is_omap3630()
+#endif
+
 # if defined(CONFIG_ARCH_OMAP4)
 # undef cpu_is_omap44xx
 # undef cpu_is_omap443x
@@ -365,7 +384,7 @@ IS_OMAP_TYPE(3430, 0x3430)
 #define cpu_class_is_omap1()	(cpu_is_omap7xx() || cpu_is_omap15xx() || \
 				cpu_is_omap16xx())
 #define cpu_class_is_omap2()	(cpu_is_omap24xx() || cpu_is_omap34xx() || \
-				cpu_is_omap44xx())
+				cpu_is_omap36xx() || cpu_is_omap44xx())
 
 /* Various silicon revisions for omap2 */
 #define OMAP242X_CLASS		0x24200024
@@ -381,6 +400,9 @@ IS_OMAP_TYPE(3430, 0x3430)
 #define OMAP3430_REV_ES2_1	0x34302034
 #define OMAP3430_REV_ES3_0	0x34303034
 #define OMAP3430_REV_ES3_1	0x34304034
+
+#define OMAP363X_CLASS		0x36300034
+#define OMAP3630_REV_ES1_0	0x36300034
 
 #define OMAP443X_CLASS		0x44300034
 
@@ -405,6 +427,10 @@ IS_OMAP_TYPE(3430, 0x3430)
 #define CHIP_IS_OMAP3430ES2		(1 << 4)
 #define CHIP_IS_OMAP3430ES3_0		(1 << 5)
 #define CHIP_IS_OMAP3430ES3_1		(1 << 6)
+/*3630 is backward compatible to 3430 */
+#define CHIP_IS_OMAP3630		(1 << 2)
+#define CHIP_IS_OMAP3630ES1		(1 << 4)
+
 
 #define CHIP_IS_OMAP24XX		(CHIP_IS_OMAP2420 | CHIP_IS_OMAP2430)
 
