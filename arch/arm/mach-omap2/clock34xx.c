@@ -126,6 +126,9 @@ static struct omap_clk omap34xx_clks[] = {
 	CLK(NULL,	"emu_core_alwon_ck", &emu_core_alwon_ck, CK_343X),
 	CLK(NULL,	"dpll4_ck",	&dpll4_ck,	CK_343X),
 	CLK(NULL,	"dpll4_x2_ck",	&dpll4_x2_ck,	CK_343X),
+#ifdef CONFIG_ARCH_3630
+	CLK(NULL,	"omap_192m_alwon_ck", &omap_192m_alwon_ck, CK_3430ES2),
+#endif
 	CLK(NULL,	"omap_96m_alwon_fck", &omap_96m_alwon_fck, CK_343X),
 	CLK(NULL,	"omap_96m_fck",	&omap_96m_fck,	CK_343X),
 	CLK(NULL,	"cm_96m_fck",	&cm_96m_fck,	CK_343X),
