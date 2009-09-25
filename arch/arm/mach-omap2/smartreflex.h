@@ -214,8 +214,13 @@
 					ID_VDD(PRCM_VDD1) | ID_OPP_NO(0x4))
 #define PRCM_VDD1_OPP5		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
 					ID_VDD(PRCM_VDD1) | ID_OPP_NO(0x5))
+#define PRCM_VDD1_OPP6		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
+					ID_VDD(PRCM_VDD1) | ID_OPP_NO(0x6))
+#ifndef CONFIG_ARCH_3630
 #define PRCM_NO_VDD1_OPPS	5
-
+#else
+#define PRCM_NO_VDD1_OPPS	6
+#endif
 
 /* VDD2 OPPs */
 #define PRCM_VDD2_OPP1		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
@@ -224,7 +229,13 @@
 					ID_VDD(PRCM_VDD2) | ID_OPP_NO(0x2))
 #define PRCM_VDD2_OPP3		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
 					ID_VDD(PRCM_VDD2) | ID_OPP_NO(0x3))
+#define PRCM_VDD2_OPP4		(OMAP(AT_3430_ES2) | OTHER_ID_TYPE(ID_OPP) | \
+					ID_VDD(PRCM_VDD2) | ID_OPP_NO(0x4))
+#ifndef CONFIG_ARCH_3630
 #define PRCM_NO_VDD2_OPPS	3
+#else
+#define PRCM_NO_VDD2_OPPS	4
+#endif
 /* XXX: end remove/move */
 
 /* XXX: find more appropriate place for these once DVFS is in place */
