@@ -917,6 +917,13 @@ static void _dispc_set_vid_color_conv(enum omap_plane plane, bool enable)
 	dispc_write_reg(dispc_reg_att[plane], val);
 }
 
+#ifdef CONFIG_ARCH_OMAP3630
+static void _dispc_set_alpha_blend_attrs(enum omap_plane plane, bool enable)
+{
+       REG_FLD_MOD(dispc_reg_att[plane], enable ? 1 : 0, 28, 28);
+}
+#endif
+
 void dispc_enable_replication(enum omap_plane plane, bool enable)
 {
 	int bit;
@@ -1166,6 +1173,13 @@ static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 		REG_FLD_MOD(dispc_reg_att[plane], 0, 18, 18);
 	}
 }
+
+#ifdef CONFIG_ARCH_OMAP3630
+static void _dispc_set_vdma_attrs(enum omap_plane plane, bool enable)
+{
+       REG_FLD_MOD(dispc_reg_att[plane], enable ? 1 : 0, 20, 20);
+}
+#endif
 
 static s32 pixinc(int pixels, u8 ps)
 {
@@ -1649,6 +1663,14 @@ static int _dispc_setup_plane(enum omap_plane plane,
 
 	_dispc_set_color_mode(plane, color_mode);
 
+#ifdef CONFIG_ARCH_OMAP3630
+	if ((plane != OMAP_DSS_VIDEO1) &&
+		(OMAP_DSS_COLOR_RGBX32 == color_mode)) {
+		if (dispc_alpha_blending_enabled(plane))
+			_dispc_set_alpha_blend_attrs(plane, 1);
+	}
+#endif
+
 	_dispc_set_plane_ba0(plane, paddr + offset0);
 	_dispc_set_plane_ba1(plane, paddr + offset1);
 
@@ -1671,6 +1693,10 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	}
 
 	_dispc_set_rotation_attrs(plane, rotation, mirror, color_mode);
+
+#ifdef CONFIG_ARCH_OMAP3630
+       _dispc_set_vdma_attrs(plane, 1);
+#endif
 
 	if (plane != OMAP_DSS_VIDEO1)
 		_dispc_setup_global_alpha(plane, global_alpha);
@@ -1942,6 +1968,14 @@ void dispc_enable_trans_key(enum omap_channel ch, bool enable)
 void dispc_enable_alpha_blending(enum omap_channel ch, bool enable)
 {
 	enable_clocks(1);
+#ifdef CONFIG_ARCH_OMAP3630
+	if (!enable) {
+		REG_FLD_MOD(dispc_reg_att[OMAP_DSS_GFX],
+			enable ? 1 : 0, 28, 28);
+		REG_FLD_MOD(dispc_reg_att[OMAP_DSS_VIDEO2],
+			enable ? 1 : 0, 28, 28);
+	}
+#endif
 	if (ch == OMAP_DSS_CHANNEL_LCD)
 		REG_FLD_MOD(DISPC_CONFIG, enable, 18, 18);
 	else /* OMAP_DSS_CHANNEL_DIGIT */
