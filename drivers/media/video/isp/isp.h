@@ -60,6 +60,10 @@ struct isp_pipeline;
 						 */
 #define NUM_BUFS		VIDEO_MAX_FRAME
 
+#define ISP_REVISION_2_0            0x20
+#define ISP_REVISION_2_1            0x21
+#define ISP_REVISION_RAPXXX         0xF0
+
 #ifndef CONFIG_ARCH_OMAP3410
 #define USE_ISP_PREVIEW
 #define USE_ISP_RESZ
@@ -346,6 +350,7 @@ struct isp_pipeline {
  * struct isp_device - ISP device structure.
  * @dev: Device pointer specific to the OMAP3 ISP.
  * @isp_obj: ISP information structure.
+ * @revision: Stores current ISP module revision.
  * @irq_num: Currently used IRQ number.
  * @mmio_base: Array with kernel base addresses for ioremapped ISP register
  *             regions.
@@ -387,6 +392,7 @@ struct isp_pipeline {
 struct isp_device {
 	struct device *dev;
 	struct isp *isp_obj;
+	u32 revision;
 
 	/*** platform HW resources ***/
 	unsigned int irq_num;

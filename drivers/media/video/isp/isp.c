@@ -1375,8 +1375,13 @@ static int isp_try_pipeline(struct device *dev,
 			pipe->ccdc_in = CCDC_RAW_GBRG;
 		pipe->ccdc_out = CCDC_OTHERS_VP;
 		pipe->prv_in = PRV_RAW_CCDC;
-		pipe->prv_out = PREVIEW_MEM;
-		pipe->rsz_in = RSZ_MEM_YUV;
+		if (isp->revision <= ISP_REVISION_2_0) {
+			pipe->prv_out = PREVIEW_MEM;
+			pipe->rsz_in = RSZ_MEM_YUV;
+		} else {
+			pipe->prv_out = PREVIEW_RSZ;
+			pipe->rsz_in = RSZ_OTFLY_YUV;
+		}
 	} else {
 		pipe->modules = OMAP_ISP_CCDC;
 		if (pix_input->pixelformat == V4L2_PIX_FMT_SGRBG10 ||
@@ -1738,7 +1743,8 @@ int isp_vbq_setup(struct device *dev, struct videobuf_queue *vbq,
 				     * ISP_BYTES_PER_PIXEL);
 
 	if (isp->pipeline.modules & OMAP_ISP_PREVIEW
-	    && isp->tmp_buf_size < tmp_size)
+	    && isp->tmp_buf_size < tmp_size
+	    && isp->revision <= ISP_REVISION_2_0)
 		return isp_tmp_buf_alloc(dev, tmp_size);
 
 	return 0;
@@ -2366,7 +2372,8 @@ int isp_put(void)
 	if (isp->ref_count) {
 		if (--isp->ref_count == 0) {
 			isp_save_ctx(&pdev->dev);
-			isp_tmp_buf_free(&pdev->dev);
+			if (isp->revision <= ISP_REVISION_2_0)
+				isp_tmp_buf_free(&pdev->dev);
 			isp_release_resources(&pdev->dev);
 			isp_disable_clocks(&pdev->dev);
 		}
@@ -2639,6 +2646,12 @@ static int isp_probe(struct platform_device *pdev)
 	spin_lock_init(&isp->h3a_lock);
 
 	isp_get();
+	/* Get ISP revision */
+	isp->revision = isp_reg_readl(isp->dev,
+				      OMAP3_ISP_IOMEM_MAIN, ISP_REVISION);
+	dev_info(isp->dev, "Revision %d.%d found\n",
+		 (isp->revision & 0xF0) >> 4, isp->revision & 0xF);
+
 	isp->iommu = iommu_get("isp");
 	if (IS_ERR(isp->iommu)) {
 		ret_err = PTR_ERR(isp->iommu);

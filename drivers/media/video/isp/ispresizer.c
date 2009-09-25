@@ -481,6 +481,7 @@ int ispresizer_s_pipeline(struct isp_res_device *isp_res,
 	int i, j;
 	u32 res;
 	int rval;
+	struct isp_device *isp = dev_get_drvdata(isp_res->dev);
 
 	rval = ispresizer_config_datapath(isp_res, pipe);
 	if (rval)
@@ -498,7 +499,8 @@ int ispresizer_s_pipeline(struct isp_res_device *isp_res,
 		       OMAP3_ISP_IOMEM_RESZ,
 		       ISPRSZ_CNT);
 	/* Set start address for cropping */
-	ispresizer_set_inaddr(isp_res, isp_res->tmp_buf);
+	if (isp->revision <= ISP_REVISION_2_0)
+		ispresizer_set_inaddr(isp_res, isp_res->tmp_buf);
 
 	isp_reg_writel(isp_res->dev,
 		       (pipe->rsz_crop.width << ISPRSZ_IN_SIZE_HORZ_SHIFT) |
