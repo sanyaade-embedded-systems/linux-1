@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# Linux kernel version: 2.6.31-rc5-omap1
-# Tue Sep  1 10:00:34 2009
+# Linux kernel version: 2.6.31-rc7-omap1
+# Mon Sep 28 19:47:17 2009
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1065,6 +1065,7 @@ CONFIG_I2C_OMAP=y
 # CONFIG_PCF8575 is not set
 # CONFIG_SENSORS_PCA9539 is not set
 # CONFIG_SENSORS_TSL2550 is not set
+CONFIG_TWL4030_MADC=y
 # CONFIG_I2C_DEBUG_CORE is not set
 # CONFIG_I2C_DEBUG_ALGO is not set
 # CONFIG_I2C_DEBUG_BUS is not set
@@ -1117,6 +1118,7 @@ CONFIG_POWER_SUPPLY=m
 # CONFIG_PDA_POWER is not set
 # CONFIG_BATTERY_DS2760 is not set
 # CONFIG_BATTERY_DS2782 is not set
+CONFIG_TWL4030_BCI_BATTERY=m
 # CONFIG_BATTERY_BQ27x00 is not set
 # CONFIG_BATTERY_MAX17040 is not set
 CONFIG_HWMON=y
