@@ -23,9 +23,6 @@
 #include "dmm_prv.h"
 #include "tiler.h"
 
-#define tilerdump(x) /* printk(KERN_NOTICE "%s::%s():%d: %lx\n",
-			__FILE__, __func__, __LINE__, (unsigned long)x); */
-
 /* ========================================================================== */
 /**
  *  dmm_module_config()
@@ -365,7 +362,7 @@ enum errorCodeT dmm_pat_start_refill(
 
 	areaDesc.data = (unsigned long)(bufferMappedZone->patPageEntries);
 
-	tilerdump(0);
+	tilerdump(__LINE__);
 	return dmm_pat_area_refill(&areaDesc, 0, MANUAL, 0);
 }
 
@@ -398,13 +395,14 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 	unsigned long bfrPages;
 	enum errorCodeT eCode = DMM_NO_ERROR;
 
+	tilerdump(__LINE__);
 	bfrPages =
 		(bufferMappedZone->xPageCount)*(bufferMappedZone->yPageCount);
 
 	if (bfrPages == 0) {
 		eCode = DMM_SYS_ERROR;
 	} else {
-		tilerdump(0);
+		tilerdump(__LINE__);
 		if (dmm_tiler_populate_pat_page_entry_data(bfrPages,
 				&(bufferMappedZone->patPageEntries),
 				&(bufferMappedZone->patPageEntriesSpace),
@@ -418,7 +416,7 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 			bufferMappedZone->patCustomPages = 1;
 		else
 			bufferMappedZone->patCustomPages = 0;
-		tilerdump(0);
+		tilerdump(__LINE__);
 		eCode = dmm_pat_start_refill(bufferMappedZone);
 	}
 
@@ -459,6 +457,7 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 {
 	signed long iter;
 
+	tilerdump(__LINE__);
 	unsigned long *patAreaEntries = kmalloc(
 		(size_t)(numPages*4 + 16), GFP_KERNEL);
 		/* Must be 16-byte aligned. */
@@ -606,7 +605,7 @@ enum errorCodeT dmm_tiler_container_map_area(
 	unsigned long addrShiftAlign = 0;
 	unsigned short tiled_pages_per_ss_page = 0;
 
-	tilerdump(0);
+	tilerdump(__LINE__);
 	switch (contMod) {
 	case MODE_8_BIT:
 		accessMode = 0;
@@ -663,7 +662,7 @@ enum errorCodeT dmm_tiler_container_map_area(
 							pageDimmensionY - 1;
 
 	/* fill out to page boundaries */
-	if (1)
+	if (0)
 		printk(KERN_ERR "areaRequest(%u (was %u%%%u) by %u)\n",
 			     (areaRequest.x1 + 64) & ~63, areaRequest.x1 + 1,
 			     tiled_pages_per_ss_page, areaRequest.y1 + 1);
@@ -673,7 +672,7 @@ enum errorCodeT dmm_tiler_container_map_area(
 	tiled_pages_per_ss_page = 64;
 	areaRequest.x1 = ((areaRequest.x1 + tiled_pages_per_ss_page) &
 			  ~(tiled_pages_per_ss_page - 1)) - 1;
-	tilerdump(0);
+	tilerdump(__LINE__);
 
 	if (areaRequest.x1 > dmmTilerCtx->contSizeX ||
 			areaRequest.y1 > dmmTilerCtx->contSizeY) {
@@ -688,9 +687,9 @@ enum errorCodeT dmm_tiler_container_map_area(
 	}
 
 	/* DBG_OVERLAP_TEST(dmmTilerCtx); */
-	tilerdump(0);
+	tilerdump(__LINE__);
 	if (eCode == DMM_NO_ERROR) {
-		tilerdump(0);
+		tilerdump(__LINE__);
 		if (accessMode == 0) {
 			*allocedPtr =
 				DMM_COMPOSE_TILER_ALIAS_PTR(
@@ -708,9 +707,9 @@ enum errorCodeT dmm_tiler_container_map_area(
 				(((*bufferMappedZone)->x0 << 7) |
 				((*bufferMappedZone)->y0 << 20)), accessMode);
 		}
-		tilerdump(0);
+		tilerdump(__LINE__);
 	} else {
-		tilerdump(0);
+		tilerdump(__LINE__);
 		*allocedPtr = NULL;
 	}
 	return eCode;
@@ -779,7 +778,7 @@ struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
 	accessModeM = DMM_GET_ACC_MODE(sysPtr);
 
 	if (DMM_GET_ROTATED(sysPtr) == 0) {
-		tilerdump(0);
+		tilerdump(__LINE__);
 		if (accessModeM == MODE_PAGE) {
 			X = ((long)sysPtr & 0x7FFFFFF) >> 12;
 			Y = X / 256;
@@ -787,32 +786,32 @@ struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
 		} else if (accessModeM == MODE_8_BIT) {
 			X = DMM_HOR_X_PAGE_COOR_GET_8(sysPtr);
 			Y = DMM_HOR_Y_PAGE_COOR_GET_8(sysPtr);
-			tilerdump(0);
+			tilerdump(__LINE__);
 		} else if (accessModeM == MODE_16_BIT) {
-			tilerdump(0);
+			tilerdump(__LINE__);
 			X = DMM_HOR_X_PAGE_COOR_GET_16(sysPtr);
 			Y = DMM_HOR_Y_PAGE_COOR_GET_16(sysPtr);
 		} else if (accessModeM == MODE_32_BIT) {
-			tilerdump(0);
+			tilerdump(__LINE__);
 			X = DMM_HOR_X_PAGE_COOR_GET_32(sysPtr);
 			Y = DMM_HOR_Y_PAGE_COOR_GET_32(sysPtr);
 		}
 	} else {
-		tilerdump(0);
+		tilerdump(__LINE__);
 		if (accessModeM == MODE_PAGE) {
 			X = ((long)sysPtr & 0x7FFFFFF) >> 12;
 			Y = X / 256;
 			X = X & 255;
 		} else if (accessModeM == MODE_8_BIT) {
-			tilerdump(0);
+			tilerdump(__LINE__);
 			X = DMM_VER_X_PAGE_COOR_GET_8(sysPtr);
 			Y = DMM_VER_Y_PAGE_COOR_GET_8(sysPtr);
 		} else if (accessModeM == MODE_16_BIT) {
-			tilerdump(0);
+			tilerdump(__LINE__);
 			X = DMM_VER_X_PAGE_COOR_GET_16(sysPtr);
 			Y = DMM_VER_Y_PAGE_COOR_GET_16(sysPtr);
 		} else if (accessModeM == MODE_32_BIT) {
-			tilerdump(0);
+			tilerdump(__LINE__);
 			X = DMM_VER_X_PAGE_COOR_GET_32(sysPtr);
 			Y = DMM_VER_Y_PAGE_COOR_GET_32(sysPtr);
 		}
@@ -823,15 +822,15 @@ struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
 	tilerdump(Y);
 	tilerdump(DMM_GET_X_INVERTED(sysPtr));
 	tilerdump(DMM_GET_Y_INVERTED(sysPtr));
-	printk(KERN_ERR " ? %p => x=%ld,y=%ld\n", sysPtr, X, Y);
+	//printk(KERN_ERR " ? %p => x=%ld,y=%ld\n", sysPtr, X, Y);
 	found = search_2d_area(dmmTilerCtx, X, Y, DMM_GET_X_INVERTED(sysPtr),
 						DMM_GET_Y_INVERTED(sysPtr));
 	if (found) {
-		printk(KERN_ERR " >(x=%d-%d=%d+%d,y=%d-%d=%d+%d)\n",
+		/*printk(KERN_ERR " >(x=%d-%d=%d+%d,y=%d-%d=%d+%d)\n",
 		found->x0, found->x1, found->xPageCount,
 							found->xPageOfst,
 		found->y0, found->y1, found->yPageCount,
-							found->yPageOfst);
+							found->yPageOfst);*/
 	}
 	return found;
 }

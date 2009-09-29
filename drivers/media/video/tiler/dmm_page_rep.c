@@ -19,8 +19,6 @@
 #include <linux/mmzone.h>  /* __page_to_phys */
 #include "dmm_prv.h"
 
-#define tilerdump(x) /*printk(KERN_NOTICE "%s::%s():%d: %lx\n",\
-			__FILE__, __func__, __LINE__, (unsigned long)x); */
 #ifdef CHECK_STACK
 #define lajosdump(x) printk(KERN_NOTICE "%s::%s():%d: %s=%p\n",\
 					__FILE__, __func__, __LINE__, #x, x);
@@ -86,7 +84,7 @@ void dmm_phys_page_rep_refil(void)
 {
 	unsigned long iter;
 
-	tilerdump(0);
+	tilerdump(__LINE__);
 	for (iter = 0; iter < DMM_MNGD_PHYS_PAGES; iter++) {
 		struct dmmPhysPgLLT *tmpPgNode = kmalloc
 				(sizeof(struct dmmPhysPgLLT), GFP_KERNEL);
@@ -214,7 +212,6 @@ unsigned long *dmm_get_phys_page(void)
 
 	/* DMM_ENTER_CRITICAL_SECTION */
 
-	tilerdump(0);
 	if (freePagesStack == NULL)
 		dmm_phys_page_rep_refil();
 

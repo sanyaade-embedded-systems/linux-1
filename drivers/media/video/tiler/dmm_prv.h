@@ -21,6 +21,15 @@
 #include "dmm_drv.h"
 #include "dmm_reg.h"
 
+#undef __DEBUG__
+
+#ifdef __DEBUG__
+#define tilerdump(x) printk(KERN_NOTICE "%s():%s=(0x%08x)\n", \
+				__func__, #x, (int)x);
+#else
+#define tilerdump(x) 
+#endif
+
 #define DMM__DMM    DMM__DMM
 #define DMM_PAT_AREA_IRQ (0)
 
