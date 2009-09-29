@@ -78,7 +78,6 @@ struct tiler_buf_info {
 #define TILIOC_RBUF  _IOWR('z', 109, unsigned long)
 #define TILIOC_URBUF _IOWR('z', 110, unsigned long)
 #define TILIOC_QUERY_BLK _IOWR('z', 111, unsigned long)
-#define TILIOC_TEST _IOWR('z', 112, unsigned long)
 
 struct dmmViewOrientT {
 	unsigned char dmm90Rotate;
