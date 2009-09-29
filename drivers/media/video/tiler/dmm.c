@@ -27,6 +27,7 @@
 #include <linux/mm.h>      /* mmaping */
 #include <linux/mm_types.h>
 #include <linux/sched.h>   /* current->mm */
+#include <linux/uaccess.h> /* copy_to_user() */
 #include "tiler.h"
 #include "dmm_drv.h"
 #include "dmm_prv.h"
@@ -35,8 +36,7 @@
 #define DMM_MAJOR 0
 #define DMM_MINOR 0
 #define DMM_IO_BASE_ADDR 0x4e000000
-#define tilerdump(x) /*printk(KERN_NOTICE "%s::%s():%d: %s=%p\n", \
-					__FILE__, __func__, __LINE__, #x, x); */
+
 unsigned long *dmm_virt_base_addr;
 static struct dmmInstanceCtxT *ctxptr;
 
@@ -210,19 +210,30 @@ dmm_ioctl(struct inode *ip, struct file *filp,
 	void *ptr = NULL;
 	int retval = -1;
 	int error = -1;
-	int i = 0;
 	pgd_t *pgd = NULL;
 	pmd_t *pmd = NULL;
 	pte_t *ptep = NULL, pte = 0x0;
+	unsigned long bytes = 0x1;
+	int offset = 0x0;
+	unsigned long ssptr = 0x0;
+
+	struct tiler_buf_info *mybufinfo = NULL;
+	struct tiler_buf_info buf_info = {0};
 
 	switch (cmd) {
 	case TILIOC_OPEN:
+		tilerdump(__LINE__);
+
 		retval = 0;
 		break;
 	case TILIOC_CLOSE:
+		tilerdump(__LINE__);
+
 		retval = 0;
 		break;
 	case TILIOC_GBUF:
+		tilerdump(__LINE__);
+
 		block = (struct tiler_block_info *)arg;
 		if (block->fmt == TILFMT_PAGE) {
 			error = tiler_alloc_buf(block->fmt,
@@ -238,101 +249,128 @@ dmm_ioctl(struct inode *ip, struct file *filp,
 		if (error == 0) {
 			retval = 0;
 			block->ssptr = (unsigned long)ptr;
-		} else {
+		}
+		else {
 			printk(KERN_ERR "%s::%s():%d\n",
 			       __FILE__, __func__, __LINE__);
 		}
 		break;
 	case TILIOC_FBUF:
+		tilerdump(__LINE__);
+
 		block = (struct tiler_block_info *)arg;
 		error = tiler_free_buf(block->ssptr);
 		if (error == 0)
 			retval = 0;
 		break;
 	case TILIOC_GSSP:
-		block = (struct tiler_block_info *)arg;
-		pgd = pgd_offset(current->mm, (unsigned long)block->ptr);
+		tilerdump(__LINE__);
 
-		block->ssptr = 0;
+		pgd = pgd_offset(current->mm, arg);
 		if (!(pgd_none(*pgd) || pgd_bad(*pgd))) {
-			pmd = pmd_offset(pgd, (unsigned long)block->ptr);
+			pmd = pmd_offset(pgd, arg);
 			if (!(pmd_none(*pmd) || pmd_bad(*pmd))) {
-				ptep = pte_offset_map(pmd,
-						(unsigned long)block->ptr);
+				ptep = pte_offset_map(pmd, arg);
 				if (ptep) {
 					pte = *ptep;
 					if (pte_present(pte)) {
-						block->ssptr = (pte & PAGE_MASK)
-						| (~PAGE_MASK &
-						(unsigned long)block->ptr);
-						tilerdump(pte);
-						tilerdump(block->ssptr);
-						retval = 0;
+						ssptr = (pte & PAGE_MASK)
+							| (~PAGE_MASK & arg);
+						retval = ssptr;
 						break;
 					}
 				}
 			}
 		}
+		retval = 0x0; /* va not in page table */
 		break;
 	case TILIOC_MBUF:
+		tilerdump(__LINE__);
 		retval = 0;
 		break;
 	case TILIOC_QBUF:
-		error = tiler_get_buf_info(
-		lsthd, &bufinfo, ((struct tiler_buf_info *)arg)->offset);
-		if (error != 0) {
-			printk(KERN_ERR "TILDRV: tiler_get_buf_info() fail\n");
+		tilerdump(__LINE__);
+
+		bytes = copy_from_user((void *)(&buf_info),
+			(const void *)arg, sizeof(struct tiler_buf_info));
+		if (bytes != 0)
 			return retval;
-		}
-		tilerdump(((struct tiler_buf_info *)arg)->offset);
-		tilerdump(bufinfo->num_blocks);
-		for (i = 0; i < bufinfo->num_blocks; i++)
-			tilerdump(bufinfo->blocks[i].ssptr);
-		memcpy((struct tiler_buf_info *)arg,
-					bufinfo, sizeof(struct tiler_buf_info));
+
+		offset = buf_info.offset;
+		error = tiler_get_buf_info(lsthd, &bufinfo, offset);
+		if (error != 0)
+			return retval;
+
+		bytes = copy_to_user((void *)arg,
+			(const void *)bufinfo, sizeof(struct tiler_buf_info));
+		if (bytes != 0)
+			return retval;
+
 		retval = 0;
 		break;
 	case TILIOC_RBUF:
+		tilerdump(__LINE__);
+
 		bufinfo = kmalloc(sizeof(struct tiler_buf_info), GFP_KERNEL);
 		memset(bufinfo, 0x0, sizeof(struct tiler_buf_info));
-		memcpy(bufinfo, (struct tiler_buf_info *)arg,
-						sizeof(struct tiler_buf_info));
-		for (i = 0; i < bufinfo->num_blocks; i++)
-			tilerdump(bufinfo->blocks[i].ssptr);
+		bytes = copy_from_user((void *)bufinfo,
+			(const void *)arg, sizeof(struct tiler_buf_info));
+		if (bytes != 0)
+			return retval;
+
 		bufinfo->offset = id;
 		id += 0x1000;
-		((struct tiler_buf_info *)arg)->offset = bufinfo->offset;
-		error = addnode(lsthd, bufinfo);
-		if (error != 0) {
-			printk(KERN_ERR "TILIOC_RBUF: addnode() fail\n");
+
+		bytes = copy_to_user((void *)arg,
+			(const void *)bufinfo, sizeof(struct tiler_buf_info));
+		if (bytes != 0)
 			return retval;
-		}
+
+		error = addnode(lsthd, bufinfo);
+		if (error != 0)
+			return retval;
 		retval = 0;
 		break;
 	case TILIOC_URBUF:
-		if (0)
-			tilerdump(((struct tiler_buf_info *)arg)->offset);
-		error = tiler_get_buf_info(lsthd, &bufinfo,
-			((struct tiler_buf_info *)arg)->offset);
-		if (error != 0) {
-			printk(KERN_ERR "TILDRV: tiler_get_buf_info() fail\n");
+		tilerdump(__LINE__);
+
+		bytes = copy_from_user((void *)(&buf_info),
+			(const void *)arg, sizeof(struct tiler_buf_info));
+		if (bytes != 0)
 			return retval;
-		}
-		error = removenode(lsthd,
-					((struct tiler_buf_info *)arg)->offset);
-		if (error != 0) {
-			printk(KERN_ERR "TILDRV: removenode() fail: offset ="
-				"%d\n", bufinfo->offset);
+
+		offset = buf_info.offset;
+		error = removenode(lsthd, offset);
+		if (error != 0)
 			return retval;
-		}
-		kfree(bufinfo);
+
 		retval = 0;
 		break;
 	case TILIOC_QUERY_BLK:
+		tilerdump(__LINE__);
+
 		block = (struct tiler_block_info *)arg;
 		error = tiler_find_buf(block->ssptr, block);
 		if (error == 0)
 			retval = 0;
+		break;
+	case TILIOC_TEST:
+		mybufinfo = kmalloc(sizeof(struct tiler_buf_info), GFP_KERNEL);
+		memset(mybufinfo, 0x0, sizeof(struct tiler_buf_info)); 
+		printk(KERN_ERR "TILDRV: mybufinfo->num_blocks = %x\n", mybufinfo->num_blocks);
+		bytes = copy_from_user((void *)mybufinfo, (const void *)arg, sizeof(struct tiler_buf_info));
+		if (bytes != 0) {
+			tilerdump(-1); return retval;
+		}
+		printk(KERN_ERR "TILDRV: mybufinfo->num_blocks = %x\n", mybufinfo->num_blocks);
+		mybufinfo->num_blocks = 0xda7ada7a;
+		printk(KERN_ERR "TILDRV: mybufinfo->num_blocks = %x\n", mybufinfo->num_blocks);
+		bytes = copy_to_user((void *)arg, (const void *)mybufinfo, sizeof(struct tiler_buf_info));
+		if (bytes != 0) {
+			tilerdump(-1); return retval;
+		}
+		kfree(mybufinfo);
+		retval = 0;
 		break;
 	}
 	return retval;
@@ -346,6 +384,7 @@ dmm_mmap(struct file *filp, struct vm_area_struct *vma)
 	int i = 0, j = 0, k = 0, m = 0, p = 0;
 	int bpp = 1;
 
+	tilerdump(__LINE__);
 	ret = tiler_get_buf_info(lsthd, &b, vma->vm_pgoff << PAGE_SHIFT);
 	if (ret != 0) {
 		printk(KERN_ERR "%s::%s():%d: tiler_get_buf_info failed\n",
@@ -417,7 +456,7 @@ dmm_vma_open(struct vm_area_struct *vma)
 void
 dmm_vma_close(struct vm_area_struct *vma)
 {
-	printk(KERN_NOTICE "dmm VMA close.\n");
+	//printk(KERN_NOTICE "dmm VMA close.\n");
 }
 
 static void
@@ -432,6 +471,7 @@ dmm_config(void)
 	unsigned int retCode = 0x0;
 	unsigned int i = 0x0;
 
+	tilerdump(__LINE__);
 	/* clear irq event registers */
 	patEvents.nextConf = NULL;
 	patEvents.irqConf.clrEvents = 1;
@@ -567,6 +607,7 @@ dmm_config(void)
 		       __FILE__, __func__, __LINE__);
 		retCode = 0x2;
 	}
+	tilerdump(__LINE__);
 }
 
 int
@@ -581,6 +622,8 @@ tiler_alloc_buf(enum tiler_fmt fmt,
 	struct dmmTILERContPageAreaT *bufferMappedZone;
 	void *custmPagesPtr = NULL;
 	enum dmmMemoryAccessT contMod;
+
+	tilerdump(__LINE__);
 
 	if (fmt == TILFMT_8BIT)
 		contMod = MODE_8_BIT;
@@ -609,11 +652,11 @@ tiler_alloc_buf(enum tiler_fmt fmt,
 			bufferMappedZone->x1 - bufferMappedZone->x0 + 1;
 		bufferMappedZone->yPageCount =
 			bufferMappedZone->y1 - bufferMappedZone->y0 + 1;
-		printk(KERN_ERR "x(%u-%u=%u>%u) y(%u-%u=%u>%u)\n",
+		/* printk(KERN_ERR "x(%u-%u=%u>%u) y(%u-%u=%u>%u)\n",
 		     bufferMappedZone->x0, bufferMappedZone->x1,
 		     bufferMappedZone->xPageCount, bufferMappedZone->xPageOfst,
 		     bufferMappedZone->y0, bufferMappedZone->y1,
-		     bufferMappedZone->yPageCount, bufferMappedZone->yPageOfst);
+		     bufferMappedZone->yPageCount, bufferMappedZone->yPageOfst); */
 
 		eCode = dmm_pat_phy2virt_mapping(bufferMappedZone,
 						 custmPagesPtr);
@@ -638,6 +681,8 @@ tiler_find_buf(unsigned long sysptr, struct tiler_block_info *blk)
 			&((struct dmmInstanceCtxT *)ctxptr)->dmmTilerCtx;
 
 	struct dmmTILERContPageAreaT *area;
+
+	tilerdump(__LINE__);
 
 	area = dmm_tiler_get_area_from_sysptr(dmmTilerCtx, (void *)sysptr);
 	blk->ptr = NULL;
@@ -695,6 +740,8 @@ tiler_free_buf(unsigned long sysptr)
 
 	struct dmmTILERContPageAreaT *areaToFree;
 
+	tilerdump(__LINE__);
+
 	/* if (aliasViewPtr) {
 		allocedPtr = (void *)((unsigned long)allocedPtr &
 				      DMM_ALIAS_VIEW_CLEAR);
@@ -738,6 +785,8 @@ tiler_get_tiler_address(void *sysPtr,
 
 	unsigned long newX;
 	unsigned long newY;
+
+	tilerdump(__LINE__);
 
 	if (aliasViewPtr)
 		sysPtr = (void *)((unsigned long)sysPtr & DMM_ALIAS_VIEW_CLEAR);
@@ -872,7 +921,7 @@ static int createlist(struct node **listhead)
 		printk(KERN_ERR "%s():%d: ERROR!\n", __func__, __LINE__);
 		return error;
 	} else {
-		printk(KERN_ERR "%s():%d: success!\n", __func__, __LINE__);
+		//printk(KERN_ERR "%s():%d: success!\n", __func__, __LINE__);
 	}
 	return 0;
 }
@@ -917,6 +966,7 @@ removenode(struct node *listhead, int offset)
 		if (node->nextnode->ptr->offset == offset) {
 			tmpnode = node->nextnode;
 			node->nextnode = tmpnode->nextnode;
+			kfree(tmpnode->ptr);
 			kfree(tmpnode);
 			tmpnode = NULL;
 			return 0;

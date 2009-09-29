@@ -22,9 +22,6 @@
 #include "dmm_reg.h"
 MODULE_LICENSE("GPL v2");
 
-#define tilerdump(x) /* printk(KERN_NOTICE "%s::%s():%d: %lx\n",
-			__FILE__, __func__, __LINE__, (unsigned long)x); */
-
 /* ========================================================================== */
 /**
  *  dmm_tiler_alias_orientation_set()
@@ -191,7 +188,7 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 
 	struct dmmPATStatusT areaStat;
 
-	tilerdump(0);
+	tilerdump(__LINE__);
 	if (forcedRefill == 0) {
 		eCode = dmm_pat_refill_area_status_get(
 				dmmPatAreaSel, &areaStat);
@@ -321,7 +318,7 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 			}
 		}
 	}
-	tilerdump(0);
+	tilerdump(__LINE__);
 	return eCode;
 }
 
