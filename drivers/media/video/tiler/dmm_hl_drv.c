@@ -822,7 +822,7 @@ struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
 	tilerdump(Y);
 	tilerdump(DMM_GET_X_INVERTED(sysPtr));
 	tilerdump(DMM_GET_Y_INVERTED(sysPtr));
-	//printk(KERN_ERR " ? %p => x=%ld,y=%ld\n", sysPtr, X, Y);
+	/* printk(KERN_ERR " ? %p => x=%ld,y=%ld\n", sysPtr, X, Y); */
 	found = search_2d_area(dmmTilerCtx, X, Y, DMM_GET_X_INVERTED(sysPtr),
 						DMM_GET_Y_INVERTED(sysPtr));
 	if (found) {

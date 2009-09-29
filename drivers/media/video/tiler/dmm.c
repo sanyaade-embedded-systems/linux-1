@@ -201,12 +201,10 @@ dmm_release(struct inode *ip, struct file *filp)
 }
 
 static int
-dmm_ioctl(struct inode *ip, struct file *filp,
-	  unsigned int cmd, unsigned long arg)
+dmm_ioctl(struct inode *ip, struct file *filp, unsigned int cmd,
+		unsigned long arg)
 {
-	struct tiler_block_info *block = NULL;
 	struct tiler_buf_info *bufinfo = NULL;
-	/* struct dmmInstanceCtxT *ctxptr = NULL; */
 	void *ptr = NULL;
 	int retval = -1;
 	int error = -1;
@@ -217,49 +215,58 @@ dmm_ioctl(struct inode *ip, struct file *filp,
 	int offset = 0x0;
 	unsigned long ssptr = 0x0;
 
-	struct tiler_buf_info *mybufinfo = NULL;
 	struct tiler_buf_info buf_info = {0};
+	struct tiler_block_info block_info = {0};
 
 	switch (cmd) {
 	case TILIOC_OPEN:
 		tilerdump(__LINE__);
-
 		retval = 0;
 		break;
 	case TILIOC_CLOSE:
 		tilerdump(__LINE__);
-
 		retval = 0;
 		break;
 	case TILIOC_GBUF:
 		tilerdump(__LINE__);
 
-		block = (struct tiler_block_info *)arg;
-		if (block->fmt == TILFMT_PAGE) {
-			error = tiler_alloc_buf(block->fmt,
-						block->dim.len,
+		bytes = copy_from_user((void *)(&block_info),
+			(const void *)arg, sizeof(struct tiler_block_info));
+		if (bytes != 0)
+			return retval;
+
+		if (block_info.fmt == TILFMT_PAGE) {
+			error = tiler_alloc_buf(block_info.fmt,
+						block_info.dim.len,
 						1,
 						&ptr);
 		} else {
-			error = tiler_alloc_buf(block->fmt,
-						block->dim.area.width,
-						block->dim.area.height,
+			error = tiler_alloc_buf(block_info.fmt,
+						block_info.dim.area.width,
+						block_info.dim.area.height,
 						&ptr);
 		}
-		if (error == 0) {
-			retval = 0;
-			block->ssptr = (unsigned long)ptr;
-		}
-		else {
-			printk(KERN_ERR "%s::%s():%d\n",
-			       __FILE__, __func__, __LINE__);
-		}
+
+		if (error != 0)
+			return retval;
+
+		block_info.ssptr = (unsigned long)ptr;
+		bytes = copy_to_user((void *)arg, (const void *)(&block_info),
+					sizeof(struct tiler_block_info));
+		if (bytes != 0)
+			return retval;
+
+		retval = 0;
 		break;
 	case TILIOC_FBUF:
 		tilerdump(__LINE__);
 
-		block = (struct tiler_block_info *)arg;
-		error = tiler_free_buf(block->ssptr);
+		bytes = copy_from_user((void *)(&block_info),
+			(const void *)arg, sizeof(struct tiler_block_info));
+		if (bytes != 0)
+			return retval;
+
+		error = tiler_free_buf(block_info.ssptr);
 		if (error == 0)
 			retval = 0;
 		break;
@@ -349,28 +356,14 @@ dmm_ioctl(struct inode *ip, struct file *filp,
 	case TILIOC_QUERY_BLK:
 		tilerdump(__LINE__);
 
-		block = (struct tiler_block_info *)arg;
-		error = tiler_find_buf(block->ssptr, block);
+		bytes = copy_from_user((void *)(&block_info),
+			(const void *)arg, sizeof(struct tiler_block_info));
+		if (bytes != 0)
+			return retval;
+
+		error = tiler_find_buf(block_info.ssptr, &block_info);
 		if (error == 0)
 			retval = 0;
-		break;
-	case TILIOC_TEST:
-		mybufinfo = kmalloc(sizeof(struct tiler_buf_info), GFP_KERNEL);
-		memset(mybufinfo, 0x0, sizeof(struct tiler_buf_info)); 
-		printk(KERN_ERR "TILDRV: mybufinfo->num_blocks = %x\n", mybufinfo->num_blocks);
-		bytes = copy_from_user((void *)mybufinfo, (const void *)arg, sizeof(struct tiler_buf_info));
-		if (bytes != 0) {
-			tilerdump(-1); return retval;
-		}
-		printk(KERN_ERR "TILDRV: mybufinfo->num_blocks = %x\n", mybufinfo->num_blocks);
-		mybufinfo->num_blocks = 0xda7ada7a;
-		printk(KERN_ERR "TILDRV: mybufinfo->num_blocks = %x\n", mybufinfo->num_blocks);
-		bytes = copy_to_user((void *)arg, (const void *)mybufinfo, sizeof(struct tiler_buf_info));
-		if (bytes != 0) {
-			tilerdump(-1); return retval;
-		}
-		kfree(mybufinfo);
-		retval = 0;
 		break;
 	}
 	return retval;
@@ -456,7 +449,7 @@ dmm_vma_open(struct vm_area_struct *vma)
 void
 dmm_vma_close(struct vm_area_struct *vma)
 {
-	//printk(KERN_NOTICE "dmm VMA close.\n");
+	/* printk(KERN_NOTICE "dmm VMA close.\n"); */
 }
 
 static void
@@ -653,10 +646,10 @@ tiler_alloc_buf(enum tiler_fmt fmt,
 		bufferMappedZone->yPageCount =
 			bufferMappedZone->y1 - bufferMappedZone->y0 + 1;
 		/* printk(KERN_ERR "x(%u-%u=%u>%u) y(%u-%u=%u>%u)\n",
-		     bufferMappedZone->x0, bufferMappedZone->x1,
-		     bufferMappedZone->xPageCount, bufferMappedZone->xPageOfst,
-		     bufferMappedZone->y0, bufferMappedZone->y1,
-		     bufferMappedZone->yPageCount, bufferMappedZone->yPageOfst); */
+		  bufferMappedZone->x0, bufferMappedZone->x1,
+		  bufferMappedZone->xPageCount, bufferMappedZone->xPageOfst,
+		  bufferMappedZone->y0, bufferMappedZone->y1,
+		  bufferMappedZone->yPageCount, bufferMappedZone->yPageOfst); */
 
 		eCode = dmm_pat_phy2virt_mapping(bufferMappedZone,
 						 custmPagesPtr);
@@ -921,7 +914,7 @@ static int createlist(struct node **listhead)
 		printk(KERN_ERR "%s():%d: ERROR!\n", __func__, __LINE__);
 		return error;
 	} else {
-		//printk(KERN_ERR "%s():%d: success!\n", __func__, __LINE__);
+		/* printk(KERN_ERR "%s():%d: success!\n", __func__, __LINE__);*/
 	}
 	return 0;
 }
