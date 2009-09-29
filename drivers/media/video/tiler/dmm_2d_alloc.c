@@ -58,7 +58,7 @@
 /*--------data declarations -----------------------------------*/
 /*--------function prototypes ---------------------------------*/
 #define DMM_ASSERT_BREAK tilerdump(__LINE__); while (1);
-#define DMM_ENTER_CRITICAL_SECTION
+#define DMM_ENTER_CRITICAL_SECTION()
 #define DMM_EXIT_CRITICAL_SETCTION
 
 /* ========================================================================== */
@@ -1540,24 +1540,24 @@ alloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 	dmmTilerCtx->tmpArSelect.ttlExpndAr.x1 = dmmTilerCtx->contSizeX - 1;
 	dmmTilerCtx->tmpArSelect.ttlExpndAr.y1 = dmmTilerCtx->contSizeY - 1;
 
-	DMM_ENTER_CRITICAL_SECTION
+	DMM_ENTER_CRITICAL_SECTION();
 	tilerdump(__LINE__);
 	if (usedIter != NULL) {
 		int fit = 0;
 		while (usedIter != NULL) {
-			//tilerdump(__LINE__);
+			tilerdump(__LINE__);
 			fit |= area_fit_to_top(areaReq,
 				&(usedIter->pgAr), dmmTilerCtx);
-			//tilerdump(__LINE__);
+			tilerdump(__LINE__);
 			fit |= area_fit_to_right(areaReq,
 				&(usedIter->pgAr), dmmTilerCtx);
-			//tilerdump(__LINE__);
+			tilerdump(__LINE__);
 			fit |= area_fit_to_bottom(areaReq,
 				&(usedIter->pgAr), dmmTilerCtx);
-			//tilerdump(__LINE__);
+			tilerdump(__LINE__);
 			fit |= area_fit_to_left(areaReq,
 				&(usedIter->pgAr), dmmTilerCtx);
-			//tilerdump(__LINE__);
+			tilerdump(__LINE__);
 			usedIter = usedIter->pgArNext;
 		}
 
@@ -1642,7 +1642,7 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 	struct dmmTILERContPageLstT *usedIter;
 	struct dmmTILERContPageLstT *usedPrev;
 
-	DMM_ENTER_CRITICAL_SECTION
+	DMM_ENTER_CRITICAL_SECTION();
 
 	delItm = NULL;
 	usedIter = dmmTilerCtx->usdArList;
