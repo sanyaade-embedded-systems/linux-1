@@ -620,7 +620,7 @@ static struct clk dpll4_m2x2_ck = {
  * CM_96K_(F)CLK.
  */
 
-#ifdef CONFIG_ARCH_3630
+#ifdef CONFIG_ARCH_OMAP3630
 static struct clk omap_192m_alwon_ck = {
 	.name		= "omap_192m_alwon_ck",
 	.ops		= &clkops_null,
@@ -1210,7 +1210,7 @@ static const struct clksel_rate sgx_core_rates[] = {
 	{ .div = 3, .val = 0, .flags = RATE_IN_343X | DEFAULT_RATE },
 	{ .div = 4, .val = 1, .flags = RATE_IN_343X },
 	{ .div = 6, .val = 2, .flags = RATE_IN_343X },
-#ifdef CONFIG_ARCH_3630
+#ifdef CONFIG_ARCH_OMAP3630
 	{ .div = 2, .val = 5, .flags = RATE_IN_343X },
 #endif
 	{ .div = 0 },
@@ -1221,14 +1221,14 @@ static const struct clksel_rate sgx_96m_rates[] = {
 	{ .div = 0 },
 };
 
-#ifdef CONFIG_ARCH_3630
+#ifdef CONFIG_ARCH_OMAP3630
 static const struct clksel_rate sgx_192m_rates[] = {
 	{ .div = 1,  .val = 4, .flags = RATE_IN_343X | DEFAULT_RATE },
 	{ .div = 0 },
 };
 #endif
 
-#ifdef CONFIG_ARCH_3630
+#ifdef CONFIG_ARCH_OMAP3630
 static const struct clksel_rate sgx_corex2_rates[] = {
 	{ .div = 3, .val = 6, .flags = RATE_IN_343X | DEFAULT_RATE },
 	{ .div = 5, .val = 7, .flags = RATE_IN_343X },
@@ -1238,7 +1238,7 @@ static const struct clksel_rate sgx_corex2_rates[] = {
 static const struct clksel sgx_clksel[] = {
 	{ .parent = &core_ck,	 .rates = sgx_core_rates },
 	{ .parent = &cm_96m_fck, .rates = sgx_96m_rates },
-#ifdef CONFIG_ARCH_3630
+#ifdef CONFIG_ARCH_OMAP3630
 	{ .parent = &omap_192m_alwon_ck, .rates = sgx_192m_rates },
 	{ .parent = &corex2_fck, .rates = sgx_corex2_rates },
 #endif
