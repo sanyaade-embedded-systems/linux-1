@@ -558,8 +558,21 @@ static void omap_mcbsp_init(void)
 	omap_cfg_reg(Y4_4430_McBSP1_FSX);
 }
 
+static void omap_abe_init(void)
+{
+	/* mcpdm */
+	omap_cfg_reg(AG25_4430_ABE_PDM_UL_DATA);
+	omap_cfg_reg(AF25_4430_ABE_PDM_DL_DATA);
+	omap_cfg_reg(AE25_4430_ABE_PDM_FRAME);
+	omap_cfg_reg(AF26_4430_ABE_PDM_LB_CLK);
+	omap_cfg_reg(AH26_4430_ABE_PDM_CLKS);
+}
+
 static void omap_phoenix_init(void)
 {
+	/* twl6030 audio power-on */
+	omap_cfg_reg(AA27_4430_GPIO_127);
+
 	omap_cfg_reg(PAD1_4430_SYS_NIRQ1);
 	omap_cfg_reg(PAD0_4430_SYS_NIRQ2);
 }
@@ -595,6 +608,7 @@ static void __init omap_4430sdp_init(void)
 	usb_host_and_tll_init(sdp_usbhost_port_data,
 			ARRAY_SIZE(sdp_usbhost_port_data));
 	usb_ehci_init(EHCI_HCD_OMAP_MODE_PHY, true, true, 57, 61);
+	omap_abe_init();
 
 }
 
