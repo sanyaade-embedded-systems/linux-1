@@ -32,7 +32,7 @@
 #define S166M   166000000
 #define S200M   200000000
 
-#ifndef CONFIG_ARCH_3630
+#ifndef CONFIG_ARCH_OMAP3630
 static struct omap_opp omap3_mpu_rate_table[] = {
 	{0, 0, 0},
 	/*OPP1*/
