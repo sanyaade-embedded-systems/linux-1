@@ -181,7 +181,7 @@ cpu_v7_name:
  *	- cache type register is implemented
  */
 __v7_setup:
-#ifdef CONFIG_SMP
+#if 0
 	mrc	p15, 0, r0, c1, c0, 1		@ Enable SMP/nAMP mode and
 	orr	r0, r0, #(1 << 6) | (1 << 0)	@ TLB ops broadcasting
 	mcr	p15, 0, r0, c1, c0, 1

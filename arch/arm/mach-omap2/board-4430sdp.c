@@ -28,6 +28,7 @@
 #include <mach/control.h>
 #include <mach/timer-gp.h>
 #include <asm/hardware/gic.h>
+#include <asm/hardware/cache-l2x0.h>
 
 static struct platform_device sdp4430_lcd_device = {
 	.name		= "sdp4430_lcd",
@@ -66,7 +67,32 @@ static void __init omap_4430sdp_init_irq(void)
 	gic_init_irq();
 	omap_gpio_init();
 }
+#ifdef CONFIG_CACHE_L2X0
+static int __init omap_l2_cache_init(void)
+{
+	void __iomem *l2cache_base = IO_ADDRESS(OMAP44XX_L2CACHE_BASE);
 
+	printk(KERN_INFO "L2X0_CTRL = %x \n", readl(l2cache_base + L2X0_CTRL));
+
+	/* Enable L2 Cache using secure api
+	 * Save/Restore relevant registers
+	 */
+	__asm__ __volatile__(
+		"stmfd r13!, {r0-r12, r14}\n"
+		"ldr r12, =0x102\n"
+		"dsb\n"
+		"smc\n"
+		"ldmfd r13!, {r0-r12, r14}");
+
+	/* 36KB way size, 16-way associativity,
+	 * parity disabled
+	 */
+	l2x0_init(l2cache_base, 0x00050000, 0xc0000fff);
+
+	return 0;
+}
+early_initcall(omap_l2_cache_init);
+#endif
 
 static void __init omap_4430sdp_init(void)
 {

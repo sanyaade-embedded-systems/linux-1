@@ -17,10 +17,10 @@
  */
 #include <linux/init.h>
 #include <linux/device.h>
-#include <linux/jiffies.h>
 #include <linux/smp.h>
 #include <linux/io.h>
 
+#include <asm/cacheflush.h>
 #include <asm/localtimer.h>
 #include <asm/smp_scu.h>
 #include <mach/hardware.h>
@@ -65,8 +65,6 @@ void __cpuinit platform_secondary_init(unsigned int cpu)
 
 int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
-	unsigned long timeout;
-
 	/*
 	 * Set synchronisation state between this boot processor
 	 * and the secondary one
@@ -74,17 +72,16 @@ int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 	spin_lock(&boot_lock);
 
 	/*
-	 * Update the AuxCoreBoot1 with boot state for secondary core.
+	 * Update the AuxCoreBoot0 with boot state for secondary core.
 	 * omap_secondary_startup() routine will hold the secondary core till
 	 * the AuxCoreBoot1 register is updated with cpu state
 	 * A barrier is added to ensure that write buffer is drained
 	 */
-	__raw_writel(cpu, OMAP4_AUXCOREBOOT_REG1);
+	flush_cache_all();
+	outer_clean_range(__pa(&secondary_data), __pa(&secondary_data + 1));
+	omap_modify_auxcoreboot0(0x200, 0x0);
+	flush_cache_all();
 	smp_wmb();
-
-	timeout = jiffies + (1 * HZ);
-	while (time_before(jiffies, timeout))
-		;
 
 	/*
 	 * Now the secondary core is starting up let it run its
@@ -99,17 +96,17 @@ static void __init wakeup_secondary(void)
 {
 	/*
 	 * Write the address of secondary startup routine into the
-	 * AuxCoreBoot0 where ROM code will jump and start executing
+	 * AuxCoreBoot1 where ROM code will jump and start executing
 	 * on secondary core once out of WFE
 	 * A barrier is added to ensure that write buffer is drained
 	 */
-	__raw_writel(virt_to_phys(omap_secondary_startup),	   \
-					OMAP4_AUXCOREBOOT_REG0);
+	omap_auxcoreboot_addr(virt_to_phys(omap_secondary_startup));
 	smp_wmb();
 
 	/*
 	 * Send a 'sev' to wake the secondary core from WFE.
 	 */
+	dsb();
 	set_event();
 	mb();
 }

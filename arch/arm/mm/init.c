@@ -25,6 +25,7 @@
 
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
+#include <asm/hardware/cache-l2x0.h>
 
 #include "mm.h"
 
@@ -585,6 +586,10 @@ void free_initmem(void)
 		totalram_pages += free_area(__phys_to_pfn(__pa(__init_begin)),
 					    __phys_to_pfn(__pa(__init_end)),
 					    "init");
+#ifdef CONFIG_OMAP_L2_EVENT_DEBUG
+	printk(KERN_INFO "$L2 eviction = %d \n", pl310_read_event_counter(1));
+	printk(KERN_INFO "$L2 Data Hit = %d \n", pl310_read_event_counter(2));
+#endif
 }
 
 #ifdef CONFIG_BLK_DEV_INITRD

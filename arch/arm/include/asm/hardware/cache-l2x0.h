@@ -53,6 +53,7 @@
 
 #ifndef __ASSEMBLY__
 extern void __init l2x0_init(void __iomem *base, __u32 aux_val, __u32 aux_mask);
+extern __u32 pl310_read_event_counter(__u32 event_counter);
 #endif
 
 #endif
