@@ -31,7 +31,6 @@
 #include <linux/io.h>
 
 #include <mach/cppi41.h>
-#include <mach/hardware.h>
 #include <mach/usb.h>
 #include <mach/da8xx.h>
 
@@ -86,62 +85,6 @@ const struct usb_cppi41_info usb_cppi41_info = {
 };
 
 #endif /* CONFIG_USB_TI_CPPI41_DMA */
-
-
-/*
- * REVISIT (PM): we should be able to keep the PHY in low power mode most
- * of the time (24 MHz oscillator and PLL off, etc.) by setting POWER.D0
- * and, when in host mode, autosuspending idle root ports... PHY_PLLON
- * (overriding SUSPENDM?) then likely needs to stay off.
- */
-
-static inline void phy_on(void)
-{
-	u32 cfgchip2;
-
-	/*
-	 * Start the on-chip PHY and its PLL.
-	 */
-	cfgchip2 = __raw_readl(CFGCHIP2);
-
-	/* Check whether USB0 PHY is already powered on */
-	if (cfgchip2 & CFGCHIP2_PHY_PLLON)
-		return;
-
-	cfgchip2 &= ~(CFGCHIP2_RESET | CFGCHIP2_PHYPWRDN | CFGCHIP2_OTGPWRDN |
-			CFGCHIP2_OTGMODE | CFGCHIP2_REFFREQ);
-	cfgchip2 |= CFGCHIP2_SESENDEN | CFGCHIP2_VBDTCTEN | CFGCHIP2_PHY_PLLON |
-			CFGCHIP2_REFFREQ_24MHZ;
-
-	__raw_writel(cfgchip2, CFGCHIP2);
-
-	pr_info("Waiting for USB PHY clock good...\n");
-	while (!(__raw_readl(CFGCHIP2) & CFGCHIP2_PHYCLKGD))
-		cpu_relax();
-}
-
-static inline void phy_off(void)
-{
-	u32 cfgchip2;
-
-	/*
-	 * Power down the on-chip PHY.
-	 */
-	cfgchip2 = __raw_readl(CFGCHIP2);
-
-	/* Ensure that usb1.1 interface clk is not being sourced from usb0
-	 * interface.  If so do not power down usb0 PHY
-	 */
-	if ((cfgchip2 & CFGCHIP2_USB1SUSPENDM) &&
-		!(cfgchip2 & CFGCHIP2_USB1PHYCLKMUX)) {
-		printk ( KERN_WARNING "USB1 interface active - Cannot Power down USB0 PHY\n");
-		return;
-	}
-
-	cfgchip2 &= ~CFGCHIP2_PHY_PLLON;
-	cfgchip2 |= CFGCHIP2_PHYPWRDN | CFGCHIP2_OTGPWRDN;
-	__raw_writel(cfgchip2, CFGCHIP2);
-}
 
 /*
  * Because we don't set CTRL.UINT, it's "important" to:
@@ -446,36 +389,17 @@ static irqreturn_t da830_interrupt(int irq, void *hci)
 
 int musb_platform_set_mode(struct musb *musb, u8 musb_mode)
 {
-	u32 cfgchip2 = __raw_readl(CFGCHIP2);
+	struct device	*dev = musb->controller;
+	struct musb_hdrc_platform_data	*plat = dev->platform_data;
 
-	cfgchip2 &= ~CFGCHIP2_OTGMODE;
-	switch (musb_mode) {
-#ifdef	CONFIG_USB_MUSB_HDRC_HCD
-	case MUSB_HOST:		/* Force VBUS valid, ID = 0 */
-		cfgchip2 |= CFGCHIP2_FORCE_HOST;
-		break;
-#endif
-#ifdef	CONFIG_USB_GADGET_MUSB_HDRC
-	case MUSB_PERIPHERAL:	/* Force VBUS valid, ID = 1 */
-		cfgchip2 |= CFGCHIP2_FORCE_DEVICE;
-		break;
-#endif
-#ifdef	CONFIG_USB_MUSB_OTG
-	case MUSB_OTG:		/* Don't override the VBUS/ID comparators */
-		cfgchip2 |= CFGCHIP2_NO_OVERRIDE;
-		break;
-#endif
-	default:
-		DBG(2, "Trying to set unsupported mode %u\n", musb_mode);
-	}
-
-	__raw_writel(cfgchip2, CFGCHIP2);
-	return 0;
+	return plat->phy_config(dev, musb_mode, 1);
 }
 
 int __init musb_platform_init(struct musb *musb)
 {
 	void __iomem *reg_base = musb->ctrl_base;
+	struct device	*dev = musb->controller;
+	struct musb_hdrc_platform_data	*plat = dev->platform_data;
 	u32 rev;
 
 	musb->mregs += USB_MENTOR_CORE_OFFSET;
@@ -507,14 +431,7 @@ int __init musb_platform_init(struct musb *musb)
 	musb->xceiv = otg_get_transceiver();
 
 	/* Start the on-chip PHY and its PLL. */
-	phy_on();
-
-	if (is_otg_enabled(musb))
-		musb_platform_set_mode(musb, MUSB_OTG);
-	else if (is_host_enabled(musb))
-		musb_platform_set_mode(musb, MUSB_HOST);
-	else
-		musb_platform_set_mode(musb, MUSB_PERIPHERAL);
+	plat->phy_config(dev, musb->board_mode, 1);
 
 	msleep(5);
 
@@ -530,6 +447,9 @@ int __init musb_platform_init(struct musb *musb)
 
 int musb_platform_exit(struct musb *musb)
 {
+	struct device	*dev = musb->controller;
+	struct musb_hdrc_platform_data	*plat = dev->platform_data;
+
 	if (is_host_enabled(musb))
 		del_timer_sync(&otg_workaround);
 
@@ -558,7 +478,7 @@ int musb_platform_exit(struct musb *musb)
 		DBG(1, "VBUS off timeout (devctl %02x)\n", devctl);
 	}
 done:
-	phy_off();
+	plat->phy_config(dev, musb->board_mode, 0);
 	otg_put_transceiver (musb->xceiv);
 	usb_nop_xceiv_unregister();
 
