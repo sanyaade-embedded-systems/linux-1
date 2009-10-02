@@ -54,31 +54,9 @@
 
 #include <media/v4l2-int-device.h>
 
-#if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
-#include <media/mt9p012.h>
-extern struct mt9p012_platform_data sdp3430_mt9p012_platform_data;
-#endif
-
-#if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
-#include <media/ov3640.h>
-extern struct ov3640_platform_data sdp3430_ov3640_platform_data;
-#endif
-
-#ifdef CONFIG_VIDEO_DW9710
-#include <media/dw9710.h>
-extern struct dw9710_platform_data sdp3430_dw9710_platform_data;
-#endif
-
-#if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
-extern struct tps61059_platform_data sdp3430_tps61059_data;
-
-static struct platform_device sdp3430_tps61059_device = {
-	.name		= "tps61059",
-	.id		= -1,
-	.dev		= {
-		.platform_data	= &sdp3430_tps61059_data,
-	},
-};
+#if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
+#include <media/imx046.h>
+extern struct imx046_platform_data sdp3630_imx046_platform_data;
 #endif
 
 #if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
@@ -86,7 +64,7 @@ static struct platform_device sdp3430_tps61059_device = {
 extern struct imx046_platform_data sdp3630_imx046_platform_data;
 #endif
 
-extern void sdp3430_cam_init(void);
+extern void sdp3630_cam_init(void);
 
 #ifdef CONFIG_VIDEO_LV8093
 #include <media/lv8093.h>
@@ -388,41 +366,30 @@ static int lcd_enabled;
 static int dvi_enabled;
 
 
-static struct platform_device sdp3430_camkit_device = {
-	.name		= "sdp3430_camkit",
+static struct platform_device sdp3630_camkit_device = {
+	.name		= "sdp3630_camkit",
 	.id		= -1,
 };
 
-static struct regulator_consumer_supply sdp3430_vaux2_supplies[] = {
+static struct regulator_consumer_supply sdp3630_vaux2_supplies[] = {
 	{
 		.supply		= "vaux2_1",
-		.dev		= &sdp3430_camkit_device.dev,
-	},
-	{
-		.supply		= "vaux2_2",
-		.dev		= &sdp3430_camkit_device.dev,
-	},
-	{
-		.supply		= "vaux2_3",
-		.dev		= &sdp3430_camkit_device.dev,
+		.dev		= &sdp3630_camkit_device.dev,
 	},
 };
 
-static struct regulator_consumer_supply sdp3430_vaux4_supplies[] = {
+static struct regulator_consumer_supply sdp3630_vaux4_supplies[] = {
 	{
 		.supply		= "vaux4_1",
-		.dev		= &sdp3430_camkit_device.dev,
+		.dev		= &sdp3630_camkit_device.dev,
 	},
 };
 
 
 
 static struct platform_device *sdp3430_devices[] __initdata = {
-	&sdp3430_camkit_device,
+	&sdp3630_camkit_device,
 	&sdp3630_dss_device,
-#if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
-	&sdp3430_tps61059_device,
-#endif
 };
 
 static struct omap_lcd_config sdp3430_lcd_config __initdata = {
@@ -649,8 +616,8 @@ static struct regulator_init_data sdp3430_vaux2 = {
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies	= ARRAY_SIZE(sdp3430_vaux2_supplies),
-	.consumer_supplies	= sdp3430_vaux2_supplies,
+	.num_consumer_supplies	= ARRAY_SIZE(sdp3630_vaux2_supplies),
+	.consumer_supplies	= sdp3630_vaux2_supplies,
 };
 
 /* VAUX3 for LCD board */
@@ -677,8 +644,8 @@ static struct regulator_init_data sdp3430_vaux4 = {
 		.valid_ops_mask		= REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies	= ARRAY_SIZE(sdp3430_vaux4_supplies),
-	.consumer_supplies	= sdp3430_vaux4_supplies,
+	.num_consumer_supplies	= ARRAY_SIZE(sdp3630_vaux4_supplies),
+	.consumer_supplies	= sdp3630_vaux4_supplies,
 };
 
 /* VMMC1 for OMAP VDD_MMC1 (i/o) and MMC1 card */
@@ -789,22 +756,10 @@ static struct i2c_board_info __initdata sdp3430_i2c_boardinfo[] = {
 };
 /*
 static struct i2c_board_info __initdata sdp3430_i2c_boardinfo_2[] = {
-#if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
+#if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
 	{
-		I2C_BOARD_INFO("mt9p012", MT9P012_I2C_ADDR),
-		.platform_data = &sdp3430_mt9p012_platform_data,
-	},
-#ifdef CONFIG_VIDEO_DW9710
-	{
-		I2C_BOARD_INFO("dw9710",  DW9710_AF_I2C_ADDR),
-		.platform_data = &sdp3430_dw9710_platform_data,
-	},
-#endif
-#endif
-#if defined(CONFIG_VIDEO_OV3640) || defined(CONFIG_VIDEO_OV3640_MODULE)
-	{
-		I2C_BOARD_INFO("ov3640", OV3640_I2C_ADDR),
-		.platform_data = &sdp3430_ov3640_platform_data,
+		I2C_BOARD_INFO("imx046", IMX046_I2C_ADDR),
+		.platform_data = &sdp3630_imx046_platform_data,
 	},
 #endif
 };
@@ -924,7 +879,7 @@ static void __init omap_3430sdp_init(void)
 	board_smc91x_init();
 	sdp_flash_init();
 	usb_ehci_init(EHCI_HCD_OMAP_MODE_PHY, true, true, 57, 61);
-	sdp3430_cam_init();
+	sdp3630_cam_init();
 	sdp3630_lcd_tv_panel_init();
 	enable_board_wakeup_source();
 }
