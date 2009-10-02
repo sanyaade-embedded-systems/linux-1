@@ -923,6 +923,7 @@ static int da8xx_usb_phy_config(struct device *dev, u8 mode, int is_on)
 				CFGCHIP2_PHY_PLLON | CFGCHIP2_REFFREQ_24MHZ;
 		switch (mode) {
 		case MUSB_OTG:
+		case MUSB_DUAL_ROLE:
 			cfgchip2 |= CFGCHIP2_NO_OVERRIDE;
 			break;
 		case MUSB_HOST:

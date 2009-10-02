@@ -778,6 +778,8 @@ static struct musb_hdrc_platform_data usb_evm_data[] = {
 	{
 #ifdef CONFIG_USB_MUSB_OTG
 		.mode = MUSB_OTG,
+#elif defined(CONFIG_USB_MUSB_DUAL_ROLE)
+		.mode = MUSB_DUAL_ROLE,
 #elif defined(CONFIG_USB_MUSB_PERIPHERAL)
 		.mode =  MUSB_PERIPHERAL,
 #elif defined(CONFIG_USB_MUSB_HOST)
