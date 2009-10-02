@@ -154,6 +154,8 @@ static void otg_timer(unsigned long _musb)
 	 */
 	devctl = musb_readb(mregs, MUSB_DEVCTL);
 	DBG(7, "Poll devctl %02x (%s)\n", devctl, otg_state_string(musb));
+	if (musb->is_active)
+		return;
 
 	spin_lock_irqsave(&musb->lock, flags);
 	switch (musb->xceiv->state) {
@@ -206,7 +208,19 @@ static void otg_timer(unsigned long _musb)
 		if (devctl & MUSB_DEVCTL_BDEVICE)
 			mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
 		else
-			musb->xceiv->state = OTG_STATE_A_IDLE;
+			if (!is_dr_enabled(musb))
+				musb->xceiv->state = OTG_STATE_A_IDLE;
+			else
+				mod_timer(&otg_workaround, jiffies +
+						POLL_SECONDS * HZ);
+		break;
+	case OTG_STATE_A_WAIT_VRISE:
+		 if (is_dr_enabled(musb)) {
+			devctl &= ~MUSB_DEVCTL_SESSION;
+			musb_writeb(mregs, MUSB_DEVCTL, devctl);
+			musb->xceiv->state = OTG_STATE_B_IDLE;
+			mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
+		}
 		break;
 	default:
 		break;
@@ -218,7 +232,7 @@ void musb_platform_try_idle(struct musb *musb, unsigned long timeout)
 {
 	static unsigned long last_timer;
 
-	if (!is_otg_enabled(musb))
+	if (!(is_otg_enabled(musb) || is_dr_enabled(musb)))
 		return;
 
 	if (timeout == 0)
@@ -333,12 +347,12 @@ static irqreturn_t da830_interrupt(int irq, void *hci)
 			mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
 			WARNING("VBUS error workaround (delay coming)\n");
 		} else if (is_host_enabled(musb) && drvvbus) {
-			musb->is_active = 1;
 			MUSB_HST_MODE(musb);
 			musb->xceiv->default_a = 1;
 			musb->xceiv->state = OTG_STATE_A_WAIT_VRISE;
 			portstate(musb->port1_status |= USB_PORT_STAT_POWER);
-			del_timer(&otg_workaround);
+			if (!is_dr_enabled(musb))
+				del_timer(&otg_workaround);
 		} else {
 			musb->is_active = 0;
 			MUSB_DEV_MODE(musb);
