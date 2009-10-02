@@ -1739,7 +1739,6 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 		spin_lock_irqsave(&musb->lock, flags);
 
 		otg_set_peripheral(musb->xceiv, &musb->g);
-		musb->is_active = 1;
 
 		/* FIXME this ignores the softconnect flag.  Drivers are
 		 * allowed hold the peripheral inactive until for example
@@ -1747,7 +1746,7 @@ int usb_gadget_register_driver(struct usb_gadget_driver *driver)
 		 * hosts only see fully functional devices.
 		 */
 
-		if (!is_otg_enabled(musb))
+		if (!(is_otg_enabled(musb) || is_dr_enabled(musb)))
 			musb_start(musb);
 
 		otg_set_peripheral(musb->xceiv, &musb->g);

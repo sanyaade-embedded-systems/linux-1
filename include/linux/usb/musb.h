@@ -17,6 +17,9 @@ enum musb_mode {
 	MUSB_UNDEFINED = 0,
 	MUSB_HOST,		/* A or Mini-A connector */
 	MUSB_PERIPHERAL,	/* B or Mini-B connector */
+	MUSB_DUAL_ROLE,		/* Either A, B connector or Mini-AB connector.
+				 * Does not support OTG.
+				 */
 	MUSB_OTG		/* Mini-AB connector */
 };
 
