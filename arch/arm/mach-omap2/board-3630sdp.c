@@ -426,11 +426,8 @@ static struct twl4030_bci_platform_data sdp3430_bci_data = {
 static struct twl4030_hsmmc_info mmc[] = {
 	{
 		.mmc		= 1,
-		/* 8 bits (default) requires S6.3 == ON,
-		 * so the SIM card isn't used; else 4 bits.
-		 */
-		.wires		= 8,
-		.gpio_wp	= 4,
+		.wires          = 4, /* 3630 supports 4bit mode only */
+		.gpio_wp        = -EINVAL,
 	},
 	{
 		.mmc		= 2,
