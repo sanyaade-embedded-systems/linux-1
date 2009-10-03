@@ -154,7 +154,7 @@ d 0x4E000100=0x80301000
 #load up the u-boot,kernel and file system
 [VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]l 0x80300000 -bin <uImage PATH>
 [VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]l 0x81600000 -bin <ramfs PATH>
-[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]l 0x80e80000 -bin <u-boot.bin PATH>
+[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]l 0x88e80000 -bin <u-boot.bin PATH>
 
 
 # PRCM setup
@@ -312,8 +312,8 @@ d 0x4a20c08c=0xffffffff
 d 0x4a21208c=0xffffffff
 d 0x4a22808c=0xffffffff
 
-[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]r r15=0x80e80000
-[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_2]r r15=0x80e80000
+[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_1]r r15=0x88e80000
+[VPOM4430::SDP::OMAP4430::CPU_SS::Cortex_2]r r15=0x88e80000
 g
 
 ------------------------- [End of Native Apps.script]---------------------------
