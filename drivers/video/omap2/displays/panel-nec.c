@@ -64,6 +64,7 @@ static int nec_panel_probe(struct omap_dss_device *dssdev)
 	dssdev->panel.config = OMAP_DSS_LCD_TFT | OMAP_DSS_LCD_IVS |
 				OMAP_DSS_LCD_IHS;
 	dssdev->panel.timings = nec_panel_timings;
+	dssdev->panel.recommended_bpp = 16;
 
 	return 0;
 }
