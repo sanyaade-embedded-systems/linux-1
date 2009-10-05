@@ -81,13 +81,174 @@ static struct platform_device sdp3430_tps61059_device = {
 
 extern void sdp3430_cam_init(void);
 
-#define SDP3430_TS_GPIO_IRQ_SDPV1	3
-#define SDP3430_TS_GPIO_IRQ_SDPV2	2
+#define SDP3430_TS_GPIO_IRQ_SDPV1       3
+#define SDP3430_TS_GPIO_IRQ_SDPV2       2
 
-#define ENABLE_VAUX3_DEDICATED	0x03
-#define ENABLE_VAUX3_DEV_GRP	0x20
+#define ENABLE_VAUX3_DEDICATED  0x03
+#define ENABLE_VAUX3_DEV_GRP    0x20
 
 #define TWL4030_MSECURE_GPIO 22
+
+#define LCD_PANEL_BACKLIGHT_GPIO        (15 + OMAP_MAX_GPIO_LINES)
+#define LCD_PANEL_ENABLE_GPIO           (7 + OMAP_MAX_GPIO_LINES)
+
+#define LCD_PANEL_RESET_GPIO            55
+#define LCD_PANEL_QVGA_GPIO             56
+
+#define TV_PANEL_ENABLE_GPIO            95
+
+
+#define ENABLE_VAUX2_DEDICATED          0x09
+#define ENABLE_VAUX2_DEV_GRP            0x20
+#define ENABLE_VAUX3_DEDICATED          0x03
+#define ENABLE_VAUX3_DEV_GRP            0x20
+
+#define ENABLE_VPLL2_DEDICATED          0x05
+#define ENABLE_VPLL2_DEV_GRP            0xE0
+#define TWL4030_VPLL2_DEV_GRP           0x33
+#define TWL4030_VPLL2_DEDICATED         0x36
+
+/*#define SIL9022_RESET_GPIO              97*/
+
+#define LCD_PANEL_DVI_SEL_GPIO  15
+static void sdp3630_lcd_tv_panel_init(void)
+{
+	unsigned char lcd_panel_reset_gpio;
+
+	gpio_request(lcd_panel_reset_gpio, "lcd reset");
+	gpio_request(LCD_PANEL_QVGA_GPIO, "lcd qvga");
+	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
+	gpio_request(LCD_PANEL_DVI_SEL_GPIO, "lcd dvi select");
+
+	gpio_request(TV_PANEL_ENABLE_GPIO, "tv panel");
+	gpio_direction_output(LCD_PANEL_QVGA_GPIO, 0);
+	gpio_direction_output(LCD_PANEL_DVI_SEL_GPIO, 1);
+	gpio_direction_output(lcd_panel_reset_gpio, 0);
+	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
+	gpio_direction_output(TV_PANEL_ENABLE_GPIO, 0);
+
+	gpio_direction_output(LCD_PANEL_QVGA_GPIO, 1);
+	gpio_direction_output(lcd_panel_reset_gpio, 1);
+}
+
+static int sdp3630_panel_power_enable(int enable)
+{
+	twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				(enable) ? ENABLE_VPLL2_DEDICATED : 0,
+				TWL4030_VPLL2_DEDICATED);
+	twl4030_i2c_write_u8(TWL4030_MODULE_PM_RECEIVER,
+				(enable) ? ENABLE_VPLL2_DEV_GRP : 0,
+				TWL4030_VPLL2_DEV_GRP);
+	return 0;
+}
+
+static int sdp3630_panel_enable_lcd(struct omap_dss_device *dssdev)
+{
+	sdp3630_panel_power_enable(1);
+
+	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
+	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 1);
+	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
+	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 1);
+
+	return 0;
+}
+
+static void sdp3630_panel_disable_lcd(struct omap_dss_device *dssdev)
+{
+	sdp3630_panel_power_enable(0);
+
+	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
+	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 0);
+	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
+	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 0);
+
+}
+
+static struct omap_dss_device sdp3630_lcd_device = {
+	.name = "lcd",
+	.driver_name = "NEC_panel",
+	.type = OMAP_DISPLAY_TYPE_DPI,
+	.phy.dpi.data_lines = 24,
+	.platform_enable = sdp3630_panel_enable_lcd,
+	.platform_disable = sdp3630_panel_disable_lcd,
+ };
+
+
+
+static struct omap_dss_device *sdp3630_dss_devices[] = {
+	&sdp3630_lcd_device,
+};
+
+
+
+static struct omap_dss_board_info sdp3630_dss_data = {
+	.num_devices = ARRAY_SIZE(sdp3630_dss_devices),
+	.devices = sdp3630_dss_devices,
+	.default_device = &sdp3630_lcd_device,
+};
+
+static struct platform_device sdp3630_dss_device = {
+	.name          = "omapdss",
+	.id            = -1,
+	.dev            = {
+		.platform_data = &sdp3630_dss_data,
+	},
+};
+
+static struct regulator_consumer_supply sdp3630_vdda_dac_supply = {
+	.supply         = "vdda_dac",
+	.dev            = &sdp3630_dss_device.dev,
+};
+
+
+#ifdef CONFIG_FB_OMAP2
+static struct resource sdp3630_vout_resource[3 - CONFIG_FB_OMAP2_NUM_FBS] = {
+};
+#else
+static struct resource sdp3630_vout_resource[2] = {
+};
+#endif
+
+
+
+static struct platform_device sdp3630_vout_device = {
+	.name           = "omap_vout",
+	.num_resources  = ARRAY_SIZE(sdp3630_vout_resource),
+	.resource       = &sdp3630_vout_resource[0],
+	.id             = -1,
+	.dev            = {
+		.platform_data = NULL,
+	}
+};
+
+static struct omap2_mcspi_device_config sdp3630_lcd_mcspi_config = {
+	.turbo_mode             = 0,
+	.single_channel         = 1,  /* 0: slave, 1: master */
+};
+
+static struct spi_board_info sdp3630_spi_board_info[] __initdata = {
+	[0] = {
+		.modalias               = "zoom2_disp_spi",
+		.bus_num                = 1,
+		.chip_select            = 2,
+		.max_speed_hz           = 375000,
+		.controller_data        = &sdp3630_lcd_mcspi_config,
+	},
+};
+
+static struct regulator_init_data sdp3630_vdac = {
+	.constraints = {
+		.min_uV                 = 1800000,
+		.max_uV                 = 1800000,
+		.valid_modes_mask       = REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask         = REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies  = 1,
+	.consumer_supplies      = &sdp3630_vdda_dac_supply,
+};
 
 static int sdp3430_keymap[] = {
 	KEY(0, 0, KEY_LEFT),
@@ -184,119 +345,12 @@ static struct spi_board_info sdp3430_spi_board_info[] __initdata = {
 };
 
 
-#define SDP3430_LCD_PANEL_BACKLIGHT_GPIO	8
-#define SDP3430_LCD_PANEL_ENABLE_GPIO		5
 
 static unsigned backlight_gpio;
 static unsigned enable_gpio;
 static int lcd_enabled;
 static int dvi_enabled;
 
-static void __init sdp3430_display_init(void)
-{
-	int r;
-
-	enable_gpio    = SDP3430_LCD_PANEL_ENABLE_GPIO;
-	backlight_gpio = SDP3430_LCD_PANEL_BACKLIGHT_GPIO;
-
-	r = gpio_request(enable_gpio, "LCD reset");
-	if (r) {
-		printk(KERN_ERR "failed to get LCD reset GPIO\n");
-		goto err0;
-	}
-
-	r = gpio_request(backlight_gpio, "LCD Backlight");
-	if (r) {
-		printk(KERN_ERR "failed to get LCD backlight GPIO\n");
-		goto err1;
-	}
-
-	gpio_direction_output(enable_gpio, 0);
-	gpio_direction_output(backlight_gpio, 0);
-
-	return;
-err1:
-	gpio_free(enable_gpio);
-err0:
-	return;
-}
-
-static int sdp3430_panel_enable_lcd(struct omap_dss_device *dssdev)
-{
-	if (dvi_enabled) {
-		printk(KERN_ERR "cannot enable LCD, DVI is enabled\n");
-		return -EINVAL;
-	}
-
-	gpio_direction_output(enable_gpio, 1);
-	gpio_direction_output(backlight_gpio, 1);
-
-	lcd_enabled = 1;
-
-	return 0;
-}
-
-static void sdp3430_panel_disable_lcd(struct omap_dss_device *dssdev)
-{
-	lcd_enabled = 0;
-
-	gpio_direction_output(enable_gpio, 0);
-	gpio_direction_output(backlight_gpio, 0);
-}
-
-static int sdp3430_panel_enable_dvi(struct omap_dss_device *dssdev)
-{
-	if (lcd_enabled) {
-		printk(KERN_ERR "cannot enable DVI, LCD is enabled\n");
-		return -EINVAL;
-	}
-
-	dvi_enabled = 1;
-
-	return 0;
-}
-
-static void sdp3430_panel_disable_dvi(struct omap_dss_device *dssdev)
-{
-	dvi_enabled = 0;
-}
-
-static int sdp3430_panel_enable_tv(struct omap_dss_device *dssdev)
-{
-	return 0;
-}
-
-static void sdp3430_panel_disable_tv(struct omap_dss_device *dssdev)
-{
-}
-
-
-static struct omap_dss_device sdp3430_lcd_device = {
-	.name			= "lcd",
-	.driver_name		= "sharp_ls_panel",
-	.type			= OMAP_DISPLAY_TYPE_DPI,
-	.phy.dpi.data_lines	= 16,
-	.platform_enable	= sdp3430_panel_enable_lcd,
-	.platform_disable	= sdp3430_panel_disable_lcd,
-};
-
-static struct omap_dss_device sdp3430_dvi_device = {
-	.name			= "dvi",
-	.driver_name		= "generic_panel",
-	.type			= OMAP_DISPLAY_TYPE_DPI,
-	.phy.dpi.data_lines	= 24,
-	.platform_enable	= sdp3430_panel_enable_dvi,
-	.platform_disable	= sdp3430_panel_disable_dvi,
-};
-
-static struct omap_dss_device sdp3430_tv_device = {
-	.name			= "tv",
-	.driver_name		= "venc",
-	.type			= OMAP_DISPLAY_TYPE_VENC,
-	.phy.venc.type		= OMAP_DSS_VENC_TYPE_SVIDEO,
-	.platform_enable	= sdp3430_panel_enable_tv,
-	.platform_disable	= sdp3430_panel_disable_tv,
-};
 
 static struct platform_device sdp3430_camkit_device = {
 	.name		= "sdp3430_camkit",
@@ -325,34 +379,11 @@ static struct regulator_consumer_supply sdp3430_vaux4_supplies[] = {
 	},
 };
 
-static struct omap_dss_device *sdp3430_dss_devices[] = {
-	&sdp3430_lcd_device,
-	&sdp3430_dvi_device,
-	&sdp3430_tv_device,
-};
 
-static struct omap_dss_board_info sdp3430_dss_data = {
-	.num_devices	= ARRAY_SIZE(sdp3430_dss_devices),
-	.devices	= sdp3430_dss_devices,
-	.default_device	= &sdp3430_lcd_device,
-};
-
-static struct platform_device sdp3430_dss_device = {
-	.name		= "omapdss",
-	.id		= -1,
-	.dev		= {
-		.platform_data = &sdp3430_dss_data,
-	},
-};
-
-static struct regulator_consumer_supply sdp3430_vdda_dac_supply = {
-	.supply		= "vdda_dac",
-	.dev		= &sdp3430_dss_device.dev,
-};
 
 static struct platform_device *sdp3430_devices[] __initdata = {
 	&sdp3430_camkit_device,
-	&sdp3430_dss_device,
+	&sdp3630_dss_device,
 #if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
 	&sdp3430_tps61059_device,
 #endif
@@ -662,31 +693,19 @@ static struct regulator_init_data sdp3430_vsim = {
 	.consumer_supplies	= &sdp3430_vsim_supply,
 };
 
-/* VDAC for DSS driving S-Video */
-static struct regulator_init_data sdp3430_vdac = {
-	.constraints = {
-		.min_uV			= 1800000,
-		.max_uV			= 1800000,
-		.apply_uV		= true,
-		.valid_modes_mask	= REGULATOR_MODE_NORMAL
-					| REGULATOR_MODE_STANDBY,
-		.valid_ops_mask		= REGULATOR_CHANGE_MODE
-					| REGULATOR_CHANGE_STATUS,
-	},
-	.num_consumer_supplies	= 1,
-	.consumer_supplies	= &sdp3430_vdda_dac_supply,
-};
 
 /* VPLL2 for digital video outputs */
 static struct regulator_consumer_supply sdp3430_vpll2_supplies[] = {
+#if 0
 	{
 		.supply		= "vdvi",
-		.dev		= &sdp3430_lcd_device.dev,
+		.dev		= &zoom2_lcd_device.dev,
 	},
 	{
 		.supply		= "vdds_dsi",
 		.dev		= &sdp3430_dss_device.dev,
 	}
+#endif
 };
 
 static struct regulator_init_data sdp3430_vpll2 = {
@@ -723,8 +742,8 @@ static struct twl4030_platform_data sdp3430_twldata = {
 	.vmmc1		= &sdp3430_vmmc1,
 	.vmmc2		= &sdp3430_vmmc2,
 	.vsim		= &sdp3430_vsim,
-	.vdac		= &sdp3430_vdac,
-	.vpll2		= &sdp3430_vpll2,
+	.vdac		= &sdp3630_vdac,
+	/*.vpll2		= &sdp3430_vpll2,*/
 };
 
 static struct i2c_board_info __initdata sdp3430_i2c_boardinfo[] = {
@@ -812,8 +831,10 @@ static void __init omap_3430sdp_init(void)
 	else
 		ts_gpio = SDP3430_TS_GPIO_IRQ_SDPV1;
 	sdp3430_spi_board_info[0].irq = gpio_to_irq(ts_gpio);
-	spi_register_board_info(sdp3430_spi_board_info,
-				ARRAY_SIZE(sdp3430_spi_board_info));
+	spi_register_board_info(sdp3630_spi_board_info,
+				ARRAY_SIZE(sdp3630_spi_board_info));
+
+
 	ads7846_dev_init();
 	omap_serial_init();
 	usb_musb_init();
@@ -821,7 +842,7 @@ static void __init omap_3430sdp_init(void)
 	sdp_flash_init();
 	usb_ehci_init(EHCI_HCD_OMAP_MODE_PHY, true, true, 57, 61);
 	sdp3430_cam_init();
-	sdp3430_display_init();
+	sdp3630_lcd_tv_panel_init();
 	enable_board_wakeup_source();
 }
 

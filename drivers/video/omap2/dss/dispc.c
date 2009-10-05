@@ -2546,6 +2546,8 @@ static void _dispc_set_pol_freq(bool onoff, bool rf, bool ieo, bool ipc,
 	l |= FLD_VAL(acbi, 11, 8);
 	l |= FLD_VAL(acb, 7, 0);
 
+	/* temporary fix: Allen Pais */
+	l = 0x00033028;
 	enable_clocks(1);
 	dispc_write_reg(DISPC_POL_FREQ, l);
 	enable_clocks(0);
