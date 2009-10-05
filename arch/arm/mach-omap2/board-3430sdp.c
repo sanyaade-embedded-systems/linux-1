@@ -81,6 +81,10 @@ static struct platform_device sdp3430_tps61059_device = {
 
 extern void sdp3430_cam_init(void);
 
+#ifdef CONFIG_PM
+#include <../drivers/media/video/omap/omap_voutdef.h>
+#endif
+
 #define SDP3430_TS_GPIO_IRQ_SDPV1	3
 #define SDP3430_TS_GPIO_IRQ_SDPV2	2
 
@@ -350,12 +354,45 @@ static struct regulator_consumer_supply sdp3430_vdda_dac_supply = {
 	.dev		= &sdp3430_dss_device.dev,
 };
 
+#ifdef CONFIG_FB_OMAP2
+static struct resource sdp_vout_resource[3 - CONFIG_FB_OMAP2_NUM_FBS] = {
+};
+#else
+static struct resource sdp_vout_resource[2] = {
+};
+#endif
+
+#ifdef CONFIG_PM
+struct vout_platform_data sdp_vout_data = {
+	.set_min_bus_tput = omap_pm_set_min_bus_tput,
+	.set_max_mpu_wakeup_lat =  omap_pm_set_max_mpu_wakeup_lat,
+	.set_cpu_freq = omap_pm_cpu_set_freq,
+};
+#endif
+
+static struct platform_device sdp_vout_device = {
+	.name		= "omap_vout",
+	.num_resources	= ARRAY_SIZE(sdp_vout_resource),
+	.resource	= &sdp_vout_resource[0],
+	.id		= -1,
+#ifdef CONFIG_PM
+	.dev		= {
+		.platform_data = &sdp_vout_data,
+	}
+#else
+	.dev		= {
+		.platform_data = NULL,
+	}
+#endif
+};
+
 static struct platform_device *sdp3430_devices[] __initdata = {
 	&sdp3430_camkit_device,
 	&sdp3430_dss_device,
 #if defined(CONFIG_VIDEO_TPS61059) || defined(CONFIG_VIDEO_TPS61059_MODULE)
 	&sdp3430_tps61059_device,
 #endif
+	&sdp_vout_device,
 };
 
 static struct omap_lcd_config sdp3430_lcd_config __initdata = {
