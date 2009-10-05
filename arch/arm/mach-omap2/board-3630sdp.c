@@ -23,6 +23,8 @@
 #include <linux/regulator/machine.h>
 #include <linux/io.h>
 #include <linux/gpio.h>
+#include <linux/interrupt.h>
+#include <linux/synaptics_i2c_rmi.h>
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
@@ -79,7 +81,20 @@ static struct platform_device sdp3430_tps61059_device = {
 };
 #endif
 
+#if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
+#include <media/imx046.h>
+extern struct imx046_platform_data sdp3630_imx046_platform_data;
+#endif
+
 extern void sdp3430_cam_init(void);
+
+#ifdef CONFIG_VIDEO_LV8093
+#include <media/lv8093.h>
+extern struct imx046_platform_data sdp3630_lv8093_platform_data;
+#endif
+
+
+#define OMAP_SYNAPTICS_GPIO		163
 
 #define SDP3430_TS_GPIO_IRQ_SDPV1       3
 #define SDP3430_TS_GPIO_IRQ_SDPV2       2
@@ -250,45 +265,66 @@ static struct regulator_init_data sdp3630_vdac = {
 	.consumer_supplies      = &sdp3630_vdda_dac_supply,
 };
 
-static int sdp3430_keymap[] = {
-	KEY(0, 0, KEY_LEFT),
-	KEY(0, 1, KEY_RIGHT),
-	KEY(0, 2, KEY_A),
-	KEY(0, 3, KEY_B),
-	KEY(0, 4, KEY_C),
-	KEY(1, 0, KEY_DOWN),
-	KEY(1, 1, KEY_UP),
-	KEY(1, 2, KEY_E),
-	KEY(1, 3, KEY_F),
-	KEY(1, 4, KEY_G),
-	KEY(2, 0, KEY_ENTER),
-	KEY(2, 1, KEY_I),
-	KEY(2, 2, KEY_J),
-	KEY(2, 3, KEY_K),
-	KEY(2, 4, KEY_3),
-	KEY(3, 0, KEY_M),
-	KEY(3, 1, KEY_N),
-	KEY(3, 2, KEY_O),
-	KEY(3, 3, KEY_P),
-	KEY(3, 4, KEY_Q),
-	KEY(4, 0, KEY_R),
-	KEY(4, 1, KEY_4),
-	KEY(4, 2, KEY_T),
-	KEY(4, 3, KEY_U),
-	KEY(4, 4, KEY_D),
-	KEY(5, 0, KEY_V),
-	KEY(5, 1, KEY_W),
-	KEY(5, 2, KEY_L),
-	KEY(5, 3, KEY_S),
-	KEY(5, 4, KEY_H),
+static int zoom2_twl4030_keymap[] = {
+	KEY(0, 0, KEY_E),
+	KEY(1, 0, KEY_R),
+	KEY(2, 0, KEY_T),
+	KEY(3, 0, KEY_HOME),
+	KEY(6, 0, KEY_I),
+	KEY(7, 0, KEY_LEFTSHIFT),
+	KEY(0, 1, KEY_D),
+	KEY(1, 1, KEY_F),
+	KEY(2, 1, KEY_G),
+	KEY(3, 1, KEY_SEND),
+	KEY(6, 1, KEY_K),
+	KEY(7, 1, KEY_ENTER),
+	KEY(0, 2, KEY_X),
+	KEY(1, 2, KEY_C),
+	KEY(2, 2, KEY_V),
+	KEY(3, 2, KEY_END),
+	KEY(6, 2, KEY_DOT),
+	KEY(7, 2, KEY_CAPSLOCK),
+	KEY(0, 3, KEY_Z),
+	KEY(1, 3, KEY_KPPLUS),
+	KEY(2, 3, KEY_B),
+	KEY(3, 3, KEY_F1),
+	KEY(6, 3, KEY_O),
+	KEY(7, 3, KEY_SPACE),
+	KEY(0, 4, KEY_W),
+	KEY(1, 4, KEY_Y),
+	KEY(2, 4, KEY_U),
+	KEY(3, 4, KEY_F2),
+	KEY(4, 4, KEY_VOLUMEUP),
+	KEY(6, 4, KEY_L),
+	KEY(7, 4, KEY_LEFT),
+	KEY(0, 5, KEY_S),
+	KEY(1, 5, KEY_H),
+	KEY(2, 5, KEY_J),
+	KEY(3, 5, KEY_F3),
+	KEY(5, 5, KEY_VOLUMEDOWN),
+	KEY(6, 5, KEY_M),
+	KEY(4, 5, KEY_ENTER),
+	KEY(7, 5, KEY_RIGHT),
+	KEY(0, 6, KEY_Q),
+	KEY(1, 6, KEY_A),
+	KEY(2, 6, KEY_N),
+	KEY(3, 6, KEY_BACKSPACE),
+	KEY(6, 6, KEY_P),
+	KEY(7, 6, KEY_UP),
+	KEY(6, 7, KEY_SELECT),
+	KEY(7, 7, KEY_DOWN),
+	KEY(0, 7, KEY_PROG1),   /*MACRO 1 <User defined> */
+	KEY(1, 7, KEY_PROG2),   /*MACRO 2 <User defined> */
+	KEY(2, 7, KEY_PROG3),   /*MACRO 3 <User defined> */
+	KEY(3, 7, KEY_PROG4),   /*MACRO 4 <User defined> */
 	0
 };
 
-static struct twl4030_keypad_data sdp3430_kp_data = {
-	.rows		= 5,
-	.cols		= 6,
-	.keymap		= sdp3430_keymap,
-	.keymapsize	= ARRAY_SIZE(sdp3430_keymap),
+static struct twl4030_keypad_data zoom2_kp_twl4030_data = {
+	.rows		= 8,
+	.cols		= 8,
+	.keymap		= zoom2_twl4030_keymap,
+	.keymapsize	= ARRAY_SIZE(zoom2_twl4030_keymap),
 	.rep		= 1,
 };
 
@@ -728,7 +764,7 @@ static struct twl4030_platform_data sdp3430_twldata = {
 	.bci		= &sdp3430_bci_data,
 	.gpio		= &sdp3430_gpio_data,
 	.madc		= &sdp3430_madc_data,
-	.keypad		= &sdp3430_kp_data,
+	.keypad		= &zoom2_kp_twl4030_data,
 	.power		= &sdp3430_t2scripts_data,
 	.usb		= &sdp3430_usb_data,
 
@@ -751,7 +787,7 @@ static struct i2c_board_info __initdata sdp3430_i2c_boardinfo[] = {
 		.platform_data = &sdp3430_twldata,
 	},
 };
-
+/*
 static struct i2c_board_info __initdata sdp3430_i2c_boardinfo_2[] = {
 #if defined(CONFIG_VIDEO_MT9P012) || defined(CONFIG_VIDEO_MT9P012_MODULE)
 	{
@@ -772,6 +808,57 @@ static struct i2c_board_info __initdata sdp3430_i2c_boardinfo_2[] = {
 	},
 #endif
 };
+*/
+
+static void synaptics_dev_init(void)
+{
+	/* Set the ts_gpio pin mux */
+	omap_cfg_reg(H18_34XX_GPIO163);
+
+	if (gpio_request(OMAP_SYNAPTICS_GPIO, "touch") < 0) {
+		printk(KERN_ERR "can't get synaptics pen down GPIO\n");
+		return;
+	}
+	gpio_direction_input(OMAP_SYNAPTICS_GPIO);
+	omap_set_gpio_debounce(OMAP_SYNAPTICS_GPIO, 1);
+	omap_set_gpio_debounce_time(OMAP_SYNAPTICS_GPIO, 0xa);
+}
+
+
+static int synaptics_power(int power_state)
+{
+	return 0;
+}
+
+static struct synaptics_i2c_rmi_platform_data synaptics_platform_data[] = {
+	{
+		.version	= 0x0,
+		.power		= &synaptics_power,
+		.flags		= SYNAPTICS_SWAP_XY,
+		.irqflags	= IRQF_TRIGGER_LOW,
+	}
+};
+
+static struct i2c_board_info __initdata sdp3630_i2c_boardinfo2[] = {
+	{
+		I2C_BOARD_INFO(SYNAPTICS_I2C_RMI_NAME, 0x20),
+		.platform_data = &synaptics_platform_data,
+		.irq = OMAP_GPIO_IRQ(OMAP_SYNAPTICS_GPIO),
+
+	},
+#if defined(CONFIG_VIDEO_IMX046) || defined(CONFIG_VIDEO_IMX046_MODULE)
+	{
+		I2C_BOARD_INFO("imx046", IMX046_I2C_ADDR),
+		.platform_data = &sdp3630_imx046_platform_data,
+	},
+#endif
+#ifdef CONFIG_VIDEO_LV8093
+	{
+		I2C_BOARD_INFO(LV8093_NAME,  LV8093_AF_I2C_ADDR),
+		.platform_data = &sdp3630_lv8093_platform_data,
+	},
+#endif
+};
 
 static int __init omap3430_i2c_init(void)
 {
@@ -779,8 +866,8 @@ static int __init omap3430_i2c_init(void)
 	omap_register_i2c_bus(1, 2600, sdp3430_i2c_boardinfo,
 			ARRAY_SIZE(sdp3430_i2c_boardinfo));
 	/* i2c2 on camera connector (for sensor control) and optional isp1301 */
-	omap_register_i2c_bus(2, 400, sdp3430_i2c_boardinfo_2,
-			ARRAY_SIZE(sdp3430_i2c_boardinfo_2));
+	omap_register_i2c_bus(2, 400, sdp3630_i2c_boardinfo2,
+			ARRAY_SIZE(sdp3630_i2c_boardinfo2));
 	/* i2c3 on display connector (for DVI, tfp410) */
 	omap_register_i2c_bus(3, 400, NULL, 0);
 	return 0;
@@ -828,10 +915,9 @@ static void __init omap_3430sdp_init(void)
 	else
 		ts_gpio = SDP3430_TS_GPIO_IRQ_SDPV1;
 	sdp3430_spi_board_info[0].irq = gpio_to_irq(ts_gpio);
+	synaptics_dev_init();
 	spi_register_board_info(sdp3630_spi_board_info,
 				ARRAY_SIZE(sdp3630_spi_board_info));
-
-
 	ads7846_dev_init();
 	omap_serial_init();
 	usb_musb_init();
