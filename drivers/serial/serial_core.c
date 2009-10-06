@@ -2189,7 +2189,6 @@ uart_configure_port(struct uart_driver *drv, struct uart_state *state,
 	if (port->type != PORT_UNKNOWN) {
 		unsigned long flags;
 
-
 		uart_report_port(drv, port);
 
 		/* Power up port for set_mctrl() */
