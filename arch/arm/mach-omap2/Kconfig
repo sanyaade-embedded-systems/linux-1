@@ -95,8 +95,13 @@ config MACH_NOKIA_RX51
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
 
 config MACH_OMAP_ZOOM2
-	bool "OMAP3 Zoom2 board"
+        bool "OMAP3 Zoom2 board"
+        depends on ARCH_OMAP3 && ARCH_OMAP34XX
+
+config MACH_OMAP_ZOOM3
+	bool "OMAP3 Zoom3 board"
 	depends on ARCH_OMAP3 && ARCH_OMAP34XX
+
 
 config MACH_OMAP_4430SDP
 	bool "OMAP 4430 SDP board"

@@ -733,7 +733,11 @@ static struct map_desc zoom2_io_desc[] __initdata = {
 
 static void __init omap_zoom2_map_io(void)
 {
-	omap2_set_globals_343x();
+	if (cpu_is_omap36xx())
+		omap2_set_globals_363x();
+	else
+		omap2_set_globals_343x();
+
 	iotable_init(zoom2_io_desc, ARRAY_SIZE(zoom2_io_desc));
 	omap2_map_common_io();
 }

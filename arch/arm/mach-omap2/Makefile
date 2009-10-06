@@ -93,6 +93,12 @@ obj-$(CONFIG_MACH_OMAP_ZOOM2)		+= board-zoom2.o \
 					   board-zoom-debugboard.o \
 					   board-zoom2-camera.o
 
+obj-$(CONFIG_MACH_OMAP_ZOOM3)           += board-zoom2.o \
+                                           board-zoom-flash.o \
+                                           mmc-twl4030.o \
+                                           board-zoom-debugboard.o \
+                                           board-zoom2-camera.o
+
 obj-$(CONFIG_MACH_OMAP_4430SDP)		+= board-4430sdp.o
 
 # Platform specific device init code
