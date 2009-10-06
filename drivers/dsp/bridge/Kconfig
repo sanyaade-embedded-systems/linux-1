@@ -5,7 +5,7 @@
 menuconfig MPU_BRIDGE
 	tristate "DSP Bridge driver"
 	depends on MPU_BRIDGE_NOTIFY && NOTIFY_TESLA
-	default n
+	default m
 	help
 	  DSP/BIOS Bridge is designed for platforms that contain a GPP and
 	  one or more attached DSPs.  The GPP is considered the master or
