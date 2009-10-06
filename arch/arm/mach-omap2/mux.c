@@ -693,7 +693,7 @@ int __init omap2_mux_init(void)
 		arch_mux_cfg.pins	= omap24xx_pins;
 		arch_mux_cfg.size	= OMAP24XX_PINS_SZ;
 		arch_mux_cfg.cfg_reg	= omap24xx_cfg_reg;
-	} else if (cpu_is_omap34xx()) {
+	} else if (cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		arch_mux_cfg.pins	= omap34xx_pins;
 		arch_mux_cfg.size	= OMAP34XX_PINS_SZ;
 		arch_mux_cfg.cfg_reg	= omap34xx_cfg_reg;

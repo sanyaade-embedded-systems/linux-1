@@ -385,7 +385,7 @@ static inline struct gpio_bank *get_gpio_bank(int gpio)
 	}
 	if (cpu_is_omap24xx())
 		return &gpio_bank[gpio >> 5];
-	if (cpu_is_omap34xx() || cpu_is_omap44xx())
+	if (cpu_is_omap34xx() || cpu_is_omap36xx() || cpu_is_omap44xx())
 		return &gpio_bank[gpio >> 5];
 	BUG();
 	return NULL;
@@ -397,7 +397,7 @@ static inline int get_gpio_index(int gpio)
 		return gpio & 0x1f;
 	if (cpu_is_omap24xx())
 		return gpio & 0x1f;
-	if (cpu_is_omap34xx() || cpu_is_omap44xx())
+	if (cpu_is_omap34xx() || cpu_is_omap36xx() || cpu_is_omap44xx())
 		return gpio & 0x1f;
 	return gpio & 0x0f;
 }
@@ -419,7 +419,8 @@ static inline int gpio_valid(int gpio)
 		return 0;
 	if (cpu_is_omap24xx() && gpio < 128)
 		return 0;
-	if ((cpu_is_omap34xx() || cpu_is_omap44xx()) && gpio < 192)
+	if ((cpu_is_omap34xx() || cpu_is_omap36xx() 
+			|| cpu_is_omap44xx()) && gpio < 192)
 		return 0;
 	return -1;
 }
@@ -680,7 +681,7 @@ void omap_set_gpio_debounce(int gpio, int enable)
 	else
 		goto done;
 
-	if (cpu_is_omap34xx() || cpu_is_omap44xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap36xx() || cpu_is_omap44xx()) {
 		bank->dbck_enable_mask = val;
 		if (enable)
 			clk_enable(bank->dbck);
@@ -741,7 +742,8 @@ static inline void set_24xx_gpio_triggering(struct gpio_bank *bank, int gpio,
 					+ OMAP24XX_GPIO_CLEARWKUENA);
 	}
 	/* This part needs to be executed always for OMAP34xx */
-	if (cpu_is_omap34xx() || (bank->non_wakeup_gpios & gpio_bit)) {
+	if (cpu_is_omap34xx() || cpu_is_omap36xx() 
+				|| (bank->non_wakeup_gpios & gpio_bit)) {
 		/*
 		 * Log the edge gpio and manually trigger the IRQ
 		 * after resume if the input level changes
@@ -935,7 +937,7 @@ static void _clear_gpio_irqbank(struct gpio_bank *bank, int gpio_mask)
 	/* Workaround for clearing DSP GPIO interrupts to allow retention */
 #if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX)
 	reg = bank->base + OMAP24XX_GPIO_IRQSTATUS2;
-	if (cpu_is_omap24xx() || cpu_is_omap34xx())
+	if (cpu_is_omap24xx() || cpu_is_omap34xx() || cpu_is_omap36xx())
 		__raw_writel(gpio_mask, reg);
 
 	/* Flush posted write for the irq status to avoid spurious interrupts */
@@ -1701,7 +1703,7 @@ static int __init _omap_gpio_init(void)
 #endif
 
 #if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
-	if (cpu_is_omap34xx() || cpu_is_omap44xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap36xx() || cpu_is_omap44xx()) {
 		for (i = 0; i < OMAP34XX_NR_GPIOS; i++) {
 			sprintf(clk_name, "gpio%d_ick", i + 1);
 			gpio_iclks[i] = clk_get(NULL, clk_name);
@@ -1768,7 +1770,7 @@ static int __init _omap_gpio_init(void)
 	}
 #endif
 #ifdef CONFIG_ARCH_OMAP34XX
-	if (cpu_is_omap34xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		int rev;
 
 		gpio_bank_count = OMAP34XX_NR_GPIOS;
@@ -1872,7 +1874,8 @@ static int __init _omap_gpio_init(void)
 		set_irq_chained_handler(bank->irq, gpio_irq_handler);
 		set_irq_data(bank->irq, bank);
 
-		if (cpu_is_omap34xx() || cpu_is_omap44xx()) {
+		if (cpu_is_omap34xx() || cpu_is_omap36xx() 
+					|| cpu_is_omap44xx()) {
 			sprintf(clk_name, "gpio%d_dbck", i + 1);
 			bank->dbck = clk_get(NULL, clk_name);
 			if (IS_ERR(bank->dbck))
@@ -1888,7 +1891,7 @@ static int __init _omap_gpio_init(void)
 	/* Enable autoidle for the OCP interface */
 	if (cpu_is_omap24xx())
 		omap_writel(1 << 0, 0x48019010);
-	if (cpu_is_omap34xx())
+	if (cpu_is_omap34xx() || cpu_is_omap36xx())
 		omap_writel(1 << 0, 0x48306814);
 
 	return 0;
@@ -2023,14 +2026,15 @@ void omap2_gpio_prepare_for_idle(int power_state)
 	int i, c = 0;
 	int min = 0;
 
-	if (cpu_is_omap34xx())
+	if (cpu_is_omap34xx() || cpu_is_omap36xx())
 		min = 1;
 
 	for (i = min; i < gpio_bank_count; i++) {
 		struct gpio_bank *bank = &gpio_bank[i];
 		u32 l1, l2;
 
-		if (cpu_is_omap34xx() && bank->dbck_enable_mask)
+		if ((cpu_is_omap34xx() || cpu_is_omap36xx()) 
+				&& bank->dbck_enable_mask)
 			clk_disable(bank->dbck);
 
 		if (power_state > PWRDM_POWER_OFF)
@@ -2071,13 +2075,14 @@ void omap2_gpio_resume_after_idle(void)
 	int i;
 	int min = 0;
 
-	if (cpu_is_omap34xx())
+	if (cpu_is_omap34xx() || cpu_is_omap36xx())
 		min = 1;
 	for (i = min; i < gpio_bank_count; i++) {
 		struct gpio_bank *bank = &gpio_bank[i];
 		u32 l, gen, gen0, gen1;
 
-		if (cpu_is_omap34xx() && bank->dbck_enable_mask)
+		if ((cpu_is_omap34xx() || cpu_is_omap36xx()) 
+					&& bank->dbck_enable_mask)
 			clk_enable(bank->dbck);
 
 		if (!workaround_enabled)

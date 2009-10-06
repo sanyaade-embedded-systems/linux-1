@@ -881,7 +881,8 @@ omap_dma_set_prio_lch(int lch, unsigned char read_prio,
 	}
 	l = dma_read(CCR(lch));
 	l &= ~((1 << 6) | (1 << 26));
-	if (cpu_is_omap2430() || cpu_is_omap34xx() ||  cpu_is_omap44xx())
+	if (cpu_is_omap2430() || cpu_is_omap34xx() 
+		|| cpu_is_omap36xx() ||  cpu_is_omap44xx())
 		l |= ((read_prio & 0x1) << 6) | ((write_prio & 0x1) << 26);
 	else
 		l |= ((read_prio & 0x1) << 6);
@@ -2371,7 +2372,8 @@ void omap_dma_global_context_restore(void)
 	 * manually clear those IRQs to avoid spurious interrupts. This
 	 * affects only secure devices.
 	 */
-	if (cpu_is_omap34xx() && (omap_type() != OMAP2_DEVICE_TYPE_GP))
+	if ((cpu_is_omap34xx() || cpu_is_omap36xx()) && 
+				(omap_type() != OMAP2_DEVICE_TYPE_GP))
 		dma_write(0x3 , IRQSTATUS_L0);
 
 	for (ch = 0; ch < dma_chan_count; ch++)
@@ -2404,7 +2406,7 @@ static int __init omap_init_dma(void)
 	} else if (cpu_is_omap24xx()) {
 		omap_dma_base = OMAP2_IO_ADDRESS(OMAP24XX_DMA4_BASE);
 		dma_lch_count = OMAP_DMA4_LOGICAL_DMA_CH_COUNT;
-	} else if (cpu_is_omap34xx()) {
+	} else if (cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		omap_dma_base = OMAP2_IO_ADDRESS(OMAP34XX_DMA4_BASE);
 		dma_lch_count = OMAP_DMA4_LOGICAL_DMA_CH_COUNT;
 	} else if (cpu_is_omap44xx()) {
@@ -2521,7 +2523,7 @@ static int __init omap_init_dma(void)
 		setup_irq(irq, &omap24xx_dma_irq);
 	}
 
-	if (cpu_is_omap34xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		/* Enable smartidle idlemodes and autoidle */
 		u32 v = dma_read(OCP_SYSCONFIG);
 		v &= ~(DMA_SYSCONFIG_MIDLEMODE_MASK |

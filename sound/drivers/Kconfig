@@ -26,6 +26,8 @@ config SND_AC97_CODEC
 menuconfig SND_DRIVERS
 	bool "Generic sound devices"
 	default y
+	select SND_HWDEP
+	select SND_RAWMIDI
 	help
 	  Support for generic sound devices.
   

@@ -147,7 +147,8 @@ static int omap_mcbsp_dai_startup(struct snd_pcm_substream *substream,
 	struct omap_mcbsp_data *mcbsp_data = to_mcbsp(cpu_dai->private_data);
 	int err = 0;
 
-	if (cpu_is_omap343x() && mcbsp_data->bus_id == 1) {
+	if ((cpu_is_omap343x() || cpu_is_omap363x()) 
+			&& mcbsp_data->bus_id == 1) {
 		/*
 		 * McBSP2 in OMAP3 has 1024 * 32-bit internal audio buffer.
 		 * Set constraint for minimum buffer size to the same than FIFO
@@ -240,7 +241,7 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	} else if (cpu_is_omap2430()) {
 		dma = omap24xx_dma_reqs[bus_id][substream->stream];
 		port = omap2430_mcbsp_port[bus_id][substream->stream];
-	} else if (cpu_is_omap343x()) {
+	} else if (cpu_is_omap343x() || cpu_is_omap363x()) {
 		dma = omap24xx_dma_reqs[bus_id][substream->stream];
 		port = omap34xx_mcbsp_port[bus_id][substream->stream];
 	} else {
@@ -335,7 +336,7 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	regs->spcr1	|= RINTM(3);
 	regs->rcr2	|= RFIG;
 	regs->xcr2	|= XFIG;
-	if (cpu_is_omap2430() || cpu_is_omap34xx()) {
+	if (cpu_is_omap2430() || cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		regs->xccr = DXENDLY(1) | XDMAEN;
 		regs->rccr = RFULL_CYCLE | RDMAEN;
 	}
@@ -438,7 +439,7 @@ static int omap_mcbsp_dai_set_clks_src(struct omap_mcbsp_data *mcbsp_data,
 	if (cpu_is_omap2420() && mcbsp_data->bus_id > 1)
 		return -EINVAL;
 
-	if (cpu_is_omap343x())
+	if (cpu_is_omap343x() || cpu_is_omap363x())
 		reg_devconf1 = OMAP343X_CONTROL_DEVCONF1;
 
 	switch (mcbsp_data->bus_id) {

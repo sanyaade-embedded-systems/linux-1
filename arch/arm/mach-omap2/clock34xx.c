@@ -1133,7 +1133,7 @@ int __init omap2_clk_init(void)
 	/* u32 clkrate; */
 	u32 cpu_clkflg;
 
-	if (cpu_is_omap34xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		cpu_mask = RATE_IN_343X;
 		cpu_clkflg = CK_343X;
 

@@ -110,7 +110,7 @@ static void __init omap_i2c_mux_pins(int bus)
 	} else if (cpu_is_omap24xx()) {
 		scl = omap24xx_pins[bus][0];
 		sda = omap24xx_pins[bus][1];
-	} else if (cpu_is_omap34xx()) {
+	} else if (cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		scl = omap34xx_pins[bus][0];
 		sda = omap34xx_pins[bus][1];
 	} else {
@@ -129,7 +129,7 @@ static int __init omap_i2c_nr_ports(void)
 		ports = 1;
 	else if (cpu_is_omap24xx())
 		ports = 2;
-	else if (cpu_is_omap34xx())
+	else if (cpu_is_omap34xx() || cpu_is_omap36xx())
 		ports = 3;
 
 	return ports;

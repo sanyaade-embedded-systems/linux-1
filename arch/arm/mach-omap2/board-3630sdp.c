@@ -164,7 +164,7 @@ static int sdp3630_panel_enable_lcd(struct omap_dss_device *dssdev)
 	gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd panel");
 	gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 1);
 	gpio_request(LCD_PANEL_BACKLIGHT_GPIO, "lcd backlight");
-	gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 1);
+	/*gpio_direction_output(LCD_PANEL_BACKLIGHT_GPIO, 1);*/
 
 	return 0;
 }

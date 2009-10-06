@@ -236,7 +236,7 @@ static void omap_i2c_unidle(struct omap_i2c_dev *dev)
 
 	clk_enable(dev->iclk);
 	clk_enable(dev->fclk);
-	if (cpu_is_omap34xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		omap_i2c_write_reg(dev, OMAP_I2C_CON_REG, 0);
 		omap_i2c_write_reg(dev, OMAP_I2C_PSC_REG, dev->pscstate);
 		omap_i2c_write_reg(dev, OMAP_I2C_SCLL_REG, dev->scllstate);
@@ -344,7 +344,7 @@ static int omap_i2c_init(struct omap_i2c_dev *dev)
 			psc = fclk_rate / 12000000;
 	}
 
-	if (cpu_is_omap2430() || cpu_is_omap34xx()) {
+	if (cpu_is_omap2430() || cpu_is_omap34xx() || cpu_is_omap36xx()) {
 
 		/*
 		 * HSI2C controller internal clk rate should be 19.2 Mhz for
@@ -423,7 +423,7 @@ static int omap_i2c_init(struct omap_i2c_dev *dev)
 			OMAP_I2C_IE_AL)  | ((dev->fifo_size) ?
 				(OMAP_I2C_IE_RDR | OMAP_I2C_IE_XDR) : 0);
 	omap_i2c_write_reg(dev, OMAP_I2C_IE_REG, dev->iestate);
-	if (cpu_is_omap34xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		dev->pscstate = psc;
 		dev->scllstate = scll;
 		dev->sclhstate = sclh;
@@ -736,7 +736,7 @@ complete:
 					dev->buf_len--;
 					/* Data reg from 2430 is 8 bit wide */
 					if (!cpu_is_omap2430() &&
-							!cpu_is_omap34xx()) {
+					   !(cpu_is_omap34xx() || cpu_is_omap36xx())) {
 						if (dev->buf_len) {
 							*dev->buf++ = w >> 8;
 							dev->buf_len--;
@@ -776,7 +776,7 @@ complete:
 					dev->buf_len--;
 					/* Data reg from  2430 is 8 bit wide */
 					if (!cpu_is_omap2430() &&
-							!cpu_is_omap34xx()) {
+					   !(cpu_is_omap34xx() || cpu_is_omap36xx())) {
 						if (dev->buf_len) {
 							w |= *dev->buf++ << 8;
 							dev->buf_len--;
@@ -897,7 +897,7 @@ omap_i2c_probe(struct platform_device *pdev)
 
 	dev->rev = omap_i2c_read_reg(dev, OMAP_I2C_REV_REG) & 0xff;
 
-	if (cpu_is_omap2430() || cpu_is_omap34xx()) {
+	if (cpu_is_omap2430() || cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		u16 s;
 
 		/* Set up the fifo size - Get total size */

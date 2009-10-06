@@ -110,7 +110,7 @@ static void omap_mask_irq(unsigned int irq)
 {
 	int offset = irq & (~(IRQ_BITS_PER_REG - 1));
 
-	if (cpu_is_omap34xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		int spurious = 0;
 
 		/*
@@ -198,7 +198,7 @@ void __init omap_init_irq(void)
 
 		if (cpu_is_omap24xx())
 			bank->base_reg = OMAP2_IO_ADDRESS(OMAP24XX_IC_BASE);
-		else if (cpu_is_omap34xx())
+		else if (cpu_is_omap34xx() || cpu_is_omap36xx())
 			bank->base_reg = OMAP2_IO_ADDRESS(OMAP34XX_IC_BASE);
 
 		omap_irq_bank_init_one(bank);

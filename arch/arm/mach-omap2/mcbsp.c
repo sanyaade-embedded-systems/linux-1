@@ -174,7 +174,7 @@ static int __init omap2_mcbsp_init(void)
 		omap_mcbsp_count = OMAP2420_MCBSP_PDATA_SZ;
 	if (cpu_is_omap2430())
 		omap_mcbsp_count = OMAP2430_MCBSP_PDATA_SZ;
-	if (cpu_is_omap34xx())
+	if (cpu_is_omap34xx() || cpu_is_omap36xx())
 		omap_mcbsp_count = OMAP34XX_MCBSP_PDATA_SZ;
 
 	mcbsp_ptr = kzalloc(omap_mcbsp_count * sizeof(struct omap_mcbsp *),
@@ -188,7 +188,7 @@ static int __init omap2_mcbsp_init(void)
 	if (cpu_is_omap2430())
 		omap_mcbsp_register_board_cfg(omap2430_mcbsp_pdata,
 						OMAP2430_MCBSP_PDATA_SZ);
-	if (cpu_is_omap34xx())
+	if (cpu_is_omap34xx() || cpu_is_omap36xx())
 		omap_mcbsp_register_board_cfg(omap34xx_mcbsp_pdata,
 						OMAP34XX_MCBSP_PDATA_SZ);
 

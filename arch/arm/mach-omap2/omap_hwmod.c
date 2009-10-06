@@ -1,4 +1,5 @@
 /*
+ *
  * omap_hwmod implementation for OMAP2/3/4
  *
  * Copyright (C) 2009 Nokia Corporation
@@ -702,7 +703,7 @@ static int _wait_target_ready(struct omap_hwmod *oh)
 
 	/* XXX check clock enable states */
 
-	if (cpu_is_omap24xx() || cpu_is_omap34xx()) {
+	if (cpu_is_omap24xx() || cpu_is_omap34xx() || cpu_is_omap36xx()) {
 		ret = omap2_cm_wait_module_ready(oh->prcm.omap2.module_offs,
 						 oh->prcm.omap2.idlest_reg_id,
 						 oh->prcm.omap2.idlest_idle_bit);
