@@ -51,10 +51,6 @@ extern struct imx046_platform_data zoom2_imx046_platform_data;
 
 extern void zoom2_cam_init(void);
 
-#ifdef CONFIG_PM
-#include <../drivers/media/video/omap/omap_voutdef.h>
-#endif
-
 #ifdef CONFIG_VIDEO_LV8093
 #include <media/lv8093.h>
 extern struct imx046_platform_data zoom2_lv8093_platform_data;
@@ -670,7 +666,7 @@ static int __init omap_i2c_init(void)
 
 extern int __init omap_zoom2_debugboard_init(void);
 
-
+/*
 #ifdef CONFIG_PM
 struct vout_platform_data zoom2_vout_data = {
 	.set_min_bus_tput = omap_pm_set_min_bus_tput,
@@ -678,24 +674,24 @@ struct vout_platform_data zoom2_vout_data = {
 	.set_cpu_freq = omap_pm_cpu_set_freq,
 };
 #endif
-
+*/
 
 static struct platform_device zoom2_vout_device = {
 	.name           = "omap_vout",
 	.num_resources  = ARRAY_SIZE(zoom2_vout_resource),
 	.resource       = &zoom2_vout_resource[0],
 	.id             = -1,
-
+/*
 #ifdef CONFIG_PM
 	.dev            = {
 		.platform_data = &zoom2_vout_data,
 	}
 #else
-
+*/
 	.dev            = {
 		.platform_data = NULL,
 	}
-#endif
+/*#endif*/
 };
 
 
