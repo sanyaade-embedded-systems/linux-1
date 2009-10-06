@@ -467,8 +467,9 @@ static struct twl4030_hsmmc_info mmc[] = {
 	},
 	{
 		.mmc		= 2,
-		.wires		= 8,
-		.gpio_wp	= 7,
+		.wires		= 4,
+		.gpio_cd	= -EINVAL,
+		.gpio_wp	= -EINVAL,
 	},
 	{}	/* Terminator */
 };
@@ -489,10 +490,9 @@ static int sdp3430_twl_gpio_setup(struct device *dev,
 		unsigned gpio, unsigned ngpio)
 {
 	/* gpio + 0 is "mmc0_cd" (input/IRQ),
-	 * gpio + 1 is "mmc1_cd" (input/IRQ)
+	 * "mmc1_cd" (input/IRQ) is not available as eMMC card in MMC#2
 	 */
 	mmc[0].gpio_cd = gpio + 0;
-	mmc[1].gpio_cd = gpio + 1;
 	twl4030_mmc_init(mmc);
 
 	/* link regulators to MMC adapters ... we "know" the
