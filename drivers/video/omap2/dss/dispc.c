@@ -686,7 +686,6 @@ void dispc_go(enum omap_channel channel)
 	if (channel == OMAP_DSS_CHANNEL_LCD2)
 		REG_FLD_MOD(DISPC_CONTROL2, 1, 0, 0);
 	else
-#endif
 		 REG_FLD_MOD(DISPC_CONTROL, 1, 0, 0);
 
 	/* if the channel is not enabled, we don't need GO 
@@ -694,6 +693,9 @@ void dispc_go(enum omap_channel channel)
 	if (REG_GET(DISPC_CONTROL, bit, bit) == 0)
 		goto end;
 	*/
+#endif
+	if (REG_GET(DISPC_CONTROL, bit, bit) == 0)
+		goto end;
 
 #ifdef CONFIG_ARCH_OMAP4
 	if (channel != OMAP_DSS_CHANNEL_DIGIT)
@@ -1369,9 +1371,11 @@ void dispc_set_lcd_size(enum omap_channel channel, u16 width, u16 height)
 	BUG_ON((width > (1 << 11)) || (height > (1 << 11)));
 	val = FLD_VAL(height - 1, 26, 16) | FLD_VAL(width - 1, 10, 0);
 	enable_clocks(1);
+#ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_DSS_CHANNEL_LCD2 == channel)
 		dispc_write_reg(DISPC_SIZE_LCD2, val);
 	else
+#endif
 		dispc_write_reg(DISPC_SIZE_LCD, val);
 	enable_clocks(0);
 }
@@ -2240,9 +2244,11 @@ static void dispc_disable_isr(void *data, u32 mask)
 
 static void _enable_lcd_out(enum omap_channel channel, bool enable)
 {
+#ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_DSS_CHANNEL_LCD2 == channel)
 		REG_FLD_MOD(DISPC_CONTROL2, enable ? 1 : 0, 0, 0);
 	else
+#endif
 		REG_FLD_MOD(DISPC_CONTROL, enable ? 1 : 0, 0, 0);
 }
 
@@ -2258,10 +2264,13 @@ void dispc_enable_lcd_out(enum omap_channel channel, bool enable)
 	/* When we disable LCD output, we need to wait until frame is done.
 	 * Otherwise the DSS is still working, and turning off the clocks
 	 * prevents DSS from going to OFF mode */
+#ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_DSS_CHANNEL_LCD2 == channel) {
 		is_on = REG_GET(DISPC_CONTROL2, 0, 0);
 		irq = DISPC_IRQ_FRAMEDONE2;
-	} else {
+	} else
+#endif
+	{
 		is_on = REG_GET(DISPC_CONTROL, 0, 0);
 		irq = DISPC_IRQ_FRAMEDONE;
 	}
@@ -2413,9 +2422,11 @@ void dispc_set_lcd_display_type(enum omap_channel channel,
 	}
 
 	enable_clocks(1);
+#ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_DSS_CHANNEL_LCD2 == channel)
 		REG_FLD_MOD(DISPC_CONTROL2, mode, 3, 3);
 	else
+#endif
 		REG_FLD_MOD(DISPC_CONTROL, mode, 3, 3);
 	enable_clocks(0);
 }
@@ -2550,9 +2561,9 @@ void dispc_enable_alpha_blending(enum omap_channel ch, bool enable)
 bool dispc_alpha_blending_enabled(enum omap_channel ch)
 {
 	bool enabled;
-
+#ifdef CONFIG_ARCH_OMAP4
 	BUG_ON(ch == OMAP_DSS_CHANNEL_LCD2);
-
+#endif
 	enable_clocks(1);
 	if (ch == OMAP_DSS_CHANNEL_LCD)
 		enabled = REG_GET(DISPC_CONFIG, 18, 18);
@@ -2612,9 +2623,11 @@ void dispc_set_tft_data_lines(enum omap_channel channel, u8 data_lines)
 	}
 
 	enable_clocks(1);
+#ifdef CONFIG_ARCH_OMAP4
 	if (channel == OMAP_DSS_CHANNEL_LCD2)
 		REG_FLD_MOD(DISPC_CONTROL2, code, 9, 8);
 	else
+#endif
 		REG_FLD_MOD(DISPC_CONTROL, code, 9, 8);
 	enable_clocks(0);
 }
@@ -2632,7 +2645,7 @@ void dispc_set_parallel_interface_mode(enum omap_channel channel,
 #ifndef VIRTIO_OMAP4
 		stallmode = 0;
 #else /* This is needed for a quirk with virtio, to have RFBI enabled */
-		stallmode = 1;
+		stallmode = 0;
 #endif
 		gpout1 = 1;
 		break;
@@ -2653,7 +2666,7 @@ void dispc_set_parallel_interface_mode(enum omap_channel channel,
 	}
 
 	enable_clocks(1);
-
+#ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_DSS_CHANNEL_LCD2 == channel) {
 		l = dispc_read_reg(DISPC_CONTROL2);
 
@@ -2664,7 +2677,9 @@ void dispc_set_parallel_interface_mode(enum omap_channel channel,
 
 		dispc_write_reg(DISPC_CONTROL2, l);
 
-	} else {
+	} else
+#endif
+	{
 		l = dispc_read_reg(DISPC_CONTROL);
 
 		printk(KERN_INFO "OMAP DISPCONTROL read (stallmode)%d\n",
@@ -2791,11 +2806,11 @@ void dispc_set_lcd_divisor(enum omap_channel channel, u16 lck_div,
 	BUG_ON(pck_div < 2);
 
 	enable_clocks(1);
+#ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_DSS_CHANNEL_LCD2 == channel)
 		dispc_write_reg(DISPC_DIVISOR2,
 			FLD_VAL(lck_div, 23, 16) | FLD_VAL(pck_div, 7, 0));
 	else
-#ifdef CONFIG_ARCH_OMAP4
 		dispc_write_reg(DISPC_DIVISOR1,
 			FLD_VAL(lck_div, 23, 16) | FLD_VAL(pck_div, 7, 0));
 #else
@@ -2809,10 +2824,10 @@ static void dispc_get_lcd_divisor(enum omap_channel channel,
 					int *lck_div, int *pck_div)
 {
 	u32 l;
+#ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_DSS_CHANNEL_LCD2 == channel)
 		l = dispc_read_reg(DISPC_DIVISOR2);
 	else
-#ifdef CONFIG_ARCH_OMAP4
 		l = dispc_read_reg(DISPC_DIVISOR1);
 #else
 		l = dispc_read_reg(DISPC_DIVISOR);
@@ -3085,9 +3100,11 @@ static void _dispc_set_pol_freq(enum omap_channel channel, bool onoff,
 	l |= FLD_VAL(acb, 7, 0);
 
 	enable_clocks(1);
+#ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_DSS_CHANNEL_LCD2)
 		dispc_write_reg(DISPC_POL_FREQ2, l);
 	else
+#endif
 		dispc_write_reg(DISPC_POL_FREQ, l);
 	enable_clocks(0);
 }
@@ -3620,7 +3637,7 @@ static void dispc_error_worker(struct work_struct *work)
 		for (i = 0; i < omap_dss_get_num_overlay_managers(); ++i) {
 			struct omap_overlay_manager *mgr;
 			mgr = omap_dss_get_overlay_manager(i);
-
+#ifdef CONFIG_ARCH_OMAP4
 			if (mgr->id == OMAP_DSS_CHANNEL_LCD2) {
 				manager = mgr;
 				enable = mgr->device->state ==
@@ -3628,6 +3645,7 @@ static void dispc_error_worker(struct work_struct *work)
 				mgr->device->disable(mgr->device);
 				break;
 			}
+#endif
 		}
 
 		if (manager) {

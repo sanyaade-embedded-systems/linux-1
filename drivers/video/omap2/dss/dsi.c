@@ -192,6 +192,11 @@ enum fifo_size {
 	DSI_FIFO_SIZE_128	= 4,
 };
 
+enum dsi_vc_mode {
+	DSI_VC_MODE_L4 = 0,
+	DSI_VC_MODE_VP,
+};
+
 struct dsi_update_region {
 	bool dirty;
 	u16 x, y, w, h;
@@ -210,6 +215,7 @@ static struct
 	struct regulator *vdds_dsi_reg;
 
 	struct {
+		enum dsi_vc_mode mode;
 		struct omap_dss_device *dssdev;
 		enum fifo_size fifo_size;
 		int dest_per;	/* destination peripheral 0-3 */
@@ -380,8 +386,9 @@ static void dsi_perf_show(const char *name)
 		total_time_auto = ktime_sub(t, dsi.perf_start_time_auto);
 		total_time_auto_us = (u32)ktime_to_us(total_time_auto);
 
-		printk(KERN_INFO "DSI(%s): %u fps, setup %u/%u/%u, trans "
-				"%u/%u/%u\n", name,
+		printk(KERN_INFO "DSI(%s): %u fps, setup %u/%u/%u, "
+				"trans %u/%u/%u\n",
+				name,
 				1000 * 1000 * numframes / total_time_auto_us,
 				s_min_setup_us,
 				s_max_setup_us,
@@ -399,7 +406,7 @@ static void dsi_perf_show(const char *name)
 		dsi_perf_mark_start_auto();
 	} else {
 		printk(KERN_INFO "DSI(%s): %u us + %u us = %u us (%uHz), "
-					"%u bytes %u kbytes/sec\n",
+				"%u bytes, %u kbytes/sec\n",
 				name,
 				setup_us,
 				trans_us,
@@ -614,6 +621,8 @@ static u32 dsi_get_errors(void)
 static void dsi_vc_enable_bta_irq(int channel)
 {
 	u32 l;
+
+	dsi_write_reg(DSI_VC_IRQSTATUS(channel), DSI_VC_IRQ_BTA);
 
 	l = dsi_read_reg(DSI_VC_IRQENABLE(channel));
 	l |= DSI_VC_IRQ_BTA;
@@ -1627,13 +1636,35 @@ static void dsi_vc_print_status(int channel)
 	DSSDBG("EMPTINESS %d\n", (r >> (8 * channel)) & 0xff);
 }
 
-static void dsi_vc_config(int channel)
+static int dsi_vc_enable(int channel, bool enable)
+{
+	if (dsi.update_mode != OMAP_DSS_UPDATE_AUTO)
+		DSSDBG("dsi_vc_enable channel %d, enable %d\n",
+				channel, enable);
+
+	enable = enable ? 1 : 0;
+
+	REG_FLD_MOD(DSI_VC_CTRL(channel), enable, 0, 0);
+
+	if (wait_for_bit_change(DSI_VC_CTRL(channel), 0, enable) != enable) {
+			DSSERR("Failed to set dsi_vc_enable to %d\n", enable);
+			return -EIO;
+	}
+
+	return 0;
+}
+
+static void dsi_vc_initial_config(int channel)
 {
 	u32 r;
 
-	DSSDBG("dsi_vc_config %d\n", channel);
+	DSSDBGF("%d", channel);
 
 	r = dsi_read_reg(DSI_VC_CTRL(channel));
+
+	if (FLD_GET(r, 15, 15)) /* VC_BUSY */
+		DSSERR("VC(%d) busy when trying to configure it!\n",
+				channel);
 
 	r = FLD_MOD(r, 0, 1, 1); /* SOURCE, 0 = L4 */
 	r = FLD_MOD(r, 0, 2, 2); /* BTA_SHORT_EN  */
@@ -1647,46 +1678,47 @@ static void dsi_vc_config(int channel)
 	r = FLD_MOD(r, 4, 23, 21); /* DMA_TX_REQ_NB = no dma */
 
 	dsi_write_reg(DSI_VC_CTRL(channel), r);
+	dsi.vc[channel].mode = DSI_VC_MODE_L4;
+}
+
+static void dsi_vc_config_l4(int channel)
+{
+	if (dsi.vc[channel].mode == DSI_VC_MODE_L4)
+		return;
+
+	DSSDBGF("%d", channel);
+
+	dsi_vc_enable(channel, 0);
+
+	if (REG_GET(DSI_VC_CTRL(channel), 15, 15)) /* VC_BUSY */
+		DSSERR("vc(%d) busy when trying to config for L4\n", channel);
+
+	REG_FLD_MOD(DSI_VC_CTRL(channel), 0, 1, 1); /* SOURCE, 0 = L4 */
+
+	dsi_vc_enable(channel, 1);
+
+	dsi.vc[channel].mode = DSI_VC_MODE_L4;
 }
 
 static void dsi_vc_config_vp(int channel)
 {
-	u32 r;
+	if (dsi.vc[channel].mode == DSI_VC_MODE_VP)
+		return;
 
-	DSSDBG("dsi_vc_config_vp\n");
+	DSSDBGF("%d", channel);
 
-	r = dsi_read_reg(DSI_VC_CTRL(channel));
+	dsi_vc_enable(channel, 0);
 
-	r = FLD_MOD(r, 1, 1, 1); /* SOURCE, 1 = video port */
-	r = FLD_MOD(r, 0, 2, 2); /* BTA_SHORT_EN */
-	r = FLD_MOD(r, 0, 3, 3); /* BTA_LONG_EN */
-	r = FLD_MOD(r, 0, 4, 4); /* MODE, 0 = command */
-	r = FLD_MOD(r, 1, 7, 7); /* CS_TX_EN */
-	r = FLD_MOD(r, 1, 8, 8); /* ECC_TX_EN */
-	r = FLD_MOD(r, 1, 9, 9); /* MODE_SPEED, high speed on/off */
+	if (REG_GET(DSI_VC_CTRL(channel), 15, 15)) /* VC_BUSY */
+		DSSERR("vc(%d) busy when trying to config for VP\n", channel);
 
-	r = FLD_MOD(r, 4, 29, 27); /* DMA_RX_REQ_NB = no dma */
-	r = FLD_MOD(r, 4, 23, 21); /* DMA_TX_REQ_NB = no dma */
+	REG_FLD_MOD(DSI_VC_CTRL(channel), 1, 1, 1); /* SOURCE, 1 = video port */
 
-	dsi_write_reg(DSI_VC_CTRL(channel), r);
+	dsi_vc_enable(channel, 1);
+
+	dsi.vc[channel].mode = DSI_VC_MODE_VP;
 }
 
-
-static int dsi_vc_enable(int channel, bool enable)
-{
-	DSSDBG("dsi_vc_enable channel %d, enable %d\n", channel, enable);
-
-	enable = enable ? 1 : 0;
-
-	REG_FLD_MOD(DSI_VC_CTRL(channel), enable, 0, 0);
-
-	if (wait_for_bit_change(DSI_VC_CTRL(channel), 0, enable) != enable) {
-			DSSERR("Failed to set dsi_vc_enable to %d\n", enable);
-			return -EIO;
-	}
-
-	return 0;
-}
 
 static void dsi_vc_enable_hs(int channel, bool enable)
 {
@@ -1784,9 +1816,11 @@ static u16 dsi_vc_flush_receive_data(int channel)
 
 static int dsi_vc_send_bta(int channel)
 {
-	unsigned long tmo;
+	if (dsi.update_mode != OMAP_DSS_UPDATE_AUTO &&
+			(dsi.debug_write || dsi.debug_read))
+		DSSDBG("dsi_vc_send_bta %d\n", channel);
 
-	/*DSSDBG("dsi_vc_send_bta_sync %d\n", channel); */
+	WARN_ON(!mutex_is_locked(&dsi.bus_lock));
 
 	if (REG_GET(DSI_VC_CTRL(channel), 20, 20)) {	/* RX_FIFO_NOT_EMPTY */
 		DSSERR("rx fifo not empty when sending BTA, dumping data:\n");
@@ -1795,18 +1829,10 @@ static int dsi_vc_send_bta(int channel)
 
 	REG_FLD_MOD(DSI_VC_CTRL(channel), 1, 6, 6); /* BTA_EN */
 
-	tmo = jiffies + msecs_to_jiffies(10);
-	while (REG_GET(DSI_VC_CTRL(channel), 6, 6) == 1) {
-		if (time_after(jiffies, tmo)) {
-			DSSERR("Failed to send BTA\n");
-			return -EIO;
-		}
-	}
-
 	return 0;
 }
 
-static int dsi_vc_send_bta_sync(int channel)
+int dsi_vc_send_bta_sync(int channel)
 {
 	int r = 0;
 	u32 err;
@@ -1837,6 +1863,7 @@ err:
 
 	return r;
 }
+EXPORT_SYMBOL(dsi_vc_send_bta_sync);
 
 static inline void dsi_vc_write_long_header(int channel, u8 data_type,
 		u16 len, u8 ecc)
@@ -1885,6 +1912,7 @@ static int dsi_vc_send_long(int channel, u8 data_type, u8 *data, u16 len,
 		DSSERR("unable to send long packet: packet too long.\n");
 		return -EINVAL;
 	}
+	dsi_vc_config_l4(channel);
 
 	dsi_vc_write_long_header(channel, data_type, len, ecc);
 
@@ -1943,6 +1971,8 @@ static int dsi_vc_send_short(int channel, u8 data_type, u16 data, u8 ecc)
 		DSSDBG("dsi_vc_send_short(ch%d, dt %#x, b1 %#x, b2 %#x)\n",
 				channel,
 				data_type, data & 0xff, (data >> 8) & 0xff);
+
+	dsi_vc_config_l4(channel);
 
 	if (FLD_GET(dsi_read_reg(DSI_VC_CTRL(channel)), 16, 16)) {
 		DSSERR("ERROR FIFO FULL, aborting transfer\n");
@@ -2011,7 +2041,7 @@ int dsi_vc_dcs_read(int channel, u8 dcs_cmd, u8 *buf, int buflen)
 	int r;
 
 	if (dsi.debug_read)
-		DSSDBG("dsi_vc_dcs_read\n");
+		DSSDBG("dsi_vc_dcs_read(ch%d, dcs_cmd %u)\n", channel, dcs_cmd);
 
 	r = dsi_vc_send_short(channel, DSI_DT_DCS_READ, dcs_cmd, 0);
 	if (r)
@@ -2034,7 +2064,7 @@ int dsi_vc_dcs_read(int channel, u8 dcs_cmd, u8 *buf, int buflen)
 	if (dt == DSI_DT_RX_ACK_WITH_ERR) {
 		u16 err = FLD_GET(val, 23, 8);
 		dsi_show_rx_ack_with_err(err);
-		return -1;
+		return -EIO;
 
 	} else if (dt == DSI_DT_RX_SHORT_READ_1) {
 		u8 data = FLD_GET(val, 15, 8);
@@ -2042,7 +2072,7 @@ int dsi_vc_dcs_read(int channel, u8 dcs_cmd, u8 *buf, int buflen)
 			DSSDBG("\tDCS short response, 1 byte: %02x\n", data);
 
 		if (buflen < 1)
-			return -1;
+			return -EIO;
 
 		buf[0] = data;
 
@@ -2053,7 +2083,7 @@ int dsi_vc_dcs_read(int channel, u8 dcs_cmd, u8 *buf, int buflen)
 			DSSDBG("\tDCS short response, 2 byte: %04x\n", data);
 
 		if (buflen < 2)
-			return -1;
+			return -EIO;
 
 		buf[0] = data & 0xff;
 		buf[1] = (data >> 8) & 0xff;
@@ -2066,7 +2096,7 @@ int dsi_vc_dcs_read(int channel, u8 dcs_cmd, u8 *buf, int buflen)
 			DSSDBG("\tDCS long response, len %d\n", len);
 
 		if (len > buflen)
-			return -1;
+			return -EIO;
 
 		/* two byte checksum ends the packet, not included in len */
 		for (w = 0; w < len + 2;) {
@@ -2091,7 +2121,7 @@ int dsi_vc_dcs_read(int channel, u8 dcs_cmd, u8 *buf, int buflen)
 
 	} else {
 		DSSERR("\tunknown datatype 0x%02x\n", dt);
-		return -1;
+		return -EIO;
 	}
 }
 EXPORT_SYMBOL(dsi_vc_dcs_read);
@@ -2288,10 +2318,7 @@ static int dsi_proto_config(struct omap_dss_device *dssdev)
 
 	dsi_write_reg(DSI_CTRL, r);
 
-	/* we configure vc0 for L4 communication, and
-	 * vc1 for dispc */
-	dsi_vc_config(0);
-	dsi_vc_config_vp(1);
+	dsi_vc_initial_config(0);
 
 	/* set all vc targets to peripheral 0 */
 	dsi.vc[0].dest_per = 0;
@@ -2532,10 +2559,11 @@ static void dsi_update_screen_dispc(struct omap_dss_device *dssdev,
 	int packet_len;
 	u32 l;
 	bool use_te_trigger;
+	const int channel = 0;
 
 	use_te_trigger = dsi.te_enabled && !dsi.use_ext_te;
 
-	if (dsi.update_mode == OMAP_DSS_UPDATE_MANUAL)
+	if (dsi.update_mode != OMAP_DSS_UPDATE_AUTO)
 		DSSDBG("dsi_update_screen_dispc(%d,%d %dx%d)\n",
 				x, y, w, h);
 
@@ -2556,26 +2584,43 @@ static void dsi_update_screen_dispc(struct omap_dss_device *dssdev,
 		dsi_vc_print_status(1);
 
 	l = FLD_VAL(total_len, 23, 0); /* TE_SIZE */
-	dsi_write_reg(DSI_VC_TE(1), l);
+	dsi_write_reg(DSI_VC_TE(channel), l);
 
-	dsi_vc_write_long_header(1, DSI_DT_DCS_LONG_WRITE, packet_len, 0);
+	dsi_vc_write_long_header(channel, DSI_DT_DCS_LONG_WRITE, packet_len, 0);
 
 	if (use_te_trigger)
 		l = FLD_MOD(l, 1, 30, 30); /* TE_EN */
 	else
 		l = FLD_MOD(l, 1, 31, 31); /* TE_START */
-	dsi_write_reg(DSI_VC_TE(1), l);
+	dsi_write_reg(DSI_VC_TE(channel), l);
 
+	/* We put SIDLEMODE to no-idle for the duration of the transfer,
+	 * because DSS interrupts are not capable of waking up the CPU and the
+	 * framedone interrupt could be delayed for quite a long time. I think
+	 * the same goes for any DSS interrupts, but for some reason I have not
+	 * seen the problem anywhere else than here.
+	 */
 	dispc_disable_sidle();
 
 	dss_start_update(dssdev);
 
-	if (use_te_trigger)
-		dsi_vc_send_bta(1);
+	if (use_te_trigger) {
+		/* disable LP_RX_TO, so that we can receive TE.  Time to wait
+		 * for TE is longer than the timer allows */
+		REG_FLD_MOD(DSI_TIMING2, 0, 15, 15); /* LP_RX_TO */
+
+		dsi_vc_send_bta(channel);
+	}
 }
 
 static void dsi_framedone_irq_callback(void *data, u32 mask)
 {
+	/* Note: We get FRAMEDONE when DISPC has finished sending pixels and
+	 * turns itself off. However, DSI still has the pixels in its buffers,
+	 * and is sending the data.
+	 */
+
+	/* SIDLEMODE back to smart-idle */
 	dispc_enable_sidle();
 
 	dsi.framedone_received = true;
@@ -2608,12 +2653,19 @@ static void dsi_set_update_region(struct omap_dss_device *dssdev,
 static void dsi_start_auto_update(struct omap_dss_device *dssdev)
 {
 	u16 w, h;
+	int i;
 
 	DSSDBG("starting auto update\n");
 
 	/* In automatic mode the overlay settings are applied like on DPI/SDI.
-	 * The overlay settings may not have been applied, if we were in manual
-	 * mode earlier, so do it here */
+	 * Mark the overlays dirty, so that we get the overlays configured, as
+	 * manual mode has left them in bad shape after config partia planes */
+	for (i = 0; i < omap_dss_get_num_overlays(); ++i) {
+		struct omap_overlay *ovl;
+		ovl = omap_dss_get_overlay(i);
+		if (ovl->manager == dssdev->manager)
+			ovl->info_dirty = true;
+	}
 	dssdev->manager->apply(dssdev->manager);
 
 	dssdev->get_resolution(dssdev, &w, &h);
@@ -2628,66 +2680,49 @@ static void dsi_start_auto_update(struct omap_dss_device *dssdev)
 static int dsi_set_te(struct omap_dss_device *dssdev, bool enable)
 {
 	dssdev->driver->enable_te(dssdev, enable);
-
-	if (!dsi.use_ext_te) {
-		if (enable) {
-			/* disable LP_RX_TO, so that we can receive TE.  Time
-			 * to wait for TE is longer than the timer allows */
-			REG_FLD_MOD(DSI_TIMING2, 0, 15, 15); /* LP_RX_TO */
-		} else {
-			REG_FLD_MOD(DSI_TIMING2, 1, 15, 15); /* LP_RX_TO */
-		}
-	}
-
-	return 0;
+	int r;
+	printk(KERN_INFO "\n dsi_set_te ");
+	r = dssdev->driver->enable_te(dssdev, enable);
+	printk(KERN_INFO "\n dsi_set_te DONE ");
+	/* XXX for some reason, DSI TE breaks if we don't wait here.
+	 * Panel bug? Needs more studying */
+	msleep(100);
+	return r;
 }
 
 static void dsi_handle_framedone(void)
 {
-	u32 l;
-	unsigned long tmo;
-	int i = 0;
+	int r;
+	const int channel = 0;
+	bool use_te_trigger;
 
-	l = REG_GET(DSI_VC_TE(1), 23, 0); /* TE_SIZE */
+	use_te_trigger = dsi.te_enabled && !dsi.use_ext_te;
 
-	/* We get FRAMEDONE when DISPC has finished sending pixels and turns
-	 * itself off. However, DSI still has the pixels in its buffers, and is
-	 * sending the data. Thus we have to wait until we can do a new
-	 * transfer or turn the clocks off. There shouldn't be much stuff in
-	 * DSI buffers, if any, so we'll just busyloop */
-	if (l > 0) {
-		tmo = jiffies + msecs_to_jiffies(50);
-		while (REG_GET(DSI_VC_TE(1), 23, 0) > 0) { /* TE_SIZE */
-			i++;
-			if (time_after(jiffies, tmo)) {
-				DSSERR("timeout waiting TE_SIZE to zero: %u\n",
-						REG_GET(DSI_VC_TE(1), 23, 0));
-				break;
-			}
-			schedule();
-		}
-	}
-
-	if (REG_GET(DSI_VC_TE(1), 30, 30))
-		DSSERR("TE_EN not zero\n");
-
-	if (REG_GET(DSI_VC_TE(1), 31, 31))
-		DSSERR("TE_START not zero\n");
-
-	if (dsi.update_mode == OMAP_DSS_UPDATE_MANUAL)
+	if (dsi.update_mode != OMAP_DSS_UPDATE_AUTO)
 		DSSDBG("FRAMEDONE\n");
 
-#if 0
-	if (l)
-		DSSWARN("FRAMEDONE irq too early, %d bytes, %d loops\n", l, i);
-#else
-	if (l > 1024*3)
-		DSSWARN("FRAMEDONE irq too early, %d bytes, %d loops\n", l, i);
-#endif
+	if (use_te_trigger) {
+		/* enable LP_RX_TO again after the TE */
+		REG_FLD_MOD(DSI_TIMING2, 1, 15, 15); /* LP_RX_TO */
+	}
+
+	/* Send BTA after the frame. We need this for the TE to work, as TE
+	 * trigger is only sent for BTAs without preceding packet. Thus we need
+	 * to BTA after the pixel packets so that next BTA will cause TE
+	 * trigger.
+	 *
+	 * This is not needed when TE is not in use, but we do it anyway to
+	 * make sure that the transfer has been completed. It would be more
+	 * optimal, but more complex, to wait only just before starting next
+	 * transfer. */
+	r = dsi_vc_send_bta_sync(channel);
+	if (r)
+		DSSERR("BTA after framedone failed\n");
 
 #ifdef CONFIG_OMAP2_DSS_FAKE_VSYNC
 	dispc_fake_vsync_irq();
 #endif
+}
 
 static int dsi_update_thread(void *data)
  {
@@ -2733,7 +2768,7 @@ static int dsi_update_thread(void *data)
 		if (device->manager->caps & OMAP_DSS_OVL_MGR_CAP_DISPC) {
 
 			if (dsi.update_mode == OMAP_DSS_UPDATE_MANUAL) {
-				dispc_setup_partial_planes(device,
+				dss_setup_partial_planes(device,
 						&x, &y, &w, &h);
 #if 1
 				/* XXX there seems to be a bug in this driver
@@ -2747,7 +2782,7 @@ static int dsi_update_thread(void *data)
 					if (x + w == dw)
 						x &= ~1;
 					++w;
-					dispc_setup_partial_planes(device,
+					dss_setup_partial_planes(device,
 							&x, &y, &w, &h);
 				}
 #endif
@@ -2757,33 +2792,31 @@ static int dsi_update_thread(void *data)
 			/* TODO: Correct this while adding support for LCD2 */
 		}
 
- /* XXX We don't need to send the update area coords to the
-		 * panel every time. But for some reason TE doesn't work if we
-		 * don't send at least a BTA here... */
-#if 0
 		if (dsi.active_update_region.dirty) {
 			dsi.active_update_region.dirty = false;
+			/* XXX TODO we don't need to send the coords, if they
+			 * are the same that are already programmed to the
+			 * panel. That should speed up manual update a bit */
 			device->driver->setup_update(device, x, y, w, h);
 		}
-#else
-		device->driver->setup_update(device, x, y, w, h);
-#endif
-
-		if (dsi.te_enabled && dsi.use_ext_te && device->wait_for_te)
-			device->wait_for_te(device);
 
 		dsi_perf_mark_start();
 
 		if (device->manager->caps & OMAP_DSS_OVL_MGR_CAP_DISPC) {
+			dsi_vc_config_vp(0);
+
+			if (dsi.te_enabled && dsi.use_ext_te)
+				device->driver->wait_for_te(device);
+
+			dsi.framedone_received = false;
+
 			dsi_update_screen_dispc(device, x, y, w, h);
 
 			/* wait for framedone */
-			timeout = msecs_to_jiffies(500);
+			timeout = msecs_to_jiffies(1000);
 			timeout = wait_event_timeout(dsi.waitqueue,
 					dsi.framedone_received == true,
 					timeout);
-
-			dsi.framedone_received = false;
 
 			if (timeout == 0) {
 				DSSERR("framedone timeout\n");
@@ -2903,7 +2936,6 @@ static int dsi_display_init_dsi(struct omap_dss_device *dssdev)
 
 	/* enable interface */
 	dsi_vc_enable(0, 1);
-	dsi_vc_enable(1, 1);
 	dsi_if_enable(1);
 	dsi_force_tx_stop_mode_io();
 
@@ -2993,7 +3025,9 @@ static int dsi_display_enable(struct omap_dss_device *dssdev)
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 
 	dsi.use_ext_te = dssdev->phy.dsi.ext_te;
-	dsi_set_te(dssdev, dsi.te_enabled);
+	r = dsi_set_te(dssdev, dsi.te_enabled);
+	if (r)
+		goto err3;
 
 	dsi.update_mode = dsi.user_update_mode;
 	if (dsi.update_mode == OMAP_DSS_UPDATE_AUTO)
@@ -3106,7 +3140,9 @@ static int dsi_display_resume(struct omap_dss_device *dssdev)
 
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 
-	dsi_set_te(dssdev, dsi.te_enabled);
+	r = dsi_set_te(dssdev, dsi.te_enabled);
+	if (r)
+		goto err2;
 
 	dsi.update_mode = dsi.user_update_mode;
 	if (dsi.update_mode == OMAP_DSS_UPDATE_AUTO)
@@ -3228,6 +3264,7 @@ static enum omap_dss_update_mode dsi_display_get_update_mode(
 
 static int dsi_display_enable_te(struct omap_dss_device *dssdev, bool enable)
 {
+	int r = 0;
 	DSSDBGF("%d", enable);
 
 	if (!dssdev->driver->enable_te)
@@ -3240,11 +3277,11 @@ static int dsi_display_enable_te(struct omap_dss_device *dssdev, bool enable)
 	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE)
 		goto end;
 
-	dsi_set_te(dssdev, enable);
+	r = dsi_set_te(dssdev, enable);
 end:
 	dsi_bus_unlock();
 
-	return 0;
+	return r;
 }
 
 static int dsi_display_get_te(struct omap_dss_device *dssdev)
@@ -3413,6 +3450,9 @@ int dsi_init_display(struct omap_dss_device *dssdev)
 int dsi_init(struct platform_device *pdev)
 {
 	u32 rev;
+	struct sched_param param = {
+		.sched_priority = MAX_USER_RT_PRIO-1
+	};
 
 	spin_lock_init(&dsi.errors_lock);
 	dsi.errors = 0;
@@ -3427,6 +3467,8 @@ int dsi_init(struct platform_device *pdev)
 		DSSERR("cannot create kthread\n");
 		return PTR_ERR(dsi.thread);
 	}
+	sched_setscheduler(dsi.thread, SCHED_FIFO, &param);
+
 	init_waitqueue_head(&dsi.waitqueue);
 	spin_lock_init(&dsi.update_lock);
 
