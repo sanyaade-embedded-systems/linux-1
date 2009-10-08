@@ -104,6 +104,9 @@ static int twl6030_irq_thread(void *data)
 
 		/* Wait for IRQ, then read PIH irq status (also blocking) */
 		wait_for_completion_interruptible(&irq_event);
+#ifndef CONFIG_OMAP4_SUDO_ROMCODE		
+		return 0;
+#endif
 
 		/* read INT_STS_A, B and C in one shot using a burst read */
 		ret = twl_i2c_read(TWL6030_MODULE_PIH, sts.bytes,
