@@ -8,3 +8,4 @@ obj-$(CONFIG_PANEL_N800) += panel-n800.o
 obj-$(CONFIG_PANEL_ACX565AKM) += panel-acx565akm.o
 
 obj-$(CONFIG_LCD_4430SDP) += lcd_4430sdp.o
+obj-$(CONFIG_PANEL_4430SDP_TAAL) += panel-taal.o
