@@ -261,8 +261,8 @@ static int __init omap_l2_cache_init(void)
 {
 	void __iomem *l2cache_base = OMAP2_IO_ADDRESS(OMAP44XX_L2CACHE_BASE);
 
+#ifndef CONFIG_OMAP4_SUDO_ROMCODE
 	printk(KERN_INFO "L2X0_CTRL = %x \n", readl(l2cache_base + L2X0_CTRL));
-
 	/* Enable L2 Cache using secure api
 	 * Save/Restore relevant registers
 	 */
@@ -272,7 +272,7 @@ static int __init omap_l2_cache_init(void)
 		"dsb\n"
 		"smc\n"
 		"ldmfd r13!, {r0-r12, r14}");
-
+#endif
 	/* 36KB way size, 16-way associativity,
 	 * parity disabled
 	 */

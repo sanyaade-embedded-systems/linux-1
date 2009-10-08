@@ -31,6 +31,13 @@
  * register AuxCoreBoot0.
  */
 ENTRY(omap_secondary_startup)
+#ifdef CONFIG_OMAP4_SUDO_ROMCODE
+	mrc	p15, 0, r0, c0, c0, 5
+	and	r0, r0, #0x0f
+hold:	ldr	r1, =OMAP4_AUX_CORE_BOOT1_PA	@ read from AuxCoreBoot1
+	ldr	r2, [r1]
+	cmp	r2, r0
+#else
 hold:	ldr	r12,=0x103
 	dsb
 	smc				@ read from AuxCoreBoot0
@@ -38,6 +45,7 @@ hold:	ldr	r12,=0x103
 	mrc	p15, 0, r4, c0, c0, 5
 	and	r4, r4, #0x0f
 	cmp	r0, r4
+#endif
 	bne	hold
 
 	/*

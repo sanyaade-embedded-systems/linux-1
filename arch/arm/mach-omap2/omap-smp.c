@@ -79,7 +79,11 @@ int __cpuinit boot_secondary(unsigned int cpu, struct task_struct *idle)
 	 */
 	flush_cache_all();
 	outer_clean_range(__pa(&secondary_data), __pa(&secondary_data + 1));
+#ifdef CONFIG_OMAP4_SUDO_ROMCODE
+	__raw_writel(cpu, OMAP4_AUXCOREBOOT_REG1);
+#else
 	omap_modify_auxcoreboot0(0x200, 0x0);
+#endif
 	flush_cache_all();
 	smp_wmb();
 
@@ -100,7 +104,12 @@ static void __init wakeup_secondary(void)
 	 * on secondary core once out of WFE
 	 * A barrier is added to ensure that write buffer is drained
 	 */
+#ifdef CONFIG_OMAP4_SUDO_ROMCODE
+	__raw_writel(virt_to_phys(omap_secondary_startup),	   \
+						OMAP4_AUXCOREBOOT_REG0);
+#else
 	omap_auxcoreboot_addr(virt_to_phys(omap_secondary_startup));
+#endif
 	smp_wmb();
 
 	/*

@@ -109,6 +109,14 @@ config OMAP_L2_EVENT_DEBUG
         help
 	  Choose Y to see L2 Cache events counters.
 
+config	OMAP4_SUDO_ROMCODE
+	bool "Enable OMAP4430 Simulator"
+        depends on ARCH_OMAP4 && CACHE_L2X0 && SMP
+        default n
+        help
+	  Choose Y to enable sudo ROM CODE support. Needs a bootloader
+	  which has sudo rom code.
+
 config OMAP_MCBSP
 	bool "McBSP support"
 	depends on ARCH_OMAP
