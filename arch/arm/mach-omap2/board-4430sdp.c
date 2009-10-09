@@ -259,7 +259,7 @@ static void __init omap_4430sdp_init_irq(void)
 #ifdef CONFIG_CACHE_L2X0
 static int __init omap_l2_cache_init(void)
 {
-	void __iomem *l2cache_base = OMAP2_IO_ADDRESS(OMAP44XX_L2CACHE_BASE);
+	void __iomem *l2cache_base = OMAP2_L4_IO_ADDRESS(OMAP44XX_L2CACHE_BASE);
 
 #ifndef CONFIG_OMAP4_SUDO_ROMCODE
 	printk(KERN_INFO "L2X0_CTRL = %x \n", readl(l2cache_base + L2X0_CTRL));
