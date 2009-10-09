@@ -90,7 +90,8 @@ static void zoom2_lcd_tv_panel_init(void)
 	omap_cfg_reg(AB1_34XX_McSPI1_CS2);
 	omap_cfg_reg(A24_34XX_GPIO94);
 
-	if (omap_rev() > OMAP3430_REV_ES3_0) {
+	if (cpu_is_omap36xx() ||
+		(cpu_is_omap34xx() && omap_rev() > OMAP3430_REV_ES3_0)) {
 		/* Production Zoom2 Board:
 		 * GPIO-96 is the LCD_RESET_GPIO
 		 */
@@ -742,7 +743,11 @@ static void __init omap_zoom2_map_io(void)
 	omap2_map_common_io();
 }
 
+#ifdef CONFIG_ARCH_OMAP3630
+MACHINE_START(OMAP_ZOOM3, "OMAP Zoom3 board")
+#else
 MACHINE_START(OMAP_ZOOM2, "OMAP Zoom2 board")
+#endif
 	/* phys_io is only used for DEBUG_LL early printing.  The Zoom2's
 	 * console is on an external quad UART sitting at address 0x10000000
 	 */
