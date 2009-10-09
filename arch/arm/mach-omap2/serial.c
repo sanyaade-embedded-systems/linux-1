@@ -115,7 +115,7 @@ static struct plat_serial8250_port serial_platform_data2[] = {
 #ifdef CONFIG_ARCH_OMAP4
 static struct plat_serial8250_port serial_platform_data3[] = {
 	{
-		.membase	= IO_ADDRESS(OMAP_UART4_BASE),
+		.membase	= OMAP2_L4_IO_ADDRESS(OMAP_UART4_BASE),
 		.mapbase	= OMAP_UART4_BASE,
 		.irq		= 70,
 		.flags		= UPF_BOOT_AUTOCONF,
