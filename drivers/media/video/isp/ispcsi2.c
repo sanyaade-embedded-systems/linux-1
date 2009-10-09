@@ -2028,6 +2028,13 @@ int isp_csi2_reset(void)
 	isp_reg_writel(current_csi2_cfg.dev, reg, OMAP3_ISP_IOMEM_CSI2A,
 		       ISPCSI2_SYSCONFIG);
 
+	/* FIXME: Add proper revision check, since this is needed
+	 *        only on ISP rev 2.1 onwards
+	 */
+	isp_reg_or(current_csi2_cfg.dev, OMAP3_ISP_IOMEM_CSI2A,
+		   ISPCSI2_COMPLEXIO_CFG1,
+		   ISPCSI2_COMPLEXIO_CFG1_RESET_CTRL_DEASSERTED);
+
 	do {
 		reg = isp_reg_readl(current_csi2_cfg.dev, OMAP3_ISP_IOMEM_CSI2A,
 				    ISPCSI2_SYSSTATUS) &
