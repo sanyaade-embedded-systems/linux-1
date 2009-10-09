@@ -10,7 +10,8 @@
 #ifndef __MUSB_OMAP243X_H__
 #define __MUSB_OMAP243X_H__
 
-#if defined(CONFIG_ARCH_OMAP2430) || defined(CONFIG_ARCH_OMAP3430)
+#if defined(CONFIG_ARCH_OMAP2430) || defined(CONFIG_ARCH_OMAP3430) \
+	|| defined(CONFIG_ARCH_OMAP3630)
 #include <mach/hardware.h>
 #include <mach/usb.h>
 
@@ -21,7 +22,7 @@
 #define MENTOR_BASE_OFFSET	0
 #if	defined(CONFIG_ARCH_OMAP2430)
 #define	OMAP_HSOTG_BASE		(OMAP243X_HS_BASE)
-#elif	defined(CONFIG_ARCH_OMAP3430)
+#elif	defined(CONFIG_ARCH_OMAP3430) || defined(CONFIG_ARCH_OMAP3630)
 #define	OMAP_HSOTG_BASE		(OMAP34XX_HSUSB_OTG_BASE)
 #endif
 #define OMAP_HSOTG(offset)	(OMAP_HSOTG_BASE + 0x400 + (offset))
