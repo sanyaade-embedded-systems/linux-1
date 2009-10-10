@@ -102,22 +102,26 @@ void abe_build_scheduler_table()
 	VirtAudio_aMultiFrame[1][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VX_DL_8_48_LP;
 	VirtAudio_aMultiFrame[1][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_DL;
 
-	// VirtAudio_aMultiFrame[2][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ASRC_MM_DL;
-	VirtAudio_aMultiFrame[2][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL_ROUTING;
-	VirtAudio_aMultiFrame[2][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL2_ROUTING;
-	VirtAudio_aMultiFrame[2][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_UL;
 
+	// VirtAudio_aMultiFrame[2][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ASRC_MM_DL;
+
+
+	//VirtAudio_aMultiFrame[2][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL_ROUTING;
+	//VirtAudio_aMultiFrame[2][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL2_ROUTING;
+	//VirtAudio_aMultiFrame[2][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_UL;
+#if 0
 	VirtAudio_aMultiFrame[3][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_TONES_DL;
-	VirtAudio_aMultiFrame[3][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXRECMixer;
-	VirtAudio_aMultiFrame[3][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXREC_SPLIT;
-	VirtAudio_aMultiFrame[3][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_SideTone;
+#endif
+	//VirtAudio_aMultiFrame[3][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXRECMixer;
+	//VirtAudio_aMultiFrame[3][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXREC_SPLIT;
+	//VirtAudio_aMultiFrame[3][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_SideTone;
 
 	VirtAudio_aMultiFrame[4][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1Mixer;
 	VirtAudio_aMultiFrame[4][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2Mixer;
 	VirtAudio_aMultiFrame[4][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_SDTMixer;
-	VirtAudio_aMultiFrame[4][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_UL2;
+	//VirtAudio_aMultiFrame[4][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_UL2;
 
-	VirtAudio_aMultiFrame[5][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_EchoMixer;
+	//VirtAudio_aMultiFrame[5][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_EchoMixer;
 	VirtAudio_aMultiFrame[5][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_EQ;
 	VirtAudio_aMultiFrame[5][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_EQ;
 	VirtAudio_aMultiFrame[5][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_GAIN;
@@ -126,7 +130,7 @@ void abe_build_scheduler_table()
 	VirtAudio_aMultiFrame[6][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_EQ;
 	VirtAudio_aMultiFrame[6][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_GAIN;
 
-	VirtAudio_aMultiFrame[8][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_EchoMixer;
+	//VirtAudio_aMultiFrame[8][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_EchoMixer;
 
 	VirtAudio_aMultiFrame[9][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IHF_48_96_0SR;
 	VirtAudio_aMultiFrame[9][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IHF_48_96_LP;
@@ -143,29 +147,29 @@ void abe_build_scheduler_table()
 	VirtAudio_aMultiFrame[12][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_AMIC_96_48_DEC;
 	VirtAudio_aMultiFrame[12][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_AMIC_EQ;
 
-	VirtAudio_aMultiFrame[13][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_96_48_LP;
-	VirtAudio_aMultiFrame[13][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_96_48_DEC;
-	VirtAudio_aMultiFrame[13][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_EQ;
-	VirtAudio_aMultiFrame[13][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_SPLIT;
+	//VirtAudio_aMultiFrame[13][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_96_48_LP;
+	//VirtAudio_aMultiFrame[13][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_96_48_DEC;
+	//VirtAudio_aMultiFrame[13][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_EQ;
+	//VirtAudio_aMultiFrame[13][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_SPLIT;
 
-	VirtAudio_aMultiFrame[14][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_96_48_LP;
-	VirtAudio_aMultiFrame[14][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_96_48_DEC;
-	VirtAudio_aMultiFrame[14][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_EQ;
-	VirtAudio_aMultiFrame[14][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_SPLIT;
+	//VirtAudio_aMultiFrame[14][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_96_48_LP;
+	//VirtAudio_aMultiFrame[14][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_96_48_DEC;
+	//VirtAudio_aMultiFrame[14][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_EQ;
+	//VirtAudio_aMultiFrame[14][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_SPLIT;
 
-	VirtAudio_aMultiFrame[15][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_96_48_LP;
-	VirtAudio_aMultiFrame[15][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_96_48_DEC;
-	VirtAudio_aMultiFrame[15][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_EQ;
-	VirtAudio_aMultiFrame[15][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_SPLIT;
+	//VirtAudio_aMultiFrame[15][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_96_48_LP;
+	//VirtAudio_aMultiFrame[15][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_96_48_DEC;
+	//VirtAudio_aMultiFrame[15][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_EQ;
+	//VirtAudio_aMultiFrame[15][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_SPLIT;
 
 	VirtAudio_aMultiFrame[16][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_AMIC_SPLIT;
-	VirtAudio_aMultiFrame[16][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_IIR;
-	VirtAudio_aMultiFrame[16][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_CORE;
+	//VirtAudio_aMultiFrame[16][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_IIR;
+	//VirtAudio_aMultiFrame[16][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_CORE;
 
-	VirtAudio_aMultiFrame[17][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_IIR;
-	VirtAudio_aMultiFrame[17][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_SPLIT;
-	VirtAudio_aMultiFrame[17][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_L_APS_CORE;
-	VirtAudio_aMultiFrame[17][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_R_APS_CORE;
+	//VirtAudio_aMultiFrame[17][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_IIR;
+	//VirtAudio_aMultiFrame[17][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_SPLIT;
+	//VirtAudio_aMultiFrame[17][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_L_APS_CORE;
+	//VirtAudio_aMultiFrame[17][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_R_APS_CORE;
 
 	VirtAudio_aMultiFrame[21][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VX_UL_ROUTING;
 	VirtAudio_aMultiFrame[21][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ULMixer;
@@ -177,13 +181,14 @@ void abe_build_scheduler_table()
 	VirtAudio_aMultiFrame[23][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_McPDM_DL;
 	VirtAudio_aMultiFrame[23][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ASRC_VX_UL_8;
 	VirtAudio_aMultiFrame[23][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_VX_UL;
-	VirtAudio_aMultiFrame[23][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_GAIN_UPDATE;
+
+	//VirtAudio_aMultiFrame[23][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_GAIN_UPDATE;
 
 	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, D_multiFrame_ADDR, (abe_uint32*)VirtAudio_aMultiFrame, sizeof(VirtAudio_aMultiFrame));
 
 	/* DMIC Fast Loopback */
 	dFastLoopback = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_DMIC;
-	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, D_pNextFastLoopBack_ADDR, (abe_uint32*)&dFastLoopback, sizeof (dFastLoopback));
+	//abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, D_pNextFastLoopBack_ADDR, (abe_uint32*)&dFastLoopback, sizeof (dFastLoopback));
 
 	/* reset the uplink router */
 	n = D_aUplinkRouting_ADDR_END - D_aUplinkRouting_ADDR + 1;
