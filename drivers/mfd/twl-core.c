@@ -108,7 +108,7 @@
 #define twl_has_mmc()   false
 #endif
 
-#if defined(CONFIG_SND_SOC_TWL6030) || defined(CONFIG_SND_SOC_TWL6030_MODULE)
+#if defined(CONFIG_SND_SOC_ABE_TWL6030) || defined(CONFIG_SND_SOC_TWL6030_MODULE)
 #define twl_has_codec()	true
 #else
 #define twl_has_codec()	false
