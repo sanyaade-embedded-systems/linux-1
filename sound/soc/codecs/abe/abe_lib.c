@@ -339,7 +339,7 @@ void abe_clear_memory(abe_int32 memory_bank, abe_int32 address, abe_uint32 nb_by
 		}
 	}
 #else
-	abe_uint32 base_address, *dst_ptr, *src_ptr;
+	abe_uint32 base_address = 0, *dst_ptr, *src_ptr;
 
 	nb_bytes = (nb_bytes + 3) & (-4L);	/* copy is done on 32bits boundaries */
 	if (address & (3L))			/* error ifstart address is not 32bits aligned */
@@ -347,22 +347,22 @@ void abe_clear_memory(abe_int32 memory_bank, abe_int32 address, abe_uint32 nb_by
 
 	switch (memory_bank) {
 	case ABE_PMEM:
-		base_address = ABE_PMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_PMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_CMEM:
-		base_address = ABE_CMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_CMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_SMEM:
-		base_address = ABE_SMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_SMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_DMEM:
-		base_address = ABE_DMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_DMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_ATC:
-		base_address = ABE_ATC_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_ATC_BASE_ADDRESS_MPU;
 		break;
 	default:
-		base_address = ABE_SMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_SMEM_BASE_ADDRESS_MPU;
 		abe_dbg_param |= ERR_LIB;
 		abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
 		break;
@@ -446,7 +446,7 @@ void abe_block_copy(abe_int32 direction, abe_int32 memory_bank, abe_int32 addres
 	}
 #else
 	abe_uint32 i;
-	abe_uint32 base_address, *src_ptr, *dst_ptr, n;
+	abe_uint32 base_address = 0, *src_ptr, *dst_ptr, n;
 
 	nb_bytes = (nb_bytes + 3) & (-4L);	/* copy is done on 32bits boundaries */
 	if (address & (3L))			/* error ifstart address is not 32bits aligned */
@@ -454,22 +454,22 @@ void abe_block_copy(abe_int32 direction, abe_int32 memory_bank, abe_int32 addres
 
 	switch (memory_bank) {
 	case ABE_PMEM:
-		base_address = ABE_PMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_PMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_CMEM:
-		base_address = ABE_CMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_CMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_SMEM:
-		base_address = ABE_SMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_SMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_DMEM:
-		base_address = ABE_DMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_DMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_ATC:
-		base_address = ABE_ATC_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_ATC_BASE_ADDRESS_MPU;
 		break;
 	default:
-		base_address = ABE_SMEM_BASE_ADDRESS_MPU;
+		base_address = (abe_uint32) ABE_SMEM_BASE_ADDRESS_MPU;
 		abe_dbg_param |= ERR_LIB;
 		abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
 		break;

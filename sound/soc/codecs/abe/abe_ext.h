@@ -11,19 +11,24 @@
 #ifndef _ABE_EXT_H_
 #define _ABE_EXT_H_
 
+#include <linux/io.h>
 #define PC_SIMULATION			0		/* Tuning is done on PC ? */
 
 /*
  * OS DEPENDENT MMU CONFIGURATION
  */
-
-#define ABE_ATC_BASE_ADDRESS_L3		0x490F1000L	/* base address used for L3/DMA access */
-#define ABE_DMEM_BASE_ADDRESS_L3	0x49080000L	/* 64kB  as seen from DMA access */
-
-#define ABE_PMEM_BASE_ADDRESS_MPU	0x401E0000L	/*  8kB  as seen from MPU access */
-#define ABE_CMEM_BASE_ADDRESS_MPU	0x401A0000L	/*  8kB  +++++++++++++++++++++++ */
-#define ABE_SMEM_BASE_ADDRESS_MPU	0x401C0000L	/* 24kB                          */
-#define ABE_DMEM_BASE_ADDRESS_MPU	0x40180000L	/* 64kB                          */
-#define ABE_ATC_BASE_ADDRESS_MPU	0x401F1000L
+#define ABE_ATC_BASE_ADDRESS_L3		L3_ABE_44XX_PHYS + 0xf1000
+	/* base address used for L3/DMA access */
+#define ABE_DMEM_BASE_ADDRESS_L3	L3_ABE_44XX_PHYS + 0x80000
+	/* 64kB  as seen from DMA access */
+#define ABE_PMEM_BASE_ADDRESS_MPU	IO_ADDRESS(L3_ABE_44XX_PHYS) + 0xe0000
+	/*  8kB  as seen from MPU access */
+#define ABE_CMEM_BASE_ADDRESS_MPU	IO_ADDRESS(L3_ABE_44XX_PHYS) + 0xa0000
+	/* 8kB */
+#define ABE_SMEM_BASE_ADDRESS_MPU	IO_ADDRESS(L3_ABE_44XX_PHYS) + 0xc0000
+	/* 24kB */
+#define ABE_DMEM_BASE_ADDRESS_MPU	IO_ADDRESS(L3_ABE_44XX_PHYS) + 0x80000
+	/* 64kB */
+#define ABE_ATC_BASE_ADDRESS_MPU	IO_ADDRESS(L3_ABE_44XX_PHYS) + 0xf1000
 
 #endif	/* _ABE_EXT_H_ */
