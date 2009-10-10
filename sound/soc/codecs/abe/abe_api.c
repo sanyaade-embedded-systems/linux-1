@@ -50,11 +50,13 @@ void abe_reset_hal(void)
 	abe_build_scheduler_table();
 
 	/* build the default uplink router configurations */
+
 	abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_AMIC, (abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_AMIC]);
+#if 0
 	abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_DMIC1, (abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_DMIC1]);
 	abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_DMIC2, (abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_DMIC2]);
 	abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_DMIC3, (abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_DMIC3]);
-
+#endif
 	/* meaningful other microphone configuration can be added here */
 
 	/* init hardware components */
@@ -194,6 +196,7 @@ void abe_default_configuration(abe_uint32 use_case)
 	 * mixers default configuration:
 	 * voice on earphone + music on hands-free path
 	 */
+#if 0
 	abe_write_mixer(MIXDL1, GAIN_0dB, RAMP_0MS, MIX_DL1_INPUT_TONES);
 	abe_write_mixer(MIXDL1, GAIN_0dB, RAMP_1MS, MIX_DL1_INPUT_VX_DL);
 	abe_write_mixer(MIXDL1, GAIN_0dB, RAMP_2MS, MIX_DL1_INPUT_MM_DL);
@@ -206,7 +209,7 @@ void abe_default_configuration(abe_uint32 use_case)
 
 	abe_write_mixer(MIXSDT, GAIN_0dB, RAMP_0MS, MIX_SDT_INPUT_DL1_MIXER);
 	abe_write_mixer(MIXSDT, GAIN_0dB, RAMP_0MS, MIX_SDT_INPUT_DL2_MIXER);
-
+#endif
 	/*
 	 * router default configuration:
 	 * analog mics on VX_UL, nothing on MM_UL, MM_UL2

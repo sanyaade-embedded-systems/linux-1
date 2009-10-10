@@ -21,6 +21,7 @@
  */
 void abe_translate_to_xmem_format(abe_int32 memory_bank, float fc, abe_uint32 *c)
 {
+#if 0
 	abe_int32 l;
 	abe_float afc;
 
@@ -62,6 +63,7 @@ void abe_translate_to_xmem_format(abe_int32 memory_bank, float fc, abe_uint32 *c
 	}
 
 	*c = l;
+#endif
 }
 
 /*
@@ -84,6 +86,7 @@ void abe_translate_to_xmem_format(abe_int32 memory_bank, float fc, abe_uint32 *c
  */
 void abe_translate_gain_format(abe_uint32 f, abe_float g1, abe_float *g2)
 {
+#if 0
 	abe_float g, frac_part, gg1, gg2;
 	abe_int32 int_part, i;
 
@@ -139,6 +142,7 @@ void abe_translate_gain_format(abe_uint32 f, abe_float g1, abe_float *g2)
 	}
 
 	*g2 = gg2;
+#endif
  }
 
 /*

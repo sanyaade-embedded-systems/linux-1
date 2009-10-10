@@ -106,8 +106,9 @@ void abe_build_scheduler_table()
 	VirtAudio_aMultiFrame[2][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL_ROUTING;
 	VirtAudio_aMultiFrame[2][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL2_ROUTING;
 	VirtAudio_aMultiFrame[2][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_UL;
-
+#if 0
 	VirtAudio_aMultiFrame[3][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_TONES_DL;
+#endif
 	VirtAudio_aMultiFrame[3][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXRECMixer;
 	VirtAudio_aMultiFrame[3][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXREC_SPLIT;
 	VirtAudio_aMultiFrame[3][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_SideTone;
