@@ -181,12 +181,12 @@ cpu_v7_name:
  *	- cache type register is implemented
  */
 __v7_setup:
-#ifdef CONFIG_OMAP4_SUDO_ROMCODE
 #ifdef CONFIG_MMU
-	mrc	p15, 0, r0, c1, c0, 1		@ Enable SMP/nAMP mode and
-	orr	r0, r0, #(1 << 6) | (1 << 0)	@ TLB ops broadcasting
-	mcr	p15, 0, r0, c1, c0, 1
-#endif
+	mrc	p15, 0, r0, c1, c0, 1		@ Enable SMP/nAMP mode
+	tst	r0, #(0x1 << 6)			@ already enabled?
+	itt	eq
+	orreq	r0, r0, #(1 << 6) | (1 << 0)
+	mcreq	p15, 0, r0, c1, c0, 1
 #endif
 	adr	r12, __v7_setup_stack		@ the local stack
 	stmia	r12, {r0-r5, r7, r9, r11, lr}
