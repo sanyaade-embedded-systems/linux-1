@@ -203,6 +203,7 @@ ENDPROC(lookup_processor_type)
  *  r5 = mach_info pointer in physical address space
  */
 __lookup_machine_type:
+	ldr     r1, =0x870
 	adr	r3, 3b
 	ldmia	r3, {r4, r5, r6}
 	sub	r3, r3, r4			@ get offset between virt&phys
