@@ -890,7 +890,7 @@ static void __init omap_3430sdp_map_io(void)
 	omap2_map_common_io();
 }
 
-MACHINE_START(OMAP_3430SDP, "OMAP3630 3430SDP board")
+MACHINE_START(OMAP_3630SDP, "OMAP3630 SDP board")
 	.phys_io	= 0x48000000,
 	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,
