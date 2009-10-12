@@ -16,6 +16,7 @@
 #include <mach/asp.h>
 #include <linux/i2c.h>
 #include <linux/videodev2.h>
+#include <linux/usb/musb.h>
 
 #define DM646X_EMAC_BASE		(0x01C80000)
 #define DM646X_EMAC_CNTRL_OFFSET	(0x0000)
@@ -30,6 +31,8 @@ void __init dm646x_init(void);
 void __init dm646x_init_ide(void);
 void __init dm646x_init_mcasp0(struct snd_platform_data *pdata);
 void __init dm646x_init_mcasp1(struct snd_platform_data *pdata);
+extern void dm646x_usb_configure(struct musb_hdrc_platform_data *pdata,
+					u8 num_inst);
 
 void dm646x_video_init(void);
 
