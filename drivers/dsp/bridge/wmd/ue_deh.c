@@ -75,9 +75,6 @@
 #include "_tiomap_pwr.h"
 #include <dspbridge/io_sm.h>
 
-extern struct notify_driver_handle *handlePtr;
-
-
 static struct HW_MMUMapAttrs_t  mapAttrs = { HW_LITTLE_ENDIAN,
 					HW_ELEM_SIZE_16BIT,
 					HW_MMU_CPUES} ;
@@ -289,7 +286,7 @@ DBG_Trace(DBG_LEVEL6, "WMD_DEH_Notify: DSP_MMUFAULT, "
 					 MBX_DEH_CLASS | MBX_DEH_EMMU);
 			
 #else
-			 NotifyStatus = notify_sendevent(handlePtr,/*PROC_TESLA*/0,
+			 NotifyStatus = notify_sendevent(handle,/*PROC_TESLA*/0,
                                  /*eventNo*/4,MBX_DEH_CLASS | MBX_DEH_EMMU,true);
 #endif
 			

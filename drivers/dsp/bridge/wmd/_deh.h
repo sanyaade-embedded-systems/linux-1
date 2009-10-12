@@ -33,6 +33,7 @@
 #include <dspbridge/wmd.h>
 
 #define SIGNATURE       0x5f484544	/* "DEH_" backwards */
+extern struct notify_driver_object *handle;
 
 /* DEH Manager: only one created per board: */
 struct DEH_MGR {
