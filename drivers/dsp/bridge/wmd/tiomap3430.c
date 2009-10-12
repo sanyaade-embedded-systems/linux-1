@@ -338,17 +338,16 @@ static DSP_STATUS WMD_BRD_Monitor(struct WMD_DEV_CONTEXT *hDevContext)
 		(unsigned int)resources.dwCm1Base,
 		(unsigned int)resources.dwCm2Base,
 		(unsigned int)resources.dwPrmBase);
+
 	HW_CLK_Disable(resources.dwCm1Base, HW_CLK_TESLA);
 	printk("Resetting DSP...");
 	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
-	printk("Enabling Clocks...");
-	HW_CLK_Enable(resources.dwCm1Base, HW_CLK_TESLA);
-	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
 	HW_RST_Reset(resources.dwPrmBase, HW_RST2_TESLA);
 	HW_RST_UnReset(resources.dwPrmBase, HW_RST2_TESLA);
+	printk("Enabling Clocks...");
+	HW_CLK_Enable(resources.dwCm1Base, HW_CLK_TESLA);
 	*((REG_UWORD32 *)((u32)(resources.dwDmmuBase)+0x50)) = 0x400;
 #else
-	
 	GetHWRegs(resources.dwPrmBase, resources.dwCmBase);
 	HW_PWRST_RegGet(resources.dwPrmBase, HW_PWR_DOMAIN_TESLA, &temp);
 
@@ -518,28 +517,33 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 		status = CFG_GetHostResources(
 			(struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
 			&resources);
-		newAdress &= 0xFFFFFC0;
-	*((REG_UWORD32 *)((u32)(resources.dwSysCtrlBase)+0x304)) = newAdress;
+		newAdress &= 0xFFFFFC00;
+		*((REG_UWORD32 *)((u32)(resources.dwSysCtrlBase)+0x304)) =
+								newAdress;
 		/* Assert RST1 i.e only the RST only for DSP megacell  */
 		/* HW_RST_Reset(resources.dwPrcmBase, HW_RST1_IVA2);*/
-		if (DSP_SUCCEEDED(status)) {
+			if (DSP_SUCCEEDED(status)) {
 #ifdef OMAP44XX
-			HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
+				/*HW_RST_Reset(resources.dwPrmBase,
+					HW_RST1_TESLA);*/
 #else
-			HW_RST_Reset(resources.dwPrmBase, HW_RST1_IVA2);
-			if (dsp_debug) {
-				/* Set the bootmode to self loop  */
-				DBG_Trace(DBG_LEVEL7,
+				HW_RST_Reset(resources.dwPrmBase, HW_RST1_IVA2);
+				if (dsp_debug) {
+					/* Set the bootmode to self loop  */
+					DBG_Trace(DBG_LEVEL7,
 						"Set boot mode to self loop"
 						" for IVA2 Device\n");
-				HW_DSPSS_BootModeSet(resources.dwSysCtrlBase,
+					HW_DSPSS_BootModeSet(
+						resources.dwSysCtrlBase,
 					HW_DSPSYSC_SELFLOOPBOOT, dwDSPAddr);
-			} else {
-				/* Set the bootmode to '0' - direct boot */
-				DBG_Trace(DBG_LEVEL7,
+				} else {
+					/* Set the bootmode to '0'
+					- direct boot */
+					DBG_Trace(DBG_LEVEL7,
 						"Set boot mode to direct"
 						" boot for IVA2 Device \n");
-				HW_DSPSS_BootModeSet(resources.dwSysCtrlBase,
+					HW_DSPSS_BootModeSet(
+						resources.dwSysCtrlBase,
 					HW_DSPSYSC_DIRECTBOOT, dwDSPAddr);
 			}
 #endif
@@ -549,14 +553,10 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 		/* Reset and Unreset the RST2, so that BOOTADDR is copied to
 		 * IVA2 SYSC register */
 #ifdef OMAP44XX
-		HW_RST_Reset(resources.dwPrmBase, HW_RST2_TESLA);
-		udelay(100);
-		HW_RST_UnReset(resources.dwPrmBase, HW_RST2_TESLA);
 		udelay(100);
 		DBG_Trace(DBG_LEVEL6, "WMD_BRD_Start 0 ****** \n");
 		GetHWRegs(resources.dwPrmBase, resources.dwCm1Base,
 					resources.dwCm2Base);
-
 #else
 		HW_RST_Reset(resources.dwPrmBase, HW_RST2_IVA2);
 		udelay(100);
@@ -613,6 +613,10 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 		__raw_writel(temp, (resources.dwDmmuBase) + 0x10);
 #endif
 		/* Let the DSP MMU run */
+		temp = __raw_readl((resources.dwDmmuBase) + 0x10);
+		temp = (temp & 0xFFFFFFEF) | 0x11;
+		__raw_writel(temp, (resources.dwDmmuBase) + 0x10);
+
 		HW_MMU_Enable(resources.dwDmmuBase);
 		(void)CHNLSM_EnableInterrupt(pDevContext);
 
@@ -1219,10 +1223,14 @@ static DSP_STATUS WMD_DEV_Create(OUT struct WMD_DEV_CONTEXT **ppDevContext,
 		DBG_Trace(DBG_LEVEL7, "WMD_DEV_create:Reset mail box and "
 			  "enable the clock \n");
 #ifdef OMAP44XX
-			HW_PWR_ForceStateSet((u32)resources.dwCm1Base,
-				HW_PWR_DOMAIN_TESLA, HW_SW_SUP_WAKEUP);
 			HW_PWR_PowerStateSet((u32)resources.dwPrmBase,
 				HW_PWR_DOMAIN_TESLA, HW_PWR_STATE_ON);
+
+			HW_CLK_Enable(resources.dwCm1Base, HW_CLK_TESLA);
+
+			HW_PWR_ForceStateSet((u32)resources.dwCm1Base,
+				HW_PWR_DOMAIN_TESLA, HW_SW_SUP_WAKEUP);
+
 			HW_PWR_PowerStateGet((u32)resources.dwPrmBase,
 				HW_PWR_DOMAIN_TESLA, &pwrState);
 				while (HW_PWR_STATE_ON != pwrState) {
@@ -1242,7 +1250,6 @@ static DSP_STATUS WMD_DEV_Create(OUT struct WMD_DEV_CONTEXT **ppDevContext,
 						resources.dwPrmBase,
 						HW_PWR_DOMAIN_TESLA, &pwrState);
 				}
-/*			HW_CLK_Enable (resources.dwPrmBase, HW_CLK_IF_MBOX);*/
 #else
 		status = CLK_Enable(SERVICESCLK_mailbox_ick);
 		if (DSP_FAILED(status)) {
