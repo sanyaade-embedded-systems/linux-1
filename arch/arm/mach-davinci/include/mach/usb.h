@@ -10,6 +10,8 @@
 
 #ifndef __ASM_ARCH_USB_H
 #define __ASM_ARCH_USB_H
+#include <mach/hardware.h>
+#include <linux/io.h>
 
 /* DA8xx CFGCHIP2 (USB 2.0 PHY Control) register bits */
 #define CFGCHIP2_PHYCLKGD	(1 << 17)
@@ -33,6 +35,20 @@
 #define CFGCHIP2_REFFREQ_12MHZ	(1 << 0)
 #define CFGCHIP2_REFFREQ_24MHZ	(2 << 0)
 #define CFGCHIP2_REFFREQ_48MHZ	(3 << 0)
+
+/* DMxxxx USB PHY definitions */
+#define USBPHY_CTL_PADDR	(DAVINCI_SYSTEM_MODULE_BASE + 0x34)
+#define USB_PHY_CTRL		IO_ADDRESS(USBPHY_CTL_PADDR)
+
+#define USBPHY_PHYCLKGD		BIT(8)
+#define USBPHY_SESNDEN		BIT(7)  /* v(sess_end) comparator */
+#define USBPHY_VBDTCTEN		BIT(6)  /* v(bus) comparator */
+#define USBPHY_VBUSSENS		BIT(5)  /* (dm355,ro) is vbus > 0.5V */
+#define USBPHY_PHYPLLON		BIT(4)  /* override pll suspend */
+#define USBPHY_CLKO1SEL		BIT(3)
+#define USBPHY_OSCPDWN		BIT(2)
+#define USBPHY_OTGPDWN		BIT(1)
+#define USBPHY_PHYPDWN		BIT(0)
 
 struct	da8xx_ohci_root_hub;
 
