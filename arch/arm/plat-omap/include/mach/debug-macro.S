@@ -44,8 +44,12 @@
 		add	\rx, \rx, #0x00002000	@ UART 2
 #endif
 #ifdef CONFIG_OMAP_LL_DEBUG_UART3
+#ifdef CONFIG_ARCH_OMAP4
+		add	\rx, \rx, #0x00020000	@ UART 3
+#else
 		add	\rx, \rx, #0x00fb0000	@ UART 3
 		add	\rx, \rx, #0x00006000
+#endif
 #endif
 #endif
 		.endm
