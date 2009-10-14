@@ -1,6 +1,6 @@
 #
 # Automatically generated make config: don't edit
-# Linux kernel version: 2.6.31-rc9
+# Linux kernel version: 2.6.31
 # Thu Oct  1 15:58:54 2009
 #
 CONFIG_ARM=y
@@ -268,7 +268,7 @@ CONFIG_PAGE_OFFSET=0xC0000000
 CONFIG_NR_CPUS=2
 # CONFIG_LOCAL_TIMERS is not set
 # CONFIG_HOTPLUG_CPU is not set
-# CONFIG_PREEMPT is not set
+CONFIG_PREEMPT=y
 CONFIG_HZ=128
 CONFIG_AEABI=y
 # CONFIG_OABI_COMPAT is not set
