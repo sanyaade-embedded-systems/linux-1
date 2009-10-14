@@ -442,9 +442,9 @@ static inline int rotation_enabled(struct omap_vout_device *vout)
 /* Reverse the rotation degree if mirroring is enabled */
 static inline int calc_rotation(struct omap_vout_device *vout)
 {
+#ifndef CONFIG_ARCH_OMAP4
 	if (!vout->mirror)
 		return vout->rotation;
-
 	switch (vout->rotation) {
 	case dss_rotation_90_degree:
 		return dss_rotation_270_degree;
@@ -455,6 +455,9 @@ static inline int calc_rotation(struct omap_vout_device *vout)
 	default:
 		return dss_rotation_180_degree;
 	}
+#else
+	return vout->rotation;
+#endif
 }
 
 /* Free the V4L2 buffers */
@@ -659,7 +662,7 @@ static int v4l2_rot_to_dss_rot(int v4l2_rotation, enum dss_rotation *rotation,
 
 /* Calculate the buffer offsets from which the streaming should
  * start.  This offset calculation is mainly required because of
- * the VRFB 32 pixels alignment with rotation
+ * the VRFB 32 pixels alignment with rotation.
  */
 static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 {
@@ -712,6 +715,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 		line_length = pix->width;
 	}
 	vout->line_length = line_length;
+#ifndef CONFIG_ARCH_OMAP4
 	switch (rotation) {
 	case dss_rotation_90_degree:
 		offset = vout->vrfb_context[0].yoffset *
@@ -771,6 +775,7 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 			((crop->width / vr_ps) - 1) * ps;
 		break;
 	}
+#endif
 	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
 	"%s Offset:%x\n", __func__, *cropped_offset);
 	return 0;
@@ -942,8 +947,8 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 	} else {
 		info.rotation = vout->rotation;
 #ifdef CONFIG_ARCH_OMAP4
-	info.rotation_type = OMAP_DSS_ROT_TILER;
-	info.screen_width = pixwidth;
+		info.rotation_type = OMAP_DSS_ROT_TILER;
+		info.screen_width = pixwidth;
 #else
 		info.rotation_type = OMAP_DSS_ROT_VRFB;
 		info.screen_width = 2048;
@@ -1030,13 +1035,6 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 	if (V4L2_BUF_TYPE_VIDEO_OUTPUT != q->type)
 		return -EINVAL;
 
-#ifdef CONFIG_ARCH_OMAP4
-		vout->rotation = 0;
-	printk(KERN_WARNING VOUT_NAME
-		" setting rotation to 0 in buffer setup\n");
-#endif
-
-
 #ifndef TILER_ALLOCATE_V4L2
 #ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_VIDEO3 == vout->vid)
@@ -1117,6 +1115,7 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 
 	if (V4L2_MEMORY_MMAP != vout->memory)
 		return 0;
+
 	return 0;
 }
 
@@ -1276,8 +1275,7 @@ static int omap_vout_buffer_prepare(struct videobuf_queue *q,
 #endif
 #else /* TILER to be used */
 
-	/* TODO: Check if puv address also needs to be added here?
-		here, we need to use the physical address given by Tiler:
+	/* Here, we need to use the physical addresses given by Tiler:
 	*/
 	dmabuf = videobuf_to_dma(q->bufs[vb->i]);
 	vout->queued_buf_addr[vb->i] = (u8 *) dmabuf->bus_addr;
@@ -1681,10 +1679,6 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 	}
 	timing = &ovl->manager->device->panel.timings;
 
-#ifdef CONFIG_ARCH_OMAP4
-	if (rotation_enabled(vout))
-		vout->rotation = 0;
-#endif
  /* TODO: check if TILER ADAPTATION is needed here. */
 	/* We dont support RGB24-packed mode if vrfb rotation
 	 * is enabled*/
@@ -2168,13 +2162,14 @@ static int vidioc_qbuf(struct file *file, void *fh,
 		}
 	}
 
+#ifndef CONFIG_ARCH_OMAP4
 	if ((rotation_enabled(vout)) &&
 			vout->vrfb_dma_tx.req_status == DMA_CHAN_NOT_ALLOTED) {
 		printk(KERN_WARNING VOUT_NAME
 				"DMA Channel not allocated for Rotation\n");
 		return -EINVAL;
 	}
-
+#endif
 	ret = videobuf_qbuf(q, buffer);
 	return ret;
 }
@@ -2244,10 +2239,12 @@ static int vidioc_streamon(struct file *file, void *fh,
 
 	vout->first_int = 1;
 
+#ifndef CONFIG_ARCH_OMAP4
 	if (omap_vout_calculate_offset(vout)) {
 		mutex_unlock(&vout->lock);
 		return -EINVAL;
 	}
+#endif
 	addr = (unsigned long) vout->queued_buf_addr[vout->cur_frm->i]
 	+ vout->cropped_offset;
 	uv_addr = (unsigned long) vout->queued_buf_uv_addr[vout->cur_frm->i];
