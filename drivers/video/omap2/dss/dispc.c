@@ -39,6 +39,7 @@
 #include <mach/display.h>
 
 #include "dss.h"
+#include "../../../media/video/tiler/tiler.h"
 
 #ifndef CONFIG_ARCH_OMAP4
        	/* DSS */
@@ -338,6 +339,26 @@ static inline void dispc_write_reg(const struct dispc_reg idx, u32 val)
 static inline u32 dispc_read_reg(const struct dispc_reg idx)
 {
 	return __raw_readl(dispc.base + idx.idx);
+}
+
+static inline u8 calc_tiler_orientation(u8 rotation, u8 mir)
+{
+	static u8 orientation;
+	switch (rotation) {
+	case 0:
+		orientation = (mir ? 0x2 : 0x0);
+		break;
+	case 1:
+		orientation = (mir ? 0x7 : 0x6);
+		break;
+	case 2:
+		orientation = (mir ? 0x1 : 0x3);
+		break;
+	case 3:
+		orientation = (mir ? 0x4 : 0x5);
+		break;
+	}
+	return orientation;
 }
 
 #define SR(reg) \
@@ -1063,11 +1084,6 @@ static void _dispc_set_plane_ba_uv0(enum omap_plane plane, u32 paddr)
 	dispc_write_reg(ba_uv0_reg[plane - 1], paddr);
 	/* plane - 1 => no UV_BA for GFX*/
 
-	/* since NV12 is set, set DOUBLESTRIDE in attributes reg*/
-	val = dispc_read_reg(dispc_reg_att[plane]);
-	val = FLD_MOD(val, 1, 22, 22);
-	dispc_write_reg(dispc_reg_att[plane], val);
-
 }
 
 static void _dispc_set_plane_ba_uv1(enum omap_plane plane, u32 paddr)
@@ -1641,6 +1657,7 @@ static void _dispc_set_scaling(enum omap_plane plane,
 static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 		bool mirroring, enum omap_color_mode color_mode)
 {
+#ifndef CONFIG_ARCH_OMAP4
 	if (color_mode == OMAP_DSS_COLOR_YUV2 ||
 			color_mode == OMAP_DSS_COLOR_UYVY) {
 		int vidrot = 0;
@@ -1687,6 +1704,20 @@ static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 		REG_FLD_MOD(dispc_reg_att[plane], 0, 13, 12);
 		REG_FLD_MOD(dispc_reg_att[plane], 0, 18, 18);
 	}
+#else
+	if (plane != OMAP_DSS_GFX) {
+		if (color_mode == OMAP_DSS_COLOR_NV12) {
+			/* DOUBLESTRIDE : 0 for 90-, 270-; 1 for 0- and 180- */
+			if (rotation == 1 || rotation == 3)
+				REG_FLD_MOD(dispc_reg_att[plane], 0x0, 22, 22);
+			else
+				REG_FLD_MOD(dispc_reg_att[plane], 0x1, 22, 22);
+		}
+	}
+
+	/* Set the rotation value for pipeline */
+/*	REG_FLD_MOD(dispc_reg_att[plane], rotation, 13, 12); */
+#endif
 }
 
 static s32 pixinc(int pixels, u8 ps)
@@ -1707,7 +1738,7 @@ static void calc_tiler_row_rotation(u8 rotation,
 		s32 *row_inc)
 {
 	u8 ps = 1;
-	DSSDBG("calc_rot(%d): %dx%d\n", rotation, width, height);
+	DSSDBG("calc_tiler_rot(%d): %dx%d\n", rotation, width, height);
 
 	switch (color_mode) {
 	case OMAP_DSS_COLOR_RGB16:
@@ -2079,6 +2110,8 @@ void dispc_set_channel_out(enum omap_plane plane, enum omap_channel channel_out)
 	enable_clocks(0);
 }
 
+
+
 static int _dispc_setup_plane(enum omap_plane plane,
 		u32 paddr, u16 screen_width,
 		u16 pos_x, u16 pos_y,
@@ -2103,6 +2136,9 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	s32 pix_inc;
 	u16 frame_height = height;
 	unsigned int field_offset = 0;
+
+	u8 orientation = 0;
+	struct dmmViewOrientT orient;
 
 	if (paddr == 0)
 		return -EINVAL;
@@ -2239,6 +2275,36 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	if ((paddr >= 0x60000000) && (paddr <= 0x7fffffff)) {
 		calc_tiler_row_rotation(rotation, width, frame_height,
 						color_mode, &row_inc);
+
+		orientation = calc_tiler_orientation(rotation, (u8)mirror);
+#if 1
+		paddr &= ~(0x7 << 29);
+		paddr |= (orientation << 29);
+		if (puv_addr) {
+			puv_addr &= ~(0x7 << 29);
+			puv_addr |= (orientation << 29);
+		}
+#else
+			orient.dmm90Rotate = ((orientation & 0x04) ? 1 : 0);
+			orient.dmmYInvert = ((orientation & 0x02) ? 1 : 0);
+			orient.dmmXInvert = ((orientation & 0x01) ? 1 : 0);
+
+			paddr = tiler_get_tiler_address(paddr, orient, width,
+							frame_height, 0, 0);
+
+			if (puv_addr)
+				puv_addr = tiler_get_tiler_address(puv_addr,
+						orient, width, frame_height,
+						1, 0);
+#endif
+
+
+			printk(KERN_INFO
+				"rotated addresses: 0x%0x, 0x%0x\n",
+						paddr, puv_addr);
+			/* set BURSTTYPE if rotation is non-zero */
+			REG_FLD_MOD(dispc_reg_att[plane], 0x1, 29, 29);
+
 	} else
 		row_inc = 0x1;
 
