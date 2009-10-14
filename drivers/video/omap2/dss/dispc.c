@@ -1725,7 +1725,11 @@ static void calc_tiler_row_rotation(u8 rotation,
 	case OMAP_DSS_COLOR_RGBX32:
 		ps = 4;
 		break;
-/* TODO: need to add special case for NV12 */
+
+	case OMAP_DSS_COLOR_NV12:
+		ps = 1;
+		break;
+
 	default:
 		BUG();
 		return;
@@ -1735,17 +1739,17 @@ static void calc_tiler_row_rotation(u8 rotation,
 	case 0:
 	case 2:
 		if (1 == ps)
-			*row_inc = 16384 - (width);
+			*row_inc = 16384 + 1 - (width);
 		else
-			*row_inc = 32768 - (width * ps);
+			*row_inc = 32768 + 1 - (width * ps);
 		break;
 
 	case 1:
 	case 3:
-		if (3 == ps)
-			*row_inc = 16384 - (width * ps);
+		if (4 == ps)
+			*row_inc = 16384 + 1 - (width * ps);
 		else
-			*row_inc = 8192 - (width * ps);
+			*row_inc = 8192 + 1 - (width * ps);
 		break;
 
 	default:
@@ -2100,8 +2104,6 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	u16 frame_height = height;
 	unsigned int field_offset = 0;
 
-	u32 val;
-
 	if (paddr == 0)
 		return -EINVAL;
 
@@ -2233,13 +2235,12 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	pix_inc = 0x1;
 	offset0 = 0x0;
 	offset1 = 0x0;
-	calc_tiler_row_rotation(rotation, width, frame_height,
+	/* check if tiler address; else set row_inc = 1*/
+	if ((paddr >= 0x60000000) && (paddr <= 0x7fffffff)) {
+		calc_tiler_row_rotation(rotation, width, frame_height,
 						color_mode, &row_inc);
-	/* TODO: Hack for BURSTMODE to 2D*/
-
-	val = dispc_read_reg(dispc_reg_att[plane]);
-	val = FLD_MOD(val, 1, 29, 29);
-	dispc_write_reg(dispc_reg_att[plane], val);
+	} else
+		row_inc = 0x1;
 
 #else
 	if (rotation_type == OMAP_DSS_ROT_DMA)
@@ -2706,14 +2707,10 @@ void dispc_set_parallel_interface_mode(enum omap_channel channel,
 	int stallmode;
 	int gpout0 = 1;
 	int gpout1;
-#define VIRTIO_OMAP4
+
 	switch (mode) {
 	case OMAP_DSS_PARALLELMODE_BYPASS:
-#ifndef VIRTIO_OMAP4
 		stallmode = 0;
-#else /* This is needed for a quirk with virtio, to have RFBI enabled */
-		stallmode = 0;
-#endif
 		gpout1 = 1;
 		break;
 
@@ -3911,8 +3908,6 @@ void dispc_fake_vsync_irq(void)
 static void _omap_dispc_initialize_irq(void)
 {
 	unsigned long flags;
-
-	dss_debug = 1;
 
 	spin_lock_irqsave(&dispc.irq_lock, flags);
 

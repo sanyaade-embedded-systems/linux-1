@@ -98,6 +98,11 @@ struct omap_vout_device {
 	/* keep buffer info accross opens */
 	unsigned long buf_virt_addr[VIDEO_MAX_FRAME];
 	unsigned long buf_phy_addr[VIDEO_MAX_FRAME];
+
+/* NV12 support*/
+	unsigned long buf_phy_uv_addr[VIDEO_MAX_FRAME];
+	u8 *queued_buf_uv_addr[VIDEO_MAX_FRAME];
+
 	enum omap_color_mode dss_mode;
 
 	/* we don't allow to request new buffer when old buffers are
