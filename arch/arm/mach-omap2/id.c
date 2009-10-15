@@ -234,6 +234,7 @@ void __init omap36xx_check_revision(void)
 			rev_name = "Unknown revision\n";
 		}
 	}
+	pr_info("OMAP%04x %s\n", omap_rev() >> 16, rev_name);
 }
 
 /*
@@ -247,10 +248,10 @@ void __init omap2_check_revision(void)
 	 */
 	if (cpu_is_omap24xx())
 		omap24xx_check_revision();
-	else if (cpu_is_omap34xx())
-		omap34xx_check_revision();
 	else if (cpu_is_omap36xx())
 		omap36xx_check_revision();
+	else if (cpu_is_omap34xx())
+		omap34xx_check_revision();
 	else if (cpu_is_omap44xx()) {
 		printk(KERN_INFO "FIXME: CPU revision = OMAP4430\n");
 		return;
