@@ -95,11 +95,15 @@ int
 tiler_free_buf(unsigned long sysptr);
 
 unsigned long
-tiler_get_tiler_address(void *sysPtr,
-			struct dmmViewOrientT orient,
-			unsigned int validDataWidth,
-			unsigned int validDataHeight,
-			int aliasViewPtr,
-			int ptrToaliasView);
+tiler_reorient_addr(unsigned long tsptr, struct dmmViewOrientT orient);
+
+unsigned long
+tiler_get_natural_addr(void *sysPtr);
+
+unsigned long
+tiler_reorient_topleft(unsigned long tsptr,
+		       struct dmmViewOrientT orient,
+		       unsigned int validDataWidth,
+		       unsigned int validDataHeight);
 
 #endif
