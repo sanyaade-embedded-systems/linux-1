@@ -603,6 +603,7 @@ dmm_config(void)
 	tilerdump(__LINE__);
 }
 
+
 int
 tiler_alloc_buf(enum tiler_fmt fmt,
 		unsigned long width,
@@ -677,7 +678,8 @@ tiler_find_buf(unsigned long sysptr, struct tiler_block_info *blk)
 
 	tilerdump(__LINE__);
 
-	area = dmm_tiler_get_area_from_sysptr(dmmTilerCtx, (void *)sysptr);
+	area = dmm_tiler_get_area_from_sysptr(dmmTilerCtx,
+		(void *)(DMM_ALIAS_VIEW_CLEAR & sysptr));
 	blk->ptr = NULL;
 	if (area != NULL) {
 		int accMode = DMM_GET_ACC_MODE(sysptr);
@@ -741,7 +743,7 @@ tiler_free_buf(unsigned long sysptr)
 	} */
 
 	areaToFree = dmm_tiler_get_area_from_sysptr(dmmTilerCtx,
-							(void *)sysptr);
+			(void *)(DMM_ALIAS_VIEW_CLEAR & sysptr));
 	if (areaToFree != NULL)
 		eCode = dmm_tiler_container_unmap_area(dmmTilerCtx, areaToFree);
 	else
@@ -851,24 +853,24 @@ unsigned long tiler_get_address(struct dmmViewOrientT orient,
 
 	switch (accessModeM) {
 	case MODE_8_BIT:
-		x_bits = DMM_TILER_THE_(8, CONT_WIDTH);
-		y_bits = DMM_TILER_THE_(8, CONT_HEIGHT);
+		x_bits = DMM_TILER_CONT_WIDTH_BITS_(8);
+		y_bits = DMM_TILER_CONT_HEIGHT_BITS_(8);
 		alignment = DMM_SHIFT_PER_P_(8);
 		break;
 	case MODE_16_BIT:
-		x_bits = DMM_TILER_THE_(16, CONT_WIDTH);
-		y_bits = DMM_TILER_THE_(16, CONT_HEIGHT);
+		x_bits = DMM_TILER_CONT_WIDTH_BITS_(16);
+		y_bits = DMM_TILER_CONT_HEIGHT_BITS_(16);
 		alignment = DMM_SHIFT_PER_P_(16);
 		break;
 	case MODE_32_BIT:
-		x_bits = DMM_TILER_THE_(32, CONT_WIDTH);
-		y_bits = DMM_TILER_THE_(32, CONT_HEIGHT);
+		x_bits = DMM_TILER_CONT_WIDTH_BITS_(32);
+		y_bits = DMM_TILER_CONT_HEIGHT_BITS_(32);
 		alignment = DMM_SHIFT_PER_P_(32);
 		break;
 	case MODE_PAGE:
 	default:
-		x_bits = DMM_TILER_THE_(PAGE, CONT_WIDTH);
-		y_bits = DMM_TILER_THE_(PAGE, CONT_HEIGHT);
+		x_bits = DMM_TILER_CONT_WIDTH_BITS_(PAGE);
+		y_bits = DMM_TILER_CONT_HEIGHT_BITS_(PAGE);
 		alignment = DMM_SHIFT_PER_P_(PAGE);
 		break;
 	}
@@ -968,11 +970,11 @@ tiler_reorient_topleft(unsigned long tsptr,
 	}
 	if (!validDataWidth)
 		validDataWidth = (bufferMappedZone->x1 -
-				  bufferMappedZone->x0) * x_pagew;
+				  bufferMappedZone->x0 + 1) * x_pagew;
 
 	if (!validDataHeight)
-		validDataWidth = (bufferMappedZone->y1 -
-				  bufferMappedZone->y0) * y_pagew;
+		validDataHeight = (bufferMappedZone->y1 -
+				  bufferMappedZone->y0 + 1) * y_pagew;
 
 	x = bufferMappedZone->x0 * x_pagew;
 	y = bufferMappedZone->y0 * y_pagew;

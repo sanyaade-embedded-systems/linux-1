@@ -684,6 +684,12 @@ enum errorCodeT dmm_tiler_container_map_area(
 		/* if we could not allocate, we set the return code */
 		if (*bufferMappedZone == NULL)
 			eCode = DMM_SYS_ERROR;
+		/* else
+			printk(KERN_ERR "=>%d-%d,%d-%d\n",
+				(*bufferMappedZone)->x0,
+				(*bufferMappedZone)->x1,
+				(*bufferMappedZone)->y0,
+				(*bufferMappedZone)->y1);*/
 	}
 
 	/* DBG_OVERLAP_TEST(dmmTilerCtx); */
