@@ -751,153 +751,241 @@ tiler_free_buf(unsigned long sysptr)
 }
 EXPORT_SYMBOL(tiler_free_buf);
 
+
+
+#define DMM_SHIFT_PER_X_8 0
+#define DMM_SHIFT_PER_Y_8 0
+#define DMM_SHIFT_PER_X_16 0
+#define DMM_SHIFT_PER_Y_16 1
+#define DMM_SHIFT_PER_X_32 1
+#define DMM_SHIFT_PER_Y_32 1
+#define DMM_SHIFT_PER_X_PAGE 6
+#define DMM_SHIFT_PER_Y_PAGE 6
+
+#define DMM_TILER_THE(NAME) (1 << DMM_TILER_##NAME##_BITS)
+#define DMM_TILER_THE_(N, NAME) (1 << DMM_TILER_##NAME##_BITS_(N))
+
+#define DMM_TILER_CONT_WIDTH_BITS  14
+#define DMM_TILER_CONT_HEIGHT_BITS 13
+
+#define DMM_SHIFT_PER_P_(N) (DMM_SHIFT_PER_X_##N + DMM_SHIFT_PER_Y_##N)
+
+#define DMM_TILER_CONT_HEIGHT_BITS_(N) \
+	(DMM_TILER_CONT_HEIGHT_BITS - DMM_SHIFT_PER_Y_##N)
+#define DMM_TILER_CONT_WIDTH_BITS_(N) \
+	(DMM_TILER_CONT_WIDTH_BITS - DMM_SHIFT_PER_X_##N)
+
+#define DMM_TILER_MASK(bits) ((1 << (bits)) - 1)
+
+#define DMM_TILER_GET_OFFSET_(N, var) \
+	((((unsigned long) var) & DMM_TILER_MASK(DMM_TILER_CONT_WIDTH_BITS + \
+	DMM_TILER_CONT_HEIGHT_BITS)) >> DMM_SHIFT_PER_P_(N))
+
+#define DMM_TILER_GET_0_X_(N, var) \
+	(DMM_TILER_GET_OFFSET_(N, var) & \
+	DMM_TILER_MASK(DMM_TILER_CONT_WIDTH_BITS_(N)))
+#define DMM_TILER_GET_0_Y_(N, var) \
+	(DMM_TILER_GET_OFFSET_(N, var) >> DMM_TILER_CONT_WIDTH_BITS_(N))
+#define DMM_TILER_GET_90_X_(N, var) \
+	(DMM_TILER_GET_OFFSET_(N, var) & \
+	DMM_TILER_MASK(DMM_TILER_CONT_HEIGHT_BITS_(N)))
+#define DMM_TILER_GET_90_Y_(N, var) \
+	(DMM_TILER_GET_OFFSET_(N, var) >> DMM_TILER_CONT_HEIGHT_BITS_(N))
+
+void tiler_get_natural_xy(unsigned long tsptr, unsigned long *x,
+			  unsigned long *y)
+{
+	unsigned long rawx = tsptr, rawy = tsptr;
+
+	if (DMM_GET_X_INVERTED(tsptr))
+		rawx = ~rawx;
+	if (DMM_GET_Y_INVERTED(tsptr))
+		rawy = ~rawy;
+
+	switch (DMM_GET_ACC_MODE(tsptr)) {
+	case MODE_8_BIT:
+		if (DMM_GET_ROTATED(tsptr)) {
+			*x = DMM_TILER_GET_90_Y_(8, rawy);
+			*y = DMM_TILER_GET_90_X_(8, rawx);
+		} else {
+			*x = DMM_TILER_GET_0_X_(8, rawx);
+			*y = DMM_TILER_GET_0_Y_(8, rawy);
+		}
+		break;
+	case MODE_16_BIT:
+		if (DMM_GET_ROTATED(tsptr)) {
+			*x = DMM_TILER_GET_90_Y_(16, rawy);
+			*y = DMM_TILER_GET_90_X_(16, rawx);
+		} else {
+			*x = DMM_TILER_GET_0_X_(16, rawx);
+			*y = DMM_TILER_GET_0_Y_(16, rawy);
+		}
+		break;
+	case MODE_32_BIT:
+		if (DMM_GET_ROTATED(tsptr)) {
+			*x = DMM_TILER_GET_90_Y_(32, rawy);
+			*y = DMM_TILER_GET_90_X_(32, rawx);
+		} else {
+			*x = DMM_TILER_GET_0_X_(32, rawx);
+			*y = DMM_TILER_GET_0_Y_(32, rawy);
+		}
+		break;
+	case MODE_PAGE:
+	default:
+		if (DMM_GET_ROTATED(tsptr)) {
+			*x = DMM_TILER_GET_90_Y_(PAGE, rawy);
+			*y = DMM_TILER_GET_90_X_(PAGE, rawx);
+		} else {
+			*x = DMM_TILER_GET_0_X_(PAGE, rawx);
+			*y = DMM_TILER_GET_0_Y_(PAGE, rawy);
+		}
+		break;
+	}
+}
+
+unsigned long tiler_get_address(struct dmmViewOrientT orient,
+				enum dmmMemoryAccessT accessModeM,
+				unsigned long x, unsigned long y)
+{
+	unsigned long x_bits, y_bits, tmp, x_mask, y_mask, alignment;
+
+	switch (accessModeM) {
+	case MODE_8_BIT:
+		x_bits = DMM_TILER_THE_(8, CONT_WIDTH);
+		y_bits = DMM_TILER_THE_(8, CONT_HEIGHT);
+		alignment = DMM_SHIFT_PER_P_(8);
+		break;
+	case MODE_16_BIT:
+		x_bits = DMM_TILER_THE_(16, CONT_WIDTH);
+		y_bits = DMM_TILER_THE_(16, CONT_HEIGHT);
+		alignment = DMM_SHIFT_PER_P_(16);
+		break;
+	case MODE_32_BIT:
+		x_bits = DMM_TILER_THE_(32, CONT_WIDTH);
+		y_bits = DMM_TILER_THE_(32, CONT_HEIGHT);
+		alignment = DMM_SHIFT_PER_P_(32);
+		break;
+	case MODE_PAGE:
+	default:
+		x_bits = DMM_TILER_THE_(PAGE, CONT_WIDTH);
+		y_bits = DMM_TILER_THE_(PAGE, CONT_HEIGHT);
+		alignment = DMM_SHIFT_PER_P_(PAGE);
+		break;
+	}
+
+	x_mask = DMM_TILER_MASK(x_bits);
+	y_mask = DMM_TILER_MASK(y_bits);
+	if (x < 0 || x > x_mask || y < 0 || y > y_mask)
+		return 0;
+
+	if (orient.dmm90Rotate) {
+		tmp = x_bits; x_bits = y_bits; y_bits = tmp;
+		tmp = x_mask; x_mask = y_mask; y_mask = tmp;
+		tmp = x;      x      = y;      y      = tmp;
+	}
+	if (orient.dmmXInvert)
+		x ^= x_mask;
+	if (orient.dmmYInvert)
+		y ^= y_mask;
+
+	tmp = ((y << x_bits) + x) << alignment;
+
+	return (unsigned long)
+		DMM_COMPOSE_TILER_PTR(tmp,
+				      orient.dmm90Rotate,
+				      orient.dmmYInvert,
+				      orient.dmmXInvert,
+				      accessModeM);
+}
+
 unsigned long
-tiler_get_tiler_address(void *sysPtr,
-			struct dmmViewOrientT orient,
-			unsigned int validDataWidth,
-			unsigned int validDataHeight,
-			int aliasViewPtr,
-			int ptrToaliasView)
+tiler_reorient_addr(unsigned long tsptr,
+		struct dmmViewOrientT orient)
+{
+	unsigned long x, y;
+
+	tilerdump(__LINE__);
+
+	tiler_get_natural_xy(tsptr, &x, &y);
+	return tiler_get_address(orient, DMM_GET_ACC_MODE(tsptr), x, y);
+}
+EXPORT_SYMBOL(tiler_reorient_addr);
+
+unsigned long
+tiler_get_natural_addr(void *sysPtr)
+{
+	return (unsigned long)sysPtr & DMM_ALIAS_VIEW_CLEAR;
+}
+EXPORT_SYMBOL(tiler_get_natural_addr);
+
+unsigned long
+tiler_reorient_topleft(unsigned long tsptr,
+		       struct dmmViewOrientT orient,
+		       unsigned int validDataWidth,
+		       unsigned int validDataHeight)
 {
 	struct dmmTILERContPageAreaT *bufferMappedZone;
 	struct dmmTILERContCtxT *dmmTilerCtx =
 			&((struct dmmInstanceCtxT *)ctxptr)->dmmTilerCtx;
-
-	signed long pageDimmensionX;
-	signed long pageDimmensionY;
-	unsigned long addrAlignment;
 	enum dmmMemoryAccessT accessModeM;
-
-	unsigned long areaX0;
-	unsigned long areaY0;
-	unsigned long areaX1;
-	unsigned long areaY1;
-
-	unsigned long contWidth;
-	unsigned long contHeight;
-
-	unsigned long newX;
-	unsigned long newY;
+	unsigned long x_pagew, y_pagew, x_inv, y_inv, x, y;
 
 	tilerdump(__LINE__);
 
-	if (aliasViewPtr)
-		sysPtr = (void *)((unsigned long)sysPtr & DMM_ALIAS_VIEW_CLEAR);
+	accessModeM = DMM_GET_ACC_MODE(tsptr);
 
-	accessModeM = DMM_GET_ACC_MODE(sysPtr);
-
-	bufferMappedZone = dmm_tiler_get_area_from_sysptr(dmmTilerCtx, sysPtr);
+	bufferMappedZone = \
+		dmm_tiler_get_area_from_sysptr(dmmTilerCtx, (void *)tsptr);
 
 	if (bufferMappedZone == NULL)
 		return 0x0;
 
 	switch (accessModeM) {
 	case MODE_8_BIT:
-		if (orient.dmm90Rotate) {
-			contWidth = DMM_TILER_CONT_HEIGHT_8;
-			contHeight = DMM_TILER_CONT_WIDTH_8;
-		} else {
-			contWidth = DMM_TILER_CONT_WIDTH_8;
-			contHeight = DMM_TILER_CONT_HEIGHT_8;
-		}
-		pageDimmensionX = DMM_PAGE_DIMM_X_MODE_8;
-		pageDimmensionY = DMM_PAGE_DIMM_Y_MODE_8;
-		addrAlignment = 0;
-		areaX0 = bufferMappedZone->x0;
-		areaY0 = bufferMappedZone->y0;
-		areaX1 = bufferMappedZone->x1;
-		areaY1 = bufferMappedZone->y1;
+		x_pagew = DMM_PAGE_DIMM_X_MODE_8;
+		y_pagew = DMM_PAGE_DIMM_Y_MODE_8;
 		break;
 	case MODE_16_BIT:
-		if (orient.dmm90Rotate) {
-			contWidth = DMM_TILER_CONT_HEIGHT_16;
-			contHeight = DMM_TILER_CONT_WIDTH_16;
-		} else {
-			contWidth = DMM_TILER_CONT_WIDTH_16;
-			contHeight = DMM_TILER_CONT_HEIGHT_16;
-		}
-		pageDimmensionX = DMM_PAGE_DIMM_X_MODE_16;
-		pageDimmensionY = DMM_PAGE_DIMM_Y_MODE_16;
-		addrAlignment = 1;
-		areaX0 = bufferMappedZone->x0;
-		areaY0 = bufferMappedZone->y0;
-		areaX1 = bufferMappedZone->x1;
-		areaY1 = bufferMappedZone->y1;
+		x_pagew = DMM_PAGE_DIMM_X_MODE_16;
+		y_pagew = DMM_PAGE_DIMM_Y_MODE_16;
 		break;
 	case MODE_32_BIT:
-		if (orient.dmm90Rotate) {
-			contWidth = DMM_TILER_CONT_HEIGHT_32;
-			contHeight = DMM_TILER_CONT_WIDTH_32;
-		} else {
-			contWidth = DMM_TILER_CONT_WIDTH_32;
-			contHeight = DMM_TILER_CONT_HEIGHT_32;
-		}
-		pageDimmensionX = DMM_PAGE_DIMM_X_MODE_32;
-		pageDimmensionY = DMM_PAGE_DIMM_Y_MODE_32;
-		addrAlignment = 2;
-		areaX0 = bufferMappedZone->x0;
-		areaY0 = bufferMappedZone->y0;
-		areaX1 = bufferMappedZone->x1;
-		areaY1 = bufferMappedZone->y1;
+		x_pagew = DMM_PAGE_DIMM_X_MODE_32;
+		y_pagew = DMM_PAGE_DIMM_Y_MODE_32;
 		break;
 	case MODE_PAGE:
-		if (orient.dmm90Rotate) {
-			contWidth = DMM_TILER_CONT_HEIGHT_8;
-			contHeight = DMM_TILER_CONT_WIDTH_8;
-		} else {
-			contWidth = DMM_TILER_CONT_WIDTH_8;
-			contHeight = DMM_TILER_CONT_HEIGHT_8;
-		}
-		pageDimmensionX = DMM_PAGE_DIMM_X_MODE_8;
-		pageDimmensionY = DMM_PAGE_DIMM_Y_MODE_8;
-		addrAlignment = 0;
-		areaX0 = bufferMappedZone->x0;
-		areaY0 = bufferMappedZone->y0;
-		areaX1 = bufferMappedZone->x1;
-		areaY1 = bufferMappedZone->y1;
-		break;
 	default:
-		return 0x0;
+		x_pagew = y_pagew = 1;
+		break;
 	}
 
-	if (orient.dmmXInvert) {
-		if (validDataWidth > 0 && validDataHeight)
-			newX = contWidth - validDataWidth;
-		else
-			newX = contWidth - (areaX1 + 1) * pageDimmensionX;
+	if (orient.dmm90Rotate) {
+		x_inv = orient.dmmYInvert;
+		y_inv = orient.dmmXInvert;
 	} else {
-		newX = areaX0 * pageDimmensionX;
+		x_inv = orient.dmmXInvert;
+		y_inv = orient.dmmYInvert;
 	}
+	if (!validDataWidth)
+		validDataWidth = (bufferMappedZone->x1 -
+				  bufferMappedZone->x0) * x_pagew;
 
-	if (orient.dmmYInvert) {
-		if (validDataWidth > 0 && validDataHeight)
-			newY = contHeight - validDataHeight;
-		else
-			newY = contHeight - (areaY1 + 1) * pageDimmensionY;
-	} else {
-		newY = areaY0 * pageDimmensionY;
-	}
+	if (!validDataHeight)
+		validDataWidth = (bufferMappedZone->y1 -
+				  bufferMappedZone->y0) * y_pagew;
 
-	if (orient.dmm90Rotate)
-		sysPtr = (void *)((newX*contHeight+newY)<<
-				  ((unsigned long)addrAlignment));
-	else
-		sysPtr = (void *)((newY*contWidth+newX)<<
-				  ((unsigned long)addrAlignment));
+	x = bufferMappedZone->x0 * x_pagew;
+	y = bufferMappedZone->y0 * y_pagew;
 
-	if (ptrToaliasView) {
-		sysPtr = DMM_COMPOSE_TILER_ALIAS_PTR(sysPtr, accessModeM);
-	} else {
-		sysPtr = DMM_COMPOSE_TILER_PTR(sysPtr,
-					       orient.dmm90Rotate,
-					       orient.dmmYInvert,
-					       orient.dmmXInvert,
-					       accessModeM);
-	}
+	if (x_inv)
+		x += validDataWidth - 1;
 
-	return (unsigned long)sysPtr;
+	if (y_inv)
+		y += validDataHeight - 1;
+
+	return tiler_get_address(orient, accessModeM, x, y);
 }
-EXPORT_SYMBOL(tiler_get_tiler_address);
+EXPORT_SYMBOL(tiler_reorient_topleft);
 
 static int createlist(struct node **listhead)
 {
