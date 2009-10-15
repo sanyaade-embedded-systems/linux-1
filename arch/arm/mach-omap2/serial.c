@@ -29,6 +29,11 @@
 #include <mach/clock.h>
 #include <mach/control.h>
 
+#ifdef CONFIG_SERIAL_OMAP
+#include <mach/dma.h>
+#include <mach/omap-serial.h>
+#endif
+
 #include "prm.h"
 #include "pm.h"
 #include "prm-regbits-34xx.h"
@@ -37,6 +42,7 @@
 
 #define DEFAULT_TIMEOUT (5 * HZ)
 
+#ifdef CONFIG_SERIAL_8250
 struct omap_uart_state {
 	int num;
 	int can_sleep;
@@ -647,3 +653,198 @@ void __init omap_serial_init(void)
 		}
 	}
 }
+#endif
+
+#ifdef CONFIG_SERIAL_OMAP
+static struct uart_dma_info uart1_dma_state = {
+#ifdef CONFIG_SERIAL_OMAP_DMA_UART1
+		.dma_enabled	= 1,
+		.rx_dma_bufsize	=
+			CONFIG_SERIAL_OMAP_UART1_RXDMA_BUFSIZE,
+		.rx_timeout	=
+			CONFIG_SERIAL_OMAP_UART1_RXDMA_TIMEOUT,
+#endif
+};
+
+static struct uart_dma_info uart2_dma_state = {
+#ifdef CONFIG_SERIAL_OMAP_DMA_UART2
+		.dma_enabled	= 1,
+		.rx_dma_bufsize	=
+			CONFIG_SERIAL_OMAP_UART2_RXDMA_BUFSIZE,
+		.rx_timeout	=
+			CONFIG_SERIAL_OMAP_UART2_RXDMA_TIMEOUT,
+#endif
+};
+
+static struct uart_dma_info uart3_dma_state = {
+#ifdef CONFIG_SERIAL_OMAP_DMA_UART3
+		.dma_enabled	= 1,
+		.rx_dma_bufsize	=
+			CONFIG_SERIAL_OMAP_UART3_RXDMA_BUFSIZE,
+		.rx_timeout	=
+			CONFIG_SERIAL_OMAP_UART3_RXDMA_TIMEOUT,
+#endif
+};
+
+
+#ifdef CONFIG_ARCH_OMAP4
+static struct uart_dma_info uart4_dma_state = {
+#ifdef CONFIG_SERIAL_OMAP_DMA_UART4
+		.dma_enabled	= 1,
+		.rx_dma_bufsize	=
+			CONFIG_SERIAL_OMAP_UART4_RXDMA_BUFSIZE,
+		.rx_timeout	=
+			CONFIG_SERIAL_OMAP_UART4_RXDMA_TIMEOUT,
+#endif
+};
+#endif
+
+static struct resource omap2_uart1_resources[] = {
+	{
+		.start          = OMAP_UART1_BASE,
+		.end            = OMAP_UART1_BASE + 0x3ff,
+		.flags          = IORESOURCE_MEM,
+	}, {
+		/* UART1 IRQ - 72*/
+		.start          = INT_24XX_UART1_IRQ,
+		.flags          = IORESOURCE_IRQ,
+	}, {
+		/* UART1 TX DMA CHANNEL -S_DMA_48- */
+		.start		= OMAP24XX_DMA_UART1_TX,
+		.flags		= IORESOURCE_DMA,
+	}, {
+		/* UART1 RX DMA CHANNEL -S_DMA_49- */
+		.start		= OMAP24XX_DMA_UART1_RX,
+		.flags		= IORESOURCE_DMA,
+	}
+};
+
+static struct resource omap2_uart2_resources[] = {
+	{
+		.start          = OMAP_UART2_BASE,
+		.end            = OMAP_UART2_BASE + 0x3ff,
+		.flags          = IORESOURCE_MEM,
+	}, {
+		/* UART2 IRQ - 73*/
+		.start          = INT_24XX_UART2_IRQ,
+		.flags          = IORESOURCE_IRQ,
+	}, {
+		/* UART2 TX DMA CHANNEL -S_DMA_50- */
+		.start		= OMAP24XX_DMA_UART2_TX,
+		.flags		= IORESOURCE_DMA,
+	}, {
+		/* UART2 RX DMA CHANNEL -S_DMA_51- */
+		.start		= OMAP24XX_DMA_UART2_RX,
+		.flags		= IORESOURCE_DMA,
+	}
+};
+
+static struct resource omap2_uart3_resources[] = {
+	{
+		.start          = OMAP_UART3_BASE,
+		.end            = OMAP_UART3_BASE + 0x3ff,
+		.flags          = IORESOURCE_MEM,
+	}, {
+		/* UART3 IRQ - 74*/
+		.start          = INT_24XX_UART3_IRQ,
+		.flags          = IORESOURCE_IRQ,
+	}, {
+		/* UART3 TX DMA CHANNEL -S_DMA_52- */
+		.start		= OMAP24XX_DMA_UART3_TX,
+		.flags		= IORESOURCE_DMA,
+	}, {
+		/* UART3 RX DMA CHANNEL -S_DMA_53- */
+		.start		= OMAP24XX_DMA_UART3_RX,
+		.flags		= IORESOURCE_DMA,
+	}
+};
+
+#ifdef CONFIG_ARCH_OMAP4
+static struct resource omap2_uart4_resources[] = {
+	{
+		.start          = OMAP_UART4_BASE,
+		.end            = OMAP_UART4_BASE + 0x3ff,
+		.flags          = IORESOURCE_MEM,
+	}, {
+		/* UART4 IRQ */
+		.start          = 70,
+		.flags          = IORESOURCE_IRQ,
+	}, {
+		/* UART4 TX DMA CHANNEL -S_DMA_54- */
+		.start		= OMAP44XX_DMA_UART4_DMA_TX,
+		.flags		= IORESOURCE_DMA,
+	}, {
+		/* UART4 RX DMA CHANNEL -S_DMA_55- */
+		.start		= OMAP44XX_DMA_UART4_DMA_RX,
+		.flags		= IORESOURCE_DMA,
+	}
+};
+#endif
+
+/* OMAP UART platform structure */
+static struct platform_device uart1_device = {
+	.name			= "omap-uart",
+	.id			= 1,
+	.num_resources		= ARRAY_SIZE(omap2_uart1_resources),
+	.resource		= omap2_uart1_resources,
+	.dev			= {
+		.platform_data  = &uart1_dma_state,
+	},
+};
+static struct platform_device uart2_device = {
+	.name			= "omap-uart",
+	.id			= 2,
+	.num_resources		= ARRAY_SIZE(omap2_uart2_resources),
+	.resource		= omap2_uart2_resources,
+	.dev			= {
+		.platform_data  = &uart2_dma_state,
+	},
+};
+static struct platform_device uart3_device = {
+	.name			= "omap-uart",
+	.id			= 3,
+	.num_resources		= ARRAY_SIZE(omap2_uart3_resources),
+	.resource		= omap2_uart3_resources,
+	.dev			= {
+		.platform_data  = &uart3_dma_state,
+	},
+};
+
+#ifdef CONFIG_ARCH_OMAP4
+static struct platform_device uart4_device = {
+	.name			= "omap-uart",
+	.id			= 4,
+	.num_resources		= ARRAY_SIZE(omap2_uart4_resources),
+	.resource		= omap2_uart4_resources,
+	.dev			= {
+		.platform_data  = &uart4_dma_state,
+	},
+};
+#endif
+
+static struct platform_device *uart_devices[] = {
+	&uart1_device,
+	&uart2_device,
+	&uart3_device,
+#ifdef CONFIG_ARCH_OMAP4
+	&uart4_device,
+#endif
+};
+
+void __init omap_serial_init(void)
+{
+	int ret = 0, i;
+
+	/*
+	 * FIX-ME: Replace with correct clk node when clk
+	 * framework is available
+	 */
+	if (!cpu_is_omap44xx())
+		omap_serial_early_init();
+
+	for (i = 0; i < OMAP_MAX_NR_PORTS; i++)
+		omap_uart_idle_init(i);
+
+	ret = platform_add_devices(uart_devices, ARRAY_SIZE(uart_devices));
+}
+#endif
