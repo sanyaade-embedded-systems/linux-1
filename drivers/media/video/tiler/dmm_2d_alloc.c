@@ -1755,7 +1755,7 @@ search_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 
 	if (xInvert && yInvert) {
 		while (usedIter != NULL) {
-			if (X == usedIter->pgAr.x0 && Y == usedIter->pgAr.y0) {
+			if (X == usedIter->pgAr.x1 && Y == usedIter->pgAr.y1) {
 				tilerdump(__LINE__);
 				return &(usedIter->pgAr);
 			}
@@ -1764,7 +1764,7 @@ search_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 		}
 	} else if (!xInvert && yInvert) {
 		while (usedIter != NULL) {
-			if (X == usedIter->pgAr.x1 && Y == usedIter->pgAr.y0) {
+			if (X == usedIter->pgAr.x0 && Y == usedIter->pgAr.y1) {
 				tilerdump(__LINE__);
 				return &(usedIter->pgAr);
 			}
@@ -1773,7 +1773,7 @@ search_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 		}
 	} else if (xInvert && !yInvert) {
 		while (usedIter != NULL) {
-			if (X == usedIter->pgAr.x0 && Y == usedIter->pgAr.y1) {
+			if (X == usedIter->pgAr.x1 && Y == usedIter->pgAr.y0) {
 				tilerdump(__LINE__);
 				return &(usedIter->pgAr);
 			}
@@ -1783,7 +1783,7 @@ search_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 	} else {
 		tilerdump(__LINE__);
 		while (usedIter != NULL) {
-			if (X == usedIter->pgAr.x1 && Y == usedIter->pgAr.y1) {
+			if (X == usedIter->pgAr.x0 && Y == usedIter->pgAr.y0) {
 				tilerdump(__LINE__);
 				return &(usedIter->pgAr);
 			}
