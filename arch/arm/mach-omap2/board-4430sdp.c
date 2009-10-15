@@ -462,8 +462,15 @@ static struct regulator_init_data sdp4430_vusb = {
 };
 
 static struct twl_codec_data twl6030_codec = {
+#ifdef CONFIG_OMAP4_SUDO_ROMCODE
 	.audpwron_gpio	= 127,
 	.naudint_irq	= INT_44XX_SYS_NIRQ2,
+#else
+	/* provide GPIO number above the valid value, to mean there is no GPIO connected,
+	likewise do not provide any valid IRQ number */
+	.audpwron_gpio	= 1024,
+	.naudint_irq	= 0,
+#endif
 };
 
 static struct twl_platform_data sdp4430_twldata = {
