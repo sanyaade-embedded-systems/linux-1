@@ -27,7 +27,7 @@
 #define tilerdump(x) printk(KERN_NOTICE "%s():%s=(0x%08x)\n", \
 				__func__, #x, (int)x);
 #else
-#define tilerdump(x) 
+#define tilerdump(x)
 #endif
 
 #define DMM__DMM    DMM__DMM
