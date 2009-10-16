@@ -896,6 +896,7 @@ static DSP_STATUS WMD_BRD_Stop(struct WMD_DEV_CONTEXT *hDevContext)
          HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
          /*  Enable DSP */
          HW_CLK_Enable (resources.dwCm1Base, HW_CLK_TESLA) ;
+		pDevContext->dwBrdState = BRD_STOPPED;	/* update board state */
 #else
 	HW_PWRST_IVA2RegGet(resources.dwPrmBase, &dspPwrState);
 	if (dspPwrState != HW_PWR_STATE_OFF) {
