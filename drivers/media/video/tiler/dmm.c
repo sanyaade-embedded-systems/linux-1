@@ -876,11 +876,10 @@ unsigned long tiler_get_address(struct dmmViewOrientT orient,
 	if (orient.dmmYInvert)
 		y ^= y_mask;
 
-	if (orient.dmm90Rotate) {
+	if (orient.dmm90Rotate)
 		tmp = ((x << y_bits) + y);
-	} else {
+	else
 		tmp = ((y << x_bits) + x);
-	}
 
 	return (unsigned long)
 		DMM_COMPOSE_TILER_PTR((tmp << alignment),

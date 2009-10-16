@@ -456,10 +456,12 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 		void *custmPagesPtr)
 {
 	signed long iter;
+	unsigned long *patAreaEntries = NULL;
 
 	tilerdump(__LINE__);
-	unsigned long *patAreaEntries = kmalloc(
-		(size_t)(numPages*4 + 16), GFP_KERNEL);
+
+	patAreaEntries = kmalloc(
+		(numPages*4 + 16), GFP_KERNEL);
 		/* Must be 16-byte aligned. */
 	memset(patAreaEntries, 0x0, (numPages*4 + 16));
 	*pageEntriesSpace = patAreaEntries;
