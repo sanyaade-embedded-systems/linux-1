@@ -106,4 +106,7 @@ tiler_reorient_topleft(unsigned long tsptr,
 		       unsigned int validDataWidth,
 		       unsigned int validDataHeight);
 
+void
+tiler_rotate_view(struct dmmViewOrientT *orient, unsigned long rotation);
+
 #endif
