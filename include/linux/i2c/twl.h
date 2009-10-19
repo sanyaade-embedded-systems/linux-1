@@ -472,6 +472,12 @@ struct twl_usb_data {
 	enum twl_usb_mode	usb_mode;
 };
 
+struct twl_codec_data {
+	/* twl6030 */
+	int audpwron_gpio;	/* audio power-on gpio */
+	int naudint_irq;	/* audio interrupt */
+};
+
 struct twl_platform_data {
 	unsigned				irq_base, irq_end;
 	struct twl_bci_platform_data	*bci;
@@ -479,6 +485,7 @@ struct twl_platform_data {
 	struct twl_madc_platform_data	*madc;
 	struct twl_keypad_data		*keypad;
 	struct twl_usb_data			*usb;
+	struct twl_codec_data		*codec;
 
 	/* LDO regulators common to TWL4030/TWL6030 */
 	struct regulator_init_data		*vdac;

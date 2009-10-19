@@ -108,6 +108,12 @@
 #define twl_has_mmc()   false
 #endif
 
+#if defined(CONFIG_SND_SOC_ABE_TWL6030) || defined(CONFIG_SND_SOC_TWL6030_MODULE)
+#define twl_has_codec()	true
+#else
+#define twl_has_codec()	false
+#endif
+
 #if defined(CONFIG_TWL4030_USB) || defined(CONFIG_TWL4030_USB_MODULE)
 #define twl_has_usb()	true
 #else
@@ -190,6 +196,7 @@
 #define BCI_SUB_CHIP_ID		SUB_CHIP_ID1
 #define GPIO_SUB_CHIP_ID	0 /* NOT SUPPORTED IN TWL6030 */
 #define KEYPAD_SUB_CHIP_ID	0 /* ADDED FOR COMPILATION ONLY */
+#define CODEC_SUB_CHIP_ID	SUB_CHIP_ID3
 
 /* subchip/slave 0 0x48 - POWER */
 #define TWL6030_BASEADD_RTC		0x0000
@@ -629,6 +636,14 @@ add_children(struct twl_platform_data *pdata, unsigned long features)
 		child = add_child(MMC_SUB_CHIP_ID, "twl_mmc",
 			NULL, 0, true,
 			pdata->irq_base + MMCDETECT_INTR_OFFSET, 0);
+		if (IS_ERR(child))
+			return PTR_ERR(child);
+	}
+
+	if (twl_has_codec()) {
+		child = add_child(CODEC_SUB_CHIP_ID, "twl6030_codec",
+			pdata->codec, sizeof(*pdata->codec), false,
+			0, 0);
 		if (IS_ERR(child))
 			return PTR_ERR(child);
 	}

@@ -1,10 +1,9 @@
 /*
- * omap-pcm.h
+ * omap-hdmi.h
  *
- * Copyright (C) 2008 Nokia Corporation
+ * Copyright (C) 2009 Texas Instruments
  *
- * Contact: Jarkko Nikula <jhnikula@gmail.com>
- *          Peter Ujfalusi <peter.ujfalusi@nokia.com>
+ * Contact: Jorge Candelaria <x0107209@ti.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,18 +21,9 @@
  *
  */
 
-#ifndef __OMAP_PCM_H__
-#define __OMAP_PCM_H__
+#ifndef __OMAP_HDMI_H__
+#define __OMAP_HDMI_H__
 
-struct omap_pcm_dma_data {
-	char		*name;		/* stream identifier */
-	int		dma_req;	/* DMA request line */
-	unsigned long	port_addr;	/* transmit/receive register */
-	int		data_type;	/* data type 8,16,32 */
-	int		sync_mode;	/* sync mode: element, packet */
-	int		packet_size;	/* packet size only in PACKET mode */
-};
+extern struct snd_soc_dai omap_hdmi_dai;
 
-extern struct snd_soc_platform omap_soc_platform;
-
-#endif
+#endif	/* End of __OMAP_HDMI_H__ */
