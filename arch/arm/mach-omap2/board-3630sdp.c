@@ -47,7 +47,7 @@
 #include <mach/clock.h>
 
 #include "board-sdp.h"
-#include "sdram-qimonda-hyb18m512160af-6.h"
+#include "sdram-hynix-h8mbx00u0mer-0em.h"
 #include "mmc-twl4030.h"
 #include "pm.h"
 #include "omap3-opp.h"
@@ -404,8 +404,9 @@ static void __init omap_3430sdp_init_irq(void)
 {
 	omap_board_config = sdp3430_config;
 	omap_board_config_size = ARRAY_SIZE(sdp3430_config);
-	omap2_init_common_hw(hyb18m512160af6_sdrc_params, NULL, omap3_mpu_rate_table,
-			     omap3_dsp_rate_table, omap3_l3_rate_table);
+	omap2_init_common_hw(h8mbx00u0mer0em_sdrc_params, NULL,
+				omap3_mpu_rate_table, omap3_dsp_rate_table,
+				omap3_l3_rate_table);
 	omap_init_irq();
 	omap_gpio_init();
 }

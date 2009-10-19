@@ -275,30 +275,41 @@ static int program_opp_freq(int res, int target_level, int current_level)
 static int program_opp(int res, struct omap_opp *opp, int target_level,
 		int current_level)
 {
-	int i, ret = 0, raise;
+	int ret = 0;
 #ifdef CONFIG_OMAP_SMARTREFLEX
 	unsigned long t_opp, c_opp;
 
 	t_opp = ID_VDD(res) | ID_OPP_NO(opp[target_level].opp_id);
 	c_opp = ID_VDD(res) | ID_OPP_NO(opp[current_level].opp_id);
 #endif
-	if (target_level > current_level)
-		raise = 1;
-	else
-		raise = 0;
-
-	for (i = 0; i < 2; i++) {
-		if (i == raise)
-			ret = program_opp_freq(res, target_level,
+	if (target_level > current_level) {
+#ifdef CONFIG_OMAP_SMARTREFLEX
+		sr_voltagescale_vcbypass(t_opp, c_opp,
+			opp[target_level].vsel,
+			opp[current_level].vsel);
+#endif
+		ret = program_opp_freq(res, target_level,
+				current_level);
+#ifdef CONFIG_OMAP_SMARTREFLEX
+		if (ret == current_level) {
+			sr_voltagescale_vcbypass(t_opp, c_opp,
+				opp[current_level].vsel,
+				opp[target_level].vsel);
+			printk(KERN_ERR "Failed to change OPP: target_level=%d,"
+					" current_level=%d\n", target_level,
+								current_level);
+		}
+#endif
+	} else {
+		ret = program_opp_freq(res, target_level,
 					current_level);
 #ifdef CONFIG_OMAP_SMARTREFLEX
-		else
+		if (ret == target_level)
 			sr_voltagescale_vcbypass(t_opp, c_opp,
 				opp[target_level].vsel,
 				opp[current_level].vsel);
 #endif
 	}
-
 	return ret;
 }
 
@@ -371,11 +382,11 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 		resource_set_opp_level(VDD1_OPP, target_level, 0);
 		/*
 		 * For VDD1 OPP3 and above, make sure the interconnect
-		 * is at 100Mhz or above.
-		 * throughput in KiB/s for 100 Mhz = 100 * 1000 * 4.
+		 * is strictly above 100Mhz.
+		 * throughput in KiB/s for 200 Mhz = 200 * 1000 * 4.
 		 */
 		if (target_level >= 3)
-			resource_request("vdd2_opp", &vdd2_dev, 400000);
+			resource_request("vdd2_opp", &vdd2_dev, 800000);
 
 	} else if (resp == vdd2_resp) {
 		tput = target_level;

@@ -16,6 +16,10 @@
 #define S125M   125000000
 
 /* DSP speeds */
+#ifdef CONFIG_ARCH_OMAP3630
+#define S760M   760000000
+#define S660M   660000000
+#endif
 #define S520M   520000000
 #define S430M   430000000
 #define S400M   400000000
@@ -84,20 +88,18 @@ static struct omap_opp omap3_mpu_rate_table[] = {
 	/*OPP5 (OPP-TM)*/  
 	{S800M, VDD1_OPP5, 0x34},
 	/*OPP6 (OPP-SB)*/  
-	{S1000M, VDD1_OPP6,0x34},
+	{S1000M, VDD1_OPP6, 0x3C},
 
 };
 
 static struct omap_opp omap3_l3_rate_table[] = {
 	{0, 0, 0},
-	/*OPP1*/
-	{0, VDD2_OPP1, 0x1E},
-	/*OPP2 (OPP25)*/
-	{S50M, VDD2_OPP2,  0x14},
-	/*OPP3 (OPP50)*/   
-	{S100M, VDD2_OPP3, 0x1C},
+	/*OPP1 (OPP25)*/
+	{S50M, VDD2_OPP1,  0x14},
+	/*OPP2 (OPP50)*/
+	{S100M, VDD2_OPP2, 0x1C},
 	/*OPP3 (OPP100)*/  
-	{S200M, VDD2_OPP4, 0x28},
+	{S200M, VDD2_OPP3, 0x28},
 };
 
 static struct omap_opp omap3_dsp_rate_table[] = {
@@ -111,9 +113,9 @@ static struct omap_opp omap3_dsp_rate_table[] = {
 	/*OPP4 (OPP120)*/  
 	{S600M, VDD1_OPP4, 0x30},
 	/*OPP5 (OPP-TM)*/  
-	{S720M, VDD1_OPP5, 0x34},
+	{S660M, VDD1_OPP5, 0x34},
 	/*OPP6 (OPP-SB)*/  
-	{S720M, VDD1_OPP6, 0x34},
+	{S760M, VDD1_OPP6, 0x3C},
 };
 #endif
 
