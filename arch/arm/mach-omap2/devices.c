@@ -136,8 +136,11 @@ static inline void omap_init_camera(void)
 
 #if defined(CONFIG_OMAP_MBOX_FWK) || defined(CONFIG_OMAP_MBOX_FWK_MODULE)
 
+#ifdef CONFIG_ARCH_OMAP4
+#define MBOX_REG_SIZE   0x130
+#else
 #define MBOX_REG_SIZE	0x120
-
+#endif
 static struct resource omap2_mbox_resources[] = {
 	{
 		.start		= OMAP24XX_MAILBOX_BASE,
@@ -166,6 +169,18 @@ static struct resource omap3_mbox_resources[] = {
 	},
 };
 
+static struct resource omap4_mbox_resources[] = {
+	{
+		.start          = OMAP44xx_MAILBOX_BASE,
+		.end            = OMAP44xx_MAILBOX_BASE + MBOX_REG_SIZE  - 1,
+		.flags          = IORESOURCE_MEM,
+	},
+	{
+		.start          = INT_44XX_MAIL_U0_MPU,
+		.flags          = IORESOURCE_IRQ,
+	},
+};
+
 static struct platform_device mbox_device = {
 	.name		= "omap2-mailbox",
 	.id		= -1,
@@ -179,6 +194,9 @@ static inline void omap_init_mbox(void)
 	} else if (cpu_is_omap3430()) {
 		mbox_device.num_resources = ARRAY_SIZE(omap3_mbox_resources);
 		mbox_device.resource = omap3_mbox_resources;
+	} else if (cpu_is_omap44xx()) {
+		mbox_device.num_resources = ARRAY_SIZE(omap4_mbox_resources);
+		mbox_device.resource = omap4_mbox_resources;
 	} else {
 		pr_err("%s: platform not supported\n", __func__);
 		return;
