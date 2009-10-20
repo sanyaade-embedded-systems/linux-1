@@ -573,3 +573,59 @@ void __init da850_init_spi1(unsigned char* chip_sel, unsigned int num_sel,
 	platform_device_register(&da850_spi_pdev1);
 }
 
+static struct davinci_spi_platform_data da830_spi_pdata0 = {
+	.version = DAVINCI_SPI_VERSION_2,
+	.clk_name = "SPICLK"
+};
+
+static struct resource da830_spi_resources0[] = {
+	[0] = {
+		.start = 0x01C41000,
+		.end = 0x01C41000 + 0xfff,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_DA8XX_SPINT0,
+		.end = IRQ_DA8XX_SPINT0,
+		.flags = IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start = EDMA_CTLR_CHAN(0, 14),
+		.end = EDMA_CTLR_CHAN(0, 14),
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_RX_CHAN,
+	},
+	[3] = {
+		.start = EDMA_CTLR_CHAN(0, 15),
+		.end = EDMA_CTLR_CHAN(0, 15),
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_TX_CHAN,
+	},
+	[4] = {
+		.start = 1,
+		.end = 1,
+		.flags = IORESOURCE_DMA | IORESOURCE_DMA_EVENT_Q,
+	},
+};
+
+static struct platform_device da830_spi_pdev0 = {
+	.name = "dm_spi",
+	.id = 0,
+	.resource = da830_spi_resources0,
+	.num_resources = ARRAY_SIZE(da830_spi_resources0),
+	.dev = {
+		.platform_data = &da830_spi_pdata0,
+	},
+};
+
+void __init da830_init_spi0(unsigned char* chip_sel, unsigned int num_sel,
+	struct spi_board_info *info, unsigned num_dev)
+{
+	struct davinci_spi_platform_data *pdata =
+			da830_spi_pdev0.dev.platform_data;
+
+	spi_register_board_info(info, num_dev);
+
+	pdata->chip_sel = chip_sel;
+	pdata->num_chipselect = num_sel;
+	platform_device_register(&da830_spi_pdev0);
+}
+

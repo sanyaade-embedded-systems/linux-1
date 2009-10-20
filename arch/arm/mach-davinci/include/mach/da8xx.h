@@ -94,6 +94,8 @@ int da850_register_cpufreq(void);
 int da8xx_register_cpuidle(void);
 void da850_init_spi1(unsigned char *chip_sel, unsigned int num_sel,
 	struct spi_board_info *info, unsigned num_dev);
+void da830_init_spi0(unsigned char *chip_sel, unsigned int num_sel,
+	struct spi_board_info *info, unsigned num_dev);
 
 extern struct platform_device da8xx_serial_device;
 extern struct emac_platform_data da8xx_emac_pdata;

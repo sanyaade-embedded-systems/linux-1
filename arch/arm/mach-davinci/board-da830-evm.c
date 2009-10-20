@@ -20,6 +20,9 @@
 #include <linux/i2c/at24.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/flash.h>
+#include <linux/spi/davinci_spi_master.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -427,6 +430,65 @@ static inline void da830_evm_init_lcdc(int mux_mode)
 static inline void da830_evm_init_lcdc(int mux_mode) { }
 #endif
 
+static struct mtd_partition spi_flash_partitions[] = {
+	[0] = {
+		.name = "U-Boot",
+		.offset = 0,
+		.size = SZ_256K,
+		.mask_flags = MTD_WRITEABLE,
+	},
+	[1] = {
+		.name = "U-Boot Environment",
+		.offset = MTDPART_OFS_APPEND,
+		.size = SZ_16K,
+		.mask_flags = MTD_WRITEABLE,
+	},
+	[2] = {
+		.name = "Linux",
+		.offset = MTDPART_OFS_NXTBLK,
+		.size = MTDPART_SIZ_FULL,
+		.mask_flags = 0,
+	},
+};
+
+struct davinci_spi_config_t w25x64_spi_cfg = {
+	.wdelay		= 0,
+	.odd_parity	= 0,
+	.parity_enable	= 0,
+	.wait_enable	= 0,
+	.lsb_first	= 0,
+	.timer_disable	= 0,
+	.clk_high	= 0,
+	.phase_in	= 1,
+	.clk_internal	= 1,
+	.loop_back	= 0,
+	.cs_hold	= 1,
+	.intr_level	= 0,
+	.pin_op_modes	= SPI_OPMODE_SPISCS_4PIN,
+#ifndef CONFIG_SPI_INTERRUPT
+	.poll_mode	= 1,
+#endif
+};
+
+static struct flash_platform_data spi_flash_data = {
+	.name = "m25p80",
+	.parts = spi_flash_partitions,
+	.nr_parts = ARRAY_SIZE(spi_flash_partitions),
+	.type = "w25x32",
+};
+
+static struct spi_board_info da830_spi_board_info0[] = {
+	[0] = {
+		.modalias = "m25p80",
+		.platform_data = &spi_flash_data,
+		.controller_data = &w25x64_spi_cfg,
+		.mode = SPI_MODE_0,
+		.max_speed_hz = 30000000,       /* max sample rate at 3V */
+		.bus_num = 0,
+		.chip_select = 0,
+	},
+};
+
 static struct at24_platform_data da830_evm_i2c_eeprom_info = {
 	.byte_len	= SZ_256K / 8,
 	.page_size	= 64,
@@ -539,6 +601,14 @@ static __init void da830_evm_init(void)
 	ret = da8xx_register_rtc();
 	if (ret)
 		pr_warning("da830_evm_init: rtc setup failed: %d\n", ret);
+
+	ret = da8xx_pinmux_setup(da830_spi0_pins);
+	if (ret)
+		pr_warning("da830_evm_init: spi1 mux setup failed: %d\n",
+				ret);
+
+	da830_init_spi0(NULL, 1, da830_spi_board_info0,
+			ARRAY_SIZE(da830_spi_board_info0));
 }
 
 #ifdef CONFIG_SERIAL_8250_CONSOLE
