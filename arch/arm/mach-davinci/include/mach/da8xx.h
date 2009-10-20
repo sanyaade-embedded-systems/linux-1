@@ -11,6 +11,8 @@
 #ifndef __ASM_ARCH_DAVINCI_DA8XX_H
 #define __ASM_ARCH_DAVINCI_DA8XX_H
 
+#include <linux/spi/spi.h>
+
 #include <video/da8xx-fb.h>
 
 #include <mach/serial.h>
@@ -90,6 +92,8 @@ void __init da8xx_register_mcasp(int id, struct snd_platform_data *pdata);
 int da8xx_register_rtc(void);
 int da850_register_cpufreq(void);
 int da8xx_register_cpuidle(void);
+void da850_init_spi1(unsigned char *chip_sel, unsigned int num_sel,
+	struct spi_board_info *info, unsigned num_dev);
 
 extern struct platform_device da8xx_serial_device;
 extern struct emac_platform_data da8xx_emac_pdata;
@@ -133,6 +137,7 @@ extern const short da850_lcdcntl_pins[];
 extern const short da850_mmcsd0_pins[];
 extern const short da850_nand_pins[];
 extern const short da850_nor_pins[];
+extern const short da850_spi1_pins[];
 
 int da8xx_pinmux_setup(const short pins[]);
 
