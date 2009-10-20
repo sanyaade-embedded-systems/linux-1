@@ -23,6 +23,43 @@
 
 #include "isp.h"
 
+inline int greater_overflow(int a, int b, int limit)
+{
+	int limit2 = limit / 2;
+
+	if (b - a > limit2)
+		return 1;
+	else if (a - b > limit2)
+		return 0;
+	else
+		return a > b;
+}
+
+int ispstat_buf_queue(struct ispstat *stat)
+{
+	unsigned long flags;
+
+	if (!stat->active_buf)
+		return -1;
+
+	do_gettimeofday(&stat->active_buf->ts);
+
+	spin_lock_irqsave(&stat->lock, flags);
+
+	stat->active_buf->config_counter = stat->config_counter;
+	stat->active_buf->frame_number = stat->frame_number;
+
+	stat->frame_number++;
+	if (stat->frame_number == stat->max_frame)
+		stat->frame_number = 0;
+
+	stat->active_buf = NULL;
+
+	spin_unlock_irqrestore(&stat->lock, flags);
+
+	return 0;
+}
+
 /* Get next free buffer to write the statistics to and mark it active. */
 struct ispstat_buffer *ispstat_buf_next(struct ispstat *stat)
 {
@@ -30,15 +67,11 @@ struct ispstat_buffer *ispstat_buf_next(struct ispstat *stat)
 	struct ispstat_buffer *found = NULL;
 	int i;
 
-	if (stat->active_buf)
-		do_gettimeofday(&stat->active_buf->ts);
-
 	spin_lock_irqsave(&stat->lock, flags);
 
-	if (stat->active_buf) {
-		stat->active_buf->config_counter = stat->config_counter;
-		stat->active_buf->frame_number = stat->frame_number;
-	}
+	if (stat->active_buf)
+		dev_dbg(stat->dev, "%s: new buffer requested without queuing "
+				   "active one.\n", stat->tag);
 
 	for (i = 0; i < stat->nbufs; i++) {
 		struct ispstat_buffer *curr = &stat->buf[i];
@@ -50,22 +83,19 @@ struct ispstat_buffer *ispstat_buf_next(struct ispstat *stat)
 		if (curr == stat->locked_buf)
 			continue;
 
-		if (!found
-		    || (curr->frame_number > found->frame_number
-			&& (curr->frame_number - found->frame_number
-			    > stat->max_frame / 2))
-		    || (curr->frame_number < found->frame_number
-			&& (found->frame_number - curr->frame_number
-			    < stat->max_frame / 2))) {
+		/* Uninitialised buffer -- pick that one over anything else. */
+		if (curr->frame_number == stat->max_frame) {
 			found = curr;
+			break;
 		}
+
+		if (!found ||
+		    !greater_overflow(curr->frame_number, found->frame_number,
+				      stat->max_frame))
+			found = curr;
 	}
 
 	stat->active_buf = found;
-
-	stat->frame_number++;
-	if (stat->frame_number == stat->max_frame)
-		stat->frame_number = 0;
 
 	spin_unlock_irqrestore(&stat->lock, flags);
 
@@ -76,7 +106,6 @@ struct ispstat_buffer *ispstat_buf_next(struct ispstat *stat)
 static struct ispstat_buffer *ispstat_buf_find(
 	struct ispstat *stat, u32 frame_number)
 {
-	struct ispstat_buffer *latest = NULL;
 	int i;
 
 	for (i = 0; i < stat->nbufs; i++) {
@@ -91,23 +120,11 @@ static struct ispstat_buffer *ispstat_buf_find(
 			continue;
 
 		/* Found correct number. */
-		if (curr->frame_number == frame_number) {
-			latest = curr;
-			break;
-		}
-
-		/* Select first buffer or a better one. */
-		if (!latest
-		    || (curr->frame_number < latest->frame_number
-			&& (latest->frame_number - curr->frame_number
-			    > stat->max_frame / 2))
-		    || (curr->frame_number > latest->frame_number
-			&& (curr->frame_number - latest->frame_number
-			    < stat->max_frame / 2)))
-			latest = curr;
+		if (curr->frame_number == frame_number)
+			return curr;
 	}
 
-	return latest;
+	return NULL;
 }
 
 /**
@@ -129,6 +146,8 @@ struct ispstat_buffer *ispstat_buf_get(struct ispstat *stat,
 	buf = ispstat_buf_find(stat, frame_number);
 	if (!buf) {
 		spin_unlock_irqrestore(&stat->lock, flags);
+		dev_dbg(stat->dev, "%s: cannot find requested buffer. "
+				"frame_number = %d\n", stat->tag, frame_number);
 		return ERR_PTR(-EBUSY);
 	}
 
@@ -142,7 +161,8 @@ struct ispstat_buffer *ispstat_buf_get(struct ispstat *stat,
 
 	if (rval) {
 		dev_info(stat->dev,
-			 "failed copying %d bytes of stat data\n", rval);
+			 "%s: failed copying %d bytes of stat data\n",
+			 stat->tag, rval);
 		buf = ERR_PTR(-EFAULT);
 		ispstat_buf_release(stat);
 	}
@@ -167,29 +187,99 @@ void ispstat_bufs_free(struct ispstat *stat)
 	for (i = 0; i < stat->nbufs; i++) {
 		struct ispstat_buffer *buf = &stat->buf[i];
 
-		if (!buf->iommu_addr)
-			continue;
+		if (!stat->dma_buf) {
+			if (!buf->iommu_addr)
+				continue;
 
-		iommu_vfree(isp->iommu, buf->iommu_addr);
+			iommu_vfree(isp->iommu, buf->iommu_addr);
+		} else {
+			if (!buf->virt_addr)
+				continue;
+
+			dma_free_coherent(stat->dev, stat->buf_alloc_size,
+					  buf->virt_addr, buf->dma_addr);
+		}
 		buf->iommu_addr = 0;
+		buf->dma_addr = 0;
+		buf->virt_addr = NULL;
 	}
 
 	stat->buf_alloc_size = 0;
 }
 
+static int ispstat_bufs_alloc_iommu(struct ispstat *stat, unsigned int size)
+{
+	struct isp_device *isp = dev_get_drvdata(stat->dev);
+	int i;
+
+	stat->buf_alloc_size = size;
+
+	for (i = 0; i < stat->nbufs; i++) {
+		struct ispstat_buffer *buf = &stat->buf[i];
+
+		WARN_ON(buf->dma_addr);
+		buf->iommu_addr = iommu_vmalloc(isp->iommu, 0, size,
+						IOMMU_FLAG);
+		if (buf->iommu_addr == 0) {
+			dev_err(stat->dev,
+				 "%s stat: Can't acquire memory for "
+				 "buffer %d\n", stat->tag, i);
+			ispstat_bufs_free(stat);
+			return -ENOMEM;
+		}
+		buf->virt_addr = da_to_va(isp->iommu, (u32)buf->iommu_addr);
+		buf->frame_number = stat->max_frame;
+	}
+	stat->dma_buf = 0;
+
+	return 0;
+}
+
+static int ispstat_bufs_alloc_dma(struct ispstat *stat, unsigned int size)
+{
+	int i;
+
+	/* dma_alloc_coherent() size is PAGE_ALIGNED */
+	size = PAGE_ALIGN(size);
+	stat->buf_alloc_size = size;
+
+	for (i = 0; i < stat->nbufs; i++) {
+		struct ispstat_buffer *buf = &stat->buf[i];
+
+		WARN_ON(buf->iommu_addr);
+		buf->virt_addr = dma_alloc_coherent(stat->dev, size,
+					&buf->dma_addr, GFP_KERNEL | GFP_DMA);
+
+		if (!buf->virt_addr || !buf->dma_addr) {
+			dev_info(stat->dev,
+				 "%s stat: Can't acquire memory for "
+				 "DMA buffer %d\n", stat->tag, i);
+			ispstat_bufs_free(stat);
+			return -ENOMEM;
+		}
+		buf->frame_number = stat->max_frame;
+	}
+	stat->dma_buf = 1;
+
+	return 0;
+}
+
 int ispstat_bufs_alloc(struct ispstat *stat,
-		       unsigned int size)
+		       unsigned int size, int dma_buf)
 {
 	struct isp_device *isp = dev_get_drvdata(stat->dev);
 	unsigned long flags;
+	int ret = 0;
 	int i;
 
 	spin_lock_irqsave(&stat->lock, flags);
 
 	BUG_ON(stat->locked_buf != NULL);
 
+	dma_buf = dma_buf ? 1 : 0;
+
 	/* Are the old buffers big enough? */
-	if (stat->buf_alloc_size >= size) {
+	if ((stat->buf_alloc_size >= size) && (stat->dma_buf == dma_buf)) {
 		for (i = 0; i < stat->nbufs; i++)
 			stat->buf[i].frame_number = stat->max_frame;
 		spin_unlock_irqrestore(&stat->lock, flags);
@@ -197,7 +287,9 @@ int ispstat_bufs_alloc(struct ispstat *stat,
 	}
 
 	if (isp->running != ISP_STOPPED) {
-		dev_info(stat->dev, "stat: trying to configure when busy\n");
+		dev_info(stat->dev,
+			 "%s stat: trying to configure when busy\n",
+			 stat->tag);
 		spin_unlock_irqrestore(&stat->lock, flags);
 		return -EBUSY;
 	}
@@ -206,31 +298,21 @@ int ispstat_bufs_alloc(struct ispstat *stat,
 
 	ispstat_bufs_free(stat);
 
-	for (i = 0; i < stat->nbufs; i++) {
-		struct ispstat_buffer *buf = &stat->buf[i];
-
-		buf->iommu_addr = iommu_vmalloc(isp->iommu, 0, size,
-						IOMMU_FLAG);
-		if (buf->iommu_addr == 0) {
-			dev_info(stat->dev, "stat: Can't acquire memory for "
-				 "buffer %d\n", i);
-			ispstat_bufs_free(stat);
-			return -ENOMEM;
-		}
-		buf->virt_addr = da_to_va(isp->iommu, (u32)buf->iommu_addr);
-		buf->frame_number = stat->max_frame;
-	}
-
-	stat->buf_alloc_size = size;
+	if (dma_buf)
+		ret = ispstat_bufs_alloc_dma(stat, size);
+	else
+		ret = ispstat_bufs_alloc_iommu(stat, size);
+	if (ret)
+		size = 0;
 
 out:
 	stat->buf_size = size;
 	stat->active_buf = NULL;
 
-	return 0;
+	return ret;
 }
 
-int ispstat_init(struct device *dev, struct ispstat *stat,
+int ispstat_init(struct device *dev, char *tag, struct ispstat *stat,
 		 unsigned int nbufs, unsigned int max_frame)
 {
 	BUG_ON(nbufs < 2);
@@ -246,7 +328,9 @@ int ispstat_init(struct device *dev, struct ispstat *stat,
 	spin_lock_init(&stat->lock);
 	stat->nbufs = nbufs;
 	stat->dev = dev;
+	stat->tag = tag;
 	stat->max_frame = max_frame;
+	stat->frame_number = 1;
 
 	return 0;
 }

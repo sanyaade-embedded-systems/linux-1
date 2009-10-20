@@ -44,6 +44,7 @@ struct isp_pipeline;
 #include "isph3a.h"
 #include "ispresizer.h"
 #include "isppreview.h"
+#include "ispcsi2.h"
 
 #define IOMMU_FLAG (IOVMF_ENDIAN_LITTLE | IOVMF_ELSZ_8)
 
@@ -60,6 +61,10 @@ struct isp_pipeline;
 						 */
 #define NUM_BUFS		VIDEO_MAX_FRAME
 
+#define ISP_REVISION_2_0            0x20
+#define ISP_REVISION_2_1            0x21
+#define ISP_REVISION_RAPXXX         0xF0
+
 #ifndef CONFIG_ARCH_OMAP3410
 #define USE_ISP_PREVIEW
 #define USE_ISP_RESZ
@@ -73,6 +78,11 @@ struct isp_pipeline;
 #define ISP_BYTES_PER_PIXEL		2
 #define NUM_ISP_CAPTURE_FORMATS 	(sizeof(isp_formats) /		\
 					 sizeof(isp_formats[0]))
+
+#define to_isp_device(ptr_module)				\
+	container_of(ptr_module, struct isp_device, ptr_module)
+#define to_device(ptr_module)						\
+	(to_isp_device(ptr_module)->dev)
 
 typedef int (*isp_vbq_callback_ptr) (struct videobuf_buffer *vb);
 typedef void (*isp_callback_t) (unsigned long status,
@@ -255,7 +265,6 @@ struct isp_buf {
 /**
  * struct isp_bufs - ISP internal buffer queue list.
  * @isp_addr_capture: Array of addresses for the ISP buffers inside the list.
- * @lock: For handling current buffer
  * @buf: Array of ISP buffers inside the list.
  * @queue: Next slot to queue a buffer.
  * @done: Buffer that is being processed.
@@ -263,7 +272,6 @@ struct isp_buf {
  */
 struct isp_bufs {
 	dma_addr_t isp_addr_capture[VIDEO_MAX_FRAME];
-	spinlock_t lock;
 	struct isp_buf buf[NUM_BUFS];
 	int queue;
 	int done;
@@ -307,12 +315,14 @@ struct isp_irq {
  * @prv_out_h: Preview output height (with extra padding pixels).
  * @prv_out_w_img: Preview output width.
  * @prv_out_h_img: Preview output height.
+ * @prv_fmt_avg: Preview formatter averager.
  * @prv_in: Preview input source.
  * @prv_out: Preview output destination.
  * @rsz_crop: Resizer crop region.
  * @rsz_out_w: Resizer output width (with extra padding pixels).
  * @rsz_out_h: Resizer output height.
  * @rsz_out_w_img: Resizer output width (valid image region).
+ * @rsz_in: Resizer input source.
  */
 struct isp_pipeline {
 	unsigned int modules;
@@ -330,6 +340,7 @@ struct isp_pipeline {
 	unsigned int prv_out_h;
 	unsigned int prv_out_w_img;
 	unsigned int prv_out_h_img;
+	unsigned int prv_fmt_avg;
 	enum preview_input prv_in;
 	enum preview_output prv_out;
 	struct v4l2_rect rsz_crop;
@@ -345,7 +356,7 @@ struct isp_pipeline {
 /**
  * struct isp_device - ISP device structure.
  * @dev: Device pointer specific to the OMAP3 ISP.
- * @isp_obj: ISP information structure.
+ * @revision: Stores current ISP module revision.
  * @irq_num: Currently used IRQ number.
  * @mmio_base: Array with kernel base addresses for ioremapped ISP register
  *             regions.
@@ -358,7 +369,7 @@ struct isp_pipeline {
  * @ref_count: Reference count for handling multiple ISP requests.
  * @cam_ick: Pointer to camera interface clock structure.
  * @cam_mclk: Pointer to camera functional clock structure.
- * @cam_fck: Pointer to camera functional clock structure. (outdated)
+ * @dpll4_m5_ck: Pointer to DPLL4 M5 clock structure.
  * @csi2_fck: Pointer to camera CSI2 complexIO clock structure.
  * @l3_ick: Pointer to OMAP3 L3 bus interface clock.
  * @config: Pointer to currently set ISP interface configuration.
@@ -386,7 +397,7 @@ struct isp_pipeline {
  */
 struct isp_device {
 	struct device *dev;
-	struct isp *isp_obj;
+	u32 revision;
 
 	/*** platform HW resources ***/
 	unsigned int irq_num;
@@ -413,6 +424,7 @@ struct isp_device {
 	int ref_count;
 	struct clk *cam_ick;
 	struct clk *cam_mclk;
+	struct clk *dpll4_m5_ck;
 	struct clk *csi2_fck;
 	struct clk *l3_ick;
 	struct isp_interface_config *config;
@@ -432,26 +444,14 @@ struct isp_device {
 	struct isp_res_device isp_res;
 	struct isp_prev_device isp_prev;
 	struct isp_ccdc_device isp_ccdc;
+	struct isp_csi2_device isp_csi2;
 
 	struct iommu *iommu;
 };
 
+void isp_hist_dma_done(struct device *dev);
+
 void isp_flush(struct device *dev);
-
-u32 isp_reg_readl(struct device *dev, enum isp_mem_resources isp_mmio_range,
-		  u32 reg_offset);
-
-void isp_reg_writel(struct device *dev, u32 reg_value,
-		    enum isp_mem_resources isp_mmio_range, u32 reg_offset);
-
-void isp_reg_and(struct device *dev, enum isp_mem_resources mmio_range, u32 reg,
-		 u32 and_bits);
-
-void isp_reg_or(struct device *dev, enum isp_mem_resources mmio_range, u32 reg,
-		u32 or_bits);
-
-void isp_reg_and_or(struct device *dev, enum isp_mem_resources mmio_range,
-		    u32 reg, u32 and_bits, u32 or_bits);
 
 void isp_start(struct device *dev);
 
@@ -538,5 +538,90 @@ void isp_csi2_cleanup(struct device *dev);
 dma_addr_t ispmmu_vmap(struct device *dev, const struct scatterlist *sglist,
 		       int sglen);
 void ispmmu_vunmap(struct device *dev, dma_addr_t da);
+
+/**
+ * isp_reg_readl - Read value of an OMAP3 ISP register
+ * @dev: Device pointer specific to the OMAP3 ISP.
+ * @isp_mmio_range: Range to which the register offset refers to.
+ * @reg_offset: Register offset to read from.
+ *
+ * Returns an unsigned 32 bit value with the required register contents.
+ **/
+static inline
+u32 isp_reg_readl(struct device *dev, enum isp_mem_resources isp_mmio_range,
+		  u32 reg_offset)
+{
+	struct isp_device *isp = dev_get_drvdata(dev);
+
+	return __raw_readl(isp->mmio_base[isp_mmio_range] + reg_offset);
+}
+
+/**
+ * isp_reg_writel - Write value to an OMAP3 ISP register
+ * @dev: Device pointer specific to the OMAP3 ISP.
+ * @reg_value: 32 bit value to write to the register.
+ * @isp_mmio_range: Range to which the register offset refers to.
+ * @reg_offset: Register offset to write into.
+ **/
+static inline
+void isp_reg_writel(struct device *dev, u32 reg_value,
+		    enum isp_mem_resources isp_mmio_range, u32 reg_offset)
+{
+	struct isp_device *isp = dev_get_drvdata(dev);
+
+	__raw_writel(reg_value, isp->mmio_base[isp_mmio_range] + reg_offset);
+}
+
+/**
+ * isp_reg_and - Do AND binary operation within an OMAP3 ISP register value
+ * @dev: Device pointer specific to the OMAP3 ISP.
+ * @mmio_range: Range to which the register offset refers to.
+ * @reg: Register offset to work on.
+ * @and_bits: 32 bit value which would be 'ANDed' with current register value.
+ **/
+static inline
+void isp_reg_and(struct device *dev, enum isp_mem_resources mmio_range, u32 reg,
+		 u32 and_bits)
+{
+	u32 v = isp_reg_readl(dev, mmio_range, reg);
+
+	isp_reg_writel(dev, v & and_bits, mmio_range, reg);
+}
+
+/**
+ * isp_reg_or - Do OR binary operation within an OMAP3 ISP register value
+ * @dev: Device pointer specific to the OMAP3 ISP.
+ * @mmio_range: Range to which the register offset refers to.
+ * @reg: Register offset to work on.
+ * @or_bits: 32 bit value which would be 'ORed' with current register value.
+ **/
+static inline
+void isp_reg_or(struct device *dev, enum isp_mem_resources mmio_range, u32 reg,
+		u32 or_bits)
+{
+	u32 v = isp_reg_readl(dev, mmio_range, reg);
+
+	isp_reg_writel(dev, v | or_bits, mmio_range, reg);
+}
+
+/**
+ * isp_reg_and_or - Do AND and OR binary ops within an OMAP3 ISP register value
+ * @dev: Device pointer specific to the OMAP3 ISP.
+ * @mmio_range: Range to which the register offset refers to.
+ * @reg: Register offset to work on.
+ * @and_bits: 32 bit value which would be 'ANDed' with current register value.
+ * @or_bits: 32 bit value which would be 'ORed' with current register value.
+ *
+ * The AND operation is done first, and then the OR operation. Mostly useful
+ * when clearing a group of bits before setting a value.
+ **/
+static inline
+void isp_reg_and_or(struct device *dev, enum isp_mem_resources mmio_range,
+		    u32 reg, u32 and_bits, u32 or_bits)
+{
+	u32 v = isp_reg_readl(dev, mmio_range, reg);
+
+	isp_reg_writel(dev, (v & and_bits) | or_bits, mmio_range, reg);
+}
 
 #endif	/* OMAP_ISP_TOP_H */

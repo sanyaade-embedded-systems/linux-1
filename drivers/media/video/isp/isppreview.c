@@ -30,6 +30,7 @@
 
 /* Structure for saving/restoring preview module registers */
 static struct isp_reg ispprev_reg_list[] = {
+	{OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR, 0x0000}, /* See context saving. */
 	{OMAP3_ISP_IOMEM_PREV, ISPPRV_HORZ_INFO, 0x0000},
 	{OMAP3_ISP_IOMEM_PREV, ISPPRV_VERT_INFO, 0x0000},
 	{OMAP3_ISP_IOMEM_PREV, ISPPRV_RSDR_ADDR, 0x0000},
@@ -64,7 +65,6 @@ static struct isp_reg ispprev_reg_list[] = {
 	{OMAP3_ISP_IOMEM_PREV, ISPPRV_CDC_THR1, 0x0000},
 	{OMAP3_ISP_IOMEM_PREV, ISPPRV_CDC_THR2, 0x0000},
 	{OMAP3_ISP_IOMEM_PREV, ISPPRV_CDC_THR3, 0x0000},
-	{OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR, 0x0000},
 	{0, ISP_TOK_TERM, 0x0000}
 };
 
@@ -184,23 +184,21 @@ static u32 luma_enhance_table[] = {
 #include "luma_enhance_table.h"
 };
 
-static int omap34xx_isp_tables_update(struct isp_prev_device *isp_prev,
-				struct isptables_update *isptables_struct);
+static int isppreview_tables_update(struct isp_prev_device *isp_prev,
+				    struct isptables_update *isptables_struct);
 
 
 /**
- * omap34xx_isp_preview_config - Abstraction layer Preview configuration.
+ * isppreview_config - Abstraction layer Preview configuration.
  * @userspace_add: Pointer from Userspace to structure with flags and data to
  *                 update.
  **/
-int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
-				void *userspace_add)
+int isppreview_config(struct isp_prev_device *isp_prev, void *userspace_add)
 {
-	struct isp_device *isp =
-		container_of(isp_prev, struct isp_device, isp_prev);
+	struct isp_device *isp = to_isp_device(isp_prev);
+	struct device *dev = to_device(isp_prev);
 	struct ispprev_hmed prev_hmed_t;
 	struct ispprev_csup csup_t;
-	struct ispprev_wbal prev_wbal_t;
 	struct ispprev_blkadj prev_blkadj_t;
 	struct ispprev_yclimit yclimit_t;
 	struct ispprev_dcor prev_dcor_t;
@@ -270,14 +268,6 @@ int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
 	} else if (ISP_ABS_PREV_CHROMA_SUPP & config->update) {
 		isppreview_enable_chroma_suppression(isp_prev, 0);
 		isp_prev->params.features &= ~PREV_CHROMA_SUPPRESS;
-	}
-
-	if (ISP_ABS_PREV_WB & config->update) {
-		if (copy_from_user(&prev_wbal_t, (struct ispprev_wbal *)
-				   config->prev_wbal,
-				   sizeof(struct ispprev_wbal)))
-			goto err_copy_from_user;
-		isppreview_config_whitebalance(isp_prev, prev_wbal_t);
 	}
 
 	if (ISP_ABS_PREV_BLKADJ & config->update) {
@@ -355,34 +345,39 @@ out_config_shadow:
 	isp_table_update.green_gamma = config->green_gamma;
 	isp_table_update.blue_gamma = config->blue_gamma;
 	isp_table_update.prev_cfa = config->prev_cfa;
+	isp_table_update.prev_wbal = config->prev_wbal;
 
-	if (omap34xx_isp_tables_update(isp_prev, &isp_table_update))
+	if (isppreview_tables_update(isp_prev, &isp_table_update))
 		goto err_copy_from_user;
 
-	spin_lock_irqsave(&isp_prev->lock, flags);
 	isp_prev->shadow_update = 0;
-	spin_unlock_irqrestore(&isp_prev->lock, flags);
-
 	return 0;
 
 err_copy_from_user:
-	spin_lock_irqsave(&isp_prev->lock, flags);
 	isp_prev->shadow_update = 0;
-	spin_unlock_irqrestore(&isp_prev->lock, flags);
-
-	dev_err(isp_prev->dev, "preview: Config: Copy From User Error\n");
+	dev_err(dev, "preview: Config: Copy From User Error\n");
 	return -EFAULT;
 }
-EXPORT_SYMBOL_GPL(omap34xx_isp_preview_config);
+EXPORT_SYMBOL_GPL(isppreview_config);
 
 /**
- * omap34xx_isp_tables_update - Abstraction layer Tables update.
+ * isppreview_tables_update - Abstraction layer Tables update.
  * @isptables_struct: Pointer from Userspace to structure with flags and table
  *                 data to update.
  **/
-static int omap34xx_isp_tables_update(struct isp_prev_device *isp_prev,
-			       struct isptables_update *isptables_struct)
+static int isppreview_tables_update(struct isp_prev_device *isp_prev,
+				    struct isptables_update *isptables_struct)
 {
+	struct device *dev = to_device(isp_prev);
+
+	if (ISP_ABS_PREV_WB & isptables_struct->update) {
+		if (copy_from_user(&isp_prev->params.wbal,
+				isptables_struct->prev_wbal,
+				sizeof(struct ispprev_wbal)))
+			goto err_copy_from_user;
+
+		isp_prev->wbal_update = 1;
+	}
 
 	if (ISP_ABS_TBL_NF & isptables_struct->flag) {
 		isp_prev->nf_enable = 1;
@@ -463,7 +458,7 @@ static int omap34xx_isp_tables_update(struct isp_prev_device *isp_prev,
 	return 0;
 
 err_copy_from_user:
-	dev_err(isp_prev->dev, "preview tables: Copy From User Error\n");
+	dev_err(dev, "preview tables: Copy From User Error\n");
 	return -EFAULT;
 }
 
@@ -474,6 +469,7 @@ err_copy_from_user:
  **/
 void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 {
+	struct device *dev = to_device(isp_prev);
 	u8 current_brightness_contrast;
 	int ctr;
 	unsigned long flags;
@@ -497,6 +493,10 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 				isp_prev->contrast);
 		isppreview_config_contrast(isp_prev, isp_prev->contrast);
 	}
+	if (isp_prev->wbal_update) {
+		isppreview_config_whitebalance(isp_prev, isp_prev->params.wbal);
+		isp_prev->wbal_update = 0;
+	}
 	if (isp_prev->update_color_matrix) {
 		isppreview_config_rgb_to_ycbcr(isp_prev,
 					       flr_prev_csc[isp_prev->color]);
@@ -514,11 +514,11 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 	}
 
 	if (isp_prev->gg_update) {
-		isp_reg_writel(isp_prev->dev, ISPPRV_TBL_ADDR_GREEN_G_START,
+		isp_reg_writel(dev, ISPPRV_TBL_ADDR_GREEN_G_START,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 
 		for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++) {
-			isp_reg_writel(isp_prev->dev, greengamma_table[ctr],
+			isp_reg_writel(dev, greengamma_table[ctr],
 				       OMAP3_ISP_IOMEM_PREV,
 				       ISPPRV_SET_TBL_DATA);
 		}
@@ -526,11 +526,11 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 	}
 
 	if (isp_prev->rg_update) {
-		isp_reg_writel(isp_prev->dev, ISPPRV_TBL_ADDR_RED_G_START,
+		isp_reg_writel(dev, ISPPRV_TBL_ADDR_RED_G_START,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 
 		for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++) {
-			isp_reg_writel(isp_prev->dev, redgamma_table[ctr],
+			isp_reg_writel(dev, redgamma_table[ctr],
 				       OMAP3_ISP_IOMEM_PREV,
 				       ISPPRV_SET_TBL_DATA);
 		}
@@ -538,11 +538,11 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 	}
 
 	if (isp_prev->bg_update) {
-		isp_reg_writel(isp_prev->dev, ISPPRV_TBL_ADDR_BLUE_G_START,
+		isp_reg_writel(dev, ISPPRV_TBL_ADDR_BLUE_G_START,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 
 		for (ctr = 0; ctr < ISP_GAMMA_TABLE_SIZE; ctr++) {
-			isp_reg_writel(isp_prev->dev, bluegamma_table[ctr],
+			isp_reg_writel(dev, bluegamma_table[ctr],
 				       OMAP3_ISP_IOMEM_PREV,
 				       ISPPRV_SET_TBL_DATA);
 		}
@@ -556,12 +556,13 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 	}
 
 	if (isp_prev->nf_update && isp_prev->nf_enable) {
-		isp_reg_writel(isp_prev->dev, 0xC00,
+		isppreview_enable_noisefilter(isp_prev, 0);
+		isp_reg_writel(dev, 0xC00,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
-		isp_reg_writel(isp_prev->dev, isp_prev->prev_nf_t.spread,
+		isp_reg_writel(dev, isp_prev->prev_nf_t.spread,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_NF);
 		for (ctr = 0; ctr < ISPPRV_NF_TBL_SIZE; ctr++) {
-			isp_reg_writel(isp_prev->dev,
+			isp_reg_writel(dev,
 				       isp_prev->prev_nf_t.table[ctr],
 				       OMAP3_ISP_IOMEM_PREV,
 				       ISPPRV_SET_TBL_DATA);
@@ -578,7 +579,6 @@ void isppreview_config_shadow_registers(struct isp_prev_device *isp_prev)
 
 	spin_unlock_irqrestore(&isp_prev->lock, flags);
 }
-EXPORT_SYMBOL_GPL(isppreview_config_shadow_registers);
 
 /**
  * isppreview_request - Reserves the preview module.
@@ -587,7 +587,9 @@ EXPORT_SYMBOL_GPL(isppreview_config_shadow_registers);
  **/
 int isppreview_request(struct isp_prev_device *isp_prev)
 {
-	isp_reg_or(isp_prev->dev,
+	struct device *dev = to_device(isp_prev);
+
+	isp_reg_or(dev,
 		   OMAP3_ISP_IOMEM_MAIN, ISP_CTRL, ISPCTRL_PREV_RAM_EN |
 		   ISPCTRL_PREV_CLK_EN | ISPCTRL_SBL_WR1_RAM_EN);
 	return 0;
@@ -601,7 +603,9 @@ EXPORT_SYMBOL_GPL(isppreview_request);
  **/
 int isppreview_free(struct isp_prev_device *isp_prev)
 {
-	isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_MAIN, ISP_CTRL,
+	struct device *dev = to_device(isp_prev);
+
+	isp_reg_and(dev, OMAP3_ISP_IOMEM_MAIN, ISP_CTRL,
 			    ~(ISPCTRL_PREV_CLK_EN |
 			      ISPCTRL_PREV_RAM_EN |
 			      ISPCTRL_SBL_WR1_RAM_EN));
@@ -627,12 +631,13 @@ EXPORT_SYMBOL_GPL(isppreview_free);
 int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 			       struct isp_pipeline *pipe)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 pcr = 0;
 	u8 enable = 0;
 	struct prev_params *params = &isp_prev->params;
 	struct ispprev_yclimit yclimit;
 
-	pcr = isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
+	pcr = isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
 
 	switch (pipe->prv_in) {
 	case PRV_RAW_CCDC:
@@ -651,7 +656,7 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 	case PRV_RGBBAYERCFA:
 		break;
 	default:
-		dev_err(isp_prev->dev, "preview: Wrong Input\n");
+		dev_err(dev, "preview: Wrong Input\n");
 		return -EINVAL;
 	};
 
@@ -665,11 +670,11 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 		pcr |= ISPPRV_PCR_SDRPORT;
 		break;
 	default:
-		dev_err(isp_prev->dev, "preview: Wrong Output\n");
+		dev_err(dev, "preview: Wrong Output\n");
 		return -EINVAL;
 	}
 
-	isp_reg_writel(isp_prev->dev, pcr, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
+	isp_reg_writel(dev, pcr, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
 
 	if (params->csup.hypf_en == 1)
 		isppreview_config_chroma_suppression(isp_prev, params->csup);
@@ -704,6 +709,8 @@ int isppreview_config_datapath(struct isp_prev_device *isp_prev,
 	isppreview_enable_gammabypass(isp_prev, enable);
 
 	isppreview_config_whitebalance(isp_prev, params->wbal);
+	isp_prev->wbal_update = 0;
+
 	isppreview_config_blkadj(isp_prev, params->blk_adj);
 	isppreview_config_rgb_blending(isp_prev, params->rgb2rgb);
 	isppreview_config_rgb_to_ycbcr(isp_prev, params->rgb2ycbcr);
@@ -740,11 +747,12 @@ EXPORT_SYMBOL_GPL(isppreview_set_skip);
 void isppreview_config_ycpos(struct isp_prev_device *isp_prev,
 			     enum preview_ycpos_mode mode)
 {
-	u32 pcr = isp_reg_readl(isp_prev->dev,
+	struct device *dev = to_device(isp_prev);
+	u32 pcr = isp_reg_readl(dev,
 				OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
 	pcr &= ~ISPPRV_PCR_YCPOS_CrYCbY;
 	pcr |= (mode << ISPPRV_PCR_YCPOS_SHIFT);
-	isp_reg_writel(isp_prev->dev, pcr, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
+	isp_reg_writel(dev, pcr, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
 }
 EXPORT_SYMBOL_GPL(isppreview_config_ycpos);
 
@@ -754,10 +762,11 @@ EXPORT_SYMBOL_GPL(isppreview_config_ycpos);
  **/
 void isppreview_config_averager(struct isp_prev_device *isp_prev, u8 average)
 {
+	struct device *dev = to_device(isp_prev);
 	int reg = 0;
 
 	reg = AVE_ODD_PIXEL_DIST | AVE_EVEN_PIXEL_DIST | average;
-	isp_reg_writel(isp_prev->dev, reg, OMAP3_ISP_IOMEM_PREV, ISPPRV_AVE);
+	isp_reg_writel(dev, reg, OMAP3_ISP_IOMEM_PREV, ISPPRV_AVE);
 }
 EXPORT_SYMBOL_GPL(isppreview_config_averager);
 
@@ -767,16 +776,18 @@ EXPORT_SYMBOL_GPL(isppreview_config_averager);
  **/
 void isppreview_enable_invalaw(struct isp_prev_device *isp_prev, u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 pcr_val = 0;
-	pcr_val = isp_reg_readl(isp_prev->dev,
+
+	pcr_val = isp_reg_readl(dev,
 				OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
 
 	if (enable) {
-		isp_reg_writel(isp_prev->dev,
+		isp_reg_writel(dev,
 			       pcr_val | ISPPRV_PCR_WIDTH | ISPPRV_PCR_INVALAW,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
 	} else {
-		isp_reg_writel(isp_prev->dev, pcr_val &
+		isp_reg_writel(dev, pcr_val &
 			       ~(ISPPRV_PCR_WIDTH | ISPPRV_PCR_INVALAW),
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
 	}
@@ -792,11 +803,13 @@ EXPORT_SYMBOL_GPL(isppreview_enable_invalaw);
  **/
 void isppreview_enable_drkframe(struct isp_prev_device *isp_prev, u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if (enable)
-		isp_reg_or(isp_prev->dev,
+		isp_reg_or(dev,
 			   OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR, ISPPRV_PCR_DRKFEN);
 	else {
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_DRKFEN);
 	}
 }
@@ -811,13 +824,14 @@ EXPORT_SYMBOL_GPL(isppreview_enable_drkframe);
  **/
 void isppreview_enable_shadcomp(struct isp_prev_device *isp_prev, u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
 
 	if (enable) {
-		isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			   ISPPRV_PCR_SCOMP_EN);
 		isppreview_enable_drkframe(isp_prev, 1);
 	} else {
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_SCOMP_EN);
 	}
 }
@@ -830,11 +844,12 @@ EXPORT_SYMBOL_GPL(isppreview_enable_shadcomp);
 void isppreview_config_drkf_shadcomp(struct isp_prev_device *isp_prev,
 				     u8 scomp_shtval)
 {
-	u32 pcr_val = isp_reg_readl(isp_prev->dev,
+	struct device *dev = to_device(isp_prev);
+	u32 pcr_val = isp_reg_readl(dev,
 				    OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
 
 	pcr_val &= ISPPRV_PCR_SCOMP_SFT_MASK;
-	isp_reg_writel(isp_prev->dev,
+	isp_reg_writel(dev,
 		       pcr_val | (scomp_shtval << ISPPRV_PCR_SCOMP_SFT_SHIFT),
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR);
 }
@@ -846,11 +861,13 @@ EXPORT_SYMBOL_GPL(isppreview_config_drkf_shadcomp);
  **/
 void isppreview_enable_hmed(struct isp_prev_device *isp_prev, u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if (enable)
-		isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			   ISPPRV_PCR_HMEDEN);
 	else {
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_HMEDEN);
 	}
 	isp_prev->hmed_en = enable ? 1 : 0;
@@ -865,6 +882,7 @@ EXPORT_SYMBOL_GPL(isppreview_enable_hmed);
 void isppreview_config_hmed(struct isp_prev_device *isp_prev,
 			    struct ispprev_hmed prev_hmed)
 {
+	struct device *dev = to_device(isp_prev);
 
 	u32 odddist = 0;
 	u32 evendist = 0;
@@ -879,7 +897,7 @@ void isppreview_config_hmed(struct isp_prev_device *isp_prev,
 	else
 		evendist = ISPPRV_HMED_EVENDIST;
 
-	isp_reg_writel(isp_prev->dev, odddist | evendist | (prev_hmed.thres <<
+	isp_reg_writel(dev, odddist | evendist | (prev_hmed.thres <<
 					     ISPPRV_HMED_THRESHOLD_SHIFT),
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_HMED);
 
@@ -894,14 +912,15 @@ EXPORT_SYMBOL_GPL(isppreview_config_hmed);
 void isppreview_config_noisefilter(struct isp_prev_device *isp_prev,
 				   struct ispprev_nf prev_nf)
 {
+	struct device *dev = to_device(isp_prev);
 	int i = 0;
 
-	isp_reg_writel(isp_prev->dev, prev_nf.spread, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, prev_nf.spread, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_NF);
-	isp_reg_writel(isp_prev->dev, ISPPRV_NF_TABLE_ADDR,
+	isp_reg_writel(dev, ISPPRV_NF_TABLE_ADDR,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 	for (i = 0; i < ISPPRV_NF_TBL_SIZE; i++) {
-		isp_reg_writel(isp_prev->dev, prev_nf.table[i],
+		isp_reg_writel(dev, prev_nf.table[i],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
 	}
 }
@@ -914,19 +933,21 @@ EXPORT_SYMBOL_GPL(isppreview_config_noisefilter);
 void isppreview_config_dcor(struct isp_prev_device *isp_prev,
 			    struct ispprev_dcor prev_dcor)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if (prev_dcor.couplet_mode_en) {
-		isp_reg_writel(isp_prev->dev, prev_dcor.detect_correct[0],
+		isp_reg_writel(dev, prev_dcor.detect_correct[0],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_CDC_THR0);
-		isp_reg_writel(isp_prev->dev, prev_dcor.detect_correct[1],
+		isp_reg_writel(dev, prev_dcor.detect_correct[1],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_CDC_THR1);
-		isp_reg_writel(isp_prev->dev, prev_dcor.detect_correct[2],
+		isp_reg_writel(dev, prev_dcor.detect_correct[2],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_CDC_THR2);
-		isp_reg_writel(isp_prev->dev, prev_dcor.detect_correct[3],
+		isp_reg_writel(dev, prev_dcor.detect_correct[3],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_CDC_THR3);
-		isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			   ISPPRV_PCR_DCCOUP);
 	} else {
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_DCCOUP);
 	}
 }
@@ -940,24 +961,25 @@ EXPORT_SYMBOL_GPL(isppreview_config_dcor);
 void isppreview_config_cfa(struct isp_prev_device *isp_prev,
 			   struct ispprev_cfa *prev_cfa)
 {
+	struct device *dev = to_device(isp_prev);
 	int i = 0;
 
 	isp_prev->cfafmt = prev_cfa->cfafmt;
 
-	isp_reg_and_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+	isp_reg_and_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 		       ~ISPPRV_PCR_CFAFMT_MASK,
 		       (prev_cfa->cfafmt << ISPPRV_PCR_CFAFMT_SHIFT));
 
-	isp_reg_writel(isp_prev->dev,
+	isp_reg_writel(dev,
 		(prev_cfa->cfa_gradthrs_vert << ISPPRV_CFA_GRADTH_VER_SHIFT) |
 		(prev_cfa->cfa_gradthrs_horz << ISPPRV_CFA_GRADTH_HOR_SHIFT),
 		OMAP3_ISP_IOMEM_PREV, ISPPRV_CFA);
 
-	isp_reg_writel(isp_prev->dev, ISPPRV_CFA_TABLE_ADDR,
+	isp_reg_writel(dev, ISPPRV_CFA_TABLE_ADDR,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 
 	for (i = 0; i < ISPPRV_CFA_TBL_SIZE; i++) {
-		isp_reg_writel(isp_prev->dev, prev_cfa->cfa_table[i],
+		isp_reg_writel(dev, prev_cfa->cfa_table[i],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
 	}
 }
@@ -970,26 +992,27 @@ EXPORT_SYMBOL_GPL(isppreview_config_cfa);
 void isppreview_config_gammacorrn(struct isp_prev_device *isp_prev,
 				  struct ispprev_gtable gtable)
 {
+	struct device *dev = to_device(isp_prev);
 	int i = 0;
 
-	isp_reg_writel(isp_prev->dev, ISPPRV_REDGAMMA_TABLE_ADDR,
+	isp_reg_writel(dev, ISPPRV_REDGAMMA_TABLE_ADDR,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 	for (i = 0; i < ISPPRV_GAMMA_TBL_SIZE; i++) {
-		isp_reg_writel(isp_prev->dev, gtable.redtable[i],
+		isp_reg_writel(dev, gtable.redtable[i],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
 	}
 
-	isp_reg_writel(isp_prev->dev, ISPPRV_GREENGAMMA_TABLE_ADDR,
+	isp_reg_writel(dev, ISPPRV_GREENGAMMA_TABLE_ADDR,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 	for (i = 0; i < ISPPRV_GAMMA_TBL_SIZE; i++) {
-		isp_reg_writel(isp_prev->dev, gtable.greentable[i],
+		isp_reg_writel(dev, gtable.greentable[i],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
 	}
 
-	isp_reg_writel(isp_prev->dev, ISPPRV_BLUEGAMMA_TABLE_ADDR,
+	isp_reg_writel(dev, ISPPRV_BLUEGAMMA_TABLE_ADDR,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 	for (i = 0; i < ISPPRV_GAMMA_TBL_SIZE; i++) {
-		isp_reg_writel(isp_prev->dev, gtable.bluetable[i],
+		isp_reg_writel(dev, gtable.bluetable[i],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
 	}
 }
@@ -1016,12 +1039,13 @@ EXPORT_SYMBOL_GPL(isppreview_set_luma_enhancement);
 void isppreview_config_luma_enhancement(struct isp_prev_device *isp_prev,
 					u32 *ytable)
 {
+	struct device *dev = to_device(isp_prev);
 	int i = 0;
 
-	isp_reg_writel(isp_prev->dev, ISPPRV_YENH_TABLE_ADDR,
+	isp_reg_writel(dev, ISPPRV_YENH_TABLE_ADDR,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_ADDR);
 	for (i = 0; i < ISPPRV_YENH_TBL_SIZE; i++) {
-		isp_reg_writel(isp_prev->dev, ytable[i],
+		isp_reg_writel(dev, ytable[i],
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_SET_TBL_DATA);
 	}
 }
@@ -1035,7 +1059,9 @@ EXPORT_SYMBOL_GPL(isppreview_config_luma_enhancement);
 void isppreview_config_chroma_suppression(struct isp_prev_device *isp_prev,
 					  struct ispprev_csup csup)
 {
-	isp_reg_writel(isp_prev->dev,
+	struct device *dev = to_device(isp_prev);
+
+	isp_reg_writel(dev,
 		       csup.gain | (csup.thres << ISPPRV_CSUP_THRES_SHIFT) |
 		       (csup.hypf_en << ISPPRV_CSUP_HPYF_SHIFT),
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_CSUP);
@@ -1048,11 +1074,13 @@ EXPORT_SYMBOL_GPL(isppreview_config_chroma_suppression);
  **/
 void isppreview_enable_noisefilter(struct isp_prev_device *isp_prev, u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if (enable)
-		isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			   ISPPRV_PCR_NFEN);
 	else
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_NFEN);
 	isp_prev->nf_en = enable ? 1 : 0;
 }
@@ -1064,11 +1092,13 @@ EXPORT_SYMBOL_GPL(isppreview_enable_noisefilter);
  **/
 void isppreview_enable_dcor(struct isp_prev_device *isp_prev, u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if (enable)
-		isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			   ISPPRV_PCR_DCOREN);
 	else {
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_DCOREN);
 	}
 	isp_prev->dcor_en = enable ? 1 : 0;
@@ -1081,11 +1111,13 @@ EXPORT_SYMBOL_GPL(isppreview_enable_dcor);
  **/
 void isppreview_enable_cfa(struct isp_prev_device *isp_prev, u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if (enable)
-		isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			   ISPPRV_PCR_CFAEN);
 	else {
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_CFAEN);
 	}
 	isp_prev->cfa_en = enable ? 1 : 0;
@@ -1099,11 +1131,13 @@ EXPORT_SYMBOL_GPL(isppreview_enable_cfa);
  **/
 void isppreview_enable_gammabypass(struct isp_prev_device *isp_prev, u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if (enable) {
-		isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			   ISPPRV_PCR_GAMMA_BYPASS);
 	} else {
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_GAMMA_BYPASS);
 	}
 }
@@ -1116,11 +1150,13 @@ EXPORT_SYMBOL_GPL(isppreview_enable_gammabypass);
 void isppreview_enable_luma_enhancement(struct isp_prev_device *isp_prev,
 					u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if (enable) {
-		isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			   ISPPRV_PCR_YNENHEN);
 	} else {
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_YNENHEN);
 	}
 	isp_prev->yenh_en = enable ? 1 : 0;
@@ -1134,11 +1170,13 @@ EXPORT_SYMBOL_GPL(isppreview_enable_luma_enhancement);
 void isppreview_enable_chroma_suppression(struct isp_prev_device *isp_prev,
 					  u8 enable)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if (enable)
-		isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			   ISPPRV_PCR_SUPEN);
 	else {
-		isp_reg_and(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
 			    ~ISPPRV_PCR_SUPEN);
 	}
 	isp_prev->csup_en = enable ? 1 : 0;
@@ -1155,19 +1193,20 @@ EXPORT_SYMBOL_GPL(isppreview_enable_chroma_suppression);
 void isppreview_config_whitebalance(struct isp_prev_device *isp_prev,
 				    struct ispprev_wbal prev_wbal)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 val;
 
-	isp_reg_writel(isp_prev->dev, prev_wbal.dgain, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, prev_wbal.dgain, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_WB_DGAIN);
 
 	val = prev_wbal.coef0 << ISPPRV_WBGAIN_COEF0_SHIFT;
 	val |= prev_wbal.coef1 << ISPPRV_WBGAIN_COEF1_SHIFT;
 	val |= prev_wbal.coef2 << ISPPRV_WBGAIN_COEF2_SHIFT;
 	val |= prev_wbal.coef3 << ISPPRV_WBGAIN_COEF3_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_WBGAIN);
 
-	isp_reg_writel(isp_prev->dev,
+	isp_reg_writel(dev,
 		       ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N0_0_SHIFT |
 		       ISPPRV_WBSEL_COEF1 << ISPPRV_WBSEL_N0_1_SHIFT |
 		       ISPPRV_WBSEL_COEF0 << ISPPRV_WBSEL_N0_2_SHIFT |
@@ -1198,15 +1237,17 @@ EXPORT_SYMBOL_GPL(isppreview_config_whitebalance);
 void isppreview_config_whitebalance2(struct isp_prev_device *isp_prev,
 				     struct prev_white_balance prev_wbal)
 {
-	isp_reg_writel(isp_prev->dev, prev_wbal.wb_dgain,
+	struct device *dev = to_device(isp_prev);
+
+	isp_reg_writel(dev, prev_wbal.wb_dgain,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_WB_DGAIN);
-	isp_reg_writel(isp_prev->dev, prev_wbal.wb_gain[0] |
+	isp_reg_writel(dev, prev_wbal.wb_gain[0] |
 		       prev_wbal.wb_gain[1] << ISPPRV_WBGAIN_COEF1_SHIFT |
 		       prev_wbal.wb_gain[2] << ISPPRV_WBGAIN_COEF2_SHIFT |
 		       prev_wbal.wb_gain[3] << ISPPRV_WBGAIN_COEF3_SHIFT,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_WBGAIN);
 
-	isp_reg_writel(isp_prev->dev,
+	isp_reg_writel(dev,
 		prev_wbal.wb_coefmatrix[0][0] << ISPPRV_WBSEL_N0_0_SHIFT |
 		prev_wbal.wb_coefmatrix[0][1] << ISPPRV_WBSEL_N0_1_SHIFT |
 		prev_wbal.wb_coefmatrix[0][2] << ISPPRV_WBSEL_N0_2_SHIFT |
@@ -1235,7 +1276,9 @@ EXPORT_SYMBOL_GPL(isppreview_config_whitebalance2);
 void isppreview_config_blkadj(struct isp_prev_device *isp_prev,
 			      struct ispprev_blkadj prev_blkadj)
 {
-	isp_reg_writel(isp_prev->dev, prev_blkadj.blue |
+	struct device *dev = to_device(isp_prev);
+
+	isp_reg_writel(dev, prev_blkadj.blue |
 		       (prev_blkadj.green << ISPPRV_BLKADJOFF_G_SHIFT) |
 		       (prev_blkadj.red << ISPPRV_BLKADJOFF_R_SHIFT),
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_BLKADJOFF);
@@ -1250,39 +1293,40 @@ EXPORT_SYMBOL_GPL(isppreview_config_blkadj);
 void isppreview_config_rgb_blending(struct isp_prev_device *isp_prev,
 				    struct ispprev_rgbtorgb rgb2rgb)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 val = 0;
 
 	val = (rgb2rgb.matrix[0][0] & 0xfff) << ISPPRV_RGB_MAT1_MTX_RR_SHIFT;
 	val |= (rgb2rgb.matrix[0][1] & 0xfff) << ISPPRV_RGB_MAT1_MTX_GR_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_RGB_MAT1);
 
 	val = (rgb2rgb.matrix[0][2] & 0xfff) << ISPPRV_RGB_MAT2_MTX_BR_SHIFT;
 	val |= (rgb2rgb.matrix[1][0] & 0xfff) << ISPPRV_RGB_MAT2_MTX_RG_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_RGB_MAT2);
 
 	val = (rgb2rgb.matrix[1][1] & 0xfff) << ISPPRV_RGB_MAT3_MTX_GG_SHIFT;
 	val |= (rgb2rgb.matrix[1][2] & 0xfff) << ISPPRV_RGB_MAT3_MTX_BG_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_RGB_MAT3);
 
 	val = (rgb2rgb.matrix[2][0] & 0xfff) << ISPPRV_RGB_MAT4_MTX_RB_SHIFT;
 	val |= (rgb2rgb.matrix[2][1] & 0xfff) << ISPPRV_RGB_MAT4_MTX_GB_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_RGB_MAT4);
 
 	val = (rgb2rgb.matrix[2][2] & 0xfff) << ISPPRV_RGB_MAT5_MTX_BB_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_RGB_MAT5);
 
 	val = (rgb2rgb.offset[0] & 0x3ff) << ISPPRV_RGB_OFF1_MTX_OFFR_SHIFT;
 	val |= (rgb2rgb.offset[1] & 0x3ff) << ISPPRV_RGB_OFF1_MTX_OFFG_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_RGB_OFF1);
 
 	val = (rgb2rgb.offset[2] & 0x3ff) << ISPPRV_RGB_OFF2_MTX_OFFB_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_RGB_OFF2);
 }
 EXPORT_SYMBOL_GPL(isppreview_config_rgb_blending);
@@ -1295,27 +1339,28 @@ EXPORT_SYMBOL_GPL(isppreview_config_rgb_blending);
 void isppreview_config_rgb_to_ycbcr(struct isp_prev_device *isp_prev,
 				    struct ispprev_csc prev_csc)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 val = 0;
 
 	val = (prev_csc.matrix[0][0] & 0x3ff) << ISPPRV_CSC0_RY_SHIFT;
 	val |= (prev_csc.matrix[0][1] & 0x3ff) << ISPPRV_CSC0_GY_SHIFT;
 	val |= (prev_csc.matrix[0][2] & 0x3ff) << ISPPRV_CSC0_BY_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC0);
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC0);
 
 	val = (prev_csc.matrix[1][0] & 0x3ff) << ISPPRV_CSC1_RCB_SHIFT;
 	val |= (prev_csc.matrix[1][1] & 0x3ff) << ISPPRV_CSC1_GCB_SHIFT;
 	val |= (prev_csc.matrix[1][2] & 0x3ff) << ISPPRV_CSC1_BCB_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC1);
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC1);
 
 	val = (prev_csc.matrix[2][0] & 0x3ff) << ISPPRV_CSC2_RCR_SHIFT;
 	val |= (prev_csc.matrix[2][1] & 0x3ff) << ISPPRV_CSC2_GCR_SHIFT;
 	val |= (prev_csc.matrix[2][2] & 0x3ff) << ISPPRV_CSC2_BCR_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC2);
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV, ISPPRV_CSC2);
 
 	val = (prev_csc.offset[0] & 0xff) << ISPPRV_CSC_OFFSET_Y_SHIFT;
 	val |= (prev_csc.offset[1] & 0xff) << ISPPRV_CSC_OFFSET_CB_SHIFT;
 	val |= (prev_csc.offset[2] & 0xff) << ISPPRV_CSC_OFFSET_CR_SHIFT;
-	isp_reg_writel(isp_prev->dev, val, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, val, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_CSC_OFFSET);
 }
 EXPORT_SYMBOL_GPL(isppreview_config_rgb_to_ycbcr);
@@ -1326,10 +1371,10 @@ EXPORT_SYMBOL_GPL(isppreview_config_rgb_to_ycbcr);
  **/
 void isppreview_query_contrast(struct isp_prev_device *isp_prev, u8 *contrast)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 brt_cnt_val = 0;
 
-	brt_cnt_val = isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
-				    ISPPRV_CNT_BRT);
+	brt_cnt_val = isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT);
 	*contrast = (brt_cnt_val >> ISPPRV_CNT_BRT_CNT_SHIFT) & 0xff;
 	DPRINTK_ISPPREV(" Current brt cnt value in hw is %x\n", brt_cnt_val);
 }
@@ -1355,13 +1400,14 @@ EXPORT_SYMBOL_GPL(isppreview_update_contrast);
  **/
 void isppreview_config_contrast(struct isp_prev_device *isp_prev, u8 contrast)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 brt_cnt_val = 0;
 
-	brt_cnt_val = isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+	brt_cnt_val = isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				    ISPPRV_CNT_BRT);
 	brt_cnt_val &= ~(0xff << ISPPRV_CNT_BRT_CNT_SHIFT);
 	contrast &= 0xff;
-	isp_reg_writel(isp_prev->dev,
+	isp_reg_writel(dev,
 		       brt_cnt_val | contrast << ISPPRV_CNT_BRT_CNT_SHIFT,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT);
 }
@@ -1398,14 +1444,15 @@ EXPORT_SYMBOL_GPL(isppreview_update_brightness);
 void isppreview_config_brightness(struct isp_prev_device *isp_prev,
 				  u8 brightness)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 brt_cnt_val = 0;
 
 	DPRINTK_ISPPREV("\tConfiguring brightness in ISP: %d\n", brightness);
-	brt_cnt_val = isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+	brt_cnt_val = isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				    ISPPRV_CNT_BRT);
 	brt_cnt_val &= ~(0xff << ISPPRV_CNT_BRT_BRT_SHIFT);
 	brightness &= 0xff;
-	isp_reg_writel(isp_prev->dev,
+	isp_reg_writel(dev,
 		       brt_cnt_val | brightness << ISPPRV_CNT_BRT_BRT_SHIFT,
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_CNT_BRT);
 }
@@ -1418,7 +1465,9 @@ EXPORT_SYMBOL_GPL(isppreview_config_brightness);
 void isppreview_query_brightness(struct isp_prev_device *isp_prev,
 				 u8 *brightness)
 {
-	*brightness = isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+	struct device *dev = to_device(isp_prev);
+
+	*brightness = isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				    ISPPRV_CNT_BRT);
 }
 EXPORT_SYMBOL_GPL(isppreview_query_brightness);
@@ -1463,7 +1512,9 @@ EXPORT_SYMBOL_GPL(isppreview_get_color);
 void isppreview_config_yc_range(struct isp_prev_device *isp_prev,
 				struct ispprev_yclimit yclimit)
 {
-	isp_reg_writel(isp_prev->dev,
+	struct device *dev = to_device(isp_prev);
+
+	isp_reg_writel(dev,
 		       yclimit.maxC << ISPPRV_SETUP_YC_MAXC_SHIFT |
 		       yclimit.maxY << ISPPRV_SETUP_YC_MAXY_SHIFT |
 		       yclimit.minC << ISPPRV_SETUP_YC_MINC_SHIFT |
@@ -1485,11 +1536,12 @@ EXPORT_SYMBOL_GPL(isppreview_config_yc_range);
 int isppreview_try_pipeline(struct isp_prev_device *isp_prev,
 			    struct isp_pipeline *pipe)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 div = 0;
 	int max_out;
 
 	if (pipe->ccdc_out_w_img < 32 || pipe->ccdc_out_h < 32) {
-		dev_err(isp_prev->dev, "preview does not support "
+		dev_err(dev, "preview does not support "
 		       "width < 16 or height < 32 \n");
 		return -EINVAL;
 	}
@@ -1502,22 +1554,6 @@ int isppreview_try_pipeline(struct isp_prev_device *isp_prev,
 	pipe->prv_out_h = pipe->ccdc_out_h;
 	pipe->prv_out_w_img = pipe->ccdc_out_w_img;
 	pipe->prv_out_h_img = pipe->ccdc_out_h;
-
-	isp_prev->fmtavg = 0;
-
-	if (pipe->ccdc_out_w_img > max_out) {
-		div = (pipe->ccdc_out_w_img/max_out);
-		if (div >= 2 && div < 4) {
-			isp_prev->fmtavg = 1;
-			pipe->prv_out_w_img /= 2;
-		} else if (div >= 4 && div < 8) {
-			isp_prev->fmtavg = 2;
-			pipe->prv_out_w_img /= 4;
-		} else if (div >= 8) {
-			isp_prev->fmtavg = 3;
-			pipe->prv_out_w_img /= 8;
-		}
-	}
 
 /* 	if (isp_prev->hmed_en) */
 	pipe->prv_out_w_img -= 4;
@@ -1547,8 +1583,24 @@ int isppreview_try_pipeline(struct isp_prev_device *isp_prev,
 	pipe->prv_out_w_img -= isp_prev->sph;
 	pipe->prv_out_h_img -= isp_prev->slv;
 
-	if (pipe->prv_out_w_img % 2)
-		pipe->prv_out_w_img -= 1;
+	div = DIV_ROUND_UP(pipe->ccdc_out_w_img, max_out);
+	if (div == 1) {
+		pipe->prv_fmt_avg = 0;
+	} else if (div <= 2) {
+		pipe->prv_fmt_avg = 1;
+		pipe->prv_out_w_img /= 2;
+	} else if (div <= 4) {
+		pipe->prv_fmt_avg = 2;
+		pipe->prv_out_w_img /= 4;
+	} else if (div <= 8) {
+		pipe->prv_fmt_avg = 3;
+		pipe->prv_out_w_img /= 8;
+	} else {
+		return -EINVAL;
+	}
+
+	/* output width must be even */
+	pipe->prv_out_w_img &= ~1;
 
 	/* FIXME: This doesn't apply for prv -> rsz. */
 	pipe->prv_out_w = ALIGN(pipe->prv_out_w_img, 0x20);
@@ -1571,6 +1623,7 @@ EXPORT_SYMBOL_GPL(isppreview_try_pipeline);
 int isppreview_s_pipeline(struct isp_prev_device *isp_prev,
 			  struct isp_pipeline *pipe)
 {
+	struct device *dev = to_device(isp_prev);
 	u32 prevsdroff;
 	int rval;
 
@@ -1578,21 +1631,21 @@ int isppreview_s_pipeline(struct isp_prev_device *isp_prev,
 	if (rval)
 		return rval;
 
-	isp_reg_writel(isp_prev->dev,
+	isp_reg_writel(dev,
 		       (isp_prev->sph << ISPPRV_HORZ_INFO_SPH_SHIFT) |
 		       (pipe->ccdc_out_w - 1),
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_HORZ_INFO);
-	isp_reg_writel(isp_prev->dev,
+	isp_reg_writel(dev,
 		       (isp_prev->slv << ISPPRV_VERT_INFO_SLV_SHIFT) |
 		       (pipe->ccdc_out_h - 2),
 		       OMAP3_ISP_IOMEM_PREV, ISPPRV_VERT_INFO);
 
 	if (isp_prev->cfafmt == CFAFMT_BAYER)
-		isp_reg_writel(isp_prev->dev, ISPPRV_AVE_EVENDIST_2 <<
+		isp_reg_writel(dev, ISPPRV_AVE_EVENDIST_2 <<
 			       ISPPRV_AVE_EVENDIST_SHIFT |
 			       ISPPRV_AVE_ODDDIST_2 <<
 			       ISPPRV_AVE_ODDDIST_SHIFT |
-			       isp_prev->fmtavg,
+			       pipe->prv_fmt_avg,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_AVE);
 
 	if (pipe->prv_out == PREVIEW_MEM) {
@@ -1621,11 +1674,13 @@ EXPORT_SYMBOL_GPL(isppreview_s_pipeline);
  **/
 int isppreview_config_inlineoffset(struct isp_prev_device *isp_prev, u32 offset)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if ((offset & ISP_32B_BOUNDARY_OFFSET) == offset) {
-		isp_reg_writel(isp_prev->dev, offset & 0xffff,
+		isp_reg_writel(dev, offset & 0xffff,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_RADR_OFFSET);
 	} else {
-		dev_err(isp_prev->dev, "preview: Offset should be in 32 byte "
+		dev_err(dev, "preview: Offset should be in 32 byte "
 		       "boundary\n");
 		return -EINVAL;
 	}
@@ -1641,11 +1696,13 @@ EXPORT_SYMBOL_GPL(isppreview_config_inlineoffset);
  **/
 int isppreview_set_inaddr(struct isp_prev_device *isp_prev, u32 addr)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if ((addr & ISP_32B_BOUNDARY_BUF) == addr)
-		isp_reg_writel(isp_prev->dev, addr,
+		isp_reg_writel(dev, addr,
 			       OMAP3_ISP_IOMEM_PREV, ISPPRV_RSDR_ADDR);
 	else {
-		dev_err(isp_prev->dev, "preview: Address should be in 32 byte "
+		dev_err(dev, "preview: Address should be in 32 byte "
 		       "boundary\n");
 		return -EINVAL;
 	}
@@ -1660,12 +1717,14 @@ EXPORT_SYMBOL_GPL(isppreview_set_inaddr);
 int isppreview_config_outlineoffset(struct isp_prev_device *isp_prev,
 				    u32 offset)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if ((offset & ISP_32B_BOUNDARY_OFFSET) != offset) {
-		dev_err(isp_prev->dev, "preview: Offset should be in 32 byte "
+		dev_err(dev, "preview: Offset should be in 32 byte "
 		       "boundary\n");
 		return -EINVAL;
 	}
-	isp_reg_writel(isp_prev->dev, offset & 0xffff, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, offset & 0xffff, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_WADD_OFFSET);
 	return 0;
 }
@@ -1679,12 +1738,14 @@ EXPORT_SYMBOL_GPL(isppreview_config_outlineoffset);
  **/
 int isppreview_set_outaddr(struct isp_prev_device *isp_prev, u32 addr)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if ((addr & ISP_32B_BOUNDARY_BUF) != addr) {
-		dev_err(isp_prev->dev, "preview: Address should be in 32 byte "
+		dev_err(dev, "preview: Address should be in 32 byte "
 		       "boundary\n");
 		return -EINVAL;
 	}
-	isp_reg_writel(isp_prev->dev, addr, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, addr, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_WSDR_ADDR);
 	return 0;
 }
@@ -1697,12 +1758,14 @@ EXPORT_SYMBOL_GPL(isppreview_set_outaddr);
 int isppreview_config_darklineoffset(struct isp_prev_device *isp_prev,
 				     u32 offset)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if ((offset & ISP_32B_BOUNDARY_OFFSET) != offset) {
-		dev_err(isp_prev->dev, "preview: Offset should be in 32 byte "
+		dev_err(dev, "preview: Offset should be in 32 byte "
 		       "boundary\n");
 		return -EINVAL;
 	}
-	isp_reg_writel(isp_prev->dev, offset & 0xffff, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, offset & 0xffff, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_DRKF_OFFSET);
 	return 0;
 }
@@ -1714,12 +1777,14 @@ EXPORT_SYMBOL_GPL(isppreview_config_darklineoffset);
  **/
 int isppreview_set_darkaddr(struct isp_prev_device *isp_prev, u32 addr)
 {
+	struct device *dev = to_device(isp_prev);
+
 	if ((addr & ISP_32B_BOUNDARY_BUF) != addr) {
-		dev_err(isp_prev->dev, "preview: Address should be in 32 byte "
+		dev_err(dev, "preview: Address should be in 32 byte "
 		       "boundary\n");
 		return -EINVAL;
 	}
-	isp_reg_writel(isp_prev->dev, addr, OMAP3_ISP_IOMEM_PREV,
+	isp_reg_writel(dev, addr, OMAP3_ISP_IOMEM_PREV,
 		       ISPPRV_DSDR_ADDR);
 	return 0;
 }
@@ -1731,10 +1796,16 @@ EXPORT_SYMBOL_GPL(isppreview_set_darkaddr);
  *
  * Client should configure all the sub modules in Preview before this.
  **/
-void isppreview_enable(struct isp_prev_device *isp_prev)
+void isppreview_enable(struct isp_prev_device *isp_prev, int enable)
 {
-	isp_reg_or(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
-		   ISPPRV_PCR_EN | ISPPRV_PCR_ONESHOT);
+	struct device *dev = to_device(isp_prev);
+
+	if (enable)
+		isp_reg_or(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+			   ISPPRV_PCR_EN | ISPPRV_PCR_ONESHOT);
+	else
+		isp_reg_and(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR,
+			    ~(ISPPRV_PCR_EN | ISPPRV_PCR_ONESHOT));
 }
 EXPORT_SYMBOL_GPL(isppreview_enable);
 
@@ -1743,7 +1814,9 @@ EXPORT_SYMBOL_GPL(isppreview_enable);
  **/
 int isppreview_busy(struct isp_prev_device *isp_prev)
 {
-	return isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR)
+	struct device *dev = to_device(isp_prev);
+
+	return isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV, ISPPRV_PCR)
 		& ISPPRV_PCR_BUSY;
 }
 EXPORT_SYMBOL_GPL(isppreview_busy);
@@ -1755,6 +1828,8 @@ void isppreview_save_context(struct device *dev)
 {
 	DPRINTK_ISPPREV("Saving context\n");
 	isp_save_context(dev, ispprev_reg_list);
+	/* Avoid unwanted enabling when restoring the context. */
+	ispprev_reg_list[0].val &= ~ISPPRV_PCR_EN;
 }
 EXPORT_SYMBOL_GPL(isppreview_save_context);
 
@@ -1776,6 +1851,10 @@ EXPORT_SYMBOL_GPL(isppreview_restore_context);
 void isppreview_print_status(struct isp_prev_device *isp_prev,
 			     struct isp_pipeline *pipe)
 {
+#ifdef OMAP_ISPPREV_DEBUG
+	struct device *dev = to_device(isp_prev);
+#endif
+
 	DPRINTK_ISPPREV("Preview Input format =%d, Output Format =%d\n",
 			pipe->prv_inp, pipe->prv_out);
 	DPRINTK_ISPPREV("Accepted Preview Input (width = %d,Height = %d)\n",
@@ -1785,94 +1864,94 @@ void isppreview_print_status(struct isp_prev_device *isp_prev,
 			isp_prev->prevout_w,
 			isp_prev->prevout_h);
 	DPRINTK_ISPPREV("###ISP_CTRL in preview =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_MAIN,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_MAIN,
 				      ISP_CTRL));
 	DPRINTK_ISPPREV("###ISP_IRQ0ENABLE in preview =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_MAIN,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_MAIN,
 				      ISP_IRQ0ENABLE));
 	DPRINTK_ISPPREV("###ISP_IRQ0STATUS in preview =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_MAIN,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_MAIN,
 				      ISP_IRQ0STATUS));
 	DPRINTK_ISPPREV("###PRV PCR =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_PCR));
 	DPRINTK_ISPPREV("###PRV HORZ_INFO =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_HORZ_INFO));
 	DPRINTK_ISPPREV("###PRV VERT_INFO =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_VERT_INFO));
 	DPRINTK_ISPPREV("###PRV WSDR_ADDR =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_WSDR_ADDR));
 	DPRINTK_ISPPREV("###PRV WADD_OFFSET =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_WADD_OFFSET));
 	DPRINTK_ISPPREV("###PRV AVE =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_AVE));
 	DPRINTK_ISPPREV("###PRV HMED =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_HMED));
 	DPRINTK_ISPPREV("###PRV NF =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_NF));
 	DPRINTK_ISPPREV("###PRV WB_DGAIN =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_WB_DGAIN));
 	DPRINTK_ISPPREV("###PRV WBGAIN =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_WBGAIN));
 	DPRINTK_ISPPREV("###PRV WBSEL =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_WBSEL));
 	DPRINTK_ISPPREV("###PRV CFA =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_CFA));
 	DPRINTK_ISPPREV("###PRV BLKADJOFF =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_BLKADJOFF));
 	DPRINTK_ISPPREV("###PRV RGB_MAT1 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_RGB_MAT1));
 	DPRINTK_ISPPREV("###PRV RGB_MAT2 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_RGB_MAT2));
 	DPRINTK_ISPPREV("###PRV RGB_MAT3 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_RGB_MAT3));
 	DPRINTK_ISPPREV("###PRV RGB_MAT4 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_RGB_MAT4));
 	DPRINTK_ISPPREV("###PRV RGB_MAT5 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_RGB_MAT5));
 	DPRINTK_ISPPREV("###PRV RGB_OFF1 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_RGB_OFF1));
 	DPRINTK_ISPPREV("###PRV RGB_OFF2 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_RGB_OFF2));
 	DPRINTK_ISPPREV("###PRV CSC0 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_CSC0));
 	DPRINTK_ISPPREV("###PRV CSC1 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_CSC1));
 	DPRINTK_ISPPREV("###PRV CSC2 =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_CSC2));
 	DPRINTK_ISPPREV("###PRV CSC_OFFSET =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_CSC_OFFSET));
 	DPRINTK_ISPPREV("###PRV CNT_BRT =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_CNT_BRT));
 	DPRINTK_ISPPREV("###PRV CSUP =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_CSUP));
 	DPRINTK_ISPPREV("###PRV SETUP_YC =0x%x\n",
-			isp_reg_readl(isp_prev->dev, OMAP3_ISP_IOMEM_PREV,
+			isp_reg_readl(dev, OMAP3_ISP_IOMEM_PREV,
 				      ISPPRV_SETUP_YC));
 }
 EXPORT_SYMBOL_GPL(isppreview_print_status);
@@ -1886,8 +1965,6 @@ int __init isp_preview_init(struct device *dev)
 	struct isp_prev_device *isp_prev = &isp->isp_prev;
 	struct prev_params *params = &isp_prev->params;
 	int i = 0;
-
-	isp_prev->dev = dev;
 
 	/* Init values */
 	isp_prev->sph = 2;

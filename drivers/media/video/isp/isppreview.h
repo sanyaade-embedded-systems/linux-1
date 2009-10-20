@@ -211,6 +211,8 @@ struct prev_params {
  * @red_gamma: Pointer to red gamma correction table.
  * @green_gamma: Pointer to green gamma correction table.
  * @blue_gamma: Pointer to blue gamma correction table.
+ * @prev_cfa: Pointer to color filter array configuration.
+ * @prev_wbal: Pointer to colour and digital gain configuration.
  */
 struct isptables_update {
 	u16 update;
@@ -221,6 +223,7 @@ struct isptables_update {
 	u32 *green_gamma;
 	u32 *blue_gamma;
 	struct ispprev_cfa *prev_cfa;
+	struct ispprev_wbal *prev_wbal;
 };
 
 /**
@@ -243,6 +246,7 @@ struct isptables_update {
  * @contrast: Contrast in preview module.
  * @color: Color effect in preview module.
  * @cfafmt: Color Filter Array (CFA) Format.
+ * @wbal_update: Update digital and colour gains in Previewer
  *
  * This structure is used to store the OMAP ISP Preview module Information.
  */
@@ -262,6 +266,7 @@ struct isp_prev_device {
 	u8 cfa_update;
 	u8 nf_enable;
 	u8 nf_update;
+	u8 wbal_update;
 	u8 fmtavg;
 	u8 brightness;
 	u8 contrast;
@@ -272,7 +277,6 @@ struct isp_prev_device {
 	int shadow_update;
 	u32 sph;
 	u32 slv;
-	struct device *dev;
 	spinlock_t lock;
 };
 
@@ -399,7 +403,7 @@ int isppreview_config_darklineoffset(struct isp_prev_device *isp_prev,
 
 int isppreview_set_darkaddr(struct isp_prev_device *isp_prev, u32 addr);
 
-void isppreview_enable(struct isp_prev_device *isp_prev);
+void isppreview_enable(struct isp_prev_device *isp_prev, int enable);
 
 int isppreview_busy(struct isp_prev_device *isp_prev);
 
@@ -418,8 +422,7 @@ void isppreview_restore_context(struct device *dev);
 static inline void isppreview_restore_context(struct device *dev) {}
 #endif
 
-int omap34xx_isp_preview_config(struct isp_prev_device *isp_prev,
-				void *userspace_add);
+int isppreview_config(struct isp_prev_device *isp_prev, void *userspace_add);
 
 void isppreview_set_skip(struct isp_prev_device *isp_prev, u32 h, u32 v);
 

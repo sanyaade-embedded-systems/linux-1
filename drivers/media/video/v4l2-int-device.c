@@ -69,7 +69,7 @@ static void __v4l2_int_device_try_attach_all(void)
 
 static struct v4l2_int_slave dummy_slave = {
 	/* Dummy pointer to avoid underflow in find_ioctl. */
-	.ioctls = (void *)0x80000000,
+	.ioctls = (void *)sizeof(struct v4l2_int_ioctl_desc),
 	.num_ioctls = 0,
 };
 
