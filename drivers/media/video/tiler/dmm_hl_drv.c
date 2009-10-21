@@ -462,6 +462,7 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 
 	patAreaEntries = kmalloc(
 		(size_t)(numPages*4 + 16), GFP_KERNEL);
+		((numPages*4 + 16), GFP_KERNEL);
 		/* Must be 16-byte aligned. */
 	memset(patAreaEntries, 0x0, (numPages*4 + 16));
 	*pageEntriesSpace = patAreaEntries;
