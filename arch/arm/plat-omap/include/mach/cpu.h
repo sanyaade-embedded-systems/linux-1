@@ -42,7 +42,7 @@
 int omap_type(void);
 
 struct omap_chip_id {
-	u8 oc;
+	u16 oc;
 	u8 type;
 };
 
@@ -428,8 +428,8 @@ IS_OMAP_TYPE(3630, 0x3630)
 #define CHIP_IS_OMAP3430ES3_0		(1 << 5)
 #define CHIP_IS_OMAP3430ES3_1		(1 << 6)
 /*3630 is backward compatible to 3430 */
-#define CHIP_IS_OMAP3630		(1 << 2)
-#define CHIP_IS_OMAP3630ES1		(1 << 4)
+#define CHIP_IS_OMAP3630		(1 << 7)
+#define CHIP_IS_OMAP3630ES1		(1 << 8)
 
 
 #define CHIP_IS_OMAP24XX		(CHIP_IS_OMAP2420 | CHIP_IS_OMAP2430)
