@@ -22,6 +22,7 @@
 #include <mach/asp.h>
 #include <mach/mmc.h>
 #include <mach/usb.h>
+#include <mach/mcbsp.h>
 
 extern void __iomem *da8xx_syscfg_base;
 
@@ -96,6 +97,7 @@ void da850_init_spi1(unsigned char *chip_sel, unsigned int num_sel,
 	struct spi_board_info *info, unsigned num_dev);
 void da830_init_spi0(unsigned char *chip_sel, unsigned int num_sel,
 	struct spi_board_info *info, unsigned num_dev);
+int da850_init_mcbsp(struct davinci_mcbsp_platform_data *pdata);
 
 extern struct platform_device da8xx_serial_device;
 extern struct emac_platform_data da8xx_emac_pdata;
@@ -140,6 +142,8 @@ extern const short da850_mmcsd0_pins[];
 extern const short da850_nand_pins[];
 extern const short da850_nor_pins[];
 extern const short da850_spi1_pins[];
+extern const short da850_mcbsp0_pins[];
+extern const short da850_mcbsp1_pins[];
 
 int da8xx_pinmux_setup(const short pins[]);
 
