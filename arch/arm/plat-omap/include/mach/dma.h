@@ -122,9 +122,9 @@
 #define OMAP_DMA4_CCFN(n)		(0x60 * (n) + 0xc0)
 #define OMAP_DMA4_COLOR(n)		(0x60 * (n) + 0xc4)
 
-#define OMAP_DMA4_CDP_REG(n)           (0x60 * (n) + 0xd0)
-#define OMAP_DMA4_CNDP_REG(n)          (0x60 * (n) + 0xd4)
-#define OMAP_DMA4_CCDN_REG(n)          (0x60 * (n) + 0xd8)
+#define OMAP_DMA4_CDP(n)		(0x60 * (n) + 0xd0)
+#define OMAP_DMA4_CNDP(n)		(0x60 * (n) + 0xd4)
+#define OMAP_DMA4_CCDN(n)		(0x60 * (n) + 0xd8)
 
 /* Dummy defines to keep multi-omap compiles happy */
 #define OMAP1_DMA_REVISION		0
