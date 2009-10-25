@@ -35,6 +35,7 @@
 #include <asm/hardware/gic.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <linux/i2c/twl.h>
+#include <mach/syntm12xx.h>
 #include "mmc-twl4030.h"
 #include <linux/regulator/machine.h>
 
@@ -432,6 +433,42 @@ static struct twl_platform_data sdp4430_twldata = {
 };
 #endif
 
+/* Begin Synaptic Touchscreen TM-01217 */
+static char *tm12xx_idev_names[] = {
+	"Synaptic TM12XX TouchPoint 1",
+	"Synaptic TM12XX TouchPoint 2",
+	"Synaptic TM12XX TouchPoint 3",
+	"Synaptic TM12XX TouchPoint 4",
+	"Synaptic TM12XX TouchPoint 5",
+	"Synaptic TM12XX TouchPoint 6",
+	NULL,
+};
+
+static u8 tm12xx_button_map[] = {
+	KEY_F1,
+	KEY_F2,
+};
+
+static struct tm12xx_ts_platform_data tm12xx_platform_data[] = {
+	[0] = { /* Primary Controller */
+		.gpio_intr = 47,
+		.idev_name = tm12xx_idev_names,
+		.button_map = tm12xx_button_map,
+		.num_buttons = ARRAY_SIZE(tm12xx_button_map),
+		.repeat = 0,
+		.swap_xy = 1,
+	},
+	[1] = { /* Secondary Controller */
+		.gpio_intr = 48,
+		.idev_name = tm12xx_idev_names,
+		.button_map = tm12xx_button_map,
+		.num_buttons = ARRAY_SIZE(tm12xx_button_map),
+		.repeat = 0,
+		.swap_xy = 1,
+	},
+};
+/* End Synaptic Touchscreen TM-01217 */
+
 static struct i2c_board_info __initdata sdp4430_i2c_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("twl6030", 0x48),
@@ -442,12 +479,29 @@ static struct i2c_board_info __initdata sdp4430_i2c_boardinfo[] = {
 #endif
 	},
 };
+
+static struct i2c_board_info __initdata sdp4430_i2c_2_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("tm12xx_ts_primary", 0x4b),
+		.platform_data = &tm12xx_platform_data[0],
+	},
+};
+
+static struct i2c_board_info __initdata sdp4430_i2c_3_boardinfo[] = {
+        {
+		I2C_BOARD_INFO("tm12xx_ts_secondary", 0x4b),
+		.platform_data = &tm12xx_platform_data[1],
+        },
+};
+
 static int __init omap4_i2c_init(void)
 {
 	omap_register_i2c_bus(1, 2600, sdp4430_i2c_boardinfo,
 				ARRAY_SIZE(sdp4430_i2c_boardinfo));
-	omap_register_i2c_bus(2, 400, NULL, 0);
-	omap_register_i2c_bus(3, 400, NULL, 0);
+	omap_register_i2c_bus(2, 400, sdp4430_i2c_2_boardinfo,
+				ARRAY_SIZE(sdp4430_i2c_boardinfo));
+	omap_register_i2c_bus(3, 400, sdp4430_i2c_3_boardinfo,
+				ARRAY_SIZE(sdp4430_i2c_boardinfo));
 	return 0;
 }
 static void omap_mcbsp_init(void)
