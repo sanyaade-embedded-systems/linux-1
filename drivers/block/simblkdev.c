@@ -382,7 +382,7 @@ static int __init SimBlkDev_init(void)
 	return 0;
 
 out_unregister:
-	unregister_blkdev(major_num, "SimBlkDev");
+	unregister_blkdev(SBD_MAJOR, "SimBlkDev");
 out:
 	return -ENOMEM;
 }
