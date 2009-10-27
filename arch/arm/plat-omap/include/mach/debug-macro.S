@@ -37,7 +37,7 @@
 #endif
 
 #else  if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_NETRA) 
-		moveq	\rx, #0x48000000	@ physical base address
+		moveq	\rx, #0x08000000	@ physical base address
 		movne	\rx, #0xd8000000	@ virtual base
 #ifdef CONFIG_ARCH_NETRA
 		orr	\rx, \rx, #0x00020000
