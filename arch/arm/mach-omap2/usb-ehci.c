@@ -313,6 +313,12 @@ static unsigned omap_usbtll_port_fslsmode(enum omap_usbhost_port_mode mode)
 #define UHH_SYSCONFIG		0x48064010
 #define UHH_HOSTCONFIG		0x48064040
 
+#define OMAP4_USBTLL_SYSCONFIG		0x4A062010
+#define OMAP4_USBTLL_SHARED_CONF	0x4A062030
+#define OMAP4_UHH_SYSCONFIG		0x4A064010
+#define OMAP4_UHH_HOSTCONFIG		0x4A064040
+
+
 static void omap_usbtll_configure_ports(
 		struct omap_usbhost_port_data const *port_data,
 		unsigned n)
@@ -377,14 +383,33 @@ void usb_host_and_tll_init(
 	clk_enable(clk_get(NULL, "usbhost_48m_fck"));
 	clk_enable(clk_get(NULL, "usbhost_120m_fck"));
 
-	omap_writel(0x15, USBTLL_SYSCONFIG);
-	omap_writel(omap_readl(USBTLL_SHARED_CONF) | 0x5,
+	if (cpu_is_omap44xx()) {
+		omap_writel(0x15, OMAP4_USBTLL_SYSCONFIG);
+		omap_writel(omap_readl(OMAP4_USBTLL_SHARED_CONF) | 0x1,
+				OMAP4_USBTLL_SHARED_CONF);
+
+		/* No need to program OMAP4_UHH_SYSCONFIG as
+	         *   default value is good for OMAP4
+		 */
+
+		/*  No need to program OMAP4_UHH_HOSTCONFIG
+		 *  as default value is good for PHY mode
+         	 */
+
+		/* This is not required for PHY mode */
+#if 0
+		omap_usbtll_configure_ports(port_data, n);
+#endif
+	} else {
+		omap_writel(0x15, USBTLL_SYSCONFIG);
+		omap_writel(omap_readl(USBTLL_SHARED_CONF) | 0x5,
 					USBTLL_SHARED_CONF);
 
-	omap_writel(0x0000110C, UHH_SYSCONFIG);
-	omap_writel(0x101C, UHH_HOSTCONFIG);
+		omap_writel(0x0000110C, UHH_SYSCONFIG);
+		omap_writel(0x101C, UHH_HOSTCONFIG);
 
-	omap_usbtll_configure_ports(port_data, n);
+		omap_usbtll_configure_ports(port_data, n);
+	}
 
 }
 
