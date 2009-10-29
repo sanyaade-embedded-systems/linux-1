@@ -18,6 +18,7 @@
 #include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/delay.h>
+#include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <asm/io.h>
@@ -380,6 +381,18 @@ void __init usb_ehci_init(enum ehci_hcd_omap_mode phy_mode,
 	/* Setup Pin IO MUX for EHCI */
 	if (cpu_is_omap34xx())
 		setup_ehci_io_mux(phy_mode);
+
+#define USBHOST_PORT1_GPIO	57
+#define USBHOST_PORT2_GPIO	61
+	/* EHCI PHY Reset hacks */
+	gpio_request(USBHOST_PORT1_GPIO, "USB1 PHY RESET");
+	gpio_direction_output(USBHOST_PORT1_GPIO, 1);
+	gpio_request(USBHOST_PORT2_GPIO, "USB2 PHY RESET");
+	gpio_direction_output(USBHOST_PORT2_GPIO, 1);
+	udelay(500);
+	gpio_set_value(USBHOST_PORT1_GPIO, 0);
+	gpio_set_value(USBHOST_PORT2_GPIO, 0);
+
 
 	if (platform_device_register(&ehci_device) < 0) {
 		printk(KERN_ERR "Unable to register HS-USB (EHCI) device\n");
