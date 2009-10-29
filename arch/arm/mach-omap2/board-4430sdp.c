@@ -19,6 +19,7 @@
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include <linux/input.h>
+#include <linux/usb/otg.h>
 
 #include <mach/keypad.h>
 #include <mach/hardware.h>
@@ -32,6 +33,7 @@
 #include <mach/common.h>
 #include <mach/control.h>
 #include <mach/timer-gp.h>
+#include <mach/usb.h>
 #include <asm/hardware/gic.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <linux/i2c/twl.h>
@@ -548,6 +550,12 @@ static void __init omap_4430sdp_init(void)
 	sdp4430_mmc_init();
 	omap_kp_init();
 	omap_phoenix_init();
+#ifdef CONFIG_NOP_USB_XCEIV
+       /* OMAP4SDP uses no explicit transceiver */
+       usb_nop_xceiv_register();
+#endif
+
+	usb_musb_init(MUSB_INTERFACE_UTMI);
 
 }
 
