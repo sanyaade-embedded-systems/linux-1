@@ -536,6 +536,15 @@ static void omap_phoenix_init(void)
 	omap_cfg_reg(PAD0_4430_SYS_NIRQ2);
 }
 
+static struct omap_usbhost_port_data sdp_usbhost_port_data[] = {
+        [0] = {
+                .mode = OMAP_USB_PORT_MODE_ULPI_PHY,
+        },
+        [1] = {
+                .mode = OMAP_USB_PORT_MODE_ULPI_PHY,
+        },
+};
+
 static void __init omap_4430sdp_init(void)
 {
 	omap4_i2c_init();
@@ -556,6 +565,9 @@ static void __init omap_4430sdp_init(void)
 #endif
 
 	usb_musb_init(MUSB_INTERFACE_UTMI);
+	usb_host_and_tll_init(sdp_usbhost_port_data,
+			ARRAY_SIZE(sdp_usbhost_port_data));
+	usb_ehci_init(EHCI_HCD_OMAP_MODE_PHY, true, true, 57, 61);
 
 }
 
