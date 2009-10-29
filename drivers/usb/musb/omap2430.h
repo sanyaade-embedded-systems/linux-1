@@ -10,7 +10,8 @@
 #ifndef __MUSB_OMAP243X_H__
 #define __MUSB_OMAP243X_H__
 
-#if defined(CONFIG_ARCH_OMAP2430) || defined(CONFIG_ARCH_OMAP3430)
+#if defined(CONFIG_ARCH_OMAP2430) || defined(CONFIG_ARCH_OMAP3430) \
+	|| defined(CONFIG_ARCH_OMAP4)
 #include <mach/hardware.h>
 #include <mach/usb.h>
 
