@@ -236,7 +236,15 @@ int __init musb_platform_init(struct musb *musb)
 	omap_writel(l, OTG_SYSCONFIG);
 
 	l = omap_readl(OTG_INTERFSEL);
-	l |= ULPI_12PIN;
+
+	if (musb->interface_type == MUSB_INTERFACE_UTMI) {
+		/* OMAP4 uses Internal PHY GS70 which uses UTMI interface */
+		l &= ~ULPI_12PIN;       /* Disable ULPI */
+		l |= UTMI_8BIT;         /* Enable UTMI  */
+	} else {
+		l |= ULPI_12PIN;
+	}
+
 	omap_writel(l, OTG_INTERFSEL);
 
 	pr_debug("HS USB OTG: revision 0x%x, sysconfig 0x%02x, "

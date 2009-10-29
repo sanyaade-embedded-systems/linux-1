@@ -377,6 +377,9 @@ struct musb {
 	u8 nr_endpoints;
 
 	u8 board_mode;		/* enum musb_mode */
+
+	u8                      interface_type; /* ULPI OR UTMI */
+
 	int			(*board_set_power)(int state);
 
 	int			(*set_clock)(struct clk *clk, int is_active);
