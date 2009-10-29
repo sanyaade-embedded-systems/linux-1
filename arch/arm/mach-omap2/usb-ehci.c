@@ -376,6 +376,12 @@ void __init usb_ehci_init(enum ehci_hcd_omap_mode phy_mode,
 		int chargepump, int phy_reset, int reset_gpio_port1,
 		int reset_gpio_port2)
 {
+	if (cpu_is_omap44xx()) {
+               ehci_resources[0].start = OMAP44XX_EHCI_BASE;
+               ehci_resources[0].end   = OMAP44XX_EHCI_BASE + SZ_1K - 1;
+               ehci_resources[1].start = INT_44XX_EHCI_IRQ;
+       }
+
 	platform_device_add_data(&ehci_device, &pdata, sizeof(pdata));
 
 	/* Setup Pin IO MUX for EHCI */
