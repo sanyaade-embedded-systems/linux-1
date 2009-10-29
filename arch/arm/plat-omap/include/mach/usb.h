@@ -5,6 +5,46 @@
 
 #include <mach/board.h>
 
+enum omap_usbhost_port_mode {
+	/* Port is unused */
+	OMAP_USB_PORT_MODE_DISABLED,
+
+	/* ULPI_BYPASS = 0 */
+	OMAP_USB_PORT_MODE_ULPI_PHY,
+
+	/* ULPI_BYPASS = 1, CHANMODE = 1 */
+	OMAP_USB_PORT_MODE_UTMI_PHY_6PIN,	/* FSLSMODE = 0x0 */
+	OMAP_USB_PORT_MODE_UTMI_PHY_6PIN_ALT,	/* FSLSMODE = 0x1 */
+	OMAP_USB_PORT_MODE_UTMI_PHY_3PIN,	/* FSLSMODE = 0x2 */
+	OMAP_USB_PORT_MODE_UTMI_PHY_4PIN,	/* FSLSMODE = 0x3 */
+	OMAP_USB_PORT_MODE_UTMI_TLL_6PIN,	/* FSLSMODE = 0x4 */
+	OMAP_USB_PORT_MODE_UTMI_TLL_6PIN_ALT,	/* FSLSMODE = 0x5 */
+	OMAP_USB_PORT_MODE_UTMI_TLL_3PIN,	/* FSLSMODE = 0x6 */
+	OMAP_USB_PORT_MODE_UTMI_TLL_4PIN,	/* FSLSMODE = 0x7 */
+	OMAP_USB_PORT_MODE_UTMI_TLL_2PIN,	/* FSLSMODE = 0xA */
+	OMAP_USB_PORT_MODE_UTMI_TLL_2PIN_ALT,	/* FSLSMODE = 0xB */
+
+	/* ULPI_BYPASS = 1, CHANMODE = 0 */
+	OMAP_USB_PORT_MODE_ULPI_TLL_SDR,	/* ULPIDDRMODE = 0 */
+	OMAP_USB_PORT_MODE_ULPI_TLL_DDR,	/* ULPIDDRMODE = 1 */
+
+};
+
+struct omap_usbhost_port_data {
+	enum omap_usbhost_port_mode	mode;
+};
+
+enum ehci_hcd_omap_mode {
+	EHCI_HCD_OMAP_MODE_UNKNOWN,
+	EHCI_HCD_OMAP_MODE_PHY,
+	EHCI_HCD_OMAP_MODE_TLL,
+};
+
+struct ehci_hcd_omap_platform_data {
+	int (*init) (struct platform_device *pdev);
+	int (*exit) (struct platform_device *pdev);
+};
+
 /*-------------------------------------------------------------------------*/
 
 #define OMAP1_OTG_BASE			0xfffb0400
@@ -29,6 +69,13 @@
 
 enum musb_interface    {MUSB_INTERFACE_ULPI, MUSB_INTERFACE_UTMI};
 extern void usb_musb_init(enum musb_interface interface);
+
+extern void usb_ehci_init(enum ehci_hcd_omap_mode phy_mode,
+		int chargepump, int phy_reset, int reset_gpio_port1,
+		int reset_gpio_port2);
+
+extern void usb_host_and_tll_init(
+	struct omap_usbhost_port_data const *port_data, unsigned n);
 
 #endif
 
