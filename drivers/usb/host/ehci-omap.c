@@ -37,38 +37,10 @@
 #include <linux/clk.h>
 #include <mach/usb.h>
 
-/*
- * OMAP USBHOST Register addresses: VIRTUAL ADDRESSES
- *	Use ehci_omap_readl()/ehci_omap_writel() functions
- */
-
-/*-------------------------------------------------------------------------*/
-
-static inline void ehci_omap_writel(void __iomem *base, u32 reg, u32 val)
-{
-	__raw_writel(val, base + reg);
-}
-
-static inline u32 ehci_omap_readl(void __iomem *base, u32 reg)
-{
-	return __raw_readl(base + reg);
-}
-
-static inline void ehci_omap_writeb(void __iomem *base, u8 reg, u8 val)
-{
-	__raw_writeb(val, base + reg);
-}
-
-static inline u8 ehci_omap_readb(void __iomem *base, u8 reg)
-{
-	return __raw_readb(base + reg);
-}
-
 /*-------------------------------------------------------------------------*/
 
 struct ehci_hcd_omap {
-	struct ehci_hcd		*ehci;
-	struct device		*dev;
+	struct usb_hcd		*hcd;
 
 	struct clk		*usbhost_ick;
 	struct clk		*usbhost2_120m_fck;
@@ -78,66 +50,6 @@ struct ehci_hcd_omap {
 
 	void __iomem		*ehci_base;
 };
-
-/*-------------------------------------------------------------------------*/
-
-/* omap_start_ehc
- *	- Start the TI USBHOST controller
- */
-static int omap_start_ehc(struct ehci_hcd_omap *omap, struct usb_hcd *hcd)
-{
-	int ret = 0;
-
-	dev_dbg(omap->dev, "starting TI EHCI USB Controller\n");
-
-	return ret;
-}
-
-static void omap_stop_ehc(struct ehci_hcd_omap *omap, struct usb_hcd *hcd)
-{
-	dev_dbg(omap->dev, "stopping TI EHCI USB Controller\n");
-
-#if 0
-	/* Reset OMAP modules for insmod/rmmod to work */
-	ehci_omap_writel(omap->uhh_base, OMAP_UHH_SYSCONFIG,
-			OMAP_UHH_SYSCONFIG_SOFTRESET);
-	while (!(ehci_omap_readl(omap->uhh_base, OMAP_UHH_SYSSTATUS)
-				& (1 << 0))) {
-		cpu_relax();
-
-		if (time_after(jiffies, timeout))
-			dev_dbg(omap->dev, "operation timed out\n");
-	}
-
-	while (!(ehci_omap_readl(omap->uhh_base, OMAP_UHH_SYSSTATUS)
-				& (1 << 1))) {
-		cpu_relax();
-
-		if (time_after(jiffies, timeout))
-			dev_dbg(omap->dev, "operation timed out\n");
-	}
-
-	while (!(ehci_omap_readl(omap->uhh_base, OMAP_UHH_SYSSTATUS)
-				& (1 << 2))) {
-		cpu_relax();
-
-		if (time_after(jiffies, timeout))
-			dev_dbg(omap->dev, "operation timed out\n");
-	}
-
-	ehci_omap_writel(omap->tll_base, OMAP_USBTLL_SYSCONFIG, (1 << 1));
-
-	while (!(ehci_omap_readl(omap->tll_base, OMAP_USBTLL_SYSSTATUS)
-				& (1 << 0))) {
-		cpu_relax();
-
-		if (time_after(jiffies, timeout))
-			dev_dbg(omap->dev, "operation timed out\n");
-	}
-#endif
-
-	dev_dbg(omap->dev, "Clock to USB host has been disabled\n");
-}
 
 /*-------------------------------------------------------------------------*/
 
@@ -156,95 +68,106 @@ static const struct hc_driver ehci_omap_hc_driver;
 static int ehci_hcd_omap_probe(struct platform_device *pdev)
 {
 	struct ehci_hcd_omap_platform_data *pdata = pdev->dev.platform_data;
+	struct device *dev = &pdev->dev;
 	struct ehci_hcd_omap *omap;
 	struct resource *res;
 	struct usb_hcd *hcd;
-
-	int irq = platform_get_irq(pdev, 0);
+	struct ehci_hcd *ehci;
+	int irq;
 	int ret = -ENODEV;
 
-	if (!pdata) {
-		dev_dbg(&pdev->dev, "missing platform_data\n");
-		goto err_pdata;
-	}
-
 	if (usb_disabled())
-		goto err_disabled;
+		return -ENODEV;
 
-	omap = kzalloc(sizeof(*omap), GFP_KERNEL);
-	if (!omap) {
-		ret = -ENOMEM;
-		goto err_create_hcd;
+	dev_dbg(dev, "Initializing OMAP EHCI controller\n");
+
+	if (!pdata) {
+		dev_err(dev, "missing platform_data\n");
+		return -EINVAL;
 	}
 
-	hcd = usb_create_hcd(&ehci_omap_hc_driver, &pdev->dev,
-			dev_name(&pdev->dev));
+	irq = platform_get_irq(pdev, 0);
+
+	hcd = usb_create_hcd(&ehci_omap_hc_driver, dev, dev_name(dev));
 	if (!hcd) {
 		dev_dbg(&pdev->dev, "failed to create hcd with err %d\n", ret);
 		ret = -ENOMEM;
 		goto err_create_hcd;
 	}
 
-	platform_set_drvdata(pdev, omap);
-	omap->dev		= &pdev->dev;
-	omap->ehci		= hcd_to_ehci(hcd);
-	omap->ehci->sbrn	= 0x20;
+	omap = kzalloc(sizeof(*omap), GFP_KERNEL);
+	if (!omap) {
+		ret = -ENOMEM;
+		goto err_alloc;
+	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		dev_err(dev, "No memory resource found. Check platform data\n");
+		ret = -ENODEV;
+		goto err_get_resource;
+	}
 
 	hcd->rsrc_start = res->start;
 	hcd->rsrc_len = resource_size(res);
 
+	if (!request_mem_region(hcd->rsrc_start, hcd->rsrc_len, hcd_name)) {
+		dev_dbg(dev, "controller already in use\n");
+		ret = -EBUSY;
+		goto err_request_mem;
+	}
+
 	hcd->regs = ioremap(hcd->rsrc_start, hcd->rsrc_len);
 	if (!hcd->regs) {
-		dev_err(&pdev->dev, "EHCI ioremap failed\n");
-		ret = -ENOMEM;
+		dev_err(&pdev->dev, "error mapping memory\n");
+		ret = -EFAULT;
 		goto err_ioremap;
 	}
 
-	/* we know this is the memory we want, no need to ioremap again */
-	omap->ehci->caps = hcd->regs;
-	omap->ehci_base = hcd->regs;
-
-	ret = omap_start_ehc(omap, hcd);
-	if (ret) {
-		dev_dbg(&pdev->dev, "failed to start ehci\n");
-		goto err_start;
+	/* call platform specific init function */
+	if (pdata ->init) {
+		ret = pdata->init(pdev);
+		if (ret) {
+			dev_err(dev, "platform init failed\n");
+			goto err_init;
+		}
 	}
 
-	omap->ehci->regs = hcd->regs
-		+ HC_LENGTH(readl(&omap->ehci->caps->hc_capbase));
+	omap->hcd	= hcd;
+	ehci		= hcd_to_ehci(hcd);
+	ehci->caps	= hcd->regs;
+	ehci->regs	= hcd->regs
+		+ HC_LENGTH(ehci_readl(ehci, &ehci->caps->hc_capbase));
+	dbg_hcs_params(ehci, "reset");
+	dbg_hcc_params(ehci, "reset");
 
 	/* cache this readonly data; minimize chip reads */
-	omap->ehci->hcs_params = readl(&omap->ehci->caps->hcs_params);
-	dbg_hcs_params(omap->ehci, "reset");
-	dbg_hcc_params(omap->ehci, "reset");
+	ehci->hcs_params = readl(&ehci->caps->hcs_params);
 
-	/* SET 1 micro-frame Interrupt interval */
-	writel(readl(&omap->ehci->regs->command) | (1 << 16),
-			&omap->ehci->regs->command);
+	ehci->sbrn	= 0x20;
+	platform_set_drvdata(pdev, omap);
 
 	ret = usb_add_hcd(hcd, irq, IRQF_DISABLED | IRQF_SHARED);
 	if (ret) {
 		dev_dbg(&pdev->dev, "failed to add hcd with err %d\n", ret);
-		goto err_add_hcd;
+		goto err_add;
 	}
 
 	return 0;
 
-err_add_hcd:
-	omap_stop_ehc(omap, hcd);
-
-err_start:
-
+err_add:
+	if (pdata && pdata->exit)
+		pdata->exit(pdev);
+err_init:
 	iounmap(hcd->regs);
-
 err_ioremap:
+	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
+err_request_mem:
+err_get_resource:
+	kfree(omap);
+err_alloc:
 	usb_put_hcd(hcd);
-
 err_create_hcd:
-err_disabled:
-err_pdata:
 	return ret;
 }
 
@@ -261,13 +184,20 @@ err_pdata:
  */
 static int ehci_hcd_omap_remove(struct platform_device *pdev)
 {
+	struct ehci_hcd_omap_platform_data *pdata = pdev->dev.platform_data;
 	struct ehci_hcd_omap *omap = platform_get_drvdata(pdev);
-	struct usb_hcd *hcd = ehci_to_hcd(omap->ehci);
+	struct usb_hcd *hcd = omap->hcd;
+
+	if (pdata && pdata->exit)
+		pdata->exit(pdev);
 
 	usb_remove_hcd(hcd);
-	omap_stop_ehc(omap, hcd);
 	iounmap(hcd->regs);
+	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 	usb_put_hcd(hcd);
+	platform_set_drvdata(pdev, NULL);
+
+	kfree(omap);
 
 	return 0;
 }
@@ -275,7 +205,7 @@ static int ehci_hcd_omap_remove(struct platform_device *pdev)
 static void ehci_hcd_omap_shutdown(struct platform_device *pdev)
 {
 	struct ehci_hcd_omap *omap = platform_get_drvdata(pdev);
-	struct usb_hcd *hcd = ehci_to_hcd(omap->ehci);
+	struct usb_hcd *hcd = omap->hcd;
 
 	if (hcd->driver->shutdown)
 		hcd->driver->shutdown(hcd);
