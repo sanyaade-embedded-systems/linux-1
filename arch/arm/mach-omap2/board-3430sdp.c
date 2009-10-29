@@ -440,6 +440,18 @@ static struct i2c_board_info __initdata sdp3430_i2c_boardinfo[] = {
 	},
 };
 
+static struct omap_usbhost_port_data sdp_usbhost_port_data[] = {
+	[0] = {
+		.mode = OMAP_USB_PORT_MODE_ULPI_TLL_SDR,
+	},
+	[1] = {
+		.mode = OMAP_USB_PORT_MODE_ULPI_PHY,
+	},
+	[2] = {
+		.mode = OMAP_USB_PORT_MODE_UTMI_PHY_3PIN,
+	},
+};
+
 static int __init omap3430_i2c_init(void)
 {
 	/* i2c1 for PMIC only */
@@ -495,6 +507,9 @@ static void __init omap_3430sdp_init(void)
 	omap_serial_init();
 	usb_musb_init(MUSB_INTERFACE_ULPI);
 	board_smc91x_init();
+	usb_host_and_tll_init(sdp_usbhost_port_data,
+			ARRAY_SIZE(sdp_usbhost_port_data));
+	usb_ehci_init(EHCI_HCD_OMAP_MODE_PHY, true, true, 57, 61);
 }
 
 static void __init omap_3430sdp_map_io(void)
