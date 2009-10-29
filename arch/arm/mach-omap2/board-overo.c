@@ -394,7 +394,7 @@ static void __init overo_init(void)
 	omap_board_config_size = ARRAY_SIZE(overo_config);
 	omap_serial_init();
 	overo_flash_init();
-	usb_musb_init();
+	usb_musb_init(MUSB_INTERFACE_ULPI);
 	overo_ads7846_init();
 	overo_init_smsc911x();
 

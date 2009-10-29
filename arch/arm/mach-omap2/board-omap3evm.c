@@ -312,7 +312,7 @@ static void __init omap3_evm_init(void)
 	/* OMAP3EVM uses ISP1504 phy and so register nop transceiver */
 	usb_nop_xceiv_register();
 #endif
-	usb_musb_init();
+	usb_musb_init(MUSB_INTERFACE_ULPI);
 	ads7846_dev_init();
 }
 

@@ -385,7 +385,7 @@ static void __init omap_ldp_init(void)
 				ARRAY_SIZE(ldp_spi_board_info));
 	ads7846_dev_init();
 	omap_serial_init();
-	usb_musb_init();
+	usb_musb_init(MUSB_INTERFACE_ULPI);
 
 	twl4030_mmc_init(mmc);
 	/* link regulators to MMC adapters */

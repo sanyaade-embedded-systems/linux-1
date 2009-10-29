@@ -73,7 +73,7 @@ static void __init rx51_init(void)
 	omap_board_config = rx51_config;
 	omap_board_config_size = ARRAY_SIZE(rx51_config);
 	omap_serial_init();
-	usb_musb_init();
+	usb_musb_init(MUSB_INTERFACE_ULPI);
 	rx51_peripherals_init();
 
 	/* Ensure SDRC pins are mux'd for self-refresh */

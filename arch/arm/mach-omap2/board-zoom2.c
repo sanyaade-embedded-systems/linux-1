@@ -90,7 +90,7 @@ static void __init omap_zoom2_init(void)
 	omap_serial_init();
 	omap_zoom2_debugboard_init();
 	twl4030_mmc_init(mmc);
-	usb_musb_init();
+	usb_musb_init(MUSB_INTERFACE_ULPI);
 }
 
 static void __init omap_zoom2_map_io(void)

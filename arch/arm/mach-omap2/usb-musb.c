@@ -139,6 +139,7 @@ static struct musb_hdrc_platform_data musb_plat = {
 	 * "mode", and should be passed to usb_musb_init().
 	 */
 	.power		= 50,			/* up to 100 mA */
+	.interface_type = MUSB_INTERFACE_ULPI,  /* Default interface is ULPI */
 };
 
 static u64 musb_dmamask = DMA_BIT_MASK(32);
@@ -155,7 +156,7 @@ static struct platform_device musb_device = {
 	.resource	= musb_resources,
 };
 
-void __init usb_musb_init(void)
+void __init usb_musb_init(enum musb_interface interface)
 {
 	if (cpu_is_omap243x())
 		musb_resources[0].start = OMAP243X_HS_BASE;
@@ -168,6 +169,7 @@ void __init usb_musb_init(void)
 	 * musb_core.c have been converted to use use clkdev.
 	 */
 	musb_plat.clock = "ick";
+	musb_plat.interface_type = interface;
 
 	if (platform_device_register(&musb_device) < 0) {
 		printk(KERN_ERR "Unable to register HS-USB (MUSB) device\n");
@@ -178,7 +180,7 @@ void __init usb_musb_init(void)
 }
 
 #else
-void __init usb_musb_init(void)
+void __init usb_musb_init(enum musb_interface interface)
 {
 	usb_musb_pm_init();
 }

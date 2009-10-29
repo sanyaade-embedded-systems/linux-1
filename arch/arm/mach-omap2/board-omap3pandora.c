@@ -398,7 +398,7 @@ static void __init omap3pandora_init(void)
 			ARRAY_SIZE(omap3pandora_spi_board_info));
 	omap3pandora_ads7846_init();
 	pandora_keys_gpio_init();
-	usb_musb_init();
+	usb_musb_init(MUSB_INTERFACE_ULPI);
 
 	/* Ensure SDRC pins are mux'd for self-refresh */
 	omap_cfg_reg(H16_34XX_SDRC_CKE0);

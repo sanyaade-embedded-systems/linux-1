@@ -209,7 +209,7 @@ static void __init omap_2430sdp_init(void)
 	omap_board_config_size = ARRAY_SIZE(sdp2430_config);
 	omap_serial_init();
 	twl4030_mmc_init(mmc);
-	usb_musb_init();
+	usb_musb_init(MUSB_INTERFACE_ULPI);
 	board_smc91x_init();
 
 	/* Turn off secondary LCD backlight */

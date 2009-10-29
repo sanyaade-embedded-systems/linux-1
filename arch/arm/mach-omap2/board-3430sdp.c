@@ -493,7 +493,7 @@ static void __init omap_3430sdp_init(void)
 				ARRAY_SIZE(sdp3430_spi_board_info));
 	ads7846_dev_init();
 	omap_serial_init();
-	usb_musb_init();
+	usb_musb_init(MUSB_INTERFACE_ULPI);
 	board_smc91x_init();
 }
 

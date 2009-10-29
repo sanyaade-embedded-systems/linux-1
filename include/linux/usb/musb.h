@@ -61,6 +61,9 @@ struct musb_hdrc_platform_data {
 	/* MUSB_HOST, MUSB_PERIPHERAL, or MUSB_OTG */
 	u8		mode;
 
+	/* ULPI / UTMI based on transceiver interface */
+	u8              interface_type;
+
 	/* for clk_get() */
 	const char	*clock;
 
