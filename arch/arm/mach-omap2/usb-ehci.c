@@ -112,34 +112,50 @@ static void setup_ehci_io_mux(enum ehci_hcd_omap_mode phy_mode)
 		 * ISP1504 connected to Port1 and Port2
 		 * Do Func Mux setting for 12-pin ULPI PHY mode
 		 */
-		/* Port1 */
-		omap_cfg_reg(Y9_3430_USB1HS_PHY_STP);
-		omap_cfg_reg(Y8_3430_USB1HS_PHY_CLK);
-		omap_cfg_reg(AA14_3430_USB1HS_PHY_DIR);
-		omap_cfg_reg(AA11_3430_USB1HS_PHY_NXT);
-		omap_cfg_reg(W13_3430_USB1HS_PHY_DATA0);
-		omap_cfg_reg(W12_3430_USB1HS_PHY_DATA1);
-		omap_cfg_reg(W11_3430_USB1HS_PHY_DATA2);
-		omap_cfg_reg(Y11_3430_USB1HS_PHY_DATA3);
-		omap_cfg_reg(W9_3430_USB1HS_PHY_DATA4);
-		omap_cfg_reg(Y12_3430_USB1HS_PHY_DATA5);
-		omap_cfg_reg(W8_3430_USB1HS_PHY_DATA6);
-		omap_cfg_reg(Y13_3430_USB1HS_PHY_DATA7);
 
-		/* Port2 */
-		omap_cfg_reg(AA10_3430_USB2HS_PHY_STP);
-		omap_cfg_reg(AA8_3430_USB2HS_PHY_CLK);
-		omap_cfg_reg(AA9_3430_USB2HS_PHY_DIR);
-		omap_cfg_reg(AB11_3430_USB2HS_PHY_NXT);
-		omap_cfg_reg(AB10_3430_USB2HS_PHY_DATA0);
-		omap_cfg_reg(AB9_3430_USB2HS_PHY_DATA1);
-		omap_cfg_reg(W3_3430_USB2HS_PHY_DATA2);
-		omap_cfg_reg(T4_3430_USB2HS_PHY_DATA3);
-		omap_cfg_reg(T3_3430_USB2HS_PHY_DATA4);
-		omap_cfg_reg(R3_3430_USB2HS_PHY_DATA5);
-		omap_cfg_reg(R4_3430_USB2HS_PHY_DATA6);
-		omap_cfg_reg(T2_3430_USB2HS_PHY_DATA7);
+		if (cpu_is_omap34xx()) {
+			/* Port1 */
+			omap_cfg_reg(Y9_3430_USB1HS_PHY_STP);
+			omap_cfg_reg(Y8_3430_USB1HS_PHY_CLK);
+			omap_cfg_reg(AA14_3430_USB1HS_PHY_DIR);
+			omap_cfg_reg(AA11_3430_USB1HS_PHY_NXT);
+			omap_cfg_reg(W13_3430_USB1HS_PHY_DATA0);
+			omap_cfg_reg(W12_3430_USB1HS_PHY_DATA1);
+			omap_cfg_reg(W11_3430_USB1HS_PHY_DATA2);
+			omap_cfg_reg(Y11_3430_USB1HS_PHY_DATA3);
+			omap_cfg_reg(W9_3430_USB1HS_PHY_DATA4);
+			omap_cfg_reg(Y12_3430_USB1HS_PHY_DATA5);
+			omap_cfg_reg(W8_3430_USB1HS_PHY_DATA6);
+			omap_cfg_reg(Y13_3430_USB1HS_PHY_DATA7);
 
+			/* Port2 */
+			omap_cfg_reg(AA10_3430_USB2HS_PHY_STP);
+			omap_cfg_reg(AA8_3430_USB2HS_PHY_CLK);
+			omap_cfg_reg(AA9_3430_USB2HS_PHY_DIR);
+			omap_cfg_reg(AB11_3430_USB2HS_PHY_NXT);
+			omap_cfg_reg(AB10_3430_USB2HS_PHY_DATA0);
+			omap_cfg_reg(AB9_3430_USB2HS_PHY_DATA1);
+			omap_cfg_reg(W3_3430_USB2HS_PHY_DATA2);
+			omap_cfg_reg(T4_3430_USB2HS_PHY_DATA3);
+			omap_cfg_reg(T3_3430_USB2HS_PHY_DATA4);
+			omap_cfg_reg(R3_3430_USB2HS_PHY_DATA5);
+			omap_cfg_reg(R4_3430_USB2HS_PHY_DATA6);
+			omap_cfg_reg(T2_3430_USB2HS_PHY_DATA7);
+		} else if (cpu_is_omap44xx()) {
+			/* Port 1 */
+                        omap_cfg_reg(AE_4430_USB1HS_PHY_CLK);
+                        omap_cfg_reg(AG_4430_USB1HS_PHY_STP);
+                        omap_cfg_reg(AF_4430_USB1HS_PHY_DIR);
+                        omap_cfg_reg(AE_4430_USB1HS_PHY_NXT);
+                        omap_cfg_reg(AF_4430_USB1HS_PHY_D0);
+                        omap_cfg_reg(AG_4430_USB1HS_PHY_D1);
+                        omap_cfg_reg(AE_4430_USB1HS_PHY_D2);
+                        omap_cfg_reg(AF_4430_USB1HS_PHY_D3);
+                        omap_cfg_reg(AH_4430_USB1HS_PHY_D4);
+                        omap_cfg_reg(AE_4430_USB1HS_PHY_D5);
+                        omap_cfg_reg(AF_4430_USB1HS_PHY_D6);
+                        omap_cfg_reg(AG_4430_USB1HS_PHY_D7);
+		}
 	} else {
 		/* Set Func mux for :
 		 * TLL mode of operation
@@ -385,8 +401,7 @@ void __init usb_ehci_init(enum ehci_hcd_omap_mode phy_mode,
 	platform_device_add_data(&ehci_device, &pdata, sizeof(pdata));
 
 	/* Setup Pin IO MUX for EHCI */
-	if (cpu_is_omap34xx())
-		setup_ehci_io_mux(phy_mode);
+	setup_ehci_io_mux(phy_mode);
 
 #define USBHOST_PORT1_GPIO	57
 #define USBHOST_PORT2_GPIO	61
