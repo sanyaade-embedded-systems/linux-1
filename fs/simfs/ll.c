@@ -161,6 +161,7 @@ int ll_close(void *ioaddr, int fd)
 typedef struct {
 	uint32_t fd;
 	uint32_t count;
+	uint32_t phys;
 } ll_cmd_read;
 
 typedef struct {
@@ -172,26 +173,23 @@ int ll_read(void *ioaddr, int fd, void *buffer, uint32_t count)
 	FSSTATE *fss = (FSSTATE *) ioaddr;
 	ll_cmd_read *cmd = (ll_cmd_read *) fss->buffer;
 	ll_res_read *res = (ll_res_read *) fss->buffer;
-	char *rb = (char *)(fss->buffer + sizeof(ll_res_read));
 	unsigned long flags;
 	int ret;
 
 	local_irq_save(flags);
 
 	/* copy parameters */
-	cmd->fd = fd;
-	cmd->count = count;
+    cmd->fd    = fd;
+    cmd->count = count;
+    cmd->phys  = (uint32_t) buffer;
 
 	/* execute the command */
 	fss->cmdId = FS_READ;
 	fss->execute = 1;
-
+    
 	/* Wait for command to finish */
 	while (fss->execute == 1)
 		/* BUSY LOOP */;
-
-	memcpy(buffer, rb, count);
-
 	if (res->ret == -1)
 		ret = fss->error;
 	else
@@ -206,6 +204,7 @@ int ll_read(void *ioaddr, int fd, void *buffer, uint32_t count)
 typedef struct {
 	uint32_t fd;
 	uint32_t count;
+	uint32_t phys;
 } ll_cmd_write;
 
 typedef struct {
@@ -217,7 +216,6 @@ int ll_write(void *ioaddr, int fd, void *buffer, uint32_t count)
 	FSSTATE *fss = (FSSTATE *) ioaddr;
 	ll_cmd_write *cmd = (ll_cmd_write *) fss->buffer;
 	ll_res_write *res = (ll_res_write *) fss->buffer;
-	char *wb = (char *)(fss->buffer + sizeof(ll_cmd_write));
 	unsigned long flags;
 	int ret;
 
@@ -226,7 +224,7 @@ int ll_write(void *ioaddr, int fd, void *buffer, uint32_t count)
 	/* copy parameters */
 	cmd->fd = fd;
 	cmd->count = count;
-	memcpy(wb, buffer, count);
+    cmd->phys  = (uint32_t) buffer;
 
 	/* execute the command */
 	fss->cmdId = FS_WRITE;

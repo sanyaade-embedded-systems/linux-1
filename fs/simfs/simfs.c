@@ -18,6 +18,10 @@
 
 static void *SIMFS_virtAddr;
 
+/* Insmod parameter */
+static char * ROOTPATH = "c:\\temp";
+module_param (ROOTPATH, charp, S_IRUGO);
+
 /* ---- simfs inode type ---- */
 typedef struct {
 	struct inode vfs_inode;
@@ -327,11 +331,19 @@ int simfs_rmdir(struct inode *ino, struct dentry *dentry)
 {
 	char *file;
 	int err;
+	_ll_stat st;
 
-	file = inode_dentry_name(ino, dentry);
-	if (file == NULL)
+	if ((file = inode_dentry_name(ino, dentry)) == NULL)
 		return -ENOMEM;
-	err = ll_rmdir(SIMFS_I(ino)->ioaddr, file);
+	err = ll_stat (SIMFS_I(ino)->ioaddr, file, &st);
+	if (err < 0)
+		return err;
+
+	if (S_ISDIR(st.st_mode))
+		err = ll_rmdir (SIMFS_I(ino)->ioaddr, file);
+	else
+		err = ll_remove (SIMFS_I(ino)->ioaddr, file);
+
 	kfree(file);
 	return err;
 }
@@ -378,84 +390,87 @@ static const struct inode_operations simfs_f_iops = {
 /* ---- write page ---- */
 int simfs_writepage(struct page *page, struct writeback_control *wbc)
 {
-	struct address_space *mapping = page->mapping;
-	struct inode *inode = mapping->host;
-	char *buffer;
-	unsigned long long base, temp;
-	int count = PAGE_CACHE_SIZE;
-	int end_index = inode->i_size >> PAGE_CACHE_SHIFT;
-	int err;
+    struct address_space * mapping = page->mapping;
+    struct inode *         inode = mapping->host;
+    char *                 buffer;
+    unsigned long long     base, temp;
+    int                    count = PAGE_CACHE_SIZE;
+    int                    end_index = inode->i_size >> PAGE_CACHE_SHIFT;
+    int err;
+    unsigned long phys;
 
-	if (page->index >= end_index)
-		count = inode->i_size & (PAGE_CACHE_SIZE - 1);
+    if (page->index >= end_index)
+        count = inode->i_size & (PAGE_CACHE_SIZE-1);
 
-	buffer = kmap(page);
-	base = ((unsigned long long)page->index) << PAGE_CACHE_SHIFT;
+    buffer = kmap(page);
+    base = ((unsigned long long) page->index) << PAGE_CACHE_SHIFT;
 
-	temp = ll_seek(SIMFS_I(inode)->ioaddr,
-		       SIMFS_I(inode)->fd, base, SEEK_SET);
-	if (temp != base) {
-		err = -EINVAL;
-		goto out;
-	} else {
-		base = temp;
-	}
+    temp = ll_seek (SIMFS_I(inode)->ioaddr, SIMFS_I(inode)->fd, base, SEEK_SET);
+    if (temp != base) {
+        err = -EINVAL;
+        goto out;
+    }
+    else {
+        base = temp;
+    }
 
-	err =
-	    ll_write(SIMFS_I(inode)->ioaddr, SIMFS_I(inode)->fd, buffer, count);
-	if (err != count) {
-		ClearPageUptodate(page);
-		goto out;
-	}
+    phys = (page_to_pfn (page) << PAGE_SHIFT);
+    err = ll_write (SIMFS_I(inode)->ioaddr, SIMFS_I(inode)->fd, (void *) phys, count);
+    if (err != count) {
+        ClearPageUptodate(page);
+        goto out;
+    }
 
-	if (base > inode->i_size)
-		inode->i_size = base;
+    if (base > inode->i_size)
+        inode->i_size = (base + count);
 
-	if (PageError(page))
-		ClearPageError(page);
-	err = 0;
+    if (PageError(page))
+        ClearPageError(page);
+    err = 0;
 
-out:
-	kunmap(page);
+ out:
+    kunmap(page);
 
-	unlock_page(page);
-	return err;
+    unlock_page(page);
+    return err;
 }
 
 /* ---- readpage operations ---- */
 int simfs_readpage(struct file *file, struct page *page)
 {
-	char *buffer;
-	long long start;
-	int err = 0;
-	unsigned long long temp;
+    char *    buffer;
+    long long start;
+    int       err = 0;
+    unsigned long long temp;
+    unsigned long phys;
 
-	start = (long long)page->index << PAGE_CACHE_SHIFT;
-	buffer = kmap(page);
+    start = (long long) page->index << PAGE_CACHE_SHIFT;
+    buffer = kmap(page);
 
-	temp = ll_seek(FILE_SIMFS_I(file)->ioaddr,
-		       FILE_SIMFS_I(file)->fd, start, SEEK_SET);
-	if (temp != start)
-		goto out;
-	else
-		start = temp;
+    temp = ll_seek (FILE_SIMFS_I(file)->ioaddr, FILE_SIMFS_I(file)->fd, start, SEEK_SET);
+    if (temp != start) {
+        goto out;
+    }
 
-	err = ll_read(FILE_SIMFS_I(file)->ioaddr,
-		      FILE_SIMFS_I(file)->fd, buffer, PAGE_CACHE_SIZE);
-	if (err < 0)
-		goto out;
+    phys = (page_to_pfn (page) << PAGE_SHIFT);
+    err = ll_read (FILE_SIMFS_I(file)->ioaddr,
+                   FILE_SIMFS_I(file)->fd,
+                   (void *) phys,
+                   PAGE_CACHE_SIZE);
+    if (err < 0)
+        goto out;
 
-	memset(&buffer[err], 0, PAGE_CACHE_SIZE - err);
+    memset(&buffer[err], 0, PAGE_CACHE_SIZE - err);
 
-	flush_dcache_page(page);
-	SetPageUptodate(page);
-	if (PageError(page))
-		ClearPageError(page);
-	err = 0;
-out:
-	kunmap(page);
-	unlock_page(page);
-	return err;
+    flush_dcache_page(page);
+    SetPageUptodate(page);
+    if (PageError(page)) ClearPageError(page);
+    err = 0;
+
+ out:
+    kunmap(page);
+    unlock_page(page);
+    return err;
 }
 
 /* ---- write begin ---- */
@@ -476,37 +491,42 @@ int simfs_write_end(struct file *file, struct address_space *mapping,
 		    loff_t pos, unsigned len, unsigned copied,
 		    struct page *page, void *fsdata)
 {
-	struct inode *inode = mapping->host;
-	void *buffer;
-	unsigned from = pos & (PAGE_CACHE_SIZE - 1);
-	int err;
-	unsigned long long temp;
+    struct inode *inode = mapping->host;
+    void *buffer;
+    unsigned from = pos & (PAGE_CACHE_SIZE - 1);
+    int err;
+    unsigned long long temp;
+    unsigned long phys;
 
-	buffer = kmap(page);
-	temp = ll_seek(FILE_SIMFS_I(file)->ioaddr,
-		       FILE_SIMFS_I(file)->fd, from, SEEK_SET);
-	if (temp != from)
-		return -EINVAL;
-	else
-		from = temp;
+    buffer = kmap(page);
+    temp = ll_seek (FILE_SIMFS_I(file)->ioaddr,
+                    FILE_SIMFS_I(file)->fd,
+                    pos,
+                    SEEK_SET);
+    if (temp != pos) {
+        return -EINVAL;
+    }
 
-	err = ll_write(FILE_SIMFS_I(file)->ioaddr,
-		       FILE_SIMFS_I(file)->fd, buffer + from, copied);
-	kunmap(page);
+    phys = (page_to_pfn (page) << PAGE_SHIFT);
+    err = ll_write (FILE_SIMFS_I(file)->ioaddr,
+                    FILE_SIMFS_I(file)->fd,
+                    (void *) (phys + from),
+                    copied);
+    kunmap(page);
 
-	if (!PageUptodate(page) && err == PAGE_CACHE_SIZE)
-		SetPageUptodate(page);
+    if (!PageUptodate(page) && err == PAGE_CACHE_SIZE)
+        SetPageUptodate(page);
 
-	/*
-	 * If err > 0, write_file has added err to pos, so we are comparing
-	 * i_size against the last byte written.
-	 */
-	if (err > 0 && (pos > inode->i_size))
-		inode->i_size = pos;
-	unlock_page(page);
-	page_cache_release(page);
+    /*
+     * If err > 0, write_file has added err to pos, so we are comparing
+     * i_size against the last byte written.
+     */
+    if (err > 0 && (pos > inode->i_size))
+        inode->i_size = (pos + copied);
+    unlock_page(page);
+    page_cache_release(page);
 
-	return err;
+    return err;
 }
 
 /* ---- address operations ---- */
@@ -633,12 +653,13 @@ static void simfs_delete_inode(struct inode *inode)
 /* ---- destroys a simfs inode ---- */
 static void simfs_destroy_inode(struct inode *inode)
 {
-	kfree(SIMFS_I(inode)->name);
-	if (SIMFS_I(inode)->fd != -1) {
-		ll_close(SIMFS_I(inode)->ioaddr, SIMFS_I(inode)->fd);
-		SIMFS_I(inode)->fd = -1;
-	}
-	kfree(SIMFS_I(inode));
+    kfree(SIMFS_I(inode)->name);
+    if (SIMFS_I(inode)->fd != -1) {
+        ll_close (SIMFS_I(inode)->ioaddr, SIMFS_I(inode)->fd);
+        SIMFS_I(inode)->fd = -1;
+        printk(KERN_DEBUG "Closing sim fd in .destroy_inode\n");
+    }
+    kfree(SIMFS_I(inode));
 }
 
 /* ---- super block operations ---- */
@@ -652,46 +673,53 @@ static const struct super_operations simfs_s_ops = {
 /* ---- Fill super block ---- */
 static int simfs_fill_sb_common(struct super_block *sb, void *d, int silent)
 {
-	char *rpath = "c:\\temp";
-	struct inode *inode;
-	int err;
+    char *         rpath;
+    struct inode * inode;
+    int            err;
 
-	sb->s_blocksize = PAGE_CACHE_SIZE;
-	sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
-	sb->s_magic = SIMFS_MAGIC;
-	sb->s_op = &simfs_s_ops;
+    sb->s_blocksize      = PAGE_CACHE_SIZE;
+    sb->s_blocksize_bits = PAGE_CACHE_SHIFT;
+    sb->s_magic          = SIMFS_MAGIC;
+    sb->s_op             = &simfs_s_ops;
 
-	/* Populate the root inode */
-	inode = simfs_inode_get(sb, 0);
-	if (!inode)
-		return -EINVAL;
+    /* Populate the root inode */
+    inode = simfs_inode_get (sb, 0);
+    if (!inode)
+        return -EINVAL;
 
-	/* write the name of this inode */
-	SIMFS_I(inode)->name = (char *)kmalloc(strlen(rpath) + 1, GFP_KERNEL);
-	if (!SIMFS_I(inode)->name) {
-		iput(inode);
-		return -EINVAL;
-	}
+    if (strlen ((char *)d) == 0) {
+        rpath = ROOTPATH;
+    }
+    else {
+        rpath = (char *) d;
+    }
 
-	strcpy(SIMFS_I(inode)->name, rpath);
+    /* write the name of this inode */
+    SIMFS_I(inode)->name = (char *) kmalloc (strlen(rpath) + 1, GFP_KERNEL);
+    if (!SIMFS_I(inode)->name) {
+        iput (inode);
+        return -EINVAL;
+    }
 
-	sb->s_root = d_alloc_root(inode);
-	if (sb->s_root == NULL) {
-		kfree(SIMFS_I(inode)->name);
-		iput(inode);
-		return -EINVAL;
-	}
+    strcpy (SIMFS_I(inode)->name, rpath);
 
-	err = simfs_read_inode(inode);
-	if (err < 0) {
-		dput(sb->s_root);
-		sb->s_root = NULL;
-		kfree(SIMFS_I(inode)->name);
-		iput(inode);
-		return -EINVAL;
-	}
+    sb->s_root = d_alloc_root(inode);
+    if (sb->s_root == NULL) {
+        kfree (SIMFS_I(inode)->name);
+        iput (inode);
+        return -EINVAL;
+    }
 
-	return 0;
+    err = simfs_read_inode (inode);
+    if (err < 0) {
+        dput (sb->s_root);
+        sb->s_root = NULL;
+        kfree (SIMFS_I(inode)->name);
+        iput (inode);
+        return -EINVAL;
+    }
+
+    return 0;
 }
 
 /* ---- Read super block ---- */
