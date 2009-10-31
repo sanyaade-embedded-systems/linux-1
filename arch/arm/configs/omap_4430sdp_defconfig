@@ -315,7 +315,9 @@ CONFIG_CMDLINE="root=/dev/ram0 rw mem=128M console=ttyS2,115200n8 initrd=0x81600
 #
 # At least one emulation must be selected
 #
-# CONFIG_VFP is not set
+CONFIG_VFP=y
+CONFIG_VFPv3=y
+CONFIG_NEON=y
 
 #
 # Userspace binary formats
