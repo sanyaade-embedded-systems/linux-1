@@ -24,7 +24,7 @@
 #define __NEWCODE__
 #ifdef __NEWCODE__
 
-#if 1
+#if 0
 #define debug(x) printk(KERN_NOTICE "%s()::%d:%s=(0x%08x)\n", \
 				__func__, __LINE__, #x, (int)x);
 
