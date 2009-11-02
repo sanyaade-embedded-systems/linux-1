@@ -759,8 +759,16 @@ dmm_ioctl(struct inode *ip, struct file *filp, unsigned int cmd,
 			return retval;
 
 		error = tiler_find_buf(block_info.ssptr, &block_info);
-		if (error == 0)
-			retval = 0;
+		if (error != 0)
+			return retval;
+
+		bytes = copy_to_user((void *)arg,
+			(const void *)(&block_info),
+			sizeof(struct tiler_block_info));
+		if (bytes != 0)
+			return retval;
+
+		retval = 0;
 		break;
 	}
 	return retval;
