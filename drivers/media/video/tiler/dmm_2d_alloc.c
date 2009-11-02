@@ -1701,6 +1701,9 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 			*/
 			for (i = 0;
 				i < numPages && eCode == DMM_NO_ERROR; i++) {
+#ifdef __NEWCODE__
+				debug(i);
+#endif
 				eCode = dmm_free_phys_page(
 					(unsigned long *)
 					(delItm->pgAr.patPageEntries[i]));
