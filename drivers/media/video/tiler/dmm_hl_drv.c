@@ -440,23 +440,27 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 		unsigned long order = 0x0;
 
 		order = ((bfrPages*4 + 16) + 4095) / 4096;
+
+		order = 5;
 		debug(bfrPages*4 + 16);
 		debug(order);
 
+		bufferMappedZone->page_list = NULL;
 		bufferMappedZone->page_list =
 				(struct page *)alloc_pages(GFP_DMA, order);
-		if (!bufferMappedZone->page_list)
-			return DMM_SYS_ERROR;
+		if (!bufferMappedZone->page_list) {
+			debug(__LINE__); return DMM_SYS_ERROR;
+		}
 		bufferMappedZone->patPageEntriesSpace =
 		(unsigned long *)page_to_phys(bufferMappedZone->page_list);
 
 		bufferMappedZone->page_list_virt =
 		ioremap((unsigned long)bufferMappedZone->patPageEntriesSpace,
-		0x1000 * order); /* TODO: don't forget to unmap later */
+		0x1000 * 32); /* TODO: don't forget to unmap later */
 
 		bufferMappedZone->patPageEntries =
 					bufferMappedZone->page_list_virt;
-		memset(bufferMappedZone->patPageEntries, 0x0, 0x1000 * order);
+		memset(bufferMappedZone->patPageEntries, 0x0, 0x1000 * 32);
 		bufferMappedZone->patPageEntries =
 			(unsigned long *)((((unsigned long)
 				bufferMappedZone->patPageEntries) + 15) & ~15);
