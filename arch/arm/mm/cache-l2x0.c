@@ -93,10 +93,10 @@ static void l2x0_flush_range(unsigned long start, unsigned long end)
 
 	start &= ~(CACHE_LINE_SIZE - 1);
 #ifdef CONFIG_PL310_ERRATA_588369
-/*
-  * Disable Write-Back and Cache Linefill (set bits [1:0] of the Debug
-  * Control Register)
-  */
+	/*
+	 * Disable Write-Back and Cache Linefill (set bits [1:0] of the Debug
+	 * Control Register)
+  	 */
 	__asm__ __volatile__(
 	"stmfd r13!, {r0-r12, r14}\n"
 	"mov r0, #3\n"
@@ -105,14 +105,15 @@ static void l2x0_flush_range(unsigned long start, unsigned long end)
 	"smc\n"
 	"ldmfd r13!, {r0-r12, r14}");
 
-	for (addr = start; addr < end; addr += CACHE_LINE_SIZE)
+	for (addr = start; addr < end; addr += CACHE_LINE_SIZE) {
 		sync_writel(addr, L2X0_INV_LINE_PA, 1);
 		sync_writel(addr, L2X0_CLEAN_LINE_PA, 1);
-
-/*
-  * Enable Write-Back and Cache Linefill (set bits [1:0] of the Debug
-  * Control Register)
-  */
+	}
+	
+	/*
+	 * Enable Write-Back and Cache Linefill (set bits [1:0] of the Debug
+  	 * Control Register)
+  	 */
 	__asm__ __volatile__(
 	"stmfd r13!, {r0-r12, r14}\n"
 	"mov r0, #0\n"
