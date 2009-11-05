@@ -108,7 +108,7 @@
 #define L3_34XX_SIZE		SZ_1M   /* 44kB of 128MB used, want 1MB sect */
 
 #define L4_34XX_PHYS		L4_34XX_BASE	/* 0x48000000 */
-#define L4_34XX_VIRT		0xd8000000
+#define L4_34XX_VIRT		0xd8600000
 #define L4_34XX_SIZE		SZ_4M   /* 1MB of 128MB used, want 1MB sect */
 
 /*
