@@ -40,7 +40,8 @@
 		moveq	\rx, #0x08000000	@ physical base address
 		movne	\rx, #0xd8000000	@ virtual base
 #ifdef CONFIG_ARCH_NETRA
-		orr	\rx, \rx, #0x00020000
+		orr	\rx, \rx, #0x00610000
+		orr	\rx, \rx, #0x00000e00
 #else
 		orr	\rx, \rx, #0x0006a000
 #endif
