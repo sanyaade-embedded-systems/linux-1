@@ -1024,13 +1024,21 @@ static void _enable_gpio_irqbank(struct gpio_bank *bank, int gpio_mask, int enab
 			l |= gpio_mask;
 		break;
 #endif
-#if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX) || \
-		defined(CONFIG_ARCH_OMAP4)
+#if defined(CONFIG_ARCH_OMAP24XX) || defined(CONFIG_ARCH_OMAP34XX)
 	case METHOD_GPIO_24XX:
 		if (enable)
 			reg += OMAP24XX_GPIO_SETIRQENABLE1;
 		else
 			reg += OMAP24XX_GPIO_CLEARIRQENABLE1;
+		l = gpio_mask;
+		break;
+#endif
+#if defined(CONFIG_ARCH_OMAP4)
+	case METHOD_GPIO_24XX:
+		if (enable)
+			reg += OMAP24XX_GPIO_IRQ_STATUS_SET_0;
+		else
+			reg += OMAP24XX_GPIO_IRQ_STATUS_CLR_0;
 		l = gpio_mask;
 		break;
 #endif
@@ -1736,7 +1744,7 @@ static int __init _omap_gpio_init(void)
 				0xe203ffc0, 0x08700040
 			};
 #ifdef CONFIG_ARCH_OMAP4
-			__raw_writel(0x00000000, bank->base +
+			__raw_writel(0xffffffff, bank->base +
 					OMAP24XX_GPIO_IRQ_STATUS_CLR_0);
 			__raw_writel(0xffffffff, bank->base +
 					OMAP24XX_GPIO_IRQ_STATUS_0);
