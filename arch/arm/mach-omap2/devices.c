@@ -606,8 +606,6 @@ void __init omap2_init_mmc(struct omap_mmc_platform_data **mmc_data,
 		if (!mmc_data[i])
 			continue;
 
-		omap2_mmc_mux(mmc_data[i], i);
-
 		switch (i) {
 		case 0:
 			base = OMAP2_MMC1_BASE;

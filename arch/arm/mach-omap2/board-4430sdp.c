@@ -236,22 +236,26 @@ static struct twl4030_hsmmc_info mmc[] = {
 	{
 		.mmc            = 2,
 		.wires          = 8,
-		.gpio_wp        = 7,
+		.gpio_cd	= -EINVAL,
+		.gpio_wp        = -EINVAL,
 	},
 	{
 		.mmc            = 3,
-		.wires          = 8,
-		.gpio_wp        = 4,
+		.wires          = -EINVAL,
+		.gpio_cd	= -EINVAL,
+		.gpio_wp        = -EINVAL,
 	},
 	{
 		.mmc            = 4,
-		.wires          = 8,
-		.gpio_wp        = 4,
+		.wires          = -EINVAL,
+		.gpio_cd	= -EINVAL,
+		.gpio_wp        = -EINVAL,
 	},
 	{
 		.mmc            = 5,
-		.wires          = 8,
-		.gpio_wp        = 4,
+		.wires          = -EINVAL,
+		.gpio_cd	= -EINVAL,
+		.gpio_wp        = -EINVAL,
 	},
 	{}	/* Terminator */
 };
@@ -278,10 +282,6 @@ static int __init sdp4430_mmc_init(void)
 {
 	/* Hard Coding Values for testing */
 	mmc[0].gpio_cd = 373;
-	mmc[1].gpio_cd = 0;
-	mmc[2].gpio_cd = 1;
-	mmc[3].gpio_cd = 2;
-	mmc[4].gpio_cd = 3;
 	twl4030_mmc_init(mmc);
 	/* link regulators to MMC adapters ... we "know" the
 	 * regulators will be set up only *after* we return.

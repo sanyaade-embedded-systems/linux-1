@@ -32,6 +32,8 @@
 
 static u16 control_pbias_offset;
 static u16 control_devconf1_offset;
+static u16 control_mmc1;
+static u16 control_mmc2;
 
 #define HSMMC_NAME_LEN	9
 #define REG_SIMCTRL	0x0C
@@ -245,41 +247,68 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 			omap_ctrl_writel(reg, OMAP243X_CONTROL_DEVCONF1);
 		}
 
-		if (mmc->slots[0].internal_clock) {
-			reg = omap_ctrl_readl(OMAP2_CONTROL_DEVCONF0);
-			reg |= OMAP2_MMCSDIO1ADPCLKISEL;
-			omap_ctrl_writel(reg, OMAP2_CONTROL_DEVCONF0);
+		if (!cpu_is_omap44xx()) {
+			if (mmc->slots[0].internal_clock) {
+				reg = omap_ctrl_readl(OMAP2_CONTROL_DEVCONF0);
+				reg |= OMAP2_MMCSDIO1ADPCLKISEL;
+				omap_ctrl_writel(reg, OMAP2_CONTROL_DEVCONF0);
+			}
+			reg = omap_ctrl_readl(control_pbias_offset);
+			reg |= OMAP2_PBIASSPEEDCTRL0;
+			reg &= ~OMAP2_PBIASLITEPWRDNZ0;
+			omap_ctrl_writel(reg, control_pbias_offset);
+		} else {
+			reg = omap_ctrl_readl(control_pbias_offset);
+			reg &= ~(1 << 20);
+			omap_ctrl_writel(reg, control_pbias_offset);
 		}
-
-		reg = omap_ctrl_readl(control_pbias_offset);
-		reg |= OMAP2_PBIASSPEEDCTRL0;
-		reg &= ~OMAP2_PBIASLITEPWRDNZ0;
-		omap_ctrl_writel(reg, control_pbias_offset);
 
 		ret = mmc_regulator_set_ocr(c->vcc, vdd);
 
 		/* 100ms delay required for PBIAS configuration */
 		msleep(100);
-		reg = omap_ctrl_readl(control_pbias_offset);
-		reg |= (OMAP2_PBIASLITEPWRDNZ0 | OMAP2_PBIASSPEEDCTRL0);
-		if ((1 << vdd) <= MMC_VDD_165_195)
-			reg &= ~OMAP2_PBIASLITEVMODE0;
-		else
-			reg |= OMAP2_PBIASLITEVMODE0;
-		omap_ctrl_writel(reg, control_pbias_offset);
+		if (!cpu_is_omap44xx()) {
+			reg = omap_ctrl_readl(control_pbias_offset);
+			reg |= (OMAP2_PBIASLITEPWRDNZ0 | OMAP2_PBIASSPEEDCTRL0);
+			if ((1 << vdd) <= MMC_VDD_165_195)
+				reg &= ~OMAP2_PBIASLITEVMODE0;
+			else
+				reg |= OMAP2_PBIASLITEVMODE0;
+			omap_ctrl_writel(reg, control_pbias_offset);
+		} else {
+			reg = omap_ctrl_readl(control_pbias_offset);
+			reg |= (1 << 20);
+			if ((1 << vdd) <= MMC_VDD_165_195)
+				reg &= ~(1 << 21);
+			else
+				reg |= (1 << 21);
+			omap_ctrl_writel(reg, control_pbias_offset);
+		}
 	} else {
-		reg = omap_ctrl_readl(control_pbias_offset);
-		reg &= ~OMAP2_PBIASLITEPWRDNZ0;
-		omap_ctrl_writel(reg, control_pbias_offset);
+		if (!cpu_is_omap44xx()) {
+			reg = omap_ctrl_readl(control_pbias_offset);
+			reg &= ~OMAP2_PBIASLITEPWRDNZ0;
+			omap_ctrl_writel(reg, control_pbias_offset);
+		} else {
+			reg = omap_ctrl_readl(control_pbias_offset);
+			reg &= ~(1 << 20);
+			omap_ctrl_writel(reg, control_pbias_offset);
+		}
 
 		ret = mmc_regulator_set_ocr(c->vcc, 0);
 
 		/* 100ms delay required for PBIAS configuration */
 		msleep(100);
-		reg = omap_ctrl_readl(control_pbias_offset);
-		reg |= (OMAP2_PBIASSPEEDCTRL0 | OMAP2_PBIASLITEPWRDNZ0 |
-			OMAP2_PBIASLITEVMODE0);
-		omap_ctrl_writel(reg, control_pbias_offset);
+		if (!cpu_is_omap44xx()) {
+			reg = omap_ctrl_readl(control_pbias_offset);
+			reg |= (OMAP2_PBIASSPEEDCTRL0 | OMAP2_PBIASLITEPWRDNZ0 |
+				OMAP2_PBIASLITEVMODE0);
+			omap_ctrl_writel(reg, control_pbias_offset);
+		} else {
+			reg = omap_ctrl_readl(control_pbias_offset);
+			reg |= (1 << 20 | 1 << 21);
+			omap_ctrl_writel(reg, control_pbias_offset);
+		}
 	}
 
 	return ret;
@@ -325,10 +354,11 @@ static int twl_mmc23_set_power(struct device *dev, int slot, int power_on, int v
 		/* only MMC2 supports a CLKIN */
 		if (mmc->slots[0].internal_clock) {
 			u32 reg;
-
-			reg = omap_ctrl_readl(control_devconf1_offset);
-			reg |= OMAP2_MMCSDIO2ADPCLKISEL;
-			omap_ctrl_writel(reg, control_devconf1_offset);
+			if (!cpu_is_omap44xx()) {
+				reg = omap_ctrl_readl(control_devconf1_offset);
+				reg |= OMAP2_MMCSDIO2ADPCLKISEL;
+				omap_ctrl_writel(reg, control_devconf1_offset);
+			}
 		}
 		ret = mmc_regulator_set_ocr(c->vcc, vdd);
 		/* enable interface voltage rail, if needed */
@@ -353,11 +383,20 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 {
 	struct twl4030_hsmmc_info *c;
 	int nr_hsmmc = ARRAY_SIZE(hsmmc_data);
+	u32 reg;
 
 	if (cpu_is_omap2430()) {
 		control_pbias_offset = OMAP243X_CONTROL_PBIAS_LITE;
 		control_devconf1_offset = OMAP243X_CONTROL_DEVCONF1;
 		nr_hsmmc = 2;
+	}
+
+	if (cpu_is_omap44xx()) {
+		control_pbias_offset = 0x600;
+		control_mmc1 = 0x628;
+		reg = omap_ctrl_readl(control_mmc1);
+		reg |= 0xbe000000;
+		omap_ctrl_writel(reg, control_mmc1);
 	} else {
 		control_pbias_offset = OMAP343X_CONTROL_PBIAS_LITE;
 		control_devconf1_offset = OMAP343X_CONTROL_DEVCONF1;
@@ -466,11 +505,11 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 			mmc->slots[0].set_power = twl_mmc23_set_power;
 			break;
 		case 4:
-			/* off-chip level shifting, or none */
+			/* TODO */
 			mmc->slots[0].set_power = twl_mmc23_set_power;
 			break;
 		case 5:
-			/* off-chip level shifting, or none */
+			/* TODO */
 			mmc->slots[0].set_power = twl_mmc23_set_power;
 			break;
 		default:

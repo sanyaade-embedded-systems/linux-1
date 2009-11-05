@@ -353,9 +353,6 @@ mmc_omap_cmd_done(struct mmc_omap_host *host, struct mmc_command *cmd)
 			cmd->resp[0] = OMAP_HSMMC_READ(host->base, RSP10);
 		}
 	}
-	/* TO FIX :Hack for MMC SWITCH COMMAND which makes card go busy*/
-	if (cmd->opcode == 6)
-		host->response_busy = 0;
 	if ((host->data == NULL && !host->response_busy) || cmd->error) {
 		host->mrq = NULL;
 		mmc_request_done(host->mmc, cmd->mrq);
@@ -1022,6 +1019,8 @@ static int omap_hsmmc_get_cd(struct mmc_host *mmc)
 	struct mmc_omap_host *host = mmc_priv(mmc);
 	struct omap_mmc_platform_data *pdata = host->pdata;
 
+	if (host->id == OMAP_MMC2_DEVID)
+		return 1 ;
 	if (!pdata->slots[0].card_detect)
 		return -ENOSYS;
 	return pdata->slots[0].card_detect(pdata->slots[0].card_detect_irq);
