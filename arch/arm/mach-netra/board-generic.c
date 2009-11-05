@@ -77,8 +77,12 @@ static void __init omap_generic_map_io(void)
 
 MACHINE_START(NETRA, "Netra")
 	/* Maintainer: Paul Mundt <paul.mundt@nokia.com> */
-	.phys_io	= 0x48000000,
-	.io_pg_offst	= ((0xd8000000) >> 18) & 0xfffc,
+#if (L4_34XX_BASE==0x48000000)
+#warning **************fgdfgd
+#endif
+        .phys_io        = 0x08600000,
+//	.phys_io	= L4_34XX_BASE,
+	.io_pg_offst	= ((0xd8600000) >> 18) & 0xfffc,
 	.boot_params	= 0x80000100,
 	.map_io		= omap_generic_map_io,
 	.init_irq	= omap_generic_init_irq,
