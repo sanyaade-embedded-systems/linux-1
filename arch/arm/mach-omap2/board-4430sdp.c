@@ -466,7 +466,7 @@ static u8 tm12xx_button_map[] = {
 
 static struct tm12xx_ts_platform_data tm12xx_platform_data[] = {
 	[0] = { /* Primary Controller */
-		.gpio_intr = 47,
+		.gpio_intr = 35,
 		.idev_name = tm12xx_idev_names,
 		.button_map = tm12xx_button_map,
 		.num_buttons = ARRAY_SIZE(tm12xx_button_map),
@@ -474,7 +474,7 @@ static struct tm12xx_ts_platform_data tm12xx_platform_data[] = {
 		.swap_xy = 1,
 	},
 	[1] = { /* Secondary Controller */
-		.gpio_intr = 48,
+		.gpio_intr = 36,
 		.idev_name = tm12xx_idev_names,
 		.button_map = tm12xx_button_map,
 		.num_buttons = ARRAY_SIZE(tm12xx_button_map),
