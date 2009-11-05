@@ -58,7 +58,7 @@
 #endif
 #include <mach/vrfb.h>
 
-#define TILER_ALLOCATE_V4L2
+/* #define TILER_ALLOCATE_V4L2 */
 /* #define TILER_TEST */
 
 #ifdef TILER_TEST
@@ -621,6 +621,7 @@ static int omap_vout_tiler_buffer_setup(struct omap_vout_device *vout,
 	return 0;
 }
 
+#ifdef TILER_ALLOCATE_V4L2
 /* Free tiler buffers */
 static void omap_vout_free_tiler_buffers(struct omap_vout_device *vout)
 {
@@ -633,7 +634,7 @@ static void omap_vout_free_tiler_buffers(struct omap_vout_device *vout)
 	}
 	vout->buffer_allocated = 0;
 }
-
+#endif
 
 /* Convert V4L2 rotation to DSS rotation
  * V4L2 understand 0, 90, 180, 270.
@@ -923,7 +924,8 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 	}
 
 	ovl->get_overlay_info(ovl, &info);
-	info.paddr = addr;
+	if (addr)
+		info.paddr = addr;
 #ifdef CONFIG_ARCH_OMAP4
 	if (OMAP_DSS_COLOR_NV12 == vout->dss_mode)
 		info.p_uv_addr = uv_addr;
@@ -1057,6 +1059,7 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 		if (omap_vout_vrfb_buffer_setup(vout, count, startindex))
 			return -ENOMEM;
 	}
+#endif /* CONFIG_ARCH_OMAP4 */
 
 	/* Now allocated the V4L2 buffers */
 	*size = vout->buffer_size;
@@ -1088,7 +1091,6 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 		vout->buf_phy_addr[i] = phy_addr;
 	}
 	*count = vout->buffer_allocated = i;
-#endif /* CONFIG_ARCH_OMAP4 */
 
 #else /* TILER_ALLOCATE_V4L2 */
 
@@ -2547,7 +2549,7 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 	int i, r = 0;
 	unsigned numbuffers;
 	struct video_device *vfd;
-#ifndef CONFIG_ARCH_OMAP4 /* TODO: related to rotation */
+#ifndef TILER_ALLOCATE_V4L2 /* TODO: related to rotation */
 	int j;
 	int image_width, image_height;
 	int static_vrfb_allocation = 0, vrfb_num_bufs = 4;
@@ -2579,6 +2581,7 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 			goto free_buffers;
 		}
 	}
+#ifndef CONFIG_ARCH_OMAP4
 	for (i = 0; i < 4; i++) {
 
 		if (omap_vrfb_request_ctx(&vout->vrfb_context[i])) {
@@ -2641,6 +2644,7 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 		}
 		vout->vrfb_static_allocation = 1;
 	}
+#endif /* CONFIG_ARCH_OMAP4 */
 #endif /* TILER_ALLOCATE_V4L2 */
 
 /* NOTE: OMAP4, if TILER allocation, then nothing to pre-allocate */
@@ -3046,8 +3050,10 @@ static void omap_vout_cleanup_device(struct omap_vout_device *vout)
 #endif
 	omap_vout_free_buffers(vout);
 #ifdef CONFIG_ARCH_OMAP4
+#ifdef TILER_ALLOCATE_V4L2
 	omap_vout_free_tiler_buffers(vout);
 			/* TODO: check if this needs to be done? */
+#endif
 #else
 	/* Free the VRFB buffer if allocated
 	 * init time
