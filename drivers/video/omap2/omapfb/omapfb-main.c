@@ -46,7 +46,7 @@ static int def_mirror;
 #ifdef DEBUG
 unsigned int omapfb_debug;
 module_param_named(debug, omapfb_debug, bool, 0644);
-static unsigned int omapfb_test_pattern;
+static unsigned int omapfb_test_pattern = 1; /* change this to 0 to test logo */
 module_param_named(test, omapfb_test_pattern, bool, 0644);
 #endif
 
@@ -352,6 +352,7 @@ static enum omap_color_mode fb_mode_to_dss_mode(struct fb_var_screeninfo *var)
 	default:
 		return -EINVAL;
 	}
+	/* DBG("fb_mode_to_dss_mode bits_per_pixel = %d\n", var->bits_per_pixel);*/
 
 	for (i = 0; i < ARRAY_SIZE(omapfb_colormodes); ++i) {
 		struct omapfb_colormode *mode = &omapfb_colormodes[i];
@@ -1225,7 +1226,7 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 			return -ENOMEM;
 		}
 
-		DBG("allocated VRAM paddr %lx, vaddr %p\n", paddr, vaddr);
+	/* DBG("allocated VRAM paddr %lx, vaddr %p\n", paddr, vaddr); */
 	} else {
 		void __iomem *va;
 
@@ -1709,7 +1710,7 @@ static int omapfb_create_framebuffers(struct omapfb2_device *fbdev)
 
 	fbdev->num_fbs = 0;
 
-	DBG("create %d framebuffers\n",	CONFIG_FB_OMAP2_NUM_FBS);
+	/* DBG("create %d framebuffers\n",	CONFIG_FB_OMAP2_NUM_FBS); */
 
 	/* allocate fb_infos */
 	for (i = 0; i < CONFIG_FB_OMAP2_NUM_FBS; i++) {
@@ -1747,7 +1748,19 @@ static int omapfb_create_framebuffers(struct omapfb2_device *fbdev)
 	for (i = 0; i < min(fbdev->num_fbs, fbdev->num_overlays); i++) {
 		struct omapfb_info *ofbi = FB2OFB(fbdev->fbs[i]);
 
-		ofbi->overlays[0] = fbdev->overlays[i];
+		if (i == 0)
+		{
+			ofbi->overlays[0] = fbdev->overlays[1];/* yong 10/2 zebu test */
+		}
+		else if(i == 1)
+		{
+			ofbi->overlays[0] = fbdev->overlays[0];
+		}
+		else
+		{
+			ofbi->overlays[0] = fbdev->overlays[i];
+
+		}
 		ofbi->num_overlays = 1;
 	}
 
