@@ -2,11 +2,11 @@
 #include <linux/io.h>
 #include <linux/mm.h>
 
-#include <mach/omap730.h>
-#include <mach/omap1510.h>
-#include <mach/omap16xx.h>
-#include <mach/omap24xx.h>
-#include <mach/omap34xx.h>
+//#include <mach/omap730.h>
+//#include <mach/omap1510.h>
+//#include <mach/omap16xx.h>
+//#include <mach/omap24xx.h>
+//#include <mach/omap34xx.h>
 
 #define BETWEEN(p,st,sz)	((p) >= (st) && (p) < ((st) + (sz)))
 #define XLATE(p,pst,vst)	((void __iomem *)((p) - (pst) + (vst)))

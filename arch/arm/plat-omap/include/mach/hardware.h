@@ -284,7 +284,11 @@
 #include "omap1510.h"
 #include "omap16xx.h"
 #include "omap24xx.h"
+#ifdef CONFIG_ARCH_NETRA
+#include "netra.h"
+#else
 #include "omap34xx.h"
+#endif
 
 #ifndef __ASSEMBLER__
 
