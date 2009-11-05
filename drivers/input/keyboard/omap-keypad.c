@@ -39,7 +39,7 @@
 #include <mach/menelaus.h>
 #include <asm/irq.h>
 #include <mach/hardware.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <mach/mux.h>
 
 #undef NEW_BOARD_LEARNING_MODE
@@ -217,6 +217,7 @@ static void omap_kp_tasklet(unsigned long data)
 {
 	struct omap_kp *omap_kp_data = (struct omap_kp *) data;
 	unsigned char new_state[8], changed, key_down = 0;
+	long irq = omap_kp_data->irq;
 	int col, row;
 	int spurious = 0;
 
@@ -248,7 +249,7 @@ static void omap_kp_tasklet(unsigned long data)
 			if (key < 0) {
 				printk(KERN_WARNING
 				      "omap-keypad: Spurious key event %d-%d\n",
-				       col, row);
+					col, row);
 				/* We scan again after a couple of seconds */
 				spurious = 1;
 				continue;
@@ -273,7 +274,7 @@ static void omap_kp_tasklet(unsigned long data)
 	memcpy(keypad_state, new_state, sizeof(keypad_state));
 
 	if (key_down) {
-                int delay = HZ / 20;
+		int delay = HZ / 20;
 		/* some key is pressed - keep irq disabled and use timer
 		 * to poll the keypad */
 		if (spurious)
@@ -287,7 +288,7 @@ static void omap_kp_tasklet(unsigned long data)
 				enable_irq(gpio_to_irq(row_gpios[i]));
 
 		} else if (cpu_is_omap44xx()) {
-				omap_writew(OMAP4_KBD_IRQENABLE_EVENTEN |
+				omap_writel(OMAP4_KBD_IRQENABLE_EVENTEN |
 					OMAP4_KBD_IRQENABLE_LONGKEY,
 					OMAP4_KBDOCP_BASE +
 					OMAP4_KBD_IRQENABLE);
@@ -298,6 +299,7 @@ static void omap_kp_tasklet(unsigned long data)
 				kp_cur_group = -1;
 			}
 	}
+	enable_irq(irq);
 }
 
 static ssize_t omap_kp_enable_show(struct device *dev,
@@ -306,8 +308,8 @@ static ssize_t omap_kp_enable_show(struct device *dev,
 	return sprintf(buf, "%u\n", kp_enable);
 }
 
-static ssize_t omap_kp_enable_store(struct device *dev, struct device_attribute *attr,
-				    const char *buf, size_t count)
+static ssize_t omap_kp_enable_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
 {
 	int state;
 
@@ -330,7 +332,8 @@ static ssize_t omap_kp_enable_store(struct device *dev, struct device_attribute 
 	return strnlen(buf, count);
 }
 
-static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR, omap_kp_enable_show, omap_kp_enable_store);
+static DEVICE_ATTR(enable, S_IRUGO | S_IWUSR, omap_kp_enable_show,
+		omap_kp_enable_store);
 
 #ifdef CONFIG_PM
 static int omap_kp_suspend(struct platform_device *dev, pm_message_t state)
@@ -398,7 +401,8 @@ static int __devinit omap_kp_probe(struct platform_device *pdev)
 	if (cpu_is_omap24xx()) {
 		/* Cols: outputs */
 		for (col_idx = 0; col_idx < omap_kp->cols; col_idx++) {
-			if (gpio_request(col_gpios[col_idx], "omap_kp_col") < 0) {
+			if (gpio_request(col_gpios[col_idx],
+					"omap_kp_col") < 0) {
 				printk(KERN_ERR "Failed to request"
 				       "GPIO%d for keypad\n",
 				       col_gpios[col_idx]);
@@ -408,7 +412,8 @@ static int __devinit omap_kp_probe(struct platform_device *pdev)
 		}
 		/* Rows: inputs */
 		for (row_idx = 0; row_idx < omap_kp->rows; row_idx++) {
-			if (gpio_request(row_gpios[row_idx], "omap_kp_row") < 0) {
+			if (gpio_request(row_gpios[row_idx],
+					"omap_kp_row") < 0) {
 				printk(KERN_ERR "Failed to request"
 				       "GPIO%d for keypad\n",
 				       row_gpios[row_idx]);
@@ -446,13 +451,14 @@ static int __devinit omap_kp_probe(struct platform_device *pdev)
 
 	ret = input_register_device(omap_kp->input);
 	if (ret < 0) {
-		printk(KERN_ERR "Unable to register omap-keypad input device\n");
+		printk(KERN_ERR "Unable to register omap-keypad"
+				"input device\n");
 		goto err3;
 	}
 
 	if (pdata->dbounce) {
 		if (cpu_is_omap44xx())
-			omap_writew(0xff, OMAP1_MPUIO_BASE +
+			omap_writel(0xff, OMAP4_KBDOCP_BASE +
 					OMAP4_KBD_DEBOUNCINGTIME);
 		else
 			omap_writew(0xff, OMAP1_MPUIO_BASE +
@@ -463,12 +469,11 @@ static int __devinit omap_kp_probe(struct platform_device *pdev)
 
 	/* Configuring OMAP4 keypad registers */
 	if (cpu_is_omap44xx()) {
-		omap_writew(OMAP4_KBD_SYSCONFIG_SOFTRST |
+		omap_writel(OMAP4_KBD_SYSCONFIG_SOFTRST |
 			 OMAP4_KBD_SYSCONFIG_ENAWKUP, OMAP4_KBDOCP_BASE
 					+ OMAP4_KBD_SYSCONFIG);
-		omap_writew((OMAP4_KBD_CTRLPTVVALUE << OMAP4_KBD_CTRLPTV) |
-					OMAP4_KBD_CTRL_NOSOFTMODE,
-					OMAP4_KBDOCP_BASE + OMAP4_KBD_CTRL);
+		omap_writel(0x1E, OMAP4_KBDOCP_BASE + OMAP4_KBD_CTRL);
+		omap_writel(0x7, OMAP4_KBDOCP_BASE + OMAP4_KBD_DEBOUNCINGTIME);
 	}
 	if (!cpu_is_omap24xx()) {
 		omap_kp->irq = platform_get_irq(pdev, 0);
@@ -476,7 +481,8 @@ static int __devinit omap_kp_probe(struct platform_device *pdev)
 					"omap-keypad", omap_kp) < 0)
 				goto err4;
 		if (!cpu_is_omap44xx())
-			omap_writew(0, OMAP1_MPUIO_BASE + OMAP_MPUIO_KBD_MASKIT);
+			omap_writel(0, OMAP1_MPUIO_BASE +
+					OMAP_MPUIO_KBD_MASKIT);
 	} else {
 		for (irq_idx = 0; irq_idx < omap_kp->rows; irq_idx++) {
 			if (request_irq(gpio_to_irq(row_gpios[irq_idx]),
@@ -487,13 +493,15 @@ static int __devinit omap_kp_probe(struct platform_device *pdev)
 		}
 	}
 	if (cpu_is_omap44xx()) {
-		omap_writew(OMAP4_KBD_IRQENABLE_EVENTEN |
-			OMAP4_KBD_IRQENABLE_LONGKEY, OMAP4_KBDOCP_BASE +
-				OMAP4_KBD_IRQENABLE);
+		omap_writel(OMAP4_KBD_IRQDISABLE,
+				OMAP4_KBDOCP_BASE + OMAP4_KBD_IRQSTATUS);
+		omap_writel(OMAP4_KBD_IRQENABLE_EVENTEN |
+				OMAP4_KBD_IRQENABLE_LONGKEY ,
+				OMAP4_KBDOCP_BASE + OMAP4_KBD_IRQENABLE);
 	}
 	return 0;
 err5:
-	for (i = irq_idx - 1; i >=0; i--)
+	for (i = irq_idx - 1; i >= 0; i--)
 		free_irq(row_gpios[i], 0);
 err4:
 	input_unregister_device(omap_kp->input);
@@ -501,10 +509,10 @@ err4:
 err3:
 	device_remove_file(&pdev->dev, &dev_attr_enable);
 err2:
-	for (i = row_idx - 1; i >=0; i--)
+	for (i = row_idx - 1; i >= 0; i--)
 		gpio_free(row_gpios[i]);
 err1:
-	for (i = col_idx - 1; i >=0; i--)
+	for (i = col_idx - 1; i >= 0; i--)
 		gpio_free(col_gpios[i]);
 
 	kfree(omap_kp);

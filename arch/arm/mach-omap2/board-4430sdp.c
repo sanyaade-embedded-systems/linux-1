@@ -46,46 +46,77 @@
 static int ts_gpio;
 
 static int omap_keymap[] = {
-	KEY(6, 6, KEY_Q),
-	KEY(4, 0, KEY_W),
 	KEY(0, 0, KEY_E),
-	KEY(0, 1, KEY_R),
-	KEY(0, 2, KEY_T),
-	KEY(4, 1, KEY_Y),
-	KEY(4, 2, KEY_U),
-	KEY(0, 6, KEY_I),
-	KEY(3, 6, KEY_O),
-	KEY(6, 6, KEY_P),
-	KEY(6, 1, KEY_A),
-	KEY(5, 0, KEY_S),
-	KEY(1, 0, KEY_D),
+	KEY(0, 1, KEY_D),
+	KEY(0, 2, KEY_X),
+	KEY(0, 3, KEY_Z),
+	KEY(0, 4, KEY_W),
+	KEY(0, 5, KEY_S),
+	KEY(0, 6, KEY_Q),
+	KEY(0, 7, KEY_UNKNOWN),
+
+	KEY(1, 0, KEY_R),
 	KEY(1, 1, KEY_F),
-	KEY(1, 2, KEY_G),
-	KEY(5, 1, KEY_H),
-	KEY(5, 2, KEY_J),
-	KEY(1, 6, KEY_K),
-	KEY(4, 6, KEY_L),
-	KEY(6, 4, KEY_BACKSPACE),
-	KEY(2, 7, KEY_CAPSLOCK),
-	KEY(3, 0, KEY_Z),
-	KEY(2, 0, KEY_X),
-	KEY(2, 1, KEY_C),
+	KEY(1, 2, KEY_C),
+	KEY(1, 3, KEY_KPPLUS),
+	KEY(1, 4, KEY_Y),
+	KEY(1, 5, KEY_H),
+	KEY(1, 6, KEY_A),
+	KEY(1, 7, KEY_UNKNOWN),
+
+	KEY(2, 0, KEY_T),
+	KEY(2, 1, KEY_G),
 	KEY(2, 2, KEY_V),
-	KEY(3, 2, KEY_B),
-	KEY(6, 2, KEY_N),
-	KEY(2, 6, KEY_M),
-	KEY(5, 6, KEY_DOT),
-	KEY(1, 7, KEY_ENTER),
-	KEY(3, 3, KEY_EMAIL),
-	KEY(3, 1, KEY_KPPLUS),
-	KEY(3, 7, KEY_SPACE),
-	KEY(7, 4, KEY_CAMERA),
+	KEY(2, 3, KEY_B),
+	KEY(2, 4, KEY_U),
+	KEY(2, 5, KEY_J),
+	KEY(2, 6, KEY_N),
+	KEY(2, 7, KEY_UNKNOWN),
+
+	KEY(3, 0, KEY_HOME),
+	KEY(3, 1, KEY_SEND),
+	KEY(3, 2, KEY_END),
+	KEY(3, 3, KEY_F1),
+	KEY(3, 4, KEY_F2),
+	KEY(3, 5, KEY_F3),
+	KEY(3, 6, KEY_BACK),
+	KEY(3, 7, KEY_UNKNOWN),
+
+	KEY(4, 0, KEY_UNKNOWN),
+	KEY(4, 1, KEY_UNKNOWN),
+	KEY(4, 2, KEY_UNKNOWN),
+	KEY(4, 3, KEY_UNKNOWN),
 	KEY(4, 4, KEY_VOLUMEUP),
+	KEY(4, 5, KEY_UNKNOWN),
+	KEY(4, 6, KEY_BACKSPACE),
+	KEY(4, 7, KEY_F4),
+
+	KEY(5, 0, KEY_UNKNOWN),
+	KEY(5, 1, KEY_UNKNOWN),
+	KEY(5, 2, KEY_UNKNOWN),
+	KEY(5, 3, KEY_UNKNOWN),
+	KEY(5, 4, KEY_UNKNOWN),
 	KEY(5, 5, KEY_VOLUMEDOWN),
-	KEY(7, 4, KEY_UP),
-	KEY(7, 5, KEY_DOWN),
-	KEY(7, 6, KEY_LEFT),
-        KEY(7, 7, KEY_RIGHT),
+	KEY(5, 6, KEY_UNKNOWN),
+	KEY(5, 7, KEY_UNKNOWN),
+
+	KEY(6, 0, KEY_I),
+	KEY(6, 1, KEY_K),
+	KEY(6, 2, KEY_DOT),
+	KEY(6, 3, KEY_O),
+	KEY(6, 4, KEY_L),
+	KEY(6, 5, KEY_M),
+	KEY(6, 6, KEY_P),
+	KEY(6, 7, KEY_SELECT),
+
+	KEY(7, 0, KEY_UNKNOWN),
+	KEY(7, 1, KEY_ENTER),
+	KEY(7, 2, KEY_CAPSLOCK),
+	KEY(7, 3, KEY_SPACE),
+	KEY(7, 4, KEY_LEFT),
+	KEY(7, 5, KEY_RIGHT),
+	KEY(7, 6, KEY_UP),
+	KEY(7, 7, KEY_DOWN),
 	0,
 };
 
@@ -526,22 +557,6 @@ static void omap_mcbsp_init(void)
 	omap_cfg_reg(Y2_4430_McBSP1_DX);
 	omap_cfg_reg(Y4_4430_McBSP1_FSX);
 }
-void omap_kp_init(void)
-{
-	omap_cfg_reg(PAD0_4430_UNIPRO_TX0);
-	omap_cfg_reg(PAD1_4430_UNIPRO_TY0);
-	omap_cfg_reg(PAD0_4430_UNIPRO_TX1);
-	omap_cfg_reg(PAD1_4430_UNIPRO_TY1);
-	omap_cfg_reg(PAD0_4430_UNIPRO_TX2);
-	omap_cfg_reg(PAD1_4430_UNIPRO_TY2);
-
-	omap_cfg_reg(PAD0_4430_UNIPRO_RX0);
-	omap_cfg_reg(PAD1_4430_UNIPRO_RY0);
-	omap_cfg_reg(PAD0_4430_UNIPRO_RX1);
-	omap_cfg_reg(PAD1_4430_UNIPRO_RY1);
-	omap_cfg_reg(PAD0_4430_UNIPRO_RX2);
-	omap_cfg_reg(PAD1_4430_UNIPRO_RY2);
-}
 
 static void omap_phoenix_init(void)
 {
@@ -570,7 +585,6 @@ static void __init omap_4430sdp_init(void)
 				ARRAY_SIZE(sdp4430_spi_board_info));
 	omap_mcbsp_init();
 	sdp4430_mmc_init();
-	omap_kp_init();
 	omap_phoenix_init();
 #ifdef CONFIG_NOP_USB_XCEIV
        /* OMAP4SDP uses no explicit transceiver */
