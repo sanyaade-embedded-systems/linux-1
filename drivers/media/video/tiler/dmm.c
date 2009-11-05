@@ -33,6 +33,385 @@
 #include "dmm_prv.h"
 #include "dmm_def.h"
 
+#define __NEWCODE__
+#ifdef __NEWCODE__
+struct pat_area {
+	int x0:8;
+	int y0:8;
+	int x1:8;
+	int y1:8;
+};
+
+struct pat_ctrl {
+	int start:4;
+	int direction:4;
+	int lut_id:8;
+	int sync:12;
+	int initiator:4;
+};
+
+struct pat_desc {
+	struct pat_desc *next;
+	struct pat_area area;
+	struct pat_ctrl ctrl;
+	unsigned long data;
+};
+
+void *dmm_base;
+
+static void pat_area_set(struct pat_area *area, char id);
+static void pat_data_set(unsigned long data, char id);
+static void pat_ctrl_set(struct pat_ctrl *ctrl, char id);
+static void pat_desc_set(struct pat_desc *desc, char id);
+static void hwinfo_get();
+static void pat_view_set();
+static void pat_view_map_set();
+static void pat_view_map_base_set();
+static void tiler_or_set();
+
+static void tiler_or_set() /* (struct tiler_or *or, char id) */
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* set TILER_OR__0 register */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)TILER_OR__0);
+	reg_val = __raw_readl(reg);
+	regdump("TILER_OR__0", reg_val);
+
+	bit_field = BITFIELD(31, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)0) << field_pos) & bit_field);
+	__raw_writel(0x88888888, reg); /* __raw_writel(new_val, reg); */
+
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)TILER_OR__0);
+	reg_val = __raw_readl(reg);
+	regdump("TILER_OR__0", reg_val);
+
+	/* set TILER_OR__1 register */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)TILER_OR__1);
+	reg_val = __raw_readl(reg);
+	regdump("TILER_OR__1", reg_val);
+
+	bit_field = BITFIELD(31, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)0) << field_pos) & bit_field);
+	__raw_writel(0x88888888, reg); /* __raw_writel(new_val, reg); */
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)TILER_OR__1);
+	reg_val = __raw_readl(reg);
+	regdump("TILER_OR__1", reg_val);
+}
+static void pat_view_set() /* (struct pat_view *view, char id) */
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* set PAT_VIEW__0 register */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_VIEW__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_VIEW__0", reg_val);
+
+	bit_field = BITFIELD(31, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)0) << field_pos) & bit_field);
+	__raw_writel(0x88888888, reg); /* __raw_writel(new_val, reg); */
+
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_VIEW__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_VIEW__0", reg_val);
+
+	/* set PAT_VIEW__1 register */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_VIEW__1);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_VIEW__1", reg_val);
+
+	bit_field = BITFIELD(31, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)0) << field_pos) & bit_field);
+	__raw_writel(0x88888888, reg); /* __raw_writel(new_val, reg); */
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_VIEW__1);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_VIEW__1", reg_val);
+}
+static void pat_view_map_set() /* (struct pat_view_map *map, char id) */
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* set PAT_VIEW_MAP__0 register */
+	reg = (void __iomem *)(
+		(unsigned long)dmm_base | (unsigned long)PAT_VIEW_MAP__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_VIEW_MAP__0", reg_val);
+
+	bit_field = BITFIELD(31, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)0) << field_pos) & bit_field);
+	__raw_writel(0x80808080, reg); /* __raw_writel(new_val, reg); */
+
+
+	reg = (void __iomem *)(
+		(unsigned long)dmm_base | (unsigned long)PAT_VIEW_MAP__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_VIEW_MAP__0", reg_val);
+}
+
+static void pat_view_map_base_set()/*(struct pat_view_map_base *base, char id)*/
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* set PAT_VIEW_MAP_BASE register */
+	reg = (void __iomem *)(
+		(unsigned long)dmm_base | (unsigned long)PAT_VIEW_MAP_BASE);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_VIEW_MAP_BASE", reg_val);
+
+	bit_field = BITFIELD(31, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)0) << field_pos) & bit_field);
+	__raw_writel(0x80000000, reg); /* __raw_writel(new_val, reg); */
+
+
+	reg = (void __iomem *)(
+		(unsigned long)dmm_base | (unsigned long)PAT_VIEW_MAP_BASE);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_VIEW_MAP_BASE", reg_val);
+}
+
+static void hwinfo_get()
+{
+	void __iomem *reg = NULL;
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)DMM_REVISION);
+	regdump("DMM_REVISION", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)DMM_HWINFO);
+	regdump("DMM_HWINFO", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)LISA_HWINFO);
+	regdump("LISA_HWINFO", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)TILER_HWINFO);
+	regdump("TILER_HWINFO", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_HWINFO);
+	regdump("PAT_HWINFO", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_GEOMETRY);
+	regdump("PAT_GEOMETRY", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_STATUS__0);
+	regdump("PAT_STATUS__0", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_STATUS__1);
+	regdump("PAT_STATUS__1", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_STATUS__2);
+	regdump("PAT_STATUS__2", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_STATUS__3);
+	regdump("PAT_STATUS__3", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PEG_HWINFO);
+	regdump("PEG_HWINFO", __raw_readl(reg));
+}
+static void pat_desc_set(struct pat_desc *desc, char id)
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* write to pat registers */
+	/* opt to individually set each reg, so set PAT_DESC register to NULL */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_DESCR__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_DESCR__0", reg_val);
+
+	bit_field = BITFIELD(31, 4);
+	field_pos = 4;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)desc) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_DESCR__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_DESCR__0", reg_val);
+}
+static void pat_ctrl_set(struct pat_ctrl *ctrl, char id)
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* set PAT_CTRL register */
+	/* TODO: casting as unsigned long */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_CTRL__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_CTRL__0", reg_val);
+
+	bit_field = BITFIELD(31, 28);
+	field_pos = 28;
+	new_val = (reg_val & (~(bit_field))) |
+		((((unsigned long)ctrl->initiator) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(16, 16);
+	field_pos = 16;
+	new_val = (reg_val & (~(bit_field))) |
+		((((unsigned long)ctrl->sync) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(9, 8);
+	field_pos = 8;
+	new_val = (reg_val & (~(bit_field))) |
+		((((unsigned long)ctrl->lut_id) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(6, 4);
+	field_pos = 4;
+	new_val = (reg_val & (~(bit_field))) |
+		((((unsigned long)ctrl->direction) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(0, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+		((((unsigned long)ctrl->start) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_CTRL__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_CTRL__0", reg_val);
+}
+static void pat_data_set(unsigned long data, char id)
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* set PAT_DATA register */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_DATA__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_DATA__0", reg_val);
+
+	bit_field = BITFIELD(31, 4);
+	field_pos = 4;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)data >> 4) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_DATA__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_DATA__0", reg_val);
+}
+static void pat_area_set(struct pat_area *area, char id)
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* set PAT_AREA register */
+	/* TODO: changed casting from char to unsigned long */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_AREA__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_AREA__0", reg_val);
+
+	bit_field = BITFIELD(30, 24);
+	field_pos = 24;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)area->y1) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(23, 16);
+	field_pos = 16;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)area->x1) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(14, 8);
+	field_pos = 8;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)area->y0) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(7, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)area->x0) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)PAT_AREA__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_AREA__0", reg_val);
+}
+#endif /* end: #ifdef __NEWCODE__ */
+
 #define DMM_MAJOR 0
 #define DMM_MINOR 0
 #define DMM_IO_BASE_ADDR 0x4e000000
@@ -156,8 +535,26 @@ __init dmm_init(void)
 		return retval;
 	}
 
+#ifndef __NEWCODE__
 	/* config LISA/PAT */
 	dmm_config();
+#else
+	void __iomem *reg = NULL;
+	dmm_base = ioremap(DMM_BASE, 0x1000);
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)LISA_MAP__0);
+	regdump("LISA_MAP__0", __raw_readl(reg));
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_base | (unsigned long)LISA_MAP__1);
+	regdump("LISA_MAP__1", __raw_readl(reg));
+
+	pat_view_set();
+	pat_view_map_set();
+	pat_view_map_base_set();
+	tiler_or_set();
+#endif
 
 	/* create buffer info list */
 	createlist(&lsthd);
@@ -220,15 +617,15 @@ dmm_ioctl(struct inode *ip, struct file *filp, unsigned int cmd,
 
 	switch (cmd) {
 	case TILIOC_OPEN:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 		retval = 0;
 		break;
 	case TILIOC_CLOSE:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 		retval = 0;
 		break;
 	case TILIOC_GBUF:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 
 		bytes = copy_from_user((void *)(&block_info),
 			(const void *)arg, sizeof(struct tiler_block_info));
@@ -259,7 +656,7 @@ dmm_ioctl(struct inode *ip, struct file *filp, unsigned int cmd,
 		retval = 0;
 		break;
 	case TILIOC_FBUF:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 
 		bytes = copy_from_user((void *)(&block_info),
 			(const void *)arg, sizeof(struct tiler_block_info));
@@ -271,7 +668,7 @@ dmm_ioctl(struct inode *ip, struct file *filp, unsigned int cmd,
 			retval = 0;
 		break;
 	case TILIOC_GSSP:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 
 		pgd = pgd_offset(current->mm, arg);
 		if (!(pgd_none(*pgd) || pgd_bad(*pgd))) {
@@ -292,11 +689,11 @@ dmm_ioctl(struct inode *ip, struct file *filp, unsigned int cmd,
 		retval = 0x0; /* va not in page table */
 		break;
 	case TILIOC_MBUF:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 		retval = 0;
 		break;
 	case TILIOC_QBUF:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 
 		bytes = copy_from_user((void *)(&buf_info),
 			(const void *)arg, sizeof(struct tiler_buf_info));
@@ -316,7 +713,7 @@ dmm_ioctl(struct inode *ip, struct file *filp, unsigned int cmd,
 		retval = 0;
 		break;
 	case TILIOC_RBUF:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 
 		bufinfo = kmalloc(sizeof(struct tiler_buf_info), GFP_KERNEL);
 		memset(bufinfo, 0x0, sizeof(struct tiler_buf_info));
@@ -339,7 +736,7 @@ dmm_ioctl(struct inode *ip, struct file *filp, unsigned int cmd,
 		retval = 0;
 		break;
 	case TILIOC_URBUF:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 
 		bytes = copy_from_user((void *)(&buf_info),
 			(const void *)arg, sizeof(struct tiler_buf_info));
@@ -354,7 +751,7 @@ dmm_ioctl(struct inode *ip, struct file *filp, unsigned int cmd,
 		retval = 0;
 		break;
 	case TILIOC_QUERY_BLK:
-		tilerdump(__LINE__);
+		debug(__LINE__);
 
 		bytes = copy_from_user((void *)(&block_info),
 			(const void *)arg, sizeof(struct tiler_block_info));

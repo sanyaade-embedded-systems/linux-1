@@ -21,6 +21,56 @@
 #include "dmm_drv.h"
 #include "dmm_reg.h"
 
+#define __NEWCODE__
+#ifdef __NEWCODE__
+
+#if 1
+#define debug(x) printk(KERN_NOTICE "%s()::%d:%s=(0x%08x)\n", \
+				__func__, __LINE__, #x, (int)x);
+
+#define regdump(x, y) printk(KERN_NOTICE "%s()::%d:%s=(0x%08x)\n", \
+				__func__, __LINE__, x, (int)y);
+#else
+#define debug(x)
+#define regdump(x, y)
+#endif
+
+#define DMM_BASE     0x4E000000
+#define DMM_REVISION      0x000
+#define DMM_HWINFO        0x004
+#define LISA_HWINFO       0x008
+#define DMM_SYSCONFIG     0x010
+#define LISA_LOCK         0x01C
+#define LISA_MAP__0       0x040
+#define LISA_MAP__1       0x044
+#define TILER_HWINFO      0x208
+#define TILER_OR__0       0x220
+#define TILER_OR__1       0x224
+#define PAT_HWINFO        0x408
+#define PAT_GEOMETRY      0x40C
+#define PAT_CONFIG        0x410
+#define PAT_VIEW__0       0x420
+#define PAT_VIEW__1       0x424
+#define PAT_VIEW_MAP__0   0x440
+#define PAT_VIEW_MAP_BASE 0x460
+#define PAT_IRQ_EOI       0x478
+#define PAT_IRQSTATUS_RAW 0x480
+#define PAT_IRQSTATUS     0x490
+#define PAT_IRQENABLE_SET 0x4A0
+#define PAT_IRQENABLE_CLR 0x4B0
+#define PAT_STATUS__0     0x4C0
+#define PAT_STATUS__1     0x4C4
+#define PAT_STATUS__2     0x4C8
+#define PAT_STATUS__3     0x4CC
+#define PAT_DESCR__0      0x500
+#define PAT_AREA__0       0x504
+#define PAT_CTRL__0       0x508
+#define PAT_DATA__0       0x50C
+#define PEG_HWINFO        0x608
+#define PEG_PRIO          0x620
+#define PEG_PRIO_PAT      0x640
+#endif
+
 #undef __DEBUG__
 
 #ifdef __DEBUG__
@@ -33,7 +83,11 @@
 #define DMM__DMM    DMM__DMM
 #define DMM_PAT_AREA_IRQ (0)
 
+#ifndef __NEWCODE__
 #define DMM_MNGD_PHYS_PAGES        (256)
+#else
+#define DMM_MNGD_PHYS_PAGES (16)
+#endif
 
 #define DMM_TILE_DIMM_X_MODE_8    (32)
 #define DMM_TILE_DIMM_Y_MODE_8    (32)
@@ -175,6 +229,9 @@ struct dmmPhysPgLLT {
 	struct dmmPhysPgLLT *nextPhysPg;
 	struct dmmPhysPgLLT *prevPhysPg;
 	unsigned long *physPgPtr;
+#ifdef __NEWCODE__
+	struct page *page_addr;
+#endif
 };
 
 /** @struc dmmHwdCtxT
@@ -354,7 +411,6 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long bfrSize,
 		unsigned long **pageEntries,
 		unsigned long **pageEntriesSpace,
 		void *custmPagesPtr);
-
 /* ========================================================================== */
 /**
  *  dmm_tiler_swap_pat_page_entry_data()

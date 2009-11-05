@@ -23,6 +23,35 @@
 #include "dmm_prv.h"
 #include "tiler.h"
 
+#define __NEWCODE__
+
+#ifdef __NEWCODE__
+#include <linux/io.h>
+#include <linux/sched.h>   /* current->mm */
+
+static unsigned long get_phys_addr(unsigned long arg)
+{
+	pgd_t *pgd = NULL;
+	pmd_t *pmd = NULL;
+	pte_t *ptep = NULL, pte = 0x0;
+	pgd = pgd_offset(current->mm, arg);
+	if (!(pgd_none(*pgd) || pgd_bad(*pgd))) {
+		pmd = pmd_offset(pgd, arg);
+		if (!(pmd_none(*pmd) || pmd_bad(*pmd))) {
+			ptep = pte_offset_map(pmd, arg);
+			if (ptep) {
+				pte = *ptep;
+				if (pte_present(pte)) {
+					return (pte & PAGE_MASK) |
+							(~PAGE_MASK & arg);
+				}
+			}
+		}
+	}
+	return 0x0; /* va not in page table */
+}
+#endif
+
 /* ========================================================================== */
 /**
  *  dmm_module_config()
@@ -360,7 +389,11 @@ enum errorCodeT dmm_pat_start_refill(
 
 	areaDesc.nextPatEntry = NULL;
 
+#ifndef __NEWCODE__
 	areaDesc.data = (unsigned long)(bufferMappedZone->patPageEntries);
+#else
+	areaDesc.data = (unsigned long)bufferMappedZone->patPageEntriesSpace;
+#endif
 
 	tilerdump(__LINE__);
 	return dmm_pat_area_refill(&areaDesc, 0, MANUAL, 0);
@@ -403,11 +436,45 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 		eCode = DMM_SYS_ERROR;
 	} else {
 		tilerdump(__LINE__);
+#ifdef __NEWCODE__
+		unsigned long order = 0x0;
+
+		order = ((bfrPages*4 + 16) + 4095) / 4096;
+		debug(bfrPages*4 + 16);
+		debug(order);
+
+		bufferMappedZone->page_list =
+				(struct page *)alloc_pages(GFP_DMA, order);
+		if (!bufferMappedZone->page_list)
+			return DMM_SYS_ERROR;
+		bufferMappedZone->patPageEntriesSpace =
+		(unsigned long *)page_to_phys(bufferMappedZone->page_list);
+
+		bufferMappedZone->page_list_virt =
+		ioremap((unsigned long)bufferMappedZone->patPageEntriesSpace,
+		0x1000 * order); /* TODO: don't forget to unmap later */
+
+		bufferMappedZone->patPageEntries =
+					bufferMappedZone->page_list_virt;
+		memset(bufferMappedZone->patPageEntries, 0x0, 0x1000 * order);
+		bufferMappedZone->patPageEntries =
+			(unsigned long *)((((unsigned long)
+				bufferMappedZone->patPageEntries) + 15) & ~15);
+#endif
+
+#ifndef __NEWCODE__
 		if (dmm_tiler_populate_pat_page_entry_data(bfrPages,
 				&(bufferMappedZone->patPageEntries),
 				&(bufferMappedZone->patPageEntriesSpace),
 				custmPagesPtr
 							  ) != DMM_NO_ERROR) {
+#else
+		if (dmm_tiler_populate_pat_page_entry_data(bfrPages,
+				NULL,
+				NULL,
+				(void *)bufferMappedZone->patPageEntries
+							  ) != DMM_NO_ERROR) {
+#endif
 			eCode = DMM_SYS_ERROR;
 			return eCode;
 		}
@@ -460,16 +527,100 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 
 	tilerdump(__LINE__);
 
+#ifndef __NEWCODE__
 	patAreaEntries = kmalloc(
 		(numPages*4 + 16), GFP_KERNEL);
 		/* Must be 16-byte aligned. */
 	memset(patAreaEntries, 0x0, (numPages*4 + 16));
 	*pageEntriesSpace = patAreaEntries;
+#else
 
+#if 0 /* move to caller */
+	struct page *page = NULL;
+	unsigned long *ioaddr = NULL;
+	unsigned long pa = 0x0;
+	unsigned long order = 0x0;
 
+	order = ((numPages*4 + 16) + 4095) / 4096;
+	debug(numPages*4 + 16);
+	debug(order);
+
+	/* page = (struct page *)alloc_page(GFP_DMA); */
+	/*pa = page_to_phys(page);*/
+	/*ioaddr = ioremap(pa, 0x1000);*/
+	/*memset(ioaddr, 0x0, 0x1000);*/
+
+	page = (struct page *)alloc_pages(GFP_DMA, order);
+	if (!page)
+		return DMM_SYS_ERROR;
+	pa = page_to_phys(page);
+	ioaddr = ioremap(pa, 0x1000 * order);
+	memset(ioaddr, 0x0, 0x1000 * order);
+
+	patAreaEntries = ioaddr;
+	*pageEntriesSpace = (unsigned long *)pa;
+	debug(*pageEntriesSpace);
+	debug(patAreaEntries);
+#endif
+
+#if 0 /* not a good solution to use vmalloc */
+	patAreaEntries = (unsigned long *)vmalloc(numPages*4 + 16);
+	memset(patAreaEntries, 0x0, numPages*4 + 16);
+	*pageEntriesSpace = patAreaEntries;
+
+	debug(*pageEntriesSpace);
+	debug(patAreaEntries);
+
+	/* test different allocation methods */
+	unsigned long mem = 0x0;
+	struct page *pg = NULL;
+	unsigned long *io = NULL;
+
+	pg = alloc_page(GFP_DMA);
+	mem = page_to_phys(pg);
+	io = ioremap(mem, 0x1000);
+	memset(io, 0x0, 0x1000);
+	debug(pg);
+	debug(mem);
+	debug(get_phys_addr(mem));
+	debug(io);
+	iounmap(io);
+	__free_page(pg);
+
+	mem = (unsigned long)kmalloc(0x1000, GFP_DMA);
+	debug(mem);
+	debug(get_phys_addr(mem));
+	memset((unsigned long *)mem, 0x0, 0x1000);
+	kfree((void *)mem);
+
+	mem = (unsigned long)vmalloc(0x1000);
+	debug(mem);
+	debug(get_phys_addr(mem));
+	memset((unsigned long *)mem, 0x0, 0x1000);
+	vfree((void *)mem);
+
+	mem = __get_free_page(GFP_DMA);
+	debug(mem);
+	debug(get_phys_addr(mem));
+	memset((unsigned long *)mem, 0x0, 0x1000);
+	free_page(mem);
+#endif
+#endif
+
+#ifndef __NEWCODE__
 	patAreaEntries = (unsigned long *)
 				((((unsigned long)patAreaEntries) + 15) & ~15);
+#else
+	patAreaEntries = (unsigned long *)custmPagesPtr;
+#endif
 
+
+#ifdef __NEWCODE__
+	debug(patAreaEntries);
+	debug(numPages);
+#endif
+
+#ifndef __NEWCODE__
 	if (custmPagesPtr == NULL) {
 		for (iter = 0; iter < numPages; iter++) {
 			patAreaEntries[iter] =
@@ -483,8 +634,27 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 				(((unsigned long *)custmPagesPtr)[iter]);
 		}
 	}
+#else
+/* using custmPagesPtr arguement in a diffent way, so remove the conditions */
+	for (iter = 0; iter < numPages; iter++) {
+		patAreaEntries[iter] =
+				(unsigned long)dmm_get_phys_page();
+		if (patAreaEntries[iter] == 0x0)
+			return DMM_SYS_ERROR;
+	}
+#endif
 
+#ifdef __NEWCODE__
+	debug(__LINE__);
+	debug(patAreaEntries[0]);
+	debug(patAreaEntries[1]);
+	debug(patAreaEntries[2]);
+	debug(patAreaEntries[3]);
+#endif
+
+#ifndef __NEWCODE__
 	*pageEntries = patAreaEntries;
+#endif
 
 	return DMM_NO_ERROR;
 }
