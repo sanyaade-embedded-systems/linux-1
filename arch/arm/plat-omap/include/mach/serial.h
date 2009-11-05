@@ -34,7 +34,7 @@
 #define OMAP_MAX_NR_PORTS	3
 #define OMAP1510_BASE_BAUD	(12000000/16)
 #define OMAP16XX_BASE_BAUD	(48000000/16)
-#define OMAP24XX_BASE_BAUD	(48000000/16)
+#define OMAP24XX_BASE_BAUD	(33300000)
 
 #define is_omap_port(pt)	({int __ret = 0;			\
 			if ((pt)->port.mapbase == OMAP_UART1_BASE ||	\

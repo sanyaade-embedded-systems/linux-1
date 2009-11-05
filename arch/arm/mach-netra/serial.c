@@ -74,7 +74,7 @@ static struct plat_serial8250_port serial_platform_data[] = {
 		.flags		= UPF_BOOT_AUTOCONF | UPF_SKIP_TEST/*UPF_AUTO_IRQ*/ /*!@@ added */,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
-		.uartclk	= OMAP24XX_BASE_BAUD * 16,
+		.uartclk	= OMAP24XX_BASE_BAUD,
 	}, {
 		.membase	= IO_ADDRESS(OMAP_UART2_BASE),
 		.mapbase	= OMAP_UART2_BASE,
