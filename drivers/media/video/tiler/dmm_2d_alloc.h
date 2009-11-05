@@ -17,6 +17,8 @@
 #ifndef _DMM_2D_ALLOC_H
 #define _DMM_2D_ALLOC_H
 
+#define __NEWCODE__
+
 enum MSP_BOOL {
 	MSP_FALSE = 0,
 	MSP_TRUE
@@ -42,6 +44,10 @@ struct dmmTILERContPageAreaT {
 	enum SideAffinity fitToSide;
 	int patCustomPages;
 	unsigned long *patPageEntriesSpace;
+#ifdef __NEWCODE__
+	struct page *page_list;
+	unsigned long *page_list_virt;
+#endif
 	unsigned long *patPageEntries;
 };
 

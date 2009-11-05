@@ -39,6 +39,12 @@
 #include "dmm_2d_alloc.h"
 #include "dmm_prv.h"
 
+#define __NEWCODE__
+
+#ifdef __NEWCODE__
+#include <linux/io.h>
+#endif
+
 /****************************************************************
 *  EXTERNAL REFERENCES NOTE: only use if not found in header file
 ****************************************************************/
@@ -1695,6 +1701,9 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 			*/
 			for (i = 0;
 				i < numPages && eCode == DMM_NO_ERROR; i++) {
+#ifdef __NEWCODE__
+				debug(i);
+#endif
 				eCode = dmm_free_phys_page(
 					(unsigned long *)
 					(delItm->pgAr.patPageEntries[i]));
@@ -1703,9 +1712,17 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 
 		if (eCode == DMM_NO_ERROR) {
 			tilerdump(__LINE__);
+#ifndef __NEWCODE__
 			kfree(delItm->pgAr.patPageEntriesSpace);
 			delItm->pgAr.patPageEntries = NULL;
 			delItm->pgAr.patPageEntriesSpace = NULL;
+#else
+			debug(__LINE__);
+			iounmap(delItm->pgAr.page_list_virt);
+			__free_page(delItm->pgAr.page_list);
+			delItm->pgAr.patPageEntries = NULL;
+			delItm->pgAr.patPageEntriesSpace = NULL;
+#endif
 		}
 
 		tilerdump(__LINE__);

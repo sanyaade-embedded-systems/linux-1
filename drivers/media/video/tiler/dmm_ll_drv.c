@@ -22,6 +22,119 @@
 #include "dmm_reg.h"
 MODULE_LICENSE("GPL v2");
 
+#define __NEWCODE__
+#ifdef __NEWCODE__
+/* extern unsigned long entry_data; */
+static void pat_config_set();
+
+static void pat_config_set()/* (struct pat_config_set *config, char id) */
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* set PAT_CONFIG register */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_virt_base_addr
+						| (unsigned long)PAT_CONFIG);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_CONFIG", reg_val);
+
+	bit_field = BITFIELD(31, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)0) << field_pos) & bit_field);
+	__raw_writel(0x0000000F, reg); /* __raw_writel(new_val, reg); */
+
+	reg = (void __iomem *)(
+			(unsigned long)dmm_virt_base_addr |
+						(unsigned long)PAT_CONFIG);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_CONFIG", reg_val);
+}
+
+struct pat_area {
+	int x0:8;
+	int y0:8;
+	int x1:8;
+	int y1:8;
+};
+
+struct pat_ctrl {
+	int start:4;
+	int direction:4;
+	int lut_id:8;
+	int sync:12;
+	int initiator:4;
+};
+
+struct pat_desc {
+	struct pat_desc *next;
+	struct pat_area area;
+	struct pat_ctrl ctrl;
+	unsigned long data;
+};
+
+static void pat_ctrl_set(struct pat_ctrl *ctrl, char id)
+{
+	void __iomem *reg = NULL;
+	unsigned long reg_val = 0x0;
+	unsigned long new_val = 0x0;
+	unsigned long bit_field = 0x0;
+	unsigned long field_pos = 0x0;
+
+	/* set PAT_CTRL register */
+	/* TODO: casting as unsigned long */
+	reg = (void __iomem *)(
+			(unsigned long)dmm_virt_base_addr |
+						(unsigned long)PAT_CTRL__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_CTRL__0", reg_val);
+
+	bit_field = BITFIELD(31, 28);
+	field_pos = 28;
+	new_val = (reg_val & (~(bit_field))) |
+			((((unsigned long)ctrl->initiator) <<
+							field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(16, 16);
+	field_pos = 16;
+	new_val = (reg_val & (~(bit_field))) |
+		((((unsigned long)ctrl->sync) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(9, 8);
+	field_pos = 8;
+	new_val = (reg_val & (~(bit_field))) |
+		((((unsigned long)ctrl->lut_id) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(6, 4);
+	field_pos = 4;
+	new_val = (reg_val & (~(bit_field))) |
+		((((unsigned long)ctrl->direction) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg_val = __raw_readl(reg);
+	bit_field = BITFIELD(0, 0);
+	field_pos = 0;
+	new_val = (reg_val & (~(bit_field))) |
+		((((unsigned long)ctrl->start) << field_pos) & bit_field);
+	__raw_writel(new_val, reg);
+
+	reg = (void __iomem *)(
+		(unsigned long)dmm_virt_base_addr | (unsigned long)PAT_CTRL__0);
+	reg_val = __raw_readl(reg);
+	regdump("PAT_CTRL__0", reg_val);
+}
+#endif
+
 /* ========================================================================== */
 /**
  *  dmm_tiler_alias_orientation_set()
@@ -254,6 +367,7 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 			writeval = (regval & (~(f))) |
 				   ((((char)patDesc->area.x0) << fp) & f);
 			__raw_writel(writeval, reg);
+#ifndef __NEWCODE__
 			/* Apply 4 bit lft shft to counter the 4 bit rt shft */
 			reg = (void __iomem *)
 			((unsigned long)dmm_virt_base_addr | (0x500ul + 0xc));
@@ -291,6 +405,66 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 			writeval = (regval & (~(f))) |
 				   (((patDesc->ctrl.start) << fp) & f);
 			__raw_writel(writeval, reg);
+#else
+			reg = (void __iomem *)(
+					(unsigned long)dmm_virt_base_addr |
+						(unsigned long)PAT_STATUS__0);
+			regdump("PAT_STATUS__0", __raw_readl(reg));
+
+			reg = (void __iomem *)(
+					(unsigned long)dmm_virt_base_addr |
+					(unsigned long)PAT_IRQSTATUS_RAW);
+			regdump("PAT_IRQSTATUS_RAW", __raw_readl(reg));
+
+			reg = (void __iomem *)(
+					(unsigned long)dmm_virt_base_addr |
+						(unsigned long)PAT_IRQSTATUS);
+			regdump("PAT_IRQSTATUS", __raw_readl(reg));
+
+			/* read and print data register */
+			reg = (void __iomem *)
+			((unsigned long)dmm_virt_base_addr | (0x500ul + 0xc));
+			regval = __raw_readl(reg);
+			regdump("PAT_DATA__0", regval);
+
+			/* Apply 4 bit lft shft to counter the 4 bit rt shft */
+			f  = BITFIELD(31, 4);
+			fp = 4;
+			writeval = (regval & (~(f))) | ((((unsigned long)
+					(patDesc->data >> 4)) << fp) & f);
+			__raw_writel(writeval, reg);
+
+			/* read and print data register again */
+			reg = (void __iomem *)
+			((unsigned long)dmm_virt_base_addr | (0x500ul + 0xc));
+			regval = __raw_readl(reg);
+			regdump("PAT_DATA__0", regval);
+
+			struct pat_desc pat_desc = {0};
+			pat_desc.ctrl.start = 1;
+			pat_desc.ctrl.direction = 0;
+			pat_desc.ctrl.lut_id = 0;
+			pat_desc.ctrl.sync = 0;
+			pat_desc.ctrl.initiator = 0;
+			pat_ctrl_set(&pat_desc.ctrl, 0);
+
+			reg = (void __iomem *)(
+					(unsigned long)dmm_virt_base_addr |
+						(unsigned long)PAT_STATUS__0);
+			regdump("PAT_STATUS__0", __raw_readl(reg));
+
+			reg = (void __iomem *)(
+					(unsigned long)dmm_virt_base_addr |
+					(unsigned long)PAT_IRQSTATUS_RAW);
+			regdump("PAT_IRQSTATUS_RAW", __raw_readl(reg));
+
+			reg = (void __iomem *)(
+					(unsigned long)dmm_virt_base_addr |
+						(unsigned long)PAT_IRQSTATUS);
+			regdump("PAT_IRQSTATUS", __raw_readl(reg));
+
+			/* pat_config_set(); */
+#endif
 		} else {
 			eCode = DMM_WRONG_PARAM;
 		}

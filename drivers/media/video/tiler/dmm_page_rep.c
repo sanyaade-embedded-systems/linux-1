@@ -19,6 +19,8 @@
 #include <linux/mmzone.h>  /* __page_to_phys */
 #include "dmm_prv.h"
 
+#define __NEWCODE__
+
 #ifdef CHECK_STACK
 #define lajosdump(x) printk(KERN_NOTICE "%s::%s():%d: %s=%p\n",\
 					__FILE__, __func__, __LINE__, #x, x);
@@ -94,9 +96,18 @@ void dmm_phys_page_rep_refil(void)
 
 			tmpPgNode->nextPhysPg = NULL;
 			tmpPgNode->prevPhysPg = NULL;
+#ifndef __NEWCODE__
 			tmpPgNode->physPgPtr =
 				(unsigned long *)__get_free_page(
 							GFP_KERNEL | GFP_DMA);
+#else
+			struct page *page = NULL;
+
+			page = (struct page *)alloc_page(GFP_KERNEL | GFP_DMA);
+			tmpPgNode->physPgPtr =
+					(unsigned long *)page_to_phys(page);
+			tmpPgNode->page_addr = page;
+#endif
 
 			/* add to end */
 			if (freePagesStack != NULL) {
@@ -173,15 +184,25 @@ enum errorCodeT dmm_phys_page_rep_deinit(void)
 
 	while (usedPagesStack != NULL) {
 		tmpPgNode = usedPagesStack->prevPhysPg;
+#ifndef __NEWCODE__
 		free_page((unsigned long)usedPagesStack->physPgPtr);
 		kfree(usedPagesStack);
+#else
+		__free_page(usedPagesStack->page_addr);
+		kfree(usedPagesStack);
+#endif
 		usedPagesStack = tmpPgNode;
 	}
 
 	while (freePagesStack != NULL) {
 		tmpPgNode = freePagesStack->prevPhysPg;
+#ifndef __NEWCODE__
 		free_page((unsigned long)freePagesStack->physPgPtr);
 		kfree(freePagesStack);
+#else
+		__free_page(freePagesStack->page_addr);
+		kfree(freePagesStack);
+#endif
 		freePagesStack = tmpPgNode;
 	}
 
@@ -303,9 +324,14 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 			while (freePageCnt > DMM_MNGD_PHYS_PAGES &&
 						freePagesStack != NULL) {
 				iterPgNode = freePagesStack->prevPhysPg;
+#ifndef __NEWCODE__
 				free_page((unsigned long)
 						freePagesStack->physPgPtr);
 				kfree(freePagesStack);
+#else
+				__free_page(freePagesStack->page_addr);
+				kfree(freePagesStack);
+#endif
 				freePagesStack = iterPgNode;
 				freePageCnt--;
 			}
