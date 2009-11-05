@@ -3440,8 +3440,9 @@ static int syn_resume(struct i2c_client *client)
 
 
 static const struct i2c_device_id syn_id[] = {
-	{ "tm12xx_ts", 0 },
-	{ }
+	{ "tm12xx_ts_primary", 0 },
+	{ "tm12xx_ts_secondary", 1 },
+	{ },
 };
 
 static struct i2c_driver syn_i2c_driver = {
