@@ -644,7 +644,6 @@ static void __init omap_4430sdp_init(void)
 	omap_mcbsp_init();
 	sdp4430_mmc_init();
 	sdp4430_display_init();
-	omap_kp_init();
 	omap_phoenix_init();
 #ifdef CONFIG_NOP_USB_XCEIV
        /* OMAP4SDP uses no explicit transceiver */
