@@ -91,7 +91,7 @@ static const u8 twl6030_reg[TWL6030_CACHEREGNUM] = {
 	0x00, /* TWL6030_VIBDATR	0x1B	*/
 	0x00, /* TWL6030_HKCTL1		0x1C	*/
 	0x00, /* TWL6030_HKCTL2		0x1D	*/
-	0x00, /* TWL6030_GPOCTL		0x1E	*/
+	0x02, /* TWL6030_GPOCTL		0x1E	*/
 	0x00, /* TWL6030_ALB		0x1F	*/
 	0x00, /* TWL6030_DLB		0x20	*/
 	0x00, /* not used		0x21	*/
@@ -957,6 +957,30 @@ static int abe_mm_hw_params(struct snd_pcm_substream *substream,
 
 	                dst_ptr = (unsigned int*) (ABE_DMEM_BASE_ADDRESS_MPU + 0x108);
 	                *dst_ptr = 0x04000c00;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 300*4);
+			*dst_ptr = 0x040002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 301*4);
+			*dst_ptr = 0x00002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 302*4);
+			*dst_ptr = 0x000002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 303*4);
+			*dst_ptr = 0x000002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 304*4);
+			*dst_ptr = 0x040002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 305*4);
+			*dst_ptr = 0x00002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 306*4);
+			*dst_ptr = 0x000002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 307*4);
+			*dst_ptr = 0x000002;
 		}
 		return 0;
 	}
@@ -1009,6 +1033,30 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 
 	                dst_ptr = (unsigned int*) (ABE_DMEM_BASE_ADDRESS_MPU + 0x108);
 	                *dst_ptr = 0x04000c00;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 300*4);
+			*dst_ptr = 0x000002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 301*4);
+			*dst_ptr = 0x00002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 302*4);
+			*dst_ptr = 0x040002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 303*4);
+			*dst_ptr = 0x000002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 304*4);
+			*dst_ptr = 0x000002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 305*4);
+			*dst_ptr = 0x00002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 306*4);
+			*dst_ptr = 0x040002;
+
+			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 307*4);
+			*dst_ptr = 0x000002;
 		}
 		return 0;
 	}
@@ -1079,14 +1127,14 @@ struct snd_soc_dai abe_dai[] = {
 			.stream_name = "Playback",
 			.channels_min = 1,
 			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
+			.rates = SNDRV_PCM_RATE_8000,
 			.formats = ABE_FORMATS,
 		},
 		.capture = {
 			.stream_name = "Capture",
 			.channels_min = 1,
 			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
+			.rates = SNDRV_PCM_RATE_8000,
 			.formats = ABE_FORMATS,
 		},
 		.ops = &abe_voice_dai_ops,
@@ -1270,7 +1318,7 @@ static int __devinit abe_twl6030_codec_probe(struct platform_device *pdev)
 		} else {
 			/* no interrupts at all */
 			twl6030_write_reg_cache(codec, TWL6030_REG_INTMR,
-						TWL6030_ALLINT_MSK);
+						~TWL6030_ALLINT_MSK);
 		}
 	}
 
