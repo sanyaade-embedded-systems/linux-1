@@ -53,14 +53,14 @@ static int twl6030_interrupt_mapping[24] = {
 	PWR_INTR_OFFSET,	/* Bit 0	PWRON			*/
 	PWR_INTR_OFFSET,	/* Bit 1	RPWRON			*/
 	PWR_INTR_OFFSET,	/* Bit 2	BAT_VLOW		*/
-	PWR_INTR_OFFSET,	/* Bit 3	VBAT			*/
-	RTC_INTR_OFFSET,	/* Bit 4	RTC_ALARM		*/
-	RTC_INTR_OFFSET,	/* Bit 5	RTC_PERIOD		*/
-	HOTDIE_INTR_OFFSET,	/* Bit 6	HOT_DIE			*/
-	SMPSLDO_INTR_OFFSET,	/* Bit 7	VXXX_SHORT		*/
+	RTC_INTR_OFFSET,	/* Bit 3	RTC_ALARM		*/
+	RTC_INTR_OFFSET,	/* Bit 4	RTC_PERIOD		*/
+	HOTDIE_INTR_OFFSET,	/* Bit 5	HOT_DIE			*/
+	SMPSLDO_INTR_OFFSET,	/* Bit 6	VXXX_SHORT		*/
+	SMPSLDO_INTR_OFFSET,	/* Bit 7	VMMC_SHORT		*/
 
-	SMPSLDO_INTR_OFFSET,	/* Bit 8	VMMC_SHORT		*/
-	SMPSLDO_INTR_OFFSET,	/* Bit 9	VUSIM_SHORT		*/
+	SMPSLDO_INTR_OFFSET,	/* Bit 8	VUSIM_SHORT		*/
+	BATDETECT_INTR_OFFSET,	/* Bit 9	BAT			*/
 	SIMDETECT_INTR_OFFSET,	/* Bit 10	SIM			*/
 	MMCDETECT_INTR_OFFSET,	/* Bit 11	MMC			*/
 	RSV_INTR_OFFSET,  	/* Bit 12	Reserved		*/
@@ -75,7 +75,7 @@ static int twl6030_interrupt_mapping[24] = {
 	CHARGER_INTR_OFFSET,	/* Bit 20	CHRG_CTRL		*/
 	CHARGER_INTR_OFFSET,	/* Bit 21	EXT_CHRG		*/
 	CHARGER_INTR_OFFSET,	/* Bit 22	INT_CHRG		*/
-	CHARGER_INTR_OFFSET,	/* Bit 23	BAT_OVT			*/
+	RSV_INTR_OFFSET,	/* Bit 23	Reserved		*/
 };
 /*----------------------------------------------------------------------*/
 
@@ -104,9 +104,6 @@ static int twl6030_irq_thread(void *data)
 
 		/* Wait for IRQ, then read PIH irq status (also blocking) */
 		wait_for_completion_interruptible(&irq_event);
-#ifndef CONFIG_OMAP4_SUDO_ROMCODE		
-		return 0;
-#endif
 
 		/* read INT_STS_A, B and C in one shot using a burst read */
 		ret = twl_i2c_read(TWL6030_MODULE_PIH, sts.bytes,
