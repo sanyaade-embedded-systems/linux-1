@@ -78,9 +78,9 @@ static struct map_desc netra_io_desc[] __initdata = {	/* !@@ */
 		.type		= MT_DEVICE
 	},
 	{
-		.virtual	= L4_EMU_34XX_VIRT,
-		.pfn		= __phys_to_pfn(L4_EMU_34XX_PHYS),
-		.length		= L4_EMU_34XX_SIZE,
+		.virtual	= NETRA_INTC_VIRT,
+		.pfn		= __phys_to_pfn(NETRA_INTC_PHYS),
+		.length		= NETRA_INTC_SIZE,
 		.type		= MT_DEVICE
 	},
 };
