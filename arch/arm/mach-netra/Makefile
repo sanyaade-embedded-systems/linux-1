@@ -4,8 +4,9 @@
 
 # Common support
 obj-y := irq.o io.o sdrc.o control.o mux.o \
-		serial.o timer-gp.o prcm.o clock.o clockdomain.o powerdomain.o \
+		timer16.o serial.o prcm.o clock.o clockdomain.o powerdomain.o \
 			#!@@ NETRA !-> 	devices.o id.o gpmc.o
+			#!@@ HAPS54 !-> timer-gp.o 
 
 # Clock framework
 obj-$(CONFIG_ARCH_NETRA)		+= clock34xx.o

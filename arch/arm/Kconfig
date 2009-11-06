@@ -575,8 +575,8 @@ config ARCH_OMAP
 config ARCH_NETRA
 	bool "TI Netra"
 	select CPU_CORTEXA8
-	select GENERIC_TIME
-	select GENERIC_CLOCKEVENTS
+#	select GENERIC_TIME
+#	select GENERIC_CLOCKEVENTS
 	help
 	  Support for TI's Netra based systems.
 

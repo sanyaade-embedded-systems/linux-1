@@ -40,12 +40,16 @@ static void __init omap_generic_init_irq(void)
 	/* !@0 */
 #if defined(CONFIG_ARCH_NETRA)
 	omap2_set_globals_343x();
+	/* Avoid these for HAPS54 */
+#ifdef NO_HAPS54
 	pwrdm_init(powerdomains_omap);
 	clkdm_init(clockdomains_omap, clkdm_pwrdm_autodeps);
 	omap2_clk_init();
+#endif
 #else
 	omap2_init_common_hw(NULL);
 #endif
+	printk("*** Calling omap_init_irq...\n");
 	omap_init_irq();
 }
 
@@ -75,6 +79,8 @@ static void __init omap_generic_map_io(void)
 	omap2_map_common_io();
 }
 
+extern struct sys_timer timer16;
+
 MACHINE_START(NETRA, "Netra")
 	/* Maintainer: Paul Mundt <paul.mundt@nokia.com> */
 #if (L4_34XX_BASE==0x48000000)
@@ -87,5 +93,5 @@ MACHINE_START(NETRA, "Netra")
 	.map_io		= omap_generic_map_io,
 	.init_irq	= omap_generic_init_irq,
 	.init_machine	= omap_generic_init,
-	.timer		= &omap_timer,
+	.timer		= &timer16,
 MACHINE_END
