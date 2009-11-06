@@ -171,6 +171,10 @@ cpu_v7_name:
  *	- cache type register is implemented
  */
 __v7_setup:
+	MRC p15, 0, r12, c1, c0, 0    @ read CP15 Register 1
+	BIC r12, r12, #0x1
+	MCR p15, 0, r12, c1, c0, 0    @ disabled
+
 #ifdef CONFIG_SMP
 	mrc	p15, 0, r0, c1, c0, 1		@ Enable SMP/nAMP mode
 	orr	r0, r0, #(0x1 << 6)
