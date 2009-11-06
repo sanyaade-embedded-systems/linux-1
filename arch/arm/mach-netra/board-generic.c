@@ -37,6 +37,7 @@
 
 static void __init omap_generic_init_irq(void)
 {
+	extern void arch_init_irq(void);
 	/* !@0 */
 #if defined(CONFIG_ARCH_NETRA)
 	omap2_set_globals_343x();
@@ -50,7 +51,7 @@ static void __init omap_generic_init_irq(void)
 	omap2_init_common_hw(NULL);
 #endif
 	printk("*** Calling omap_init_irq...\n");
-	omap_init_irq();
+	arch_init_irq();
 }
 
 static struct omap_uart_config generic_uart_config __initdata = {

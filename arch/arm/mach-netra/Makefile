@@ -4,7 +4,7 @@
 
 # Common support
 obj-y := irq.o io.o sdrc.o control.o mux.o \
-		timer16.o serial.o prcm.o clock.o clockdomain.o powerdomain.o \
+		timer16.o intc.o serial.o prcm.o clock.o clockdomain.o powerdomain.o \
 			#!@@ NETRA !-> 	devices.o id.o gpmc.o
 			#!@@ HAPS54 !-> timer-gp.o 
 
