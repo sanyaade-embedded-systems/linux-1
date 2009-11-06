@@ -58,7 +58,7 @@
 #endif
 #include <mach/vrfb.h>
 
-/* #define TILER_ALLOCATE_V4L2 */
+#define TILER_ALLOCATE_V4L2
 /* #define TILER_TEST */
 
 #ifdef TILER_TEST
@@ -2897,7 +2897,7 @@ static struct platform_driver omap_vout_driver = {
 void omap_vout_isr(void *arg, unsigned int irqstatus)
 {
 	int r;
-	struct timeval timevalue;
+	struct timeval timevalue = {0};
 	struct omap_vout_device *vout =
 	    (struct omap_vout_device *) arg;
 	u32 addr, fid, uv_addr;
@@ -2916,7 +2916,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 	cur_display = ovl->manager->device;
 
 	spin_lock(&vout->vbq_lock);
-	do_gettimeofday(&timevalue);
+	/* do_gettimeofday(&timevalue); TODO: uncomment this!! */
 
 	if (cur_display->type == OMAP_DISPLAY_TYPE_DPI) {
 		if (!(irqstatus & DISPC_IRQ_VSYNC))
@@ -2956,7 +2956,48 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 		if (r)
 			printk(KERN_ERR VOUT_NAME "failed to change mode\n");
 	} else {
+#if 1
+	if (!(irqstatus & DISPC_IRQ_EVSYNC_ODD) &&
+		!(irqstatus & DISPC_IRQ_EVSYNC_EVEN)) {
+			spin_unlock(&vout->vbq_lock);
+			return;
+		}
+		if (!vout->first_int && (vout->cur_frm != vout->next_frm)) {
+			vout->cur_frm->ts = timevalue;
+			vout->cur_frm->state = VIDEOBUF_DONE;
+			wake_up_interruptible(&vout->cur_frm->done);
+			vout->cur_frm = vout->next_frm;
+		}
+		vout->first_int = 0;
+		if (list_empty(&vout->dma_queue)) {
+			spin_unlock(&vout->vbq_lock);
+			return;
+		}
 
+		vout->next_frm = list_entry(vout->dma_queue.next,
+					struct videobuf_buffer, queue);
+		list_del(&vout->next_frm->queue);
+
+		vout->next_frm->state = VIDEOBUF_ACTIVE;
+
+		addr = (unsigned long) vout->queued_buf_addr[vout->next_frm->i]
+			+ vout->cropped_offset;
+
+		uv_addr = (unsigned long) vout->queued_buf_uv_addr[
+							vout->next_frm->i];
+	/* TODO: check the cropped offset part*/
+
+	/* First save the configuration in ovelray structure */
+	r = omapvid_init(vout, addr, uv_addr);
+	if (r)
+		printk(KERN_ERR VOUT_NAME
+				"failed to set overlay info\n");
+		/* Enable the pipeline and set the Go bit */
+		r = omapvid_apply_changes(vout);
+		if (r)
+			printk(KERN_ERR VOUT_NAME "failed to change mode\n");
+
+#else
 		if (vout->first_int) {
 			vout->first_int = 0;
 			spin_unlock(&vout->vbq_lock);
@@ -2970,6 +3011,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 			spin_unlock(&vout->vbq_lock);
 			return;
 		}
+		fid = 1;
 		vout->field_id ^= 1;
 		if (fid != vout->field_id) {
 			if (0 == fid)
@@ -3015,7 +3057,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 			if (r)
 				printk(KERN_ERR VOUT_NAME "failed to change mode\n");
 		}
-
+#endif
 	}
 	spin_unlock(&vout->vbq_lock);
 }
