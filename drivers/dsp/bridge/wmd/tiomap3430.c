@@ -332,19 +332,10 @@ static DSP_STATUS WMD_BRD_Monitor(struct WMD_DEV_CONTEXT *hDevContext)
 		goto error_return;
 
 #ifdef OMAP44XX
-	printk(KERN_ERR "Disabling Clocks... and resources.dwCm1Base = 0x%x\n"
-		"resources.dwCm2Base= 0x%x\n"
-		"resources.dwPrmBase = 0x%x\n",
-		(unsigned int)resources.dwCm1Base,
-		(unsigned int)resources.dwCm2Base,
-		(unsigned int)resources.dwPrmBase);
-
 	HW_CLK_Disable(resources.dwCm1Base, HW_CLK_TESLA);
-	printk("Resetting DSP...");
 	HW_RST_Reset(resources.dwPrmBase, HW_RST1_TESLA);
 	HW_RST_Reset(resources.dwPrmBase, HW_RST2_TESLA);
 	HW_RST_UnReset(resources.dwPrmBase, HW_RST2_TESLA);
-	printk("Enabling Clocks...");
 	HW_CLK_Enable(resources.dwCm1Base, HW_CLK_TESLA);
 	*((REG_UWORD32 *)((u32)(resources.dwDmmuBase)+0x50)) = 0x400;
 #else
@@ -483,8 +474,6 @@ static DSP_STATUS WMD_BRD_Start(struct WMD_DEV_CONTEXT *hDevContext,
 	DBG_Trace(DBG_ENTER, "Entering WMD_BRD_Start:\n hDevContext: 0x%x\n\t "
 			     "dwDSPAddr: 0x%x\n", hDevContext, dwDSPAddr);
 #ifdef OMAP44XX
-	printk(KERN_ERR "Please break Virtio by typing 'y' in console and start CCS"
-		"set DSP  PC adress to below DSP Start address and Run using CCS\n");
 	printk(KERN_ERR "- - - DSP Start Address [0x%x]- - -\n", dwDSPAddr) ;
 #endif
 	/* The device context contains all the mmu setup info from when the
