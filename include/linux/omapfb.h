@@ -24,6 +24,8 @@
 #ifndef __OMAPFB_H
 #define __OMAPFB_H
 
+#include <linux/fb.h>
+
 #include <asm/ioctl.h>
 #include <asm/types.h>
 
@@ -50,6 +52,10 @@
 #define OMAPFB_UPDATE_WINDOW	OMAP_IOW(54, struct omapfb_update_window)
 #define OMAPFB_SETUP_MEM	OMAP_IOW(55, struct omapfb_mem_info)
 #define OMAPFB_QUERY_MEM	OMAP_IOW(56, struct omapfb_mem_info)
+#define OMAPFB_WAITFORVSYNC	OMAP_IO(57)
+#define OMAPFB_MEMORY_READ	OMAP_IOR(58, struct omapfb_memory_read)
+#define OMAPFB_GET_OVERLAY_COLORMODE OMAP_IOR(59, struct omapfb_ovl_colormode)
+#define OMAPFB_WAITFORGO	OMAP_IO(60)
 
 #define OMAPFB_CAPS_GENERIC_MASK	0x00000fff
 #define OMAPFB_CAPS_LCDC_MASK		0x00fff000
@@ -90,6 +96,13 @@ enum omapfb_color_format {
 	OMAPFB_COLOR_CLUT_1BPP,
 	OMAPFB_COLOR_RGB444,
 	OMAPFB_COLOR_YUY422,
+
+	OMAPFB_COLOR_ARGB16,
+	OMAPFB_COLOR_RGB24U,	/* RGB24, 32-bit container */
+	OMAPFB_COLOR_RGB24P,	/* RGB24, 24-bit container */
+	OMAPFB_COLOR_ARGB32,
+	OMAPFB_COLOR_RGBA32,
+	OMAPFB_COLOR_RGBX32,
 };
 
 struct omapfb_update_window {
@@ -161,11 +174,30 @@ enum omapfb_update_mode {
 	OMAPFB_MANUAL_UPDATE
 };
 
+struct omapfb_memory_read {
+	__u16 x;
+	__u16 y;
+	__u16 w;
+	__u16 h;
+	size_t buffer_size;
+	void __user *buffer;
+};
+
+struct omapfb_ovl_colormode {
+      	__u8 overlay_idx;
+      	__u8 mode_idx;
+      	__u32 bits_per_pixel;
+	__u32 nonstd;
+       	struct fb_bitfield red;
+       	struct fb_bitfield green;
+       	struct fb_bitfield blue;
+       	struct fb_bitfield transp;
+};
+
 #ifdef __KERNEL__
 
 #include <linux/completion.h>
 #include <linux/interrupt.h>
-#include <linux/fb.h>
 #include <linux/mutex.h>
 
 #include <mach/board.h>
@@ -256,7 +288,7 @@ struct lcd_ctrl_extif {
 	void (*read_data)	(void *buf, unsigned int len);
 	void (*write_data)	(const void *buf, unsigned int len);
 	void (*transfer_area)	(int width, int height,
-				 void (callback)(void * data), void *data);
+				 void (callback)(void *data), void *data);
 	int  (*setup_tearsync)	(unsigned pin_cnt,
 				 unsigned hs_pulse_time, unsigned vs_pulse_time,
 				 int hs_pol_inv, int vs_pol_inv, int div);
@@ -276,10 +308,15 @@ typedef int (*omapfb_notifier_callback_t)(struct notifier_block *,
 					  void *fbi);
 
 struct omapfb_mem_region {
-	dma_addr_t	paddr;
-	void		*vaddr;
+	u32		paddr;
+	void __iomem	*vaddr;
 	unsigned long	size;
 	u8		type;		/* OMAPFB_PLANE_MEM_* */
+	enum omapfb_color_format format;/* OMAPFB_COLOR_* */
+	unsigned	format_used:1;	/* Must be set when format is set.
+					 * Needed b/c of the badly chosen 0
+					 * base for OMAPFB_COLOR_* values
+					 */
 	unsigned	alloc:1;	/* allocated by the driver */
 	unsigned	map:1;		/* kernel mapped by the driver */
 };
@@ -332,7 +369,7 @@ struct lcd_ctrl {
 
 enum omapfb_state {
 	OMAPFB_DISABLED	= 0,
-	OMAPFB_SUSPENDED= 99,
+	OMAPFB_SUSPENDED = 99,
 	OMAPFB_ACTIVE	= 100
 };
 
@@ -346,7 +383,7 @@ struct omapfb_plane_struct {
 struct omapfb_device {
 	int			state;
 	int                     ext_lcdc;               /* Using external
-                                                           LCD controller */
+							  LCD controller */
 	struct mutex		rqueue_mutex;
 
 	int			palette_size;
@@ -356,7 +393,7 @@ struct omapfb_device {
 	const struct lcd_ctrl	*ctrl;			/* LCD controller */
 	const struct lcd_ctrl	*int_ctrl;		/* internal LCD ctrl */
 	struct lcd_ctrl_extif	*ext_if;		/* LCD ctrl external
-							   interface */
+								interface */
 	struct device		*dev;
 	struct fb_var_screeninfo	new_var;	/* for mode changes */
 
@@ -375,6 +412,8 @@ extern struct lcd_ctrl omap1_lcd_ctrl;
 #else
 extern struct lcd_ctrl omap2_disp_ctrl;
 #endif
+
+extern void omapfb_set_platform_data(struct omapfb_platform_data *data);
 
 extern void omapfb_reserve_sdram(void);
 extern void omapfb_register_panel(struct lcd_panel *panel);

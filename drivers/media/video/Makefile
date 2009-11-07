@@ -117,6 +117,8 @@ obj-$(CONFIG_VIDEO_CX2341X) += cx2341x.o
 
 obj-$(CONFIG_VIDEO_CAFE_CCIC) += cafe_ccic.o
 
+obj-$(CONFIG_VIDEO_OMAP3) += omap/
+
 obj-$(CONFIG_USB_DABUSB)        += dabusb.o
 obj-$(CONFIG_USB_OV511)         += ov511.o
 obj-$(CONFIG_USB_SE401)         += se401.o
@@ -159,6 +161,8 @@ obj-$(CONFIG_VIDEO_AU0828) += au0828/
 obj-$(CONFIG_USB_VIDEO_CLASS)	+= uvc/
 
 obj-$(CONFIG_VIDEO_IR_I2C)  += ir-kbd-i2c.o
+
+obj-$(CONFIG_DMM_TILER)  += tiler/
 
 EXTRA_CFLAGS += -Idrivers/media/dvb/dvb-core
 EXTRA_CFLAGS += -Idrivers/media/dvb/frontends

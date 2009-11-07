@@ -24,9 +24,9 @@
 #include <linux/vmalloc.h>
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/omapfb.h>
 
 #include <mach/sram.h>
-#include <mach/omapfb.h>
 #include <mach/board.h>
 
 #include "dispc.h"
@@ -35,6 +35,17 @@
 
 #define DSS_BASE			0x48050000
 #define DSS_SYSCONFIG			0x0010
+#ifndef CONFIG_ARCH_OMAP4
+	/* DSS */
+	#define DSS_BASE			0x48050000
+	/* DISPLAY CONTROLLER */
+	#define DISPC_BASE                      0x48050400
+#else
+	/* DSS */
+	#define DSS_BASE                        0x48042000
+	/* DISPLAY CONTROLLER */
+	#define DISPC_BASE                      0x48043000
+#endif
 
 #define DISPC_BASE			0x48050400
 
@@ -856,6 +867,7 @@ void omap_dispc_free_irq(void)
 }
 EXPORT_SYMBOL(omap_dispc_free_irq);
 
+#ifndef CONFIG_ARCH_OMAP4
 static irqreturn_t omap_dispc_irq_handler(int irq, void *dev)
 {
 	u32 stat = dispc_read_reg(DISPC_IRQSTATUS);
@@ -877,30 +889,32 @@ static irqreturn_t omap_dispc_irq_handler(int irq, void *dev)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 static int get_dss_clocks(void)
 {
-	dispc.dss_ick = clk_get(dispc.fbdev->dev, "ick");
-	if (IS_ERR(dispc.dss_ick)) {
-		dev_err(dispc.fbdev->dev, "can't get ick\n");
-		return PTR_ERR(dispc.dss_ick);
-	}
+	if (!cpu_is_omap44xx()) {
+		dispc.dss_ick = clk_get(dispc.fbdev->dev, "ick");
+		if (IS_ERR(dispc.dss_ick)) {
+			dev_err(dispc.fbdev->dev, "can't get ick\n");
+			return PTR_ERR(dispc.dss_ick);
+		}
 
-	dispc.dss1_fck = clk_get(dispc.fbdev->dev, "dss1_fck");
-	if (IS_ERR(dispc.dss1_fck)) {
-		dev_err(dispc.fbdev->dev, "can't get dss1_fck\n");
-		clk_put(dispc.dss_ick);
-		return PTR_ERR(dispc.dss1_fck);
-	}
+		dispc.dss1_fck = clk_get(dispc.fbdev->dev, "dss1_fck");
+		if (IS_ERR(dispc.dss1_fck)) {
+			dev_err(dispc.fbdev->dev, "can't get dss1_fck\n");
+			clk_put(dispc.dss_ick);
+			return PTR_ERR(dispc.dss1_fck);
+		}
 
-	dispc.dss_54m_fck = clk_get(dispc.fbdev->dev, "tv_fck");
-	if (IS_ERR(dispc.dss_54m_fck)) {
-		dev_err(dispc.fbdev->dev, "can't get tv_fck\n");
-		clk_put(dispc.dss_ick);
-		clk_put(dispc.dss1_fck);
-		return PTR_ERR(dispc.dss_54m_fck);
+		dispc.dss_54m_fck = clk_get(dispc.fbdev->dev, "tv_fck");
+		if (IS_ERR(dispc.dss_54m_fck)) {
+			dev_err(dispc.fbdev->dev, "can't get tv_fck\n");
+			clk_put(dispc.dss_ick);
+			clk_put(dispc.dss1_fck);
+			return PTR_ERR(dispc.dss_54m_fck);
+		}
 	}
-
 	return 0;
 }
 
