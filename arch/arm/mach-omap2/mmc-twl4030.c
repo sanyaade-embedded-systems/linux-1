@@ -259,7 +259,8 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 			omap_ctrl_writel(reg, control_pbias_offset);
 		} else {
 			reg = omap_ctrl_readl(control_pbias_offset);
-			reg &= ~(1 << 20);
+			reg &= ~(OMAP4_MMC1_PBIASLITE_PWRDNZ |
+						OMAP4_MMC1_PWRDWNZ);
 			omap_ctrl_writel(reg, control_pbias_offset);
 		}
 
@@ -269,7 +270,8 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 		msleep(100);
 		if (!cpu_is_omap44xx()) {
 			reg = omap_ctrl_readl(control_pbias_offset);
-			reg |= (OMAP2_PBIASLITEPWRDNZ0 | OMAP2_PBIASSPEEDCTRL0);
+			reg |= (OMAP2_PBIASLITEPWRDNZ0 |
+					OMAP2_PBIASSPEEDCTRL0);
 			if ((1 << vdd) <= MMC_VDD_165_195)
 				reg &= ~OMAP2_PBIASLITEVMODE0;
 			else
@@ -277,11 +279,13 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 			omap_ctrl_writel(reg, control_pbias_offset);
 		} else {
 			reg = omap_ctrl_readl(control_pbias_offset);
-			reg |= (1 << 20);
+			reg |= OMAP4_MMC1_PBIASLITE_PWRDNZ;
 			if ((1 << vdd) <= MMC_VDD_165_195)
-				reg &= ~(1 << 21);
+				reg &= ~(OMAP4_MMC1_PBIASLITE_VMODE);
 			else
-				reg |= (1 << 21);
+				reg |= (OMAP4_MMC1_PBIASLITE_VMODE);
+			reg |= (OMAP4_MMC1_PBIASLITE_PWRDNZ |
+						OMAP4_MMC1_PWRDWNZ);
 			omap_ctrl_writel(reg, control_pbias_offset);
 		}
 	} else {
@@ -291,7 +295,8 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 			omap_ctrl_writel(reg, control_pbias_offset);
 		} else {
 			reg = omap_ctrl_readl(control_pbias_offset);
-			reg &= ~(1 << 20);
+			reg &= ~(OMAP4_MMC1_PBIASLITE_PWRDNZ |
+						OMAP4_MMC1_PWRDWNZ);
 			omap_ctrl_writel(reg, control_pbias_offset);
 		}
 
@@ -306,7 +311,9 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 			omap_ctrl_writel(reg, control_pbias_offset);
 		} else {
 			reg = omap_ctrl_readl(control_pbias_offset);
-			reg |= (1 << 20 | 1 << 21);
+			reg |= (OMAP4_MMC1_PBIASLITE_PWRDNZ |
+				OMAP4_MMC1_PBIASLITE_VMODE |
+				OMAP4_MMC1_PWRDWNZ);
 			omap_ctrl_writel(reg, control_pbias_offset);
 		}
 	}
@@ -392,10 +399,16 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 	}
 
 	if (cpu_is_omap44xx()) {
-		control_pbias_offset = 0x600;
-		control_mmc1 = 0x628;
+		control_pbias_offset = OMAP44XX_CONTROL_PBIAS_LITE;
+		control_mmc1 = OMAP44XX_CONTROL_MMC1;
 		reg = omap_ctrl_readl(control_mmc1);
-		reg |= 0xbe000000;
+		reg |= (OMAP4_CONTROL_SDMMC1_PUSTRENGTHGRP0 |
+			OMAP4_CONTROL_SDMMC1_PUSTRENGTHGRP1);
+		reg &= ~(OMAP4_CONTROL_SDMMC1_PUSTRENGTHGRP2 |
+			OMAP4_CONTROL_SDMMC1_PUSTRENGTHGRP3);
+		reg |= (OMAP4_CONTROL_SDMMC1_DR0_SPEEDCTRL |
+			OMAP4_CONTROL_SDMMC1_DR0_SPEEDCTRL |
+			OMAP4_CONTROL_SDMMC1_DR0_SPEEDCTRL);
 		omap_ctrl_writel(reg, control_mmc1);
 	} else {
 		control_pbias_offset = OMAP343X_CONTROL_PBIAS_LITE;
