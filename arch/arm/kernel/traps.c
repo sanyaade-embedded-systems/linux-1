@@ -415,7 +415,7 @@ static int bad_syscall(int n, struct pt_regs *regs)
 	return regs->ARM_r0;
 }
 
-static inline void
+static void
 do_cache_op(unsigned long start, unsigned long end, int flags)
 {
 	struct vm_area_struct *vma;
@@ -507,6 +507,22 @@ asmlinkage int arm_syscall(int no, struct pt_regs *regs)
 #endif
 		return 0;
 
+#ifdef CONFIG_UNOFFICIAL_USER_DMA_API
+	/*
+	 * These are temporary interfaces; they are a stop gap until we get
+	 * a proper solution to DMA.  These won't always work for every
+	 * device.  Only use these IF you *really* know what you're doing.
+	 * Don't be surprised if they go away in later kernels.
+	 */
+	case NR(temp_dma_inv_range):
+	case NR(temp_dma_clean_range):
+	case NR(temp_dma_flush_range):
+	{
+		extern int temp_user_dma_op(unsigned long, unsigned long, int);
+		return temp_user_dma_op(regs->ARM_r0, regs->ARM_r1, no & 3);
+	}
+#endif
+
 #ifdef CONFIG_NEEDS_SYSCALL_FOR_CMPXCHG
 	/*
 	 * Atomically store r1 in *r2 if *r2 is equal to r0 for user space.
@@ -519,7 +535,7 @@ asmlinkage int arm_syscall(int no, struct pt_regs *regs)
 	 * __kuser_cmpxchg code in entry-armv.S should be aware of its
 	 * existence.  Don't ever use this from user code.
 	 */
-	case 0xfff0:
+	case NR(cmpxchg):
 	for (;;) {
 		extern void do_DataAbort(unsigned long addr, unsigned int fsr,
 					 struct pt_regs *regs);
@@ -564,7 +580,7 @@ asmlinkage int arm_syscall(int no, struct pt_regs *regs)
 		   if not implemented, rather than raising SIGILL.  This
 		   way the calling program can gracefully determine whether
 		   a feature is supported.  */
-		if (no <= 0x7ff)
+		if ((no & 0xffff) <= 0x7ff)
 			return -ENOSYS;
 		break;
 	}
