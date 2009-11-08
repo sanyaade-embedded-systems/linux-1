@@ -91,8 +91,8 @@ MODULE_LICENSE("GPL");
 #define NUM_OF_VIDEO_CHANNELS	2
 #endif
 
-#define VID_MAX_WIDTH		1280	/* Largest width */
-#define VID_MAX_HEIGHT		720/* Largest height */
+#define VID_MAX_WIDTH		1920 /* Largest width */
+#define VID_MAX_HEIGHT		1080 /* Largest height */
 
 /* Mimimum requirement is 2x2 for DSS */
 #define VID_MIN_WIDTH		2
@@ -352,6 +352,9 @@ static int omap_vout_try_format(struct v4l2_pix_format *pix)
 
 	pix->sizeimage = pix->bytesperline * pix->height;
 
+#ifdef TILER_ALLOCATE_V4L2
+	pix->bytesperline = 4096;
+#endif
 	return bpp;
 }
 
@@ -584,7 +587,8 @@ static int omap_vout_tiler_buffer_setup(struct omap_vout_device *vout,
 			if (!vout->buf_phy_uv_addr[i]) { /* UV-buffer */
 				if (DMM_NO_ERROR !=
 					tiler_alloc_buf(TILFMT_16BIT,
-					vout->pix.width, (vout->pix.height / 2),
+					(vout->pix.width/2),
+					(vout->pix.height / 2),
 					&vout->buf_phy_uv_addr[i])) {
 					vout->buf_phy_uv_addr[i] = 0;
 				} else
@@ -631,6 +635,7 @@ static void omap_vout_free_tiler_buffers(struct omap_vout_device *vout)
 		tiler_free_buf(vout->buf_phy_addr[j]);
 		tiler_free_buf(vout->buf_phy_uv_addr[j]);
 		vout->buf_phy_addr[j] = 0;
+		vout->buf_phy_uv_addr[j] = 0;
 	}
 	vout->buffer_allocated = 0;
 }
@@ -805,6 +810,8 @@ int omapvid_init(struct omap_vout_device *vout, u32 addr, u32 uv_addr)
 
 		outw = win->w.width;
 		outh = win->w.height;
+		posx = win->w.left;
+		posy = win->w.top;
 		switch (rotation) {
 
 		case dss_rotation_90_degree:
@@ -814,30 +821,34 @@ int omapvid_init(struct omap_vout_device *vout, u32 addr, u32 uv_addr)
 			temp = outw;
 			outw = outh;
 			outh = temp;
+#ifndef CONFIG_ARCH_OMAP4
 			posy = (timing->y_res - win->w.width)-
 				win->w.left;
 			posx = win->w.top;
+#endif
 			break;
 
 		case dss_rotation_180_degree:
+#ifndef CONFIG_ARCH_OMAP4
 			posx = (timing->x_res - win->w.width) -
 				win->w.left;
 			posy = (timing->y_res - win->w.height) -
 				win->w.top;
+#endif
 			break;
 
 		case dss_rotation_270_degree:
 			temp = outw;
 			outw = outh;
 			outh = temp;
+#ifndef CONFIG_ARCH_OMAP4
 			posy = win->w.left;
 			posx = (timing->x_res - win->w.height)
 				- win->w.top;
+#endif
 			break;
 
 		default:
-			posx = win->w.left;
-			posy = win->w.top;
 			break;
 		}
 
@@ -942,21 +953,21 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 	info.out_width = outw;
 	info.out_height = outh;
 	info.global_alpha = vout->win.global_alpha;
+#ifdef CONFIG_ARCH_OMAP4
+	info.rotation_type = OMAP_DSS_ROT_TILER;
+	info.screen_width = pixwidth;
+	info.rotation = vout->rotation;
+#else
 	if (!rotation_enabled(vout)) {
 		info.rotation = 0;
 		info.rotation_type = OMAP_DSS_ROT_DMA;
 		info.screen_width = pixwidth;
 	} else {
 		info.rotation = vout->rotation;
-#ifdef CONFIG_ARCH_OMAP4
-		info.rotation_type = OMAP_DSS_ROT_TILER;
-		info.screen_width = pixwidth;
-#else
 		info.rotation_type = OMAP_DSS_ROT_VRFB;
 		info.screen_width = 2048;
+		}
 #endif
-	}
-
 	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
 	"%s info.enable=%d info.addr=%x info.width=%d\n info.height=%d \
 	info.color_mode=%d info.rotation=%d info.mirror=%d\n \
@@ -1524,7 +1535,13 @@ static int omap_vout_release(struct file *file)
 		printk(KERN_WARNING VOUT_NAME "Unable to apply changes\n");
 
 	/* Free all buffers */
+
+#ifndef TILER_ALLOCATE_V4L2
 	omap_vout_free_allbuffers(vout);
+#else
+	omap_vout_free_tiler_buffers(vout);
+#endif
+
 	videobuf_mmap_free(q);
 
 	/* Even if apply changes fails we should continue
@@ -1692,14 +1709,17 @@ static int vidioc_s_fmt_vid_out(struct file *file, void *fh,
 
 	/* get the framebuffer parameters */
 
+#ifndef CONFIG_ARCH_OMAP4
 	if (rotate_90_or_270(vout)) {
 		vout->fbuf.fmt.height = timing->x_res;
 		vout->fbuf.fmt.width = timing->y_res;
 	} else {
+#endif
 		vout->fbuf.fmt.height = timing->y_res;
 		vout->fbuf.fmt.width = timing->x_res;
+#ifndef CONFIG_ARCH_OMAP4
 	}
-
+#endif
 	/* change to samller size is OK */
 
 	bpp = omap_vout_try_format(&f->fmt.pix);
@@ -2508,7 +2528,7 @@ static int __init omap_vout_setup_video_data(struct omap_vout_device *vout)
 
 	control[0].id = V4L2_CID_ROTATE;
 	control[0].value = 0;
-	vout->rotation = -1;
+	vout->rotation = 0;
 	vout->mirror = 0;
 	vout->vrfb_bpp = 2;
 
@@ -2919,8 +2939,10 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 	/* do_gettimeofday(&timevalue); TODO: uncomment this!! */
 
 	if (cur_display->type == OMAP_DISPLAY_TYPE_DPI) {
-		if (!(irqstatus & DISPC_IRQ_VSYNC))
+		if (!(irqstatus & DISPC_IRQ_VSYNC)) {
+			spin_unlock(&vout->vbq_lock);
 			return;
+		}
 		if (!vout->first_int && (vout->cur_frm != vout->next_frm)) {
 			vout->cur_frm->ts = timevalue;
 			vout->cur_frm->state = VIDEOBUF_DONE;
@@ -2956,9 +2978,8 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 		if (r)
 			printk(KERN_ERR VOUT_NAME "failed to change mode\n");
 	} else {
-#if 1
-	if (!(irqstatus & DISPC_IRQ_EVSYNC_ODD) &&
-		!(irqstatus & DISPC_IRQ_EVSYNC_EVEN)) {
+#if CONFIG_OMAP2_DSS_HDMI
+	if (!(irqstatus & DISPC_IRQ_EVSYNC_EVEN)) {
 			spin_unlock(&vout->vbq_lock);
 			return;
 		}

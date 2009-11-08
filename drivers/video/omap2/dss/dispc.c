@@ -2171,6 +2171,9 @@ static int _dispc_setup_plane(enum omap_plane plane,
 
 	u8 orientation = 0;
 	struct dmmViewOrientT orient;
+	unsigned long r, mir_x, mir_y;
+	unsigned long tiler_width, tiler_height;
+	void __iomem *reg = NULL;
 
 	if (paddr == 0)
 		return -EINVAL;
@@ -2309,28 +2312,32 @@ static int _dispc_setup_plane(enum omap_plane plane,
 						color_mode, &row_inc);
 
 		orientation = calc_tiler_orientation(rotation, (u8)mirror);
-#if 1
-		paddr &= ~(0x7 << 29);
-		paddr |= (orientation << 29);
-		if (puv_addr) {
-			puv_addr &= ~(0x7 << 29);
-			puv_addr |= (orientation << 29);
+		/* get rotated top-left coordinate
+				(if rotation is applied before mirroring) */
+		memset(&orient, 0, sizeof(orient));
+		tiler_rotate_view(&orient, rotation * 90);
+		orient.dmmXInvert ^= mir_x;
+		orient.dmmYInvert ^= mir_y;
+
+		printk(KERN_INFO "RYX = %d %d %d\n", orient.dmm90Rotate,
+				orient.dmmYInvert, orient.dmmXInvert);
+
+		if (orient.dmm90Rotate & 1) {
+			tiler_height = width;
+			tiler_width = height;
+		} else {
+			tiler_height = height;
+			tiler_width = width;
 		}
-#else
-			orient.dmm90Rotate = ((orientation & 0x04) ? 1 : 0);
-			orient.dmmYInvert = ((orientation & 0x02) ? 1 : 0);
-			orient.dmmXInvert = ((orientation & 0x01) ? 1 : 0);
+		printk(KERN_INFO "w, h = %d %d\n", tiler_width, tiler_height);
 
-			paddr = tiler_get_tiler_address(paddr, orient, width,
-							frame_height, 0, 0);
+		paddr = tiler_reorient_topleft(tiler_get_natural_addr(paddr),
+				orient, tiler_width, tiler_height);
 
-			if (puv_addr)
-				puv_addr = tiler_get_tiler_address(puv_addr,
-						orient, width, frame_height,
-						1, 0);
-#endif
-
-
+		if (puv_addr)
+			puv_addr = tiler_reorient_topleft(
+					tiler_get_natural_addr(puv_addr),
+					orient, tiler_width/2, tiler_height/2);
 			printk(KERN_INFO
 				"rotated addresses: 0x%0x, 0x%0x\n",
 						paddr, puv_addr);
