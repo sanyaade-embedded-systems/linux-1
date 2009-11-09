@@ -741,6 +741,7 @@ __init da850_init_mcbsp(struct davinci_mcbsp_platform_data *pdata)
 	return platform_device_register(pdev);
 }
 
+#define DA8XX_USB0_BASE		0x01e00000
 #ifdef CONFIG_USB_TI_CPPI41_DMA
 /* DMA block configuration */
 static const struct cppi41_tx_ch tx_ch_info[] = {
