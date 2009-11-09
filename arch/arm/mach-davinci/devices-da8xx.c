@@ -812,7 +812,7 @@ u8 dma_sched_table[] = {
 
 #define USB_CPPI41_NUM_CH 4
 
-int __init cppi41_init(void)
+int cppi41_init(void)
 {
 	u16 numch, order;
 	u8 q_mgr, dma_num = 0;
