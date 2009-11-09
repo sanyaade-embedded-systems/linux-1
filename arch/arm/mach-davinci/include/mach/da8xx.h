@@ -56,6 +56,8 @@ extern void __iomem *da8xx_syscfg_base;
 #define DA8XX_AEMIF_CS3_BASE	0x62000000
 #define DA8XX_AEMIF_CTL_BASE	0x68000000
 #define DA8XX_DDR2_CTL_BASE	0xb0000000
+#define DA850_SATA_BASE		0x01E18000
+#define DA850_SATA_CLK_PWRDN	0x01E2C018
 
 #define PINMUX0			0x00
 #define PINMUX1			0x04
@@ -101,6 +103,7 @@ int da850_init_mcbsp(struct davinci_mcbsp_platform_data *pdata);
 #ifdef CONFIG_USB_TI_CPPI41_DMA
 int cppi41_init(void);
 #endif
+int da8xx_register_sata(void);
 
 extern struct platform_device da8xx_serial_device;
 extern struct emac_platform_data da8xx_emac_pdata;
@@ -148,6 +151,7 @@ extern const short da850_spi1_pins[];
 extern const short da850_mcbsp0_pins[];
 extern const short da850_mcbsp1_pins[];
 extern const short da850_evm_usb11_pins[];
+extern const short da850_sata_pins[];
 
 int da8xx_pinmux_setup(const short pins[]);
 

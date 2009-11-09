@@ -369,6 +369,14 @@ static struct clk usb20_clk = {
 	.gpsc		= 1,
 };
 
+
+static struct clk sata_clk = {
+	.name		= "ahci",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA850_LPSC1_SATA,
+	.gpsc		= 1,
+};
+
 static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"ref",		&ref_clk),
 	CLK(NULL,		"pll0",		&pll0_clk),
@@ -415,6 +423,7 @@ static struct davinci_clk da850_clks[] = {
 	CLK("davinci-mcbsp.1",	NULL,		&mcbsp1_clk),
 	CLK(NULL,		"usb11",	&usb11_clk),
 	CLK(NULL,		"usb20",	&usb20_clk),
+	CLK(NULL,		"ahci",		&sata_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 
@@ -713,6 +722,10 @@ const short da850_mcbsp1_pins[] __initdata = {
 
 const short da850_evm_usb11_pins[] __initdata = {
 	DA850_GPIO2_4, DA850_GPIO6_13, -1
+};
+
+const short da850_sata_pins[] __initdata = {
+	-1
 };
 
 /* FIQ are pri 0-1; otherwise 2-7, with 7 lowest priority */

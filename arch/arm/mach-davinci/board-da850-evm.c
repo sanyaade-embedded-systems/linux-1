@@ -1001,7 +1001,12 @@ static __init void da850_evm_init(void)
 	da850_init_spi1(NULL, 1, da850_spi_board_info,
 			ARRAY_SIZE(da850_spi_board_info));
 
-	da850_evm_usb_init();	
+	da850_evm_usb_init();
+
+	ret = da8xx_register_sata();
+	if (ret)
+		pr_warning("da850_evm_init: SATA registration failed: %d\n",
+				ret);
 }
 
 #ifdef CONFIG_SERIAL_8250_CONSOLE
