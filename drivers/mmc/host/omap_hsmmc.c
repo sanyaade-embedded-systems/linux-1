@@ -599,6 +599,9 @@ static void mmc_omap_detect(struct work_struct *work)
 						mmc_carddetect_work);
 	struct omap_mmc_slot_data *slot = &mmc_slot(host);
 
+	/* Since EMMC is not hotpluggable no card detect is required */
+	if (host->id == OMAP_MMC2_DEVID)
+		return 1;
 	if (mmc_slot(host).card_detect)
 		host->carddetect = slot->card_detect(slot->card_detect_irq);
 	else

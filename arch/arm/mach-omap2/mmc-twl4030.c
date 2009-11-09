@@ -36,7 +36,15 @@ static u16 control_mmc1;
 static u16 control_mmc2;
 
 #define HSMMC_NAME_LEN	9
-#define REG_SIMCTRL	0x0C
+#define	PHOENIX_MMC_CTRL		0x0C	/* 0x0E */
+#define PHOENIX_CFG_INPUT_PUPD3		0x10    /* 0xF2 */
+#define MMC_GRP				0x18
+#define MMC_TRANS			0x19
+#define MMC_STATE			0x1a
+#define MMC_VOLTAGE			0x1b
+#define MMC_VDD_33_34			0x00200000
+#define MMC_VDD_32_33			0x00100000
+#define MMC_VDD_165_195			0x00000080
 
 static struct twl_mmc_controller {
 	struct omap_mmc_platform_data	*mmc;
@@ -76,10 +84,10 @@ static int twl_mmc_card_detect(int irq)
 		u8 read_reg;
 		unsigned res;
 		res = twl_i2c_read_u8(TWL6030_MODULE_PM_MISC,
-					&read_reg, REG_SIMCTRL);
+					&read_reg, PHOENIX_MMC_CTRL);
 		if (res < 0) {
 			printk(KERN_ERR"%s: i2c_read fail at %x \n",
-						__func__, REG_SIMCTRL);
+						__func__, PHOENIX_MMC_CTRL);
 			return -1;
 		} else {
 			return read_reg & 0x1;
@@ -112,15 +120,18 @@ static int twl_mmc_late_init(struct device *dev)
 	struct omap_mmc_platform_data *mmc = dev->platform_data;
 	int ret = 0;
 	int i;
+	u8 regs;
 
 	/* MMC/SD/SDIO doesn't require a card detect switch */
-	if (gpio_is_valid(mmc->slots[0].switch_pin)) {
-		ret = gpio_request(mmc->slots[0].switch_pin, "mmc_cd");
-		if (ret)
-			goto done;
-		ret = gpio_direction_input(mmc->slots[0].switch_pin);
-		if (ret)
-			goto err;
+	if (!cpu_is_omap44xx()) {
+		if (gpio_is_valid(mmc->slots[0].switch_pin)) {
+			ret = gpio_request(mmc->slots[0].switch_pin, "mmc_cd");
+			if (ret)
+				goto done;
+			ret = gpio_direction_input(mmc->slots[0].switch_pin);
+			if (ret)
+				goto err;
+		}
 	}
 
 	/* require at least main regulator */
@@ -157,15 +168,41 @@ static int twl_mmc_late_init(struct device *dev)
 			 * framework is fixed, we need a workaround like this
 			 * (which is safe for MMC, but not in general).
 			 */
-			if (regulator_is_enabled(hsmmc[i].vcc) > 0) {
-				regulator_enable(hsmmc[i].vcc);
-				regulator_disable(hsmmc[i].vcc);
-			}
-			if (hsmmc[i].vcc_aux) {
-				if (regulator_is_enabled(reg) > 0) {
-					regulator_enable(reg);
-					regulator_disable(reg);
+			if (!cpu_is_omap44xx()) {
+				if (regulator_is_enabled(hsmmc[i].vcc) > 0) {
+					regulator_enable(hsmmc[i].vcc);
+					regulator_disable(hsmmc[i].vcc);
 				}
+				if (hsmmc[i].vcc_aux) {
+					if (regulator_is_enabled(reg) > 0) {
+						regulator_enable(reg);
+						regulator_disable(reg);
+					}
+				}
+			}
+			if (i == 0) {
+				/* Enabling the LDO for MMC-1 */
+				regs = 0x01;
+				twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+								regs, MMC_GRP);
+				regs = 0x03;
+				twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_TRANS);
+				regs = 0x21;
+				twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_STATE);
+				regs = 0x15;
+				twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_VOLTAGE);
+
+				/* configure card-detect for MMC-1 */
+				msleep(200);
+				regs = 0x04;
+				twl_i2c_write_u8(TWL6030_MODULE_PM_MISC,
+							regs, PHOENIX_MMC_CTRL);
+				regs = 0x11;
+				twl_i2c_write_u8(TWL6030_MODULE_PM_MISC,
+						regs, PHOENIX_CFG_INPUT_PUPD3);
 			}
 
 			break;
@@ -226,6 +263,7 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 	int ret = 0;
 	struct twl_mmc_controller *c = &hsmmc[0];
 	struct omap_mmc_platform_data *mmc = dev->platform_data;
+	u8 regs;
 
 	/*
 	 * Assume we power both OMAP VMMC1 (for CMD, CLK, DAT0..3) and the
@@ -263,8 +301,40 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 						OMAP4_MMC1_PWRDWNZ);
 			omap_ctrl_writel(reg, control_pbias_offset);
 		}
+		/* Hack need to fix it */
+		if ((vdd == 0x12) || (vdd == 0x7)) {
+			regs = 0x01;
+			twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_GRP);
+			regs = 0x03;
+			twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_TRANS);
+			regs = 0x21;
+			twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_STATE);
+			regs = 0x15;
+			twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+						regs, MMC_VOLTAGE);
+		} else {
+			regs = 0x01;
+			twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_GRP);
+			regs = 0x03;
+			twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_TRANS);
+			regs = 0x00;
+			twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_STATE);
+			regs = 0x09;
+			twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_STATE);
+			regs = 0x15;
+			twl_i2c_write_u8(TWL6030_MODULE_PM_SLAVE_LDO,
+							regs, MMC_VOLTAGE);
+		}
 
-		ret = mmc_regulator_set_ocr(c->vcc, vdd);
+		if (!cpu_is_omap44xx())
+			ret = mmc_regulator_set_ocr(c->vcc, vdd);
 
 		/* 100ms delay required for PBIAS configuration */
 		msleep(100);
@@ -284,6 +354,7 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 				reg &= ~(OMAP4_MMC1_PBIASLITE_VMODE);
 			else
 				reg |= (OMAP4_MMC1_PBIASLITE_VMODE);
+
 			reg |= (OMAP4_MMC1_PBIASLITE_PWRDNZ |
 						OMAP4_MMC1_PWRDWNZ);
 			omap_ctrl_writel(reg, control_pbias_offset);
@@ -300,7 +371,8 @@ static int twl_mmc1_set_power(struct device *dev, int slot, int power_on,
 			omap_ctrl_writel(reg, control_pbias_offset);
 		}
 
-		ret = mmc_regulator_set_ocr(c->vcc, 0);
+		if (!cpu_is_omap44xx())
+			ret = mmc_regulator_set_ocr(c->vcc, 0);
 
 		/* 100ms delay required for PBIAS configuration */
 		msleep(100);
@@ -358,6 +430,7 @@ static int twl_mmc23_set_power(struct device *dev, int slot, int power_on, int v
 	 * chips/cards need an interface voltage rail too.
 	 */
 	if (power_on) {
+#if 0
 		/* only MMC2 supports a CLKIN */
 		if (mmc->slots[0].internal_clock) {
 			u32 reg;
@@ -379,6 +452,7 @@ static int twl_mmc23_set_power(struct device *dev, int slot, int power_on, int v
 			ret = regulator_disable(c->vcc_aux);
 		if (ret == 0)
 			ret = mmc_regulator_set_ocr(c->vcc, 0);
+#endif
 	}
 
 	return ret;
