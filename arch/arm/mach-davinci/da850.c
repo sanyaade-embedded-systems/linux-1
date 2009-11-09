@@ -355,6 +355,20 @@ static struct clk mcbsp1_clk = {
 	.gpsc		= 1,
 };
 
+static struct clk usb11_clk = {
+	.name		= "usb11",
+	.parent		= &pll0_sysclk4,
+	.lpsc		= DA8XX_LPSC1_USB11,
+	.gpsc		= 1,
+};
+
+static struct clk usb20_clk = {
+	.name		= "usb20",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC1_USB20,
+	.gpsc		= 1,
+};
+
 static struct davinci_clk da850_clks[] = {
 	CLK(NULL,		"ref",		&ref_clk),
 	CLK(NULL,		"pll0",		&pll0_clk),
@@ -399,6 +413,8 @@ static struct davinci_clk da850_clks[] = {
 	CLK("dm_spi.1",		NULL,		&spi1_clk),
 	CLK("davinci-mcbsp.0",	NULL,		&mcbsp0_clk),
 	CLK("davinci-mcbsp.1",	NULL,		&mcbsp1_clk),
+	CLK(NULL,		"usb11",	&usb11_clk),
+	CLK(NULL,		"usb20",	&usb20_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 
@@ -567,6 +583,8 @@ static const struct mux_config da850_pins[] = {
 	MUX_CFG(DA850, GPIO4_0,		10,	28,	15,	8,	false)
 	MUX_CFG(DA850, GPIO4_1,		10,	24,	15,	8,	false)
 	MUX_CFG(DA850, GPIO7_4,		17,	20,	15,	8,	false)
+	MUX_CFG(DA850, GPIO2_4,		6,	12,	15,	8,	false)
+	MUX_CFG(DA850, GPIO6_13,	13,	8,	15,	8,	false)
 	/* McBSP0 function */
 	MUX_CFG(DA850,	MCBSP0_CLKR,	2,	4,	15,	2,	false)
 	MUX_CFG(DA850,	MCBSP0_CLKX,	2,	8,	15,	2,	false)
@@ -691,6 +709,10 @@ const short da850_mcbsp1_pins[] __initdata = {
 	DA850_MCBSP1_CLKR, DA850_MCBSP1_CLKX, DA850_MCBSP1_FSR,
 	DA850_MCBSP1_FSX, DA850_MCBSP1_DR, DA850_MCBSP1_DX, DA850_MCBSP1_CLKS,
 	-1
+};
+
+const short da850_evm_usb11_pins[] __initdata = {
+	DA850_GPIO2_4, DA850_GPIO6_13, -1
 };
 
 /* FIQ are pri 0-1; otherwise 2-7, with 7 lowest priority */

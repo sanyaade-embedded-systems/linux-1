@@ -144,6 +144,7 @@ extern const short da850_nor_pins[];
 extern const short da850_spi1_pins[];
 extern const short da850_mcbsp0_pins[];
 extern const short da850_mcbsp1_pins[];
+extern const short da850_evm_usb11_pins[];
 
 int da8xx_pinmux_setup(const short pins[]);
 
