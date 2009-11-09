@@ -693,7 +693,9 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 	struct usb_gadget_driver *gadget_driver;
 
 	if (is_peripheral_active(cppi->musb)) {
+#ifdef CONFIG_USB_GADGET_MUSB_HDRC
 		gadget_driver = cppi->musb->gadget_driver;
+#endif
 		/* TODO: temporary fix for CDC/RNDIS which needs to be in
 		 * GENERIC_RNDIS mode. Without this RNDIS gadget taking
 		 * more then 2K ms for a 64 byte pings.
