@@ -37,7 +37,7 @@
 #include <mach/hdmi_lib.h>
 
 #define OMAP_HDMI_RATES	(SNDRV_PCM_RATE_48000)
-#define OMAP_HDMI_FORMATS (SNDRV_PCM_FMTBIT_S32_LE)
+#define OMAP_HDMI_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE)
 
 HDMI_AudioFormat_t audio_format_param;
 HDMI_AudioDma_t audio_dma_param;
@@ -101,13 +101,10 @@ static int omap_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
 	int stereo_channels, channel_location, format;
-	int err;
+	int err = 0;
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
-		omap_hdmi_dai_dma_params.data_type = OMAP_DMA_DATA_TYPE_S16;
-		break;
-
 	case SNDRV_PCM_FORMAT_S32_LE:
 		omap_hdmi_dai_dma_params.data_type = OMAP_DMA_DATA_TYPE_S32;
 		break;

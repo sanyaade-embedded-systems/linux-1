@@ -1139,6 +1139,7 @@ struct snd_soc_dai abe_dai[] = {
 		},
 		.ops = &abe_voice_dai_ops,
 	},
+#if 0
 	/* Digital Uplink: MM-UL */
 	{
 		.name = "Digital Uplink",
@@ -1161,6 +1162,7 @@ struct snd_soc_dai abe_dai[] = {
 			.formats = ABE_FORMATS,
 		},
 	},
+#endif
  };
 
 static int abe_twl6030_suspend(struct platform_device *pdev, pm_message_t state)
@@ -1318,7 +1320,7 @@ static int __devinit abe_twl6030_codec_probe(struct platform_device *pdev)
 		} else {
 			/* no interrupts at all */
 			twl6030_write_reg_cache(codec, TWL6030_REG_INTMR,
-						~TWL6030_ALLINT_MSK);
+						TWL6030_ALLINT_MSK);
 		}
 	}
 

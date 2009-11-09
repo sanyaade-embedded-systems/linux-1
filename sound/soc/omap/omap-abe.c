@@ -286,6 +286,7 @@ struct snd_soc_dai omap_abe_dai[] = {
 		.ops = &omap_abe_dai_ops,
 		.private_data = &mcpdm_data,
 	},
+#if 0
 	{
 		.name = "omap-abe-dig-ul",
 		.id = OMAP_ABE_DIG_UPLINK_DAI,
@@ -310,6 +311,7 @@ struct snd_soc_dai omap_abe_dai[] = {
 		.ops = &omap_abe_dai_ops,
 		.private_data = &mcpdm_data,
 	},
+#endif
 };
 EXPORT_SYMBOL_GPL(omap_abe_dai);
 
