@@ -810,23 +810,21 @@ static __init void da850_evm_usb_init(void)
 #endif
 
 	__raw_writel(cfgchip2, DA8XX_SYSCFG_VIRT(DA8XX_CFGCHIP2_REG));
-#if 0
-	/* USB_REFCLKIN is not used. */
-	ret = davinci_cfg_reg(DA830_USB0_DRVVBUS);
+
+	/*
+	 * TPS2065 switch @ 5V supplies 1 A (sustains 1.5 A),
+	 * with the power on to power good time of 3 ms.
+	 */
+	ret = da8xx_register_usb20(1000, 3);
 	if (ret)
-		pr_warning("%s: USB 2.0 PinMux setup failed: %d\n",
+		pr_warning("%s: USB 2.0 registration failed: %d\n",
 			   __func__, ret);
-	else {
-		/*
-		 * TPS2065 switch @ 5V supplies 1 A (sustains 1.5 A),
-		 * with the power on to power good time of 3 ms.
-		 */
-		ret = da8xx_register_usb20(1000, 3);
-		if (ret)
-			pr_warning("%s: USB 2.0 registration failed: %d\n",
-				   __func__, ret);
-	}
+
+#ifdef CONFIG_USB_TI_CPPI41_DMA
+	/* Initialize the platform specific CPPI infrastrucure */
+	cppi41_init();
 #endif
+
 	ret = da8xx_pinmux_setup(da850_evm_usb11_pins);
 	if (ret) {
 		pr_warning("%s: USB 1.1 PinMux setup failed: %d\n",

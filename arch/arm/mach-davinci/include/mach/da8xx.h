@@ -98,6 +98,9 @@ void da850_init_spi1(unsigned char *chip_sel, unsigned int num_sel,
 void da830_init_spi0(unsigned char *chip_sel, unsigned int num_sel,
 	struct spi_board_info *info, unsigned num_dev);
 int da850_init_mcbsp(struct davinci_mcbsp_platform_data *pdata);
+#ifdef CONFIG_USB_TI_CPPI41_DMA
+int cppi41_init(void);
+#endif
 
 extern struct platform_device da8xx_serial_device;
 extern struct emac_platform_data da8xx_emac_pdata;
