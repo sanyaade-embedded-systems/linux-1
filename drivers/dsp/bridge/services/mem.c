@@ -480,6 +480,8 @@ void MEM_Exit(void)
  */
 void MEM_FlushCache(void *pMemBuf, u32 cBytes, s32 FlushType)
 {
+	/* FIX ME: Remove completely after testing*/
+#if 0
 	DBC_Require(cRefs > 0);
 
 	switch (FlushType) {
@@ -506,6 +508,7 @@ void MEM_FlushCache(void *pMemBuf, u32 cBytes, s32 FlushType)
 			  "FlushMemType 0x%x\n", FlushType);
 	break;
 	}
+#endif
 
 }
 

@@ -766,8 +766,10 @@ DSP_STATUS PROC_EnumNodes(DSP_HPROCESSOR hProcessor, OUT DSP_HNODE *aNodeTab,
 DSP_STATUS PROC_FlushMemory(DSP_HPROCESSOR hProcessor, void *pMpuAddr,
 			   u32 ulSize, u32 ulFlags)
 {
-	/* Keep STATUS here for future additions to this function */
 	DSP_STATUS status = DSP_SOK;
+	/*FIX ME: Need to remove completely after testing*/
+#if 0
+	/* Keep STATUS here for future additions to this function */
 	enum DSP_FLUSHTYPE FlushMemType = PROC_WRITEBACK_INVALIDATE_MEM;
 	struct PROC_OBJECT *pProcObject = (struct PROC_OBJECT *)hProcessor;
 	DBC_Require(cRefs > 0);
@@ -788,6 +790,7 @@ DSP_STATUS PROC_FlushMemory(DSP_HPROCESSOR hProcessor, void *pMpuAddr,
 	}
 	GT_1trace(PROC_DebugMask, GT_ENTER, "Leaving PROC_FlushMemory [0x%x]",
 		 status);
+#endif
 	return status;
 }
 
@@ -802,6 +805,8 @@ DSP_STATUS PROC_InvalidateMemory(DSP_HPROCESSOR hProcessor, void *pMpuAddr,
 {
 	/* Keep STATUS here for future additions to this function */
 	DSP_STATUS status = DSP_SOK;
+	/*FIX ME: Need to remove completely after testing*/
+#if 0
 	enum DSP_FLUSHTYPE FlushMemType = PROC_INVALIDATE_MEM;
 	struct PROC_OBJECT *pProcObject = (struct PROC_OBJECT *)hProcessor;
 	DBC_Require(cRefs > 0);
@@ -820,6 +825,7 @@ DSP_STATUS PROC_InvalidateMemory(DSP_HPROCESSOR hProcessor, void *pMpuAddr,
 	}
 	GT_1trace(PROC_DebugMask, GT_ENTER,
 		 "Leaving PROC_InvalidateMemory [0x%x]", status);
+#endif
 	return status;
 }
 
