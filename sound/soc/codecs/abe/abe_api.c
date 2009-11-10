@@ -50,8 +50,8 @@ void abe_reset_hal(void)
 	abe_build_scheduler_table();
 
 	/* build the default uplink router configurations */
-#if 0
 	abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_AMIC, (abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_AMIC]);
+#if 0
 	abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_DMIC1, (abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_DMIC1]);
 	abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_DMIC2, (abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_DMIC2]);
 	abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_DMIC3, (abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_DMIC3]);

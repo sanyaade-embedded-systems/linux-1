@@ -58,7 +58,7 @@ static struct omap_mcpdm_link omap_mcpdm_links[] = {
 		.irq_mask = UP_IRQ_EMPTY | UP_IRQ_FULL,
 		.threshold = 1,
 		.format = PDMOUTFORMAT_LJUST,
-		.channels = PDM_UP_MASK | PDM_STATUS_MASK |
+		.channels = PDM_UP1_EN | PDM_UP2_EN |
 				PDM_DN_MASK | PDM_CMD_MASK,
 	},
 };
