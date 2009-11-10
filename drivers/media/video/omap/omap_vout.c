@@ -1548,9 +1548,12 @@ static int omap_vout_release(struct file *file)
 	   freeing allocated memeory */
 	if (vout->streaming) {
 		u32 mask = 0;
-
+#if 0
 		mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD;
+#else
+		mask = DISPC_IRQ_EVSYNC_EVEN | DISPC_IRQ_EVSYNC_ODD;
+#endif
 		omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 		vout->streaming = 0;
 
@@ -2272,8 +2275,12 @@ static int vidioc_streamon(struct file *file, void *fh,
 	uv_addr = (unsigned long) vout->queued_buf_uv_addr[vout->cur_frm->i];
 	/* OMAP4: check if cropped_offset is needed? */
 
+#if 0
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD;
+#else
+	mask = DISPC_IRQ_EVSYNC_EVEN | DISPC_IRQ_EVSYNC_ODD;
+#endif
 
 	omap_dispc_register_isr(omap_vout_isr, vout, mask);
 
@@ -2315,8 +2322,12 @@ static int vidioc_streamoff(struct file *file, void *fh,
 		return -EINVAL;
 
 		vout->streaming = 0;
+#if 0
 		mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD;
+#else
+		mask = DISPC_IRQ_EVSYNC_EVEN | DISPC_IRQ_EVSYNC_ODD;
+#endif
 
 		omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 
