@@ -3951,12 +3951,14 @@ void dsi_get_overlay_fifo_thresholds(enum omap_plane plane,
 #ifndef CONFIG_ARCH_OMAP4
 	*burst_size = OMAP_DSS_BURST_16x32;
 	burst_size_bytes = 16 * 32 / 8;
+	*fifo_high = fifo_size - burst_size_bytes;
+	*fifo_low = 0;
 #else
 	*burst_size = OMAP_DSS_BURST_4x32; /* OMAP4: same as 2x128*/
 	burst_size_bytes = 2 * 128 / 8;
+	*fifo_high = 1020; /* check SV comment*/
+	*fifo_low = 956;
 #endif
-	*fifo_high = fifo_size - burst_size_bytes;
-	*fifo_low = 0;
 }
 
 int dsi_init_display(struct omap_dss_device *dssdev)

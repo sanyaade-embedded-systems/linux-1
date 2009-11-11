@@ -141,10 +141,8 @@ static void __init sdp4430_display_init(void)
 
 static struct omap_dss_device sdp4430_lcd_device = {
         .name                   = "lcd",
-/*      .driver_name            = "sharp_ls_panel", */
         .driver_name            = "panel-taal",
         .type                   = OMAP_DISPLAY_TYPE_DSI,
-/*      .phy.dpi.data_lines     = 24, */
         .reset_gpio             = 78,
         .phy.dsi        =       {
                 .clk_lane               = 1,
@@ -194,20 +192,16 @@ static struct omap_dss_device *sdp4430_dss_devices[] = {
 #endif
 };
 static struct omap_dss_board_info sdp4430_dss_data = {
-       	.num_devices = ARRAY_SIZE(sdp4430_dss_devices),
-        .devices = sdp4430_dss_devices,
-#ifndef CONFIG_OMAP2_DSS_HDMI
-         .default_device = &sdp4430_lcd_device,
-#else
-	.default_device = &sdp4430_hdmi_device,
-#endif
+	.num_devices = ARRAY_SIZE(sdp4430_dss_devices),
+	.devices = sdp4430_dss_devices,
+	.default_device = &sdp4430_lcd_device,
 };
 static struct platform_device sdp4430_dss_device = {
-        .name           =       "omapdss",
-        .id             =       -1,
-        .dev            = {
-                        .platform_data = &sdp4430_dss_data,
-        },
+	.name           =       "omapdss",
+	.id             =       -1,
+	.dev            = {
+			.platform_data = &sdp4430_dss_data,
+	},
 };
 
 static struct regulator_consumer_supply sdp4430_vdda_dac_supply = {
