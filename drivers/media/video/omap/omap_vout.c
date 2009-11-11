@@ -76,6 +76,7 @@ MODULE_LICENSE("GPL");
 #define OMAP_VIDEO2 1
 #ifdef CONFIG_ARCH_OMAP4
 #define OMAP_VIDEO3	2
+#define OMAP4_MAX_OVERLAYS	4
 #endif
 
 
@@ -2717,12 +2718,17 @@ static int __init omap_vout_create_video_devices(struct platform_device *pdev)
 		vout->vid = k;
 		vid_dev->vouts[k] = vout;
 		vout->vid_dev = vid_dev;
-/* TODO: OMAP4: check?? */
+#ifndef CONFIG_ARCH_OMAP4
 		if (pdev->num_resources == 1)
 			vout->vid_info.overlays[0] = vid_dev->overlays[k + 2];
 		else
 			/* Else select video1 and video2 one by one. */
 			vout->vid_info.overlays[0] = vid_dev->overlays[k + 1];
+#else
+		vout->vid_info.overlays[0] =
+			vid_dev->overlays[
+				k + (OMAP4_MAX_OVERLAYS - pdev->num_resources)];
+#endif
 		vout->vid_info.num_overlays = 1;
 		vout->vid_info.id = k + 1;
 		vid_dev->num_videos++;
