@@ -35,6 +35,7 @@
 /* DSI Virtual channel. Hardcoded for now. */
 #define TCH 0
 
+#define DCS_RESET				0x01
 #define DCS_READ_NUM_ERRORS	0x05
 #define DCS_READ_POWER_MODE	0x0a
 #define DCS_READ_MADCTL		0x0b
@@ -154,6 +155,24 @@ static int taal_sleep_in(struct taal_data *td)
 	return 0;
 }
 
+static int taal_reset(struct taal_data *td)
+{
+	int r;
+
+//sv	hw_guard_wait(td);
+
+	r = taal_dcs_write_0(DCS_RESET);
+	if (r)
+		return r;
+
+//sv	hw_guard_start(td, 120);
+
+	msleep(5);
+
+	return 0;
+
+}
+
 static int taal_sleep_out(struct taal_data *td)
 {
 	int r;
@@ -238,7 +257,7 @@ static int taal_set_update_window(u16 x, u16 y, u16 w, u16 h)
 	u16 x2 = x + w - 1;
 	u16 y1 = y;
 	u16 y2 = y + h - 1;
-
+#if 0 //sv no need of column addr
 	u8 buf[5];
 	buf[0] = DCS_COLUMN_ADDR;
 	buf[1] = (x1 >> 8) & 0xff;
@@ -261,7 +280,9 @@ static int taal_set_update_window(u16 x, u16 y, u16 w, u16 h)
 		return r;
 
 	dsi_vc_send_bta_sync(TCH);
-
+#else
+	printk("set update window called but no need to tell the panel");
+#endif //sv no need of Colum addr
 	return r;
 }
 
@@ -611,31 +632,48 @@ static int taal_enable(struct omap_dss_device *dssdev)
 		if (r)
 			return r;
 	}
+#if 1 //Sequencing
+	mdelay(100);
+	r = taal_reset(td);
 
 	/* it seems we have to wait a bit until taal is ready */
 	msleep(5);
 
-#if 1
+
 	r = taal_sleep_out(td);
 	if (r)
 		return r;
 
+	mdelay(100);
+
+	taal_dcs_write_0(DCS_DISPLAY_ON);
+	
+//	{
+//	volatile int loop = 1;
+//	while(loop);
+//	}
+/*********** read does not work neither send bta ****************
 	r = taal_get_id(&id1, &id2, &id3);
 	if (r)
+		{
+		printk("Read fail");
 		return r;
-
-	/* on early revisions CABC is broken */
+		}
+	// on early revisions CABC is broken 
 	if (id2 == 0x00 || id2 == 0xff || id2 == 0x81)
 		td->cabc_broken = true;
 	taal_dcs_write_1(DCS_BRIGHTNESS, 0xff);
+*********** read does not work neither send bta ****************/
+	
 	taal_dcs_write_1(DCS_CTRL_DISPLAY, (1<<2) | (1<<5)); /* BL | BCTRL */
 
 	taal_dcs_write_1(DCS_PIXEL_FORMAT, 0x7); /* 24bit/pixel */
 
+/*********** read does not work neither send bta ****************
 	taal_set_addr_mode(td->rotate, td->mirror);
 	if (!td->cabc_broken)
 		taal_dcs_write_1(DCS_WRITE_CABC, td->cabc_mode);
-
+*********** read does not work neither send bta ****************/
 	taal_dcs_write_0(DCS_DISPLAY_ON);
 
 	td->enabled = 1;
@@ -648,6 +686,8 @@ static int taal_enable(struct omap_dss_device *dssdev)
 					"old Taal version, CABC disabled\n");
 		td->intro_printed = true;
 	}
+#else
+	printk(KERN_ERR "In Taal Enable");
 #endif
 	return 0;
 }

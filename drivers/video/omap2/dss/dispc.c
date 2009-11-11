@@ -48,9 +48,9 @@
        	#define DISPC_BASE              0x48050400
 #else
        	/* DSS */
-       	#define DSS_BASE      	      	0x48040000
+		#define DSS_BASE                0x58000000
        	/* DISPLAY CONTROLLER */
-       	#define DISPC_BASE           	0x48041000
+		#define DISPC_BASE              0x58001000
 #endif
 
 #define DISPC_SZ_REGS			SZ_1K
@@ -279,11 +279,12 @@ struct dispc_reg { u16 idx; };
 #endif
 
 /*#Enable sync after LCD comes up! SPC_IRQ_SYNC_LOST | \
+                                        DISPC_IRQ_VID1_FIFO_UNDERFLOW | \
+                                      DISPC_IRQ_VID2_FIFO_UNDERFLOW | \
+
 */
 #define DISPC_IRQ_MASK_ERROR            (DISPC_IRQ_GFX_FIFO_UNDERFLOW | \
 					 DISPC_IRQ_OCP_ERR | \
-					 DISPC_IRQ_VID1_FIFO_UNDERFLOW | \
-					 DISPC_IRQ_VID2_FIFO_UNDERFLOW | \
 					 DISPC_IRQ_SYNC_LOST_DIGIT)
 
 #define DISPC_MAX_NR_ISRS		8
@@ -328,6 +329,7 @@ static struct {
 
 	u32		ctx[DISPC_SZ_REGS / sizeof(u32)];
 } dispc;
+extern void __iomem  *dispc_base;
 
 static void _omap_dispc_set_irqs(void);
 
@@ -3344,7 +3346,7 @@ int dispc_calc_clock_div(bool is_tft, unsigned long req_pck,
 	if (cpu_is_omap34xx())
 		prate = clk_get_rate(clk_get_parent(dispc.dpll4_m4_ck));
 	else
-		prate = 0;
+		prate = 768000000; //sv dpll at 768, m5 = 5 so getting 153.6
 
 	if (req_pck == dispc.cache_req_pck &&
 			((cpu_is_omap34xx() && prate == dispc.cache_prate) ||
@@ -3726,7 +3728,9 @@ static void dispc_error_worker(struct work_struct *work)
 	spin_unlock_irqrestore(&dispc.irq_lock, flags);
 
 	if (errors & DISPC_IRQ_GFX_FIFO_UNDERFLOW) {
-		DSSERR("GFX_FIFO_UNDERFLOW, disabling GFX\n");
+/*SV //HS mode just report the error dont close the pipeline */		
+		DSSERR("GFX_FIFO_UNDERFLOW, but dont disable GFX\n");
+#if 0
 		for (i = 0; i < omap_dss_get_num_overlays(); ++i) {
 			struct omap_overlay *ovl;
 			ovl = omap_dss_get_overlay(i);
@@ -3741,6 +3745,7 @@ static void dispc_error_worker(struct work_struct *work)
 				break;
 			}
 		}
+#endif
 	}
 
 	if (errors & DISPC_IRQ_VID1_FIFO_UNDERFLOW) {
@@ -4072,7 +4077,7 @@ int dispc_init(void)
 
 	INIT_WORK(&dispc.error_work, dispc_error_worker);
 
-	dispc.base = ioremap(DISPC_BASE, DISPC_SZ_REGS);
+	dispc_base = dispc.base = ioremap(DISPC_BASE, DISPC_SZ_REGS);
 	if (!dispc.base) {
 		DSSERR("can't ioremap DISPC\n");
 		return -ENOMEM;
@@ -4167,4 +4172,9 @@ int dispc_setup_plane(enum omap_plane plane,
 	enable_clocks(0);
 
 	return r;
+}
+void test_out(bool enable)
+{
+	REG_FLD_MOD(DISPC_CONTROL, enable ? 1 : 0, 0, 0);
+	REG_FLD_MOD(DISPC_CONTROL, enable ? 1 : 0, 1, 1);
 }
