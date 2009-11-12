@@ -32,6 +32,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/kthread.h>
 #include <linux/wait.h>
+#include <linux/i2c/twl.h>
 
 #include <mach/board.h>
 #include <mach/display.h>
@@ -207,6 +208,10 @@ struct dsi_reg { u16 idx; };
 #define REGM_MAX ((1 << 11) - 1)
 #define REGM3_MAX (1 << 4)
 #define REGM4_MAX (1 << 4)
+#define PWM2ON				3
+#define PWM2OFF				4
+#define TOGGLE3				2
+#define PWDNSTATUS2			4
 
 #ifdef CONFIG_ARCH_OMAP4
 extern void __iomem  *dss_base;
@@ -4004,7 +4009,10 @@ int dsi_init_display(struct omap_dss_device *dssdev)
 
 int dsi_init(struct platform_device *pdev)
 {
+	u8 rd_reg;
+	int res, ret;
 	u32 rev;
+
 	struct sched_param param = {
 		.sched_priority = MAX_USER_RT_PRIO-1
 	};
@@ -4047,6 +4055,10 @@ int dsi_init(struct platform_device *pdev)
 		DSSERR("can't get VDDS_DSI regulator\n");
 		return PTR_ERR(dsi.vdds_dsi_reg);
 	}
+#else
+	ret = twl_i2c_write_u8(TWL6030_MODULE_PWM, 0xFF, PWM2ON);
+	ret = twl_i2c_write_u8(TWL6030_MODULE_PWM, 0x7F, PWM2OFF);
+	ret = twl_i2c_write_u8(TWL6030_MODULE_AUX, 0x30, TOGGLE3);
 #endif
 
 	enable_clocks(1);
