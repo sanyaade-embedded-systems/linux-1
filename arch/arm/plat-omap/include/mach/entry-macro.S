@@ -37,7 +37,7 @@
 		.endm
 
 		.macro	get_irqnr_and_base, irqnr, irqstat, base, tmp
-		ldr	\base, =IO_ADDRESS(OMAP_IH1_BASE)
+		ldr	\base, =0xE0000000
 		ldr	\irqnr, [\base, #IRQ_ITR_REG_OFFSET]
 		ldr	\tmp, [\base, #IRQ_MIR_REG_OFFSET]
 		mov	\irqstat, #0xffffffff
@@ -81,26 +81,24 @@
 		.macro  arch_ret_to_user, tmp1, tmp2
 		.endm
 
-		.macro	get_irqnr_and_base, irqnr, irqstat, base, tmp
-		ldr	\base, =OMAP2_VA_IC_BASE
-		ldr	\irqnr, [\base, #0x98] /* IRQ pending reg 1 */
-		cmp	\irqnr, #0x0
-		bne	2222f
-		ldr	\irqnr, [\base, #0xb8] /* IRQ pending reg 2 */
-		cmp	\irqnr, #0x0
-		bne	2222f
-		ldr	\irqnr, [\base, #0xd8] /* IRQ pending reg 3 */
-		cmp	\irqnr, #0x0
-#if defined(CONFIG_ARCH_NETRA)
-		bne	2222f
-		ldr	\irqnr, [\base, #0xf8] /* IRQ pending reg 4 */
-		cmp	\irqnr, #0x0
-#endif
-2222:
-		ldrne	\irqnr, [\base, #INTCPS_SIR_IRQ_OFFSET]
-		and	\irqnr, \irqnr, #ACTIVEIRQ_MASK /* Clear spurious bits */
+                .macro  get_irqnr_and_base, irqnr, irqstat, base, tmp
+                mov     \base, #0xE0000000
+                mov     r4, \base
+                ldr     \irqstat, [r4, #0x280] /* Status of Int 0-31 */
+                ldr     \irqnr, [r4, #0x80] /*get irq # from global priority idx reg*/
+                                and     \irqnr, \irqnr, #0xff     /* keep bits 0-9 */
+                cmp     \irqstat, #0x0
+                                bne     44f
+                ldr     \irqstat, [r4, #0x284] /* Status of Int 32-63*/
+                                cmp \irqstat, #0x0
+                                bne 44f
+                                ldr     \irqstat, [r4, #0x288] /* Status of Int 64-95*/
+                                cmp \irqstat, #0x0
+44:
+                .endm
 
-		.endm
+
+
 
 		.macro	irq_prio_table
 		.endm

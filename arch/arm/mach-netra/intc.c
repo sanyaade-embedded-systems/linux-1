@@ -413,8 +413,9 @@ void __init arch_init_irq( void )
 {
     int irq,chnl_num;
     unsigned int sys_to_chan_map[NUM_MAX_SYSTEM_INTS];
-    ENTER
-     	
+//    ENTER
+    avalanche_init_intc_hw();
+    printk("The arch intc base is %x \n", *avalanche_hw0_icregs); 	
     /* Assuming INTC is already out of reset */
  
     /* extern unsigned int sys_to_chan_map[NUM_MAX_SYSTEM_INTS];
@@ -451,5 +452,5 @@ void __init arch_init_irq( void )
     }
     /* set global enable */
     avalanche_hw0_icregs->icglber = INTC_SET_BIT_0;
-    EXIT	
+//    EXIT	
 }
