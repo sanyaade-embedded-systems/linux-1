@@ -1907,8 +1907,9 @@ musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
 #ifdef CONFIG_USB_MUSB_OTG
 		break;
 #else
-bad_config:
+		goto bad_config;
 #endif
+bad_config:
 	default:
 		dev_err(dev, "incompatible Kconfig role setting\n");
 		return -EINVAL;

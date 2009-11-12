@@ -794,7 +794,7 @@ static int musb_proc_read(char *page, char **start,
 		}
 	}
 
-	musb_platform_try_idle(musb, 0);
+	//musb_platform_try_idle(musb, 0);
 
 	spin_unlock_irqrestore(&musb->lock, flags);
 	*eof = 1;

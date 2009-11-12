@@ -203,8 +203,12 @@ static void otg_timer(unsigned long _musb)
 		 * NOTE: setting the session flag is _supposed_ to trigger
 		 * SRP but clearly it doesn't.
 		 */
-		musb_writeb(mregs, MUSB_DEVCTL, devctl | MUSB_DEVCTL_SESSION);
-		devctl = musb_readb(mregs, MUSB_DEVCTL);
+
+		if (!is_otg_enabled(musb)) {
+			musb_writeb(mregs, MUSB_DEVCTL, devctl |
+					MUSB_DEVCTL_SESSION);
+			devctl = musb_readb(mregs, MUSB_DEVCTL);
+		}
 		if (devctl & MUSB_DEVCTL_BDEVICE)
 			mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
 		else
@@ -376,11 +380,11 @@ static irqreturn_t da830_interrupt(int irq, void *hci)
 	/* EOI needs to be written for the IRQ to be re-asserted. */
 	if (ret == IRQ_HANDLED || status)
 		musb_writel(reg_base, USB_END_OF_INTR_REG, 0);
-
+#if 0
 	/* Poll for ID change */
 	if (is_otg_enabled(musb) && musb->xceiv->state == OTG_STATE_B_IDLE)
 		mod_timer(&otg_workaround, jiffies + POLL_SECONDS * HZ);
-
+#endif
 	spin_unlock_irqrestore(&musb->lock, flags);
 
 	if (ret != IRQ_HANDLED) {
