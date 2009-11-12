@@ -58,6 +58,10 @@ struct musb_hdrc_config {
 };
 
 struct musb_hdrc_platform_data {
+
+	/* MUSB instance */
+	u8		inst;
+
 	/* MUSB_HOST, MUSB_PERIPHERAL, or MUSB_OTG */
 	u8		mode;
 
@@ -81,6 +85,9 @@ struct musb_hdrc_platform_data {
 
 	/* Turn device clock on or off */
 	int		(*set_clock)(struct clk *clock, int is_on);
+
+	/* Configure the USB Phy */
+	int		(*phy_config)(struct device *dev, u8 mode, int is_on);
 
 	/* MUSB configuration-specific details */
 	struct musb_hdrc_config	*config;
