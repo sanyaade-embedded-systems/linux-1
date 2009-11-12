@@ -35,9 +35,9 @@
 #ifdef CONFIG_OMAP_32K_TIMER
 #define CLOCK_TICK_RATE		(CONFIG_OMAP_32K_TIMER_HZ)
 #else
-#define CLOCK_TICK_RATE		(HZ * 100000UL)
+#define CLOCK_TICK_RATE		33300000
 #endif
 
-extern struct sys_timer omap_timer;
+extern struct sys_timer timer16;
 
 #endif /* __ASM_ARCH_OMAP_TIMEX_H */
