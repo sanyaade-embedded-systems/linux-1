@@ -794,6 +794,15 @@ static struct musb_hdrc_platform_data usb_evm_data[] = {
 static __init void da850_evm_usb_init(void)
 {
 	int ret;
+	u32 cfgchip2;
+
+	/*
+	 * Setup the Ref. clock frequency for the EVM at 24 MHz.
+	 */
+	cfgchip2 = __raw_readl(DA8XX_SYSCFG_VIRT(DA8XX_CFGCHIP2_REG));
+	cfgchip2 &= ~CFGCHIP2_REFFREQ;
+	cfgchip2 |=  CFGCHIP2_REFFREQ_24MHZ;
+	__raw_writel(cfgchip2, DA8XX_SYSCFG_VIRT(DA8XX_CFGCHIP2_REG));
 
 	da8xx_usb20_configure(usb_evm_data, ARRAY_SIZE(usb_evm_data));
 
