@@ -23,6 +23,7 @@
 #include <mach/mmc.h>
 #include <mach/usb.h>
 #include <mach/mcbsp.h>
+#include <linux/usb/musb.h>
 
 extern void __iomem *da8xx_syscfg_base;
 
@@ -109,6 +110,7 @@ extern struct platform_device da8xx_serial_device;
 extern struct emac_platform_data da8xx_emac_pdata;
 extern struct da8xx_lcdc_platform_data sharp_lcd035q3dg01_pdata;
 extern struct da8xx_lcdc_platform_data sharp_lk043t1dg01_pdata;
+void da8xx_usb20_configure(struct musb_hdrc_platform_data *pdata, u8 num_inst);
 
 extern const short da830_emif25_pins[];
 extern const short da830_spi0_pins[];
