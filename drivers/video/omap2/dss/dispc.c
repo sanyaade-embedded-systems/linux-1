@@ -1688,6 +1688,151 @@ static void _dispc_set_scaling(enum omap_plane plane,
 	_dispc_set_vid_accu1(plane, 0, accu1);
 }
 
+static void _dispc_set_scaling_uv(enum omap_plane plane,
+		u16 orig_width, u16 orig_height,
+		u16 out_width, u16 out_height,
+		bool ilace, bool five_taps,
+		bool fieldmode, int color_mode)
+{
+	int i;
+	u32 h;
+	int fir_hinc;
+	int fir_vinc;
+	int check_h;
+	int check_v;
+
+	static const u32 coef_h2_greater[8] = {
+		0xEC86EC11,
+		0xFC7FE512,
+		0x1179E20F,
+		0x2F69E509,
+		0xEE5151EE,
+		0xE5692FFA,
+		0xE2791105,
+		0xE57FFC0D,
+	};
+
+
+	static const u32 coef_hv2_greater[8] = {
+		0xEC86EC11,
+		0xFC7FE50E,
+		0x1179E205,
+		0x2F69E5FA,
+		0xEE515102,
+		0xE5692F09,
+		0xE279110F,
+		0xE57FFC13,
+	};
+
+	static const u32 coef_v2_greater[8] = {
+		0x00001111,
+		0x00000E12,
+		0x0000050F,
+		0x0000FA09,
+		0x000002EE,
+		0x000009FA,
+		0x00000F05,
+		0x0000130D,
+	};
+
+
+	static const u32 coef_h2_lesser[8] = {
+		0x24382400,
+		0x28371FFE,
+		0x2C361BFB,
+		0x303516F9,
+		0x11343311,
+		0x1635300C,
+		0x1B362C08,
+		0x1F372804,
+	};
+
+	static const u32 coef_hv2_lesser[8] = {
+		0x24382400,
+		0x28391F04,
+		0x2D381B08,
+		0x3237170C,
+		0x123737F7,
+		0x173732F9,
+		0x1B382DFB,
+		0x1F3928FE,
+	};
+
+
+	static const u32 coef_v2_lesser[8] = {
+		0x00000000,
+		0x000004FE,
+		0x000008FB,
+		0x00000CF9,
+		0x0000F711,
+		0x0000F90C,
+		0x0000FB08,
+		0x0000FE04,
+	};
+
+	const u32 *h2_coef;
+	const u32 *hv2_coef;
+	u32 *hv2_coef_mod = NULL;
+	const u32 *v2_coef;
+
+	check_h = (2 * out_width > orig_width) ? 1 : 0;
+	check_v = (2 * out_height > orig_height) ? 1 : 0;
+
+	if (check_h)
+		h2_coef = coef_h2_lesser;
+	else
+		h2_coef = coef_h2_greater;
+
+	if (check_v) {
+		v2_coef = coef_v2_lesser;
+		hv2_coef = coef_hv2_lesser;
+
+		if (check_h)
+			hv2_coef_mod = NULL;
+		else
+			hv2_coef_mod = coef_hv2_greater;
+	} else {
+		v2_coef = coef_v2_greater;
+		hv2_coef = coef_hv2_greater;
+		if (check_h)
+			hv2_coef_mod = coef_hv2_lesser;
+		else
+			hv2_coef_mod = NULL;
+	}
+
+	for (i = 0; i < 8; i++) {
+		u32 h, v, hv;
+		h = h2_coef[i];
+		v = v2_coef[i];
+		hv = hv2_coef[i];
+
+		if (hv2_coef_mod) {
+			hv &= 0xffffff00;
+			hv |= (hv2_coef_mod[i] & 0xff);
+		}
+		_dispc_write_firh2_reg(plane, i, h);
+		_dispc_write_firhv2_reg(plane, i, hv);
+		_dispc_write_firv2_reg(plane, i, v);
+	}
+
+	if (!orig_width || orig_width == out_width)
+		fir_hinc = 0;
+	else
+		fir_hinc = 1024 * orig_width / out_width;
+
+	if (!orig_height || orig_height == out_height)
+		fir_vinc = 0;
+	else
+		if (color_mode == OMAP_DSS_COLOR_NV12)
+			fir_vinc = 1024 * orig_height / out_height;
+		else
+			fir_vinc = 0;
+
+	_dispc_set_fir2(plane, fir_hinc, fir_vinc);
+	_dispc_set_vid_accu2_0(plane, 0, 0);
+	_dispc_set_vid_accu2_1(plane, 0, 0);
+}
+
 static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 		bool mirroring, enum omap_color_mode color_mode)
 {
@@ -2389,6 +2534,16 @@ static int _dispc_setup_plane(enum omap_plane plane,
 		_dispc_set_scaling(plane, width, height,
 				   out_width, out_height,
 				   ilace, five_taps, fieldmode);
+#ifdef CONFIG_ARCH_OMAP4
+		if (OMAP_DSS_COLOR_YUV2 == color_mode ||
+			OMAP_DSS_COLOR_NV12 == color_mode ||
+			OMAP_DSS_COLOR_UYVY == color_mode) {
+
+			_dispc_set_scaling_uv(plane, width, height,
+				out_width, out_height, ilace,
+				five_taps, fieldmode, color_mode);
+		}
+#endif
 		_dispc_set_vid_size(plane, out_width, out_height);
 		_dispc_set_vid_color_conv(plane, cconv);
 	}
