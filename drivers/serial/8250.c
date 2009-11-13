@@ -193,7 +193,11 @@ static const struct serial8250_config uart_config[] = {
 	[PORT_16550A] = {
 		.name		= "16550A",
 		.fifo_size	= 16,
+#ifdef CONFIG_ARCH_NETRA
+		.tx_loadsz	= 1,
+#else
 		.tx_loadsz	= 16,
+#endif
 		.fcr		= UART_FCR_ENABLE_FIFO | UART_FCR_R_TRIG_10,
 		.flags		= UART_CAP_FIFO,
 	},
