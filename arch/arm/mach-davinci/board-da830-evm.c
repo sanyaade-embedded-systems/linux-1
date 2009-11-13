@@ -369,6 +369,38 @@ static struct platform_device da830_evm_nand_device = {
 	.resource	= da830_evm_nand_resources,
 };
 
+#define DA8XX_AEMIF_CE3CFG_OFFSET	0x14
+
+static void da830_evm_cfg_emif(void)
+{
+	void __iomem *aemif_addr;
+	u32 ce3cfg;
+
+	aemif_addr = ioremap(DA8XX_AEMIF_CTL_BASE, SZ_32K);
+
+	/*
+	 * Following timing values have been taken from
+	 * http://support.spectrumdigital.com/boards/dskda830/revc/files/
+	 * dskda830_dsp.gel
+	 */
+	ce3cfg = 0
+		| (0 << 31)	/* selectStrobe */
+		| (0 << 30)	/* extWait */
+		| (0 << 26)	/* writeSetup */
+		| (3 << 20)	/* writeStrobe  30 ns */
+		| (0 << 17)	/* writeHold */
+		| (0 << 13)	/* readSetup */
+		| (7 << 7)	/* readStrobe   70 ns */
+		| (0 << 4)	/* readHold */
+		| (2 << 2)	/* turnAround	20 ns*/
+		| (0 << 0)	/* asyncSize    8-bit bus */
+		;
+
+	writel(ce3cfg, aemif_addr + DA8XX_AEMIF_CE3CFG_OFFSET);
+
+	iounmap(aemif_addr);
+}
+
 static inline void da830_evm_init_nand(int mux_mode)
 {
 	int ret;
@@ -384,6 +416,8 @@ static inline void da830_evm_init_nand(int mux_mode)
 	if (ret)
 		pr_warning("da830_evm_init: emif25 mux setup failed: %d\n",
 				ret);
+
+	da830_evm_cfg_emif();
 
 	ret = platform_device_register(&da830_evm_nand_device);
 	if (ret)

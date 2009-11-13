@@ -171,6 +171,7 @@ static struct platform_device *da850_evm_devices[] __initdata = {
 };
 
 #define DA8XX_AEMIF_CE2CFG_OFFSET	0x10
+#define DA8XX_AEMIF_CE3CFG_OFFSET	0x14
 #define DA8XX_AEMIF_ASIZE_16BIT		0x1
 
 static void __init da850_evm_init_nor(void)
@@ -183,6 +184,31 @@ static void __init da850_evm_init_nor(void)
 	writel(readl(aemif_addr + DA8XX_AEMIF_CE2CFG_OFFSET) |
 		DA8XX_AEMIF_ASIZE_16BIT,
 		aemif_addr + DA8XX_AEMIF_CE2CFG_OFFSET);
+
+	iounmap(aemif_addr);
+}
+
+static void __init da850_evm_init_nand(void)
+{
+	void __iomem *aemif_addr;
+	u32 ce3cfg;
+
+	aemif_addr = ioremap(DA8XX_AEMIF_CTL_BASE, SZ_32K);
+
+	ce3cfg = 0
+		| (0 << 31)	/* selectStrobe */
+		| (0 << 30)	/* extWait */
+		| (0 << 26)	/* writeSetup */
+		| (3 << 20)	/* writeStrobe  30 ns */
+		| (3 << 17)	/* writeHold    30 ns */
+		| (2 << 13)	/* readSetup    20 ns */
+		| (4 << 7)	/* readStrobe   40 ns */
+		| (0 << 4)	/* readHold */
+		| (0 << 2)	/* turnAround */
+		| (0 << 0)	/* asyncSize    8-bit bus */
+		;
+
+	writel(ce3cfg, aemif_addr + DA8XX_AEMIF_CE3CFG_OFFSET);
 
 	iounmap(aemif_addr);
 }
@@ -272,6 +298,8 @@ static __init void da850_evm_setup_nor_nand(void)
 		if (ret)
 			pr_warning("da850_evm_init: nand mux setup failed: "
 					"%d\n", ret);
+
+		da850_evm_init_nand();
 
 		ret = da8xx_pinmux_setup(da850_nor_pins);
 		if (ret)
