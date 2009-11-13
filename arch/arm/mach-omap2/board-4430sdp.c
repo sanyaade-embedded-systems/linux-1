@@ -185,12 +185,23 @@ static void __init sdp4430_display_init(void)
 }
 
 static struct omap_dss_device sdp4430_lcd_device = {
-		.name			=	"sdp4430_lcd",
-		.driver_name		=	"sdp4430_panel",
-		.type			=	OMAP_DISPLAY_TYPE_DPI,
-		.phy.dpi.data_lines	=	16,
-		.platform_enable	=	sdp4430_panel_enable_lcd,
-		.platform_disable	=	sdp4430_panel_disable_lcd,
+	.name		=	"lcd",
+	.driver_name	=	"panel-taal",
+	.type		=	OMAP_DISPLAY_TYPE_DSI,
+	.reset_gpio	=	78,
+	.phy.dsi		=	{
+	.clk_lane		=	1,
+	.clk_pol		=	0,
+	.data1_lane	=	2,
+	.data1_pol	=	0,
+	.data2_lane	=	3,
+	.data2_pol	=	0,
+	.lp_clk_hz	=	10000000,
+	.ddr_clk_hz	=	150000000,
+
+	.ext_te		=	false,
+	.ext_te_gpio	=	86,
+	}
 };
 
 static int sdp4430_panel_enable_hdmi(struct omap_dss_device *dssdev)
