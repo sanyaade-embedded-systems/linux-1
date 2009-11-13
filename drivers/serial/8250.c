@@ -1040,6 +1040,7 @@ static void autoconfig_16550a(struct uart_8250_port *up)
 		 * without disturbing the current state of the other bits.
 		 */
 		serial_outp(up, UART_IER, iersave | UART_IER_UUE);
+#ifndef CONFIG_ARCH_NETRA
 		if (serial_in(up, UART_IER) & UART_IER_UUE) {
 			/*
 			 * It's an Xscale.
@@ -1050,6 +1051,7 @@ static void autoconfig_16550a(struct uart_8250_port *up)
 			up->capabilities |= UART_CAP_UUE;
 			return;
 		}
+#endif
 	} else {
 		/*
 		 * If we got here we couldn't force the IER_UUE bit to 0.
