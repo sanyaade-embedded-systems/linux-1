@@ -196,6 +196,11 @@ void abe_build_scheduler_table()
 		aUplinkMuxing[i] = ZERO_labelID;
 
 	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, D_aUplinkRouting_ADDR, (abe_uint32 *)aUplinkMuxing, sizeof(aUplinkMuxing));
+	/* Initialization of SMEM */
+	for (i = 0; i < n; i++)
+		aUplinkMuxing[i] = 0;
+	for (i = 0; i < 3; i++)
+		abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_SMEM, (S_AMIC_96_48_data_ADDR + i) * 8, (abe_uint32 *)aUplinkMuxing, 8);
 }
 
 /*
