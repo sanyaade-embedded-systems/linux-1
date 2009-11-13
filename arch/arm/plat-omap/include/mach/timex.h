@@ -38,6 +38,4 @@
 #define CLOCK_TICK_RATE		33300000
 #endif
 
-extern struct sys_timer timer16;
-
 #endif /* __ASM_ARCH_OMAP_TIMEX_H */

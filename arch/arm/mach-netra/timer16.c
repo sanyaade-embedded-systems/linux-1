@@ -232,9 +232,7 @@ void PAL_sysTimer16Ctrl(u32 base_address, PAL_SYS_TIMER16_CTRL_T status)
 static irqreturn_t
 puma_timer0_interrupt(int irq, void *dev_id)
 {
-	write_seqlock(&xtime_lock);
 	timer_tick();
-	write_sequnlock(&xtime_lock);
 	return IRQ_HANDLED;
 }
 
