@@ -21,6 +21,13 @@
 
 #define __NEWCODE__
 
+#define __KERN_TO_ALLOC__
+
+#ifndef __KERN_TO_ALLOC__
+#define BASE_MEM_ADDR 0x98000000
+static unsigned long page_addr;
+#endif
+
 #ifdef CHECK_STACK
 #define lajosdump(x) printk(KERN_NOTICE "%s::%s():%d: %s=%p\n",\
 					__FILE__, __func__, __LINE__, #x, x);
@@ -101,12 +108,17 @@ void dmm_phys_page_rep_refil(void)
 				(unsigned long *)__get_free_page(
 							GFP_KERNEL | GFP_DMA);
 #else
+#ifdef __KERN_TO_ALLOC__
 			struct page *page = NULL;
 
 			page = (struct page *)alloc_page(GFP_KERNEL | GFP_DMA);
 			tmpPgNode->physPgPtr =
 					(unsigned long *)page_to_phys(page);
 			tmpPgNode->page_addr = page;
+#else
+			tmpPgNode->physPgPtr = (unsigned long *)page_addr;
+			page_addr += 0x1000;
+#endif
 #endif
 
 			/* add to end */
@@ -151,9 +163,11 @@ enum errorCodeT dmm_phys_page_rep_init(void)
 	freePagesStack = NULL;
 	usedPagesStack = NULL;
 
-
-
 	freePageCnt = 0;
+
+#ifndef __KERN_TO_ALLOC__
+	page_addr = BASE_MEM_ADDR;
+#endif
 
 	dmm_phys_page_rep_refil();
 
@@ -188,7 +202,10 @@ enum errorCodeT dmm_phys_page_rep_deinit(void)
 		free_page((unsigned long)usedPagesStack->physPgPtr);
 		kfree(usedPagesStack);
 #else
+#ifdef __KERN_TO_ALLOC__
 		__free_page(usedPagesStack->page_addr);
+#else
+#endif
 		kfree(usedPagesStack);
 #endif
 		usedPagesStack = tmpPgNode;
@@ -200,7 +217,10 @@ enum errorCodeT dmm_phys_page_rep_deinit(void)
 		free_page((unsigned long)freePagesStack->physPgPtr);
 		kfree(freePagesStack);
 #else
+#ifdef __KERN_TO_ALLOC__
 		__free_page(freePagesStack->page_addr);
+#else
+#endif
 		kfree(freePagesStack);
 #endif
 		freePagesStack = tmpPgNode;
@@ -329,7 +349,10 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 						freePagesStack->physPgPtr);
 				kfree(freePagesStack);
 #else
+#ifdef __KERN_TO_ALLOC__
 				__free_page(freePagesStack->page_addr);
+#else
+#endif
 				kfree(freePagesStack);
 #endif
 				freePagesStack = iterPgNode;

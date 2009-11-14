@@ -89,7 +89,6 @@ static void tiler_or_set() /* (struct tiler_or *or, char id) */
 			((((unsigned long)0) << field_pos) & bit_field);
 	__raw_writel(0x88888888, reg); /* __raw_writel(new_val, reg); */
 
-
 	reg = (void __iomem *)(
 			(unsigned long)dmm_base | (unsigned long)TILER_OR__0);
 	reg_val = __raw_readl(reg);
