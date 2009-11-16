@@ -87,11 +87,11 @@ static void pat_ctrl_set(struct pat_ctrl *ctrl, char id)
 
 	/* set PAT_CTRL register */
 	/* TODO: casting as unsigned long */
+
 	reg = (void __iomem *)(
 			(unsigned long)dmm_virt_base_addr |
-						(unsigned long)PAT_CTRL__0);
+			(unsigned long)PAT_CTRL__0);
 	reg_val = __raw_readl(reg);
-	regdump("PAT_CTRL__0", reg_val);
 
 	bit_field = BITFIELD(31, 28);
 	field_pos = 28;
@@ -128,10 +128,7 @@ static void pat_ctrl_set(struct pat_ctrl *ctrl, char id)
 		((((unsigned long)ctrl->start) << field_pos) & bit_field);
 	__raw_writel(new_val, reg);
 
-	reg = (void __iomem *)(
-		(unsigned long)dmm_virt_base_addr | (unsigned long)PAT_CTRL__0);
-	reg_val = __raw_readl(reg);
-	regdump("PAT_CTRL__0", reg_val);
+	dsb();
 }
 #endif
 
@@ -328,6 +325,21 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 				   ((((unsigned long)patDesc) << fp) & f);
 			__raw_writel(writeval, reg);
 		} else if (refillType == MANUAL) {
+			/* check that the PAT_STATUS register has not reported
+			 * an error.
+			 */
+			reg = (void __iomem *)(
+					(unsigned long)dmm_virt_base_addr |
+						(unsigned long)PAT_STATUS__0);
+			regval = __raw_readl(reg);
+			if ((regval & 0xFC00) != 0) {
+				while (1) {
+					printk(KERN_ERR "%s()::%d: ERROR\n",
+						__func__, __LINE__);
+				}
+			}
+
+			/* set DESC register to NULL */
 			reg = (void __iomem *)
 				((unsigned long)dmm_virt_base_addr |
 				(0x500ul + 0x0));
@@ -370,18 +382,14 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 				   ((((char)patDesc->area.x0) << fp) & f);
 			__raw_writel(writeval, reg);
 
-			/* check the status reg after setting the area */
-			reg = (void __iomem *)(
-					(unsigned long)dmm_virt_base_addr |
-						(unsigned long)PAT_STATUS__0);
-			regdump("PAT_STATUS__0", __raw_readl(reg));
+			printk(KERN_NOTICE
+				"\nx0=(%d),y0=(%d),x1=(%d),y1=(%d)\n",
+				(char)patDesc->area.x0,
+				(char)patDesc->area.y0,
+				(char)patDesc->area.x1,
+				(char)patDesc->area.y1);
+			dsb();
 
-			regval = 0x0;
-			while ((regval & 0x1) != 0x1) {
-				regval = __raw_readl(reg);
-				regdump("PAT_STATUS__0", regval);
-			}
-			regdump("PAT_STATUS__0", regval);
 #ifndef __NEWCODE__
 			/* Apply 4 bit lft shft to counter the 4 bit rt shft */
 			reg = (void __iomem *)
@@ -421,26 +429,26 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 				   (((patDesc->ctrl.start) << fp) & f);
 			__raw_writel(writeval, reg);
 #else
+			/* First, clear the PAT_IRQSTATUS register */
 			reg = (void __iomem *)(
 					(unsigned long)dmm_virt_base_addr |
-						(unsigned long)PAT_STATUS__0);
-			regdump("PAT_STATUS__0", __raw_readl(reg));
+					(unsigned long)PAT_IRQSTATUS);
+			__raw_writel(0xFFFFFFFF, reg);
+			dsb();
 
 			reg = (void __iomem *)(
 					(unsigned long)dmm_virt_base_addr |
 					(unsigned long)PAT_IRQSTATUS_RAW);
-			regdump("PAT_IRQSTATUS_RAW", __raw_readl(reg));
+			regval = 0xFFFFFFFF;
+			while (regval != 0x0) {
+				regval = __raw_readl(reg);
+				regdump("PAT_IRQSTATUS_RAW", regval);
+			}
 
-			reg = (void __iomem *)(
-					(unsigned long)dmm_virt_base_addr |
-						(unsigned long)PAT_IRQSTATUS);
-			regdump("PAT_IRQSTATUS", __raw_readl(reg));
-
-			/* read and print data register */
+			/* fill data register */
 			reg = (void __iomem *)
 			((unsigned long)dmm_virt_base_addr | (0x500ul + 0xc));
 			regval = __raw_readl(reg);
-			regdump("PAT_DATA__0", regval);
 
 			/* Apply 4 bit lft shft to counter the 4 bit rt shft */
 			f  = BITFIELD(31, 4);
@@ -448,10 +456,7 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 			writeval = (regval & (~(f))) | ((((unsigned long)
 					(patDesc->data >> 4)) << fp) & f);
 			__raw_writel(writeval, reg);
-
-			/* read and print data register again */
-			reg = (void __iomem *)
-			((unsigned long)dmm_virt_base_addr | (0x500ul + 0xc));
+			dsb();
 
 			/* read back PAT_DATA__0 to see if it got set */
 			regval = 0x0;
@@ -459,7 +464,6 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 				regval = __raw_readl(reg);
 				regdump("PAT_DATA__0", regval);
 			}
-			regdump("PAT_DATA__0", regval);
 
 			struct pat_desc pat_desc = {0};
 			pat_desc.ctrl.start = 1;
@@ -469,45 +473,16 @@ enum errorCodeT dmm_pat_area_refill(struct PATDescrT *patDesc,
 			pat_desc.ctrl.initiator = 0;
 			pat_ctrl_set(&pat_desc.ctrl, 0);
 
-			reg = (void __iomem *)(
-					(unsigned long)dmm_virt_base_addr |
-						(unsigned long)PAT_STATUS__0);
-
-			regval = 0x0;
-			while (regval != 0xB) {
-				regval = __raw_readl(reg);
-				regdump("PAT_STATUS__0", regval);
-			}
-			regdump("PAT_STATUS__0", __raw_readl(reg));
-
+			/* Now, check if PAT_IRQSTATUS_RAW has been set after
+			the PAT has been refilled */
 			reg = (void __iomem *)(
 					(unsigned long)dmm_virt_base_addr |
 					(unsigned long)PAT_IRQSTATUS_RAW);
-
-			/* check if the refill was successful */
 			regval = 0x0;
-			while (regval != 0x3) {
+			while ((regval & 0x3) != 0x3) {
 				regval = __raw_readl(reg);
 				regdump("PAT_IRQSTATUS_RAW", regval);
 			}
-			regdump("PAT_IRQSTATUS_RAW", __raw_readl(reg));
-
-			/* First, clear the PAT_IRQSTATUS_RAW register */
-			reg = (void __iomem *)(
-					(unsigned long)dmm_virt_base_addr |
-						(unsigned long)PAT_IRQSTATUS);
-			__raw_writel(0xFFFFFFFF, reg);
-
-			/* Now, check if PAT_IRQSTATUS_RAW has been cleared */
-			reg = (void __iomem *)(
-					(unsigned long)dmm_virt_base_addr |
-					(unsigned long)PAT_IRQSTATUS_RAW);
-			regval = 0xFFFFFFFF;
-			while (regval != 0x0) {
-				regval = __raw_readl(reg);
-				regdump("PAT_IRQSTATUS_RAW", regval);
-			}
-			regdump("PAT_IRQSTATUS_RAW", __raw_readl(reg));
 
 			/* pat_config_set(); */
 #endif
