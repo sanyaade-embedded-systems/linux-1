@@ -287,7 +287,9 @@ DBG_Trace(DBG_LEVEL6, "WMD_DEH_Notify: DSP_MMUFAULT, "
 			
 #else
 			 NotifyStatus = notify_sendevent(handle,/*PROC_TESLA*/0,
-                                 /*eventNo*/4,MBX_DEH_CLASS | MBX_DEH_EMMU,true);
+				/*eventNo*/((NOTIFY_SYSTEM_KEY<<16) |
+				NOTIFY_TESLA_EVENTNUMBER),
+				MBX_DEH_CLASS | MBX_DEH_EMMU, true);
 #endif
 			
 					 
