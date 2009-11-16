@@ -21,6 +21,10 @@
 
 #define __NEWCODE__
 
+#ifdef __NEWCODE__
+#include <asm/cacheflush.h>
+#endif
+
 #define __KERN_TO_ALLOC__
 
 #ifndef __KERN_TO_ALLOC__
@@ -115,6 +119,10 @@ void dmm_phys_page_rep_refil(void)
 			tmpPgNode->physPgPtr =
 					(unsigned long *)page_to_phys(page);
 			tmpPgNode->page_addr = page;
+			dmac_flush_range((void *)page_address(page),
+					(void *)page_address(page) + 0x1000);
+			outer_flush_range((unsigned long)tmpPgNode->physPgPtr,
+				(unsigned long)tmpPgNode->physPgPtr +  0x1000);
 #else
 			tmpPgNode->physPgPtr = (unsigned long *)page_addr;
 			page_addr += 0x1000;
