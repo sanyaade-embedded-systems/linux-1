@@ -781,6 +781,8 @@ dmm_mmap(struct file *filp, struct vm_area_struct *vma)
 	int i = 0, j = 0, k = 0, m = 0, p = 0;
 	int bpp = 1;
 
+	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+
 	tilerdump(__LINE__);
 	ret = tiler_get_buf_info(lsthd, &b, vma->vm_pgoff << PAGE_SHIFT);
 	if (ret != 0) {
