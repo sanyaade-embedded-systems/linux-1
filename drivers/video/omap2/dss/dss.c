@@ -289,6 +289,9 @@ void dss_set_dac_pwrdn_bgz(bool enable)
 void dss_switch_tv_hdmi(int hdmi)
 {
 	REG_FLD_MOD(DSS_CONTROL, hdmi, 15, 15);	/* 0x1 for HDMI, 0x0 TV */
+
+	if (hdmi)
+		REG_FLD_MOD(DSS_CONTROL, 0, 9, 8);
 }
 
 int dss_init(bool skip_init)
@@ -303,7 +306,6 @@ int dss_init(bool skip_init)
 		r = -ENOMEM;
 		goto fail0;
 	}
-	test();
 
 	if (!skip_init) {
 		/* disable LCD and DIGIT output. This seems to fix the synclost
@@ -330,11 +332,6 @@ int dss_init(bool skip_init)
 	/* Select DPLL */
 	REG_FLD_MOD(DSS_CONTROL, 0, 0, 0);
 
-#ifdef CONFIG_OMAP2_DSS_VENC
-	REG_FLD_MOD(DSS_CONTROL, 1, 4, 4);	/* venc dac demen */
-	REG_FLD_MOD(DSS_CONTROL, 1, 3, 3);	/* venc clock 4x enable */
-	REG_FLD_MOD(DSS_CONTROL, 0, 2, 2);	/* venc clock mode = normal */
-#endif
 
 #ifndef CONFIG_ARCH_OMAP4
 	r = request_irq(INT_24XX_DSS_IRQ,
@@ -358,181 +355,7 @@ int dss_init(bool skip_init)
 	printk(KERN_INFO "OMAP DSS rev %d.%d\n",
 			FLD_GET(rev, 7, 4), FLD_GET(rev, 3, 0));
 
-#if 0
-	 gpio_request(102,"gpio102");
-	 
-	 gpio_direction_output(102, 1);
-	 mdelay(10);
-	 gpio_set_value(102,0 );
-	 mdelay(10);
-	 gpio_set_value(102,1 );	 
-	 mdelay(10);
-#endif	 
-#if 0
-omap_set_gpio_dataout(78, 0); 
 
-printk(KERN_INFO "\n M-1-M");
-
-// GPIO clear_data_out
-
-temp = __raw_readl(0xd9052090);
-
-temp = temp | (1<<14);
-
-__raw_writel(temp, 0xd9052090);
-
-printk(KERN_INFO "\n M-2-M");
-
-mdelay(10);
-
-printk(KERN_INFO "\n M-3-M");
-
-omap_set_gpio_dataout(78, 1);
-
-printk(KERN_INFO "\n M-4-M");
-
-// GPIO set_data_out
-
-temp = __raw_readl(0xd9052094);
-
-printk(KERN_INFO "\n M-5-M");
-
-temp = temp | (1<<14);
-
-__raw_writel(temp, 0xd9052094);
-
-printk(KERN_INFO "\n M-6-M");
-
-mdelay(1000);
-
-printk(KERN_INFO "\n M-7-M");
-
- 
-
- 
-
- 
-
-temp = __raw_readl(0xd905203C);
-
-printk(KERN_INFO "\n AFTER GPIO_RESET 0x4905203C = 0x%X ", temp);
-
- 
-
- 
-
-temp = __raw_readl(0xd9052094);
-
-printk(KERN_INFO "\n AFTER GPIO_CLEAR (14)  0x49052094 = 0x%X ", temp);
-
-	 
-#endif 
-
-#if 0 //sv3
-// MJ Powerup-Powerdown sequence
-
-	printk(KERN_INFO "\n ==================PowerUpPowerDown Seq============================= \n");
-
-	// PowerDown PowerUp sequence from Symbian
- 	//Request PRCM clocks
-
-	val = omap_readl(0x4A307100); 
-	omap_writel(val, 0x4A307100);
-	udelay(10);
-	val = val |0x3; // ON state
-	omap_writel(val, 0x4A307100);
-
- 
-	// CM_DSS_DSS_CLKCTRL
-
-	val = omap_readl(0x4A009120); //CM_FCLKEN_DSS1,DSS2,TV
-	val = val | 0xE00;// 0x7; // ON 
-	omap_writel(val, 0x4A009120);
-	udelay(10);
-	printk(KERN_INFO "\n CM_FCLKEN_DSS = 0x%X ", omap_readl(0x4A009120));
-
-	printk(KERN_INFO "\n CM_SYS_CLKSEL = 0x4A306110 == 0x%X ", omap_readl(0x4A306110));
- 
-	//CM_CLKMODE_DPLL_CORE
-	// DPLL4 locking
-	val = omap_readl(0x4A004120);
-	val = (val >>16) & 0x7; //need  to check the bits.
-	if(val != 7) {
-	            printk(KERN_INFO "DPLL4 should be locked before DSS release");
-	}
- 
-	val = omap_readl(0x4A004120);
-	printk(KERN_INFO "\n CM_CLKMODE_DPLL_CORE = 0x%X ", val);
-	printk(KERN_INFO "\n DSS_SYSCONFIG = 0x%X ", dss_read_reg(DSS_SYSCONFIG));
- 
-#if 0
-	//Wait for DSS reset sequence
-	dss_write_reg(DSS_SYSCONFIG, 0x2);  //DSS_SYSCONFIG - Softreset
-	val = dss_read_reg(DSS_SYSCONFIG);
-
-	while( (dss_read_reg(DSS_SYSCONFIG) & 0x2) != 0x0); //wait till reset happens
-	printk(KERN_INFO "\n DSSSYSCONFIG Reset happened ");
-#endif
-
-	val = dss_read_reg(DSS_SYSSTATUS);
-	while(val != 0x1) { 
-            val = dss_read_reg(DSS_SYSSTATUS);
-	            // val = omap_readl(0x58000014); // Wait till Reset is DONE
-	            udelay(1);
-	}
-
-	printk(KERN_INFO "\n DSS SYSSTATUS RESET DONE ");
-
-#if 1
-
-	// CM_DSS_DSS_CLKCTRL
-	val = omap_readl(0x4A009120);
-	val = val & ~(0xE00); // OFF FCLK DSS1,DSS2 and TVOUT
-	omap_writel(val, 0x4A009120);
-	udelay(10);
-	printk(KERN_INFO "\n CM_FCLKEN_DSS = 0x%X ", omap_readl(0x4A009120));
-	
-
-	// DSS_PWRST_CTRL
-	val = omap_readl(0x4A307100);
-	val = val & ~(0x3); // Retention state
-	omap_writel(val, 0x4A307100);
-	udelay(10);
-	printk(KERN_INFO "\n DSS_PWRST_CTRL to retention = 0x%X ", omap_readl(0x4A307104));
-	
-	val = omap_readl(0x4A307100);
-	val = val | 0x3; // ON state 
-	omap_writel(val, 0x4A307100);
-	udelay(10);
-	printk(KERN_INFO "\n DSS_PWRST_CTRL to ON = 0x%X ", omap_readl(0x4A307104));
-	
- 	val = omap_readl(0x4A009120);
-	val = val | 0xE00; // ON FCLK DSS1,DSS2 and TVOUT
-	omap_writel(val, 0x4A009120);
-	udelay(10);
-
-	printk(KERN_INFO "\n ON FCLK DSS1,DSS2 and TVOUT = 0x%X ", omap_readl(0x4A009120));
-
-#endif
-
-#if 0	 
-	//Soft reset bit to DSS_RESET Wait for DSS reset sequence
-	dss_write_reg(DSS_SYSCONFIG, 0x2);  //DSS_SYSCONFIG - Softreset
-	val = dss_read_reg(DSS_SYSCONFIG);
-#endif
-	while( (dss_read_reg(DSS_SYSSTATUS) & 0x1) != 0x0); //wait till reset happens
-	printk(KERN_INFO "\n DSSSYSCONFIG Reset happened ");
-
- 	dispc_base = ioremap(0x58001000, 0x1000);
-	dss_write_reg(dispc_base+0x10, 0x2);  //DSS_SYSCONFIG - Softreset
-	while( (__raw_readl(dispc_base+0x14) & 0x1) != 0x0); //wait till DISPCreset happens
-	            printk(KERN_INFO "\n DISPC SYSCONFIG Reset happened ");
-
-	printk(KERN_INFO "\n ----------------------------------------------------------- \n");
-	
-
-
-#endif
 
 	return 0;
 
@@ -552,24 +375,4 @@ void dss_exit(void)
 
 	iounmap(dss.base);
 }
-
-
-
-
-void test(void)
-{
-	u32 a, b, c;
-	//	a = ioremap(0x58000000, 0x60);
-	b = ioremap(0x4A009100, 0x30);
-	c = ioremap(0x4a307100, 0x10);
-
-	//printk(KERN_INFO "dss status 0x%x 0x%x\n", __raw_readl(a+0x5c), (a+0x5c));
-	printk(KERN_INFO "CM_DSS_CLKSTCTRL 0x%x 0x%x\n", __raw_readl(b), b);
-	printk(KERN_INFO "CM_DSS_DSS_CLKCTRL 0x%x 0x%x\n", __raw_readl(b+0x20), (b+0x20));
-	printk(KERN_INFO "PM DSS wrst 0x%x 0x%x\n", __raw_readl(c+0x4), (c+0x4));
-
-}
-
-
-
 
