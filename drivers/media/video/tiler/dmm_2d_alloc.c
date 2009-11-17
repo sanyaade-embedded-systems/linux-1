@@ -43,6 +43,8 @@
 
 #ifdef __NEWCODE__
 #include <linux/io.h>
+#include <linux/dma-mapping.h>
+#include <linux/hardirq.h>
 #endif
 
 /****************************************************************
@@ -1718,8 +1720,14 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 			delItm->pgAr.patPageEntriesSpace = NULL;
 #else
 			debug(__LINE__);
+#if 0
 			iounmap(delItm->pgAr.page_list_virt);
 			__free_page(delItm->pgAr.page_list);
+#else
+			dma_free_coherent(NULL, delItm->pgAr.dma_size,
+			delItm->pgAr.dma_va,
+			delItm->pgAr.dma_pa);
+#endif
 			delItm->pgAr.patPageEntries = NULL;
 			delItm->pgAr.patPageEntriesSpace = NULL;
 #endif

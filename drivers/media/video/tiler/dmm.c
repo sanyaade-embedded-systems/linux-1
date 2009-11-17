@@ -35,6 +35,9 @@
 
 #define __NEWCODE__
 #ifdef __NEWCODE__
+#include <linux/dma-mapping.h>
+#include <linux/hardirq.h>
+
 struct pat_area {
 	int x0:8;
 	int y0:8;
@@ -540,6 +543,7 @@ __init dmm_init(void)
 #else
 	void __iomem *reg = NULL;
 	dmm_base = ioremap(DMM_BASE, 0x1000);
+	printk(KERN_NOTICE "dmm_base = 0x%lx", dmm_base);
 
 	reg = (void __iomem *)(
 			(unsigned long)dmm_base | (unsigned long)LISA_MAP__0);
@@ -558,6 +562,15 @@ __init dmm_init(void)
 	/* create buffer info list */
 	createlist(&lsthd);
 	id = 0xda7a000;
+
+#if 0
+	void *va = NULL;
+	dma_addr_t pa = 0x0;
+	va = dma_alloc_coherent(NULL, 32000*4+16,
+			&pa,
+			(in_atomic()) ? GFP_ATOMIC : GFP_KERNEL);
+	memset((unsigned long *)va, 0x0, 32000*4+16);
+#endif
 
 EXIT:
 	return retval;

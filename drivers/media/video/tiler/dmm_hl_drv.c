@@ -28,6 +28,9 @@
 #ifdef __NEWCODE__
 #include <linux/io.h>
 #include <linux/sched.h>   /* current->mm */
+#include <linux/dma-mapping.h>
+#include <linux/hardirq.h>
+
 
 static unsigned long get_phys_addr(unsigned long arg)
 {
@@ -392,7 +395,11 @@ enum errorCodeT dmm_pat_start_refill(
 #ifndef __NEWCODE__
 	areaDesc.data = (unsigned long)(bufferMappedZone->patPageEntries);
 #else
+#if 0
 	areaDesc.data = (unsigned long)bufferMappedZone->patPageEntriesSpace;
+#else
+	areaDesc.data = (unsigned long)bufferMappedZone->dma_pa;
+#endif
 #endif
 
 	tilerdump(__LINE__);
@@ -437,6 +444,7 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 	} else {
 		tilerdump(__LINE__);
 #ifdef __NEWCODE__
+#if 0
 		unsigned long order = 0x0;
 
 		order = ((bfrPages*4 + 16) + 4095) / 4096;
@@ -464,6 +472,20 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 		bufferMappedZone->patPageEntries =
 			(unsigned long *)((((unsigned long)
 				bufferMappedZone->patPageEntries) + 15) & ~15);
+#else
+		bufferMappedZone->dma_size = bfrPages*4+16;
+
+		bufferMappedZone->dma_va =
+			dma_alloc_coherent(NULL, bufferMappedZone->dma_size,
+			&(bufferMappedZone->dma_pa),
+			(in_atomic()) ? GFP_ATOMIC : GFP_KERNEL);
+
+		memset(bufferMappedZone->dma_va,
+			0x0, bufferMappedZone->dma_size);
+		bufferMappedZone->patPageEntries =
+			(unsigned long *)((((unsigned long)
+				bufferMappedZone->dma_va) + 15) & ~15);
+#endif
 #endif
 
 #ifndef __NEWCODE__
@@ -632,6 +654,7 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 			if (patAreaEntries[iter] == 0x0)
 				return DMM_SYS_ERROR;
 		}
+		dsb();
 	} else {
 		for (iter = 0; iter < numPages; iter++) {
 			patAreaEntries[iter] = (unsigned long)

@@ -19,6 +19,8 @@
 
 #define __NEWCODE__
 
+#include <linux/dma-mapping.h>
+
 enum MSP_BOOL {
 	MSP_FALSE = 0,
 	MSP_TRUE
@@ -47,6 +49,9 @@ struct dmmTILERContPageAreaT {
 #ifdef __NEWCODE__
 	struct page *page_list;
 	unsigned long *page_list_virt;
+	void *dma_va;
+	unsigned long dma_size;
+	dma_addr_t dma_pa;
 #endif
 	unsigned long *patPageEntries;
 };
