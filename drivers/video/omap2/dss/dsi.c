@@ -3637,7 +3637,7 @@ end:
 static int dsi_display_suspend(struct omap_dss_device *dssdev)
 {
 	DSSDBG("dsi_display_suspend\n");
-
+#if 0
 	mutex_lock(&dsi.lock);
 	dsi_bus_lock();
 
@@ -3657,16 +3657,16 @@ static int dsi_display_suspend(struct omap_dss_device *dssdev)
 end:
 	dsi_bus_unlock();
 	mutex_unlock(&dsi.lock);
-
+#endif
 	return 0;
 }
 
 static int dsi_display_resume(struct omap_dss_device *dssdev)
 {
-	int r;
+	int r = 0;
 
 	DSSDBG("dsi_display_resume\n");
-
+#if 0
 	mutex_lock(&dsi.lock);
 	dsi_bus_lock();
 
@@ -3717,6 +3717,7 @@ err0:
 	dsi_bus_unlock();
 	mutex_unlock(&dsi.lock);
 	DSSDBG("dsi_display_resume FAILED\n");
+#endif
 	return r;
 }
 
