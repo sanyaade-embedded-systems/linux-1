@@ -254,6 +254,9 @@ void WMD_DEH_Notify(struct DEH_MGR *hDehMgr, u32 ulEventMask,
 				(unsigned int)pDehMgr->errInfo.dwVal2);
 			printk(KERN_INFO "WMD_DEH_Notify: DSP_MMUFAULT, fault "
 				"address = 0x%x\n", (unsigned int)faultAddr);
+			printk(KERN_INFO "WMD_DEH_Notify: DSP PC Address "
+				"0x%x\n",
+				*(u32 *)(resources.dwDmmuBase + 0x80));
 			dummyVaAddr = (u32)MEM_Calloc(sizeof(char) * 0x1000,
 					MEM_PAGED);
 			memPhysical  = VirtToPhys(PG_ALIGN_LOW((u32)dummyVaAddr,
