@@ -707,13 +707,12 @@ void dispc_go(enum omap_channel channel)
 
 #ifdef CONFIG_ARCH_OMAP4
 	if (channel == OMAP_DSS_CHANNEL_LCD2)
-		REG_FLD_MOD(DISPC_CONTROL2, 1, 0, 0);
+		if (REG_GET(DISPC_CONTROL2, bit, bit) == 0)
+			goto end;
 	else
-		 REG_FLD_MOD(DISPC_CONTROL, 1, 0, 0);
-
 #endif
-	if (REG_GET(DISPC_CONTROL, bit, bit) == 0)
-		goto end;
+		if (REG_GET(DISPC_CONTROL, bit, bit) == 0)
+                        goto end;
 
 #ifdef CONFIG_ARCH_OMAP4
 	if (channel != OMAP_DSS_CHANNEL_DIGIT)
