@@ -867,20 +867,20 @@ static void _dispc_set_scale_coef(enum omap_plane plane, int hscaleup,
 	static const u32 coef_hvup[2][8] = {
 		{
 		0x00800000,
-		0x037B02FF,
-		0x0C6F05FE,
-		0x205907FB,
-		0x00404000,
-		0x075920FE,
-		0x056F0CFF,
-		0x027B0300,
+		0x0D7CF8FF, /* 0x037B02FF,*/
+		0x1E70F5FE, /* 0x0C6F05FE,*/
+		0x335FF5FB, /* 0x205907FB,*/
+		0xF7494900, /* 0x00404000,*/
+		0xF55F33FE, /* 0x075920FE,*/
+		0xF5701EFF, /* 0x056F0CFF,*/
+		0xF87C0D00, /* 0x027B0300,*/
 		},
 		{
 		0x00800000,
 		0x0D7CF8FF,
 		0x1E70F5FE,
 		0x335FF5FB,
-		0xF7404000,
+		0xF7494900,/* 0xF7404000,*/
 		0xF55F33FE,
 		0xF5701EFF,
 		0xF87C0D00,
@@ -1659,6 +1659,7 @@ static void _dispc_set_scaling(enum omap_plane plane,
 	_dispc_set_fir(plane, fir_hinc, fir_vinc);
 
 	l = dispc_read_reg(dispc_reg_att[plane]);
+	/* setting attrib register for scaling */
 	l &= ~((0x0f << 5) | (0x1 << 21));
 
 	l |= fir_hinc ? (1 << 5) : 0;
@@ -1701,6 +1702,18 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 	int check_h;
 	int check_v;
 
+	/* HACK: for NV12: Coefficients for vertical up-sampling */
+	static const u32 coef_vup[8] = {
+		0x00000000,
+		0x0000FF00,
+		0x0000FEFF,
+		0x0000FBFE,
+		0x000000F7,
+		0x0000FEFB,
+		0x0000FFFE,
+		0x000000FF,
+	};
+
 	static const u32 coef_h2_greater[8] = {
 		0xEC86EC11,
 		0xFC7FE512,
@@ -1712,8 +1725,16 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 		0xE57FFC0D,
 	};
 
-
 	static const u32 coef_hv2_greater[8] = {
+		0x00800000,
+		0x0D7CF8FF,
+		0x1E70F5FE,
+		0x335FF5FB,
+		0xF7494900,
+		0xF55F33FE,
+		0xF5701EFF,
+		0xF87C0D00,
+/*
 		0xEC86EC11,
 		0xFC7FE50E,
 		0x1179E205,
@@ -1722,6 +1743,7 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 		0xE5692F09,
 		0xE279110F,
 		0xE57FFC13,
+*/
 	};
 
 	static const u32 coef_v2_greater[8] = {
@@ -1735,7 +1757,6 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 		0x0000130D,
 	};
 
-
 	static const u32 coef_h2_lesser[8] = {
 		0x24382400,
 		0x28371FFE,
@@ -1748,7 +1769,16 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 	};
 
 	static const u32 coef_hv2_lesser[8] = {
-		0x24382400,
+		0x00800000,
+		0x0D7CF8FF,
+		0x1E70F5FE,
+		0x335FF5FB,
+		0xF7494900,
+		0xF55F33FE,
+		0xF5701EFF,
+		0xF87C0D00,
+
+/*		0x24382400,
 		0x28391F04,
 		0x2D381B08,
 		0x3237170C,
@@ -1756,6 +1786,7 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 		0x173732F9,
 		0x1B382DFB,
 		0x1F3928FE,
+*/
 	};
 
 
@@ -1813,24 +1844,54 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 		_dispc_write_firh2_reg(plane, i, h);
 		_dispc_write_firhv2_reg(plane, i, hv);
 		_dispc_write_firv2_reg(plane, i, v);
+
+		if (color_mode == OMAP_DSS_COLOR_NV12) {
+			if (OMAP_DSS_VIDEO3 == plane)
+				hv = dispc_read_reg(
+					DISPC_VID_V3_WB_FIR_COEF_V(0, i));
+			else
+				hv = dispc_read_reg(
+					DISPC_VID_FIR_COEF_V(plane - 1, i));
+
+			hv = coef_vup[i];
+
+			_dispc_write_firv_reg(plane, i, hv);
+		}
 	}
 
-	if (!orig_width || orig_width == out_width)
-		fir_hinc = 0;
-	else
+	if ((color_mode == OMAP_DSS_COLOR_NV12) ||
+		(orig_width && (orig_width != out_width)))
 		fir_hinc = 1024 * orig_width / out_width;
-
-	if (!orig_height || orig_height == out_height)
-		fir_vinc = 0;
 	else
-		if (color_mode == OMAP_DSS_COLOR_NV12)
-			fir_vinc = 1024 * orig_height / out_height;
-		else
-			fir_vinc = 0;
+		fir_hinc = 0;
 
+	if ((color_mode == OMAP_DSS_COLOR_NV12) ||
+		(orig_height && (orig_height != out_height)))
+		fir_vinc = 1024 * orig_height / out_height;
+	else
+		fir_vinc = 0;
+
+	/* HACK set for NV12*/
+	if (color_mode == OMAP_DSS_COLOR_NV12) {
+		_dispc_set_fir(plane, fir_hinc, fir_vinc);
+		fir_vinc = fir_vinc / 2;
+		fir_hinc = fir_hinc / 2;
+		h = dispc_read_reg(DISPC_VID_ATTRIBUTES2(plane - 1));
+		h |= (1 << 8); /* set chroma resampling */
+		dispc_write_reg(DISPC_VID_ATTRIBUTES2(plane - 1), h);
+
+		h = dispc_read_reg(dispc_reg_att[plane]);
+		/* setting attrib register for scaling */
+
+		h |= (1 << 6); /* HACK: enable hresize */
+		h |= (1 << 5); /* HACK: enable vresize */
+		h |= (1 << 21);
+
+		dispc_write_reg(dispc_reg_att[plane], h);
+	}
 	_dispc_set_fir2(plane, fir_hinc, fir_vinc);
-	_dispc_set_vid_accu2_0(plane, 0, 0);
-	_dispc_set_vid_accu2_1(plane, 0, 0);
+	_dispc_set_vid_accu2_0(plane, 0x0080, 0);
+	_dispc_set_vid_accu2_1(plane, 0x0080, 0);
 }
 
 static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
@@ -2564,6 +2625,10 @@ static int _dispc_setup_plane(enum omap_plane plane,
 static void _dispc_enable_plane(enum omap_plane plane, bool enable)
 {
 	REG_FLD_MOD(dispc_reg_att[plane], enable ? 1 : 0, 0, 0);
+	if (!enable) { /* clear out resizer related bits */
+		REG_FLD_MOD(dispc_reg_att[plane], 0x00, 6, 5);
+		REG_FLD_MOD(dispc_reg_att[plane], 0x00, 21, 21);
+	}
 }
 
 static void dispc_disable_isr(void *data, u32 mask)
