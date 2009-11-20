@@ -605,7 +605,7 @@ void dss_init_overlays(struct platform_device *pdev)
 			ovl->caps = OMAP_DSS_OVL_CAP_DISPC;
 			ovl->info.global_alpha = 255;
 #ifdef CONFIG_ARCH_OMAP4
-			ovl->info.zorder = OMAP_DSS_OVL_ZORDER_0;
+			ovl->info.zorder = OMAP_DSS_OVL_ZORDER_1;
 #endif
 			break;
 		case 1:
@@ -639,7 +639,7 @@ void dss_init_overlays(struct platform_device *pdev)
 				OMAP_DSS_OVL_CAP_DISPC;
 			ovl->info.global_alpha = 255;
 #ifdef CONFIG_ARCH_OMAP4
-			ovl->info.zorder = OMAP_DSS_OVL_ZORDER_1;
+			ovl->info.zorder = OMAP_DSS_OVL_ZORDER_0;
 #endif
 
 			break;

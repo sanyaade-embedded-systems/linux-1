@@ -22,6 +22,7 @@
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 
+int lcd_ix = 0;
 extern void __iomem  *dss_base;
 extern void __iomem  *dispc_base;
 extern void __iomem  *dsi_base;
@@ -3426,7 +3427,14 @@ void ConfigDsiProtoEngine()
 		LockDsiPll();
 
 	//Switch the dispc to DSI PLL
-	SetRegister32(KHwBaseDss + KHoDSS_Control,0x103);
+	if(lcd_ix == 1){
+		printk("switch dsi2 to pll \n");
+		ModifyRegister32(KHwBaseDss + KHoDSS_Control,KClearNone, (1<<12 | 1<<10));
+	}
+	else {
+	//SetRegister32(KHwBaseDss + KHoDSS_Control,0x103);
+    	ModifyRegister32(KHwBaseDss + KHoDSS_Control,KClearNone, (0x003)); //svovo3
+	}
 	for (u = 0; u<100000;u++);
 
 	// Configure ComplexIO
@@ -3538,7 +3546,7 @@ void ConfigDsiProtoEngine()
 }
 
 
-void Setup_SDP()
+void Setup_SDP(void *dsi_base, int lcd_index)
 {
 
 	KHwBaseDss = dss_base;
@@ -3549,5 +3557,6 @@ void Setup_SDP()
 
 	printk("dss base = 0x%x, dispc_base = 0x%x, dsiproto = 0x%x, complexio = 0x%x, dsipll = 0x%x",dss_base, dispc_base,KHwBaseDsiProtoEng,KHwBaseComplexIO,KHwBaseDsiPllController);
 
+    lcd_ix = lcd_index;
 	ConfigDsiProtoEngine();
 }

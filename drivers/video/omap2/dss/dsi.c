@@ -298,7 +298,7 @@ static unsigned int dsi_perf;
 module_param_named(dsi_perf, dsi_perf, bool, 0644);
 #endif
 
-extern void Setup_SDP(void);
+extern void Setup_SDP(void *, int);
 static inline void dsi_write_reg(const struct dsi_reg idx, u32 val)
 {
 	__raw_writel(val, dsi.base + idx.idx);
@@ -2955,8 +2955,6 @@ static void dsi_start_auto_update(struct omap_dss_device *dssdev)
 
 	dsi_set_update_region(dssdev, 0, 0, w, h);
 
-	//sv HS MODE
-	__raw_writel(0x03FC03BC, dispc_base + 0xA4); //DISPC_GFX_THRESHOLD
 	
 	dsi_perf_mark_start_auto();
 
@@ -3155,18 +3153,17 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 		DSSERR("can't get FRAMEDONE irq\n");
 		return r;
 	}
-#if 0 //sv3
 	/* TODO: Change here for LCD2 support*/
 	dispc_set_lcd_display_type(OMAP_DSS_CHANNEL_LCD,
 					OMAP_DSS_LCD_DISPLAY_TFT);
 
 	dispc_set_parallel_interface_mode(OMAP_DSS_CHANNEL_LCD,
 					OMAP_DSS_PARALLELMODE_DSI);
-	dispc_enable_fifohandcheck(1);
+
+/*	dispc_enable_fifohandcheck(1); */ /*sv Need to verify if it works with DSI2 also */
 
 	dispc_set_tft_data_lines(OMAP_DSS_CHANNEL_LCD, dssdev->ctrl.pixel_size);
-#else
-//sv HS mode
+
 	{
 		struct omap_video_timings timings = {
 			.hsw		= 4+1,
@@ -3182,30 +3179,12 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 		dispc_set_lcd_timings(OMAP_DSS_CHANNEL_LCD, &timings);
 	}
 
-	/*DISPC_CONTROL = 0x18B48; */
-	/*DISPC_CONFIG = 0x4; */
-	/*DISPC_DIVISOR = 0x10006; */
-	__raw_writel(0x18B28, dispc_base + 0x0040); //DISPC_CONTROL
-	__raw_readl( dispc_base + 0x00);  //sv
-	__raw_writel(0x4, dispc_base + 0x0044); //DISPC_CONFIG
-	__raw_readl( dispc_base + 0x00);  //sv
-	__raw_writel(0x10006, dispc_base + 0x70); //DISPC_DIVISOR
-	__raw_readl( dispc_base + 0x00);  //sv	
 
-//sv	__raw_writel(0x00400404  , dispc_base + 0x64); //DISPC_H_TIMING
-//sv	__raw_readl( dispc_base + 0x00);  //sv	
-//sv	__raw_writel(0x00100000  , dispc_base + 0x68); //DISPC_V_TIMING
-//sv	__raw_readl( dispc_base + 0x00);  //sv	
-	__raw_writel(0x00030000    , dispc_base + 0x6C); //DISPC_V_TIMIPOL_FREQ1
-	__raw_readl( dispc_base + 0x00);  //sv	
-//sv	__raw_writel(0x01DF035F    , dispc_base + 0x7C); //DISPC_SIZE_LCD1
-//sv	__raw_readl( dispc_base + 0x00);  //sv	
+	dispc_set_pol_freq(OMAP_DSS_CHANNEL_LCD, dssdev->panel.config,
+			dssdev->panel.acbi, dssdev->panel.acb);
 
-	__raw_writel(0x03FC03BC, dispc_base + 0xA4); //DISPC_GFX_THRESHOLD
-  	__raw_writel(0x1F, dispc_base + 0x4C); //DISPC_DEF_COLOR
-
-	
-#endif
+	dispc_set_lcd_divisor(OMAP_DSS_CHANNEL_LCD, 1/*lck_div*/,
+							0x6/*pck_div*/);
 	return 0;
 }
 
@@ -3414,21 +3393,12 @@ static int dsi_display_init_dsi(struct omap_dss_device *dssdev)
 	dsi.vc[2].fifo_size = DSI_FIFO_SIZE_0;
 	dsi.vc[3].fifo_size = DSI_FIFO_SIZE_0;
 	
-	Setup_SDP();
+	Setup_SDP((void *)dsi.base, 0);
 	if (dssdev->driver->enable) {
 		r = dssdev->driver->enable(dssdev);
 		if (r)
 			goto err3;
 	}
-	
-//sv	/*Enable Lcd interface */
-	val = __raw_readl( dispc_base + 0x0040);  //sv
-	val |= (0x1 << 0);
-	__raw_writel(val, dispc_base + 0x0040); //DISPC_CONTROL  should be 0x18B29 now
-	
-	/* enable high-speed after initial config */
-//sv3	dsi_vc_enable_hs(0, 1);
-
 	return 0;
 	// MJ
 err3:
@@ -3495,25 +3465,13 @@ static int dsi_display_enable(struct omap_dss_device *dssdev)
 	}
 
 	
-//sv	enable_clocks(1);
-//sv	dsi_enable_pll_clock(1);
 
 	omap_writel(0x00030007  , 0x4A307100);  //DSS_PWR_DSS_DSS_CTRL
 
-//sv3  /*GO Digital or GO LCd bit to be updated */
-//sv3  	__raw_writel(0x18B29, dispc_base + 0x0040); //DISPC_CONTROL - LCD en Bit 0
-//sv3  	__raw_writel(0x18B29, dispc_base + 0x0040); //DISPC_CONTROL - Go LCD bit 5
-//sv3  	mdelay(10);
 
 	r = _dsi_reset();
 	if (r)
 		goto err2;
-/*
-	{
-	volatile int i =1;
-	printk("Doing GPIO reset");
-	while(i)
-	{*/
 #if 1
 
 
@@ -3521,52 +3479,33 @@ static int dsi_display_enable(struct omap_dss_device *dssdev)
 
 
 	val = __raw_readl(gpio_base+GPIO_OE);
-	val &= ~0x40;
+	val &= ~0x140;
 	__raw_writel(val, gpio_base+GPIO_OE);
 
 	mdelay(120);
 
 	/* To output signal high */
 	val = __raw_readl(gpio_base+OMAP24XX_GPIO_SETDATAOUT);
-	val |= 0x40;
+	val |= 0x140;
 	__raw_writel(val, gpio_base+OMAP24XX_GPIO_SETDATAOUT);
 	mdelay(120);
 
 	val = __raw_readl(gpio_base+OMAP24XX_GPIO_CLEARDATAOUT);
-	val |= 0x40;
+	val |= 0x140;
 	__raw_writel(val, gpio_base+OMAP24XX_GPIO_CLEARDATAOUT);
 	mdelay(120);
 
 	val = __raw_readl(gpio_base+OMAP24XX_GPIO_SETDATAOUT);
-	val |= 0x40;
+	val |= 0x140;
 	__raw_writel(val, gpio_base+OMAP24XX_GPIO_SETDATAOUT);
 
 	mdelay(120);
-//		}
-//		}
 	printk("GPIO reset done ");
 #endif	
-#if 0
-	*(volatile int*)(GPIO_OE) = (*(volatile int*)(GPIO_OE) & ~0x40);
-	/* To output signal high */
-	*(volatile int*)(OMAP24XX_GPIO_SETDATAOUT) =
-			(*(volatile int*)(OMAP24XX_GPIO_SETDATAOUT) | 0x40);
-	mdelay(10);
-	/* To output signal low */
-	*(volatile int*)(OMAP24XX_GPIO_CLEARDATAOUT) =
-			(*(volatile int*)(OMAP24XX_GPIO_CLEARDATAOUT) | 0x40);
-	mdelay(10);
-	/* To output signal high */
-	*(volatile int*)(OMAP24XX_GPIO_SETDATAOUT) =
-			(*(volatile int*)(OMAP24XX_GPIO_SETDATAOUT) | 0x40);
-	mdelay(10);
-#endif
 	
-#if 0 //comment everything	
+#if 0 
 	dsi_core_init();
-#if 0
 	dsi_write_reg(DSI_SYSCONFIG, 0x10);
-#endif
 #endif
 	r = dsi_display_init_dispc(dssdev);
 	if (r)

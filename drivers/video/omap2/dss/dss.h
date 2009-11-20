@@ -250,6 +250,10 @@ void dsi_pll_uninit(void);
 void dsi_get_overlay_fifo_thresholds(enum omap_plane plane,
 		u32 fifo_size, enum omap_burst_size *burst_size,
 		u32 *fifo_low, u32 *fifo_high);
+/* DSI2 */
+int dsi2_init(struct platform_device *pdev);
+void dsi2_exit(void);
+int dsi2_init_display(struct omap_dss_device *display);
 
 /* DPI */
 int dpi_init(void);

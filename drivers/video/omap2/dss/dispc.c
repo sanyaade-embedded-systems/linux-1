@@ -1276,6 +1276,9 @@ static void _dispc_set_channel_out(enum omap_plane plane,
 {
 	int shift;
 	u32 val;
+#ifdef CONFIG_ARCH_OMAP4
+	int chan, chan2;
+#endif
 
 	switch (plane) {
 	case OMAP_DSS_GFX:
@@ -1294,7 +1297,20 @@ static void _dispc_set_channel_out(enum omap_plane plane,
 	}
 
 	val = dispc_read_reg(dispc_reg_att[plane]);
+#ifdef CONFIG_ARCH_OMAP4
+	switch (channel) {
+	case OMAP_DSS_CHANNEL_LCD:
+		chan = 0; chan2 = 0; break;
+	case OMAP_DSS_CHANNEL_DIGIT:
+		chan = 1; chan2 = 0; break;
+	case OMAP_DSS_CHANNEL_LCD2:
+		chan = 0; chan2 = 1; break;		
+	}
+	val = FLD_MOD(val, chan, shift, shift);
+	val = FLD_MOD(val, chan2, 31, 30); 
+#else
 	val = FLD_MOD(val, channel, shift, shift);
+#endif
 	dispc_write_reg(dispc_reg_att[plane], val);
 }
 
@@ -1491,8 +1507,13 @@ void dispc_setup_plane_fifo(enum omap_plane plane, u32 low, u32 high)
 
 	DSSDBG("fifo(%d) low/high old %u/%u, new %u/%u\n",
 			plane,
+#ifndef CONFIG_ARCH_OMAP4
 			REG_GET(ftrs_reg[plane], 11, 0),
 			REG_GET(ftrs_reg[plane], 27, 16),
+#else
+			REG_GET(ftrs_reg[plane], 15, 0),
+			REG_GET(ftrs_reg[plane], 31, 16),
+#endif
 			low, high);
 
 	if (cpu_is_omap24xx())
@@ -4274,8 +4295,11 @@ static void _omap_dispc_initial_config(void)
 	l = FLD_MOD(l, 1, 0, 0);	/* AUTOIDLE */
 	dispc_write_reg(DISPC_SYSCONFIG, l);
 
+	if(!cpu_is_omap44xx())
+	{
 	/* FUNCGATED */
 	REG_FLD_MOD(DISPC_CONFIG, 1, 9, 9);
+	}
 
 	/* L3 firewall setting: enable access to OCM RAM */
 	if (cpu_is_omap24xx())

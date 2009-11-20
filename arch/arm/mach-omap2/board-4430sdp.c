@@ -201,9 +201,36 @@ static struct omap_dss_device sdp4430_lcd_device = {
 
 	.ext_te		=	false,
 	.ext_te_gpio	=	86,
-	}
+          },
+        .platform_enable        = sdp4430_panel_enable_lcd,
+        .platform_disable       = sdp4430_panel_disable_lcd,
 };
 
+#define LCD2
+#ifdef LCD2 /* incase DSI2 is connected to different panel */
+static struct omap_dss_device sdp4430_lcd2_device = {
+        .name                   = "2lcd",
+        .driver_name            = "panel-taal2",
+        .type                   = OMAP_DISPLAY_TYPE_DSI,
+        .reset_gpio             = 78,
+        .phy.dsi        =       {
+                .clk_lane               = 1,
+                .clk_pol                = 0,
+                .data1_lane     = 2,
+                .data1_pol      = 0,
+                .data2_lane     = 3,
+                .data2_pol      = 0,
+                .lp_clk_hz       = 10000000,
+                .ddr_clk_hz     = 150000000,
+
+                .ext_te                 = false,
+                .ext_te_gpio     = 86,
+                },
+        .platform_enable        = sdp4430_panel_enable_lcd,
+        .platform_disable       = sdp4430_panel_disable_lcd,
+        .channel                = OMAP_DSS_CHANNEL_LCD2,
+};
+#endif
 static int sdp4430_panel_enable_hdmi(struct omap_dss_device *dssdev)
 {
 	return 0;
@@ -229,6 +256,9 @@ static struct omap_dss_device sdp4430_hdmi_device = {
 
 static struct omap_dss_device *sdp4430_dss_devices[] = {
 	&sdp4430_lcd_device,
+#ifdef  LCD2
+	&sdp4430_lcd2_device, 
+#endif
 #ifdef CONFIG_OMAP2_DSS_HDMI
 	&sdp4430_hdmi_device,
 #endif

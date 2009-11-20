@@ -28,6 +28,9 @@
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/seq_file.h>
+void __iomem  *gpio_base_dsi2;
+
+#include <linux/i2c/twl.h>
 
 #include <mach/display.h>
 #include "dss.h"
@@ -80,6 +83,14 @@ static struct {
 
 void __iomem  *dss_base;
 void __iomem  *dispc_base;
+#define GPIO_OE		0x134
+#define GPIO_DATAOUT	0x13C
+#define OMAP24XX_GPIO_CLEARDATAOUT	0x190
+#define OMAP24XX_GPIO_SETDATAOUT	0x194
+
+#define PWM2ON		3
+#define PWM2OFF		4
+#define TOGGLE3		2
 
 static int _omap_dss_wait_reset(void);
 
@@ -297,8 +308,10 @@ void dss_switch_tv_hdmi(int hdmi)
 int dss_init(bool skip_init)
 {
 	int r;
-	u32 rev;
+	u32 rev,ret;
 	u32 val;
+	void __iomem  *gpio1_base, *gpio2_base;
+	void __iomem *mux_sec;
 	
 	dss_base = dss.base = ioremap(DSS_BASE, DSS_SZ_REGS);
 	if (!dss.base) {
@@ -355,6 +368,109 @@ int dss_init(bool skip_init)
 	printk(KERN_INFO "OMAP DSS rev %d.%d\n",
 			FLD_GET(rev, 7, 4), FLD_GET(rev, 3, 0));
 
+#if 1
+	gpio_base_dsi2=ioremap(0x48059000,0x1000);
+
+	mux_sec = ioremap(0x4A100000,0x1000);
+	val = __raw_readl(mux_sec + 0x1CC); //mux for gpio 27 or 52 dont know
+	val &= ~(0xFfff);
+	val |=  0x03;
+	__raw_writel(val,mux_sec + 0x1CC);
+
+	val = __raw_readl(mux_sec + 0x086); //mux for gpio 59
+	val &= ~(0xFfff);
+	val |=  0x03;
+	__raw_writel(val,mux_sec + 0x086);
+
+	val = __raw_readl(mux_sec + 0x0EA); //mux for GPio 104
+	val &= ~(0xFfff);
+	val |=  0x03;
+	__raw_writel(val,mux_sec + 0x0EA);
+
+
+	val = __raw_readl(gpio_base_dsi2+GPIO_OE);
+	val &= ~0x100;
+	__raw_writel(val, gpio_base_dsi2+GPIO_OE);
+
+	mdelay(120);
+
+	/* To output signal high */
+	val = __raw_readl(gpio_base_dsi2+OMAP24XX_GPIO_SETDATAOUT);
+	val |= 0x100;
+	__raw_writel(val, gpio_base_dsi2+OMAP24XX_GPIO_SETDATAOUT);
+	mdelay(100);
+
+	val = __raw_readl(gpio_base_dsi2+OMAP24XX_GPIO_CLEARDATAOUT);
+	val |= 0x100;
+	__raw_writel(val, gpio_base_dsi2+OMAP24XX_GPIO_CLEARDATAOUT);
+	mdelay(120);
+
+	val = __raw_readl(gpio_base_dsi2+OMAP24XX_GPIO_SETDATAOUT);
+	val |= 0x100;
+	__raw_writel(val, gpio_base_dsi2+OMAP24XX_GPIO_SETDATAOUT);
+
+	mdelay(120);
+	printk("GPIO 104 reset done ");
+#endif
+#if 1
+
+	ret = twl_i2c_write_u8(TWL6030_MODULE_PWM, 0xFF, PWM2ON); //0xBD = 0xFF
+	ret = twl_i2c_write_u8(TWL6030_MODULE_PWM, 0x7F, PWM2OFF); //0xBE = 0x7F
+	ret = twl_i2c_write_u8(TWL6030_MODULE_AUX, 0x30, TOGGLE3);
+	gpio2_base=ioremap(0x4a310000,0x1000);
+	gpio1_base=ioremap(0x48055000,0x1000);
+
+	/* To output signal low */	
+	rev = __raw_readl(gpio2_base+OMAP24XX_GPIO_CLEARDATAOUT);
+	rev |= (1<<27);
+	__raw_writel(rev, gpio2_base+OMAP24XX_GPIO_CLEARDATAOUT);	
+	mdelay(120);	
+
+
+	rev = __raw_readl(gpio2_base+GPIO_OE);	
+	rev &= ~(1<<27);	
+	__raw_writel(rev, gpio2_base+GPIO_OE);	
+	#if 0
+	/* To output signal low */	
+	rev = __raw_readl(gpio2_base+OMAP24XX_GPIO_CLEARDATAOUT);
+	rev |= (1<<27);
+	__raw_writel(rev, gpio2_base+OMAP24XX_GPIO_CLEARDATAOUT);
+	mdelay(120);	
+	/* To output signal high */	
+	rev = __raw_readl(gpio2_base+OMAP24XX_GPIO_SETDATAOUT);	
+	rev |= (1<<27);	
+	__raw_writel(rev, gpio2_base+OMAP24XX_GPIO_SETDATAOUT);	
+	mdelay(120);	
+	#endif
+	/* To output signal low */	
+	rev = __raw_readl(gpio2_base+OMAP24XX_GPIO_CLEARDATAOUT);
+	rev |= (1<<27);
+	__raw_writel(rev, gpio2_base+OMAP24XX_GPIO_CLEARDATAOUT);	
+	mdelay(120);	
+
+	
+	/* To output signal high */
+	rev = __raw_readl(gpio1_base+OMAP24XX_GPIO_SETDATAOUT);
+	rev |= (1<<27);	
+	__raw_writel(rev, gpio1_base+OMAP24XX_GPIO_SETDATAOUT);
+	mdelay(120);	
+
+	rev = __raw_readl(gpio1_base+GPIO_OE);	
+	rev &= ~(1<<27);
+	__raw_writel(rev, gpio1_base+GPIO_OE);	
+	mdelay(120);	
+	#if 0
+	rev = __raw_readl(gpio1_base+OMAP24XX_GPIO_CLEARDATAOUT);
+	rev |= (1<<27);
+	__raw_writel(rev, gpio1_base+OMAP24XX_GPIO_CLEARDATAOUT);
+	mdelay(120);
+	#endif
+	/* To output signal high */	
+	rev = __raw_readl(gpio1_base+OMAP24XX_GPIO_SETDATAOUT);
+	rev |= (1<<27);	
+	__raw_writel(rev, gpio1_base+OMAP24XX_GPIO_SETDATAOUT);
+	mdelay(120);
+#endif
 
 
 	return 0;

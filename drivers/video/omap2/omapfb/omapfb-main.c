@@ -1544,7 +1544,8 @@ static int omapfb_allocate_all_fbs(struct omapfb2_device *fbdev)
 	for (i = 0; i < fbdev->num_fbs; i++) {
 		/* allocate memory automatically only for fb0, or if
 		 * excplicitly defined with vram or plat data option */
-		if (i == 0 || vram_sizes[i] != 0) {
+/* :TODO: use vram_sizes */
+		if (i == 0 || i == 1 || vram_sizes[i] != 0) {
 			r = omapfb_alloc_fbmem_display(fbdev->fbs[i],
 					vram_sizes[i], vram_paddrs[i]);
 
@@ -2051,7 +2052,7 @@ static int omapfb_probe(struct platform_device *pdev)
 	int r = 0;
 	int i;
 	struct omap_overlay *ovl;
-	struct omap_dss_device *def_display;
+	struct omap_dss_device *def_display, *lcd_display;
 	struct omap_dss_device *dssdev;
 
 	DBG("omapfb_probe\n");

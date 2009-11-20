@@ -267,6 +267,15 @@ int dsi_vc_set_max_rx_packet_size(int channel, u16 len);
 int dsi_vc_send_bta_sync(int channel);
 int dsi_vc_send_null(int channel);
 
+/* DSI2 */
+void dsi2_bus_lock(void);
+void dsi2_bus_unlock(void);
+int dsi2_vc_dcs_write(int channel, u8 *data, int len);
+int dsi2_vc_dcs_write_nosync(int channel, u8 *data, int len);
+int dsi2_vc_dcs_read(int channel, u8 dcs_cmd, u8 *buf, int buflen);
+int dsi2_vc_set_max_rx_packet_size(int channel, u16 len);
+int dsi2_vc_send_bta_sync(int channel);
+int dsi2_vc_send_null(int channel);
 /* Board specific data */
 struct omap_dss_board_info {
 	int (*get_last_off_on_transaction_id)(struct device *dev);

@@ -523,6 +523,14 @@ static int omap_dss_probe(struct platform_device *pdev)
 		}
 #endif
 
+#if 1 
+		printk(KERN_INFO "dsi2_init calling");
+		r = dsi2_init(pdev);
+		if (r) {
+			DSSERR("Failed to initialize DSI2\n");
+			goto fail0;
+		}
+#endif
 #ifdef CONFIG_OMAP2_DSS_HDMI
 	r = hdmi_init(pdev, hdmi_code);
 	if (r) {
