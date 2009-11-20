@@ -57,54 +57,29 @@
 
 void hdmi_read_edid(void);
 
-/* CEA861D_CODE1 */
-const struct omap_video_timings omap_dss_hdmi_timings1 = {
-	.x_res = 640,
-	.y_res = 480,
-	.pixel_clock = 25200,
-	.hsw = 96,
-	.hfp = 16,
-	.hbp = 48,
-	.vsw = 2,
-	.vfp = 10,
-	.vbp = 33,
-};
-/* CEA861D_CODE4 */
-const struct omap_video_timings omap_dss_hdmi_timings4 = {
-	.x_res = 1280,
-	.y_res = 720,
-	.pixel_clock = 74250,
-	.hsw = 40,
-	.hfp = 110,
-	.hbp = 220,
-	.vsw = 5,
-	.vfp = 5,
-	.vbp = 20,
-};
-/* CEA861D_CODE16 */
-const struct omap_video_timings omap_dss_hdmi_timings16 = {
-	.x_res = 1920,
-	.y_res = 1080,
-	.pixel_clock = 148500,
-	.hsw = 44,
-	.hfp = 88,
-	.hbp = 148,
-	.vsw = 5,
-	.vfp = 4,
-	.vbp = 36,
-};
-/* VESA_DMTID0x10 */
-const struct omap_video_timings omap_dss_hdmi_timings10 = {
-	.x_res = 1024,
-	.y_res = 768,
-	.pixel_clock = 65000,
-	.hsw = 136,
-	.hfp = 24,
-	.hbp = 160,
-	.vsw = 6,
-	.vfp = 3,
-	.vbp = 29,
-};
+/* CEA-861-D Codes */
+const struct omap_video_timings cea861d1 = \
+	{640, 480, 25200, 96, 16, 48, 2, 10, 33};
+const struct omap_video_timings cea861d4 = \
+	{1280, 720, 74250, 40, 110, 220, 5, 5, 20};
+const struct omap_video_timings cea861d16 = \
+	{1920, 1080, 148500, 44, 88, 148, 5, 4, 36};
+const struct omap_video_timings cea861d17 = \
+	{720, 576, 27000, 64, 12, 68, 5, 5, 39};
+const struct omap_video_timings cea861d18 = \
+	{720, 576, 27000, 64, 12, 68, 5, 5, 39};
+const struct omap_video_timings cea861d29 = \
+	{1440, 576, 54000, 128, 24, 136, 5, 5, 39};
+const struct omap_video_timings cea861d30 = \
+	{1440, 576, 54000, 128, 24, 136, 5, 5, 39};
+const struct omap_video_timings cea861d31 = \
+	{1920, 1080, 148500, 44, 528, 148, 5, 4, 36};
+const struct omap_video_timings cea861d35 = \
+	{2880, 480, 108000, 248, 64, 240, 6, 9, 30};
+const struct omap_video_timings cea861d36 = \
+	{2880, 480, 108000, 248, 64, 240, 6, 9, 30};
+const struct omap_video_timings vesad10 = \
+	{1024, 768, 65000, 136, 24, 160, 6, 3, 29};
 
 static struct {
 	void __iomem *base_phy;
@@ -188,11 +163,18 @@ typedef struct hdmi_pll_info {
 } hdmi_pll_info;
 
 /* HDMI TRM Page 53 */
-static const hdmi_pll_info coef_hdmi[4] = {
-	{15, 105, 0, 4},	/*  CEA861D_CODE1 */
-	{15, 309, 98304, 7},	/*  CEA861D_CODE4 */
-	{15, 618, 196608, 14},	/*  CEA861D_CODE16 */
-	{15, 270, 218453, 7},	/* VESA_DMTID0x10 */
+static const hdmi_pll_info coef_hdmi[11] = {
+	{15, 105, 0, 2},	/* CEA861D_CODE1 */
+	{15, 309, 98304, 7},	/* CEA861D_CODE4 */
+	{15, 618, 196608, 14},	/* CEA861D_CODE16 */
+	{15, 112, 160563, 2},	/* CEA861D_CODE17 */
+	{15, 112, 160563, 2},	/* CEA861D_CODE18 */
+	{15, 225, 58982, 5},	/* CEA861D_CODE29 */
+	{15, 225, 58982, 5},	/* CEA861D_CODE30 */
+	{15, 618, 196608, 14},	/* CEA861D_CODE31 */
+	{15, 450, 0, 10},	/* CEA861D_CODE35 */
+	{15, 450, 0, 10},	/* CEA861D_CODE36 */
+	{15, 270, 218453, 6},	/* VESA_DMTID0x10 */
 };
 
 static void compute_pll(int clkin, int phy,
@@ -243,8 +225,8 @@ static int hdmi_pll_init(int refsel, int dcofreq, struct hdmi_pll_info *fmt, u16
 	r = FLD_MOD(r, 0x0, 11, 11); /* PLL_CLKSEL 1: PLL 0: SYS*/
 	r = FLD_MOD(r, 0x0, 12, 12); /* PLL_HIGHFREQ divide by 2 */
 	r = FLD_MOD(r, 0x1, 13, 13); /* PLL_REFEN */
-	r = FLD_MOD(r, 0x1, 14, 14); /* PHY_CLKINEN de-assert during locking */
-	r = FLD_MOD(r, 0x0, 20, 20); /* HSDIVBYPASS assert during locking */
+	r = FLD_MOD(r, 0x0, 14, 14); /* PHY_CLKINEN de-assert during locking */
+	r = FLD_MOD(r, 0x1, 20, 20); /* HSDIVBYPASS assert during locking */
 	r = FLD_MOD(r, refsel, 22, 21); /* REFSEL */
 	/* DPLL3  used by DISPC or HDMI itself*/
 	r = FLD_MOD(r, 0x0, 17, 17); /* M4_CLOCK_PWDN */
@@ -261,7 +243,7 @@ static int hdmi_pll_init(int refsel, int dcofreq, struct hdmi_pll_info *fmt, u16
 	hdmi_write_reg(pll, PLLCTRL_CFG2, r);
 
 	r = hdmi_read_reg(pll, PLLCTRL_CFG4);
-	r = FLD_MOD(r, 0, 24, 18); /* todo: M2 */
+	r = FLD_MOD(r, 0, 24, 18);
 	r = FLD_MOD(r, fmt->regmf, 17, 0);
 
 	/* go now */
@@ -327,7 +309,7 @@ int hdmi_pll_program(struct hdmi_pll_info *fmt)
 	u32 r;
 	int refsel, range;
 	int pclk;
-	u16 pll_sd;
+	u16 pll_sd = 0;
 
 	HDMI_PllPwr_t PllPwrWaitParam;
 
@@ -435,17 +417,17 @@ static int hdmi_panel_probe(struct omap_dss_device *dssdev)
 	switch (hdmi.code) {
 	case 1:
 	case 11:
-		dssdev->panel.timings = omap_dss_hdmi_timings1;
+		dssdev->panel.timings = cea861d1;
 		break;
 	case 4:
-		dssdev->panel.timings = omap_dss_hdmi_timings4;
+		dssdev->panel.timings = cea861d4;
 		break;
 	case 10:
-		dssdev->panel.timings = omap_dss_hdmi_timings10;
+		dssdev->panel.timings = vesad10;
 		break;
 	case 16:
 	default:
-		dssdev->panel.timings = omap_dss_hdmi_timings16;
+		dssdev->panel.timings = cea861d16;
 	}
 
 	return 0;
@@ -502,8 +484,6 @@ static struct omap_dss_driver hdmi_driver = {
 
 int hdmi_init(struct platform_device *pdev, int code)
 {
-	hdmi_pll_info *pllptr;
-
 	DSSDBG("Enter hdmi_init()\n");
 
 	mutex_init(&hdmi.lock);
@@ -537,7 +517,6 @@ void hdmi_exit(void)
 	iounmap(hdmi.base_phy);
 }
 
-
 static int hdmi_power_on(struct omap_dss_device *dssdev)
 {
 	int format, pll_idx, mode;
@@ -562,7 +541,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 		break;
 	case 10:
 		format = 10;
-		pll_idx = 3;
+		pll_idx = 10;
 		break;
 	default:
 		BUG();
@@ -618,10 +597,14 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 
 static void hdmi_power_off(struct omap_dss_device *dssdev)
 {
-	/* todo: find out what needs to be done for power off */
+	HDMI_W1_StopVideoFrame(HDMI_WP);
+
 	dispc_enable_digit_out(0);
 
 	hdmi_phy_off(HDMI_WP);
+
+	/* power off PLL */
+	HDMI_W1_SetWaitPllPwrState(HDMI_WP, HDMI_PLLPWRCMD_ALLOFF);
 
 	if (dssdev->platform_disable)
 		dssdev->platform_disable(dssdev);
