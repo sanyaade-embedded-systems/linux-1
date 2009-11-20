@@ -179,7 +179,8 @@ static inline void receive_chars(struct uart_omap_port *up, int *status)
 	int max_count = 256;
 
 	do {
-		ch = serial_in(up, UART_RX);
+		if (serial_in(up, UART_LSR) & UART_LSR_DR)
+			ch = serial_in(up, UART_RX);
 		flag = TTY_NORMAL;
 		up->port.icount.rx++;
 
@@ -687,8 +688,8 @@ serial_omap_set_termios(struct uart_port *port, struct ktermios *termios,
 	quot = serial_omap_get_divisor(port, baud);
 
 	if (up->use_dma)
-		up->fcr = /* UART_FCR_ENABLE_FIFO
-					| */ 0x1 << 6 | 0x1 << 4
+		up->fcr = UART_FCR_ENABLE_FIFO
+					| 0x1 << 6 | 0x1 << 4
 					| UART_FCR_DMA_SELECT;
 	else
 		up->fcr = UART_FCR_ENABLE_FIFO
