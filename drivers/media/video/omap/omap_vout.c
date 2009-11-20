@@ -2172,9 +2172,9 @@ static int vidioc_qbuf(struct file *file, void *fh,
 	struct videobuf_queue *q = &vout->vbq;
 	int ret = 0;
 
-	printk(KERN_INFO VOUT_NAME
+/*	printk(KERN_INFO VOUT_NAME
 		"entered qbuf: buffer address: %x \n", (unsigned int) buffer);
-
+*/
 	if ((V4L2_BUF_TYPE_VIDEO_OUTPUT != buffer->type) ||
 			(buffer->index >= vout->buffer_allocated) ||
 
@@ -2207,9 +2207,9 @@ static int vidioc_dqbuf(struct file *file, void *fh,
 	struct videobuf_queue *q = &vout->vbq;
 	int ret = 0;
 
-	printk(KERN_INFO VOUT_NAME
+/*	printk(KERN_INFO VOUT_NAME
 		"entered DQbuf: buffer address: %x \n", (unsigned int) b);
-
+*/
 	if (!vout->streaming)
 		return -EINVAL;
 

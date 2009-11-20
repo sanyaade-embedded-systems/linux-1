@@ -2214,7 +2214,7 @@ static struct platform_driver omapfb_driver = {
 
 static int __init omapfb_init(void)
 {
-omapfb_debug = 1;
+omapfb_debug = 0;
 	DBG("omapfb_init\n");
 
 	if (platform_driver_register(&omapfb_driver)) {

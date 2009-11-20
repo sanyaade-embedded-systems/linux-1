@@ -2048,11 +2048,11 @@ static void calc_tiler_row_rotation(u8 rotation,
 		return;
 	}
 
-	printk(KERN_INFO
+/*	printk(KERN_INFO
 		" colormode: %d, rotation: %d, ps: %d, width: %d,"
 		" height: %d, row_inc:%d\n",
 		color_mode, rotation, ps, width, height, *row_inc);
-
+*/
 	return;
 }
 
@@ -2547,9 +2547,9 @@ static int _dispc_setup_plane(enum omap_plane plane,
 		orient.dmmXInvert ^= mir_x;
 		orient.dmmYInvert ^= mir_y;
 
-		printk(KERN_INFO "RYX = %d %d %d\n", orient.dmm90Rotate,
+/*		printk(KERN_INFO "RYX = %d %d %d\n", orient.dmm90Rotate,
 				orient.dmmYInvert, orient.dmmXInvert);
-
+*/
 		if (orient.dmm90Rotate & 1) {
 			tiler_height = width;
 			tiler_width = height;
@@ -2566,10 +2566,10 @@ static int _dispc_setup_plane(enum omap_plane plane,
 			puv_addr = tiler_reorient_topleft(
 					tiler_get_natural_addr(puv_addr),
 					orient, tiler_width/2, tiler_height/2);
-			printk(KERN_INFO
+/*			printk(KERN_INFO
 				"rotated addresses: 0x%0x, 0x%0x\n",
 						paddr, puv_addr);
-			/* set BURSTTYPE if rotation is non-zero */
+*/			/* set BURSTTYPE if rotation is non-zero */
 			REG_FLD_MOD(dispc_reg_att[plane], 0x1, 29, 29);
 
 	} else
