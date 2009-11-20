@@ -122,6 +122,7 @@ static u32 vid1_static_vrfb_alloc;
 static u32 vid2_static_vrfb_alloc;
 static int debug;
 
+struct mutex my_lock;
 /* Module parameters */
 module_param(video1_numbuffers, uint, S_IRUGO);
 MODULE_PARM_DESC(video1_numbuffers, "Number of buffers to be allocated at \
@@ -631,7 +632,7 @@ static int omap_vout_tiler_buffer_setup(struct omap_vout_device *vout,
 static void omap_vout_free_tiler_buffers(struct omap_vout_device *vout)
 {
 	int j;
-
+	mutex_lock(&my_lock);
 	for (j = 0; j < vout->buffer_allocated; j++) {
 		tiler_free_buf(vout->buf_phy_addr[j]);
 		tiler_free_buf(vout->buf_phy_uv_addr[j]);
@@ -639,6 +640,7 @@ static void omap_vout_free_tiler_buffers(struct omap_vout_device *vout)
 		vout->buf_phy_uv_addr[j] = 0;
 	}
 	vout->buffer_allocated = 0;
+	mutex_unlock(&my_lock);
 }
 #endif
 
@@ -3183,6 +3185,7 @@ static int __init omap_vout_init(void)
 				Video driver\n");
 		return -EINVAL;
 	}
+	mutex_init(&my_lock);
 	return 0;
 }
 
