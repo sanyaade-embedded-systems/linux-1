@@ -2557,8 +2557,8 @@ static int _dispc_setup_plane(enum omap_plane plane,
 			tiler_height = height;
 			tiler_width = width;
 		}
-		printk(KERN_INFO "w, h = %d %d\n", tiler_width, tiler_height);
-
+/*		printk(KERN_INFO "w, h = %d %d\n", tiler_width, tiler_height);
+*/
 		paddr = tiler_reorient_topleft(tiler_get_natural_addr(paddr),
 				orient, tiler_width, tiler_height);
 
