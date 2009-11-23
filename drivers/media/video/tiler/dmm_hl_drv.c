@@ -30,6 +30,7 @@
 #include <linux/sched.h>   /* current->mm */
 #include <linux/dma-mapping.h>
 #include <linux/hardirq.h>
+#include <linux/mutex.h>
 
 
 static unsigned long get_phys_addr(unsigned long arg)
@@ -1096,6 +1097,7 @@ int dmm_instance_init(void *dmmInstanceCtxPtr,
 
 		dmmTilerCtx->contSizeX = contXSize;
 		dmmTilerCtx->contSizeY = contYSize;
+		mutex_init(&dmmTilerCtx->mtx);
 
 		/* Hwi_Params_init (&dmmHwdCtx->dmmIrqIntParams); */
 		/* dmmHwdCtx->dmmIrqIntHandle =

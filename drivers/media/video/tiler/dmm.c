@@ -533,6 +533,8 @@ __init dmm_init(void)
 	if (error == 1) {
 		retval = 0;
 	} else {
+		mutex_destroy(((struct dmmInstanceCtxT *)
+					dmmInstanceCtxPtr)->dmmTilerCtx.mtx);
 		kfree(ctxptr);
 		return retval;
 	}
@@ -579,6 +581,8 @@ EXIT:
 static void
 __exit dmm_exit(void)
 {
+	mutex_destroy(((struct dmmInstanceCtxT *)
+					dmmInstanceCtxPtr)->dmmTilerCtx.mtx);
 	kfree(ctxptr);
 	tiler_destroy_buf_info_list(lsthd);
 

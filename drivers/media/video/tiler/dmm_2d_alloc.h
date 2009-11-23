@@ -73,6 +73,9 @@ struct dmmTILERContCtxT {
 	signed long contSizeY;
 	struct dmmTILERContPageLstT *usdArList;
 	struct dmmTILERContPageAreaSpecT tmpArSelect;
+#ifdef __NEWCODE__
+	struct mutex mtx;
+#endif
 };
 
 /* ========================================================================== */

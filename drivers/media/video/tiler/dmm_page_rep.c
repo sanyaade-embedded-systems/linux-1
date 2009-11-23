@@ -23,6 +23,9 @@
 
 #ifdef __NEWCODE__
 #include <asm/cacheflush.h>
+#include <linux/mutex.h>
+
+static struct mutex mtx;
 #endif
 
 #define __KERN_TO_ALLOC__
@@ -166,7 +169,9 @@ void dmm_phys_page_rep_refil(void)
 /* ========================================================================== */
 enum errorCodeT dmm_phys_page_rep_init(void)
 {
+	mutex_init(&mtx);
 	/* DMM_ENTER_CRITICAL_SECTION */
+	mutex_lock(&mtx);
 
 	freePagesStack = NULL;
 	usedPagesStack = NULL;
@@ -180,6 +185,7 @@ enum errorCodeT dmm_phys_page_rep_init(void)
 	dmm_phys_page_rep_refil();
 
 	/* DMM_EXIT_CRITICAL_SETCTION */
+	mutex_unlock(&mtx);
 	return DMM_NO_ERROR;
 }
 
@@ -202,6 +208,7 @@ enum errorCodeT dmm_phys_page_rep_init(void)
 enum errorCodeT dmm_phys_page_rep_deinit(void)
 {
 	/* DMM_ENTER_CRITICAL_SECTION */
+	mutex_lock(&mtx);
 	struct dmmPhysPgLLT *tmpPgNode = NULL;
 
 	while (usedPagesStack != NULL) {
@@ -237,6 +244,8 @@ enum errorCodeT dmm_phys_page_rep_deinit(void)
 	freePageCnt = 0;
 
 	/* DMM_EXIT_CRITICAL_SETCTION */
+	mutex_unlock(&mtx);
+	mutex_destroy(&mtx);
 	return DMM_NO_ERROR;
 }
 
@@ -260,6 +269,7 @@ unsigned long *dmm_get_phys_page(void)
 	unsigned long *physPgPtr = NULL;
 
 	/* DMM_ENTER_CRITICAL_SECTION */
+	mutex_lock(&mtx);
 
 	if (freePagesStack == NULL)
 		dmm_phys_page_rep_refil();
@@ -293,6 +303,7 @@ unsigned long *dmm_get_phys_page(void)
 	check_stack(usedPagesStack, "used: ", __LINE__);
 #endif
 	/* DMM_EXIT_CRITICAL_SETCTION */
+	mutex_unlock(&mtx);
 	return physPgPtr;
 }
 
@@ -319,6 +330,7 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 	struct dmmPhysPgLLT *iterPgNode = usedPagesStack;
 
 	/* DMM_ENTER_CRITICAL_SECTION */
+	mutex_lock(&mtx);
 
 	while (iterPgNode != NULL) {
 
@@ -338,6 +350,7 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 				usedPagesStack = usedPagesStack->prevPhysPg;
 			} else {
 				/* DMM_EXIT_CRITICAL_SETCTION */
+				mutex_unlock(&mtx);
 				lajosdump(iterPgNode);
 				return DMM_SYS_ERROR;
 			}
@@ -369,6 +382,7 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 			freePagesStack->nextPhysPg = NULL;
 
 			/* DMM_EXIT_CRITICAL_SETCTION */
+			mutex_unlock(&mtx);
 #ifdef CHECK_STACK
 			check_stack(freePagesStack, "free: ", __LINE__);
 			check_stack(usedPagesStack, "used: ", __LINE__);
@@ -380,6 +394,7 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 	}
 
 	/* DMM_EXIT_CRITICAL_SETCTION */
+	mutex_unlock(&mtx);
 #ifdef CHECK_STACK
 	check_stack(freePagesStack, "free: ", __LINE__);
 	check_stack(usedPagesStack, "used: ", __LINE__);

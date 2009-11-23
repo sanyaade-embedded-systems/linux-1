@@ -1548,7 +1548,8 @@ alloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 	dmmTilerCtx->tmpArSelect.ttlExpndAr.x1 = dmmTilerCtx->contSizeX - 1;
 	dmmTilerCtx->tmpArSelect.ttlExpndAr.y1 = dmmTilerCtx->contSizeY - 1;
 
-	DMM_ENTER_CRITICAL_SECTION();
+	/* DMM_ENTER_CRITICAL_SECTION(); */
+	mutex_lock(&dmmTilerCtx->mtx);
 	tilerdump(__LINE__);
 	if (usedIter != NULL) {
 		int fit = 0;
@@ -1613,7 +1614,8 @@ alloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 		dmmTilerCtx->usdArList = allocatedArea;
 	}
 
-	DMM_EXIT_CRITICAL_SETCTION
+	/* DMM_EXIT_CRITICAL_SETCTION */
+	mutex_unlock(&dmmTilerCtx->mtx);
 
 	if (allocatedArea == NULL) {
 		tilerdump(__LINE__);
@@ -1650,7 +1652,8 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 	struct dmmTILERContPageLstT *usedIter;
 	struct dmmTILERContPageLstT *usedPrev;
 
-	DMM_ENTER_CRITICAL_SECTION();
+	/* DMM_ENTER_CRITICAL_SECTION(); */
+	mutex_lock(&dmmTilerCtx->mtx);
 
 	delItm = NULL;
 	usedIter = dmmTilerCtx->usdArList;
@@ -1675,7 +1678,8 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 		usedIter = usedIter->pgArNext;
 	}
 
-	DMM_EXIT_CRITICAL_SETCTION
+	/* DMM_EXIT_CRITICAL_SETCTION */
+	mutex_unlock(&dmmTilerCtx->mtx);
 
 	if (delItm != NULL) {
 		signed long i;
