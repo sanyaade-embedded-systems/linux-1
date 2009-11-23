@@ -99,7 +99,7 @@ static struct omap_opp omap3_l3_rate_table[] = {
 	/*OPP2 (OPP50)*/
 	{S100M, VDD2_OPP2, 0x1C},
 	/*OPP3 (OPP100)*/  
-	{S200M, VDD2_OPP3, 0x28},
+	{S200M, VDD2_OPP3, 0x2B},
 };
 
 static struct omap_opp omap3_dsp_rate_table[] = {
