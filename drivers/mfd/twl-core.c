@@ -212,9 +212,7 @@
 
 /* subchip/slave 1 0x49 - FEATURE */
 #define TWL6030_BASEADD_USB		0x0000
-#define TWL6030_BASEADD_GPADC_CTRL	0x0030
-#define TWL6030_BASEADD_GPADC_RT	0x0035
-#define TWL6030_BASEADD_GPADC		0x005D
+#define TWL6030_BASEADD_GPADC_CTRL	0x002E
 #define TWL6030_BASEADD_AUX		0x0090
 #define TWL6030_BASEADD_PWM		0x00BA
 #define TWL6030_BASEADD_GASGAUGE	0x00C0
@@ -329,8 +327,8 @@ static struct twl_mapping twl_map[TWL6030_MODULE_LAST + 1] = {
 
 	{ SUB_CHIP_ID1, TWL6030_BASEADD_USB },
 	{ SUB_CHIP_ID1, TWL6030_BASEADD_GPADC_CTRL },
-	{ SUB_CHIP_ID1, TWL6030_BASEADD_GPADC_RT },
-	{ SUB_CHIP_ID1, TWL6030_BASEADD_GPADC },
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_GPADC_CTRL},
+	{ SUB_CHIP_ID1, TWL6030_BASEADD_GPADC_CTRL},
 	{ SUB_CHIP_ID1, TWL6030_BASEADD_AUX },
 	{ SUB_CHIP_ID1, TWL6030_BASEADD_PWM },
 	{ SUB_CHIP_ID1, TWL6030_BASEADD_GASGAUGE },
@@ -625,6 +623,14 @@ add_children(struct twl_platform_data *pdata, unsigned long features)
 
 	if (twl_has_madc() && pdata->madc) {
 		child = add_child(MADC_SUB_CHIP_ID, "twl_madc",
+				pdata->madc, sizeof(*pdata->madc),
+				true, pdata->irq_base + MADC_INTR_OFFSET, 0);
+		if (IS_ERR(child))
+			return PTR_ERR(child);
+	}
+
+	if (twl_has_madc() && pdata->madc) {
+		child = add_child(MADC_SUB_CHIP_ID, "twl6030_gpadc",
 				pdata->madc, sizeof(*pdata->madc),
 				true, pdata->irq_base + MADC_INTR_OFFSET, 0);
 		if (IS_ERR(child))

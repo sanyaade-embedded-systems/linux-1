@@ -236,16 +236,25 @@ int twl_init_irq(int irq_num, unsigned irq_base, unsigned irq_end)
 	mask[3] = 0xFF;
 	ret = twl_i2c_write(TWL6030_MODULE_PIH, &mask[0],
 			REG_INT_MSK_LINE_A, 3); /* MASK ALL INT LINES*/
+	ret = twl_i2c_write(TWL6030_MODULE_PIH, &mask[0],
+			REG_INT_MSK_STS_A, 3);
 
-	mask[1] = 0;
-	mask[2] = 0;
-	mask[3] = 0;
+	mask[1] = 0xFF;
+	mask[2] = 0xFF;
+	mask[3] = 0xFF;
 	ret = twl_i2c_write(TWL6030_MODULE_PIH, &mask[0],
 			REG_INT_STS_A, 3); /* clear INT_STS_A,B,C */
 
 	ret |= twl_int_mask_reset(TWL6030_RTC_INT_MASK, REG_INT_MSK_LINE_A);
+	ret |= twl_int_mask_reset(TWL6030_RTC_INT_MASK, REG_INT_MSK_STS_A);
+
 	ret |= twl_int_mask_reset(TWL6030_MMCDETECT_INT_MASK, \
 					REG_INT_MSK_LINE_B);
+	ret |= twl_int_mask_reset(TWL6030_MMCDETECT_INT_MASK, \
+					REG_INT_MSK_STS_B);
+
+	ret |= twl_int_mask_reset(TWL6030_GPADC_INT_MASK, REG_INT_MSK_LINE_B);
+	ret |= twl_int_mask_reset(TWL6030_GPADC_INT_MASK, REG_INT_MSK_STS_B);
 
 	twl6030_irq_base = irq_base;
 

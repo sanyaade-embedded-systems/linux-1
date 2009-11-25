@@ -41,6 +41,8 @@
 #include <linux/uaccess.h>
 
 #define TWL6030_GPADC_PFX	"twl6030-gpadc: "
+#define ENABLE_GPADC	0x02
+#define REG_TOGGLE1	0x00
 
 struct twl6030_gpadc_data {
 	struct device		*dev;
@@ -75,7 +77,7 @@ static int twl6030_gpadc_read(struct twl6030_gpadc_data *gpadc, u8 reg)
 	int ret;
 	u8 val;
 
-	ret = twl_i2c_read_u8(TWL6030_MODULE_GPADC, &val, reg);
+	ret = twl_i2c_read_u8(TWL6030_MODULE_GPADC_CTRL, &val, reg);
 	if (ret) {
 		dev_dbg(gpadc->dev, "unable to read register 0x%X\n", reg);
 		return ret;
@@ -89,7 +91,7 @@ static void twl6030_gpadc_write(struct twl6030_gpadc_data *gpadc,
 {
 	int ret;
 
-	ret = twl_i2c_write_u8(TWL6030_MODULE_GPADC, val, reg);
+	ret = twl_i2c_write_u8(TWL6030_MODULE_GPADC_CTRL, val, reg);
 	if (ret)
 		dev_err(gpadc->dev, "unable to write register 0x%X\n", reg);
 }
@@ -104,7 +106,7 @@ static int twl6030_gpadc_channel_raw_read(struct twl6030_gpadc_data *gpadc,
 	msb = twl6030_gpadc_read(gpadc, reg + 1);
 	lsb = twl6030_gpadc_read(gpadc, reg);
 
-	return (int)(((msb << 8) | lsb) >> 6);
+	return (int)((msb << 8) | lsb);
 }
 
 static int twl6030_gpadc_read_channels(struct twl6030_gpadc_data *gpadc,
@@ -148,8 +150,6 @@ static irqreturn_t twl6030_gpadc_irq_handler(int irq, void *_gpadc)
 	 */
 	local_irq_enable();
 #endif
-
-	twl6030_gpadc_disable_irq(gpadc, i);
 
 	/* Find the cause of the interrupt and enable the pending
 	   bit for the corresponding method */
@@ -219,6 +219,7 @@ twl6030_gpadc_start_conversion(struct twl6030_gpadc_data *gpadc,
 	const struct twl6030_gpadc_conversion_method *method;
 
 	method = &twl6030_conversion_methods[conv_method];
+	twl_i2c_write_u8(TWL_MODULE_AUX, ENABLE_GPADC, REG_TOGGLE1);
 
 	switch (conv_method) {
 	case TWL6030_GPADC_SW1:
@@ -266,6 +267,8 @@ int twl6030_gpadc_conversion(struct twl6030_gpadc_request *req)
 		goto out;
 	}
 
+	method = &twl6030_conversion_methods[req->method];
+
 	if (req->method == TWL6030_GPADC_RT) {
 		ch_msb = (req->channels >> 8) & 0xff;
 		ch_lsb = req->channels & 0xff;
@@ -273,8 +276,6 @@ int twl6030_gpadc_conversion(struct twl6030_gpadc_request *req)
 		twl6030_gpadc_write(the_gpadc, method->sel, ch_lsb);
 		goto out;
 	}
-
-	method = &twl6030_conversion_methods[req->method];
 
 	twl6030_gpadc_start_conversion(the_gpadc, req->method);
 	the_gpadc->requests[req->method].active = 1;
@@ -377,8 +378,7 @@ static int __init twl6030_gpadc_probe(struct platform_device *pdev)
 	}
 
 	ret = request_irq(platform_get_irq(pdev, 0), twl6030_gpadc_irq_handler,
-			  0, "twl_madc", gpadc);
-
+			  0, "twl6030_gpadc", gpadc);
 
 	twl_int_mask_reset(TWL6030_GPADC_INT_MASK, REG_INT_MSK_LINE_B);
 
