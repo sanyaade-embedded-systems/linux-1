@@ -32,11 +32,10 @@
 #include <mach/board.h>
 #include <mach/mmc.h>
 #include <mach/cpu.h>
-#include <linux/proc_fs.h>
-#include <linux/slab.h>
 
 /* OMAP HSMMC Host Controller Registers */
 #define OMAP_HSMMC_SYSCONFIG	0x0010
+#define OMAP_HSMMC_SYSSTATUS	0x0014
 #define OMAP_HSMMC_CON		0x002C
 #define OMAP_HSMMC_BLK		0x0104
 #define OMAP_HSMMC_ARG		0x0108
@@ -94,6 +93,8 @@
 #define DUAL_VOLT_OCR_BIT	7
 #define SRC			(1 << 25)
 #define SRD			(1 << 26)
+#define SOFTRESET		(1 << 1)
+#define RESETDONE		(1 << 0)
 
 /*
  * FIXME: Most likely all the data using these _DEVID defines should come
@@ -599,9 +600,6 @@ static void mmc_omap_detect(struct work_struct *work)
 						mmc_carddetect_work);
 	struct omap_mmc_slot_data *slot = &mmc_slot(host);
 
-	/* Since EMMC is not hotpluggable no card detect is required */
-	if (host->id == OMAP_MMC2_DEVID)
-		return 1;
 	if (mmc_slot(host).card_detect)
 		host->carddetect = slot->card_detect(slot->card_detect_irq);
 	else
@@ -615,88 +613,6 @@ static void mmc_omap_detect(struct work_struct *work)
 		mmc_detect_change(host->mmc, (HZ * 50) / 1000);
 	}
 }
-#if 1
-/* Dummy Card detect Enable/disable  */
-static struct proc_dir_entry *mmc_dir, *mmc_irq_file;
-
-static int
-write_proc_entries(struct file *file, const char *buffer,
-		unsigned long count, void *data)
-{
-	int len, i;
-	char val[20];
-	struct mmc_omap_host *host ;
-	if (!buffer || (count == 0))
-		return 0;
-
-	len = (count > 3) ? 3 : count;
-	for (i = 0; i < len; i++)
-		val[i] = buffer[i];
-		val[i] = '\0';
-
-
-	if (strncmp(val, "MMC1_ON", 7) == 0) {
-		host = test_mmc1_omap4_host ;
-		host->carddetect = 0;
-		schedule_work(&host->mmc_carddetect_work);
-	} else if (strncmp(val, "MMC1_OFF", 8) == 0) {
-		host = test_mmc1_omap4_host ;
-		host->carddetect = 1;
-		schedule_work(&host->mmc_carddetect_work);
-	} else if (strncmp(val, "MMC2_ON", 7) == 0) {
-		host = test_mmc2_omap4_host ;
-		host->carddetect = 0;
-		schedule_work(&host->mmc_carddetect_work);
-	} else if (strncmp(val, "MMC2_OFF", 8) == 0) {
-		host = test_mmc2_omap4_host ;
-		host->carddetect = 1;
-		schedule_work(&host->mmc_carddetect_work);
-	} else if (strncmp(val, "MMC3_ON", 7) == 0) {
-		host = test_mmc3_omap4_host ;
-		host->carddetect = 0;
-		schedule_work(&host->mmc_carddetect_work);
-	} else if (strncmp(val, "MMC3_OFF", 8) == 0) {
-		host = test_mmc3_omap4_host ;
-		host->carddetect = 1;
-		schedule_work(&host->mmc_carddetect_work);
-	} else if (strncmp(val, "MMC4_ON", 7) == 0) {
-		host = test_mmc4_omap4_host ;
-		host->carddetect = 0;
-		schedule_work(&host->mmc_carddetect_work);
-	} else if (strncmp(val, "MMC4_OFF", 8) == 0) {
-		host = test_mmc4_omap4_host ;
-		host->carddetect = 1;
-		schedule_work(&host->mmc_carddetect_work);
-	} else
-		return -EINVAL;
-
-	return count;
-}
-
-/*PROC interface Implementation */
-#define MMC_DIR "driver/mmc"
-#define MMC_ROOT NULL
-static int file_type[1] = {1};
-static int
-create_proc_file_entries(void)
-{
-	mmc_dir = proc_mkdir(MMC_DIR, MMC_ROOT);
-	if (!mmc_dir)
-		return -ENOMEM;
-	mmc_irq_file = create_proc_entry("mmc_cd_irq", 0644, mmc_dir);
-	if (!mmc_irq_file)
-		goto no_mmc_irq;
-
-	mmc_irq_file->data = &file_type[0];
-	mmc_irq_file->write_proc = write_proc_entries;
-	return 0;
-
-no_mmc_irq:
-	remove_proc_entry(MMC_DIR, MMC_ROOT);
-	return -ENOMEM;
-}
-#endif
-
 
 /*
  * ISR for handling card insertion and removal
@@ -1022,7 +938,8 @@ static int omap_hsmmc_get_cd(struct mmc_host *mmc)
 	struct mmc_omap_host *host = mmc_priv(mmc);
 	struct omap_mmc_platform_data *pdata = host->pdata;
 
-	if (host->id == OMAP_MMC1_DEVID || host->id == OMAP_MMC2_DEVID)
+	/* Since EMMC is not hotpluggable no card detect is required */
+	if (host->id == OMAP_MMC2_DEVID)
 		return 1 ;
 	if (!pdata->slots[0].card_detect)
 		return -ENOSYS;
@@ -1042,6 +959,22 @@ static int omap_hsmmc_get_ro(struct mmc_host *mmc)
 static void omap_hsmmc_init(struct mmc_omap_host *host)
 {
 	u32 hctl, capa, value;
+	unsigned long i = 0;
+
+	value = OMAP_HSMMC_READ(host->base, SYSCONFIG);
+	OMAP_HSMMC_WRITE(host->base, SYSCONFIG, value | SOFTRESET);
+
+
+	for (i = 0; i < loops_per_jiffy; i++) {
+		if (OMAP_HSMMC_READ(host->base, SYSSTATUS) & RESETDONE)
+			break;
+		cpu_relax();
+	}
+
+	if (!(OMAP_HSMMC_READ(host->base, SYSSTATUS) & RESETDONE))
+		dev_err(mmc_dev(host->mmc),
+			"Timeout waiting on controller reset in %s\n",
+			__func__);
 
 	/* Only MMC1 supports 3.0V */
 	if (host->id == OMAP_MMC1_DEVID) {
@@ -1269,20 +1202,6 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 		if (ret < 0)
 			goto err_cover_switch;
 	}
-#if 1
-	if ((cpu_is_omap44xx())) {
-		if (host->id == OMAP_MMC1_DEVID)
-			create_proc_file_entries();
-		if (host->id == OMAP_MMC2_DEVID)
-			test_mmc1_omap4_host = host;
-		if (host->id == OMAP_MMC3_DEVID)
-			test_mmc2_omap4_host = host;
-		if (host->id == OMAP_MMC4_DEVID)
-			test_mmc3_omap4_host = host;
-		if (host->id == OMAP_MMC5_DEVID)
-			test_mmc4_omap4_host = host;
-	}
-#endif
 	return 0;
 
 err_cover_switch:

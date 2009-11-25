@@ -36,7 +36,7 @@ static u16 control_mmc1;
 static u16 control_mmc2;
 
 #define HSMMC_NAME_LEN	9
-#define	PHOENIX_MMC_CTRL		0x0C	/* 0x0E */
+#define	PHOENIX_MMC_CTRL		0x0C	/* 0xEE */
 #define PHOENIX_CFG_INPUT_PUPD3		0x10    /* 0xF2 */
 #define MMC_GRP				0x18
 #define MMC_TRANS			0x19
