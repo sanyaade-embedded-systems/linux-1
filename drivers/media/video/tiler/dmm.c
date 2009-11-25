@@ -1216,6 +1216,11 @@ EXPORT_SYMBOL(tiler_free_buf);
 #define DMM_TILER_GET_90_Y_(N, var) \
 	(DMM_TILER_GET_OFFSET_(N, var) >> DMM_TILER_CONT_HEIGHT_BITS_(N))
 
+#define DMM_TILER_STRIDE_0_(N) \
+	(DMM_TILER_THE(CONT_WIDTH) << DMM_SHIFT_PER_Y_##N)
+#define DMM_TILER_STRIDE_90_(N) \
+	(DMM_TILER_THE(CONT_HEIGHT) << DMM_SHIFT_PER_X_##N)
+
 void tiler_get_natural_xy(unsigned long tsptr, unsigned long *x,
 			  unsigned long *y)
 {
@@ -1334,64 +1339,49 @@ EXPORT_SYMBOL(tiler_get_natural_addr);
 
 unsigned long
 tiler_reorient_topleft(unsigned long tsptr,
-		       struct dmmViewOrientT orient,
-		       unsigned int validDataWidth,
-		       unsigned int validDataHeight)
+			struct dmmViewOrientT orient,
+			unsigned int width,
+			unsigned int height)
 {
-	struct dmmTILERContPageAreaT *bufferMappedZone;
-	struct dmmTILERContCtxT *dmmTilerCtx =
-			&((struct dmmInstanceCtxT *)ctxptr)->dmmTilerCtx;
 	enum dmmMemoryAccessT accessModeM;
 	unsigned long x_pagew, y_pagew, x, y;
 
-	tilerdump(__LINE__);
-
 	accessModeM = DMM_GET_ACC_MODE(tsptr);
 
-	bufferMappedZone = \
-		dmm_tiler_get_area_from_sysptr(dmmTilerCtx, (void *)tsptr);
+	tiler_get_natural_xy(tsptr, &x, &y);
 
-	if (bufferMappedZone == NULL)
-		return 0x0;
-
-	switch (accessModeM) {
-	case MODE_8_BIT:
-		x_pagew = DMM_PAGE_DIMM_X_MODE_8;
-		y_pagew = DMM_PAGE_DIMM_Y_MODE_8;
-		break;
-	case MODE_16_BIT:
-		x_pagew = DMM_PAGE_DIMM_X_MODE_16;
-		y_pagew = DMM_PAGE_DIMM_Y_MODE_16;
-		break;
-	case MODE_32_BIT:
-		x_pagew = DMM_PAGE_DIMM_X_MODE_32;
-		y_pagew = DMM_PAGE_DIMM_Y_MODE_32;
-		break;
-	case MODE_PAGE:
-	default:
-		x_pagew = y_pagew = 1;
-		break;
-	}
-
-	if (!validDataWidth)
-		validDataWidth = (bufferMappedZone->x1 -
-				  bufferMappedZone->x0 + 1) * x_pagew;
-
-	if (!validDataHeight)
-		validDataHeight = (bufferMappedZone->y1 -
-				  bufferMappedZone->y0 + 1) * y_pagew;
-
-	x = bufferMappedZone->x0 * x_pagew;
-	y = bufferMappedZone->y0 * y_pagew;
+	if (DMM_GET_X_INVERTED(tsptr))
+		x -= width - 1;
+	if (DMM_GET_Y_INVERTED(tsptr))
+		y -= height - 1;
 
 	if (orient.dmmXInvert)
-		x += validDataWidth - 1;
+		x += width - 1;
 	if (orient.dmmYInvert)
-		y += validDataHeight - 1;
+		y += height - 1;
 
 	return tiler_get_address(orient, accessModeM, x, y);
 }
 EXPORT_SYMBOL(tiler_reorient_topleft);
+
+unsigned long
+tiler_stride(unsigned long tsptr)
+{
+	switch (DMM_GET_ACC_MODE(tsptr)) {
+	case MODE_8_BIT:
+		return DMM_GET_ROTATED(tsptr) ?
+			DMM_TILER_STRIDE_90_(8) : DMM_TILER_STRIDE_0_(8);
+	case MODE_16_BIT:
+		return DMM_GET_ROTATED(tsptr) ?
+			DMM_TILER_STRIDE_90_(16) : DMM_TILER_STRIDE_0_(16);
+	case MODE_32_BIT:
+		return DMM_GET_ROTATED(tsptr) ?
+			DMM_TILER_STRIDE_90_(32) : DMM_TILER_STRIDE_0_(32);
+	default:
+		return 0;
+	}
+}
+EXPORT_SYMBOL(tiler_stride);
 
 void
 tiler_rotate_view(struct dmmViewOrientT *orient, unsigned long rotation)

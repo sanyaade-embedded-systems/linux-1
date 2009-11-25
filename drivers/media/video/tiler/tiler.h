@@ -109,4 +109,7 @@ tiler_reorient_topleft(unsigned long tsptr,
 void
 tiler_rotate_view(struct dmmViewOrientT *orient, unsigned long rotation);
 
+unsigned long
+tiler_stride(unsigned long tsptr);
+
 #endif

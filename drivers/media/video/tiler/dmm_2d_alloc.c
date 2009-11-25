@@ -1754,9 +1754,9 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
  *
  * @param tlrCtx - struct dmmTILERContCtxT* - [in] TILER context structure.
  *
- * @param X - signed long - [in] X coordinate of the search area.
+ * @param X - signed long - [in] X coordinate inside the search area.
  *
- * @param Y - signed long - [in] X coordinate of the search area.
+ * @param Y - signed long - [in] X coordinate inside the search area.
  *
  * @param xInvert - MSP_BOOL - [in] X coordinate is inverted.
  *
@@ -1782,43 +1782,14 @@ search_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 	struct dmmTILERContPageLstT *usedIter;
 	usedIter = dmmTilerCtx->usdArList;
 
-	if (xInvert && yInvert) {
-		while (usedIter != NULL) {
-			if (X == usedIter->pgAr.x1 && Y == usedIter->pgAr.y1) {
-				tilerdump(__LINE__);
-				return &(usedIter->pgAr);
-			}
-
-			usedIter = usedIter->pgArNext;
+	while (usedIter != NULL) {
+		if (usedIter->pgAr.x0 <= X && X <= usedIter->pgAr.x1 &&
+			usedIter->pgAr.y0 <= Y && Y <= usedIter->pgAr.y1) {
+			tilerdump(__LINE__);
+			return &(usedIter->pgAr);
 		}
-	} else if (!xInvert && yInvert) {
-		while (usedIter != NULL) {
-			if (X == usedIter->pgAr.x0 && Y == usedIter->pgAr.y1) {
-				tilerdump(__LINE__);
-				return &(usedIter->pgAr);
-			}
 
-			usedIter = usedIter->pgArNext;
-		}
-	} else if (xInvert && !yInvert) {
-		while (usedIter != NULL) {
-			if (X == usedIter->pgAr.x1 && Y == usedIter->pgAr.y0) {
-				tilerdump(__LINE__);
-				return &(usedIter->pgAr);
-			}
-
-			usedIter = usedIter->pgArNext;
-		}
-	} else {
-		tilerdump(__LINE__);
-		while (usedIter != NULL) {
-			if (X == usedIter->pgAr.x0 && Y == usedIter->pgAr.y0) {
-				tilerdump(__LINE__);
-				return &(usedIter->pgAr);
-			}
-
-			usedIter = usedIter->pgArNext;
-		}
+		usedIter = usedIter->pgArNext;
 	}
 
 	tilerdump(__LINE__);
