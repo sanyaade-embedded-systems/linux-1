@@ -130,12 +130,13 @@
 
 /* Triton Core internal information (BEGIN) */
 
-#define TWL_NUM_SLAVES		4
+#define TWL_NUM_SLAVES		5
 
 #define SUB_CHIP_ID0 0
 #define SUB_CHIP_ID1 1
 #define SUB_CHIP_ID2 2
 #define SUB_CHIP_ID3 3
+#define SUB_CHIP_ID4 4
 
 #ifdef CONFIG_TWL4030_CORE
 #define USB_SUB_CHIP_ID SUB_CHIP_ID0
@@ -186,7 +187,7 @@
 
 
 #ifdef CONFIG_TWL6030_CORE
-#define TWL6030_MODULE_LAST TWL6030_MODULE_AUDIO
+#define TWL6030_MODULE_LAST TWL6030_MODULE_BQ
 #define TWL_MODULE_LAST TWL6030_MODULE_LAST
 
 #define RTC_SUB_CHIP_ID		SUB_CHIP_ID0
@@ -224,6 +225,7 @@
 
 /* subchip/slave 3 0x4B - AUDIO */
 #define TWL6030_BASEADD_AUDIO		0x0000
+#define TWL6030_BASEADD_BQ		0x0000
 #endif /* CONFIG_TWL6030_CORE */
 
 /* Few power values */
@@ -338,6 +340,7 @@ static struct twl_mapping twl_map[TWL6030_MODULE_LAST + 1] = {
 	{ SUB_CHIP_ID2, TWL6030_BASEADD_DIEID },
 
 	{ SUB_CHIP_ID3, TWL6030_BASEADD_AUDIO },
+	{ SUB_CHIP_ID4, TWL6030_BASEADD_BQ},
 };
 #endif
 
@@ -589,17 +592,11 @@ add_children(struct twl_platform_data *pdata, unsigned long features)
 				pdata->irq_base + BCI_PRES_INTR_OFFSET,
 				pdata->irq_base + BCI_INTR_OFFSET);
 #elif defined(CONFIG_TWL6030_CORE)
-		child = add_child(BCI_SUB_CHIP_ID, "twl_charger_ctrl",
+		child = add_child(BCI_SUB_CHIP_ID, "twl6030_bci",
 				pdata->bci, sizeof(*pdata->bci),
 				false,
-				pdata->irq_base + CHARGER_INTR_OFFSET, 0);
-		if (IS_ERR(child))
-			return PTR_ERR(child);
-
-		child = add_child(BCI_SUB_CHIP_ID, "twl_charger_fault",
-				pdata->bci, sizeof(*pdata->bci),
-				false,
-				pdata->irq_base + CHARGER_INTR_OFFSET, 0);
+				pdata->irq_base + CHARGER_INTR_OFFSET,
+				pdata->irq_base + CHARGERFAULT_INTR_OFFSET);
 #endif
 		if (IS_ERR(child))
 			return PTR_ERR(child);
@@ -959,6 +956,9 @@ twl_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		struct twl_client	*twl = &twl_modules[i];
 
 		twl->address = client->addr + i;
+		if (i == 4)
+			twl->address = 0x6a;
+
 		if (i == 0)
 			twl->client = client;
 		else {
