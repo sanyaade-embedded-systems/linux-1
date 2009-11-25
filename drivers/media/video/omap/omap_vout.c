@@ -343,19 +343,23 @@ static int omap_vout_try_format(struct v4l2_pix_format *pix)
 		break;
 	case V4L2_PIX_FMT_NV12:
 		pix->colorspace = V4L2_COLORSPACE_JPEG;
-		bpp = 3/2; /* TODO: check this? */
+		bpp = 1; /* TODO: check this? */
 		break;
 	}
-	if (V4L2_PIX_FMT_NV12 == pix->pixelformat)
-		pix->bytesperline = pix->width * 3/2;
-	else
+
+	/* :NOTE: NV12 has width bytes per line in both Y and UV sections */
 		pix->bytesperline = pix->width * bpp;
 
-	pix->sizeimage = pix->bytesperline * pix->height;
-
 #ifdef TILER_ALLOCATE_V4L2
-	pix->bytesperline = 4096;
+	pix->bytesperline = (pix->bytesperline + PAGE_SIZE - 1) &
+		~(PAGE_SIZE - 1);
 #endif
+
+	/* :TODO: add 2-pixel round restrictions to YUYV and NV12 formats */
+	pix->sizeimage = pix->bytesperline * pix->height;
+	if (V4L2_PIX_FMT_NV12 == pix->pixelformat)
+		pix->sizeimage += pix->sizeimage >> 1;
+
 	return bpp;
 }
 
@@ -1130,7 +1134,7 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 	*/
 	/* Now allocated the V4L2 buffers */
 	/* i is the block-width - either 4K or 8K, depending upon input width*/
-	i = (vout->pix.width +
+	i = (vout->pix.width * vout->bpp +
 		TILER_PAGESIZE - 1) & ~(TILER_PAGESIZE - 1);
 
 	/* for NV12 format, buffer is height + height / 2*/
@@ -1486,10 +1490,7 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 	/* UV Buffer in case of NV12 format */
 	if (OMAP_DSS_COLOR_NV12 == vout->dss_mode) {
 		pos = dmabuf->vmalloc;
-		/* UV buffer is 2 bpp */
-		p = (vout->pix.width * 2 +
-			TILER_PAGESIZE - 1) & ~(TILER_PAGESIZE - 1);
-
+		/* UV buffer is 2 bpp, but half size, so p remains */
 		m_increment = 2*64*TILER_WIDTH;
 
 		/* UV buffer is height / 2*/
@@ -1509,7 +1510,6 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 				p, vma->vm_page_prot))
 				return -EAGAIN;
 			k += p;
-
 			m += m_increment;
 		}
 
