@@ -481,6 +481,7 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 	driver_obj = (struct notify_tesladrv_object *)
 			(*handlePtr)->driver_object;
 	drv_handle = (*handlePtr);
+	WARN_ON(drv_handle == NULL);
 	WARN_ON((*handlePtr)->driver_object == NULL);
 
 	/*Uninstall the ISRs & Disable the Mailbox interrupt.*/
