@@ -92,8 +92,8 @@ MODULE_LICENSE("GPL");
 #define NUM_OF_VIDEO_CHANNELS	2
 #endif
 
-#define VID_MAX_WIDTH		1920 /* Largest width */
-#define VID_MAX_HEIGHT		1080 /* Largest height */
+#define VID_MAX_WIDTH		2048 /* Largest width */
+#define VID_MAX_HEIGHT		2048 /* Largest height */
 
 /* Mimimum requirement is 2x2 for DSS */
 #define VID_MIN_WIDTH		2
@@ -682,6 +682,10 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	struct omap_overlay *ovl;
 	struct omap_dss_device *cur_display;
 	int *cropped_offset = &(vout->cropped_offset);
+#ifdef CONFIG_ARCH_OMAP4
+	int *cropped_uv_offset = &(vout->cropped_uv_offset);
+	unsigned long addr = 0, uv_addr = 0;
+#endif
 
 	ovid = &(vout->vid_info);
 	ovl = ovid->overlays[0];
@@ -780,6 +784,21 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 			vr_ps + (crop->left * ps) / vr_ps +
 			((crop->width / vr_ps) - 1) * ps;
 		break;
+	}
+#else
+	/* :TODO: change v4l2 to send TSPtr as tiled addresses to DSS2 */
+	addr = tiler_get_natural_addr(vout->queued_buf_addr[vout->cur_frm->i]);
+
+	if (OMAP_DSS_COLOR_NV12 == vout->dss_mode) {
+		*cropped_offset = tiler_stride(addr) * crop->top + crop->left;
+		uv_addr = tiler_get_natural_addr(
+			vout->queued_buf_uv_addr[vout->cur_frm->i]);
+		/* :TODO: only allow even crops for NV12 */
+		*cropped_uv_offset = tiler_stride(uv_addr) * (crop->top >> 1)
+			+ (crop->left & ~1);
+	} else {
+		*cropped_offset =
+			tiler_stride(addr) * crop->top + crop->left * ps;
 	}
 #endif
 	v4l2_dbg(1, debug, &vout->vid_dev->v4l2_dev,
@@ -2262,16 +2281,16 @@ static int vidioc_streamon(struct file *file, void *fh,
 
 	vout->first_int = 1;
 
-#ifndef CONFIG_ARCH_OMAP4
 	if (omap_vout_calculate_offset(vout)) {
 		mutex_unlock(&vout->lock);
 		return -EINVAL;
 	}
-#endif
 	addr = (unsigned long) vout->queued_buf_addr[vout->cur_frm->i]
 	+ vout->cropped_offset;
-	uv_addr = (unsigned long) vout->queued_buf_uv_addr[vout->cur_frm->i];
-	/* OMAP4: check if cropped_offset is needed? */
+#ifdef CONFIG_ARCH_OMAP4
+	uv_addr = (unsigned long) vout->queued_buf_uv_addr[vout->cur_frm->i] +
+		vout->cropped_uv_offset;
+#endif
 
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE;
@@ -2853,8 +2872,8 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 		if (def_display) {
 			r = def_display->enable(def_display);
 			if (r) {
-			/* Here we are not considering a error as display may be
-			enabled by frame buffer driver */
+			/* Here we are not considering a error as display may
+			be enabled by frame buffer driver */
 				dev_warn(&pdev->dev,
 					"'%s' Display already enabled\n",
 					def_display->name);
@@ -2971,10 +2990,10 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 
 		addr = (unsigned long) vout->queued_buf_addr[vout->next_frm->i]
 					+ vout->cropped_offset;
-
+#ifdef CONFIG_ARCH_OMAP4
 		uv_addr = (unsigned long) vout->queued_buf_uv_addr[
-							vout->next_frm->i];
-		/* TODO: check the cropped offset part*/
+			vout->next_frm->i] + vout->cropped_uv_offset;
+#endif
 
 		/* First save the configuration in ovelray structure */
 		r = omapvid_init(vout, addr, uv_addr);
@@ -3011,9 +3030,10 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 		addr = (unsigned long) vout->queued_buf_addr[vout->next_frm->i]
 			+ vout->cropped_offset;
 
+#ifdef CONFIG_ARCH_OMAP4
 		uv_addr = (unsigned long) vout->queued_buf_uv_addr[
-							vout->next_frm->i];
-		/* TODO: check the cropped offset part*/
+			vout->next_frm->i] + vout->cropped_uv_offset;
+#endif
 
 		/* First save the configuration in ovelray structure */
 		r = omapvid_init(vout, addr, uv_addr);
@@ -3051,9 +3071,10 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 		addr = (unsigned long) vout->queued_buf_addr[vout->next_frm->i]
 			+ vout->cropped_offset;
 
+#ifdef CONFIG_ARCH_OMAP4
 		uv_addr = (unsigned long) vout->queued_buf_uv_addr[
-							vout->next_frm->i];
-	/* TODO: check the cropped offset part*/
+			vout->next_frm->i] + vout->cropped_uv_offset;
+#endif
 
 	/* First save the configuration in ovelray structure */
 	r = omapvid_init(vout, addr, uv_addr);
@@ -3111,19 +3132,23 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 			addr = (unsigned long)
 				vout->queued_buf_addr[vout->next_frm->i] +
 				vout->cropped_offset;
-			uv_addr = (unsigned long)
-				vout->queued_buf_uv_addr[vout->next_frm->i];
+#ifdef CONFIG_ARCH_OMAP4
+		uv_addr = (unsigned long) vout->queued_buf_uv_addr[
+			vout->next_frm->i] + vout->cropped_uv_offset;
+#endif
 
 			/* TODO: check the cropped offset part*/
 
 			/* First save the configuration in ovelray structure */
 			r = omapvid_init(vout, addr, uv_addr);
 			if (r)
-				printk(KERN_ERR VOUT_NAME "failed to set overlay info\n");
+				printk(KERN_ERR VOUT_NAME
+					"failed to set overlay info\n");
 			/* Enable the pipeline and set the Go bit */
 			r = omapvid_apply_changes(vout);
 			if (r)
-				printk(KERN_ERR VOUT_NAME "failed to change mode\n");
+				printk(KERN_ERR VOUT_NAME
+					"failed to change mode\n");
 		}
 #endif
 	}
