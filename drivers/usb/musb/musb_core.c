@@ -98,6 +98,7 @@
 #include <linux/kobject.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
+#include <linux/i2c/twl.h>
 
 #ifdef	CONFIG_ARM
 #include <mach/hardware.h>
@@ -1872,6 +1873,16 @@ static void musb_free(struct musb *musb)
 #endif
 }
 
+int twl_i2c_usb_write_u8(u8 mod_no, u8 value, u8 reg)
+{
+	/* 2 bytes offset 1 contains the data offset 0 is used by i2c_write */
+	u8 temp_buffer[2] = { 0 };
+	/* offset 1 contains the data */
+	temp_buffer[1] = value;
+	return twl_i2c_write(mod_no, temp_buffer, reg, 1);
+}
+
+
 /*
  * Perform generic per-controller initialization.
  *
@@ -1880,6 +1891,10 @@ static void musb_free(struct musb *musb)
  * @mregs: virtual address of controller registers,
  *	not yet corrected for platform-specific offsets
  */
+
+#define VUSB_CFG_STATE	0x22
+#define MISC2		0x3
+
 static int __init
 musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
 {
@@ -1903,6 +1918,13 @@ musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
 #endif
 	case MUSB_PERIPHERAL:
 #ifdef CONFIG_USB_GADGET_MUSB_HDRC
+		/* FIXME */
+		/* TODO:- Phoenix Settings to be done from Phoenix Layer */
+		twl_i2c_usb_write_u8(TWL_MODULE_PM_SLAVE_LDO, 0x21,
+					VUSB_CFG_STATE);
+		twl_i2c_usb_write_u8(TWL6030_MODULE_PM_MISC, 0x10,
+					MISC2);
+		omap_writel(0x00000015, 0x4A00233C);
 		break;
 #else
 		goto bad_config;
