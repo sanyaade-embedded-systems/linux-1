@@ -51,6 +51,11 @@
 #define OMAP_HSMMC_IE		0x0134
 #define OMAP_HSMMC_ISE		0x0138
 #define OMAP_HSMMC_CAPA		0x0140
+#define OMAP_HSMMC_CUR_CAPA     0x0148
+#define OMAP_HSMMC_FE           0x0150
+#define OMAP_HSMMC_ADMA_ES      0x0154
+#define OMAP_HSMMC_ADMA_SAL     0x0158
+#define OMAP_HSMMC_REV          0x01FC
 
 #define VS18			(1 << 26)
 #define VS30			(1 << 25)
@@ -70,7 +75,7 @@
 #define CLKD_SHIFT		6
 #define DTO_MASK		0x000F0000
 #define DTO_SHIFT		16
-#define INT_EN_MASK		0x307F0033
+#define INT_EN_MASK             0x327F003B
 #define INIT_STREAM		(1 << 1)
 #define DP_SELECT		(1 << 21)
 #define DDIR			(1 << 4)
@@ -95,6 +100,17 @@
 #define SRD			(1 << 26)
 #define SOFTRESET		(1 << 1)
 #define RESETDONE		(1 << 0)
+#define DMAS			(0x2 << 3)
+#define CAPA_ADMA_SUPPORT       (1 << 19)
+#define ADMA_TRANSFER_VALID     (1 << 0)
+#define ADMA_TRANSFER_END       (1 << 1)
+#define ADMA_TRANSFER_EN_INT    (1 << 2)
+#define ADMA_TRANSFER_LINK      (1 << 4)
+#define ADMA_TRANSFER_DESC	(1 << 5)
+#define DMA_MNS_ADMA_MODE	BIT(20)
+#define ADMA_ERR		BIT(25)
+#define DMA_TYPE_SDMA		1
+#define DMA_TYPE_ADMA   	2
 
 /*
  * FIXME: Most likely all the data using these _DEVID defines should come
@@ -127,6 +143,12 @@
 #define OMAP_HSMMC_WRITE(base, reg, val) \
 	__raw_writel((val), (base) + OMAP_HSMMC_##reg)
 
+struct adma_desc_table {
+	u16 attributes;
+	u16 length;
+	dma_addr_t addr;
+};
+
 struct mmc_omap_host {
 	struct	device		*dev;
 	struct	mmc_host	*mmc;
@@ -149,7 +171,9 @@ struct mmc_omap_host {
 	int			suspended;
 	int			irq;
 	int			carddetect;
-	int			use_dma, dma_ch;
+	int			dma_type, dma_ch;
+	struct adma_desc_table 	*adma_table;
+	dma_addr_t		phy_adma_table;
 	int			dma_line_tx, dma_line_rx;
 	int			slot_id;
 	int			dbclk_enabled;
@@ -285,7 +309,7 @@ mmc_omap_start_command(struct mmc_omap_host *host, struct mmc_command *cmd,
 			cmdreg &= ~(DDIR);
 	}
 
-	if (host->use_dma)
+	if (host->dma_type)
 		cmdreg |= DMA_EN;
 
 	OMAP_HSMMC_WRITE(host->base, ARG, cmd->arg);
@@ -317,7 +341,7 @@ mmc_omap_xfer_done(struct mmc_omap_host *host, struct mmc_data *data)
 
 	host->data = NULL;
 
-	if (host->use_dma && host->dma_ch != -1)
+	if (host->dma_type && host->dma_ch != -1)
 		dma_unmap_sg(mmc_dev(host->mmc), data->sg, host->dma_len,
 			mmc_omap_get_dma_dir(host, data));
 
@@ -367,7 +391,7 @@ static void mmc_dma_cleanup(struct mmc_omap_host *host, int errno)
 {
 	host->data->error = errno;
 
-	if (host->use_dma && host->dma_ch != -1) {
+	if ((host->dma_type == DMA_TYPE_SDMA) && (host->dma_ch != -1)) {
 		dma_unmap_sg(mmc_dev(host->mmc), host->data->sg, host->dma_len,
 			mmc_omap_get_dma_dir(host, host->data));
 		omap_free_dma(host->dma_ch);
@@ -385,10 +409,10 @@ static void mmc_omap_report_irq(struct mmc_omap_host *host, u32 status)
 {
 	/* --- means reserved bit without definition at documentation */
 	static const char *mmc_omap_status_bits[] = {
-		"CC", "TC", "BGE", "---", "BWR", "BRR", "---", "---", "CIRQ",
-		"OBI", "---", "---", "---", "---", "---", "ERRI", "CTO", "CCRC",
-		"CEB", "CIE", "DTO", "DCRC", "DEB", "---", "ACE", "---",
-		"---", "---", "---", "CERR", "CERR", "BADA", "---", "---", "---"
+		"CC", "TC", "BGE", "DMA", "BWR", "BRR", "CINS", "CREM", "CIRQ",
+		"OBI", "BSR", "---", "---", "---", "---", "ERRI", "CTO", "CCRC",
+		"CEB", "CIE", "DTO", "DCRC", "DEB", "CLE", "ACE", "ADMA",
+		"---", "---", "CERR", "BADA", "---", "---"
 	};
 	char res[256];
 	char *buf = res;
@@ -495,6 +519,15 @@ static irqreturn_t mmc_omap_irq(int irq, void *dev_id)
 		if (status & CARD_ERR) {
 			dev_dbg(mmc_dev(host->mmc),
 				"Ignoring card err CMD%d\n", host->cmd->opcode);
+			if (host->cmd)
+				end_cmd = 1;
+			if (host->data)
+				end_trans = 1;
+		}
+		if (status & ADMA_ERR) {
+			dev_dbg(mmc_dev(host->mmc),
+				"Ignoring card ADMA err%d\n",
+					OMAP_HSMMC_READ(host->base, ADMA_ES));
 			if (host->cmd)
 				end_cmd = 1;
 			if (host->data)
@@ -757,6 +790,33 @@ mmc_omap_start_dma_transfer(struct mmc_omap_host *host, struct mmc_request *req)
 	return 0;
 }
 
+static void mmc_populate_adma_transfer_table(struct mmc_omap_host *host,
+		struct mmc_request *req, struct adma_desc_table *pdesc)
+{
+	int i;
+	struct mmc_data *data = req->data;
+
+	host->dma_len = dma_map_sg(mmc_dev(host->mmc), data->sg,
+			data->sg_len, mmc_omap_get_dma_dir(host, data));
+	for (i = 0; i < host->dma_len; i++) {
+		pdesc[i].addr = sg_dma_address(data->sg + i);
+		pdesc[i].length = sg_dma_len(data->sg + i);
+		pdesc[i].attributes |= (ADMA_TRANSFER_DESC |
+						ADMA_TRANSFER_VALID);
+	}
+	/* Adding a Terminating Entry */
+	pdesc[i - 1].attributes |= ADMA_TRANSFER_END;
+	pdesc[i].addr = 0x00000000;
+	pdesc[i].length = 0x0000;
+	pdesc[i].attributes |= (ADMA_TRANSFER_END | ADMA_TRANSFER_VALID);
+}
+
+static void mmc_start_adma_transfer(struct mmc_omap_host *host)
+{
+	OMAP_HSMMC_WRITE(host->base, ADMA_SAL, host->phy_adma_table);
+	return;
+}
+
 static void set_data_timeout(struct mmc_omap_host *host,
 			     struct mmc_request *req)
 {
@@ -820,12 +880,15 @@ mmc_omap_prepare_data(struct mmc_omap_host *host, struct mmc_request *req)
 					| (req->data->blocks << 16));
 	set_data_timeout(host, req);
 
-	if (host->use_dma) {
+	if (host->dma_type == DMA_TYPE_SDMA) {
 		ret = mmc_omap_start_dma_transfer(host, req);
 		if (ret != 0) {
 			dev_dbg(mmc_dev(host->mmc), "MMC start dma failure\n");
 			return ret;
 		}
+	} else if (host->dma_type == DMA_TYPE_ADMA) {
+		mmc_populate_adma_transfer_table(host, req, host->adma_table);
+		mmc_start_adma_transfer(host);
 	}
 	return 0;
 }
@@ -985,8 +1048,15 @@ static void omap_hsmmc_init(struct mmc_omap_host *host)
 		capa = VS18;
 	}
 
+	if (host->dma_type == DMA_TYPE_ADMA)
+		hctl |= DMAS;
 	value = OMAP_HSMMC_READ(host->base, HCTL) & ~SDVS_MASK;
 	OMAP_HSMMC_WRITE(host->base, HCTL, value | hctl);
+
+	if (host->dma_type == DMA_TYPE_ADMA) {
+		value = OMAP_HSMMC_READ(host->base, CON);
+		OMAP_HSMMC_WRITE(host->base, CON, value | DMA_MNS_ADMA_MODE);
+	}
 
 	value = OMAP_HSMMC_READ(host->base, CAPA);
 	OMAP_HSMMC_WRITE(host->base, CAPA, value | capa);
@@ -1014,6 +1084,7 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 	struct mmc_omap_host *host = NULL;
 	struct resource *res;
 	int ret = 0, irq;
+	int ctrlr_caps;
 
 	if (pdata == NULL) {
 		dev_err(&pdev->dev, "Platform Data is missing\n");
@@ -1045,7 +1116,6 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 	host->mmc	= mmc;
 	host->pdata	= pdata;
 	host->dev	= &pdev->dev;
-	host->use_dma	= 1;
 	host->dev->dma_mask = &pdata->dma_mask;
 	host->dma_ch	= -1;
 	host->irq	= irq;
@@ -1053,6 +1123,19 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 	host->slot_id	= 0;
 	host->mapbase	= res->start;
 	host->base	= ioremap(host->mapbase, SZ_4K);
+
+	ctrlr_caps = OMAP_HSMMC_READ(host->base, CAPA);
+	if (ctrlr_caps & CAPA_ADMA_SUPPORT) {
+		host->dma_type = DMA_TYPE_ADMA;
+		/* FIXME: passing the device structure fails
+		due to unset conherency mask */
+		host->adma_table = dma_alloc_coherent(NULL, PAGE_SIZE,
+					&host->phy_adma_table, 0);
+		dev_dbg(mmc_dev(host->mmc), "Enabling ADMA\n");
+	} else {
+		host->dma_type = DMA_TYPE_SDMA;
+		dev_dbg(mmc_dev(host->mmc), "Enabling SDMA\n");
+	}
 
 	platform_set_drvdata(pdev, host);
 	INIT_WORK(&host->mmc_carddetect_work, mmc_omap_detect);
@@ -1254,7 +1337,9 @@ static int omap_mmc_remove(struct platform_device *pdev)
 			clk_disable(host->dbclk);
 			clk_put(host->dbclk);
 		}
-
+		if (host->dma_type == DMA_TYPE_ADMA)
+			dma_free_coherent(mmc_dev(host->dev), PAGE_SIZE,
+				host->adma_table, host->phy_adma_table);
 		mmc_free_host(host->mmc);
 		iounmap(host->base);
 	}
