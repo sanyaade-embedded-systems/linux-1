@@ -478,10 +478,14 @@ int notify_tesladrv_delete(struct notify_driver_object **handlePtr)
 	WARN_ON(handlePtr == NULL);
 	if (handlePtr == NULL)
 		return -1;
-	driver_obj = (struct notify_tesladrv_object *)
-			(*handlePtr)->driver_object;
+
 	drv_handle = (*handlePtr);
 	WARN_ON(drv_handle == NULL);
+	if (drv_handle == NULL)
+		return -1;
+
+	driver_obj = (struct notify_tesladrv_object *)
+			(*handlePtr)->driver_object;
 	WARN_ON((*handlePtr)->driver_object == NULL);
 
 	/*Uninstall the ISRs & Disable the Mailbox interrupt.*/
@@ -1081,10 +1085,8 @@ static void notify_tesladrv_qsearch_elem(struct list_head *list,
 
 	BUG_ON(list ==  NULL);
 	BUG_ON(check_obj == NULL);
-	WARN_ON(listener == NULL);
+	BUG_ON(listener == NULL);
 
-	if (listener != NULL)
-		return;
 	*listener = NULL;
 	if ((check_obj != NULL)) {
 		if (list_empty((struct list_head *)list) == false) {
