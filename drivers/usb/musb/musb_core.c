@@ -1892,8 +1892,14 @@ int twl_i2c_usb_write_u8(u8 mod_no, u8 value, u8 reg)
  *	not yet corrected for platform-specific offsets
  */
 
-#define VUSB_CFG_STATE	0x22
-#define MISC2		0x3
+#define VUSB_CFG_STATE		0x22
+#define MISC2			0x3
+#define CFG_LDO_PD2		0x5
+#define VUSB_CFG_VOLTAGE	0x23
+#define VUSB_CFG_TRANS		0x21
+#define USB_VBUS_CTRL_SET 	0x4
+#define USB_ID_CTRL_SET 	0x6
+#define CHARGERUSB_CTRL1 	0x8
 
 static int __init
 musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
@@ -1912,6 +1918,45 @@ musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
 	switch (plat->mode) {
 	case MUSB_HOST:
 #ifdef CONFIG_USB_MUSB_HDRC_HCD
+
+		/* Program CFG_LDO_PD2 register and set VUSB bit */
+		twl_i2c_usb_write_u8(TWL_MODULE_PM_PUPD, 0x1, CFG_LDO_PD2);
+
+		/* Program MISC2 register and set bit VUSB_IN_VBAT */
+		twl_i2c_usb_write_u8(TWL_MODULE_PM_MISC, 0x10, MISC2);
+
+		/* Program the VUSB_CFG_VOLTAGE register to set the VUSB
+		 * voltage to 3.3V.
+		*/
+		twl_i2c_usb_write_u8(TWL_MODULE_PM_SLAVE_LDO, 0x18,
+							VUSB_CFG_VOLTAGE);
+
+		/* Program the VUSB_CFG_TRANS for ACTIVE state. */
+		twl_i2c_usb_write_u8(TWL_MODULE_PM_SLAVE_LDO, 0x3F,
+							 VUSB_CFG_TRANS);
+
+		/* Program the VUSB_CFG_STATE register to ON on all groups. */
+		twl_i2c_usb_write_u8(TWL_MODULE_PM_SLAVE_LDO, 0xE1,
+							 VUSB_CFG_STATE);
+
+		/*  Program the USB_VBUS_CTRL_SET and set VBUS_ACT_COMP bit */
+		twl_i2c_usb_write_u8(TWL_MODULE_USB, 0x4,
+							 USB_VBUS_CTRL_SET);
+
+		/* Program the USB_ID_CTRL_SET register to enable GND drive
+		 * and the ID comparators
+		*/
+		twl_i2c_usb_write_u8(TWL_MODULE_USB, 0x24, USB_ID_CTRL_SET);
+
+		/* Enable VBUS Valid, BValid, AValid. Clear SESSEND.*/
+		omap_writel(0x00000005, 0x4A00233C);
+
+		/* Start driving VBUS. Set OPA_MODE bit in CHARGERUSB_CTRL1
+		 * register. This enables boost mode.
+		*/
+		twl_i2c_usb_write_u8(TWL_MODULE_CHARGER, 0x40,
+							 CHARGERUSB_CTRL1);
+
 		break;
 #else
 		goto bad_config;
