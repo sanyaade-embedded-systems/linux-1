@@ -44,8 +44,6 @@
 
 #define OMAP4_KBDOCP_BASE               0x4A31C000
 
-static int ts_gpio;
-
 static int omap_keymap[] = {
 	KEY(0, 0, KEY_E),
 	KEY(0, 1, KEY_D),
@@ -298,14 +296,15 @@ static void __init gic_init_irq(void)
 
 static struct spi_board_info sdp4430_spi_board_info[] __initdata = {
 	[0] = {
-		.modalias		= "spitst",
+		.modalias		= "ks8851",
 		.bus_num		= 1,
 		.chip_select		= 0,
 		.max_speed_hz		= 1500000,
+		.irq			= 34,
 	},
 	[1] = {
-		.modalias		= "ads7846",
-		.bus_num		= 1,
+		.modalias		= "none",
+		.bus_num		= 2,
 		.chip_select		= 0,
 		.max_speed_hz		= 1500000,
 	},
@@ -319,7 +318,7 @@ static struct spi_board_info sdp4430_spi_board_info[] __initdata = {
 	},
 	[3] = {
 		.modalias		= "dummydevice1",
-		.bus_num		= 2,
+		.bus_num		= 4,
 		.chip_select		= 0,
 		.max_speed_hz		= 1500000,
 		.controller_data	= &dummy1_mcspi_config, /*Master */
@@ -705,6 +704,18 @@ static void omap_phoenix_init(void)
 	omap_cfg_reg(PAD0_4430_SYS_NIRQ2);
 }
 
+static void omap_ethernet_init(void)
+{
+	omap_writel(0x01000118, 0x4A100130);
+	omap_writel(0x01000100, 0x4A100134);
+	omap_writel(0x01130100, 0x4A100138);
+
+	gpio_request(48, "ethernet");
+	gpio_direction_output(48, 1);
+	gpio_request(138, "quart");
+	gpio_direction_output(138, 1);
+}
+
 static struct omap_usbhost_port_data sdp_usbhost_port_data[] = {
 	[0] = {
 		.mode = OMAP_USB_PORT_MODE_ULPI_PHY,
@@ -717,11 +728,14 @@ static struct omap_usbhost_port_data sdp_usbhost_port_data[] = {
 static void __init omap_4430sdp_init(void)
 {
 	omap4_i2c_init();
+	omap_ethernet_init();
 	platform_add_devices(sdp4430_devices, ARRAY_SIZE(sdp4430_devices));
 	omap_board_config = sdp4430_config;
 	omap_board_config_size = ARRAY_SIZE(sdp4430_config);
 	omap_serial_init();
-	sdp4430_spi_board_info[0].irq = OMAP_GPIO_IRQ(ts_gpio);
+	gpio_request(34, "ks8851");
+	gpio_direction_input(34);
+	sdp4430_spi_board_info[0].irq = gpio_to_irq(34);
 	spi_register_board_info(sdp4430_spi_board_info,
 				ARRAY_SIZE(sdp4430_spi_board_info));
 	omap_mcbsp_init();
