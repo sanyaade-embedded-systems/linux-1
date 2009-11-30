@@ -959,7 +959,7 @@ static int abe_mm_hw_params(struct snd_pcm_substream *substream,
 	                *dst_ptr = 0x04000c00;
 
 			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 300*4);
-			*dst_ptr = 0x040002;
+			*dst_ptr = 0x020002;
 
 			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 301*4);
 			*dst_ptr = 0x00002;
@@ -971,7 +971,7 @@ static int abe_mm_hw_params(struct snd_pcm_substream *substream,
 			*dst_ptr = 0x000002;
 
 			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 304*4);
-			*dst_ptr = 0x040002;
+			*dst_ptr = 0x020002;
 
 			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 305*4);
 			*dst_ptr = 0x00002;
@@ -1041,7 +1041,7 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 			*dst_ptr = 0x00002;
 
 			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 302*4);
-			*dst_ptr = 0x040002;
+			*dst_ptr = 0x020002;
 
 			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 303*4);
 			*dst_ptr = 0x000002;
@@ -1053,7 +1053,7 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 			*dst_ptr = 0x00002;
 
 			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 306*4);
-			*dst_ptr = 0x040002;
+			*dst_ptr = 0x020002;
 
 			dst_ptr = (unsigned int*) (ABE_CMEM_BASE_ADDRESS_MPU + 307*4);
 			*dst_ptr = 0x000002;
