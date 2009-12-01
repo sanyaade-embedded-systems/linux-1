@@ -1002,8 +1002,11 @@ static int omap_hsmmc_get_cd(struct mmc_host *mmc)
 	struct omap_mmc_platform_data *pdata = host->pdata;
 
 	/* Since EMMC is not hotpluggable no card detect is required */
-	if (host->id == OMAP_MMC2_DEVID)
-		return 1 ;
+	if (cpu_is_omap44xx()) {
+		if (host->id != OMAP_MMC1_DEVID)
+			return 1 ;
+	}
+
 	if (!pdata->slots[0].card_detect)
 		return -ENOSYS;
 	return pdata->slots[0].card_detect(pdata->slots[0].card_detect_irq);
