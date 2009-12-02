@@ -62,7 +62,12 @@ struct sdio_cccr {
 				low_speed:1,
 				wide_bus:1,
 				high_power:1,
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+				high_speed:1,
+				disable_cd:1;
+#else
 				high_speed:1;
+#endif
 };
 
 struct sdio_cis {
@@ -94,6 +99,10 @@ struct mmc_card {
 #define MMC_STATE_READONLY	(1<<1)		/* card is read-only */
 #define MMC_STATE_HIGHSPEED	(1<<2)		/* card is in high speed mode */
 #define MMC_STATE_BLOCKADDR	(1<<3)		/* card uses block-addressing */
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	u32                     quirks;         /* card quirks */
+#endif
 
 	u32			raw_cid[4];	/* raw card CID */
 	u32			raw_csd[4];	/* raw card CSD */

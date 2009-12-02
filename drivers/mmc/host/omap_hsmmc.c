@@ -918,10 +918,14 @@ static void omap_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	switch (ios->power_mode) {
 	case MMC_POWER_OFF:
-		mmc_slot(host).set_power(host->dev, host->slot_id, 0, 0);
+		if (mmc_slot(host).set_power)
+			mmc_slot(host).set_power(host->dev,
+				host->slot_id, 0, 0);
 		break;
 	case MMC_POWER_UP:
-		mmc_slot(host).set_power(host->dev, host->slot_id, 1, ios->vdd);
+		if (mmc_slot(host).set_power)
+			mmc_slot(host).set_power(host->dev,
+				host->slot_id, 1, ios->vdd);
 		break;
 	}
 
@@ -995,6 +999,27 @@ static void omap_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 		OMAP_HSMMC_WRITE(host->base, CON,
 				OMAP_HSMMC_READ(host->base, CON) | OD);
 }
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+static void omap_hsmmc_status_notify_cb(int card_present, void *dev_id)
+{
+	struct mmc_omap_host *host = dev_id;
+	struct omap_mmc_slot_data *slot = &mmc_slot(host);
+
+	printk(KERN_DEBUG "%s: card_present %d\n", mmc_hostname(host->mmc),
+		card_present);
+
+	host->carddetect = slot->card_detect(slot->card_detect_irq);
+
+	sysfs_notify(&host->mmc->class_dev.kobj, NULL, "cover_switch");
+	if (host->carddetect) {
+		mmc_detect_change(host->mmc, (HZ * 200) / 1000);
+	} else {
+		mmc_omap_reset_controller_fsm(host, SRD);
+		mmc_detect_change(host->mmc, (HZ * 50) / 1000);
+	}
+}
+#endif
 
 static int omap_hsmmc_get_cd(struct mmc_host *mmc)
 {
@@ -1142,6 +1167,19 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 	}
 #endif
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (pdev->id == CONFIG_TIWLAN_MMC_CONTROLLER-1) {
+		if (pdata->slots[0].embedded_sdio != NULL) {
+			mmc_set_embedded_sdio_data(mmc,
+			&pdata->slots[0].embedded_sdio->cis,
+			&pdata->slots[0].embedded_sdio->cccr,
+			pdata->slots[0].embedded_sdio->funcs,
+			pdata->slots[0].embedded_sdio->num_funcs,
+			pdata->slots[0].embedded_sdio->quirks);
+		}
+	}
+#endif
+
 	platform_set_drvdata(pdev, host);
 	INIT_WORK(&host->mmc_carddetect_work, mmc_omap_detect);
 
@@ -1272,6 +1310,14 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 			goto err_irq_cd;
 		}
 	}
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	else if (mmc_slot(host).register_status_notify) {
+		if (pdev->id == CONFIG_TIWLAN_MMC_CONTROLLER-1) {
+			mmc_slot(host).register_status_notify(
+				omap_hsmmc_status_notify_cb, host);
+		}
+	}
+#endif
 
 	OMAP_HSMMC_WRITE(host->base, ISE, INT_EN_MASK);
 	OMAP_HSMMC_WRITE(host->base, IE, INT_EN_MASK);

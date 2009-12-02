@@ -338,26 +338,26 @@ static struct twl4030_hsmmc_info mmc[] = {
 	{
 		.mmc            = 2,
 		.wires          = 8,
-		.gpio_cd	= -EINVAL,
+		.gpio_cd        = -EINVAL,
 		.gpio_wp        = -EINVAL,
 	},
 	{
 		.mmc            = 3,
 		.wires          = -EINVAL,
-		.gpio_cd	= -EINVAL,
+		.gpio_cd        = -EINVAL,
 		.gpio_wp        = -EINVAL,
 	},
 	{
 		.mmc            = 4,
 		.wires          = -EINVAL,
-		.gpio_cd	= -EINVAL,
+		.gpio_cd        = -EINVAL,
 		.gpio_wp        = -EINVAL,
 	},
 	{
 		.mmc            = 5,
-		.wires          = -EINVAL,
+		.wires          = 8,
 		.gpio_cd	= -EINVAL,
-		.gpio_wp        = -EINVAL,
+		.gpio_wp        = 4,
 	},
 	{}	/* Terminator */
 };
@@ -384,6 +384,14 @@ static int __init sdp4430_mmc_init(void)
 {
 	/* Hard Coding Values for testing */
 	mmc[0].gpio_cd = 373;
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+    /* The controller that is connected to the 128x device
+       should have the card detect gpio disabled. This is
+       achieved by initializing it with a negative value */
+    mmc[CONFIG_TIWLAN_MMC_CONTROLLER - 1].gpio_cd = -EINVAL;
+#endif
+
 	twl4030_mmc_init(mmc);
 	/* link regulators to MMC adapters ... we "know" the
 	 * regulators will be set up only *after* we return.
@@ -725,6 +733,38 @@ static struct omap_usbhost_port_data sdp_usbhost_port_data[] = {
 	},
 };
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+static void pad_config(unsigned long pad_addr, u32 andmask, u32 ormask)
+{
+	int val;
+	u32 *addr;
+
+	addr = (u32 *) ioremap(pad_addr, 4);
+	if (!addr) {
+		printk(KERN_ERR"OMAP_pad_config: ioremap failed with addr %lx\n",
+			pad_addr);
+		return;
+	}
+
+	val =  __raw_readl(addr);
+	val &= andmask;
+	val |= ormask;
+	__raw_writel(val, addr);
+
+	iounmap(addr);
+}
+
+void wlan_1283_config()
+{
+	pad_config(0x4A100078, 0xFFECFFFF, 0x00030000);
+	pad_config(0x4A10007C, 0xFFFFFFEF, 0x0000000B);
+	if (gpio_request(54, NULL) != 0)
+		printk(KERN_ERR "GPIO 54 request failed\n");
+	gpio_direction_output(54, 0);
+	return ;
+}
+#endif
+
 static void __init omap_4430sdp_init(void)
 {
 	omap4_i2c_init();
@@ -740,6 +780,11 @@ static void __init omap_4430sdp_init(void)
 				ARRAY_SIZE(sdp4430_spi_board_info));
 	omap_mcbsp_init();
 	sdp4430_mmc_init();
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	wlan_1283_config();
+#endif
+
 	sdp4430_display_init();
 	omap_phoenix_init();
 #ifdef CONFIG_NOP_USB_XCEIV

@@ -24,6 +24,10 @@
 #include "sdio_ops.h"
 #include "sdio_cis.h"
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+#include <linux/mmc/sdio_ids.h>
+#endif
+
 static int sdio_read_fbr(struct sdio_func *func)
 {
 	int ret;
@@ -164,6 +168,33 @@ static int sdio_enable_wide(struct mmc_card *card)
 	return 0;
 }
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+/*
+ * Disconnect the pull-up resistor on CD/DAT[3] if requested by the card.
+ * If card detection is not needed, this can save some power.
+ */
+static int sdio_disable_cd(struct mmc_card *card)
+{
+	int ret;
+	u8 ctrl;
+
+	if (!card->cccr.disable_cd)
+		return 0;
+
+	ret = mmc_io_rw_direct(card, 0, 0, SDIO_CCCR_IF, 0, &ctrl);
+	if (ret)
+		return ret;
+
+	ctrl |= SDIO_BUS_CD_DISABLE;
+
+	ret = mmc_io_rw_direct(card, 1, 0, SDIO_CCCR_IF, ctrl, NULL);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+#endif
+
 /*
  * Test if the card supports high-speed mode and, if so, switch to it.
  */
@@ -275,12 +306,18 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 		ocr &= ~0x7F;
 	}
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+    if (!host->embedded_sdio_data.quirks & MMC_QUIRK_VDD_165_195) {
+#endif
 	if (ocr & MMC_VDD_165_195) {
 		printk(KERN_WARNING "%s: SDIO card claims to support the "
 		       "incompletely defined 'low voltage range'. This "
 		       "will be ignored.\n", mmc_hostname(host));
 		ocr &= ~MMC_VDD_165_195;
 	}
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+    }
+#endif
 
 	host->ocr = mmc_select_voltage(host, ocr);
 
@@ -314,6 +351,11 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 	 */
 	funcs = (ocr & 0x70000000) >> 28;
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (host->embedded_sdio_data.funcs)
+		funcs = host->embedded_sdio_data.num_funcs;
+#endif
+
 	/*
 	 * Allocate card structure.
 	 */
@@ -322,6 +364,10 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 		err = PTR_ERR(card);
 		goto err;
 	}
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	card->quirks = host->embedded_sdio_data.quirks;
+#endif
 
 	card->type = MMC_TYPE_SDIO;
 	card->sdio_funcs = funcs;
@@ -351,9 +397,25 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 	/*
 	 * Read the common registers.
 	 */
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (host->embedded_sdio_data.cccr)
+		memcpy(&card->cccr, host->embedded_sdio_data.cccr,
+			sizeof(struct sdio_cccr));
+	else {
+#endif
 	err = sdio_read_cccr(card);
 	if (err)
 		goto remove;
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	}
+#endif
+
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	if (host->embedded_sdio_data.cis)
+		memcpy(&card->cis, host->embedded_sdio_data.cis,
+			sizeof(struct sdio_cis));
+	else {
+#endif
 
 	/*
 	 * Read the common CIS tuples.
@@ -361,6 +423,9 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 	err = sdio_read_common_cis(card);
 	if (err)
 		goto remove;
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	}
+#endif
 
 	/*
 	 * Switch to high-speed (if supported).
@@ -391,13 +456,43 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 	if (err)
 		goto remove;
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+	/*
+	 * Disconnect card detection pull-up resistor (if requested by card).
+	 */
+	err = sdio_disable_cd(card);
+	if (err)
+		goto remove;
+#endif
+
 	/*
 	 * Initialize (but don't add) all present functions.
 	 */
 	for (i = 0;i < funcs;i++) {
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+		if (host->embedded_sdio_data.funcs) {
+			struct sdio_func *tmp;
+
+			tmp = sdio_alloc_func(host->card);
+			if (IS_ERR(tmp))
+				goto remove;
+			tmp->num = (i + 1);
+			card->sdio_func[i] = tmp;
+			tmp->class = host->embedded_sdio_data.funcs[i].f_class;
+			tmp->max_blksize =
+				host->embedded_sdio_data.funcs[i].f_maxblksize;
+			tmp->vendor = card->cis.vendor;
+			tmp->device = card->cis.device;
+		} else {
+#endif
+
 		err = sdio_init_func(host->card, i + 1);
 		if (err)
 			goto remove;
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+		}
+#endif
+
 	}
 
 	mmc_release_host(host);

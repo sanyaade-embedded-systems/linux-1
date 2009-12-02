@@ -624,7 +624,14 @@ void sdio_f0_writeb(struct sdio_func *func, unsigned char b, unsigned int addr,
 
 	BUG_ON(!func);
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
+/*allow SDIO FN0 writes outside of VS CCCR*/
+#define MMC_QUIRK_LENIENT_FUNC0 (1<<1)
+    if ((addr < 0xF0 || addr > 0xFF) &&
+		(!func->card->quirks & MMC_QUIRK_LENIENT_FUNC0)) {
+#else
 	if (addr < 0xF0 || addr > 0xFF) {
+#endif
 		if (err_ret)
 			*err_ret = -EINVAL;
 		return;
