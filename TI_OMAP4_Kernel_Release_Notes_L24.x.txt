@@ -81,12 +81,25 @@ To build the X-loader image type:
 	# make CROSS_COMPILE=arm-none-linux-gnueabi-
 	# make ift CROSS_COMPILE=arm-none-linux-gnueabi-
 
+The above step will create a MLO image. A configuration header needs to be
+added at the begining of this MLO to create an image 'x-load.ch.bin' that
+can be written to the eMMC for eMMC-booting. Please contact your TI
+representative for obtaining the configuration header.
+
 3.2.3 Compiling X-loader (for booting from external MMC)
 
 Edit include/configs/omap4430sdp.h to define CONFIG_MMC1 and disable/comment
 CONFIG_MMC2
 
-Follow the same procedure as section 3.2.2
+To select the default configuration for X-loader type:
+        # make CROSS_COMPILE=arm-none-linux-gnueabi- omap4430sdp_config
+
+To build the X-loader image type:
+        # make CROSS_COMPILE=arm-none-linux-gnueabi-
+        # make ift CROSS_COMPILE=arm-none-linux-gnueabi-
+
+The above step will create a MLO image, which can be copied into the
+MMC card for booting via MMC.
 
 3.2.4 Compiling the Kernel
 
@@ -110,7 +123,8 @@ NOTE:	The above steps will create arch/arm/boot/uImage in the kernel directory
 
 3.3.1 Flashing images to emmc using u-boot
 
-Use a debugger or OMAPFlasher tool to download x-loader as well as u-boot into
+Use a debugger or OMAPFlasher tool to download x-loader (with configuration
+header, e.g. x-load.ch.bin) as well as u-boot.bin into
 SDRAM and run u-boot from SDRAM.
 
 At the u-boot prompt use the following commands to flash x-loader and u-boot to
