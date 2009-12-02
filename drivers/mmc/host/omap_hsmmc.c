@@ -1087,7 +1087,7 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 	struct mmc_omap_host *host = NULL;
 	struct resource *res;
 	int ret = 0, irq;
-	int ctrlr_caps;
+	/* int ctrlr_caps;*/
 
 	if (pdata == NULL) {
 		dev_err(&pdev->dev, "Platform Data is missing\n");
@@ -1126,7 +1126,8 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 	host->slot_id	= 0;
 	host->mapbase	= res->start;
 	host->base	= ioremap(host->mapbase, SZ_4K);
-
+	host->dma_type  = DMA_TYPE_SDMA;
+#if FIXME_ADMA
 	ctrlr_caps = OMAP_HSMMC_READ(host->base, CAPA);
 	if (ctrlr_caps & CAPA_ADMA_SUPPORT) {
 		host->dma_type = DMA_TYPE_ADMA;
@@ -1139,6 +1140,7 @@ static int __init omap_mmc_probe(struct platform_device *pdev)
 		host->dma_type = DMA_TYPE_SDMA;
 		dev_dbg(mmc_dev(host->mmc), "Enabling SDMA\n");
 	}
+#endif
 
 	platform_set_drvdata(pdev, host);
 	INIT_WORK(&host->mmc_carddetect_work, mmc_omap_detect);
