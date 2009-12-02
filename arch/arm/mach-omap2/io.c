@@ -278,6 +278,8 @@ void __init omap2_map_common_io(void)
  * -EINVAL if the dpll3_m2_ck cannot be found, 0 if called on OMAP2,
  * or passes along the return value of clk_set_rate().
  */
+
+#ifndef CONFIG_ARCH_OMAP4 /* FIXME: Remove this once the clkdev is ready */
 static int __init _omap2_init_reprogram_sdrc(void)
 {
 	struct clk *dpll3_m2_ck;
@@ -301,6 +303,7 @@ static int __init _omap2_init_reprogram_sdrc(void)
 
 	return v;
 }
+#endif
 
 void __init omap2_init_common_hw(struct omap_sdrc_params *sdrc_cs0,
 				 struct omap_sdrc_params *sdrc_cs1)

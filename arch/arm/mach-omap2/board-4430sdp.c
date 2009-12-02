@@ -494,7 +494,7 @@ static struct regulator_init_data sdp4430_vmmc = {
 					| REGULATOR_CHANGE_STATUS,
 	},
 	.num_consumer_supplies  = 5,
-	.consumer_supplies      = &sdp4430_vmmc_supply,
+	.consumer_supplies      = sdp4430_vmmc_supply,
 };
 
 static struct regulator_init_data sdp4430_vpp = {

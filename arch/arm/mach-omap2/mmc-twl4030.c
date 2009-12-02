@@ -38,7 +38,6 @@
 static u16 control_pbias_offset;
 static u16 control_devconf1_offset;
 static u16 control_mmc1;
-static u16 control_mmc2;
 
 #define HSMMC_NAME_LEN	9
 #define	PHOENIX_MMC_CTRL		0x0C	/* 0xEE */
@@ -608,7 +607,7 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 			mmc->cleanup = twl_mmc_cleanup;
 			mmc->suspend = twl_mmc_suspend;
 			mmc->resume = twl_mmc_resume;
-			mmc->slots[0].switch_pin = NULL;
+			mmc->slots[0].switch_pin = 0;
 			mmc->slots[0].get_cover_state = NULL;
 			mmc->slots[0].switch_pin = c->gpio_cd;
 			/* HardCoding Phoenix number for only MMC1 */
@@ -617,7 +616,7 @@ void __init twl4030_mmc_init(struct twl4030_hsmmc_info *controllers)
 			else
 				mmc->slots[0].card_detect_irq = 0;
 			mmc->slots[0].card_detect = twl_mmc_card_detect;
-			mmc->slots[0].gpio_wp = NULL;
+			mmc->slots[0].gpio_wp = 0;
 			mmc->slots[0].get_ro = NULL;
 		}
 		/* NOTE:  MMC slots should have a Vcc regulator set up.

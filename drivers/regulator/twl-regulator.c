@@ -147,6 +147,7 @@ static int twlreg_disable(struct regulator_dev *rdev)
 	return twlreg_write(info, TWL_MODULE_PM_SLAVE_LDO, VREG_GRP, grp);
 }
 
+#ifdef CONFIG_TWL4030_CORE
 static int twlreg_get_status(struct regulator_dev *rdev)
 {
 	int	state = twlreg_grp(rdev);
@@ -196,7 +197,7 @@ static int twlreg_set_mode(struct regulator_dev *rdev, unsigned mode)
 	return twl_i2c_write_u8(TWL_MODULE_PM_MASTER,
 			message, 0x16/* PB_WORD_LSB */);
 }
-
+#endif
 /*----------------------------------------------------------------------*/
 
 /*
