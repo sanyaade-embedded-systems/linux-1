@@ -3156,7 +3156,7 @@ void ConfigCmplxIo()
 	void __iomem*phymux_base;
 
 	// Do The Mux
-	unsigned int dsiMux = 0xFFFF0000;//((1 << 14) | (1 << 19) | (0x1F << 24) | (0x0 << 29)); // Pulling Down DSI lanes, Enabling DSI Lanes
+	unsigned int dsiMux = 0xFFFFFFFF;//((1 << 14) | (1 << 19) | (0x1F << 24) | (0x0 << 29)); // Pulling Down DSI lanes, Enabling DSI Lanes
 
 
 	phymux_base = ioremap(0x4A100000,0x1000);
