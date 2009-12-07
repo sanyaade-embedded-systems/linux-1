@@ -46,6 +46,7 @@ static int def_vrfb;
 static int def_tiler;
 static int def_rotate;
 static int def_mirror;
+static int def_numfb;
 
 #ifdef DEBUG
 unsigned int omapfb_debug;
@@ -1770,14 +1771,21 @@ static void omapfb_free_resources(struct omapfb2_device *fbdev)
 
 static int omapfb_create_framebuffers(struct omapfb2_device *fbdev)
 {
-	int r, i;
+	int r, i, fb_no;
 
 	fbdev->num_fbs = 0;
 
 	/* DBG("create %d framebuffers\n",	CONFIG_FB_OMAP2_NUM_FBS); */
 
+	/* decide number of framebuffers to be created */
+	/* If value is specified in bootargs use it */
+	if (def_numfb)
+		fb_no = def_numfb;
+	else	/* otherwise use the value from config */
+		fb_no = CONFIG_FB_OMAP2_NUM_FBS;
+
 	/* allocate fb_infos */
-	for (i = 0; i < CONFIG_FB_OMAP2_NUM_FBS; i++) {
+	for (i = 0; i < fb_no; i++) {
 		struct fb_info *fbi;
 		struct omapfb_info *ofbi;
 
@@ -2200,6 +2208,7 @@ module_param_named(rotate, def_rotate, int, 0);
 module_param_named(vrfb, def_vrfb, bool, 0);
 module_param_named(mirror, def_mirror, bool, 0);
 module_param_named(tiler, def_tiler, bool, 0);
+module_param_named(numfb, def_numfb, int, 0);
 
 /* late_initcall to let panel/ctrl drivers loaded first.
  * I guess better option would be a more dynamic approach,
