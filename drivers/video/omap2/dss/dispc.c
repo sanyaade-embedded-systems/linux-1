@@ -53,7 +53,7 @@
 		#define DISPC_BASE              0x58001000
 #endif
 
-#define DISPC_SZ_REGS			SZ_1K
+#define DISPC_SZ_REGS			2000//SZ_1K
 
 struct dispc_reg { u16 idx; };
 
@@ -386,6 +386,7 @@ void dispc_save_context(void)
 	SR(TIMING_V);
 	SR(POL_FREQ);
 	SR(DIVISOR);
+
 	SR(GLOBAL_ALPHA);
 	SR(SIZE_DIG);
 	SR(SIZE_LCD);
@@ -706,14 +707,15 @@ void dispc_go(enum omap_channel channel)
 		bit = 1; /* DIGITALENABLE */
 
 #ifdef CONFIG_ARCH_OMAP4
-	if (channel == OMAP_DSS_CHANNEL_LCD2)
+	if (channel == OMAP_DSS_CHANNEL_LCD2) {
 		if (REG_GET(DISPC_CONTROL2, bit, bit) == 0)
 			goto end;
-	else
+	} else
 #endif
+	{
 		if (REG_GET(DISPC_CONTROL, bit, bit) == 0)
                         goto end;
-
+	}
 #ifdef CONFIG_ARCH_OMAP4
 	if (channel != OMAP_DSS_CHANNEL_DIGIT)
 #else
@@ -1074,7 +1076,6 @@ static void _dispc_set_plane_ba_uv0(enum omap_plane plane, u32 paddr)
 				DISPC_VID_BA_UV0(2) /* VID 3 pipeline*/
 	};
 
-	u32 val = 0;
 	BUG_ON(plane == OMAP_DSS_GFX);
 
 	dispc_write_reg(ba_uv0_reg[plane - 1], paddr);
@@ -1277,7 +1278,7 @@ static void _dispc_set_channel_out(enum omap_plane plane,
 	int shift;
 	u32 val;
 #ifdef CONFIG_ARCH_OMAP4
-	int chan, chan2;
+	int chan = 0, chan2 = 0;
 #endif
 
 	switch (plane) {
@@ -1841,7 +1842,8 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 		if (check_h)
 			hv2_coef_mod = NULL;
 		else
-			hv2_coef_mod = coef_hv2_greater;
+		/* TODO: Need to check this */
+			*hv2_coef_mod = *coef_hv2_greater;
 	} else {
 		v2_coef = coef_v2_greater;
 		hv2_coef = coef_hv2_greater;
@@ -1980,6 +1982,7 @@ static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 #endif
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 static s32 pixinc(int pixels, u8 ps)
 {
 	if (pixels == 1)
@@ -1991,6 +1994,7 @@ static s32 pixinc(int pixels, u8 ps)
 	else
 		BUG();
 }
+#endif
 
 static void calc_tiler_row_rotation(u8 rotation,
 		u16 width, u16 height,
@@ -2055,7 +2059,7 @@ static void calc_tiler_row_rotation(u8 rotation,
 */
 	return;
 }
-
+#ifndef CONFIG_ARCH_OMAP4
 static void calc_vrfb_rotation_offset(u8 rotation, bool mirror,
 		u16 screen_width,
 		u16 width, u16 height,
@@ -2299,6 +2303,7 @@ static void calc_dma_rotation_offset(u8 rotation, bool mirror,
 		BUG();
 	}
 }
+#endif
 
 static unsigned long calc_fclk_five_taps(enum omap_channel channel,
 		u16 width, u16 height, u16 out_width, u16 out_height,
@@ -2399,9 +2404,9 @@ static int _dispc_setup_plane(enum omap_plane plane,
 
 	u8 orientation = 0;
 	struct dmmViewOrientT orient;
-	unsigned long r, mir_x, mir_y;
+	unsigned long mir_x = 0, mir_y = 0;
 	unsigned long tiler_width, tiler_height;
-	void __iomem *reg = NULL;
+//	void __iomem *reg = NULL;
 
 	if (paddr == 0)
 		return -EINVAL;

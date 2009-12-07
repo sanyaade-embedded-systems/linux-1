@@ -237,12 +237,14 @@ int dss_get_dispc_clk_source(void)
 	return FLD_GET(dss_read_reg(DSS_CONTROL), 0, 0);
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 static irqreturn_t dss_irq_handler_omap2(int irq, void *arg)
 {
 	dispc_irq_handler();
 
 	return IRQ_HANDLED;
 }
+#endif
 
 static irqreturn_t dss_irq_handler_omap3(int irq, void *arg)
 {
@@ -275,6 +277,7 @@ static int _omap_dss_reset(void)
 	REG_FLD_MOD(DSS_SYSCONFIG, 1, 1, 1);
 	return _omap_dss_wait_reset();
 #endif
+	return 0;
 }
 
 void dss_set_venc_output(enum omap_dss_venc_type type)

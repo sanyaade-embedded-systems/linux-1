@@ -252,12 +252,12 @@ static int taal_set_addr_mode(u8 rotate, bool mirror)
 
 static int taal_set_update_window(u16 x, u16 y, u16 w, u16 h)
 {
-	int r;
+	int r = 0;
+#if 0 //sv no need of column addr
 	u16 x1 = x;
 	u16 x2 = x + w - 1;
 	u16 y1 = y;
 	u16 y2 = y + h - 1;
-#if 0 //sv no need of column addr
 	u8 buf[5];
 	buf[0] = DCS_COLUMN_ADDR;
 	buf[1] = (x1 >> 8) & 0xff;
@@ -625,7 +625,7 @@ static void taal_remove(struct omap_dss_device *dssdev)
 static int taal_enable(struct omap_dss_device *dssdev)
 {
 	struct taal_data *td = dev_get_drvdata(&dssdev->dev);
-	u8 id1, id2, id3;
+	u8 id1 = 0, id2 = 0, id3 = 0;
 	int r;
 
 	DBG("enable\n");

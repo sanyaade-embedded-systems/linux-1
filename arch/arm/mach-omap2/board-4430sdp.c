@@ -167,14 +167,14 @@ static struct omap_lcd_config sdp4430_lcd_config __initdata = {
        	.ctrl_name      = "internal",
 };
 
-static int sdp4430_panel_enable_lcd(void)
+static int sdp4430_panel_enable_lcd(struct omap_dss_device *dssdev)
 {
 	return 0;
 }
 
-static int sdp4430_panel_disable_lcd(void)
+static void sdp4430_panel_disable_lcd(struct omap_dss_device *dssdev)
 {
-	return 0;
+	return;
 }
 
 static void __init sdp4430_display_init(void)
@@ -234,9 +234,9 @@ static int sdp4430_panel_enable_hdmi(struct omap_dss_device *dssdev)
 	return 0;
 }
 
-static int sdp4430_panel_disable_hdmi(struct omap_dss_device *dssdev)
+static void sdp4430_panel_disable_hdmi(struct omap_dss_device *dssdev)
 {
-	return 0;
+	return;
 }
 static void __init sdp4430_hdmi_init(void)
 {

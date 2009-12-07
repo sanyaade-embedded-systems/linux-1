@@ -226,6 +226,7 @@ const static struct v4l2_fmtdesc omap_formats[] = {
 
 #define NUM_OUTPUT_FORMATS (ARRAY_SIZE(omap_formats))
 
+#ifndef TILER_ALLOCATE_V4L2
 /* Allocate buffers */
 static unsigned long omap_vout_alloc_buffer(u32 buf_size, u32 *phys_addr)
 {
@@ -246,6 +247,7 @@ static unsigned long omap_vout_alloc_buffer(u32 buf_size, u32 *phys_addr)
 	*phys_addr = (u32) virt_to_phys((void *) virt_addr);
 	return virt_addr;
 }
+#endif
 
 /* Free buffers */
 static void omap_vout_free_buffer(unsigned long virtaddr, u32 phys_addr,
@@ -264,6 +266,7 @@ static void omap_vout_free_buffer(unsigned long virtaddr, u32 phys_addr,
 	free_pages((unsigned long) virtaddr, order);
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 /* Function for allocating video buffers */
 static int omap_vout_allocate_vrfb_buffers(struct omap_vout_device *vout,
 		int count, int startindex)
@@ -298,6 +301,7 @@ static int omap_vout_allocate_vrfb_buffers(struct omap_vout_device *vout,
 	}
 	return 0;
 }
+#endif
 
 /* Try format */
 static int omap_vout_try_format(struct v4l2_pix_format *pix)
@@ -406,6 +410,7 @@ static inline u32 omap_vout_uservirt_to_phys(u32 virtp)
 	return physp;
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 /* This functions wakes up the application once
  * the DMA transfer to VRFB space is completed. */
 static void omap_vout_vrfb_dma_tx_callback(int lch, u16 ch_status, void *data)
@@ -433,6 +438,7 @@ static void omap_vout_release_vrfb(struct omap_vout_device *vout)
 	}
 
 }
+#endif
 
 /* Return true if rotation is 90 or 270 */
 static inline int rotate_90_or_270(struct omap_vout_device *vout)
@@ -494,6 +500,7 @@ static void omap_vout_free_buffers(struct omap_vout_device *vout)
 	}
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 /* Free VRFB buffers */
 static void omap_vout_free_vrfb_buffers(struct omap_vout_device *vout)
 {
@@ -523,7 +530,6 @@ static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 		if (omap_vout_allocate_vrfb_buffers(vout, *count, startindex))
 			return -ENOMEM;
 
-#ifndef CONFIG_ARCH_OMAP4
 /* TODO: this is temporary disabling of vrfb to test V4L2: needs to be
  corrected for future
 */
@@ -533,9 +539,9 @@ static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 				vout->pix.width, vout->pix.height,
 				vout->dss_mode);
 	}
-#endif
 	return 0;
 }
+#endif
 
 /* Allocate the buffers for  TILER space.  Ideally, the buffers will be ONLY
  in tiler space, with different rotated views available by just a convert.
@@ -679,9 +685,12 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	struct v4l2_pix_format *pix = &(vout->pix);
 	struct v4l2_rect *crop = &(vout->crop);
 	enum dss_rotation rotation;
+	int vr_ps = 1, ps = 2;
+#ifndef CONFIG_ARCH_OMAP4
+	int offset = 0, temp_ps = 2;
 	bool mirroring = vout->mirror;
-	int vr_ps = 1, ps = 2, temp_ps = 2;
-	int offset = 0, ctop = 0, cleft = 0, line_length = 0;
+#endif
+	int ctop = 0, cleft = 0, line_length = 0;
 	struct omapvideo_info *ovid;
 	struct omap_overlay *ovl;
 	struct omap_dss_device *cur_display;
@@ -964,7 +973,7 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 	if (OMAP_DSS_COLOR_NV12 == vout->dss_mode)
 		info.p_uv_addr = uv_addr;
 	else
-		info.p_uv_addr = NULL;
+		info.p_uv_addr = (u32) NULL;
 #endif
 	info.vaddr = NULL;
 	info.width = cropwidth;
@@ -1062,9 +1071,11 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 			  unsigned int *size)
 {
 	struct omap_vout_device *vout = q->priv_data;
-	int startindex = 0, i, j;
+	int i;
+#ifndef TILER_ALLOCATE_V4L2
+	int startindex = 0, j;
 	u32 phy_addr = 0, virt_addr = 0;
-
+#endif
 	if (!vout)
 		return -EINVAL;
 
@@ -1155,6 +1166,7 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 	return 0;
 }
 
+#ifndef TILER_ALLOCATE_V4L2
 /* Free the V4L2 buffers additionally allocated than default
  * number of buffers and free all the VRFB buffers */
 static void omap_vout_free_allbuffers(struct omap_vout_device *vout)
@@ -1193,6 +1205,7 @@ static void omap_vout_free_allbuffers(struct omap_vout_device *vout)
 	}
 	vout->buffer_allocated = num_buffers;
 }
+#endif
 
 /* This function will be called when VIDIOC_QBUF ioctl is called.
  * It prepare buffers before give out for the display. This function
@@ -1400,8 +1413,10 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct omap_vout_device *vout = file->private_data;
 	struct videobuf_queue *q = &vout->vbq;
+#ifndef TILER_ALLOCATE_V4L2
 	unsigned long size = (vma->vm_end - vma->vm_start);
 	unsigned long start = vma->vm_start;
+#endif
 	int i;
 	void *pos;
 	struct videobuf_dmabuf *dmabuf = NULL;
@@ -1436,7 +1451,7 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 	vma->vm_private_data = (void *) vout;
 	dmabuf = videobuf_to_dma(q->bufs[i]);
 
-	pos = dmabuf->vmalloc;
+	pos = (void *)dmabuf->vmalloc;
 
 #ifndef TILER_ALLOCATE_V4L2
 	vma->vm_pgoff = virt_to_phys((void *)pos) >> PAGE_SHIFT;
@@ -1450,7 +1465,7 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 		size -= PAGE_SIZE;
 	}
 #else
-	pos = dmabuf->bus_addr;
+	pos = (void *)dmabuf->bus_addr;
 	/* get line width */
 	/* for NV12, Y buffer is 1bpp*/
 	if (OMAP_DSS_COLOR_NV12 == vout->dss_mode) {
@@ -1469,6 +1484,7 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 
 	for (j = 0; j < vout->pix.height; j++) {
 		/* map each page of the line */
+	#if 0
 		if (0)
 			printk(KERN_NOTICE
 			"Y buffer %s::%s():%d: vm_start+%d = 0x%lx,"
@@ -1476,6 +1492,7 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 			__FILE__, __func__, __LINE__,
 			k, vma->vm_start + k, m,
 			(pos + m), p);
+	#endif
 		vma->vm_pgoff =
 			((unsigned long)pos + m) >> PAGE_SHIFT;
 		if (remap_pfn_range(vma, vma->vm_start + k,
@@ -1496,6 +1513,7 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 		/* UV buffer is height / 2*/
 		for (j = 0; j < vout->pix.height / 2; j++) {
 			/* map each page of the line */
+		#if 0
 			if (0)
 				printk(KERN_NOTICE
 				"UV buffer %s::%s():%d: vm_start+%d = 0x%lx,"
@@ -1503,7 +1521,8 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 				__FILE__, __func__, __LINE__,
 				k, vma->vm_start + k, m,
 				(pos + m), p);
-			vma->vm_pgoff =
+		#endif
+		vma->vm_pgoff =
 				((unsigned long)pos + m) >> PAGE_SHIFT;
 			if (remap_pfn_range(vma, vma->vm_start + k,
 				((unsigned long)pos + m) >> PAGE_SHIFT,
@@ -2067,7 +2086,10 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 {
 	struct omap_vout_device *vout = fh;
 	struct videobuf_queue *q = &(vout->vbq);
-	unsigned int i, num_buffers = 0;
+	unsigned int i;
+#ifndef TILER_ALLOCATE_V4L2
+	unsigned int num_buffers = 0;
+#endif
 	int ret = 0;
 	struct videobuf_dmabuf *dmabuf = NULL;
 
@@ -2444,7 +2466,6 @@ static int vidioc_g_fbuf(struct file *file, void *fh,
 	struct omap_overlay_manager_info info;
 	struct omapvideo_info *ovid;
 	struct omap_overlay *ovl;
-	enum omap_dss_trans_key_type key_type;
 
 	ovid = &(vout->vid_info);
 	ovl = ovid->overlays[0];
@@ -2586,11 +2607,10 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 	struct omap2video_device *vid_dev = container_of(v4l2_dev, struct
 			omap2video_device, v4l2_dev);
 	struct omap_vout_device *vout;
-	int i, r = 0;
-	unsigned numbuffers;
 	struct video_device *vfd;
 #ifndef TILER_ALLOCATE_V4L2 /* TODO: related to rotation */
-	int j;
+	int i, j, r = 0;
+	unsigned numbuffers;
 	int image_width, image_height;
 	int static_vrfb_allocation = 0, vrfb_num_bufs = 4;
 #endif
@@ -2685,11 +2705,6 @@ static int __init omap_vout_setup_video_bufs(struct platform_device *pdev,
 		vout->vrfb_static_allocation = 1;
 	}
 #endif /* CONFIG_ARCH_OMAP4 */
-#endif /* TILER_ALLOCATE_V4L2 */
-
-/* NOTE: OMAP4, if TILER allocation, then nothing to pre-allocate */
-
-	return 0;
 
 free_buffers:
 	for (i = 0; i < numbuffers; i++) {
@@ -2699,7 +2714,10 @@ free_buffers:
 		vout->buf_phy_addr[i] = 0;
 	}
 	return r;
+#endif /* TILER_ALLOCATE_V4L2 */
 
+	/* NOTE: OMAP4, if TILER allocation, then nothing to pre-allocate */
+	return 0;
 }
 
 /* Create video out devices */

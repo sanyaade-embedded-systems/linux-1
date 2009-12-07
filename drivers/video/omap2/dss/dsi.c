@@ -618,7 +618,7 @@ void dsi_irq_handler(void)
 	dsi_write_reg(DSI_IRQSTATUS, irqstatus & ~DSI_IRQ_CHANNEL_MASK);
 }
 
-
+#ifndef CONFIG_ARCH_OMAP4
 static void _dsi_initialize_irq(void)
 {
 	u32 l;
@@ -656,6 +656,7 @@ static void _dsi_initialize_irq(void)
 	dsi_write_reg(DSI_COMPLEXIO_IRQ_ENABLE,
 			-1 & (~DSI_CIO_IRQ_ERRCONTROL2));
 }
+#endif
 
 static u32 dsi_get_errors(void)
 {
@@ -710,7 +711,7 @@ static inline void dsi_enable_pll_clock(bool enable)
 			DSSERR("cannot lock PLL when enabling clocks\n");
 	}
 }
-
+#ifndef CONFIG_ARCH_OMAP4
 #ifdef DEBUG
 static void _dsi_print_reset_status(void)
 {
@@ -742,7 +743,7 @@ static void _dsi_print_reset_status(void)
 #else
 #define _dsi_print_reset_status()
 #endif
-
+#endif
 static inline int dsi_if_enable(bool enable)
 {
 	DSSDBG("dsi_if_enable(%d)\n", enable);
@@ -758,6 +759,7 @@ static inline int dsi_if_enable(bool enable)
 	return 0;
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 static unsigned long dsi_fclk_rate(void)
 {
 	unsigned long r;
@@ -803,7 +805,7 @@ static int dsi_set_lp_clk_divisor(struct omap_dss_device *dssdev)
 
 	return 0;
 }
-
+#endif
 
 enum dsi_pll_power_state {
 	DSI_PLL_POWER_OFF	= 0x0,
@@ -963,6 +965,7 @@ found:
 	return 0;
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 static int dsi_pll_calc_ddrfreq(unsigned long clk_freq,
 		struct dsi_clock_info *cinfo)
 {
@@ -1064,11 +1067,11 @@ found:
 
 	return 0;
 }
+#endif
 
 int dsi_pll_program(struct dsi_clock_info *cinfo)
 {
 	int r = 0;
-	u32 l;
 
 	DSSDBG("dsi_pll_program\n");
 
@@ -1413,8 +1416,8 @@ enum dsi_complexio_power_state {
 
 static int dsi_complexio_power(enum dsi_complexio_power_state state)
 {
-	int t = 0;
 #if 0 //sv3
+	int t = 0;
 	/* PWR_CMD */
 	REG_FLD_MOD(DSI_COMPLEXIO_CFG1, state, 28, 27);
 
@@ -1439,6 +1442,7 @@ static int dsi_complexio_power(enum dsi_complexio_power_state state)
 	return 0;
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 static void dsi_complexio_config(struct omap_dss_device *dssdev)
 {
 	u32 r;
@@ -1477,6 +1481,7 @@ static void dsi_complexio_config(struct omap_dss_device *dssdev)
 	REG_FLD_MOD(DSI_CTRL, 1, 0, 0);
 	*/
 }
+#endif
 
 static inline unsigned ns2ddr(unsigned ns)
 {
@@ -1489,6 +1494,7 @@ static inline unsigned ddr2ns(unsigned ddr)
 	return ddr * 1000 * 1000 / (dsi.ddr_clk / 1000);
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 static void dsi_complexio_timings(void)
 {
 	u32 r;
@@ -1559,11 +1565,10 @@ static void dsi_complexio_timings(void)
 	dsi_write_reg(DSI_DSIPHY_CFG2, 0xB8000007); //sv3
 }
 
-
 static int dsi_complexio_init(struct omap_dss_device *dssdev)
 {
 	int r = 0,t = 0;
-
+	u32 val;
 	DSSDBG("dsi_complexio_init\n");
 #if 0 //sv3
 	/* CIO_CLK_ICG, enable L3 clk to CIO */
@@ -1648,7 +1653,6 @@ static int dsi_complexio_init(struct omap_dss_device *dssdev)
 
 
 	dsi_complexio_config(dssdev);
-	u32 val = 0;
 
     	//To do a read of any of the DSIPHY to have a dummy access
 	dsi_read_reg(DSI_DSIPHY_CFG8); 
@@ -1686,9 +1690,9 @@ static int dsi_complexio_init(struct omap_dss_device *dssdev)
 
 #endif
 	DSSDBG("CIO init done\n");
-err:
 	return r;
 }
+#endif
 
 static void dsi_complexio_uninit(void)
 {
@@ -1717,7 +1721,7 @@ static int _dsi_reset(void)
 	return _dsi_wait_reset();
 }
 
-
+#ifndef CONFIG_ARCH_OMAP4
 static void dsi_config_tx_fifo(enum fifo_size size1, enum fifo_size size2,
 		enum fifo_size size3, enum fifo_size size4)
 {
@@ -1777,6 +1781,7 @@ static void dsi_config_rx_fifo(enum fifo_size size1, enum fifo_size size2,
 
 	dsi_write_reg(DSI_RX_FIFO_VC_SIZE, r);
 }
+#endif
 
 static int dsi_force_tx_stop_mode_io(void)
 {
@@ -1830,6 +1835,7 @@ static int dsi_vc_enable(int channel, bool enable)
 	return 0;
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 static void dsi_vc_initial_config(int channel)
 {
 	u32 r;
@@ -1857,6 +1863,7 @@ static void dsi_vc_initial_config(int channel)
 	dsi_write_reg(DSI_VC_CTRL(channel), r);
 	dsi.vc[channel].mode = DSI_VC_MODE_L4;
 }
+#endif
 
 static void dsi_vc_config_l4(int channel)
 {
@@ -1877,6 +1884,7 @@ static void dsi_vc_config_l4(int channel)
 	dsi.vc[channel].mode = DSI_VC_MODE_L4;
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 static void dsi_vc_config_vp(int channel)
 {
 	if (dsi.vc[channel].mode == DSI_VC_MODE_VP)
@@ -1895,7 +1903,7 @@ static void dsi_vc_config_vp(int channel)
 
 	dsi.vc[channel].mode = DSI_VC_MODE_VP;
 }
-
+#endif
 
 static void dsi_vc_enable_hs(int channel, bool enable)
 {
@@ -2276,8 +2284,7 @@ EXPORT_SYMBOL(dsi_vc_dcs_write_nosync);
 int dsi_vc_dcs_write(int channel, u8 *data, int len)
 {
 	int r =0;
-	u32 val;
-	
+
 	r = dsi_vc_dcs_write_nosync(channel, data, len);
 #if 0
 	val = dsi_read_reg(DSI_VC_IRQSTATUS(channel));
@@ -2397,7 +2404,7 @@ int dsi_vc_set_max_rx_packet_size(int channel, u16 len)
 }
 EXPORT_SYMBOL(dsi_vc_set_max_rx_packet_size);
 
-
+#ifndef CONFIG_ARCH_OMAP4
 static int dsi_set_lp_rx_timeout(int ns, int x4, int x16)
 {
 	u32 r;
@@ -2526,6 +2533,7 @@ static int dsi_set_hs_tx_timeout(int ns, int x4, int x16)
 
 	return 0;
 }
+
 static int dsi_proto_config(struct omap_dss_device *dssdev)
 {
 	u32 r;
@@ -2674,7 +2682,7 @@ static void dsi_proto_timings(struct omap_dss_device *dssdev)
 	DSSDBG("enter_hs_mode_lat %u, exit_hs_mode_lat %u\n",
 			enter_hs_mode_lat, exit_hs_mode_lat);
 }
-
+#endif
 
 #define DSI_DECL_VARS \
 	int __dsi_cb = 0; u32 __dsi_cv = 0;
@@ -2963,11 +2971,10 @@ static void dsi_start_auto_update(struct omap_dss_device *dssdev)
 
 static int dsi_set_te(struct omap_dss_device *dssdev, bool enable)
 {
-	dssdev->driver->enable_te(dssdev, enable);
 	int r;
-	printk(KERN_INFO "\n dsi_set_te ");
+
+	dssdev->driver->enable_te(dssdev, enable);
 	r = dssdev->driver->enable_te(dssdev, enable);
-	printk(KERN_INFO "\n dsi_set_te DONE ");
 	/* XXX for some reason, DSI TE breaks if we don't wait here.
 	 * Panel bug? Needs more studying */
 	msleep(100);
@@ -2976,8 +2983,6 @@ static int dsi_set_te(struct omap_dss_device *dssdev, bool enable)
 
 static void dsi_handle_framedone(void)
 {
-	int r;
-	const int channel = 0;
 	bool use_te_trigger;
 
 	use_te_trigger = dsi.te_enabled && !dsi.use_ext_te;
@@ -3196,13 +3201,12 @@ static void dsi_display_uninit_dispc(struct omap_dss_device *dssdev)
 
 static int dsi_display_init_dsi(struct omap_dss_device *dssdev)
 {
-	struct dsi_clock_info cinfo;
 	int r;
-
-	u32 val,l;
-	u32 control_core_base;
 #if 0 //comment everything
 #if 0 //sv3
+	struct dsi_clock_info cinfo;
+	u32 val,l;
+	u32 control_core_base;
 	val = dsi_read_reg(DSI_CLK_CTRL);
 	printk(KERN_INFO "\n DSI_CLK_CONTROL = 0x%X (bit 14 should be 1 ", val);
 	val = val |(1<<14);
@@ -3402,12 +3406,14 @@ static int dsi_display_init_dsi(struct omap_dss_device *dssdev)
 	return 0;
 	// MJ
 err3:
-//	dsi_if_enable(0);
+#if 0
+	dsi_if_enable(0);
 err2:
-//	dsi_complexio_uninit();
+	dsi_complexio_uninit();
 err1:
-//	dsi_pll_uninit();
+	dsi_pll_uninit();
 err0:
+#endif
 	return r;
 }
 
@@ -3420,6 +3426,7 @@ static void dsi_display_uninit_dsi(struct omap_dss_device *dssdev)
 	dsi_pll_uninit();
 }
 
+#ifndef CONFIG_ARCH_OMAP4
 static int dsi_core_init(void)
 {
 	
@@ -3436,6 +3443,7 @@ static int dsi_core_init(void)
 
 	return 0;
 }
+#endif
 
 #define GPIO_OE		0x134
 #define GPIO_DATAOUT	0x13C
@@ -3949,8 +3957,7 @@ int dsi_init_display(struct omap_dss_device *dssdev)
 
 int dsi_init(struct platform_device *pdev)
 {
-	u8 rd_reg;
-	int res, ret;
+	int ret;
 	u32 rev;
 
 	struct sched_param param = {
@@ -3982,7 +3989,6 @@ int dsi_init(struct platform_device *pdev)
 	dsi.user_update_mode = OMAP_DSS_UPDATE_DISABLED;
 
 	dsi_base = dsi.base = ioremap(DSI_BASE, 2000);// MJ DSI_SZ_REGS);
-	printk("dss_base = 0x%x, dispc_base = 0x%x, dsi_base = 0x%x",dss_base,dispc_base,dsi_base);
 	if (!dsi.base) {
 		DSSERR("can't ioremap DSI\n");
 		return -ENOMEM;

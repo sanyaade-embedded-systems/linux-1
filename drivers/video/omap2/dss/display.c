@@ -314,7 +314,6 @@ void default_get_overlay_fifo_thresholds(enum omap_plane plane,
 		u32 fifo_size, enum omap_burst_size *burst_size,
 		u32 *fifo_low, u32 *fifo_high)
 {
-	unsigned low, high, size;
 	unsigned burst_size_bytes;
 
 #if 0
@@ -468,8 +467,8 @@ void dss_init_device(struct platform_device *pdev,
 #endif
 #ifdef CONFIG_OMAP2_DSS_DSI
 	case OMAP_DISPLAY_TYPE_DSI:
-		if(dssdev->name == "lcd")
-		r = dsi_init_display(dssdev);
+		if(!strcmp(dssdev->name, "lcd"))
+			r = dsi_init_display(dssdev);
 		else
 			r = dsi2_init_display(dssdev);
 		break;
