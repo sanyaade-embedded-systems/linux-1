@@ -128,23 +128,6 @@ void omap_mcpdm_stop(int stream)
 }
 EXPORT_SYMBOL(omap_mcpdm_stop);
 
-static int omap_mcpdm_get_channels(int links, int channels)
-{
-	int count;
-
-	if (links & MCPDM_UPLINK)
-		channels &= PDM_UP_MASK | PDM_STATUS_MASK;
-
-	if (links & MCPDM_DOWNLINK)
-		channels &= PDM_DN_MASK | PDM_CMD_MASK;
-
-	/* Brian Kernighan's method for counting set bits */
-	for (count = 0; channels; count++)
-		channels &= channels - 1;
-
-	return count;
-}
-
 int omap_mcpdm_set_uplink(struct omap_mcpdm_link *uplink)
 {
 	int irq_mask = 0;
@@ -474,6 +457,11 @@ static int __init omap_mcpdm_init(void)
 	struct platform_device *device;
 
 	device = platform_device_alloc("omap-mcpdm", -1);
+	if (!device) {
+		printk(KERN_ERR "McPDM platform device allocation failed\n");
+		return -ENOMEM;
+	}
+
 	device->dev.platform_data = &mcpdm_pdata;
 
 	omap_mcpdm_device = device;
