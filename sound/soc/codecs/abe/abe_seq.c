@@ -209,7 +209,7 @@ void abe_call_subroutine(abe_uint32 idx, abe_uint32 p1, abe_uint32 p2, abe_uint3
 	abe_subroutine3 f3;
 	abe_subroutine4 f4;
 
-	if (idx > MAXNBSUBROUTINE)
+	if (idx >= MAXNBSUBROUTINE)
 		return;
 
 	switch (idx) {

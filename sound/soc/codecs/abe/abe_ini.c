@@ -640,7 +640,7 @@ void abe_reset_all_features(void)
 {
 	abe_uint16 i;
 
-	for (i = 0; i < MAXNBFEATURE; i++)
+	for (i = 0; i < FEAT_EANC; i++)
 		abe_reset_one_feature(i);
 }
 

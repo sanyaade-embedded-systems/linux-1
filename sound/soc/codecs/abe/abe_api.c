@@ -461,6 +461,8 @@ void abe_read_use_case_opp(abe_use_case_id *u, abe_opp_t *o)
 		case ABE_VOICE_CALL_WITH_EARPHONE_ACTIVE_NOISE_CANCELLER:
 			opp |= OPP_100;
 			break;
+		default:
+			break;
 		}
 
 		i++;
@@ -662,7 +664,7 @@ void abe_set_ping_pong_buffer(abe_port_id port, abe_uint32 n)
 
 	struct_offset = (abe_uint32)&(desc_pp.nextbuff0_BaseAddr) - (abe_uint32)&(desc_pp);
 	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, sio_pp_desc_address + struct_offset,
-				&(desc_pp.nextbuff0_BaseAddr), sizeof(desc_pp) - struct_offset);
+				(abe_uint32*)&(desc_pp.nextbuff0_BaseAddr), sizeof(desc_pp) - struct_offset);
 
 }
 
@@ -1273,12 +1275,6 @@ void abe_connect_serial_port(abe_port_id id, abe_data_format_t *f, abe_uint32 i)
 	(abe_port [id]).format			    = (*f);
 	(abe_port [id]).protocol.protocol_switch	  = SERIAL_PORT_PROT;
 
-	(abe_port [id]).protocol.p.prot_serial.desc_addr;       /* McBSP/McASP peripheral connected to ATC */
-	(abe_port [id]).protocol.p.prot_serial.buf_addr;	/* Address of ATC McBSP/McASP descriptor's in bytes */
-	(abe_port [id]).protocol.p.prot_serial.buf_size;	/* DMEM address in bytes */
-	(abe_port [id]).protocol.p.prot_serial.iter;		/* ITERation on each DMAreq signals */
-	(abe_port [id]).protocol.p.prot_serial.thr_flow;	/* Data threshold for flow management */
-
 	abe_port [id].status = RUN_P;
 
 	/* load the micro-task parameters */
@@ -1732,8 +1728,8 @@ void abe_write_aps(abe_aps_id id, abe_aps_t *param)
  */
 void abe_write_mixer(abe_mixer_id id, abe_gain_t f_g, abe_ramp_t f_ramp, abe_port_id p)
 {
-	abe_uint32 mixer_coef, lin_g, iir_ramp1, iir_ramp1MA;
-	abe_float f_lin_g, f_iir_ramp1;
+	abe_uint32 mixer_coef, lin_g;
+	abe_float f_lin_g;
 
 	/* @@@ to be changed when all the gains are managed with Ramps */
 	switch (id) {
