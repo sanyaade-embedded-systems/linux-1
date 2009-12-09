@@ -1651,7 +1651,7 @@ static void _dispc_set_scaling(enum omap_plane plane,
 		u16 orig_width, u16 orig_height,
 		u16 out_width, u16 out_height,
 		bool ilace, bool five_taps,
-		bool fieldmode)
+		bool fieldmode, int force_scaling)
 {
 	int fir_hinc;
 	int fir_vinc;
@@ -1667,22 +1667,25 @@ static void _dispc_set_scaling(enum omap_plane plane,
 
 	_dispc_set_scale_coef(plane, hscaleup, vscaleup, five_taps);
 
-	if (!orig_width || orig_width == out_width)
-		fir_hinc = 0;
-	else
+	if (force_scaling || (orig_width && orig_width != out_width))
 		fir_hinc = 1024 * orig_width / out_width;
-
-	if (!orig_height || orig_height == out_height)
-		fir_vinc = 0;
 	else
+		fir_hinc = 0;
+
+	if (force_scaling || (orig_height && orig_height != out_height))
 		fir_vinc = 1024 * orig_height / out_height;
+	else
+		fir_vinc = 0;
 
 	_dispc_set_fir(plane, fir_hinc, fir_vinc);
 
 	l = dispc_read_reg(dispc_reg_att[plane]);
 	/* setting attrib register for scaling */
+#ifndef CONFIG_ARCH_OMAP4
 	l &= ~((0x0f << 5) | (0x1 << 21));
-
+#else
+    l &= ~((0x03 << 5) | (0x1 << 21));
+#endif
 	l |= fir_hinc ? (1 << 5) : 0;
 	l |= fir_vinc ? (1 << 6) : 0;
 
@@ -1710,11 +1713,18 @@ static void _dispc_set_scaling(enum omap_plane plane,
 	_dispc_set_vid_accu1(plane, 0, accu1);
 }
 
+#define H 0
+#define HV 1
+#define V 2
+#define T5UP 0
+#define T5DN 1
+#define T3 2
+
 static void _dispc_set_scaling_uv(enum omap_plane plane,
 		u16 orig_width, u16 orig_height,
 		u16 out_width, u16 out_height,
 		bool ilace, bool five_taps,
-		bool fieldmode, int color_mode)
+		bool fieldmode, int force_scaling, int color_mode)
 {
 	int i;
 	u32 h;
@@ -1722,195 +1732,113 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 	int fir_vinc;
 	int check_h;
 	int check_v;
-
-	/* HACK: for NV12: Coefficients for vertical up-sampling */
-	static const u32 coef_vup[8] = {
-		0x00000000,
-		0x0000FF00,
-		0x0000FEFF,
-		0x0000FBFE,
-		0x000000F7,
-		0x0000FEFB,
-		0x0000FFFE,
-		0x000000FF,
-	};
-
-	static const u32 coef_h2_greater[8] = {
-		0xEC86EC11,
-		0xFC7FE512,
-		0x1179E20F,
-		0x2F69E509,
-		0xEE5151EE,
-		0xE5692FFA,
-		0xE2791105,
-		0xE57FFC0D,
-	};
-
-	static const u32 coef_hv2_greater[8] = {
-		0x00800000,
-		0x0D7CF8FF,
-		0x1E70F5FE,
-		0x335FF5FB,
-		0xF7494900,
-		0xF55F33FE,
-		0xF5701EFF,
-		0xF87C0D00,
-/*
-		0xEC86EC11,
-		0xFC7FE50E,
-		0x1179E205,
-		0x2F69E5FA,
-		0xEE515102,
-		0xE5692F09,
-		0xE279110F,
-		0xE57FFC13,
-*/
-	};
-
-	static const u32 coef_v2_greater[8] = {
-		0x00001111,
-		0x00000E12,
-		0x0000050F,
-		0x0000FA09,
-		0x000002EE,
-		0x000009FA,
-		0x00000F05,
-		0x0000130D,
-	};
-
-	static const u32 coef_h2_lesser[8] = {
-		0x24382400,
-		0x28371FFE,
-		0x2C361BFB,
-		0x303516F9,
-		0x11343311,
-		0x1635300C,
-		0x1B362C08,
-		0x1F372804,
-	};
-
-	static const u32 coef_hv2_lesser[8] = {
-		0x00800000,
-		0x0D7CF8FF,
-		0x1E70F5FE,
-		0x335FF5FB,
-		0xF7494900,
-		0xF55F33FE,
-		0xF5701EFF,
-		0xF87C0D00,
-
-/*		0x24382400,
-		0x28391F04,
-		0x2D381B08,
-		0x3237170C,
-		0x123737F7,
-		0x173732F9,
-		0x1B382DFB,
-		0x1F3928FE,
-*/
-	};
-
-
-	static const u32 coef_v2_lesser[8] = {
-		0x00000000,
-		0x000004FE,
-		0x000008FB,
-		0x00000CF9,
-		0x0000F711,
-		0x0000F90C,
-		0x0000FB08,
-		0x0000FE04,
+	 
+	static const u32 coef[3][3][8] = {
+	{/*M=8 5 tap upscale*/
+	{0xEC86EC11, 0xFC7FE512, 0x1179E20F, 0x2F69E509, 
+	0xEE5151EE, 0xE5692FFA, 0xE2791105, 0xE57FFC0D,},
+	{0xEC86EC11, 0xFC7FE50E, 0x1179E205, 0x2F69E5FA,
+	0xEE515102, 0xE5692F09, 0xE279110F, 0xE57FFC13,},
+	{0x00001111, 0x00000E12, 0x0000050F, 0x0000FA09,
+	0x000002EE, 0x000009FA, 0x00000F05, 0x0000130D,},
+	},
+	{/*M=10 5 tap downscale*/
+	{0x028002FE, 0x147DF405, 0x2974EA0B, 0x3E66E50F,
+	0xE45353E4, 0xE5663EE8, 0xEA7429EE, 0xF47D14F6,},
+	{0x028002FE, 0x147DF4F6, 0x2974EAEE, 0x3E66E5E4,
+	0xE4535312, 0xE5663E0F, 0xEA74290B, 0xF47D1405,},
+	{0x0000FEFE, 0x0000F605, 0x0000EE0B, 0x0000E40F,
+	0x000012E4, 0x00000FE8, 0x00000BEE, 0x000005F6,},
+	},
+	{/*M=8 3 tap*/
+	{0x00800000, 0x0D7CF800, 0x1E70F5FF, 0x335FF5FE,
+	0xF74949F7, 0xF55F33FB, 0xF5701EFE, 0xF87C0DFF,},
+	{0x00800000, 0x037B02FF, 0x0C6F05FE, 0x205907FB,
+	0x00404000, 0x075920FE, 0x056F0CFF, 0x027B0300,},	
+	{0x00000000, 0x00000000, 0x00000000, 0x00000000,
+	0x00000000, 0x00000000, 0x00000000, 0x00000000,},
+	},
 	};
 
 	const u32 *h2_coef;
 	const u32 *hv2_coef;
-	u32 *hv2_coef_mod = NULL;
+	u32 *hv2_coef_mod = NULL; /* horizontal override */
 	const u32 *v2_coef;
 
 	check_h = (2 * out_width > orig_width) ? 1 : 0;
 	check_v = (2 * out_height > orig_height) ? 1 : 0;
 
+	if(!five_taps){
+		h2_coef = coef[T3][H];
+		hv2_coef = coef[T3][HV];
+		v2_coef = coef[T3][V];
+		} 
+	else {
+
 	if (check_h)
-		h2_coef = coef_h2_lesser;
-	else
-		h2_coef = coef_h2_greater;
+		h2_coef = coef[T5DN][H];
+		else
+		h2_coef = coef[T5UP][H];
 
 	if (check_v) {
-		v2_coef = coef_v2_lesser;
-		hv2_coef = coef_hv2_lesser;
+		v2_coef = coef[T5DN][V];
+		hv2_coef = coef[T5DN][HV];
 
 		if (check_h)
 			hv2_coef_mod = NULL;
 		else
-		/* TODO: Need to check this */
-			*hv2_coef_mod = *coef_hv2_greater;
+			hv2_coef_mod = coef[T5UP][HV];
 	} else {
-		v2_coef = coef_v2_greater;
-		hv2_coef = coef_hv2_greater;
+		v2_coef = coef[T5UP][V];
+		hv2_coef = coef[T5UP][HV];
 		if (check_h)
-			hv2_coef_mod = coef_hv2_lesser;
+			hv2_coef_mod = coef[T5DN][HV];
 		else
 			hv2_coef_mod = NULL;
 	}
+		}
 
 	for (i = 0; i < 8; i++) {
 		u32 h, v, hv;
 		h = h2_coef[i];
 		v = v2_coef[i];
 		hv = hv2_coef[i];
-
+		
 		if (hv2_coef_mod) {
 			hv &= 0xffffff00;
 			hv |= (hv2_coef_mod[i] & 0xff);
 		}
+
 		_dispc_write_firh2_reg(plane, i, h);
 		_dispc_write_firhv2_reg(plane, i, hv);
 		_dispc_write_firv2_reg(plane, i, v);
-
-		if (color_mode == OMAP_DSS_COLOR_NV12) {
-			if (OMAP_DSS_VIDEO3 == plane)
-				hv = dispc_read_reg(
-					DISPC_VID_V3_WB_FIR_COEF_V(0, i));
-			else
-				hv = dispc_read_reg(
-					DISPC_VID_FIR_COEF_V(plane - 1, i));
-
-			hv = coef_vup[i];
-
-			_dispc_write_firv_reg(plane, i, hv);
-		}
 	}
 
-	if ((color_mode == OMAP_DSS_COLOR_NV12) ||
-		(orig_width && (orig_width != out_width)))
+	if (force_scaling || (orig_width && (orig_width != out_width)))
 		fir_hinc = 1024 * orig_width / out_width;
 	else
 		fir_hinc = 0;
 
-	if ((color_mode == OMAP_DSS_COLOR_NV12) ||
-		(orig_height && (orig_height != out_height)))
+	if (force_scaling || (orig_height && (orig_height != out_height)))
 		fir_vinc = 1024 * orig_height / out_height;
 	else
 		fir_vinc = 0;
 
-	/* HACK set for NV12*/
+	/* :TRICKY: workaround! adjust 512 to 511 for hinc only */
+	if (fir_hinc == 512)
+		fir_hinc = 511;
+
 	if (color_mode == OMAP_DSS_COLOR_NV12) {
-		_dispc_set_fir(plane, fir_hinc, fir_vinc);
-		fir_vinc = fir_vinc / 2;
-		fir_hinc = fir_hinc / 2;
-		h = dispc_read_reg(DISPC_VID_ATTRIBUTES2(plane - 1));
-		h |= (1 << 8); /* set chroma resampling */
-		dispc_write_reg(DISPC_VID_ATTRIBUTES2(plane - 1), h);
-
-		h = dispc_read_reg(dispc_reg_att[plane]);
-		/* setting attrib register for scaling */
-
-		h |= (1 << 6); /* HACK: enable hresize */
-		h |= (1 << 5); /* HACK: enable vresize */
-		h |= (1 << 21);
-
-		dispc_write_reg(dispc_reg_att[plane], h);
+	/* set chroma resampling */
+	REG_FLD_MOD(DISPC_VID_ATTRIBUTES2(plane - 1),
+		(fir_hinc || fir_vinc) ? 1 : 0, 8, 8);
 	}
+	/* set H scaling */
+	REG_FLD_MOD(dispc_reg_att[plane], fir_hinc ? 1 : 0, 6, 6);
+		
+	/* set V scaling */
+	REG_FLD_MOD(dispc_reg_att[plane], fir_vinc ? 1 : 0, 5, 5);
+
 	_dispc_set_fir2(plane, fir_hinc, fir_vinc);
 	_dispc_set_vid_accu2_0(plane, 0x0080, 0);
 	_dispc_set_vid_accu2_1(plane, 0x0080, 0);
@@ -2392,7 +2320,10 @@ static int _dispc_setup_plane(enum omap_plane plane,
 #endif
 		)
 {
-	const int maxdownscale = cpu_is_omap34xx() ? 4 : 2;
+	int maxdownscale = cpu_is_omap34xx() ? 4 : 2;
+	#ifdef CONFIG_ARCH_OMAP4
+	maxdownscale = 4;
+	#endif
 	bool five_taps = 0;
 	bool fieldmode = 0;
 	int cconv = 0;
@@ -2404,9 +2335,10 @@ static int _dispc_setup_plane(enum omap_plane plane,
 
 	u8 orientation = 0;
 	struct dmmViewOrientT orient;
-	unsigned long mir_x = 0, mir_y = 0;
+	unsigned long r, mir_x, mir_y;
 	unsigned long tiler_width, tiler_height;
-//	void __iomem *reg = NULL;
+	void __iomem *reg = NULL;
+	int force_scaling = 0;
 
 	if (paddr == 0)
 		return -EINVAL;
@@ -2491,6 +2423,19 @@ static int _dispc_setup_plane(enum omap_plane plane,
 			return -EINVAL;
 		}
 
+		/* do we have to scale? */
+		force_scaling =
+			/* must use FIR if scaling */
+			(out_width != width || out_height != height ||
+#ifdef CONFIG_ARCH_OMAP4
+			 /* must use FIR for YUV 420 frames */
+			 color_mode == OMAP_DSS_COLOR_NV12 ||
+#endif
+			 /* must use FIR for rotated YUV 422 frames */
+			 ((color_mode == OMAP_DSS_COLOR_YUV2 ||
+			   color_mode == OMAP_DSS_COLOR_UYVY) &&
+			  rotation % 4));
+
 		/* Must use 5-tap filter? */
 		five_taps = height > out_height * 2;
 
@@ -2516,6 +2461,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 
 		if (fclk > dispc_fclk_rate())
 			return -EINVAL;
+		five_taps = (width > 1280) ? 0 : 1;
 	}
 
 	if (ilace && !fieldmode) {
@@ -2619,15 +2565,27 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	if (plane != OMAP_DSS_GFX) {
 		_dispc_set_scaling(plane, width, height,
 				   out_width, out_height,
-				   ilace, five_taps, fieldmode);
+				   ilace, five_taps, fieldmode,
+				   force_scaling);
 #ifdef CONFIG_ARCH_OMAP4
 		if (OMAP_DSS_COLOR_YUV2 == color_mode ||
 			OMAP_DSS_COLOR_NV12 == color_mode ||
 			OMAP_DSS_COLOR_UYVY == color_mode) {
 
+			/* adjust orig size for NV12 as it is down-sampled */
+			if (color_mode == OMAP_DSS_COLOR_NV12) {
+				/* :TRICKY: note that width and height is no
+				   longer used elsewhere */
+				width >>= 1;
+				height >>= 1;
+			}
+
 			_dispc_set_scaling_uv(plane, width, height,
 				out_width, out_height, ilace,
-				five_taps, fieldmode, color_mode);
+				five_taps, fieldmode, force_scaling, color_mode);
+		} else {
+			/* :TRICKY: set chroma resampling for RGB formats */
+			REG_FLD_MOD(DISPC_VID_ATTRIBUTES2(plane - 1), 0, 8, 8);
 		}
 #endif
 		_dispc_set_vid_size(plane, out_width, out_height);
@@ -4130,6 +4088,8 @@ static void dispc_error_worker(struct work_struct *work)
 		struct omap_overlay_manager *manager = NULL;
 		bool enable = false;
 
+		DSSERR("SYNC_LOST_DIGIT\n");
+	/*
 		DSSERR("SYNC_LOST_DIGIT, disabling TV\n");
 
 		for (i = 0; i < omap_dss_get_num_overlay_managers(); ++i) {
@@ -4162,6 +4122,7 @@ static void dispc_error_worker(struct work_struct *work)
 			if (enable)
 				manager->device->enable(manager->device);
 		}
+		*/
 	}
 
 	if (errors & DISPC_IRQ_OCP_ERR) {
