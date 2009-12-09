@@ -12,9 +12,6 @@
 #ifndef _OMAP4_HDMI_H_
 #define _OMAP4_HDMI_H_
 
-#define HDMI_XRES			1920
-#define HDMI_YRES			1080
-
 #define HDMI_EDID_DETAILED_TIMING_OFFSET  0x36 /*EDID Detailed Timing
 							Info 0 begin offset*/
 #define HDMI_EDID_PIX_CLK_OFFSET          0
