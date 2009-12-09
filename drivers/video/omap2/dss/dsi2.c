@@ -3152,7 +3152,7 @@ static int dsi2_display_init_dispc(struct omap_dss_device *dssdev)
 	int r;
 
 	r = omap_dispc_register_isr(dsi2_framedone_irq_callback, NULL,
-			DISPC_IRQ_FRAMEDONE);
+			DISPC_IRQ_FRAMEDONE2);
 	if (r) {
 		DSSERR("can't get FRAMEDONE irq\n");
 		return r;
@@ -3246,7 +3246,7 @@ static int dsi2_display_init_dispc(struct omap_dss_device *dssdev)
 static void dsi2_display_uninit_dispc(struct omap_dss_device *dssdev)
 {
 	omap_dispc_unregister_isr(dsi2_framedone_irq_callback, NULL,
-			DISPC_IRQ_FRAMEDONE);
+			DISPC_IRQ_FRAMEDONE2);
 }
 
 static int dsi2_display_init_dsi(struct omap_dss_device *dssdev)

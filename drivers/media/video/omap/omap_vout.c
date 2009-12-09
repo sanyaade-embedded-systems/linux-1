@@ -1588,7 +1588,7 @@ static int omap_vout_release(struct file *file)
 		u32 mask = 0;
 
 		mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE;
+			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE | DISPC_IRQ_FRAMEDONE2;
 
 		omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 		vout->streaming = 0;
@@ -2315,7 +2315,7 @@ static int vidioc_streamon(struct file *file, void *fh,
 #endif
 
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE;
+			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE | DISPC_IRQ_FRAMEDONE2;
 
 	omap_dispc_register_isr(omap_vout_isr, vout, mask);
 
@@ -2358,7 +2358,7 @@ static int vidioc_streamoff(struct file *file, void *fh,
 
 		vout->streaming = 0;
 		mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE;
+			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE | DISPC_IRQ_FRAMEDONE2;
 
 		omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 
@@ -2982,7 +2982,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 	/* do_gettimeofday(&timevalue); TODO: uncomment this!! */
 
 	if (cur_display->type == OMAP_DISPLAY_TYPE_DSI) {
-		if (!(irqstatus & DISPC_IRQ_FRAMEDONE)) {
+		if (!(irqstatus & ((DISPC_IRQ_FRAMEDONE) | (DISPC_IRQ_FRAMEDONE2)))) {
 			spin_unlock(&vout->vbq_lock);
 			return;
 		}
