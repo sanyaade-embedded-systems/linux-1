@@ -613,15 +613,21 @@ static int omap_vout_tiler_buffer_setup(struct omap_vout_device *vout,
 			if (!vout->buf_phy_addr[i] ||
 				!vout->buf_phy_uv_addr[i]) {
 				for (j = 0; j < i; j++) {
-					tiler_free_buf(vout->buf_phy_addr[j]);
-					tiler_free_buf(
+					if (vout->buf_phy_addr[j]) {
+						tiler_free_buf(vout->buf_phy_addr[j]);
+						vout->buf_phy_addr[j] = 0;
+						}
+					if (vout->buf_phy_uv_addr[j]) {
+						tiler_free_buf(
 						vout->buf_phy_uv_addr[j]);
-					vout->buf_phy_addr[j] = 0;
-					vout->buf_phy_uv_addr[j] = 0;
+						vout->buf_phy_uv_addr[j] = 0;
+						}
 				}
 				*count = 0;
 				return -ENOMEM;
 			}
+			}else {
+				vout->buf_phy_uv_addr[i] = 0;
 		}
 
 		if (!vout->buf_phy_addr[i]) {
@@ -643,9 +649,11 @@ static void omap_vout_free_tiler_buffers(struct omap_vout_device *vout)
 	int j;
 	for (j = 0; j < vout->buffer_allocated; j++) {
 		tiler_free_buf(vout->buf_phy_addr[j]);
-		tiler_free_buf(vout->buf_phy_uv_addr[j]);
 		vout->buf_phy_addr[j] = 0;
+		if (vout->buf_phy_uv_addr[j]) {
+		tiler_free_buf(vout->buf_phy_uv_addr[j]);
 		vout->buf_phy_uv_addr[j] = 0;
+		}
 	}
 	vout->buffer_allocated = 0;
 }
@@ -2138,9 +2146,11 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 #else  /* TILER_ALLOCATE_V4L2*/
 		for (i = 0; i < vout->buffer_allocated; i++) {
 			tiler_free_buf(vout->buf_phy_addr[i]);
-			tiler_free_buf(vout->buf_phy_uv_addr[i]);
 			vout->buf_phy_addr[i] = 0;
-			vout->buf_phy_uv_addr[i] = 0;
+			if (vout->buf_phy_uv_addr[i]) {
+				tiler_free_buf(vout->buf_phy_uv_addr[i]);
+				vout->buf_phy_uv_addr[i] = 0;
+			}
 		}
 		vout->buffer_allocated = 0;
 
