@@ -430,6 +430,9 @@ void __init gpmc_init(void)
 	} else if (cpu_is_omap44xx()) {
 		ck = "gpmc_fck";
 		l = OMAP44XX_GPMC_BASE;
+	} else {
+		printk(KERN_ERR "%s Unknown platform\n", __FUNCTION__);
+		BUG();
 	}
 
 	gpmc_l3_clk = clk_get(NULL, ck);
