@@ -1,7 +1,7 @@
-Release notes for the Linux kernel for L24.1
+Release notes for the Linux kernel for L24.2
 ----------------------------------------------
 
-30 November 2009
+9 December 2009
 
 Copyright (C) 2009 Texas Instruments Incorporated.  All rights reserved.
 
@@ -18,8 +18,8 @@ on OMAP4430 SDP. The document specifies:
 
 2. Release Summary
 ------------------
-This is an engineering release of the Linux Baseport for OMAP4430. It supports
-the OMAP4 Wakeup SDP board. The kernel is based on Linux-omap version 2.6.31
+This is a release of the Linux Baseport for OMAP4430. It supports the
+OMAP4 Wakeup SDP board. The kernel is based on Linux-omap version 2.6.31
 from open source. U-boot is based on open-source version 1.1.4.
 
 The u-boot source can be obtained via GIT from:
@@ -29,11 +29,9 @@ The x-loader source can be obtained via GIT from:
   http://dev.omapzoom.org/?p=bootloader/x-loader.git;a=shortlog;h=refs/heads/omap4_dev
 
 The kernel source can be obtained via GIT from:
-  http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=shortlog;h=refs/heads/L24.1
+  http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=shortlog;h=refs/heads/L24.2
 
-This is an engineering release.
-
-Components that are supported in the L24.1 release:
+Components that are supported in the L24.2 release:
    X-loader, U-Boot, OS Kernel (SMP), Phoenix power IC, UART, GP Timer, GPIO, Watchdog,
    Neon, I2C, MMC/SD/eMMC (with ADMA support), Ethernet, RTC,
    SDMA (including descriptor loading), Keypad, Touch screen, McSPI, McBSP, Mentor USB,
@@ -119,54 +117,95 @@ Build kernel with:
 NOTE:	The above steps will create arch/arm/boot/uImage in the kernel directory
 	which is the binary used for booting.
 
-3.3 Flashing Images
+3.3 Flashing and Booting
 
-3.3.1 Flashing images to emmc using u-boot
+3.3.1 Booting from removable MMC
 
+Use the MLO (ref: section 3.2.2) and u-boot.bin (ref: section 3.2.1) binaries
+and follow the instructions at http://elinux.org/BeagleBoard#MMC.2FSD_boot
+to boot the board from removable MMC.
+
+Set the board switch settings as follows to boot the board from removable MMC:
+	S9 - 1-off, 2-on, 3-on, 4-on
+	S8 - 1-off, 2-on, 3-off, 4-on, 5-on, 6-on, 7-on, 8-on
+
+3.3.2 Flashing and booting from eMMC
+
+Follow the instructions below to save x-loader and u-boot binaries to eMMC and
+subsequently boot from eMMC.
+
+Get the x-loader and u-boot binaries (that you want to flash to eMMC) into RAM
+using one of the following options.
+
+Option 1:
 Use a debugger or OMAPFlasher tool to download x-loader (with configuration
 header, e.g. x-load.ch.bin) as well as u-boot.bin into
 SDRAM and run u-boot from SDRAM.
 
-At the u-boot prompt use the following commands to flash x-loader and u-boot to
-EMMC
+Option 2:
+Boot via a removable MMC card following the instructions in section 3.3.1, but
+additionally keep the x-load.ch.bin that you want to flash to eMMC in the same
+removable MMC card. After booting from removable MMC, copy the x-load.ch.bin
+and u-boot.bin from the MMC to RAM using the following commands:
+OMAP44XX SDP # mmcinit 0
+OMAP44XX SDP # fatload mmc 0 [Ram Address X] x-load.ch.bin
+OMAP44XX SDP # fatload mmc 0 [Ram Address Y] u-boot.bin
 
--1- Erase all EMMC contents
+Once the x-loader and u-boot binaries are in RAM, use the following commands
+to copy them to eMMC.
+
+1) Erase all EMMC contents
 OMAP44XX SDP # mmcinit 1
 OMAP44XX SDP # mmc 1 erase 0x0 0x800000
--2- Flash x-loader
+2) Flash x-loader
 OMAP44XX SDP # mmc 1 erase  0x100  [size of x-loader in hex]
-OMAP44XX SDP # mmc 1 write [Ram Address]  0x100  [size of x-loader in hex]
-Note: Ram address is address where x-loader is downloaded in RAM using either the
-debugger or OMAPFlasher
--3- Flash u-boot.bin
+OMAP44XX SDP # mmc 1 write [Ram Address X]  0x100  [size of x-loader in hex]
+Note: Ram address X is address where x-loader is downloaded in RAM using either the
+debugger, OMAPFlasher or removable MMC.
+3) Flash u-boot.bin
 OMAP44XX SDP # mmc 1 erase  0x400  [size]
-OMAP44XX SDP # mmc  1 write  [Ram Address]  0x400  [size]
-Note: Ram address is address where u-boot is downloaded in RAM using either the
-debugger or OMAPFlasher
--	Reboot and change sysboot setting to sysboot 0-5 = on on on on on on
+OMAP44XX SDP # mmc  1 write  [Ram Address Y]  0x400  [size]
+Note: Ram address Y is address where u-boot is downloaded in RAM using either the
+debugger, OMAPFlasher or removable MMC.
 
-3.3 Filesystem
+Set the board switch settings as follows to boot the board from eMMC:
+	S9 - 1-off, 2-on, 3-on, 4-on
+	S8 - 1-on, 2-on, 3-on, 4-on, 5-on, 6-off, 7-on, 8-on
 
-3.3.1 Using Filesystem from eMMC
+3.3.3 Using Filesystem from eMMC
 
 Use fdisk to create an ext2 partition (/dev/mmcblk0p2) in eMMC leaving 2MB of space
 at the top.
 
 Use the following commands to flash the filesystem to eMMC partition
--1- Bootup with a known good kernel and filesystem from RAM
--2- Use a filesystem which has USB Gadget filestorage module g_filestorage.ko
--3- Connect the usb cable from the board to the PC
--4- Load the USB filestorage gadget module as:
+1) Bootup with a known good kernel and filesystem from RAM
+2) Use a filesystem which has USB Gadget filestorage module g_filestorage.ko
+3) Connect the usb cable from the board to the PC
+4) Load the USB filestorage gadget module as:
 insmod g_filestorage.ko file=/dev/mmcblk0p2 stall=0 removable=1
--5- When the USB drive enumerates on the Linux PC, mount the drive
--6- Add ext2 filesystem to the mounted drive
--7- sync and then mount the drive.
--8 Add the following in bootargs "root=/dev/mmcblk0p2 rw rootdelay=1" to be able
+5) When the USB drive enumerates on the Linux PC, mount the drive
+6) Add ext2 filesystem to the mounted drive
+7) sync and then mount the drive.
+8) Add the following in bootargs "root=/dev/mmcblk0p2 rw rootdelay=1" to be able
 to use the eMMC based FS as rootfs.
 
-3.3.2 Using Filesystem over NFS
+3.3.4 Bootargs
 
-Use the following as part of the bootargs "root=/dev/nfs rw nfsroot=<serverip>:<mount-partition>,nolock"
+Since UART3 is used as the console on OMAP4 Wakeup board, you need to set
+'console=ttyS2,115200n8' in the bootargs
+
+While using a filesystem from MMC or eMMC, you may use params such as:
+'root=/dev/mmcblk0p2 rw rootdelay=1'. The rootdelay is required because
+removable cards may take a few seconds to be detected.
+
+While using a filesystem via NFS, you may use params such as:
+'root=/dev/nfs rw nfsroot=<serverip>:<mount-partition>,nolock'
+
+Refer to section 3.4.2 for display related bootargs options
+
+For detailed list and explaination of the various boot parameters, please refer
+http://www.kernel.org/pub/linux/kernel/people/gregkh/lkn/lkn_pdf/ch09.pdf
+
 
 3.4 Using FB and V4L2 Display driver
 
@@ -175,16 +214,16 @@ Use the following as part of the bootargs "root=/dev/nfs rw nfsroot=<serverip>:<
 Please use following set of commands after kernel bootup for setting
 secondary display ON.
 
--1- Enable secondary display (display1)
+1) Enable secondary display (display1)
 	echo "1" > /sys/devices/platform/omapdss/display1/enabled
--2- Disable overlay1
+2) Disable overlay1
 	echo "0" > /sys/devices/platform/omapdss/overlay1/enabled
--3- Attach secondary display as a manager for overlay1
+3) Attach secondary display as a manager for overlay1
 	echo "2lcd" > /sys/devices/platform/omapdss/overlay1/manager
--4- Enable overlay1
+4) Enable overlay1
 	echo "1" > /sys/devices/platform/omapdss/overlay1/enabled
 
-3.4.2 Bootargs options
+3.4.2 Display specific bootargs options
 
 3.4.2.1 Using 1 FB and 3 V4L2 devices
 Add the following in bootargs "omapfb.numfb=1"
@@ -238,17 +277,13 @@ Add the following in bootargs "omapfb.numfb=2"
 		- Simultaneous rendering on all 3 displays
 	Tiler memory manager.
 
-
-
 4.3 Postponed Features
 
 None
 
-
 4.4 Future Planned Features
 
 Refer to Program schedule.
-
 
 4.5 Defects Fixed in This Release
 
@@ -258,16 +293,13 @@ None
 
 None
 
-
 4.7 Open Change Requests
 
 None
 
-
 4.8 Rejected Defects
 
 None
-
 
 4.9 Postponed Defects
 
@@ -275,17 +307,17 @@ None
 
 4.10 Limitations
 
-	- At u-boot level saveenv command doesn't work.
-	- MAC address reading from ethernet EEPROM is not supported.
+1) At u-boot level saveenv command doesn't work.
+2) MAC address reading from ethernet EEPROM is not supported.
 
 
 5. Tool Chain
 -------------
 The toolchain used to build the code can be obtained from CodeSourcery at the
 following URL:
-	http://www.codesourcery.com/gnu_toolchains/arm/portal/release644
+	http://www.codesourcery.com/sgpp/lite/arm/portal/release858
 
-The tool chain version is Sourcery G++ Lite 2008q3-72 for ARM GNU/Linux.
+The tool chain version is Sourcery G++ Lite 2009q1-203 for ARM GNU/Linux.
 
 The tool chain requires glibc 2.3.0 or higher to compile the source code on
 the host machine.
