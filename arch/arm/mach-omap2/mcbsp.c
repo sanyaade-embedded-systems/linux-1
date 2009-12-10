@@ -48,6 +48,12 @@ static void omap_mcbsp_clk_init(struct mcbsp_internal_clk *mclk)
 	mclk->childs = kzalloc(mclk->n_childs * sizeof(struct clk *),
 				GFP_KERNEL);
 
+	if (mclk->childs == NULL) {
+		printk(KERN_WARNING "Not enough memory to allocate\
+				clock buffers.\n");
+		return ;
+	}
+
 	for (i = 0; i < mclk->n_childs; i++) {
 		/* We fake a platform device to get correct device id */
 		struct platform_device pdev;
