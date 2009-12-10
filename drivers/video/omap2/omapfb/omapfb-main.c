@@ -885,6 +885,7 @@ static int omapfb_pan_display(struct fb_var_screeninfo *var,
 {
 	struct omapfb_info *ofbi = FB2OFB(fbi);
 	int r = 0;
+	struct omap_dss_device *display = fb2display(fbi);
 
 	DBG("pan_display(%d)\n", ofbi->id);
 
@@ -904,6 +905,9 @@ static int omapfb_pan_display(struct fb_var_screeninfo *var,
 			r = omapfb_apply_changes(fbi, 0);
 		}
 	}
+
+	if (display && display->update)
+		display->update(display, 0, 0, var->xres, var->yres);
 
 	return r;
 }
