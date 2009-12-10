@@ -3011,7 +3011,7 @@ static void dsi2_handle_framedone(void)
 		DSSERR("BTA after framedone failed\n");
 #endif
 #ifdef CONFIG_OMAP2_DSS_FAKE_VSYNC
-	dispc_fake_vsync_irq();
+	dispc_fake_vsync_irq(1);
 #endif
 }
 

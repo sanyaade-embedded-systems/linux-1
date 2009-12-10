@@ -4177,10 +4177,22 @@ int omap_dispc_wait_for_irq_interruptible_timeout(u32 irqmask,
 }
 
 #ifdef CONFIG_OMAP2_DSS_FAKE_VSYNC
-void dispc_fake_vsync_irq(void)
+void dispc_fake_vsync_irq(int disp_id)
 {
-	u32 irqstatus = DISPC_IRQ_VSYNC;
+	u32 irqstatus;
 	int i;
+
+	switch (disp_id) {
+	case 0:
+		irqstatus = DISPC_IRQ_VSYNC;
+		break;
+	case 1:
+		irqstatus = DISPC_IRQ_VSYNC2;
+		break;
+	default:
+		DSSERR("Invalid display id for fake vsync\n");
+	return;
+	}
 
 	for (i = 0; i < DISPC_MAX_NR_ISRS; i++) {
 		struct omap_dispc_isr_data *isr_data;
