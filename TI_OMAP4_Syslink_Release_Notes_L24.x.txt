@@ -3,7 +3,7 @@ OMAP4 Syslink List Handoff
 ================================================================================
 
 Author		: Hari Kanigeri
-Date		: Nov 30 2009
+Date		: Dec 08 2009
 
 ===========
 Summary:
@@ -89,12 +89,12 @@ From the Kernel sources run below commands.
 
 	5. Run make menuconfig
 
-	6. Select drivers under
+	6. Following is the required configuration for Syslink
 		Deivice Drivers -->Sys_Link  --->
 						<*>  OMAP IPC Module
 						<*>  OMAP Notify Module
 						<*>  Mailbox Dispatcher
-						<*>  OMAP Notify Tesla Module
+						<M>  OMAP Notify Tesla Module
 						<*>  OMAP Notify Ducati Module
 						<*>  Syslink Procmgr
 						<*>  Proc 4430
@@ -102,6 +102,9 @@ From the Kernel sources run below commands.
 						[*]   DSP Bridge Debug Support
 
 		Select DSP Bridge Debug Support option as above.
+		By default the Syslink is built as part of the kernel
+		and Tesla Bridge is built as a module.
+
 	7. Save Configuration
 
 	8. Build the kernel by running below commands.
