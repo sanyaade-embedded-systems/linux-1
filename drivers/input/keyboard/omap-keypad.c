@@ -148,9 +148,6 @@ static irqreturn_t omap_kp_interrupt(int irq, void *dev_id)
 		/* disable keyboard interrupt and schedule for handling */
 		omap_writel(OMAP4_KBD_IRQDISABLE, OMAP4_KBDOCP_BASE +
 				OMAP4_KBD_IRQENABLE);
-
-		omap_writel(omap_readl(OMAP4_KBDOCP_BASE + OMAP4_KBD_IRQSTATUS),
-				OMAP4_KBDOCP_BASE + OMAP4_KBD_IRQSTATUS);
 	} else
 		/* disable keyboard interrupt and schedule for handling */
 		omap_writew(1, OMAP1_MPUIO_BASE + OMAP_MPUIO_KBD_MASKIT);
@@ -300,6 +297,9 @@ static void omap_kp_tasklet(unsigned long data)
 			}
 	}
 	enable_irq(irq);
+	/* now clear any pending interrupts */
+	omap_writel(omap_readl(OMAP4_KBDOCP_BASE + OMAP4_KBD_IRQSTATUS),
+				OMAP4_KBDOCP_BASE + OMAP4_KBD_IRQSTATUS);
 }
 
 static ssize_t omap_kp_enable_show(struct device *dev,
