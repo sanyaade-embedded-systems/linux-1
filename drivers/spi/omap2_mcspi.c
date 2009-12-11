@@ -38,7 +38,7 @@
 #include <mach/dma.h>
 #include <mach/clock.h>
 #include <mach/mcspi.h>
-#include <asm/cacheflush.h>
+
 
 #define OMAP2_MCSPI_MAX_FREQ		48000000
 #define OMAP2_MCSPI_MAX_FIFODEPTH	64
@@ -1145,8 +1145,6 @@ static int omap2_mcspi_transfer(struct spi_device *spi, struct spi_message *m)
 							len, DMA_TO_DEVICE);
 				return -EINVAL;
 			}
-			//dmac_flush_range(rx_buf, rx_buf + t->len);
-			outer_flush_range(__pa(rx_buf), __pa(rx_buf) + t->len);
 		}
 	}
 
