@@ -27,6 +27,7 @@
 
 static void __iomem *l2x0_base;
 static DEFINE_SPINLOCK(l2x0_lock);
+static void l2x0_flush_range(unsigned long start, unsigned long end);
 
 static inline void sync_writel(unsigned long val, unsigned long reg,
 			       unsigned long complete_mask)
@@ -63,12 +64,21 @@ static void l2x0_inv_range(unsigned long start, unsigned long end)
 
 	if (start & (CACHE_LINE_SIZE - 1)) {
 		start &= ~(CACHE_LINE_SIZE - 1);
+#ifdef CONFIG_PL310_ERRATA_588369
+		l2x0_flush_range(start, start + CACHE_LINE_SIZE - 1);
+#else
 		sync_writel(start, L2X0_CLEAN_INV_LINE_PA, 1);
+#endif
 		start += CACHE_LINE_SIZE;
 	}
 
 	if (end & (CACHE_LINE_SIZE - 1)) {
 		end &= ~(CACHE_LINE_SIZE - 1);
+#ifdef CONFIG_PL310_ERRATA_588369
+		l2x0_flush_range(end, end + CACHE_LINE_SIZE - 1);
+#else
+		sync_writel(end, L2X0_CLEAN_INV_LINE_PA, 1);
+#endif
 		sync_writel(end, L2X0_CLEAN_INV_LINE_PA, 1);
 	}
 
@@ -125,7 +135,7 @@ static void l2x0_flush_range(unsigned long start, unsigned long end)
 	"ldmfd r13!, {r0-r12, r14}");
 #else
 	for (addr = start; addr < end; addr += CACHE_LINE_SIZE)
-		sync_writel(addr, L2X0_INV_LINE_PA, 1);
+		sync_writel(addr, L2X0_CLEAN_INV_LINE_PA, 1);
 #endif
 	cache_sync();
 }
