@@ -167,8 +167,8 @@ static int omapvid_init(struct omap_vout_device *vout, u32 addr, u32 uv_addr);
 static int omapvid_setup_overlay(struct omap_vout_device *vout,
 		struct omap_overlay *ovl, int posx, int posy,
 		int outw, int outh, u32 addr, u32 uv_addr);
-static enum omap_color_mode video_mode_to_dss_mode(struct omap_vout_device
-		*vout);
+static enum omap_color_mode video_mode_to_dss_mode(
+		struct v4l2_pix_format *pix);
 static void omap_vout_isr(void *arg, unsigned int irqstatus);
 static void omap_vout_cleanup_device(struct omap_vout_device *vout);
 
@@ -543,102 +543,90 @@ static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 }
 #endif
 
+static void omap_vout_tiler_buffer_free(struct omap_vout_device *vout,
+					unsigned int count,
+					unsigned int startindex)
+{
+	int i;
+
+	if (startindex < 0)
+		startindex = 0;
+	if (startindex + count > VIDEO_MAX_FRAME)
+		count = VIDEO_MAX_FRAME - startindex;
+
+	for (i = startindex; i < startindex + count; i++) {
+		tiler_free_buf(vout->buf_phy_addr_alloced[i]);
+		tiler_free_buf(vout->buf_phy_uv_addr_alloced[i]);
+		vout->buf_phy_addr[i] = 0;
+		vout->buf_phy_addr_alloced[i] = 0;
+		vout->buf_phy_uv_addr[i] = 0;
+		vout->buf_phy_uv_addr_alloced[i] = 0;
+	}
+}
+
 /* Allocate the buffers for  TILER space.  Ideally, the buffers will be ONLY
  in tiler space, with different rotated views available by just a convert.
  */
 static int omap_vout_tiler_buffer_setup(struct omap_vout_device *vout,
-			  unsigned int *count, unsigned int startindex)
+			  unsigned int *count, unsigned int startindex,
+			struct v4l2_pix_format *pix)
 {
-	int i, j;
+	int i, aligned = 1;
 	enum tiler_fmt fmt;
 
-	printk(KERN_INFO VOUT_NAME "tiler buffer setup:\n");
-	printk(KERN_INFO VOUT_NAME "count - %d, start -%d :\n",
-			*count, startindex);
+	/* normalize buffers to allocate so we stay within bounds */
+	int start = (startindex < 0) ? 0 : startindex;
+	int n_alloc = (start + *count > VIDEO_MAX_FRAME)
+		? VIDEO_MAX_FRAME - start : *count;
+	int bpp = omap_vout_try_format(pix);
 
-	if (OMAP_DSS_COLOR_NV12 == vout->dss_mode)
-		fmt = TILFMT_8BIT; /* Y-buffer*/
-	else {
-		switch (vout->bpp) {
-		case 1:
-			fmt = TILFMT_8BIT;
-			break;
-		case 2:
-			fmt = TILFMT_16BIT;
-			break;
-		case 3:
-		case 4:
-			fmt = TILFMT_32BIT;
-			break;
-		default:
+	printk(KERN_INFO VOUT_NAME "tiler buffer alloc:\n"
+	       "count - %d, start -%d :\n", *count, startindex);
+
+	/* special allocation scheme for NV12 format */
+	if (OMAP_DSS_COLOR_NV12 == video_mode_to_dss_mode(pix)) {
+		tiler_packed_alloc_nv12_buf(&n_alloc, pix->width,
+			pix->height,
+			(void **) vout->buf_phy_addr + start,
+			(void **) vout->buf_phy_uv_addr + start,
+			(void **) vout->buf_phy_addr_alloced + start,
+			(void **) vout->buf_phy_uv_addr_alloced + start,
+			aligned);
+	} else {
+		/* Only bpp of 1, 2, and 4 is supported by tiler */
+		fmt = (bpp == 1 ? TILFMT_8BIT :
+		       bpp == 2 ? TILFMT_16BIT :
+		       bpp == 4 ? TILFMT_32BIT : TILFMT_INVALID);
+		if (fmt == TILFMT_INVALID)
 			return -ENOMEM;
-		}
-	}
 
-	for (i = 0; i < *count; i++) {
-		if (!vout->buf_phy_addr[i]) {
-
-			if (DMM_NO_ERROR != tiler_alloc_buf(fmt,
-					vout->pix.width, vout->pix.height,
-					&vout->buf_phy_addr[i])) {
-				vout->buf_phy_addr[i] = 0;
-			} else
-				printk(KERN_INFO VOUT_NAME
-					" tiler buffer[%d] = 0x%lx\n", i,
-					vout->buf_phy_addr[i]);
-
+		tiler_packed_alloc_buf(&n_alloc, fmt, pix->width,
+			pix->height,
+			(void **) vout->buf_phy_addr + start,
+			(void **) vout->buf_phy_addr_alloced + start,
+			aligned);
 		}
 
-		if (!vout->buf_phy_addr[i] && startindex != -1) {
-			if (V4L2_MEMORY_MMAP == vout->memory
-				&& i >= startindex)
-				break; /* TODO: check this logic */
-		}
-		if (OMAP_DSS_COLOR_NV12 == vout->dss_mode) {
-			if (!vout->buf_phy_uv_addr[i]) { /* UV-buffer */
-				if (DMM_NO_ERROR !=
-					tiler_alloc_buf(TILFMT_16BIT,
-					(vout->pix.width/2),
-					(vout->pix.height / 2),
-					&vout->buf_phy_uv_addr[i])) {
-					vout->buf_phy_uv_addr[i] = 0;
-				} else
-					printk(KERN_INFO VOUT_NAME
-					" tiler uv buffer[%d] = 0x%lx\n", i,
-						vout->buf_phy_uv_addr[i]);
-			}
+	printk(KERN_INFO VOUT_NAME "allocated %d buffers\n", n_alloc);
 
-			/* if either Y- UV- buffer is not allocated,
-				free all allocated buffers */
-			if (!vout->buf_phy_addr[i] ||
-				!vout->buf_phy_uv_addr[i]) {
-				for (j = 0; j < i; j++) {
-					if (vout->buf_phy_addr[j]) {
-						tiler_free_buf(vout->buf_phy_addr[j]);
-						vout->buf_phy_addr[j] = 0;
-						}
-					if (vout->buf_phy_uv_addr[j]) {
-						tiler_free_buf(
-						vout->buf_phy_uv_addr[j]);
-						vout->buf_phy_uv_addr[j] = 0;
-						}
-				}
+	if (n_alloc < *count) {
+		if (n_alloc && (startindex == -1 ||
+				V4L2_MEMORY_MMAP != vout->memory)) {
+			/* TODO: check this condition's logic */
+			omap_vout_tiler_buffer_free(vout, n_alloc, start);
 				*count = 0;
 				return -ENOMEM;
 			}
-			}else {
-				vout->buf_phy_uv_addr[i] = 0;
 		}
 
-		if (!vout->buf_phy_addr[i]) {
-			for (j = 0; j < i; j++) {
-				tiler_free_buf(vout->buf_phy_addr[j]);
-				vout->buf_phy_addr[j] = 0;
-			}
-			*count = 0;
-			return -ENOMEM;
-		}
+	for (i = start; i < start + n_alloc; i++) {
+		printk(KERN_INFO "y=%08lx (%d) uv=%08lx (%d)\n",
+		       vout->buf_phy_addr[i],
+		       vout->buf_phy_addr_alloced[i] ? 1 : 0,
+		       vout->buf_phy_uv_addr[i],
+		       vout->buf_phy_uv_addr_alloced[i] ? 1 : 0);
 	}
+	*count = n_alloc;
 	return 0;
 }
 
@@ -646,15 +634,7 @@ static int omap_vout_tiler_buffer_setup(struct omap_vout_device *vout,
 /* Free tiler buffers */
 static void omap_vout_free_tiler_buffers(struct omap_vout_device *vout)
 {
-	int j;
-	for (j = 0; j < vout->buffer_allocated; j++) {
-		tiler_free_buf(vout->buf_phy_addr[j]);
-		vout->buf_phy_addr[j] = 0;
-		if (vout->buf_phy_uv_addr[j]) {
-		tiler_free_buf(vout->buf_phy_uv_addr[j]);
-		vout->buf_phy_uv_addr[j] = 0;
-		}
-	}
+	omap_vout_tiler_buffer_free(vout, vout->buffer_allocated, 0);
 	vout->buffer_allocated = 0;
 }
 #endif
@@ -949,7 +929,14 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 		goto err;
 	}
 
-	vout->dss_mode = video_mode_to_dss_mode(vout);
+#ifndef CONFIG_ARCH_OMAP4
+	if (vout->pix.pixelformat == V4L2_PIX_FMT_RGB32) {
+		/* TODO: OMAP4: check this ??*/
+		vout->dss_mode = (vout->vid == OMAP_VIDEO1) ?
+				 OMAP_DSS_COLOR_RGB24U : OMAP_DSS_COLOR_ARGB32;
+	} else
+#endif
+		vout->dss_mode = video_mode_to_dss_mode(&vout->pix);
 
 	if (vout->dss_mode == -EINVAL) {
 		r = -EINVAL;
@@ -1032,10 +1019,9 @@ err:
 }
 
 /* convert V4L2 pixel format to DSS pixel format */
-static enum omap_color_mode video_mode_to_dss_mode(struct omap_vout_device
-			*vout)
+static enum omap_color_mode video_mode_to_dss_mode(
+						  struct v4l2_pix_format *pix)
 {
-	struct v4l2_pix_format *pix = &vout->pix;
 
 	switch (pix->pixelformat) {
 #ifdef CONFIG_ARCH_OMAP4
@@ -1056,9 +1042,11 @@ static enum omap_color_mode video_mode_to_dss_mode(struct omap_vout_device
 	case V4L2_PIX_FMT_RGB24:
 		return OMAP_DSS_COLOR_RGB24P;
 
-	case V4L2_PIX_FMT_RGB32: /* TODO: OMAP4: check this ??*/
-		return (vout->vid == OMAP_VIDEO1) ?
-			OMAP_DSS_COLOR_RGB24U : OMAP_DSS_COLOR_ARGB32;
+#ifdef CONFIG_ARCH_OMAP4
+	case V4L2_PIX_FMT_RGB32:
+		return OMAP_DSS_COLOR_ARGB32;
+#endif
+
 	case V4L2_PIX_FMT_BGR32:
 		return OMAP_DSS_COLOR_RGBX32;
 
@@ -1164,7 +1152,7 @@ static int omap_vout_buffer_setup(struct videobuf_queue *q, unsigned int *count,
 
 	printk(KERN_INFO "\nheight=%d, size = %d, vout->buffer_sz=%d\n",
 		vout->pix.height, *size, vout->buffer_size);
-	if (omap_vout_tiler_buffer_setup(vout, count, 0))
+	if (omap_vout_tiler_buffer_setup(vout, count, 0, &vout->pix))
 			return -ENOMEM;
 #endif  /* TILER_ALLOCATE_V4L2 */
 
@@ -1596,7 +1584,8 @@ static int omap_vout_release(struct file *file)
 		u32 mask = 0;
 
 		mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE | DISPC_IRQ_FRAMEDONE2;
+			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE |
+			DISPC_IRQ_FRAMEDONE2;
 
 		omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 		vout->streaming = 0;
@@ -2043,7 +2032,7 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 	case V4L2_CID_BG_COLOR:
 	{
 		unsigned int  color = a->value;
-		struct omap_overlay_manager_info info;;
+		struct omap_overlay_manager_info info;
 		struct omap_overlay *ovl;
 		ovl = vout->vid_info.overlays[0];
 
@@ -2144,14 +2133,7 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 		}
 		vout->buffer_allocated = num_buffers;
 #else  /* TILER_ALLOCATE_V4L2*/
-		for (i = 0; i < vout->buffer_allocated; i++) {
-			tiler_free_buf(vout->buf_phy_addr[i]);
-			vout->buf_phy_addr[i] = 0;
-			if (vout->buf_phy_uv_addr[i]) {
-				tiler_free_buf(vout->buf_phy_uv_addr[i]);
-				vout->buf_phy_uv_addr[i] = 0;
-			}
-		}
+		omap_vout_tiler_buffer_free(vout, vout->buffer_allocated, 0);
 		vout->buffer_allocated = 0;
 
 #endif /* TILER_ALLOCATE_V4L2*/
@@ -2325,7 +2307,8 @@ static int vidioc_streamon(struct file *file, void *fh,
 #endif
 
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE | DISPC_IRQ_FRAMEDONE2;
+			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE |
+			DISPC_IRQ_FRAMEDONE2;
 
 	omap_dispc_register_isr(omap_vout_isr, vout, mask);
 
@@ -2368,7 +2351,8 @@ static int vidioc_streamoff(struct file *file, void *fh,
 
 		vout->streaming = 0;
 		mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE | DISPC_IRQ_FRAMEDONE2;
+			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE |
+			DISPC_IRQ_FRAMEDONE2;
 
 		omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 
@@ -2973,7 +2957,10 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 	struct timeval timevalue = {0};
 	struct omap_vout_device *vout =
 		(struct omap_vout_device *) arg;
-	u32 addr, fid, uv_addr;
+	u32 addr, uv_addr;
+#if !(CONFIG_OMAP2_DSS_HDMI)
+	u32 fid;
+#endif
 	struct omapvideo_info *ovid;
 	struct omap_overlay *ovl;
 	struct omap_dss_device *cur_display;
