@@ -112,4 +112,23 @@ tiler_rotate_view(struct dmmViewOrientT *orient, unsigned long rotation);
 unsigned long
 tiler_stride(unsigned long tsptr);
 
+void
+tiler_packed_alloc_nv12_buf(int *count,
+			    unsigned long width,
+			    unsigned long height,
+			    void **y_sysptr,
+			    void **uv_sysptr,
+			    void **y_allocptr,
+			    void **uv_allocptr,
+			    int aligned);
+
+void
+tiler_packed_alloc_buf(int *count,
+		       enum tiler_fmt fmt,
+		       unsigned long width,
+		       unsigned long height,
+		       void **sysptr,
+		       void **allocptr,
+		       int aligned);
+
 #endif
