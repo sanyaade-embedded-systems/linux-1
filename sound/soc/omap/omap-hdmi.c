@@ -34,16 +34,18 @@
 #include <mach/dma.h>
 #include "omap-pcm.h"
 #include "omap-hdmi.h"
+#ifdef CONFIG_HDMI_NO_IP_MODULE
 #include <mach/hdmi_lib.h>
+#endif
 
 #define OMAP_HDMI_RATES	(SNDRV_PCM_RATE_48000)
 
 /* Currently, we support only 16b samples at HDMI */
 #define OMAP_HDMI_FORMATS (SNDRV_PCM_FMTBIT_S16_LE)
 
-HDMI_AudioFormat_t audio_format_param;
-HDMI_AudioDma_t audio_dma_param;
-HDMI_Core_AudioConfig_t audio_core_config;
+#ifndef CONFIG_HDMI_NO_IP_MODULE
+struct hdmi_ip_driver hdmi_audio_core;
+#endif
 
 static struct omap_pcm_dma_data omap_hdmi_dai_dma_params = {
 	.name = "HDMI playback",
@@ -56,9 +58,14 @@ static int omap_hdmi_dai_startup(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
 	int err = 0;
-
+#ifdef CONFIG_HDMI_NO_IP_MODULE
 	err = HDMI_W1_WrapperEnable(HDMI_WP);
-
+#else
+	if (hdmi_audio_core.module_loaded)
+		err = hdmi_audio_core.wrapper_enable(HDMI_WP);
+	else
+		printk(KERN_WARNING "Warning: hdmi_core.ko is not enabled");
+#endif
 	return err;
 }
 
@@ -66,9 +73,14 @@ static void omap_hdmi_dai_shutdown(struct snd_pcm_substream *substream,
 				    struct snd_soc_dai *dai)
 {
 	int err = 0;
-
+#ifdef CONFIG_HDMI_NO_IP_MODULE
 	err = HDMI_W1_WrapperDisable(HDMI_WP);
-
+#else
+	if (hdmi_audio_core.module_loaded)
+		err = hdmi_audio_core.wrapper_disable(HDMI_WP);
+	else
+		printk(KERN_WARNING "Warning: hdmi_core.ko is not enabled");
+#endif
 	return err;
 }
 
@@ -81,13 +93,29 @@ static int omap_hdmi_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+#ifdef CONFIG_HDMI_NO_IP_MODULE
 		err = HDMI_W1_StartAudioTransfer(HDMI_WP);
+#else
+		if (hdmi_audio_core.module_loaded)
+			err = hdmi_audio_core.start_audio(HDMI_WP);
+		else
+			printk(KERN_WARNING "Warning: hdmi_core.ko is "
+							"not enabled");
+#endif
 		break;
 
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+#ifdef CONFIG_HDMI_NO_IP_MODULE
 		err = HDMI_W1_StopAudioTransfer(HDMI_WP);
+#else
+		if (hdmi_audio_core.module_loaded)
+			err = hdmi_audio_core.stop_audio(HDMI_WP);
+		else
+			printk(KERN_WARNING "Warning: hdmi_core.ko is "
+							"not enabled");
+#endif
 		break;
 	default:
 		err = -EINVAL;
@@ -144,6 +172,11 @@ EXPORT_SYMBOL_GPL(omap_hdmi_dai);
 
 static int __init snd_omap_hdmi_init(void)
 {
+#ifdef CONFIG_HDMI_NO_IP_MODULE
+	hdmi_lib_init
+#else
+	hdmi_audio_core_stub_init();
+#endif
 	return snd_soc_register_dai(&omap_hdmi_dai);
 }
 module_init(snd_omap_hdmi_init);
@@ -153,6 +186,55 @@ static void __exit snd_omap_hdmi_exit(void)
 	snd_soc_unregister_dai(&omap_hdmi_dai);
 }
 module_exit(snd_omap_hdmi_exit);
+
+#ifndef CONFIG_HDMI_NO_IP_MODULE
+
+/* stub */
+int audio_stub_lib_init(void)
+{
+        printk(KERN_WARNING "ERR: please install HDMI IP kernel module\n");
+        return -1;
+}
+void audio_stub_lib_exit(void)
+{
+        printk(KERN_WARNING "HDMI module does not exist!\n");
+}
+
+#define EXPORT_SYMTAB
+
+/* HDMI panel driver */
+void hdmi_audio_core_stub_init(void)
+{
+	hdmi_audio_core.stop_video = NULL;
+	hdmi_audio_core.start_video = NULL;
+	hdmi_audio_core.wrapper_enable = NULL;
+	hdmi_audio_core.wrapper_disable = NULL;
+	hdmi_audio_core.stop_audio = NULL;
+	hdmi_audio_core.start_audio = NULL;
+	hdmi_audio_core.config_video = NULL;
+	hdmi_audio_core.set_wait_pll = NULL;
+	hdmi_audio_core.set_wait_pwr = NULL;
+	hdmi_audio_core.set_wait_srst = NULL;
+	hdmi_audio_core.read_edid = NULL;
+	hdmi_audio_core.ip_init = audio_stub_lib_init;
+	hdmi_audio_core.ip_exit = audio_stub_lib_exit;
+	hdmi_audio_core.module_loaded = 0;
+}
+
+void hdmi_audio_core_lib_set(struct hdmi_ip_driver *ipc)
+{
+        hdmi_audio_core.module_loaded = ipc->module_loaded;
+        if (ipc->module_loaded) {
+                hdmi_audio_core.wrapper_enable = ipc->wrapper_enable;
+                hdmi_audio_core.wrapper_disable = ipc->wrapper_disable;
+		hdmi_audio_core.start_audio = ipc->start_audio;
+		hdmi_audio_core.stop_audio = ipc->stop_audio;
+        }
+}
+EXPORT_SYMBOL(hdmi_audio_core_lib_set);
+
+#endif
+
 
 MODULE_AUTHOR("Jorge Candelaria <x0107209@ti.com");
 MODULE_DESCRIPTION("OMAP HDMI SoC Interface");
