@@ -19,16 +19,33 @@ extern "C" {
  * External API
  */
 #if PC_SIMULATION
-extern void target_server_write_pmem(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
-extern void target_server_write_cmem(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
-extern void target_server_write_smem(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
-extern void target_server_write_dmem(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
-extern void target_server_write_atc(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
-extern void target_server_read_pmem(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
-extern void target_server_read_cmem(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
-extern void target_server_read_smem(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
-extern void target_server_read_dmem(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
-extern void target_server_read_atc(abe_uint32 address, abe_uint32 *data, abe_uint32 nb_byte);
+extern void target_server_read_pmem(abe_uint32 address, abe_uint32 *data,
+						   abe_uint32 nb_words_32bits);
+extern void target_server_write_pmem(abe_uint32 address, abe_uint32 *data,
+						   abe_uint32 nb_words_32bits);
+extern void target_server_read_cmem(abe_uint32 address, abe_uint32 *data,
+						   abe_uint32 nb_words_32bits);
+extern void target_server_write_cmem(abe_uint32 address, abe_uint32 *data,
+						   abe_uint32 nb_words_32bits);
+extern void target_server_read_atc(abe_uint32 address, abe_uint32 *data,
+						   abe_uint32 nb_words_32bits);
+extern void target_server_write_atc(abe_uint32 address, abe_uint32 *data,
+						   abe_uint32 nb_words_32bits);
+extern void target_server_read_smem(abe_uint32 address_48bits, abe_uint32 *data,
+						   abe_uint32 nb_words_48bits);
+extern void target_server_write_smem(abe_uint32 address_48bits,
+				abe_uint32 *data, abe_uint32 nb_words_48bits);
+extern void target_server_read_dmem(abe_uint32 address_byte, abe_uint32 *data,
+							abe_uint32 nb_byte);
+extern void target_server_write_dmem(abe_uint32 address_byte, abe_uint32 *data,
+							abe_uint32 nb_byte);
+
+extern void target_server_activate_mcpdm_ul(void);
+extern void target_server_activate_mcpdm_dl(void);
+extern void target_server_activate_dmic(void);
+extern void target_server_set_voice_sampling(int dVirtAudioVoiceMode,
+					int dVirtAudioVoiceSampleFrequency);
+extern void target_server_set_dVirtAudioMultimediaMode(int dVirtAudioMultimediaMode);
 #endif
 
 /*
@@ -69,7 +86,7 @@ void abe_read_sys_clock(abe_micros_t *time);
 *
 * @see
 */
-void abe_fprintf(char *line);
+//void abe_fprintf(char *line);
 
 /*
  * API as part of the HAL paper documentation
@@ -308,7 +325,8 @@ void abe_set_ping_pong_buffer(abe_port_id port, abe_uint32 n);
 *
 * @see	ABE_API.h
 */
-void abe_connect_irq_ping_pong_port(abe_port_id id, abe_data_format_t *f, abe_uint32 d, abe_uint32 s, abe_uint32 *p);
+void abe_connect_irq_ping_pong_port(abe_port_id id, abe_data_format_t *f, abe_uint32 d,
+				abe_uint32 s, abe_uint32 *p, abe_uint32 dsp_mcu_flag);
 
 /**
 * abe_plug_subroutine() description for void abe_plug_subroutine().
@@ -330,7 +348,7 @@ void abe_connect_irq_ping_pong_port(abe_port_id id, abe_data_format_t *f, abe_ui
 *
 * @see
 */
-void abe_plug_subroutine(abe_uint32 *id, abe_subroutine2 f, abe_uint32 n);
+void abe_plug_subroutine(abe_uint32 *id, abe_subroutine2 f, abe_uint32 n, abe_uint32 *params);
 
 /**
 * abe_plug_sequence() description for void abe_plug_sequence().
@@ -585,7 +603,7 @@ void abe_read_remaining_data(abe_port_id port, abe_uint32 *n);
  *  Return value :
  *      None.
  */
-void abe_disable_data_transfer(abe_port_id *p);
+void abe_disable_data_transfer(abe_port_id p);
 
 /*
  *  ABE_ENABLE_DATA_TRANSFER

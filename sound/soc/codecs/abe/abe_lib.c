@@ -10,6 +10,7 @@
 
 #include "abe_main.h"
 
+#if 0
 /*
  *  ABE_TRANSLATE_TO_XMEM_FORMAT
  *
@@ -19,9 +20,8 @@
  *  Return value :
  *      None.
  */
-void abe_translate_to_xmem_format(abe_int32 memory_bank, float fc, abe_uint32 *c)
+void abe_translate_to_xmem_format(abe_int32 memory_bank, abe_float fc, abe_uint32 *c)
 {
-#if 0
 	abe_int32 l;
 	abe_float afc;
 
@@ -63,7 +63,6 @@ void abe_translate_to_xmem_format(abe_int32 memory_bank, float fc, abe_uint32 *c
 	}
 
 	*c = l;
-#endif
 }
 
 /*
@@ -86,7 +85,6 @@ void abe_translate_to_xmem_format(abe_int32 memory_bank, float fc, abe_uint32 *c
  */
 void abe_translate_gain_format(abe_uint32 f, abe_float g1, abe_float *g2)
 {
-#if 0
 	abe_float g, frac_part, gg1, gg2;
 	abe_int32 int_part, i;
 
@@ -142,7 +140,6 @@ void abe_translate_gain_format(abe_uint32 f, abe_float g1, abe_float *g2)
 	}
 
 	*g2 = gg2;
-#endif
  }
 
 /*
@@ -208,6 +205,7 @@ typedef struct {
 
 #endif
 }
+#endif
 
 /*
  *  ABE_FPRINTF
@@ -220,6 +218,7 @@ typedef struct {
  *  Return value :
  *      None.
  */
+#if 0
 void abe_fprintf(char *line)
 {
 	switch (abe_dbg_output) {
@@ -235,6 +234,7 @@ void abe_fprintf(char *line)
 		break;
 	}
 }
+#endif
 
 /*
  *  ABE_READ_FEATURE_FROM_PORT
@@ -250,6 +250,7 @@ void abe_fprintf(char *line)
  */
 void abe_read_feature_from_port(abe_uint32 x)
 {
+	just_to_avoid_the_many_warnings = x;
 }
 
 /*
@@ -266,6 +267,7 @@ void abe_read_feature_from_port(abe_uint32 x)
  */
 void abe_write_feature_to_port(abe_uint32 x)
 {
+	just_to_avoid_the_many_warnings = x;
 }
 
 /*
@@ -282,6 +284,7 @@ void abe_write_feature_to_port(abe_uint32 x)
  */
 void abe_read_fifo(abe_uint32 x)
 {
+	just_to_avoid_the_many_warnings = x;
 }
 
 /*
@@ -298,86 +301,7 @@ void abe_read_fifo(abe_uint32 x)
  */
 void abe_write_fifo(abe_uint32 x)
 {
-}
-
-/*
- *  ABE_CLEAR_MEMORY
- *
- *  Parameter  :
- *      memory bank among PMEM, DMEM, CMEM, SMEM, ATC/IO
- *      address of the memory copy (byte addressing)
- *      number of data to move
- *
- *  Operations :
- *      memory area clear
- *
- *  Return value :
- *      none
- */
-void abe_clear_memory(abe_int32 memory_bank, abe_int32 address, abe_uint32 nb_bytes)
-{
-	abe_uint32 i, data = 0;
-
-#if PC_SIMULATION
-	nb_bytes = (nb_bytes + 3) & (-4L);	/* copy is done on 32bits boundaries */
-	if (address & (3L))			/* error ifstart address is not 32bits aligned */
-		abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
-
-	for (i = 0; i < (nb_bytes >> 2); i++, address += 4) {
-		switch (memory_bank) {
-		case ABE_PMEM:
-			target_server_write_pmem(address, &data, nb_bytes);
-			break;
-		case ABE_CMEM:
-			target_server_write_cmem(address, &data, nb_bytes);
-			break;
-		case ABE_SMEM:
-			target_server_write_smem(address, &data, nb_bytes);
-			break;
-		case ABE_DMEM:
-			target_server_write_dmem(address, &data, nb_bytes);
-			break;
-		case ABE_ATC:
-			target_server_write_atc(address/4, &data, nb_bytes);
-			break;
-		}
-	}
-#else
-	abe_uint32 base_address = 0, *dst_ptr, *src_ptr;
-
-	nb_bytes = (nb_bytes + 3) & (-4L);	/* copy is done on 32bits boundaries */
-	if (address & (3L))			/* error ifstart address is not 32bits aligned */
-		abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
-
-	switch (memory_bank) {
-	case ABE_PMEM:
-		base_address = (abe_uint32) ABE_PMEM_BASE_ADDRESS_MPU;
-		break;
-	case ABE_CMEM:
-		base_address = (abe_uint32) ABE_CMEM_BASE_ADDRESS_MPU;
-		break;
-	case ABE_SMEM:
-		base_address = (abe_uint32) ABE_SMEM_BASE_ADDRESS_MPU;
-		break;
-	case ABE_DMEM:
-		base_address = (abe_uint32) ABE_DMEM_BASE_ADDRESS_MPU;
-		break;
-	case ABE_ATC:
-		base_address = (abe_uint32) ABE_ATC_BASE_ADDRESS_MPU;
-		break;
-	default:
-		base_address = (abe_uint32) ABE_SMEM_BASE_ADDRESS_MPU;
-		abe_dbg_param |= ERR_LIB;
-		abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
-		break;
-	}
-
-	dst_ptr = (abe_uint32 *)(base_address + address);
-	src_ptr = (abe_uint32 *)data;
-
-	for (i = 0; i < (nb_bytes >> 2); i++)
-		*dst_ptr++ = data;
-#endif
+	just_to_avoid_the_many_warnings = x;
 }
 
 /*

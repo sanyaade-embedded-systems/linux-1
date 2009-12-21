@@ -11,22 +11,22 @@
 #ifndef _ABE_INITXXX_LABELS_H_
 #define _ABE_INITXXX_LABELS_H_
 
-#define Voice_8k_UL_labelID			0
-#define Voice_8k_DL_labelID			1
-#define ECHO_REF_8K_labelID			2
-#define Voice_16k_UL_labelID			3
-#define Voice_16k_DL_labelID			4
-#define ECHO_REF_16K_labelID			5
-#define MM_DL_labelID				6
-#define IO_VX_DL_ASRC_labelID			7
-#define IO_VX_UL_8k_ASRC_labelID		8
-#define IO_VX_UL_16k_ASRC_labelID		9
-#define IO_MM_DL_ASRC_labelID			10
-#define IO_VIBRA_DL_labelID			11
-#define ZERO_labelID				12
-#define Z_1_labelID				13
-#define Dummy_AM_labelID			14
-#define Dummy_Regs_labelID			15
+#define Dummy_Regs_labelID			0
+#define Voice_8k_UL_labelID			1
+#define Voice_8k_DL_labelID			2
+#define ECHO_REF_8K_labelID			3
+#define Voice_16k_UL_labelID			4
+#define Voice_16k_DL_labelID			5
+#define ECHO_REF_16K_labelID			6
+#define MM_DL_labelID				7
+#define IO_VX_DL_ASRC_labelID			8
+#define IO_VX_UL_8k_ASRC_labelID		9
+#define IO_VX_UL_16k_ASRC_labelID		10
+#define IO_MM_DL_ASRC_labelID			11
+#define IO_VIBRA_DL_labelID			12
+#define ZERO_labelID				13
+#define Z_1_labelID				14
+#define Dummy_AM_labelID			15
 #define Gr_1_labelID				16
 #define Gr_2_labelID				17
 #define Gr_Regs_labelID				18

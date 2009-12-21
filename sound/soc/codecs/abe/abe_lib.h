@@ -14,7 +14,6 @@ extern "C" {
 
 void abe_translate_gain_format(abe_uint32 f, abe_float g1, abe_float *g2);
 void abe_translate_ramp_format(abe_float g1, abe_float *g2);
-void abe_clear_memory(abe_int32 memory_bank, abe_int32 address, abe_uint32 nb_bytes);
 
 /*
  *  ABE_FPRINTF

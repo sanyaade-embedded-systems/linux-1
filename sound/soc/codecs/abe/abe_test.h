@@ -16,7 +16,9 @@
  */
 void abe_auto_check_data_format_translation(void);
 void abe_check_opp(void);
-void abe_check_dma (void);
+void abe_check_dma(void);
+void abe_debug_and_non_regression(void);
+void abe_check_mixers_gain_update(void);
 
 /*
  * HAL test DATA

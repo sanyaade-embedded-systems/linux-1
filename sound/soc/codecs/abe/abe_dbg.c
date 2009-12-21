@@ -64,7 +64,9 @@ void abe_dbg_log(abe_uint32 x)
  */
 void abe_debug_output_pins(abe_uint32 x)
 {
+	just_to_avoid_the_many_warnings = x;
 }
+
 
 /*
  *  ABE_DBG_ERROR_LOG
@@ -80,6 +82,7 @@ void abe_debug_output_pins(abe_uint32 x)
  */
 void abe_dbg_error_log(abe_uint32 x)
 {
+	just_to_avoid_the_many_warnings = x;
 }
 
 /*
@@ -96,4 +99,5 @@ void abe_dbg_error_log(abe_uint32 x)
  */
 void abe_debugger(abe_uint32 x)
 {
+	just_to_avoid_the_many_warnings = x;
 }

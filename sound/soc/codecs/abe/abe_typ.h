@@ -8,6 +8,7 @@
  * ==========================================================================
  */
 
+#include "abe_def.h"
 #ifndef _ABE_TYP_H_
 #define _ABE_TYP_H_
 
@@ -30,8 +31,8 @@ typedef float	   abe_float;
 typedef double	  abe_double;
 
 typedef abe_uint32 abe_errc_t;
+typedef abe_int32  abe_millibel;
 
-typedef abe_float  abe_decibel;
 //typedef abe_uint32  abe_millisecond;
 //typedef abe_uint32  abe_milliHertz;
 //typedef abe_uint32  abe_millimeter;
@@ -40,8 +41,8 @@ typedef abe_float  abe_decibel;
 //typedef abe_uint32  abe_microsecond;
 
 typedef abe_uint32  abe_result;
-typedef abe_decibel abe_gain_t;		 /* smoothed gain amplitude and ramp */
-typedef abe_float   abe_ramp_t;
+typedef abe_millibel abe_gain_t;	/* smoothed gain amplitude and ramp */
+typedef abe_uint32  abe_ramp_t;
 
 typedef abe_uint32  abe_freq_t;		 /* 4 bytes	millihertz	      */
 typedef abe_uint32  abe_millis_t;	       /* 4 bytes	milliseconds	    */
@@ -384,9 +385,9 @@ typedef struct {
 	union {			/* parameters are the direct and recursive coefficients in */
 	       abe_int32 type1[NBEQ1];		/* Q6.26 integer fixed-point format. */
 	       struct {
-		       abe_float freq[NBEQ2];	/* center frequency of the band [Hz] */
-		       abe_float gain[NBEQ2];	/* gain of each band. [dB]*/
-		       abe_float q[NBEQ2];	/* Q factor of this band [dB] */
+			abe_int32 freq [NBEQ2];		/* center frequency of the band [Hz] */
+			abe_int32 gain [NBEQ2];		/* gain of each band. [dB]*/
+			abe_int32 q    [NBEQ2];		/* Q factor of this band [dB] */
 	       } type2;
 	} coef;
 	abe_int32 equ_param3;
@@ -403,8 +404,8 @@ typedef struct {
 } abe_aps_t;
 
 typedef struct {
-	abe_decibel e1;		      /* structure of two energy_t estimation for coil and membrane */
-	abe_decibel e2;
+		abe_millibel e1;	/* structure of two energy_t estimation for coil and membrane */
+		abe_millibel e2;
 } abe_aps_energy_t;
 
 /*

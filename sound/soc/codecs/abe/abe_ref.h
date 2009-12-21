@@ -36,6 +36,10 @@ void abe_reset_all_sequence(void);
 abe_uint32 abe_dma_port_iteration(abe_data_format_t *format);
 void abe_read_global_counter(abe_time_stamp_t *t, abe_millis_t *m);
 void abe_read_sys_clock(abe_micros_t *time);
+void abe_enable_dma_request(abe_port_id id);
+void abe_disable_dma_request(abe_port_id id);
+void abe_enable_atc(abe_port_id id);
+void abe_disable_atc(abe_port_id id);
 void abe_init_atc(abe_port_id id);
 void abe_init_io_tasks(abe_port_id id, abe_data_format_t *format, abe_port_protocol_t *prot);
 void abe_init_dma_t(abe_port_id id, abe_port_protocol_t *prot);
@@ -46,13 +50,15 @@ void abe_monitoring(void);
 void abe_lock_execution(void);
 void abe_unlock_execution(void);
 void abe_hw_configuration(void);
-void abe_add_subroutine(abe_uint32 *id, abe_subroutine2 f, abe_uint32 n);
+void abe_add_subroutine(abe_uint32 *id, abe_subroutine2 f, abe_uint32 nparam,
+							    abe_uint32* params);
 void abe_read_next_ping_pong_buffer(abe_port_id port, abe_uint32 *p, abe_uint32 *n);
 void abe_irq_ping_pong(void);
 void abe_irq_check_for_sequences(void);
 void abe_default_irq_pingpong_player(void);
-void abe_translate_to_xmem_format(abe_int32 memory_bank, float fc, abe_uint32 *c);
 void abe_read_hardware_configuration(abe_use_case_id *u, abe_opp_t *o, abe_hw_config_init_t *hw);
+
+void abe_translate_to_xmem_format(abe_int32 memory_bank, float fc, abe_uint32 *c);
 
 /*
  * HAL INTERNAL DATA
@@ -87,6 +93,7 @@ extern const abe_sequence_t seq_null;
 extern abe_subroutine2 abe_all_subsubroutine[MAXNBSUBROUTINE];	/* table of new subroutines called in the sequence */
 extern abe_uint32 abe_all_subsubroutine_nparam[MAXNBSUBROUTINE]; /* number of parameters per calls */
 extern abe_uint32 abe_subroutine_id[MAXNBSUBROUTINE];
+extern abe_uint32* abe_all_subroutine_params[MAXNBSUBROUTINE];
 extern abe_uint32 abe_subroutine_write_pointer;
 extern abe_sequence_t abe_all_sequence[MAXNBSEQUENCE]; /* table of all sequences */
 extern abe_uint32 abe_sequence_write_pointer;
@@ -100,6 +107,24 @@ extern abe_uint32 abe_size_pingpong;		/* size of each ping/pong buffers */
 extern abe_uint32 abe_nb_pingpong;		/* number of ping/pong buffer being used */
 
 extern const abe_uint32 sio_task_index[LAST_PORT_ID];
+
+extern volatile abe_uint32		just_to_avoid_the_many_warnings;
+extern volatile abe_gain_t		just_to_avoid_the_many_warnings_abe_gain_t;
+extern volatile abe_ramp_t		just_to_avoid_the_many_warnings_abe_ramp_t;
+extern volatile abe_dma_t		just_to_avoid_the_many_warnings_abe_dma_t;
+extern volatile abe_port_id		just_to_avoid_the_many_warnings_abe_port_id;
+extern volatile abe_millis_t		just_to_avoid_the_many_warnings_abe_millis_t;
+extern volatile abe_micros_t		just_to_avoid_the_many_warnings_abe_micros_t;
+extern volatile abe_patch_rev		just_to_avoid_the_many_warnings_abe_patch_rev;
+extern volatile abe_sequence_t		just_to_avoid_the_many_warnings_abe_sequence_t;
+extern volatile abe_ana_port_id		just_to_avoid_the_many_warnings_abe_ana_port_id;
+extern volatile abe_time_stamp_t	just_to_avoid_the_many_warnings_abe_time_stamp_t;
+extern volatile abe_data_format_t	just_to_avoid_the_many_warnings_abe_data_format_t;
+extern volatile abe_port_protocol_t	just_to_avoid_the_many_warnings_abe_port_protocol_t;
+extern volatile abe_router_t		just_to_avoid_the_many_warnings_abe_router_t;
+extern volatile abe_router_id		just_to_avoid_the_many_warnings_abe_router_id;
+
+extern const abe_uint32 abe_db2lin_table [];
 
 #ifdef __cplusplus
 }

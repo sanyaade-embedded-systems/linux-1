@@ -28,10 +28,13 @@ extern "C" {
 #define SCHED_LOOP_48kHz		(48000/FW_SCHED_LOOP_FREQ)
 
 #define TASKS_IN_SLOT			4
-#define TASKS_IN_SLOT_OPP_25		4	/* Step = 4 <> 1 task per slot  */
+#define TASKS_IN_SLOT_OPP_25		1	/* Step = 4 <> 1 task per slot  */
 #define TASKS_IN_SLOT_OPP_50		2
-#define TASKS_IN_SLOT_OPP_100		1
+#define TASKS_IN_SLOT_OPP_100		4
 
+#define SCHED_TASK_STEP_OPP_25		4
+#define SCHED_TASK_STEP_OPP_50		2
+#define SCHED_TASK_STEP_OPP_100		1
 /*
  * DMEM AREA - SCHEDULER
  */
@@ -293,24 +296,23 @@ typedef struct {
 
 #define dmem_mm_ul			D_MM_UL_FIFO_ADDR
 #define dmem_mm_ul_size			((D_MM_UL_FIFO_ADDR_END-D_MM_UL_FIFO_ADDR+1)/4)
-#define smem_mm_ul			0	/* managed directly by the router */
+#define smem_mm_ul			MM_UL_labelID	/* managed directly by the router */
 
 #define dmem_mm_ul2			D_MM_UL2_FIFO_ADDR
 #define dmem_mm_ul2_size		((D_MM_UL2_FIFO_ADDR_END-D_MM_UL2_FIFO_ADDR+1)/4)
-#define smem_mm_ul2			0	/* managed directly by the router */
+#define smem_mm_ul2			MM_UL2_labelID /* managed directly by the router */
 
 #define dmem_mm_dl			D_MM_DL_ADDR
 #define dmem_mm_dl_size			((D_MM_DL_ADDR_END-D_MM_DL_ADDR+1)/4)
-//#define smem_mm_dl			IO_MM_DL_ASRC_labelID	/* ASRC input buffer, size 40 */
 #define smem_mm_dl			MM_DL_labelID		/* @@@ at OPP 25/50 or without ASRC */
 
 #define dmem_vx_dl			D_VX_DL_ADDR
 #define dmem_vx_dl_size			((D_VX_DL_ADDR_END-D_VX_DL_ADDR+1)/4)
-#define smem_vx_dl			IO_VX_DL_ASRC_labelID	/* ASRC input buffer, size 40 */
+#define smem_vx_dl			Voice_8k_DL_labelID	/* ASRC input buffer, size 40 */
 
 #define dmem_vx_ul			D_VX_UL_ADDR
 #define dmem_vx_ul_size			((D_VX_UL_ADDR_END-D_VX_UL_ADDR+1)/4)
-#define smem_vx_ul			IO_VX_UL_8k_ASRC_labelID
+#define smem_vx_ul			Voice_8k_UL_labelID
 
 #define dmem_tones_dl			D_TONES_DL_ADDR
 #define dmem_tones_dl_size		((D_TONES_DL_ADDR_END-D_TONES_DL_ADDR+1)/4)

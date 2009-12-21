@@ -231,10 +231,6 @@ SOURCE=.\C_ABE_FW.SM32
 # End Source File
 # Begin Source File
 
-SOURCE=.\C_ABE_FW_SIZE.h
-# End Source File
-# Begin Source File
-
 SOURCE=.\CodingStyle.txt
 # End Source File
 # End Group

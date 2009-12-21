@@ -15,8 +15,8 @@
 #define PROCESSING_SLOTS		24
 #define TASKS_IN_SLOT			4
 #define TASK_POOL_LENGTH		128
-#define MCU_IRQ				0x44
-#define DSP_IRQ				0x5c
+#define MCU_IRQ				0x24
+#define DSP_IRQ				0x4c
 #define DMA_REQ				0x84
 #define DCMD_FIFO_NUMBER		2
 #define DCMD_FIFO_LENGTH		8

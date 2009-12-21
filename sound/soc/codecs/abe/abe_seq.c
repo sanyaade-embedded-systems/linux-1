@@ -28,9 +28,16 @@
  *  Operations : nothing
  */
 void abe_null_subroutine_0(void) { }
-void abe_null_subroutine_2(abe_uint32 a, abe_uint32 b) { }
-void abe_null_subroutine_4(abe_uint32 a, abe_uint32 b, abe_uint32 c, abe_uint32 d) { }
-
+void abe_null_subroutine_2 (abe_uint32 a, abe_uint32 b) {
+	just_to_avoid_the_many_warnings = a;
+	just_to_avoid_the_many_warnings = b;
+}
+void abe_null_subroutine_4 (abe_uint32 a, abe_uint32 b, abe_uint32 c, abe_uint32 d) {
+	just_to_avoid_the_many_warnings = a;
+	just_to_avoid_the_many_warnings = b;
+	just_to_avoid_the_many_warnings = c;
+	just_to_avoid_the_many_warnings = d;
+}
 /*
  *  ABE_INIT_SUBROUTINE_TABLE
  *
@@ -156,7 +163,7 @@ void abe_add_sequence(abe_uint32 *id, abe_sequence_t *s)
  */
 void abe_reset_one_sequence(abe_uint32 id)
 {
-	/* @@@@@@@@@@@@@@@@ */
+	just_to_avoid_the_many_warnings = id;
 }
 
 /*
