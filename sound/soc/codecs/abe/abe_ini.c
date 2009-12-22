@@ -95,33 +95,30 @@ void abe_build_scheduler_table()
 
 	VirtAudio_aMultiFrame[0][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_AMIC;
 	VirtAudio_aMultiFrame[0][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_VX_DL;
-	VirtAudio_aMultiFrame[0][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ASRC_VX_DL_8;
+	//VirtAudio_aMultiFrame[0][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ASRC_VX_DL_8;
 
 	VirtAudio_aMultiFrame[1][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VX_DL_8_48_BP;
 	VirtAudio_aMultiFrame[1][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VX_DL_8_48_0SR;
 	VirtAudio_aMultiFrame[1][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VX_DL_8_48_LP;
 	VirtAudio_aMultiFrame[1][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_DL;
 
-
 	// VirtAudio_aMultiFrame[2][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ASRC_MM_DL;
-
-
-	//VirtAudio_aMultiFrame[2][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL_ROUTING;
-	//VirtAudio_aMultiFrame[2][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL2_ROUTING;
+	VirtAudio_aMultiFrame[2][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL_ROUTING;
+	VirtAudio_aMultiFrame[2][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_MM_UL2_ROUTING;
 	//VirtAudio_aMultiFrame[2][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_UL;
 #if 0
 	VirtAudio_aMultiFrame[3][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_TONES_DL;
 #endif
-	//VirtAudio_aMultiFrame[3][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXRECMixer;
-	//VirtAudio_aMultiFrame[3][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXREC_SPLIT;
-	//VirtAudio_aMultiFrame[3][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_SideTone;
+	VirtAudio_aMultiFrame[3][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXRECMixer;
+	VirtAudio_aMultiFrame[3][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VXREC_SPLIT;
+	VirtAudio_aMultiFrame[3][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_SideTone;
 
 	VirtAudio_aMultiFrame[4][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1Mixer;
 	VirtAudio_aMultiFrame[4][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2Mixer;
 	VirtAudio_aMultiFrame[4][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_SDTMixer;
-	//VirtAudio_aMultiFrame[4][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_UL2;
+	VirtAudio_aMultiFrame[4][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_MM_UL2;
 
-	//VirtAudio_aMultiFrame[5][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_EchoMixer;
+	VirtAudio_aMultiFrame[5][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_EchoMixer;
 	VirtAudio_aMultiFrame[5][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_EQ;
 	VirtAudio_aMultiFrame[5][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_EQ;
 	VirtAudio_aMultiFrame[5][3]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_GAIN;
@@ -130,7 +127,7 @@ void abe_build_scheduler_table()
 	VirtAudio_aMultiFrame[6][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_EQ;
 	VirtAudio_aMultiFrame[6][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_GAIN;
 
-	//VirtAudio_aMultiFrame[8][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_EchoMixer;
+	VirtAudio_aMultiFrame[8][0]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_EchoMixer;
 
 	VirtAudio_aMultiFrame[9][1]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IHF_48_96_0SR;
 	VirtAudio_aMultiFrame[9][2]  = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IHF_48_96_LP;
@@ -147,29 +144,29 @@ void abe_build_scheduler_table()
 	VirtAudio_aMultiFrame[12][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_AMIC_96_48_DEC;
 	VirtAudio_aMultiFrame[12][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_AMIC_EQ;
 
-	//VirtAudio_aMultiFrame[13][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_96_48_LP;
-	//VirtAudio_aMultiFrame[13][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_96_48_DEC;
-	//VirtAudio_aMultiFrame[13][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_EQ;
-	//VirtAudio_aMultiFrame[13][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_SPLIT;
+	VirtAudio_aMultiFrame[13][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_96_48_LP;
+	VirtAudio_aMultiFrame[13][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_96_48_DEC;
+	VirtAudio_aMultiFrame[13][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_EQ;
+	VirtAudio_aMultiFrame[13][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC1_SPLIT;
 
-	//VirtAudio_aMultiFrame[14][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_96_48_LP;
-	//VirtAudio_aMultiFrame[14][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_96_48_DEC;
-	//VirtAudio_aMultiFrame[14][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_EQ;
-	//VirtAudio_aMultiFrame[14][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_SPLIT;
+	VirtAudio_aMultiFrame[14][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_96_48_LP;
+	VirtAudio_aMultiFrame[14][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_96_48_DEC;
+	VirtAudio_aMultiFrame[14][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_EQ;
+	VirtAudio_aMultiFrame[14][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC2_SPLIT;
 
-	//VirtAudio_aMultiFrame[15][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_96_48_LP;
-	//VirtAudio_aMultiFrame[15][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_96_48_DEC;
-	//VirtAudio_aMultiFrame[15][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_EQ;
-	//VirtAudio_aMultiFrame[15][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_SPLIT;
+	VirtAudio_aMultiFrame[15][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_96_48_LP;
+	VirtAudio_aMultiFrame[15][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_96_48_DEC;
+	VirtAudio_aMultiFrame[15][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_EQ;
+	VirtAudio_aMultiFrame[15][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DMIC3_SPLIT;
 
 	VirtAudio_aMultiFrame[16][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_AMIC_SPLIT;
-	//VirtAudio_aMultiFrame[16][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_IIR;
-	//VirtAudio_aMultiFrame[16][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_CORE;
+	VirtAudio_aMultiFrame[16][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_IIR;
+	VirtAudio_aMultiFrame[16][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL1_APS_CORE;
 
-	//VirtAudio_aMultiFrame[17][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_IIR;
-	//VirtAudio_aMultiFrame[17][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_SPLIT;
-	//VirtAudio_aMultiFrame[17][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_L_APS_CORE;
-	//VirtAudio_aMultiFrame[17][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_R_APS_CORE;
+	VirtAudio_aMultiFrame[17][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_IIR;
+	VirtAudio_aMultiFrame[17][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_APS_SPLIT;
+	VirtAudio_aMultiFrame[17][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_L_APS_CORE;
+	VirtAudio_aMultiFrame[17][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_DL2_R_APS_CORE;
 
 	VirtAudio_aMultiFrame[21][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VX_UL_ROUTING;
 	VirtAudio_aMultiFrame[21][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ULMixer;
@@ -179,16 +176,17 @@ void abe_build_scheduler_table()
 	VirtAudio_aMultiFrame[22][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_VX_UL_48_8_BP;
 
 	VirtAudio_aMultiFrame[23][0] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_McPDM_DL;
-	VirtAudio_aMultiFrame[23][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ASRC_VX_UL_8;
+	//VirtAudio_aMultiFrame[23][1] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_ASRC_VX_UL_8;
 	VirtAudio_aMultiFrame[23][2] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_VX_UL;
-
-	//VirtAudio_aMultiFrame[23][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_GAIN_UPDATE;
+	VirtAudio_aMultiFrame[23][3] = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_GAIN_UPDATE;
 
 	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, D_multiFrame_ADDR, (abe_uint32*)VirtAudio_aMultiFrame, sizeof(VirtAudio_aMultiFrame));
 
 	/* DMIC Fast Loopback */
 	dFastLoopback = D_tasksList_ADDR + sizeof(ABE_STask)*C_ABE_FW_TASK_IO_DMIC;
-	//abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, D_pNextFastLoopBack_ADDR, (abe_uint32*)&dFastLoopback, sizeof (dFastLoopback));
+	dFastLoopback = dFastLoopback << 16;
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, 0x116C,
+		(abe_uint32*)&dFastLoopback, sizeof(dFastLoopback));
 
 	/* reset the uplink router */
 	n = D_aUplinkRouting_ADDR_END - D_aUplinkRouting_ADDR + 1;
@@ -196,11 +194,6 @@ void abe_build_scheduler_table()
 		aUplinkMuxing[i] = ZERO_labelID;
 
 	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, D_aUplinkRouting_ADDR, (abe_uint32 *)aUplinkMuxing, sizeof(aUplinkMuxing));
-	/* Initialization of SMEM */
-	for (i = 0; i < n; i++)
-		aUplinkMuxing[i] = 0;
-	for (i = 0; i < 3; i++)
-		abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_SMEM, (S_AMIC_96_48_data_ADDR + i) * 8, (abe_uint32 *)aUplinkMuxing, 8);
 }
 
 /*
@@ -218,7 +211,7 @@ void abe_build_scheduler_table()
 void abe_init_atc(abe_port_id id)
 {
 	abe_satcdescriptor_aess desc;
-	abe_uint8 thr, thr1, thr2, iter, data_shift, iter_samples;
+	abe_uint8 thr, thr1, thr2, iter, data_shift;
 	abe_int32 iterfactor;
 
 	// load default values of the descriptor
@@ -303,7 +296,6 @@ void abe_init_atc(abe_port_id id)
 		data_shift = (abe_uint8)((iterfactor > 1)? 1:0);    /* shift = 0 for mono, shift = 1 for stereo - see update of ATC pointers in IOtasks */
 		thr = (abe_uint8)(thr * iterfactor);	      /* scales the data threshold to the number of words in DMEM per sample */
 		iter = (abe_uint8) abe_dma_port_iteration(&((abe_port[id]).format));
-		iter_samples = (abe_uint8)(iter / iterfactor);     /* number of "samples" either mono or stereo */
 
 		/* check is input from ABE point of view */
 		if (abe_port[id].protocol.direction == ABE_ATC_DIRECTION_IN) {
@@ -381,6 +373,107 @@ void abe_init_dma_t(abe_port_id id, abe_port_protocol_t *prot)
 }
 
 /*
+ * ABE_ENABLE_DMA_REQUEST
+ * Parameter:
+ * Operations:
+ * Return value:
+ */
+void abe_disable_enable_dma_request(abe_port_id id, abe_uint32 mulfac)
+{
+	abe_uint8 desc_second_word[4], irq_dmareq_field;
+	abe_uint32 sio_desc_address, sio_id;
+
+	if (abe_port[id].protocol.protocol_switch == DMAREQ_PORT_PROT) {
+		irq_dmareq_field =
+		(abe_uint8)(mulfac * abe_port[id].protocol.p.prot_dmareq.dma_data);
+		sio_id = sio_task_index[id];
+		sio_desc_address = dmem_port_descriptors +
+					(sio_id * sizeof(ABE_SIODescriptor));
+
+		abe_block_copy(COPY_FROM_ABE_TO_HOST, ABE_DMEM,
+		       sio_desc_address + 8, (abe_uint32 *)desc_second_word, 4);
+		/*
+		 * ABE_uchar data_size;        //8
+		 * ABE_uchar smem_addr;        //9
+		 * ABE_uchar atc_irq_data;     //10
+		 * ABE_uchar counter;          //11
+		 */
+		desc_second_word[2] = irq_dmareq_field;
+		abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM,
+			sio_desc_address + 8, (abe_uint32 *)desc_second_word, 4);
+	}
+
+	if (abe_port[id].protocol.protocol_switch == PINGPONG_PORT_PROT) {
+		irq_dmareq_field =
+			(abe_uint8)(mulfac * abe_port[id].protocol.p.prot_pingpong.irq_data);
+		sio_desc_address = D_PingPongDesc_ADDR;
+
+		abe_block_copy(COPY_FROM_ABE_TO_HOST, ABE_DMEM,
+			sio_desc_address + 8, (abe_uint32 *)desc_second_word, 4);
+		desc_second_word[2] = irq_dmareq_field;
+		abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM,
+			sio_desc_address + 8, (abe_uint32 *)desc_second_word, 4);
+	}
+}
+
+void abe_enable_dma_request(abe_port_id id)
+{
+	abe_disable_enable_dma_request(id, 1);
+}
+
+/*
+ * ABE_DISABLE_DMA_REQUEST
+ *
+ * Parameter:
+ * Operations:
+ * Return value:
+ *
+ */
+void abe_disable_dma_request(abe_port_id id)
+{
+	abe_disable_enable_dma_request(id, 0);
+}
+
+
+/*
+ * ABE_ENABLE_ATC
+ * Parameter:
+ * Operations:
+ * Return value:
+ */
+void abe_enable_atc(abe_port_id id)
+{
+	abe_satcdescriptor_aess desc;
+	abe_block_copy(COPY_FROM_ABE_TO_HOST, ABE_DMEM,
+		(abe_port[id]).protocol.p.prot_dmareq.desc_addr,
+				(abe_uint32*)&desc, sizeof (desc));
+	desc.desen = 1;
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM,
+		(abe_port[id]).protocol.p.prot_dmareq.desc_addr,
+				(abe_uint32*)&desc, sizeof (desc));
+}
+
+
+/*
+ * ABE_DISABLE_ATC
+ * Parameter:
+ * Operations:
+ * Return value:
+ */
+void abe_disable_atc(abe_port_id id)
+{
+	abe_satcdescriptor_aess desc;
+
+	abe_block_copy(COPY_FROM_ABE_TO_HOST, ABE_DMEM,
+		(abe_port[id]).protocol.p.prot_dmareq.desc_addr,
+				(abe_uint32*)&desc, sizeof (desc));
+	desc.desen = 0;
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM,
+		(abe_port[id]).protocol.p.prot_dmareq.desc_addr,
+				(abe_uint32*)&desc, sizeof (desc));
+}
+
+/*
  *   ABE_INIT_IO_TASKS
  *
  *  Parameter  :
@@ -427,7 +520,7 @@ void abe_init_io_tasks(abe_port_id id, abe_data_format_t *format, abe_port_proto
 		break;
 	case PINGPONG_PORT_PROT:
 		dmareq_addr = abe_port[id].protocol.p.prot_pingpong.irq_addr;
-		dmareq_field = abe_port[id].protocol.p.prot_pingpong.irq_data;
+		dmareq_field = 0;
 		break;
 	case SLIMBUS_PORT_PROT:
 		thr = (abe_int8) abe_port[id].protocol.p.prot_dmareq.thr_flow;
@@ -440,7 +533,7 @@ void abe_init_io_tasks(abe_port_id id, abe_data_format_t *format, abe_port_proto
 	case DMAREQ_PORT_PROT:	/* DMA w/wo CBPr */
 		thr = (abe_int8) abe_port[id].protocol.p.prot_dmareq.thr_flow;
 		dmareq_addr = abe_port[id].protocol.p.prot_dmareq.dma_addr;
-		dmareq_field = abe_port[id].protocol.p.prot_dmareq.dma_data;
+		dmareq_field = 0;
 		atc_desc_address = abe_port[id].protocol.p.prot_dmareq.desc_addr;
 		break;
 	default:
@@ -576,6 +669,7 @@ void abe_init_io_tasks(abe_port_id id, abe_data_format_t *format, abe_port_proto
  */
 void abe_init_dmic(abe_uint32 x)
 {
+	just_to_avoid_the_many_warnings = x;
 }
 
 /*
@@ -592,6 +686,7 @@ void abe_init_dmic(abe_uint32 x)
  */
 void abe_init_mcpdm(abe_uint32 x)
 {
+	just_to_avoid_the_many_warnings = x;
 }
 
 /*

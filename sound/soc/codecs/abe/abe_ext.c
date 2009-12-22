@@ -28,7 +28,7 @@ void abe_default_irq_pingpong_player(void)
 	static abe_int32 idx;
 	abe_uint32 i, dst, n_samples;
 	abe_int32 temp [N_SAMPLES_MAX], audio_sample;
-	const abe_int32 audio_pattern [8] = {0, 11585, 16384, 11585, 0, -11586, -16384, -11586 };
+	const abe_int32 audio_pattern[8] = {16383,16383,16383,16383,-16384,-16384,-16384,-16384};
 
 	/* read the address of the Pong buffer */
 	abe_read_next_ping_pong_buffer (MM_DL_PORT, &dst, &n_samples);
@@ -44,8 +44,9 @@ void abe_default_irq_pingpong_player(void)
 	 * not necessary here because the buffer size do not
 	 * change from one ping to the other pong
 	*/
-	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, dst, &(temp[0]), n_samples * 4);
-	/* @ see comment above ,  abe_set_ping_pong_buffer (MM_DL_PORT, n_samples * 4); */
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, dst,
+				(abe_uint32 *)&(temp[0]), n_samples * 4);
+	abe_set_ping_pong_buffer(MM_DL_PORT, n_samples * 4);
 }
 
 /*

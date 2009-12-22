@@ -35,6 +35,9 @@ static abe_uint32 ABE_FW_SM[ABE_SMEM_SIZE_OPTIMIZED / 4]  = {
 */
 void abe_reset_hal(void)
 {
+	abe_dma_t dma_sink;
+	abe_data_format_t format;
+
 	abe_dbg_output = TERMINAL_OUTPUT;
 
 	/* load firmware */
@@ -60,6 +63,60 @@ void abe_reset_hal(void)
 
 	/* init hardware components */
 	abe_hw_configuration();
+
+	/* enable the VX_UL path with Analog microphones from Phoenix */
+
+	/* MM_DL INIT connect a DMA channel to MM_DL port (ATC FIFO) */
+	format.f = 48000;
+	format.samp_format = STEREO_MSB;
+	abe_connect_cbpr_dmareq_port(MM_DL_PORT, &format, ABE_CBPR0_IDX, &dma_sink);
+
+	/* VX_DL INIT connect a DMA channel to VX_DL port (ATC FIFO) */
+	format.f = 8000;
+	format.samp_format = STEREO_MSB;
+	abe_connect_cbpr_dmareq_port(VX_DL_PORT, &format, ABE_CBPR1_IDX, &dma_sink);
+#if PC_SIMULATION
+	{	int dVirtAudioVoiceMode, dVirtAudioVoiceSampleFrequency;
+		/* dVirtAudioVoiceMode = 1;		 MONO for Voice */
+		dVirtAudioVoiceMode = 2;		/* MONO for Voice */
+		dVirtAudioVoiceSampleFrequency = 1;	/* 8kHz for Voice */
+		target_server_set_voice_sampling(dVirtAudioVoiceMode, dVirtAudioVoiceSampleFrequency);
+	}
+#endif
+
+	/* VX_UL INIT connect a DMA channel to VX_UL port (ATC FIFO) */
+	format.f = 8000;
+	format.samp_format = STEREO_MSB;
+	abe_connect_cbpr_dmareq_port(VX_UL_PORT, &format, ABE_CBPR2_IDX, &dma_sink);
+
+	/* MM_UL2 INIT connect a DMA channel to MM_UL2 port (ATC FIFO) */
+	format.f = 48000;
+	format.samp_format = STEREO_MSB;
+	abe_connect_cbpr_dmareq_port(MM_UL2_PORT, &format, ABE_CBPR4_IDX, &dma_sink);
+
+	/* TONES INIT connect a DMA channel to TONES port (ATC FIFO) */
+	format.f = 48000;
+	format.samp_format = STEREO_MSB;
+	abe_connect_cbpr_dmareq_port(TONES_DL_PORT, &format, ABE_CBPR5_IDX, &dma_sink);
+
+	/* VIBRA/HAPTICS INIT connect a DMA channel to VIBRA/HAPTICS port (ATC FIFO) */
+	format.f = 24000;
+	format.samp_format = STEREO_MSB;
+	abe_connect_cbpr_dmareq_port(VIB_DL_PORT, &format, ABE_CBPR6_IDX, &dma_sink);
+
+	/* mixers' default configuration = voice on earphone + music on hands-free path */
+	abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_TONES);
+	abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_1MS, MIX_DL1_INPUT_VX_DL);
+	abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_2MS, MIX_DL1_INPUT_MM_DL);
+	abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_5MS, MIX_DL1_INPUT_MM_UL2);
+
+	abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_10MS, MIX_DL2_INPUT_TONES);
+	abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_20MS, MIX_DL2_INPUT_VX_DL);
+	abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_50MS, MIX_DL2_INPUT_MM_DL);
+	abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_100MS, MIX_DL2_INPUT_MM_UL2);
+
+	abe_write_mixer(MIXSDT, MUTE_GAIN, RAMP_0MS, MIX_SDT_INPUT_UP_MIXER);
+	abe_write_mixer(MIXSDT, GAIN_0dB, RAMP_0MS, MIX_SDT_INPUT_DL1_MIXER);
 }
 
 /**
@@ -71,15 +128,22 @@ void abe_reset_hal(void)
 *
 * @see	ABE_API.h
 */
+void abe_load_fw_param(abe_uint32 *PMEM, abe_uint32 PMEM_SIZE,
+			abe_uint32 *CMEM, abe_uint32 CMEM_SIZE,
+				abe_uint32 *SMEM, abe_uint32 SMEM_SIZE,
+					abe_uint32 *DMEM, abe_uint32 DMEM_SIZE)
+{
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_PMEM, 0, PMEM, PMEM_SIZE);
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_CMEM, 0, CMEM, CMEM_SIZE);
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_SMEM, 0, SMEM, SMEM_SIZE);
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, 0, DMEM, DMEM_SIZE);
+}
+
 void abe_load_fw(void)
 {
-#if PC_SIMULATION
-#else
-	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_PMEM, 0, (abe_uint32 *)ABE_FW_PM, sizeof(ABE_FW_PM));
-	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_CMEM, 0, (abe_uint32 *)ABE_FW_CM, sizeof(ABE_FW_CM));
-	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_SMEM, 0, (abe_uint32 *)ABE_FW_SM, sizeof(ABE_FW_SM));
-	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, 0, (abe_uint32 *)ABE_FW_DM, sizeof(ABE_FW_DM));
-#endif
+	abe_load_fw_param(ABE_FW_PM, sizeof (ABE_FW_PM),
+		ABE_FW_CM, sizeof (ABE_FW_CM), ABE_FW_SM, sizeof (ABE_FW_SM),
+						ABE_FW_DM, sizeof (ABE_FW_DM));
 }
 
 /*
@@ -155,66 +219,12 @@ void abe_default_configuration(abe_uint32 use_case)
 	abe_data_format_t format;
 	abe_dma_t dma_sink;
 	abe_uint32 data_sink;
-	abe_use_case_id UC2[] = {ABE_AUDIO_PLAYER_ON_HEADSET_OR_EARPHONE, ABE_RINGER_TONES, 0};
-	abe_use_case_id UC5[] = {ABE_AUDIO_PLAYER_ON_HEADSET_OR_EARPHONE, 0};
-	abe_opp_t OPP;
+	abe_use_case_id UC2[] = {ABE_AUDIO_PLAYER_ON_HEADSET_OR_EARPHONE,
+					ABE_RINGER_TONES, (abe_use_case_id)0};
+	abe_use_case_id UC5[] = {ABE_AUDIO_PLAYER_ON_HEADSET_OR_EARPHONE,
+							(abe_use_case_id)0};
+        abe_opp_t OPP;
 	abe_hw_config_init_t CONFIG;
-
-	/* load the default configuration of HAL memories + FW download */
-	abe_reset_hal();
-
-	/* MM_DL init: connect a DMA channel to VX_DL port (ATC FIFO) */
-	format.f = 48000; format.samp_format = STEREO_MSB;
-	abe_connect_cbpr_dmareq_port(MM_DL_PORT, &format, ABE_CBPR0_IDX, &dma_sink);
-
-	/* VX_DL init: connect a DMA channel to VX_DL port (ATC FIFO) */
-	format.f = 8000; format.samp_format = STEREO_MSB;
-	abe_connect_cbpr_dmareq_port(VX_DL_PORT, &format, ABE_CBPR1_IDX, &dma_sink);
-
-	/* VX_UL init: connect a DMA channel to VX_DL port (ATC FIFO) */
-	format.f = 8000; format.samp_format = STEREO_MSB;
-	abe_connect_cbpr_dmareq_port(VX_UL_PORT, &format, ABE_CBPR2_IDX, &dma_sink);
-
-	/* MM_UL init: connect a DMA channel to MM_UL port (ATC FIFO) */
-	format.f = 48000; format.samp_format = TEN_MSB;
-	abe_connect_cbpr_dmareq_port(MM_UL_PORT, &format, ABE_CBPR3_IDX, &dma_sink);
-
-	/* MM_UL2 init: connect a DMA channel to MM_UL2 port (ATC FIFO) */
-	format.f = 48000; format.samp_format = STEREO_MSB;
-	abe_connect_cbpr_dmareq_port(MM_UL2_PORT, &format, ABE_CBPR4_IDX, &dma_sink);
-
-	/* TONES init: connect a DMA channel to TONES port (ATC FIFO) */
-	format.f = 48000; format.samp_format = STEREO_MSB;
-	abe_connect_cbpr_dmareq_port(TONES_DL_PORT, &format, ABE_CBPR5_IDX, &dma_sink);
-
-	/* VIBRA/HAPTICS init: connect a DMA channel to VIBRA/HAPTICS port (ATC FIFO) */
-	format.f = 24000; format.samp_format = STEREO_MSB;
-	abe_connect_cbpr_dmareq_port(VIB_DL_PORT, &format, ABE_CBPR6_IDX, &dma_sink);
-
-	/*
-	 * mixers default configuration:
-	 * voice on earphone + music on hands-free path
-	 */
-#if 0
-	abe_write_mixer(MIXDL1, GAIN_0dB, RAMP_0MS, MIX_DL1_INPUT_TONES);
-	abe_write_mixer(MIXDL1, GAIN_0dB, RAMP_1MS, MIX_DL1_INPUT_VX_DL);
-	abe_write_mixer(MIXDL1, GAIN_0dB, RAMP_2MS, MIX_DL1_INPUT_MM_DL);
-	abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_5MS, MIX_DL1_INPUT_MM_UL2);
-
-	abe_write_mixer(MIXDL2, GAIN_0dB, RAMP_10MS, MIX_DL2_INPUT_TONES);
-	abe_write_mixer(MIXDL2, GAIN_0dB, RAMP_20MS, MIX_DL2_INPUT_VX_DL);
-	abe_write_mixer(MIXDL2, GAIN_0dB, RAMP_50MS, MIX_DL2_INPUT_MM_DL);
-	abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_100MS, MIX_DL2_INPUT_MM_UL2);
-
-	abe_write_mixer(MIXSDT, GAIN_0dB, RAMP_0MS, MIX_SDT_INPUT_DL1_MIXER);
-	abe_write_mixer(MIXSDT, GAIN_0dB, RAMP_0MS, MIX_SDT_INPUT_DL2_MIXER);
-#endif
-	/*
-	 * router default configuration:
-	 * analog mics on VX_UL, nothing on MM_UL, MM_UL2
-	 */
-	/* enable the VX_UL path with Analog microphones from Phoenix */
-	abe_enable_router_configuration(UPROUTE, UPROUTE_CONFIG_AMIC);
 
 	switch (use_case) {
 	/* voice ul/dl on earpiece + MM_DL on IHF */
@@ -233,6 +243,11 @@ void abe_default_configuration(abe_uint32 use_case)
 		abe_read_hardware_configuration(UC2, &OPP, &CONFIG);	/* check hw config and opp config */
 		abe_set_opp_processing(OPP);				/* sets the OPP100 on FW05.xx */
 		abe_write_event_generator(CONFIG.HAL_EVENT_SELECTION);	/* "tick" of the audio engine */
+		/* mixers' configuration = voice on earphone + music on hands-free path */
+		abe_write_mixer(MIXDL1, GAIN_0dB, RAMP_1MS, MIX_DL1_INPUT_VX_DL);
+		abe_write_mixer(MIXDL2, GAIN_0dB, RAMP_50MS, MIX_DL2_INPUT_MM_DL);
+
+		abe_enable_data_transfer(MM_UL2_PORT);
 
 		abe_enable_data_transfer(MM_DL_PORT);			/* enable all the data paths */
 		abe_enable_data_transfer(VX_DL_PORT);
@@ -258,13 +273,17 @@ void abe_default_configuration(abe_uint32 use_case)
 
 		/* MM_DL init: overwrite the previous default initialization made above */
 		format.f = 48000;
-		format.samp_format = STEREO_16_16;
+		format.samp_format = MONO_MSB;
 
 		/* connect a Ping-Pong SDMA protocol to MM_DL port
 		 * with Ping-Pong 576 mono samples
 		 * (12x4 bytes for each ping & pong size)
 		 */
 		abe_connect_dmareq_ping_pong_port(MM_DL_PORT, &format, ABE_CBPR0_IDX, (12 * 4), &dma_sink);
+
+		/* mixers' configuration = voice on earphone + music on hands-free path */
+		abe_write_mixer(MIXDL1, GAIN_0dB, RAMP_2MS, MIX_DL1_INPUT_MM_DL);
+		abe_write_mixer(MIXDL2, GAIN_0dB, RAMP_50MS, MIX_DL2_INPUT_MM_DL);
 
 		/* Here: connect the sDMA to "dma_sink" content */
 		abe_enable_data_transfer(MM_DL_PORT);			/* enable all the data paths */
@@ -283,12 +302,48 @@ void abe_default_configuration(abe_uint32 use_case)
 		/* connect a Ping-Pong cache-flush protocol to MM_DL port
 		 * with 50Hz (20ms) rate
 		 */
-		abe_add_subroutine(&abe_irq_pingpong_player_id, (abe_subroutine2) abe_default_irq_pingpong_player, SUB_0_PARAM);
+		abe_add_subroutine(&abe_irq_pingpong_player_id,
+			(abe_subroutine2) abe_default_irq_pingpong_player,
+								SUB_0_PARAM, (abe_uint32*)0);
 		#define N_SAMPLES_BYTES (12 *4)
-		abe_connect_irq_ping_pong_port(MM_DL_PORT, &format, abe_irq_pingpong_player_id, N_SAMPLES_BYTES, &data_sink);
+		abe_connect_irq_ping_pong_port(MM_DL_PORT, &format,
+			abe_irq_pingpong_player_id, N_SAMPLES_BYTES, &data_sink,
+							PING_PONG_WITH_MCU_IRQ);
+
+		/* mixers' configuration = voice on earphone + music on hands-free path */
+		abe_write_mixer(MIXDL1, GAIN_0dB, RAMP_2MS, MIX_DL1_INPUT_MM_DL);
+		abe_write_mixer(MIXDL2, GAIN_0dB, RAMP_50MS, MIX_DL2_INPUT_MM_DL);
 
 		abe_enable_data_transfer(MM_DL_PORT);			/* enable all the data paths */
 		abe_enable_data_transfer(PDM_DL1_PORT);
+		break;
+	case UC7_STOP_ALL:
+		abe_disable_data_transfer(MM_UL2_PORT);
+		abe_disable_data_transfer(MM_DL_PORT);
+		abe_disable_data_transfer(VX_DL_PORT);
+		abe_disable_data_transfer(VX_UL_PORT);
+		abe_disable_data_transfer(PDM_UL_PORT);
+		abe_disable_data_transfer(DMIC_PORT1);
+		abe_disable_data_transfer(DMIC_PORT2);
+		abe_disable_data_transfer(DMIC_PORT3);
+		abe_disable_data_transfer(PDM_DL1_PORT);
+		abe_disable_data_transfer(PDM_DL2_PORT);
+		break;
+	case UC81_ROUTE_AMIC:
+		abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_AMIC,
+			(abe_router_t *) abe_router_ul_table_preset[UPROUTE_CONFIG_AMIC]);
+		break;
+	case UC82_ROUTE_DMIC01:
+		abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_DMIC1,
+			(abe_router_t *) abe_router_ul_table_preset[UPROUTE_CONFIG_DMIC1]);
+		break;
+	case UC83_ROUTE_DMIC23:
+		abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_DMIC2,
+			(abe_router_t *) abe_router_ul_table_preset[UPROUTE_CONFIG_DMIC2]);
+		break;
+	case UC84_ROUTE_DMIC45:
+		abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_DMIC3,
+			(abe_router_t *) abe_router_ul_table_preset[UPROUTE_CONFIG_DMIC3]);
 		break;
 	default:
 		break;
@@ -312,9 +367,12 @@ void abe_default_configuration(abe_uint32 use_case)
  */
 void abe_irq_processing(void)
 {
+	abe_uint32 clear_abe_irq;
 	abe_monitoring();
 	abe_irq_ping_pong();
 	abe_irq_check_for_sequences();
+	clear_abe_irq = 1;
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_ATC, ABE_MCU_IRQSTATUS, &clear_abe_irq, 4);
 }
 
 /*
@@ -414,12 +472,12 @@ void abe_read_use_case_opp(abe_use_case_id *u, abe_opp_t *o)
 	abe_use_case_id *ptr = u;
 
 	#define MAX_READ_USE_CASE_OPP 10	/* there is no reason to have more use_cases */
-	#define OPP_25  1
-	#define OPP_50  2
+	#define OPP_25	1
+	#define OPP_50	2
 	#define OPP_100 4
 
 	opp = i = 0;
-	while (1) {
+	do {
 		/* check for pointer errors */
 		if (i > MAX_READ_USE_CASE_OPP) {
 			abe_dbg_param |= ERR_API;
@@ -467,11 +525,11 @@ void abe_read_use_case_opp(abe_use_case_id *u, abe_opp_t *o)
 
 		i++;
 		ptr++;
-	}
+	} while (*ptr <= 0 || *ptr > ABE_LAST_USE_CASE);
 
-	if (opp | OPP_100)
+	if (opp & OPP_100)
 		*o = ABE_OPP100;
-	else if (opp | OPP_50)
+	else if (opp & OPP_50)
 		*o = ABE_OPP50;
 	else
 		*o = ABE_OPP25;
@@ -611,18 +669,17 @@ void abe_set_opp_processing(abe_opp_t opp)
 
 	switch (opp) {
 	case ABE_OPP25:
-		scheduler_task_steps = TASKS_IN_SLOT_OPP_25;
+		scheduler_task_steps = SCHED_TASK_STEP_OPP_25;
 		break;
 	case ABE_OPP50:
-		scheduler_task_steps = TASKS_IN_SLOT_OPP_50;
+		scheduler_task_steps = SCHED_TASK_STEP_OPP_50;
 		break;
 	case ABE_OPP100:
-		scheduler_task_steps = TASKS_IN_SLOT_OPP_100;
+		scheduler_task_steps = SCHED_TASK_STEP_OPP_100;
 		break;
 	case ABE_OPP0:
-	default:
 		/* default = OPP25% processing */
-		scheduler_task_steps = TASKS_IN_SLOT_OPP_25;
+	default: scheduler_task_steps = SCHED_TASK_STEP_OPP_25;
 		abe_dbg_param |= ERR_API;
 		abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
 	}
@@ -644,7 +701,7 @@ void abe_set_opp_processing(abe_opp_t opp)
  */
 void abe_set_ping_pong_buffer(abe_port_id port, abe_uint32 n)
 {
-	abe_uint32 sio_pp_desc_address, struct_offset;
+	abe_uint32 sio_pp_desc_address, struct_offset, *src, dst;
 	ABE_SPingPongDescriptor desc_pp;
 
 	/* ping_pong is only supported on MM_DL */
@@ -663,9 +720,10 @@ void abe_set_ping_pong_buffer(abe_port_id port, abe_uint32 n)
 		desc_pp.nextbuff1_Samples = (abe_uint16) (n >> 2);
 
 	struct_offset = (abe_uint32)&(desc_pp.nextbuff0_BaseAddr) - (abe_uint32)&(desc_pp);
-	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, sio_pp_desc_address + struct_offset,
-				(abe_uint32*)&(desc_pp.nextbuff0_BaseAddr), sizeof(desc_pp) - struct_offset);
-
+	src = (abe_uint32 *) &(desc_pp.nextbuff0_BaseAddr);
+	dst = sio_pp_desc_address + struct_offset;
+	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_DMEM, dst, src,
+							sizeof(desc_pp) - struct_offset);
 }
 
 /*
@@ -725,14 +783,16 @@ void abe_init_ping_pong_buffer(abe_port_id id, abe_uint32 s, abe_uint32 n, abe_u
 
 	/* ping_pong is supported in 2 buffers configuration right now but FW is ready for ping/pong/pung/pang... */
 	if (id != MM_DL_PORT || n > MAX_PINGPONG_BUFFERS) {
-	    abe_dbg_param |= ERR_API;
-	    abe_dbg_error_log(ABE_PARAMETER_ERROR);
+		abe_dbg_param |= ERR_API;
+		abe_dbg_error_log(ABE_PARAMETER_ERROR);
 	}
 
 	for (i = 0; i < abe_nb_pingpong; i++) {
 	    dmem_addr = dmem_ping_pong_buffer + (i * abe_size_pingpong);
 	    abe_base_address_pingpong [i] = dmem_addr;   /* base addresses of the ping pong buffers in U8 unit */
 	}
+
+	*p = (abe_uint32)dmem_ping_pong_buffer;
 }
 
 /*
@@ -748,10 +808,10 @@ void abe_init_ping_pong_buffer(abe_port_id id, abe_uint32 s, abe_uint32 n, abe_u
  *  Operations : register a list of subroutines for call-back purpose
  *
  */
-void abe_plug_subroutine(abe_uint32 *id, abe_subroutine2 f, abe_uint32 n)
+void abe_plug_subroutine(abe_uint32 *id, abe_subroutine2 f, abe_uint32 n, abe_uint32* params)
 {
-    /* debug trace */
-    abe_add_subroutine(id, f, n);
+	/* debug trace */
+	abe_add_subroutine (id, f, n, params);
 }
 
 /*
@@ -769,6 +829,8 @@ void abe_plug_subroutine(abe_uint32 *id, abe_subroutine2 f, abe_uint32 n)
  */
 void abe_plug_sequence(abe_uint32 *id, abe_sequence_t *s)
 {
+	just_to_avoid_the_many_warnings = *id;
+	just_to_avoid_the_many_warnings_abe_sequence_t = *s;
 }
 
 /*
@@ -787,6 +849,8 @@ void abe_plug_sequence(abe_uint32 *id, abe_sequence_t *s)
  */
 void abe_set_sequence_time_accuracy(abe_micros_t fast, abe_micros_t slow)
 {
+	just_to_avoid_the_many_warnings_abe_micros_t = fast;
+	just_to_avoid_the_many_warnings_abe_micros_t = slow;
 }
 
 /*
@@ -804,6 +868,8 @@ void abe_set_sequence_time_accuracy(abe_micros_t fast, abe_micros_t slow)
  */
 void abe_launch_sequence(abe_patch_rev patch, abe_uint32 n)
 {
+	just_to_avoid_the_many_warnings_abe_patch_rev = patch;
+	just_to_avoid_the_many_warnings = n;
 }
 
 /*
@@ -822,6 +888,12 @@ void abe_launch_sequence(abe_patch_rev patch, abe_uint32 n)
  */
 void abe_launch_sequence_param(abe_patch_rev patch, abe_uint32 n, abe_int32 *param1, abe_int32 *param2, abe_int32 *param3, abe_int32 *param4)
 {
+	just_to_avoid_the_many_warnings_abe_patch_rev = patch;
+	just_to_avoid_the_many_warnings = *param1;
+	just_to_avoid_the_many_warnings = *param2;
+	just_to_avoid_the_many_warnings = *param3;
+	just_to_avoid_the_many_warnings = *param4;
+	just_to_avoid_the_many_warnings = n;
 }
 
 /*
@@ -839,6 +911,7 @@ void abe_launch_sequence_param(abe_patch_rev patch, abe_uint32 n, abe_int32 *par
  */
 void abe_read_analog_gain_dl(abe_gain_t *a)
 {
+	just_to_avoid_the_many_warnings_abe_gain_t = *a;
 }
 
 /*
@@ -856,6 +929,7 @@ void abe_read_analog_gain_dl(abe_gain_t *a)
  */
 void abe_read_analog_gain_ul(abe_gain_t *a)
 {
+	just_to_avoid_the_many_warnings_abe_gain_t = *a;
 }
 
 /*
@@ -942,6 +1016,8 @@ void abe_disable_dyn_extension(void)
  */
 void abe_notify_analog_gain_changed(abe_ana_port_id Id, abe_gain_t *G)
 {
+	just_to_avoid_the_many_warnings_abe_gain_t = *G;
+	just_to_avoid_the_many_warnings_abe_ana_port_id = Id;
 }
 
 /*
@@ -976,7 +1052,8 @@ void abe_reset_port(abe_port_id id)
  */
 void abe_read_remaining_data(abe_port_id port, abe_uint32 *n)
 {
-	*n = 0;
+	just_to_avoid_the_many_warnings = *n;
+	just_to_avoid_the_many_warnings_abe_port_id = port;
 }
 
 /*
@@ -991,21 +1068,14 @@ void abe_read_remaining_data(abe_port_id port, abe_uint32 *n)
  *  Return value :
  *      None.
  */
-void abe_disable_data_transfer(abe_port_id *p)
+void abe_disable_data_transfer(abe_port_id id)
 {
-	abe_port_protocol_t *protocol;
-	abe_data_format_t *format;
-
-	protocol = &(abe_port[PDM_DL1_PORT].protocol);  format = &(abe_port[PDM_UL_PORT].format);
-
-	abe_init_io_tasks(PDM_UL_PORT, format, protocol);  /* @@@@ disable = change the R0123/INITREG, do it in one of the  */
-							    /* @@@@  three config/port: normal/McBSP/SlimBus */
-
-	/* AESS/ATC descriptor disabled, after the IO/task is stopped */
-	abe_init_atc(*p);
-
-	/* local host variable status: port is idle */
-	abe_port[PDM_DL1_PORT].status = IDLE_P;
+	/* local host variable status= "port is running" */
+	abe_port[id].status = IDLE_P;
+	/* disable DMA requests */
+	abe_disable_dma_request (id);
+	/* disable ATC transfers */
+	abe_disable_atc (id);
 }
 
 /*
@@ -1022,19 +1092,21 @@ void abe_disable_data_transfer(abe_port_id *p)
  */
 void abe_enable_data_transfer(abe_port_id id)
 {
-	abe_port_protocol_t *protocol;
-	abe_data_format_t *format;
+	/* enable DMA requests */
+	abe_enable_dma_request(id);
+	/* enable ATC data path */
+	abe_enable_atc(id);
+	/* local host variable status= "port is running" */
+	abe_port[id].status = RUN_P;
 
-	protocol = &(abe_port[id].protocol);
-	format = &(abe_port[id].format);
-
-	/* AESS/ATC descriptor disabled, enabled in the IO task */
-	abe_init_atc(id);
-	/* install a new IO task descriptor */
-	abe_init_io_tasks(id, format, protocol);
-
-	/* local host variable status: port is running */
-	abe_port[PDM_DL1_PORT].status = RUN_P;
+#if PC_SIMULATION
+	if (id == DMIC_PORT1  || id == DMIC_PORT2 || id == DMIC_PORT3)
+		target_server_activate_dmic();
+	if (id == PDM_DL1_PORT || id == PDM_DL2_PORT || id == PDM_VIB_PORT)
+		target_server_activate_mcpdm_dl();
+	if (id == PDM_UL_PORT)
+		target_server_activate_mcpdm_ul();
+#endif
 }
 
 /*
@@ -1051,6 +1123,7 @@ void abe_enable_data_transfer(abe_port_id id)
  */
 void abe_write_clock_mode(abe_uint32 mode)
 {
+	just_to_avoid_the_many_warnings = mode;
 }
 
 /*
@@ -1070,6 +1143,8 @@ void abe_write_clock_mode(abe_uint32 mode)
  */
 void abe_read_global_counter(abe_time_stamp_t *t, abe_millis_t *m)
 {
+	just_to_avoid_the_many_warnings_abe_time_stamp_t = *t;
+	just_to_avoid_the_many_warnings_abe_millis_t = *m;
 }
 
 /*
@@ -1088,6 +1163,7 @@ void abe_read_global_counter(abe_time_stamp_t *t, abe_millis_t *m)
  */
 void abe_set_dmic_filter(abe_dmic_ratio_t d)
 {
+	just_to_avoid_the_many_warnings = (abe_uint32)d;
 }
 
 /**
@@ -1173,14 +1249,13 @@ void abe_connect_dmareq_ping_pong_port(abe_port_id id, abe_data_format_t *f, abe
 	abe_dma_t dma1;
 
 	/* ping_pong is only supported on MM_DL */
-	if (id != MM_DL_PORT)
-	{
-	    abe_dbg_param |= ERR_API;
-	    abe_dbg_error_log(ABE_PARAMETER_ERROR);
+	if (id != MM_DL_PORT) {
+		abe_dbg_param |= ERR_API;
+		abe_dbg_error_log(ABE_PARAMETER_ERROR);
 	}
 
-	/* declare PP buffer for mono 20ms = 960 samples and prepare the returned dma_t */
-	abe_init_ping_pong_buffer(MM_DL_PORT, s, 2, returned_dma_t->data);
+	/* declare PP buffer and prepare the returned dma_t */
+	abe_init_ping_pong_buffer(MM_DL_PORT, s, 2, (abe_uint32 *)&(returned_dma_t->data));
 
 	abe_port [id]				   = ((abe_port_t *) abe_port_init) [id];
 
@@ -1224,7 +1299,8 @@ void abe_connect_dmareq_ping_pong_port(abe_port_id id, abe_data_format_t *f, abe
 *
 * @see	ABE_API.h
 */
-void abe_connect_irq_ping_pong_port(abe_port_id id, abe_data_format_t *f, abe_uint32 d, abe_uint32 s, abe_uint32 *p)
+void abe_connect_irq_ping_pong_port(abe_port_id id, abe_data_format_t *f,
+			abe_uint32 d, abe_uint32 s, abe_uint32 *p, abe_uint32 dsp_mcu_flag)
 {
 	/* ping_pong is only supported on MM_DL */
 	if (id != MM_DL_PORT) {
@@ -1240,8 +1316,13 @@ void abe_connect_irq_ping_pong_port(abe_port_id id, abe_data_format_t *f, abe_ui
 	(abe_port [id]).protocol.protocol_switch	  = PINGPONG_PORT_PROT;
 	(abe_port [id]).protocol.p.prot_pingpong.buf_addr = dmem_ping_pong_buffer;
 	(abe_port [id]).protocol.p.prot_pingpong.buf_size = s;
-	(abe_port [id]).protocol.p.prot_pingpong.irq_addr = ABE_MCU_IRQSTATUS_RAW;
 	(abe_port [id]).protocol.p.prot_pingpong.irq_data = (1);
+
+	if (dsp_mcu_flag == PING_PONG_WITH_MCU_IRQ)
+		(abe_port [id]).protocol.p.prot_pingpong.irq_addr = ABE_MCU_IRQSTATUS_RAW;
+
+	if (dsp_mcu_flag == PING_PONG_WITH_DSP_IRQ)
+		(abe_port [id]).protocol.p.prot_pingpong.irq_addr = ABE_DSP_IRQSTATUS_RAW;
 
 	abe_port [id].status = RUN_P;
 
@@ -1271,9 +1352,10 @@ void abe_connect_irq_ping_pong_port(abe_port_id id, abe_data_format_t *f, abe_ui
 */
 void abe_connect_serial_port(abe_port_id id, abe_data_format_t *f, abe_uint32 i)
 {
-	 abe_port [id]				   = ((abe_port_t *) abe_port_init) [id];
-	(abe_port [id]).format			    = (*f);
-	(abe_port [id]).protocol.protocol_switch	  = SERIAL_PORT_PROT;
+#if 0
+	abe_port [id] = ((abe_port_t *) abe_port_init) [id];
+	(abe_port [id]).format = (*f);
+	(abe_port [id]).protocol.protocol_switch = SERIAL_PORT_PROT;
 
 	abe_port [id].status = RUN_P;
 
@@ -1282,6 +1364,7 @@ void abe_connect_serial_port(abe_port_id id, abe_data_format_t *f, abe_uint32 i)
 
 	/* load the ATC descriptors - disabled */
 	abe_init_atc(id);
+#endif
 }
 
 /*
@@ -1367,6 +1450,8 @@ void abe_read_port_descriptor(abe_port_id port, abe_data_format_t *f, abe_port_p
  */
 void abe_read_aps_energy(abe_port_id *p, abe_gain_t *a)
 {
+	just_to_avoid_the_many_warnings_abe_port_id = *p;
+	just_to_avoid_the_many_warnings_abe_gain_t = *a;
 }
 
 /*
@@ -1521,6 +1606,9 @@ void abe_write_port_gain(abe_port_id port, abe_gain_t g, abe_ramp_t ramp)
  */
 void abe_read_port_gain(abe_port_id port, abe_gain_t *gain, abe_ramp_t *ramp)
 {
+	just_to_avoid_the_many_warnings_abe_port_id = port;
+	just_to_avoid_the_many_warnings_abe_gain_t = *gain;
+	just_to_avoid_the_many_warnings_abe_ramp_t = *ramp;
 }
 
 /*
@@ -1541,6 +1629,10 @@ void abe_read_port_gain(abe_port_id port, abe_gain_t *gain, abe_ramp_t *ramp)
  */
 void abe_read_gain_range(abe_port_id id, abe_gain_t *min, abe_gain_t *max, abe_gain_t *step)
 {
+	just_to_avoid_the_many_warnings_abe_port_id = id;
+	just_to_avoid_the_many_warnings_abe_gain_t = *min;
+	just_to_avoid_the_many_warnings_abe_gain_t = *max;
+	just_to_avoid_the_many_warnings_abe_gain_t = *step;
 }
 
 /*
@@ -1728,10 +1820,15 @@ void abe_write_aps(abe_aps_id id, abe_aps_t *param)
  */
 void abe_write_mixer(abe_mixer_id id, abe_gain_t f_g, abe_ramp_t f_ramp, abe_port_id p)
 {
-	abe_uint32 mixer_coef, lin_g;
-	abe_float f_lin_g;
+        abe_uint32 lin_g, mixer_coef;
+	abe_int32 gain_index;
 
-	/* @@@ to be changed when all the gains are managed with Ramps */
+	gain_index = ((f_g - min_mdb) / 100);
+	gain_index = maximum (gain_index, 0);
+	gain_index = minimum (gain_index, sizeof_db2lin_table);
+
+	lin_g = abe_db2lin_table [gain_index];
+
 	switch (id) {
 	default:
 	case MIXDL1:
@@ -1754,10 +1851,11 @@ void abe_write_mixer(abe_mixer_id id, abe_gain_t f_g, abe_ramp_t f_ramp, abe_por
 		break;
 	}
 
+	/* to be changed when all the gains are managed with Ramps */
+#if 0
 	abe_translate_gain_format(DECIBELS_TO_LINABE, f_g, &f_lin_g);
 	abe_translate_to_xmem_format(ABE_CMEM, f_lin_g, &lin_g);
 
-#if 0
 	/* there are no RAMPS on Mixers' gain in FW05.xx */
 	abe_translate_ramp_format(f_ramp, &f_iir_ramp1);
 	abe_translate_to_xmem_format(ABE_CMEM, f_iir_ramp1, &iir_ramp1);
@@ -1947,6 +2045,8 @@ void abe_read_eanc(abe_eanc_t *param)
  */
 void abe_read_router(abe_router_id id, abe_router_t *param)
 {
+	just_to_avoid_the_many_warnings_abe_router_t = *param;
+	just_to_avoid_the_many_warnings_abe_router_id = id;
 }
 
 /*
@@ -1966,6 +2066,8 @@ void abe_read_router(abe_router_id id, abe_router_t *param)
  */
 void abe_read_debug_trace(abe_uint32 *data, abe_uint32 *n)
 {
+	just_to_avoid_the_many_warnings = (*data);
+	just_to_avoid_the_many_warnings = (*n);
 }
 
 /*
@@ -1999,6 +2101,7 @@ void abe_set_debug_trace(abe_dbg_t debug)
  */
 void abe_set_debug_pins(abe_uint32 debug_pins)
 {
+	just_to_avoid_the_many_warnings = debug_pins;
 }
 
 /*
@@ -2015,4 +2118,6 @@ void abe_set_debug_pins(abe_uint32 debug_pins)
  */
 void abe_remote_debugger_interface(abe_uint32 n, abe_uint8 *p)
 {
+	just_to_avoid_the_many_warnings = n;
+	just_to_avoid_the_many_warnings = (abe_uint32) (*p);
 }

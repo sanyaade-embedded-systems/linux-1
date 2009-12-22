@@ -56,10 +56,16 @@ void abe_init_subroutine_table(void)
 
 	/* reset the table's pointers */
 	abe_subroutine_write_pointer = 0;
-
-	abe_add_subroutine(&id, (abe_subroutine2) abe_null_subroutine_2, SUB_0_PARAM);   /* the first index is the NULL task */
-	abe_add_subroutine(&(abe_subroutine_id[SUB_WRITE_MIXER]), (abe_subroutine2)abe_write_mixer, SUB_3_PARAM);   /* write mixer has 3 parameters  @@@ TBD*/
-	abe_add_subroutine(&abe_irq_pingpong_player_id, (abe_subroutine2)abe_null_subroutine_0, SUB_0_PARAM);   /* ping-pong player IRQ */
+	/* the first index is the NULL task */
+	abe_add_subroutine(&id,(abe_subroutine2) abe_null_subroutine_2,
+						SUB_0_PARAM, (abe_uint32*)0);
+	/* write mixer has 3 parameters  @@@ TBD*/
+	abe_add_subroutine(&(abe_subroutine_id[SUB_WRITE_MIXER]),
+		(abe_subroutine2) abe_write_mixer, SUB_4_PARAM, (abe_uint32*)0);
+	/* ping-pong player IRQ */
+	abe_add_subroutine(&abe_irq_pingpong_player_id,
+			(abe_subroutine2) abe_null_subroutine_0, SUB_0_PARAM,
+								(abe_uint32*)0);
 }
 
 /*
@@ -76,7 +82,7 @@ void abe_init_subroutine_table(void)
  *  Return value :
  *
  */
-void abe_add_subroutine(abe_uint32 *id, abe_subroutine2 f, abe_uint32 nparam)
+void abe_add_subroutine (abe_uint32 *id, abe_subroutine2 f, abe_uint32 nparam, abe_uint32* params)
 {
 	abe_uint32 i, i_found;
 
@@ -95,9 +101,11 @@ void abe_add_subroutine(abe_uint32 *id, abe_subroutine2 f, abe_uint32 nparam)
 		if (i_found == abe_subroutine_write_pointer) {
 			*id = abe_subroutine_write_pointer;
 			abe_all_subsubroutine[abe_subroutine_write_pointer] = (f);
+			abe_all_subroutine_params[abe_subroutine_write_pointer] = params;
 			abe_all_subsubroutine_nparam[abe_subroutine_write_pointer] = nparam;
 			abe_subroutine_write_pointer++;
 		} else {
+			abe_all_subroutine_params[i_found] = params;
 			*id = i_found;
 		}
 	}
@@ -137,7 +145,7 @@ void abe_add_sequence(abe_uint32 *id, abe_sequence_t *s)
 
 			if ((*(abe_int32 *)seq_src) == -1) {
 				/* stop when the line start with time=(-1) */
-				no_end_of_sequence_found = 1;
+				no_end_of_sequence_found = 0;
 				break;
 			}
 		}
@@ -215,6 +223,7 @@ void abe_call_subroutine(abe_uint32 idx, abe_uint32 p1, abe_uint32 p2, abe_uint3
 	abe_subroutine2 f2;
 	abe_subroutine3 f3;
 	abe_subroutine4 f4;
+	abe_uint32* params;
 
 	if (idx >= MAXNBSUBROUTINE)
 		return;
@@ -229,26 +238,47 @@ void abe_call_subroutine(abe_uint32 idx, abe_uint32 p1, abe_uint32 p2, abe_uint3
 #endif
 	/* call the subroutines defined at execution time (dynamic sequences) */
 	default :
-		switch (abe_all_subsubroutine_nparam [abe_subroutine_id[idx]]) {
+		switch (abe_all_subsubroutine_nparam [idx]) {
 		case SUB_0_PARAM:
 			f0 = (abe_subroutine0)abe_all_subsubroutine[idx];
 			(*f0)();
 			break;
 		case SUB_1_PARAM:
-			f1 = (abe_subroutine1)abe_all_subsubroutine [idx];
-			(*f1)(p1);
+			f1 = (abe_subroutine1) abe_all_subsubroutine [idx];
+			params = abe_all_subroutine_params[abe_irq_pingpong_player_id];
+			if (params != (abe_uint32*)0)
+				p1 = params[0];
+			(*f1) (p1);
 			break;
 		case SUB_2_PARAM:
-			f2 = abe_all_subsubroutine[idx];
-			(*f2)(p1, p2);
+			f2 = abe_all_subsubroutine [idx];
+			params = abe_all_subroutine_params[abe_irq_pingpong_player_id];
+			if (params != (abe_uint32*)0) {
+				p1 = params[0];
+				p2 = params[1];
+			}
+			(*f2) (p1, p2);
 			break;
 		case SUB_3_PARAM:
-			f3 = (abe_subroutine3)abe_all_subsubroutine[idx];
-			(*f3)(p1, p2, p3);
+			f3 = (abe_subroutine3) abe_all_subsubroutine [idx];
+			params = abe_all_subroutine_params[abe_irq_pingpong_player_id];
+			if (params != (abe_uint32*)0) {
+				p1 = params[0];
+				p2 = params[1];
+				p3 = params[2];
+			}
+			(*f3) (p1, p2, p3);
 			break;
 		case SUB_4_PARAM:
-			f4 = (abe_subroutine4)abe_all_subsubroutine[idx];
-			(*f4)(p1, p2, p3, p4);
+			f4 = (abe_subroutine4) abe_all_subsubroutine [idx];
+			params = abe_all_subroutine_params[abe_irq_pingpong_player_id];
+			if (params != (abe_uint32*)0) {
+				p1 = params[0];
+				p2 = params[1];
+				p3 = params[2];
+				p4 = params[3];
+			}
+			(*f4) (p1, p2, p3, p4);
 			break;
 		}
 	}

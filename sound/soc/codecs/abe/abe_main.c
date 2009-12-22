@@ -35,10 +35,10 @@ void main (void)
 	abe_data_format_t format;
 	abe_uint32 base_address;
 
-	abe_reset_hal ();
-	abe_auto_check_data_format_translation ();
-	abe_check_opp ();
-	abe_check_dma ();
+	abe_auto_check_data_format_translation();
+	abe_reset_hal();
+	abe_check_opp();
+	abe_check_dma();
 
 	/*
 	    To be added here :
@@ -62,10 +62,15 @@ void main (void)
 
 	    connect a Ping-Pong cache-flush protocol to MM_DL port with 50Hz (20ms) rate
 	*/
-	    abe_add_subroutine (&abe_irq_pingpong_player_id, (abe_subroutine2) abe_default_irq_pingpong_player, SUB_0_PARAM);
-	    format.f = 48000; format.samp_format = STEREO_MSB;
-	    #define N_SAMPLES ((int)(48000 * 0.020))	     /* ping-pong access to MM_DL at 48kHz Mono with 20ms packet sizes */
-	    abe_connect_irq_ping_pong_port (MM_DL_PORT, &format, abe_irq_pingpong_player_id, N_SAMPLES, &base_address);
+	abe_add_subroutine(&abe_irq_pingpong_player_id,
+		(abe_subroutine2) abe_default_irq_pingpong_player, SUB_0_PARAM,
+							(abe_uint32*)0 );
+	format.f = 48000; format.samp_format = STEREO_MSB;
+	/* ping-pong access to MM_DL at 48kHz Mono with 20ms packet sizes */
+	#define N_SAMPLES ((int)(48000 * 0.020))
+	abe_connect_irq_ping_pong_port(MM_DL_PORT, &format,
+			abe_irq_pingpong_player_id, N_SAMPLES, &base_address,
+							PING_PONG_WITH_MCU_IRQ);
 
 
 
