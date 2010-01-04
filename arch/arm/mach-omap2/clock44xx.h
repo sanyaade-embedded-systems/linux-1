@@ -15,6 +15,7 @@
 #define OMAP4430_MAX_DPLL_MULT	2047
 #define OMAP4430_MAX_DPLL_DIV	128
 
+int omap4_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate);
 int omap4xxx_clk_init(void);
 
 #endif
