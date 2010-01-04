@@ -135,6 +135,7 @@ static void mbox_rx_work(struct work_struct *work)
 	mbox_msg_t msg;
 	unsigned long flags;
 
+
 	while (1) {
 		spin_lock_irqsave(q->queue_lock, flags);
 		rq = blk_fetch_request(q);
@@ -146,6 +147,7 @@ static void mbox_rx_work(struct work_struct *work)
 		blk_end_request_all(rq, 0);
 		mbox->rxq->callback((void *)msg);
 	}
+
 }
 
 /*
