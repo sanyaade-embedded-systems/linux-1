@@ -28,6 +28,7 @@
 
 #include <mach/mailbox.h>
 
+static struct workqueue_struct *mboxd;
 static struct omap_mbox *mboxes;
 static DEFINE_RWLOCK(mboxes_lock);
 
@@ -158,6 +159,7 @@ static void mbox_rx_work(struct work_struct *work)
 	mbox_msg_t msg;
 	unsigned long flags;
 
+
 	while (1) {
 		spin_lock_irqsave(q->queue_lock, flags);
 		rq = blk_fetch_request(q);
@@ -170,6 +172,7 @@ static void mbox_rx_work(struct work_struct *work)
 		blk_end_request_all(rq, 0);
 		mbox->rxq->callback((void *)msg);
 	}
+
 }
 
 /*
@@ -187,7 +190,7 @@ static void __mbox_tx_interrupt(struct omap_mbox *mbox)
 {
 	omap_mbox_disable_irq(mbox, IRQ_TX);
 	ack_mbox_irq(mbox, IRQ_TX);
-	schedule_work(&mbox->txq->work);
+	queue_work(mboxd, &mbox->txq->work);
 }
 
 static void __mbox_rx_interrupt(struct omap_mbox *mbox)
@@ -212,7 +215,7 @@ static void __mbox_rx_interrupt(struct omap_mbox *mbox)
 	/* no more messages in the fifo. clear IRQ source. */
 	ack_mbox_irq(mbox, IRQ_RX);
 nomem:
-	schedule_work(&mbox->rxq->work);
+	queue_work(mboxd, &mbox->rxq->work);
 }
 
 static irqreturn_t mbox_interrupt(int irq, void *p)
@@ -408,12 +411,17 @@ EXPORT_SYMBOL(omap_mbox_unregister);
 
 static int __init omap_mbox_init(void)
 {
+	mboxd = create_workqueue("mboxd");
+	if (!mboxd)
+		return -ENOMEM;
+
 	return 0;
 }
 module_init(omap_mbox_init);
 
 static void __exit omap_mbox_exit(void)
 {
+	destroy_workqueue(mboxd);
 }
 module_exit(omap_mbox_exit);
 
