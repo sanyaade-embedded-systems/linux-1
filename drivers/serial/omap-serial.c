@@ -120,7 +120,7 @@ serial_omap_get_divisor(struct uart_port *port, unsigned int baud)
 static void serial_omap_stop_rxdma(struct uart_omap_port *up)
 {
 	if (up->uart_dma.rx_dma_state) {
-		del_timer_sync(&up->uart_dma.rx_timer);
+		del_timer(&up->uart_dma.rx_timer);
 		omap_stop_dma(up->uart_dma.rx_dma_channel);
 		omap_free_dma(up->uart_dma.rx_dma_channel);
 		up->uart_dma.rx_dma_channel = 0xFF;
@@ -480,7 +480,8 @@ static int serial_omap_startup(struct uart_port *port)
 	 * Clear the interrupt registers.
 	 */
 	(void) serial_in(up, UART_LSR);
-	(void) serial_in(up, UART_RX);
+	if (serial_in(up, UART_LSR) & UART_LSR_DR)
+		(void) serial_in(up, UART_RX);
 	(void) serial_in(up, UART_IIR);
 	(void) serial_in(up, UART_MSR);
 
@@ -567,7 +568,8 @@ static void serial_omap_shutdown(struct uart_port *port)
 	/*
 	 * Read data port to reset things, and then free the irq
 	 */
-	(void) serial_in(up, UART_RX);
+	if (serial_in(up, UART_LSR) & UART_LSR_DR)
+		(void) serial_in(up, UART_RX);
 	if (up->use_dma) {
 		int tmp;
 		if (up->is_buf_dma_alloced) {
