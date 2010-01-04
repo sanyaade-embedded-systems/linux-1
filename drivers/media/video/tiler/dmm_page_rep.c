@@ -14,26 +14,13 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#include <linux/vmalloc.h>
-#include <linux/mm.h>      /* vmalloc_to_page */
-#include <linux/mmzone.h>  /* __page_to_phys */
-#include "dmm_prv.h"
-
-#define __NEWCODE__
-
-#ifdef __NEWCODE__
+#include <linux/mm.h>
+#include <linux/mmzone.h>
 #include <asm/cacheflush.h>
 #include <linux/mutex.h>
+#include "dmm_prv.h"
 
 static struct mutex mtx;
-#endif
-
-#define __KERN_TO_ALLOC__
-
-#ifndef __KERN_TO_ALLOC__
-#define BASE_MEM_ADDR 0x98000000
-static unsigned long page_addr;
-#endif
 
 #ifdef CHECK_STACK
 #define lajosdump(x) printk(KERN_NOTICE "%s::%s():%d: %s=%p\n",\
@@ -79,8 +66,6 @@ static void check_stack(struct dmmPhysPgLLT *stack, char *prefix, int line)
 }
 #endif
 
-/*--------function prototypes ---------------------------------*/
-
 /* ========================================================================== */
 /**
  *  dmmPhysPageRepRefil()
@@ -96,29 +81,25 @@ static void check_stack(struct dmmPhysPgLLT *stack, char *prefix, int line)
  * @see
  */
 /* ========================================================================== */
-void dmm_phys_page_rep_refil(void)
+enum errorCodeT dmm_phys_page_rep_refil(void)
 {
 	unsigned long iter;
+	struct page *page = NULL;
 
-	tilerdump(__LINE__);
 	for (iter = 0; iter < DMM_MNGD_PHYS_PAGES; iter++) {
-		struct dmmPhysPgLLT *tmpPgNode = kmalloc
-				(sizeof(struct dmmPhysPgLLT), GFP_KERNEL);
+		struct dmmPhysPgLLT *tmpPgNode = NULL;
+
+		tmpPgNode = kmalloc(sizeof(struct dmmPhysPgLLT), GFP_KERNEL);
+		if (!tmpPgNode)
+			return DMM_SYS_ERROR;
 		memset(tmpPgNode, 0x0, sizeof(struct dmmPhysPgLLT));
 
 		if (tmpPgNode != NULL) {
-
 			tmpPgNode->nextPhysPg = NULL;
 			tmpPgNode->prevPhysPg = NULL;
-#ifndef __NEWCODE__
-			tmpPgNode->physPgPtr =
-				(unsigned long *)__get_free_page(
-							GFP_KERNEL | GFP_DMA);
-#else
-#ifdef __KERN_TO_ALLOC__
-			struct page *page = NULL;
-
 			page = (struct page *)alloc_page(GFP_KERNEL | GFP_DMA);
+			if (!page)
+				return DMM_SYS_ERROR;
 			tmpPgNode->physPgPtr =
 					(unsigned long *)page_to_phys(page);
 			tmpPgNode->page_addr = page;
@@ -126,11 +107,6 @@ void dmm_phys_page_rep_refil(void)
 					(void *)page_address(page) + 0x1000);
 			outer_flush_range((unsigned long)tmpPgNode->physPgPtr,
 				(unsigned long)tmpPgNode->physPgPtr +  0x1000);
-#else
-			tmpPgNode->physPgPtr = (unsigned long *)page_addr;
-			page_addr += 0x1000;
-#endif
-#endif
 
 			/* add to end */
 			if (freePagesStack != NULL) {
@@ -150,6 +126,7 @@ void dmm_phys_page_rep_refil(void)
 #ifdef CHECK_STACK
 	check_stack(freePagesStack, "free: ", __LINE__);
 #endif
+	return DMM_NO_ERROR;
 }
 
 /* ========================================================================== */
@@ -169,24 +146,18 @@ void dmm_phys_page_rep_refil(void)
 /* ========================================================================== */
 enum errorCodeT dmm_phys_page_rep_init(void)
 {
+	int r = DMM_SYS_ERROR;
 	mutex_init(&mtx);
-	/* DMM_ENTER_CRITICAL_SECTION */
 	mutex_lock(&mtx);
 
 	freePagesStack = NULL;
 	usedPagesStack = NULL;
-
 	freePageCnt = 0;
 
-#ifndef __KERN_TO_ALLOC__
-	page_addr = BASE_MEM_ADDR;
-#endif
+	r = dmm_phys_page_rep_refil();
 
-	dmm_phys_page_rep_refil();
-
-	/* DMM_EXIT_CRITICAL_SETCTION */
 	mutex_unlock(&mtx);
-	return DMM_NO_ERROR;
+	return r;
 }
 
 /* ========================================================================== */
@@ -207,43 +178,26 @@ enum errorCodeT dmm_phys_page_rep_init(void)
 /* ========================================================================== */
 enum errorCodeT dmm_phys_page_rep_deinit(void)
 {
-	/* DMM_ENTER_CRITICAL_SECTION */
-	mutex_lock(&mtx);
 	struct dmmPhysPgLLT *tmpPgNode = NULL;
+
+	mutex_lock(&mtx);
 
 	while (usedPagesStack != NULL) {
 		tmpPgNode = usedPagesStack->prevPhysPg;
-#ifndef __NEWCODE__
-		free_page((unsigned long)usedPagesStack->physPgPtr);
-		kfree(usedPagesStack);
-#else
-#ifdef __KERN_TO_ALLOC__
 		__free_page(usedPagesStack->page_addr);
-#else
-#endif
 		kfree(usedPagesStack);
-#endif
 		usedPagesStack = tmpPgNode;
 	}
 
 	while (freePagesStack != NULL) {
 		tmpPgNode = freePagesStack->prevPhysPg;
-#ifndef __NEWCODE__
-		free_page((unsigned long)freePagesStack->physPgPtr);
-		kfree(freePagesStack);
-#else
-#ifdef __KERN_TO_ALLOC__
 		__free_page(freePagesStack->page_addr);
-#else
-#endif
 		kfree(freePagesStack);
-#endif
 		freePagesStack = tmpPgNode;
 	}
 
 	freePageCnt = 0;
 
-	/* DMM_EXIT_CRITICAL_SETCTION */
 	mutex_unlock(&mtx);
 	mutex_destroy(&mtx);
 	return DMM_NO_ERROR;
@@ -267,12 +221,15 @@ enum errorCodeT dmm_phys_page_rep_deinit(void)
 unsigned long *dmm_get_phys_page(void)
 {
 	unsigned long *physPgPtr = NULL;
+	int r = -1;
 
-	/* DMM_ENTER_CRITICAL_SECTION */
 	mutex_lock(&mtx);
 
-	if (freePagesStack == NULL)
-		dmm_phys_page_rep_refil();
+	if (freePagesStack == NULL) {
+		r = dmm_phys_page_rep_refil();
+		if (r != DMM_NO_ERROR)
+			return NULL;
+	}
 
 	if (freePagesStack != NULL) {
 		struct dmmPhysPgLLT *tmpPgNode = freePagesStack;
@@ -302,7 +259,6 @@ unsigned long *dmm_get_phys_page(void)
 	check_stack(freePagesStack, "free: ", __LINE__);
 	check_stack(usedPagesStack, "used: ", __LINE__);
 #endif
-	/* DMM_EXIT_CRITICAL_SETCTION */
 	mutex_unlock(&mtx);
 	return physPgPtr;
 }
@@ -329,7 +285,6 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 {
 	struct dmmPhysPgLLT *iterPgNode = usedPagesStack;
 
-	/* DMM_ENTER_CRITICAL_SECTION */
 	mutex_lock(&mtx);
 
 	while (iterPgNode != NULL) {
@@ -349,7 +304,6 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 			} else if (iterPgNode == usedPagesStack) {
 				usedPagesStack = usedPagesStack->prevPhysPg;
 			} else {
-				/* DMM_EXIT_CRITICAL_SETCTION */
 				mutex_unlock(&mtx);
 				lajosdump(iterPgNode);
 				return DMM_SYS_ERROR;
@@ -365,23 +319,13 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 			while (freePageCnt > DMM_MNGD_PHYS_PAGES &&
 						freePagesStack != NULL) {
 				iterPgNode = freePagesStack->prevPhysPg;
-#ifndef __NEWCODE__
-				free_page((unsigned long)
-						freePagesStack->physPgPtr);
-				kfree(freePagesStack);
-#else
-#ifdef __KERN_TO_ALLOC__
 				__free_page(freePagesStack->page_addr);
-#else
-#endif
 				kfree(freePagesStack);
-#endif
 				freePagesStack = iterPgNode;
 				freePageCnt--;
 			}
 			freePagesStack->nextPhysPg = NULL;
 
-			/* DMM_EXIT_CRITICAL_SETCTION */
 			mutex_unlock(&mtx);
 #ifdef CHECK_STACK
 			check_stack(freePagesStack, "free: ", __LINE__);
@@ -393,7 +337,6 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 		iterPgNode = iterPgNode->prevPhysPg;
 	}
 
-	/* DMM_EXIT_CRITICAL_SETCTION */
 	mutex_unlock(&mtx);
 #ifdef CHECK_STACK
 	check_stack(freePagesStack, "free: ", __LINE__);

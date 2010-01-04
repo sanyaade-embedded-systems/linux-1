@@ -1,73 +1,30 @@
-/* =============================================================================
-*             Texas Instruments OMAP(TM) Platform Software
-*  (c) Copyright 2009, Texas Instruments Incorporated.  All Rights Reserved.
-*
-*  Use of this software is controlled by the terms and conditions found
-*  in the license agreement under which this software has been supplied.
-* =========================================================================== */
-/**
-* @file dmm_2D_alloc.c
-*
-* Two dimensional allocation algorithm implementation file.
-*
-* @path WTSD_DucatiMMSW/drivers/drv_dmm/src
-*
-* @rev 00.02
-*/
-/* -------------------------------------------------------------------------- */
-/* ----------------------------------------------------------------------------
-*!
-*! Revision History
-*! ===================================
-*! 19-02-2009 Andreev: created.
-*! 27-03-2009 Andreev: bug fixes.
-*!
-* =========================================================================== */
+/*
+ * dmm_2d_alloc.c
+ *
+ * DMM driver support functions for TI OMAP processors.
+ *
+ * Copyright (C) 2009-2010 Texas Instruments, Inc.
+ *
+ * This package is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
+ * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+ */
 
-/* User code goes here */
-/* ------compilation control switches --------------------------------------- */
-/****************************************************************
- * INCLUDE FILES
- ***************************************************************/
-/* ----- system and platform files ----------------------------*/
-/*-------program files ----------------------------------------*/
 #include <linux/module.h>
-#include <linux/vmalloc.h>
-#include <linux/mm.h>      /* vmalloc_to_page */
-#include <linux/mmzone.h>  /* __page_to_phys */
+#include <linux/mm.h>
+#include <linux/mmzone.h>
+#include <linux/io.h>
+#include <linux/dma-mapping.h>
+#include <linux/hardirq.h>
 #include "dmm_def.h"
 #include "dmm_2d_alloc.h"
 #include "dmm_prv.h"
 
-#define __NEWCODE__
-
-#ifdef __NEWCODE__
-#include <linux/io.h>
-#include <linux/dma-mapping.h>
-#include <linux/hardirq.h>
-#endif
-
-/****************************************************************
-*  EXTERNAL REFERENCES NOTE: only use if not found in header file
-****************************************************************/
-/*--------data declarations -----------------------------------*/
-/*--------function prototypes ---------------------------------*/
-
-/****************************************************************
-*  PUBLIC DECLARATIONS Defined here, used elsewhere
-****************************************************************/
-/*--------data declarations -----------------------------------*/
-/*--------function prototypes ---------------------------------*/
-
-/****************************************************************
-*  PRIVATE DECLARATIONS Defined here, used only here
-****************************************************************/
-/*--------macros ----------------------------------------------*/
-/*--------data declarations -----------------------------------*/
-/*--------function prototypes ---------------------------------*/
-#define DMM_ASSERT_BREAK tilerdump(__LINE__); while (1);
-#define DMM_ENTER_CRITICAL_SECTION()
-#define DMM_EXIT_CRITICAL_SETCTION
+#define DMM_ASSERT_BREAK printk(KERN_ERR "DMM Assert(Fail)\n"); while (1);
 
 /* ========================================================================== */
 /**
@@ -1100,7 +1057,6 @@ enum MSP_BOOL area_fit_to_left(struct dmmTILERContPageAreaT *areaReq,
 
 	if (X >= 0 && X <= tlrCtx->contSizeX && Y >= 0 && Y <=
 							tlrCtx->contSizeY) {
-		tilerdump(__LINE__);
 		while (Y <= atchAr->y1) {
 			anchorY = Y;
 			if (1 == point_free_test(tlrCtx, X, Y, &areaHit)) {
@@ -1164,7 +1120,6 @@ enum MSP_BOOL area_fit_to_left(struct dmmTILERContPageAreaT *areaReq,
 			}
 		}
 	}
-	tilerdump(__LINE__);
 	return fit;
 }
 
@@ -1215,7 +1170,6 @@ enum MSP_BOOL area_fit_to_right(struct dmmTILERContPageAreaT *areaReq,
 
 	if (X >= 0 && X <= tlrCtx->contSizeX && Y >= 0 && Y <=
 							tlrCtx->contSizeY) {
-		tilerdump(__LINE__);
 		while (Y <= atchAr->y1) {
 			anchorY = Y;
 			if (1 == point_free_test(tlrCtx, X, Y, &areaHit)) {
@@ -1280,7 +1234,6 @@ enum MSP_BOOL area_fit_to_right(struct dmmTILERContPageAreaT *areaReq,
 			}
 		}
 	}
-	tilerdump(__LINE__);
 	return fit;
 }
 
@@ -1331,7 +1284,6 @@ enum MSP_BOOL area_fit_to_top(struct dmmTILERContPageAreaT *areaReq,
 
 	if (X >= 0 && X < tlrCtx->contSizeX && Y >= 0 &&
 							Y < tlrCtx->contSizeY) {
-		tilerdump(__LINE__);
 		while (X <= atchAr->x1) {
 			anchorX = X;
 			if (1 == point_free_test(tlrCtx, X, Y, &areaHit)) {
@@ -1395,7 +1347,6 @@ enum MSP_BOOL area_fit_to_top(struct dmmTILERContPageAreaT *areaReq,
 			}
 		}
 	}
-	tilerdump(__LINE__);
 	return fit;
 }
 
@@ -1446,7 +1397,6 @@ enum MSP_BOOL area_fit_to_bottom(struct dmmTILERContPageAreaT *areaReq,
 
 	if (X >= 0 && X < tlrCtx->contSizeX && Y >= 0 &&
 							Y < tlrCtx->contSizeY) {
-		tilerdump(__LINE__);
 		while (X <= atchAr->x1) {
 			if (1 == point_free_test(tlrCtx, X, Y, &areaHit)) {
 				anchorX = X;
@@ -1510,7 +1460,6 @@ enum MSP_BOOL area_fit_to_bottom(struct dmmTILERContPageAreaT *areaReq,
 			}
 		}
 	}
-	tilerdump(__LINE__);
 	return fit;
 }
 
@@ -1548,32 +1497,26 @@ alloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 	dmmTilerCtx->tmpArSelect.ttlExpndAr.x1 = dmmTilerCtx->contSizeX - 1;
 	dmmTilerCtx->tmpArSelect.ttlExpndAr.y1 = dmmTilerCtx->contSizeY - 1;
 
-	/* DMM_ENTER_CRITICAL_SECTION(); */
 	mutex_lock(&dmmTilerCtx->mtx);
-	tilerdump(__LINE__);
 	if (usedIter != NULL) {
 		int fit = 0;
 		while (usedIter != NULL) {
-			tilerdump(__LINE__);
 			fit |= area_fit_to_top(areaReq,
 				&(usedIter->pgAr), dmmTilerCtx);
-			tilerdump(__LINE__);
 			fit |= area_fit_to_right(areaReq,
 				&(usedIter->pgAr), dmmTilerCtx);
-			tilerdump(__LINE__);
 			fit |= area_fit_to_bottom(areaReq,
 				&(usedIter->pgAr), dmmTilerCtx);
-			tilerdump(__LINE__);
 			fit |= area_fit_to_left(areaReq,
 				&(usedIter->pgAr), dmmTilerCtx);
-			tilerdump(__LINE__);
 			usedIter = usedIter->pgArNext;
 		}
 
 		if (fit > 0) {
-			tilerdump(dmmTilerCtx);
 			allocatedArea = kmalloc
 			(sizeof(struct dmmTILERContPageLstT), GFP_KERNEL);
+			if (!allocatedArea)
+				return NULL;
 			memset(allocatedArea, 0x0,
 					sizeof(struct dmmTILERContPageLstT));
 			allocatedArea->pgAr.x0 =
@@ -1594,13 +1537,13 @@ alloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 			while (usedIter->pgArNext != NULL)
 				usedIter = usedIter->pgArNext;
 
-			tilerdump(allocatedArea);
 			usedIter->pgArNext = allocatedArea;
 		}
 	} else {
-		tilerdump(__LINE__);
 		allocatedArea = kmalloc
 			(sizeof(struct dmmTILERContPageLstT), GFP_KERNEL);
+		if (!allocatedArea)
+			return NULL;
 		memset(allocatedArea, 0x0, sizeof(struct dmmTILERContPageLstT));
 		allocatedArea->pgAr.x0 = 0;
 		allocatedArea->pgAr.y0 = 0;
@@ -1609,21 +1552,15 @@ alloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 		allocatedArea->pgAr.fitToSide = PSA_BOTTOM;
 		allocatedArea->anchrAr = NULL;
 		allocatedArea->pgArNext = NULL;
-
-		tilerdump(allocatedArea);
 		dmmTilerCtx->usdArList = allocatedArea;
 	}
 
-	/* DMM_EXIT_CRITICAL_SETCTION */
 	mutex_unlock(&dmmTilerCtx->mtx);
 
-	if (allocatedArea == NULL) {
-		tilerdump(__LINE__);
+	if (allocatedArea == NULL)
 		return NULL;
-	} else {
-		tilerdump(&(allocatedArea->pgAr));
+	else
 		return &(allocatedArea->pgAr);
-	}
 }
 
 /* ========================================================================== */
@@ -1652,18 +1589,15 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 	struct dmmTILERContPageLstT *usedIter;
 	struct dmmTILERContPageLstT *usedPrev;
 
-	/* DMM_ENTER_CRITICAL_SECTION(); */
 	mutex_lock(&dmmTilerCtx->mtx);
 
 	delItm = NULL;
 	usedIter = dmmTilerCtx->usdArList;
 	usedPrev = NULL;
 
-	tilerdump(__LINE__);
 	while (usedIter != NULL) {
 		if (areaRem->x0 == usedIter->pgAr.x0 &&
 				areaRem->y0 == usedIter->pgAr.y0) {
-			tilerdump(__LINE__);
 			delItm = usedIter;
 			if (usedPrev != NULL)
 				usedPrev->pgArNext = usedIter->pgArNext;
@@ -1678,7 +1612,6 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 		usedIter = usedIter->pgArNext;
 	}
 
-	/* DMM_EXIT_CRITICAL_SETCTION */
 	mutex_unlock(&dmmTilerCtx->mtx);
 
 	if (delItm != NULL) {
@@ -1686,13 +1619,11 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 		enum errorCodeT eCode = DMM_NO_ERROR;
 		unsigned long numPages = 0x0;
 
-		tilerdump(__LINE__);
 		/* If the memory pages are provided by the dmm pages memory
 			pool, then free them. Otherwise leave them for the user
 			to free them.
 		*/
 		if (delItm->pgAr.patCustomPages == MSP_FALSE) {
-			tilerdump(__LINE__);
 			numPages = (delItm->pgAr.x1 - delItm->pgAr.x0 + 1)*
 				(delItm->pgAr.y1 - delItm->pgAr.y0 + 1);
 			/* Get the area to free associated physical memory pages
@@ -1707,9 +1638,6 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 			*/
 			for (i = 0;
 				i < numPages && eCode == DMM_NO_ERROR; i++) {
-#ifdef __NEWCODE__
-				debug(i);
-#endif
 				eCode = dmm_free_phys_page(
 					(unsigned long *)
 					(delItm->pgAr.patPageEntries[i]));
@@ -1717,31 +1645,16 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 		}
 
 		if (eCode == DMM_NO_ERROR) {
-			tilerdump(__LINE__);
-#ifndef __NEWCODE__
-			kfree(delItm->pgAr.patPageEntriesSpace);
-			delItm->pgAr.patPageEntries = NULL;
-			delItm->pgAr.patPageEntriesSpace = NULL;
-#else
-			debug(__LINE__);
-#if 0
-			iounmap(delItm->pgAr.page_list_virt);
-			__free_page(delItm->pgAr.page_list);
-#else
 			dma_free_coherent(NULL, delItm->pgAr.dma_size,
 			delItm->pgAr.dma_va,
 			delItm->pgAr.dma_pa);
-#endif
 			delItm->pgAr.patPageEntries = NULL;
 			delItm->pgAr.patPageEntriesSpace = NULL;
-#endif
 		}
 
-		tilerdump(__LINE__);
 		kfree(delItm);
 		return MSP_TRUE;
 	} else {
-		tilerdump(__LINE__);
 		return MSP_FALSE;
 	}
 }
@@ -1785,13 +1698,11 @@ search_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 	while (usedIter != NULL) {
 		if (usedIter->pgAr.x0 <= X && X <= usedIter->pgAr.x1 &&
 			usedIter->pgAr.y0 <= Y && Y <= usedIter->pgAr.y1) {
-			tilerdump(__LINE__);
 			return &(usedIter->pgAr);
 		}
 
 		usedIter = usedIter->pgArNext;
 	}
 
-	tilerdump(__LINE__);
 	return NULL;
 }

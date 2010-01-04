@@ -17,8 +17,6 @@
 #ifndef _DMM_2D_ALLOC_H
 #define _DMM_2D_ALLOC_H
 
-#define __NEWCODE__
-
 #include <linux/dma-mapping.h>
 
 enum MSP_BOOL {
@@ -46,13 +44,11 @@ struct dmmTILERContPageAreaT {
 	enum SideAffinity fitToSide;
 	int patCustomPages;
 	unsigned long *patPageEntriesSpace;
-#ifdef __NEWCODE__
 	struct page *page_list;
 	unsigned long *page_list_virt;
 	void *dma_va;
 	unsigned long dma_size;
 	dma_addr_t dma_pa;
-#endif
 	unsigned long *patPageEntries;
 };
 
@@ -73,9 +69,7 @@ struct dmmTILERContCtxT {
 	signed long contSizeY;
 	struct dmmTILERContPageLstT *usdArList;
 	struct dmmTILERContPageAreaSpecT tmpArSelect;
-#ifdef __NEWCODE__
 	struct mutex mtx;
-#endif
 };
 
 /* ========================================================================== */

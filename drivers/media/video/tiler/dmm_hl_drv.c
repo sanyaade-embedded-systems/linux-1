@@ -15,344 +15,17 @@
  */
 
 #include <linux/module.h>
-#include <linux/vmalloc.h>
-#include <linux/mm.h>      /* vmalloc_to_page */
-#include <linux/mmzone.h>  /* __page_to_phys */
+#include <linux/mm.h>
+#include <linux/mmzone.h>
+#include <linux/io.h>
+#include <linux/sched.h>
+#include <linux/dma-mapping.h>
+#include <linux/hardirq.h>
+#include <linux/mutex.h>
 #include "dmm_def.h"
 #include "dmm_2d_alloc.h"
 #include "dmm_prv.h"
 #include "tiler.h"
-
-#define __NEWCODE__
-
-#ifdef __NEWCODE__
-#include <linux/io.h>
-#include <linux/sched.h>   /* current->mm */
-#include <linux/dma-mapping.h>
-#include <linux/hardirq.h>
-#include <linux/mutex.h>
-
-
-static unsigned long get_phys_addr(unsigned long arg)
-{
-	pgd_t *pgd = NULL;
-	pmd_t *pmd = NULL;
-	pte_t *ptep = NULL, pte = 0x0;
-	pgd = pgd_offset(current->mm, arg);
-	if (!(pgd_none(*pgd) || pgd_bad(*pgd))) {
-		pmd = pmd_offset(pgd, arg);
-		if (!(pmd_none(*pmd) || pmd_bad(*pmd))) {
-			ptep = pte_offset_map(pmd, arg);
-			if (ptep) {
-				pte = *ptep;
-				if (pte_present(pte)) {
-					return (pte & PAGE_MASK) |
-							(~PAGE_MASK & arg);
-				}
-			}
-		}
-	}
-	return 0x0; /* va not in page table */
-}
-#endif
-
-/* ========================================================================== */
-/**
- *  dmm_module_config()
- *
- * @brief  Configure selected DMM modules.
- *
- * @param tilerConf - dmmTILERConfigLstT* - [in] A NULL termintated linked list
- * of all configurations for the specific DMM module or NULL if not to be
- * configured.
- *
- * @param pegConf - dmmPEGConfigLstT* - [in] A NULL termintated linked list
- * of all configurations for the specific DMM module or NULL if not to be
- * configured.
- *
- * @param lisaConf - dmmLISAConfigLstT* - [in] A NULL termintated linked list
- * of all configurations for the specific DMM module or NULL if not to be
- * configured.
- *
- * @param patEngineConf - dmmPATEngineConfigLstT* - [in] A NULL termintated
- * linked list
- * of all configurations for the specific DMM module or NULL if not to be
- * configured.
- *
- * @param patViewCOnf - dmmPATViewConfigLstT* - [in] A NULL termintated
- * linked list of all configurations for the specific DMM module or NULL if
- * not to be configured.
- *
- * @param patViewMapConf - dmmPATViewMapConfigLstT* - [in] A NULL
- * termintated linked list of all configurations for the specific DMM module
- * or NULL if not to be configured.
- *
- * @param dmmSysConfig - unsigned long* - [in] Clock configuration of DMM,
- * NULL if not to be set.
- *
- * @return errorCodeT
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see errorCodeT, dmmTILERConfigLstT, dmmPEGConfigLstT,
- * dmmLISAConfigLstT, dmmPATEngineConfigLstT, dmmPATViewConfigLstT,
- * dmmPATViewMapConfigLstT for further detail.
- */
-/* ========================================================================== */
-/* DHS */
-enum errorCodeT dmm_module_config(struct dmmTILERConfigLstT *tilerConf,
-				 struct dmmPEGConfigLstT *pegConf,
-				 struct dmmLISAConfigLstT *lisaConf,
-				 struct dmmPATEngineConfigLstT *patEngineConf,
-				 struct dmmPATViewConfigLstT *patViewCOnf,
-				 struct dmmPATViewMapConfigLstT *patViewMapConf,
-				 unsigned long *dmmSysConfig)
-{
-	enum errorCodeT eCode = DMM_NO_ERROR;
-
-	while (tilerConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_tiler_alias_orientation_set(
-				tilerConf->aliasConf.initiatorId,
-				tilerConf->aliasConf.orient);
-		tilerConf = tilerConf->nextConf;
-	}
-
-	while (pegConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_peg_priority_set(pegConf->prioConf.initiatorId,
-					     pegConf->prioConf.prio);
-		pegConf = pegConf->nextConf;
-	}
-
-	while (lisaConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_lisa_memory_map_config(
-				lisaConf->mapConf.lisaMemMapIndx,
-				lisaConf->mapConf.sysAddr,
-				lisaConf->mapConf.sysSize,
-				lisaConf->mapConf.sdrcIntl,
-				lisaConf->mapConf.sdrcAddrspc,
-				lisaConf->mapConf.sdrcMap,
-				lisaConf->mapConf.sdrcAddr);
-		lisaConf = lisaConf->nextConf;
-	}
-
-	while (patEngineConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_refill_engine_config(
-				patEngineConf->engineConf.dmmPatEngineSel,
-				patEngineConf->engineConf.engineMode);
-		patEngineConf = patEngineConf->nextConf;
-	}
-
-	while (patViewCOnf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_view_set(patViewCOnf->aliasViewConf.initiatorId,
-					 patViewCOnf->aliasViewConf.viewIndex);
-		patViewCOnf = patViewCOnf->nextConf;
-	}
-
-	while (patViewMapConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_view_map_config(
-				patViewMapConf->viewConf.patViewMapIndx,
-				patViewMapConf->viewConf.memoryAccessMode,
-				patViewMapConf->viewConf.contX,
-				patViewMapConf->viewConf.transType,
-				patViewMapConf->viewConf.dmmPATViewBase);
-		patViewMapConf = patViewMapConf->nextConf;
-	}
-
-	if (dmmSysConfig != NULL && eCode == DMM_NO_ERROR)
-		eCode = dmm_sys_config_set(*dmmSysConfig);
-
-	return eCode;
-}
-
-/* ========================================================================== */
-/**
- *  dmm_module_get_config()
- *
- * @brief  Read the configuration of selected DMM modules.
- *
- * @param tilerConf - dmmTILERConfigLstT* - [out] A NULL termintated linked list
- * of all configurations for the specific DMM module to be read to.
- *
- * @param pegConf - dmmPEGConfigLstT* - [out] A NULL termintated linked list
- * of all configurations for the specific DMM module to be read to.
- *
- * @param lisaConf - dmmLISAConfigLstT* - [out] A NULL termintated linked list
- * of all configurations for the specific DMM module to be read to.
- *
- * @param patEngineConf - dmmPATEngineConfigLstT* - [out] A NULL termintated
- * linked list of all configurations for the specific DMM module to be read to.
- *
- * @param patViewCOnf - dmmPATViewConfigLstT* - [out] A NULL termintated
- * linked list of all configurations for the specific DMM module to be read to.
- *
- * @param patViewMapConf - dmmPATViewMapConfigLstT* - [out] A NULL
- * termintated linked list of all configurations for the specific DMM module
- * to be read to.
- *
- * @param patAreaStatus - dmmPATStatusLstT* - [out] A NULL termintated
- * linked list of all PAT area status' to be read.
- *
- * @param dmmSysConfig - unsigned long* - [in] Clock configuration of
- * DMM, NULL if not to be read.
- *
- * @return errorCodeT
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see errorCodeT, dmmTILERConfigLstT, dmmPEGConfigLstT,
- * dmmLISAConfigLstT, dmmPATEngineConfigLstT, dmmPATViewConfigLstT,
- * dmmPATViewMapConfigLstT for further detail.
- */
-/* ========================================================================== */
-enum errorCodeT dmm_module_get_config(struct dmmTILERConfigLstT *tilerConf,
-				 struct dmmPEGConfigLstT *pegConf,
-				 struct dmmLISAConfigLstT *lisaConf,
-				 struct dmmPATEngineConfigLstT *patEngineConf,
-				 struct dmmPATViewConfigLstT *patViewCOnf,
-				 struct dmmPATViewMapConfigLstT *patViewMapConf,
-				 struct dmmPATStatusLstT *patAreaStatus,
-				 unsigned long *dmmSysConfig)
-{
-	enum errorCodeT eCode = DMM_NO_ERROR;
-
-	while (tilerConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_tiler_alias_orientation_get(
-				tilerConf->aliasConf.initiatorId,
-				&(tilerConf->aliasConf.orient));
-		tilerConf = tilerConf->nextConf;
-	}
-
-	while (pegConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_peg_priority_get(pegConf->prioConf.initiatorId,
-					     &(pegConf->prioConf.prio));
-		pegConf = pegConf->nextConf;
-	}
-
-	while (lisaConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_lisa_memory_map_config_get(
-				lisaConf->mapConf.lisaMemMapIndx,
-				&(lisaConf->mapConf.sysAddr),
-				&(lisaConf->mapConf.sysSize),
-				&(lisaConf->mapConf.sdrcIntl),
-				&(lisaConf->mapConf.sdrcAddrspc),
-				&(lisaConf->mapConf.sdrcMap),
-				&(lisaConf->mapConf.sdrcAddr));
-		lisaConf = lisaConf->nextConf;
-	}
-
-	while (patEngineConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_refill_engine_config_get(
-				patEngineConf->engineConf.dmmPatEngineSel,
-				&(patEngineConf->engineConf.engineMode));
-		patEngineConf = patEngineConf->nextConf;
-	}
-
-	while (patViewCOnf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_view_get(
-				patViewCOnf->aliasViewConf.initiatorId,
-				&(patViewCOnf->aliasViewConf.viewIndex));
-		patViewCOnf = patViewCOnf->nextConf;
-	}
-
-	while (patViewMapConf != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_view_map_config_get(
-				patViewMapConf->viewConf.patViewMapIndx,
-				patViewMapConf->viewConf.memoryAccessMode,
-				&(patViewMapConf->viewConf.contX),
-				&(patViewMapConf->viewConf.transType),
-				&(patViewMapConf->viewConf.dmmPATViewBase));
-		patViewMapConf = patViewMapConf->nextConf;
-	}
-
-	while (patAreaStatus != NULL && eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_refill_area_status_get(
-				patAreaStatus->areaSelect,
-				&(patAreaStatus->patAreaStatus));
-
-		patAreaStatus = patAreaStatus->nextConf;
-	}
-
-	if (dmmSysConfig != NULL && eCode == DMM_NO_ERROR)
-		eCode = dmm_sys_config_get(dmmSysConfig);
-
-	return eCode;
-}
-
-/* ========================================================================== */
-/**
- *  dmm_pat_irq_config_set()
- *
- * @brief  Configures PAT interrupt masks.
- *
- * @param irqMaskConf - dmmPATIrqConfigLstT* - [in] A NULL termintated linked
- * list of all interrupt masks.
- *
- * @return errorCodeT
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see errorCodeT, dmmPATIrqConfigLstT for further detail.
- */
-/* ========================================================================== */
-/* DHS */
-enum errorCodeT dmm_pat_irq_config_set(struct dmmPATIrqConfigLstT *irqMaskConf)
-{
-	enum errorCodeT eCode = DMM_NO_ERROR;
-
-	while (irqMaskConf != NULL &&  eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_irq_mode_set(&(irqMaskConf->irqConf.irqEvnts));
-		irqMaskConf = irqMaskConf->nextConf;
-	}
-
-	return eCode;
-}
-
-/* ========================================================================== */
-/**
- *  dmm_pat_irq_config_get()
- *
- * @brief  Configures PAT interrupt masks.
- *
- * @param irqMaskConf - dmmPATIrqConfigLstT* - [in/out] A NULL termintated
- * linked list of all interrupt masks.
- *
- * @param irqStatusConf - dmmPATIrqConfigLstT* - [in/out] A NULL termintated
- * linked list of all interrupt statuses to read.
- *
- * @return errorCodeT
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see errorCodeT, dmmPATIrqConfigLstT for further detail.
- */
-/* ========================================================================== */
-enum errorCodeT dmm_pat_irq_config_get(struct dmmPATIrqConfigLstT *irqMaskConf,
-				      struct dmmPATIrqConfigLstT *irqStatusConf)
-{
-	enum errorCodeT eCode = DMM_NO_ERROR;
-
-	while (irqMaskConf != NULL &&  eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_irq_mode_get(&(irqMaskConf->irqConf.irqEvnts));
-		irqMaskConf = irqMaskConf->nextConf;
-	}
-
-	while (irqStatusConf != NULL &&  eCode == DMM_NO_ERROR) {
-		eCode = dmm_pat_irq_status_get(
-				&(irqStatusConf->irqConf.irqEvnts),
-				irqStatusConf->irqConf.clrEvents);
-		irqStatusConf = irqStatusConf->nextConf;
-	}
-
-	return eCode;
-}
 
 /* ========================================================================== */
 /**
@@ -372,7 +45,6 @@ enum errorCodeT dmm_pat_irq_config_get(struct dmmPATIrqConfigLstT *irqMaskConf,
  * @see errorCodeT, dmmTILERContPageAreaT for further detail.
  */
 /* ========================================================================== */
-/* DHS */
 enum errorCodeT dmm_pat_start_refill(
 	struct dmmTILERContPageAreaT *bufferMappedZone)
 {
@@ -392,18 +64,8 @@ enum errorCodeT dmm_pat_start_refill(
 	areaDesc.ctrl.sync = 0;
 
 	areaDesc.nextPatEntry = NULL;
-
-#ifndef __NEWCODE__
-	areaDesc.data = (unsigned long)(bufferMappedZone->patPageEntries);
-#else
-#if 0
-	areaDesc.data = (unsigned long)bufferMappedZone->patPageEntriesSpace;
-#else
 	areaDesc.data = (unsigned long)bufferMappedZone->dma_pa;
-#endif
-#endif
 
-	tilerdump(__LINE__);
 	return dmm_pat_area_refill(&areaDesc, 0, MANUAL, 0);
 }
 
@@ -428,7 +90,6 @@ enum errorCodeT dmm_pat_start_refill(
  * @see errorCodeT, dmmTILERContPageAreaT for further detail.
  */
 /* ========================================================================== */
-/* DHS */
 enum errorCodeT dmm_pat_phy2virt_mapping(
 	struct dmmTILERContPageAreaT *bufferMappedZone,
 	void *custmPagesPtr)
@@ -436,72 +97,31 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 	unsigned long bfrPages;
 	enum errorCodeT eCode = DMM_NO_ERROR;
 
-	tilerdump(__LINE__);
 	bfrPages =
 		(bufferMappedZone->xPageCount)*(bufferMappedZone->yPageCount);
 
 	if (bfrPages == 0) {
 		eCode = DMM_SYS_ERROR;
 	} else {
-		tilerdump(__LINE__);
-#ifdef __NEWCODE__
-#if 0
-		unsigned long order = 0x0;
-
-		order = ((bfrPages*4 + 16) + 4095) / 4096;
-
-		order = 5;
-		debug(bfrPages*4 + 16);
-		debug(order);
-
-		bufferMappedZone->page_list = NULL;
-		bufferMappedZone->page_list =
-				(struct page *)alloc_pages(GFP_DMA, order);
-		if (!bufferMappedZone->page_list) {
-			debug(__LINE__); return DMM_SYS_ERROR;
-		}
-		bufferMappedZone->patPageEntriesSpace =
-		(unsigned long *)page_to_phys(bufferMappedZone->page_list);
-
-		bufferMappedZone->page_list_virt =
-		ioremap((unsigned long)bufferMappedZone->patPageEntriesSpace,
-		0x1000 * 32); /* TODO: don't forget to unmap later */
-
-		bufferMappedZone->patPageEntries =
-					bufferMappedZone->page_list_virt;
-		memset(bufferMappedZone->patPageEntries, 0x0, 0x1000 * 32);
-		bufferMappedZone->patPageEntries =
-			(unsigned long *)((((unsigned long)
-				bufferMappedZone->patPageEntries) + 15) & ~15);
-#else
 		bufferMappedZone->dma_size = bfrPages*4+16;
 
 		bufferMappedZone->dma_va =
 			dma_alloc_coherent(NULL, bufferMappedZone->dma_size,
-			&(bufferMappedZone->dma_pa),
-			(in_atomic()) ? GFP_ATOMIC : GFP_KERNEL);
+			&(bufferMappedZone->dma_pa), GFP_ATOMIC);
+		if (!bufferMappedZone->dma_va)
+			return DMM_SYS_ERROR;
 
 		memset(bufferMappedZone->dma_va,
 			0x0, bufferMappedZone->dma_size);
 		bufferMappedZone->patPageEntries =
 			(unsigned long *)((((unsigned long)
 				bufferMappedZone->dma_va) + 15) & ~15);
-#endif
-#endif
 
-#ifndef __NEWCODE__
-		if (dmm_tiler_populate_pat_page_entry_data(bfrPages,
-				&(bufferMappedZone->patPageEntries),
-				&(bufferMappedZone->patPageEntriesSpace),
-				custmPagesPtr
-							  ) != DMM_NO_ERROR) {
-#else
 		if (dmm_tiler_populate_pat_page_entry_data(bfrPages,
 				NULL,
 				NULL,
 				(void *)bufferMappedZone->patPageEntries
 							  ) != DMM_NO_ERROR) {
-#endif
 			eCode = DMM_SYS_ERROR;
 			return eCode;
 		}
@@ -510,7 +130,6 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 			bufferMappedZone->patCustomPages = 1;
 		else
 			bufferMappedZone->patCustomPages = 0;
-		tilerdump(__LINE__);
 		eCode = dmm_pat_start_refill(bufferMappedZone);
 	}
 
@@ -552,137 +171,14 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 	signed long iter;
 	unsigned long *patAreaEntries = NULL;
 
-	tilerdump(__LINE__);
-
-#ifndef __NEWCODE__
-	patAreaEntries = kmalloc(
-		(numPages*4 + 16), GFP_KERNEL);
-		/* Must be 16-byte aligned. */
-	memset(patAreaEntries, 0x0, (numPages*4 + 16));
-	*pageEntriesSpace = patAreaEntries;
-#else
-
-#if 0 /* move to caller */
-	struct page *page = NULL;
-	unsigned long *ioaddr = NULL;
-	unsigned long pa = 0x0;
-	unsigned long order = 0x0;
-
-	order = ((numPages*4 + 16) + 4095) / 4096;
-	debug(numPages*4 + 16);
-	debug(order);
-
-	/* page = (struct page *)alloc_page(GFP_DMA); */
-	/*pa = page_to_phys(page);*/
-	/*ioaddr = ioremap(pa, 0x1000);*/
-	/*memset(ioaddr, 0x0, 0x1000);*/
-
-	page = (struct page *)alloc_pages(GFP_DMA, order);
-	if (!page)
-		return DMM_SYS_ERROR;
-	pa = page_to_phys(page);
-	ioaddr = ioremap(pa, 0x1000 * order);
-	memset(ioaddr, 0x0, 0x1000 * order);
-
-	patAreaEntries = ioaddr;
-	*pageEntriesSpace = (unsigned long *)pa;
-	debug(*pageEntriesSpace);
-	debug(patAreaEntries);
-#endif
-
-#if 0 /* not a good solution to use vmalloc */
-	patAreaEntries = (unsigned long *)vmalloc(numPages*4 + 16);
-	memset(patAreaEntries, 0x0, numPages*4 + 16);
-	*pageEntriesSpace = patAreaEntries;
-
-	debug(*pageEntriesSpace);
-	debug(patAreaEntries);
-
-	/* test different allocation methods */
-	unsigned long mem = 0x0;
-	struct page *pg = NULL;
-	unsigned long *io = NULL;
-
-	pg = alloc_page(GFP_DMA);
-	mem = page_to_phys(pg);
-	io = ioremap(mem, 0x1000);
-	memset(io, 0x0, 0x1000);
-	debug(pg);
-	debug(mem);
-	debug(get_phys_addr(mem));
-	debug(io);
-	iounmap(io);
-	__free_page(pg);
-
-	mem = (unsigned long)kmalloc(0x1000, GFP_DMA);
-	debug(mem);
-	debug(get_phys_addr(mem));
-	memset((unsigned long *)mem, 0x0, 0x1000);
-	kfree((void *)mem);
-
-	mem = (unsigned long)vmalloc(0x1000);
-	debug(mem);
-	debug(get_phys_addr(mem));
-	memset((unsigned long *)mem, 0x0, 0x1000);
-	vfree((void *)mem);
-
-	mem = __get_free_page(GFP_DMA);
-	debug(mem);
-	debug(get_phys_addr(mem));
-	memset((unsigned long *)mem, 0x0, 0x1000);
-	free_page(mem);
-#endif
-#endif
-
-#ifndef __NEWCODE__
-	patAreaEntries = (unsigned long *)
-				((((unsigned long)patAreaEntries) + 15) & ~15);
-#else
 	patAreaEntries = (unsigned long *)custmPagesPtr;
-#endif
 
-
-#ifdef __NEWCODE__
-	debug(patAreaEntries);
-	debug(numPages);
-#endif
-
-#ifndef __NEWCODE__
-	if (custmPagesPtr == NULL) {
-		for (iter = 0; iter < numPages; iter++) {
-			patAreaEntries[iter] =
-					(unsigned long)dmm_get_phys_page();
-			if (patAreaEntries[iter] == 0x0)
-				return DMM_SYS_ERROR;
-		}
-		dsb();
-	} else {
-		for (iter = 0; iter < numPages; iter++) {
-			patAreaEntries[iter] = (unsigned long)
-				(((unsigned long *)custmPagesPtr)[iter]);
-		}
-	}
-#else
-/* using custmPagesPtr arguement in a diffent way, so remove the conditions */
 	for (iter = 0; iter < numPages; iter++) {
 		patAreaEntries[iter] =
 				(unsigned long)dmm_get_phys_page();
 		if (patAreaEntries[iter] == 0x0)
 			return DMM_SYS_ERROR;
 	}
-#endif
-
-#ifdef __NEWCODE__
-	debug(__LINE__);
-	debug(patAreaEntries[0]);
-	debug(patAreaEntries[1]);
-	debug(patAreaEntries[2]);
-	debug(patAreaEntries[3]);
-#endif
-
-#ifndef __NEWCODE__
-	*pageEntries = patAreaEntries;
-#endif
 
 	return DMM_NO_ERROR;
 }
@@ -787,7 +283,6 @@ enum errorCodeT dmm_tiler_swap_pat_page_entry_data(unsigned long numPages,
  * @see errorCodeT, dmmMemoryAccessT, dmmTILERContPageAreaT for further detail.
  */
 /* ========================================================================== */
-/* DHS */
 enum errorCodeT dmm_tiler_container_map_area(
 	struct dmmTILERContCtxT *dmmTilerCtx,
 	unsigned long sizeWidth,
@@ -805,7 +300,6 @@ enum errorCodeT dmm_tiler_container_map_area(
 	unsigned long addrShiftAlign = 0;
 	unsigned short tiled_pages_per_ss_page = 0;
 
-	tilerdump(__LINE__);
 	switch (contMod) {
 	case MODE_8_BIT:
 		accessMode = 0;
@@ -872,7 +366,6 @@ enum errorCodeT dmm_tiler_container_map_area(
 	tiled_pages_per_ss_page = 64;
 	areaRequest.x1 = ((areaRequest.x1 + tiled_pages_per_ss_page) &
 			  ~(tiled_pages_per_ss_page - 1)) - 1;
-	tilerdump(__LINE__);
 
 	if (areaRequest.x1 > dmmTilerCtx->contSizeX ||
 			areaRequest.y1 > dmmTilerCtx->contSizeY) {
@@ -893,9 +386,7 @@ enum errorCodeT dmm_tiler_container_map_area(
 	}
 
 	/* DBG_OVERLAP_TEST(dmmTilerCtx); */
-	tilerdump(__LINE__);
 	if (eCode == DMM_NO_ERROR) {
-		tilerdump(__LINE__);
 		if (accessMode == 0) {
 			*allocedPtr =
 				DMM_COMPOSE_TILER_ALIAS_PTR(
@@ -913,9 +404,7 @@ enum errorCodeT dmm_tiler_container_map_area(
 				(((*bufferMappedZone)->x0 << 7) |
 				((*bufferMappedZone)->y0 << 20)), accessMode);
 		}
-		tilerdump(__LINE__);
 	} else {
-		tilerdump(__LINE__);
 		*allocedPtr = NULL;
 	}
 	return eCode;
@@ -941,7 +430,6 @@ enum errorCodeT dmm_tiler_container_map_area(
  * @see errorCodeT, dmmTILERContPageAreaT for further detail.
  */
 /* ========================================================================== */
-/* DHS */
 enum errorCodeT dmm_tiler_container_unmap_area(
 	struct dmmTILERContCtxT *dmmTilerCtx,
 	struct dmmTILERContPageAreaT *bufferMappedZone)
@@ -972,7 +460,6 @@ enum errorCodeT dmm_tiler_container_unmap_area(
  * @see dmmTILERContPageAreaT for further detail.
  */
 /* ========================================================================== */
-/* DHS */
 struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
 	struct dmmTILERContCtxT *dmmTilerCtx, void *sysPtr) {
 	unsigned long X;
@@ -980,11 +467,9 @@ struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
 	enum dmmMemoryAccessT accessModeM;
 	struct dmmTILERContPageAreaT *found = NULL;
 
-	tilerdump(sysPtr);
 	accessModeM = DMM_GET_ACC_MODE(sysPtr);
 
 	if (DMM_GET_ROTATED(sysPtr) == 0) {
-		tilerdump(__LINE__);
 		if (accessModeM == MODE_PAGE) {
 			X = ((long)sysPtr & 0x7FFFFFF) >> 12;
 			Y = X / 256;
@@ -992,42 +477,30 @@ struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
 		} else if (accessModeM == MODE_8_BIT) {
 			X = DMM_HOR_X_PAGE_COOR_GET_8(sysPtr);
 			Y = DMM_HOR_Y_PAGE_COOR_GET_8(sysPtr);
-			tilerdump(__LINE__);
 		} else if (accessModeM == MODE_16_BIT) {
-			tilerdump(__LINE__);
 			X = DMM_HOR_X_PAGE_COOR_GET_16(sysPtr);
 			Y = DMM_HOR_Y_PAGE_COOR_GET_16(sysPtr);
 		} else if (accessModeM == MODE_32_BIT) {
-			tilerdump(__LINE__);
 			X = DMM_HOR_X_PAGE_COOR_GET_32(sysPtr);
 			Y = DMM_HOR_Y_PAGE_COOR_GET_32(sysPtr);
 		}
 	} else {
-		tilerdump(__LINE__);
 		if (accessModeM == MODE_PAGE) {
 			X = ((long)sysPtr & 0x7FFFFFF) >> 12;
 			Y = X / 256;
 			X = X & 255;
 		} else if (accessModeM == MODE_8_BIT) {
-			tilerdump(__LINE__);
 			X = DMM_VER_X_PAGE_COOR_GET_8(sysPtr);
 			Y = DMM_VER_Y_PAGE_COOR_GET_8(sysPtr);
 		} else if (accessModeM == MODE_16_BIT) {
-			tilerdump(__LINE__);
 			X = DMM_VER_X_PAGE_COOR_GET_16(sysPtr);
 			Y = DMM_VER_Y_PAGE_COOR_GET_16(sysPtr);
 		} else if (accessModeM == MODE_32_BIT) {
-			tilerdump(__LINE__);
 			X = DMM_VER_X_PAGE_COOR_GET_32(sysPtr);
 			Y = DMM_VER_Y_PAGE_COOR_GET_32(sysPtr);
 		}
 	}
 
-	tilerdump(dmmTilerCtx);
-	tilerdump(X);
-	tilerdump(Y);
-	tilerdump(DMM_GET_X_INVERTED(sysPtr));
-	tilerdump(DMM_GET_Y_INVERTED(sysPtr));
 	/* printk(KERN_ERR " ? %p => x=%ld,y=%ld\n", sysPtr, X, Y); */
 	found = search_2d_area(dmmTilerCtx, X, Y, DMM_GET_X_INVERTED(sysPtr),
 						DMM_GET_Y_INVERTED(sysPtr));
@@ -1079,8 +552,6 @@ int dmm_instance_init(void *dmmInstanceCtxPtr,
 		&((struct dmmInstanceCtxT *)dmmInstanceCtxPtr)->dmmTilerCtx;
 	struct dmmHwdCtxT *dmmHwdCtx =
 		&((struct dmmInstanceCtxT *)dmmInstanceCtxPtr)->dmmHwdCtx;
-	/* struct MSP_Dmm_eventNotificationT * dmmMspCtx =
-	&((struct dmmInstanceCtxT*)dmmInstanceCtxPtr)->dmmMspCtx; */
 
 	if (contXSize > 256 || contYSize > 128)
 		return 0;
@@ -1099,19 +570,10 @@ int dmm_instance_init(void *dmmInstanceCtxPtr,
 		dmmTilerCtx->contSizeY = contYSize;
 		mutex_init(&dmmTilerCtx->mtx);
 
-		/* Hwi_Params_init (&dmmHwdCtx->dmmIrqIntParams); */
-		/* dmmHwdCtx->dmmIrqIntHandle =
-		Hwi_create (DMM_PAT_AREA_IRQ, dmmPatIrqHandler,
-		&dmmHwdCtx->dmmIrqIntParams, NULL); */
-
 		dmmHwdCtx->patIrqEvnt0.irqAreaSelect = 0;
 		dmmHwdCtx->patIrqEvnt1.irqAreaSelect = 1;
 		dmmHwdCtx->patIrqEvnt2.irqAreaSelect = 2;
 		dmmHwdCtx->patIrqEvnt3.irqAreaSelect = 3;
-
-		/* dmmMspCtx->hMSP = hMSP; */
-		/* dmmMspCtx->usrAppData = usrAppData; */
-		/* dmmMspCtx->usrCallback = usrCallback; */
 
 		if (dmm_phys_page_rep_init() != DMM_NO_ERROR)
 			return 0;
@@ -1176,28 +638,6 @@ int dmm_instance_deinit(void *dmmInstanceCtxPtr)
 	}
 
 	return 1;
-}
-
-/* ========================================================================== */
-/**
-* dmm_pat_irq_handler()
-*
-* @brief  Interrupt handler for PAT area status updates.
-*
-* @param data - UArg -
-*
-* @return none
-*
-* @pre There is no pre conditions.
-*
-* @post There is no post conditions.
-*
-* @see
-*
-*/
-/* ========================================================================== */
-void dmm_pat_irq_handler(unsigned long data)
-{
 }
 
 /* ========================================================================== */

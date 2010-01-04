@@ -24,6 +24,6 @@
 
 #define BITFIELD BITFIELD_32
 
-extern unsigned long *dmm_virt_base_addr;
+extern void *dmm_base;
 #endif
 

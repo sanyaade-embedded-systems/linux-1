@@ -21,17 +21,10 @@
 #include "dmm_drv.h"
 #include "dmm_reg.h"
 
-#define __NEWCODE__
-#ifdef __NEWCODE__
-
 #if 0
-#define debug(x) printk(KERN_NOTICE "%s()::%d:%s=(0x%08x)\n", \
-				__func__, __LINE__, #x, (int)x);
-
 #define regdump(x, y) printk(KERN_NOTICE "%s()::%d:%s=(0x%08x)\n", \
 				__func__, __LINE__, x, (int)y);
 #else
-#define debug(x)
 #define regdump(x, y)
 #endif
 
@@ -69,25 +62,11 @@
 #define PEG_HWINFO        0x608
 #define PEG_PRIO          0x620
 #define PEG_PRIO_PAT      0x640
-#endif
-
-#undef __DEBUG__
-
-#ifdef __DEBUG__
-#define tilerdump(x) printk(KERN_NOTICE "%s():%s=(0x%08x)\n", \
-				__func__, #x, (int)x);
-#else
-#define tilerdump(x)
-#endif
 
 #define DMM__DMM    DMM__DMM
 #define DMM_PAT_AREA_IRQ (0)
 
-#ifndef __NEWCODE__
-#define DMM_MNGD_PHYS_PAGES        (256)
-#else
 #define DMM_MNGD_PHYS_PAGES (16)
-#endif
 
 #define DMM_TILE_DIMM_X_MODE_8    (32)
 #define DMM_TILE_DIMM_Y_MODE_8    (32)
@@ -222,16 +201,13 @@
 (yInv << DMM_Y_INVERT_SHIFT) | (xInv << DMM_X_INVERT_SHIFT) |\
 (accM << DMM_ACC_MODE_SHIFT)))
 
-/*--------data declarations -----------------------------------*/
 /** @struc dmmPhysPgLLT
 * Structure defining Dmm physical memory pages managment linked list. */
 struct dmmPhysPgLLT {
 	struct dmmPhysPgLLT *nextPhysPg;
 	struct dmmPhysPgLLT *prevPhysPg;
 	unsigned long *physPgPtr;
-#ifdef __NEWCODE__
 	struct page *page_addr;
-#endif
 };
 
 /** @struc dmmHwdCtxT
@@ -337,7 +313,6 @@ struct DMM_rStruct_t {
 
 #endif /* __DMM_DEBUG_BUILD__ */
 
-/*--------function prototypes ---------------------------------*/
 /* ========================================================================== */
 /**
  *  dmm_tiler_container_map_area()
@@ -411,6 +386,7 @@ enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long bfrSize,
 		unsigned long **pageEntries,
 		unsigned long **pageEntriesSpace,
 		void *custmPagesPtr);
+
 /* ========================================================================== */
 /**
  *  dmm_tiler_swap_pat_page_entry_data()
@@ -493,51 +469,6 @@ enum errorCodeT dmm_tiler_container_unmap_area(
 /* ========================================================================== */
 struct dmmTILERContPageAreaT *dmm_tiler_get_area_from_sysptr(
 	struct dmmTILERContCtxT *dmmTilerCtx, void *sysPtr);
-
-/* ========================================================================== */
-/**
- *  dmmEventReport()
- *
- * @brief  Signal events to the user modules (wrapper to the user supplied
- * callback).
- *
- * @param dmmInstanceCtxPtr - void * - [in] Dmm context instance.
- *
- * @param mspEvent - MSP_EVENT_TYPE - [in] MSP event type.
- *
- * @param eData - void * - [in] MSP event data pointer.
- *
- * @return errorCodeT error if event can't be signaled.
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see dmmTILERContCtxT for further detail.
- */
-/* ========================================================================== */
-/* enum errorCodeT dmmEventReport(void * dmmInstanceCtxPtr,
-				MSP_EVENT_TYPE mspEvent, void * eData); */
-
-/* ========================================================================== */
-/**
-* dmmPatIrqHandler()
-*
-* @brief  Interrupt handler for PAT area status updates.
-*
-* @param data - UArg -
-*
-* @return none
-*
-* @pre There is no pre conditions.
-*
-* @post There is no post conditions.
-*
-* @see
-*
-*/
-/* ========================================================================== */
-/* Void dmmPatIrqHandler(UArg data); */
 
 /* ========================================================================== */
 /**
@@ -657,99 +588,6 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 /* ========================================================================== */
 enum errorCodeT dmm_pat_start_refill(
 	struct dmmTILERContPageAreaT *bufferMappedZone);
-
-/*--------function prototypes ---------------------------------*/
-
-/* ========================================================================== */
-/**
- *  dmm_enter_critical_section()
- *
- * @brief  Enter a critical code execution section.
- *
- * @return none
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see
- */
-/* ========================================================================== */
-void dmm_enter_critical_section(void);
-
-/* ========================================================================== */
-/**
- *  dmm_leave_critical_section()
- *
- * @brief  Exit a critical code execution section.
- *
- * @return none
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see
- */
-/* ========================================================================== */
-void dmm_leave_critical_section(void);
-
-/* ========================================================================== */
-/**
- *  dmm_memory_size_alloc()
- *
- * @brief  Allocates a physical memory page.
- *
- * @param pageNum - unsigned long - [in] Number of physical pages to allocate.
- *
- * @return void * pointer to the physical memory.
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see
- */
-/* ========================================================================== */
-void *dmm_memory_size_alloc(unsigned long memSize);
-
-/* ========================================================================== */
-/**
- *  dmm_memory_page_alloc()
- *
- * @brief  Allocates a physical memory page.
- *
- * @param pageNum - unsigned long - [in] Number of physical pages to allocate.
- *
- * @return void * pointer to the physical memory.
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see
- */
-/* ========================================================================== */
-void *dmm_memory_page_alloc(unsigned long pageNum);
-
-/* ========================================================================== */
-/**
- *  dmm_memory_page_free()
- *
- * @brief  Frees a physical memory page.
- *
- * @param pagePtr - void * - [in] Pointer to the physical pages to free.
- *
- * @return none
- *
- * @pre There is no pre conditions.
- *
- * @post There is no post conditions.
- *
- * @see
- */
-/* ========================================================================== */
-void dmm_memory_page_free(void *pagePtr);
 
 /* ========================================================================== */
 /**
