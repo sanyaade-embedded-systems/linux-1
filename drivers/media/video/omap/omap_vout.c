@@ -555,8 +555,10 @@ static void omap_vout_tiler_buffer_free(struct omap_vout_device *vout,
 		count = VIDEO_MAX_FRAME - startindex;
 
 	for (i = startindex; i < startindex + count; i++) {
-		tiler_free_buf(vout->buf_phy_addr_alloced[i]);
-		tiler_free_buf(vout->buf_phy_uv_addr_alloced[i]);
+		if (vout->buf_phy_addr_alloced[i])
+			tiler_free_buf(vout->buf_phy_addr_alloced[i]);
+		if (vout->buf_phy_uv_addr_alloced[i])
+			tiler_free_buf(vout->buf_phy_uv_addr_alloced[i]);
 		vout->buf_phy_addr[i] = 0;
 		vout->buf_phy_addr_alloced[i] = 0;
 		vout->buf_phy_uv_addr[i] = 0;
