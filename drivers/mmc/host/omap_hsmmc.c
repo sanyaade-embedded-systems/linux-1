@@ -877,21 +877,15 @@ static void set_data_timeout(struct mmc_omap_host *host,
 	unsigned int timeout, cycle_ns;
 	uint32_t reg, clkd, dto = 0;
 
-	/* TO FIX : Calculations needs to be done below
-	 * as it is running into divide by zero.
-	 * Hard coding SYSCTL register
-	 */
-	if (cpu_is_omap44xx()) {
-		reg = 0xe00c7;
-		OMAP_HSMMC_WRITE(host->base, SYSCTL, reg);
-		return;
-	}
 	reg = OMAP_HSMMC_READ(host->base, SYSCTL);
 	clkd = (reg & CLKD_MASK) >> CLKD_SHIFT;
 	if (clkd == 0)
 		clkd = 1;
-
-	cycle_ns = 1000000000 / (clk_get_rate(host->fclk) / clkd);
+	/* TO FIX : Remove hardcoding 96Mhz and use clk_get_rate */
+	if (cpu_is_omap44xx())
+		cycle_ns = 1000000000 / (96000000 / clkd);
+	else
+		cycle_ns = 1000000000 / (clk_get_rate(host->fclk) / clkd);
 	timeout = req->data->timeout_ns / cycle_ns;
 	timeout += req->data->timeout_clks;
 	if (timeout) {
