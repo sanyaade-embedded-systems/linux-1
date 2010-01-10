@@ -231,6 +231,9 @@ Add the following in bootargs "omapfb.numfb=1"
 3.4.2.2 Using 2 FB and 2 V4L2 devices (default option in L24.2)
 Add the following in bootargs "omapfb.numfb=2"
 
+3.4.2.3 Enabling DSS DEBUG prints
+Add the following in bootargs "omapdss.debug=1"
+
 4. Features
 -----------
 
