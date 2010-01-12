@@ -1,14 +1,12 @@
-Release notes for the Linux kernel for L24.2
+Release notes for the Linux kernel for L24.3
 ----------------------------------------------
 
-9 December 2009
-
-Copyright (C) 2009 Texas Instruments Incorporated.  All rights reserved.
+11 January 2010
 
 
 1.  Introduction
 ----------------
-This document accompanies OMAP(TM) Software Release L24.1 for Linux 2.6.31
+This document accompanies OMAP(TM) Software Release L24.3 for Linux 2.6.31
 on OMAP4430 SDP. The document specifies:
 	- Instructions for unpacking the release
 	- New features and features the release supports
@@ -29,9 +27,9 @@ The x-loader source can be obtained via GIT from:
   http://dev.omapzoom.org/?p=bootloader/x-loader.git;a=shortlog;h=refs/heads/omap4_dev
 
 The kernel source can be obtained via GIT from:
-  http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=shortlog;h=refs/heads/L24.2
+  http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=shortlog;h=refs/heads/L24.3
 
-Components that are supported in the L24.2 release:
+Components that are supported in the release:
    X-loader, U-Boot, OS Kernel (SMP), Phoenix power IC, UART, GP Timer, GPIO, Watchdog,
    Neon, I2C, MMC/SD/eMMC (with ADMA support), Ethernet, RTC,
    SDMA (including descriptor loading), Keypad, Touch screen, McSPI, McBSP, Mentor USB,
@@ -61,7 +59,7 @@ To build the U-Boot image type:
 	# make CROSS_COMPILE=arm-none-linux-gnueabi-
 
 
-3.2.2 Compiling X-loader (for booting from eMMC)
+3.2.2 Compiling X-loader (for booting from external/removable MMC)
 
 Set the environment variable PATH such that cross compile binaries point to the
 needed tool chain. Refer to section 5 for tool chain information.
@@ -79,25 +77,15 @@ To build the X-loader image type:
 	# make CROSS_COMPILE=arm-none-linux-gnueabi-
 	# make ift CROSS_COMPILE=arm-none-linux-gnueabi-
 
-The above step will create a MLO image. A configuration header needs to be
-added at the begining of this MLO to create an image 'x-load.ch.bin' that
-can be written to the eMMC for eMMC-booting. Please contact your TI
-representative for obtaining the configuration header.
-
-3.2.3 Compiling X-loader (for booting from external MMC)
-
-Edit include/configs/omap4430sdp.h to define CONFIG_MMC1 and disable/comment
-CONFIG_MMC2
-
-To select the default configuration for X-loader type:
-        # make CROSS_COMPILE=arm-none-linux-gnueabi- omap4430sdp_config
-
-To build the X-loader image type:
-        # make CROSS_COMPILE=arm-none-linux-gnueabi-
-        # make ift CROSS_COMPILE=arm-none-linux-gnueabi-
-
 The above step will create a MLO image, which can be copied into the
 MMC card for booting via MMC.
+
+3.2.3 Compiling X-loader (for booting from eMMC)
+
+Follow same steps as above to create an MLO image. A configuration header needs
+to be added at the begining of this MLO to create an image 'x-load.ch.bin' that
+can be written to the eMMC for eMMC-booting. Please contact your TI
+representative for obtaining the configuration header.
 
 3.2.4 Compiling the Kernel
 
@@ -228,7 +216,7 @@ secondary display ON.
 3.4.2.1 Using 1 FB and 3 V4L2 devices
 Add the following in bootargs "omapfb.numfb=1"
 
-3.4.2.2 Using 2 FB and 2 V4L2 devices (default option in L24.2)
+3.4.2.2 Using 2 FB and 2 V4L2 devices (default option in L24.2 onwards)
 Add the following in bootargs "omapfb.numfb=2"
 
 3.4.2.3 Enabling DSS DEBUG prints
@@ -266,14 +254,14 @@ Add the following in bootargs "omapdss.debug=1"
 	Phoenix General Purpose ADC,
 	Battery Charging.
 
--Audio
+- Audio
 	Audio playback to Phoenix Hand-free, Head set output devices.
 	HDMI audio playback
 	Audio record through Phoenix analog MIC input.
 	Simultaneous audio playback and capture.
 
 
--Video
+- Video
 	Display driver
 		- FBdev and V4L2 API support
 		- Primary and Secondary DSI and HDMI displays
