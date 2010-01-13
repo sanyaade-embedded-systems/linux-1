@@ -35,6 +35,8 @@
 #include <linux/mtd/partitions.h>
 #include <linux/mmc/host.h>
 
+#include <linux/spi/spi.h>
+
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/flash.h>
@@ -63,6 +65,8 @@
 #define OVERO_GPIO_USBH_NRESET	183
 
 #define NAND_BLOCK_SIZE SZ_128K
+#define GPMC_CS0_BASE  0x60
+#define GPMC_CS_SIZE   0x30
 
 #define OVERO_SMSC911X_CS      5
 #define OVERO_SMSC911X_GPIO    176
@@ -164,7 +168,9 @@ static struct platform_device overo_smsc911x2_device = {
 
 static struct platform_device *smsc911x_devices[] = {
 	&overo_smsc911x_device,
+#if 0
 	&overo_smsc911x2_device,
+#endif
 };
 
 static inline void __init overo_init_smsc911x(void)
@@ -194,6 +200,7 @@ static inline void __init overo_init_smsc911x(void)
 
 	/* set up second smsc911x chip */
 
+#if 0
 	if (gpmc_cs_request(OVERO_SMSC911X2_CS, SZ_16M, &cs_mem_base2) < 0) {
 		printk(KERN_ERR "Failed request for GPMC mem for smsc911x2\n");
 		return;
@@ -213,6 +220,7 @@ static inline void __init overo_init_smsc911x(void)
 	overo_smsc911x2_resources[1].start = OMAP_GPIO_IRQ(OVERO_SMSC911X2_GPIO);
 	overo_smsc911x2_resources[1].end   = 0;
 
+#endif
 	platform_add_devices(smsc911x_devices, ARRAY_SIZE(smsc911x_devices));
 }
 
@@ -353,6 +361,16 @@ static struct regulator_consumer_supply overo_vdda_dac_supply =
 static struct regulator_consumer_supply overo_vdds_dsi_supply =
 	REGULATOR_SUPPLY("vdds_dsi", "omapdss");
 
+static struct spi_board_info overo_mcspi_board_info[] = {
+	{
+		.modalias	= "spidev",
+		.max_speed_hz	= 12000000, // 12 MHz
+		.bus_num	= 1,
+		.chip_select	= 0,
+		.mode		= SPI_MODE_1,
+	},
+};
+
 static struct mtd_partition overo_nand_partitions[] = {
 	{
 		.name           = "xloader",
@@ -432,8 +450,8 @@ static struct omap2_hsmmc_info mmc[] = {
 		.mmc		= 2,
 		.caps		= MMC_CAP_4_BIT_DATA,
 		.gpio_cd	= -EINVAL,
-		.gpio_wp	= -EINVAL,
-		.transceiver	= true,
+		.transceiver    = true,
+		.gpio_wp	= 150,
 		.ocr_mask	= 0x00100000,	/* 3.3V */
 	},
 	{}	/* Terminator */
@@ -612,6 +630,8 @@ static const struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 static struct omap_board_mux board_mux[] __initdata = {
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
+#else
+#define board_mux	NULL
 #endif
 
 static struct omap_musb_board_data musb_board_data = {
@@ -626,6 +646,148 @@ static struct omap_musb_board_data musb_board_data = {
 	.power			= 100,
 };
 
+static void __init usrp1_e_init(void)
+{
+	unsigned int tmp;
+
+	printk("Setup up gpmc timing.\n");
+
+// Set up CS4, data read/write
+
+#if 1
+	// Signal control parameters per chip select
+	tmp = gpmc_cs_read_reg(4, GPMC_CS_CONFIG1);
+//	tmp |= (GPMC_CONFIG1_MUXADDDATA);
+//	tmp |= (GPMC_CONFIG1_WRITETYPE_SYNC);
+//	tmp |= (GPMC_CONFIG1_READTYPE_SYNC);
+	tmp |= (GPMC_CONFIG1_FCLK_DIV(0));
+	gpmc_cs_write_reg(4, GPMC_CS_CONFIG1, tmp);
+	printk("GPMC_CONFIG1 reg: %x\n", tmp);
+#endif
+
+#if 1 
+	// CS signal timing parameter configuration
+	tmp = 0;
+	tmp |= GPMC_CONFIG2_CSONTIME(1);         /*  1 */
+	tmp |= GPMC_CONFIG2_CSWROFFTIME(16);     /* 16 */
+	tmp |= GPMC_CONFIG2_CSRDOFFTIME(16);     /* 16 */
+	printk("GPMC_CONFIG2 reg: %x\n", tmp);
+	gpmc_cs_write_reg(4, GPMC_CS_CONFIG2, tmp);
+#endif 
+
+#if 0
+	// nADV signal timing parameter configuration
+        tmp = 0;
+        tmp |= GPMC_CONFIG3_ADVONTIME(1);
+        tmp |= GPMC_CONFIG3_ADVRDOFFTIME(2);
+        tmp |= GPMC_CONFIG3_ADVWROFFTIME(2);
+        printk("GPMC_CONFIG3 reg: %x\n", tmp);
+        gpmc_cs_write_reg(4, GPMC_CS_CONFIG3, tmp);
+#endif
+
+#if 1
+	// nWE and nOE signals timing parameter configuration
+	tmp = 0;
+	tmp |= GPMC_CONFIG4_WEONTIME(3);      /*  3 */
+	tmp |= GPMC_CONFIG4_WEOFFTIME(16);     /* 16 */
+	tmp |= GPMC_CONFIG4_OEONTIME(3);      /*  3 */
+	tmp |= GPMC_CONFIG4_OEOFFTIME(16);     /* 16 */
+	printk("GPMC_CONFIG4 reg: %x\n", tmp);
+	gpmc_cs_write_reg(4, GPMC_CS_CONFIG4, tmp);
+#endif
+
+#if 1
+	// RdAccess time and Cycle time timing parameters configuration
+	tmp = 0;
+	tmp |= GPMC_CONFIG5_PAGEBURSTACCESSTIME(1);
+	tmp |= GPMC_CONFIG5_RDACCESSTIME(15);           /* 15 */
+	tmp |= GPMC_CONFIG5_WRCYCLETIME(17);           /* 17 */
+	tmp |= GPMC_CONFIG5_RDCYCLETIME(17);           /* 17 */
+	printk("GPMC_CONFIG5 reg: %x\n", tmp);
+
+	gpmc_cs_write_reg(4, GPMC_CS_CONFIG5, tmp);
+#endif
+
+#if 1
+	// WrAccessTime WrDataOnADmuxBus, Cycle2Cycle, and BusTurnAround params
+	tmp = (1<<31);
+	tmp |= GPMC_CONFIG6_WRACCESSTIME(15);          /* 15 */
+	tmp |= GPMC_CONFIG6_WRDATAONADMUXBUS(3);
+	tmp |= GPMC_CONFIG6_CYCLE2CYCLEDELAY(0);
+	tmp |= GPMC_CONFIG6_BUSTURNAROUND(0);
+	printk("GPMC_CONFIG6 reg: %x\n", tmp);
+	gpmc_cs_write_reg(4, GPMC_CS_CONFIG6, tmp);
+#endif
+
+// Configure timing for CS6, wishbone access
+
+#if 1
+	// Signal control parameters per chip select
+	tmp = gpmc_cs_read_reg(6, GPMC_CS_CONFIG1);
+//	tmp |= (GPMC_CONFIG1_MUXADDDATA);
+	tmp |= (GPMC_CONFIG1_WRITETYPE_SYNC);
+	tmp |= (GPMC_CONFIG1_READTYPE_SYNC);
+	tmp |= (GPMC_CONFIG1_FCLK_DIV(0));
+	gpmc_cs_write_reg(6, GPMC_CS_CONFIG1, tmp);
+	printk("GPMC_CONFIG1 reg: %x\n", tmp);
+#endif
+
+#if 1 
+	// CS signal timing parameter configuration
+	tmp = 0;
+	tmp |= GPMC_CONFIG2_CSONTIME(1);
+	tmp |= GPMC_CONFIG2_CSWROFFTIME(17);
+	tmp |= GPMC_CONFIG2_CSRDOFFTIME(17);
+	printk("GPMC_CONFIG2 reg: %x\n", tmp);
+	gpmc_cs_write_reg(6, GPMC_CS_CONFIG2, tmp);
+#endif 
+
+#if 0
+	// nADV signal timing parameter configuration
+        tmp = 0;
+        tmp |= GPMC_CONFIG3_ADVONTIME(1);
+        tmp |= GPMC_CONFIG3_ADVRDOFFTIME(2);
+        tmp |= GPMC_CONFIG3_ADVWROFFTIME(2);
+        printk("GPMC_CONFIG3 reg: %x\n", tmp);
+        gpmc_cs_write_reg(6, GPMC_CS_CONFIG3, tmp);
+#endif
+
+#if 0
+	// nWE and nOE signals timing parameter configuration
+	tmp = 0;
+	tmp |= GPMC_CONFIG4_WEONTIME(3);
+	tmp |= GPMC_CONFIG4_WEOFFTIME(4);
+	tmp |= GPMC_CONFIG4_OEONTIME(3);
+	tmp |= GPMC_CONFIG4_OEOFFTIME(4);
+	printk("GPMC_CONFIG4 reg: %x\n", tmp);
+	gpmc_cs_write_reg(6, GPMC_CS_CONFIG4, tmp);
+#endif
+
+#if 0
+	// RdAccess time and Cycle time timing paraters configuration
+	tmp = 0;
+	tmp |= GPMC_CONFIG5_PAGEBURSTACCESSTIME(1);
+	tmp |= GPMC_CONFIG5_RDACCESSTIME(4);
+	tmp |= GPMC_CONFIG5_WRCYCLETIME(5);
+	tmp |= GPMC_CONFIG5_RDCYCLETIME(5);
+	printk("GPMC_CONFIG5 reg: %x\n", tmp);
+	gpmc_cs_write_reg(6, GPMC_CS_CONFIG5, tmp);
+#endif
+
+#if 1
+	// WrAccessTime WrDataOnADmuxBus, Cycle2Cycle, and BusTurnAround params
+	tmp = 0;
+	tmp |= GPMC_CONFIG6_WRACCESSTIME(15);
+	tmp |= GPMC_CONFIG6_WRDATAONADMUXBUS(3);
+	tmp |= GPMC_CONFIG6_CYCLE2CYCLEDELAY(3);
+	tmp |= GPMC_CONFIG6_CYCLE2CYCLESAMECSEN;
+	tmp |= GPMC_CONFIG6_BUSTURNAROUND(0);
+	printk("GPMC_CONFIG6 reg: %x\n", tmp);
+	gpmc_cs_write_reg(6, GPMC_CS_CONFIG6, tmp);
+#endif
+
+}
+
 static void __init overo_init(void)
 {
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
@@ -637,8 +799,14 @@ static void __init overo_init(void)
 	usb_ehci_init(&ehci_pdata);
 	overo_spi_init();
 	overo_init_smsc911x();
+#if 0
 	overo_display_init();
-
+#endif
+	usrp1_e_init();
+#if 1
+	spi_register_board_info(overo_mcspi_board_info,
+		ARRAY_SIZE(overo_mcspi_board_info));
+#endif
 	/* Ensure SDRC pins are mux'd for self-refresh */
 	omap_mux_init_signal("sdrc_cke0", OMAP_PIN_OUTPUT);
 	omap_mux_init_signal("sdrc_cke1", OMAP_PIN_OUTPUT);
@@ -680,7 +848,7 @@ static void __init overo_init(void)
 					"OVERO_GPIO_USBH_CPEN\n");
 }
 
-MACHINE_START(OVERO, "Gumstsix Overo")
+MACHINE_START(OVERO, "Gumstix Overo")
 	.boot_params	= 0x80000100,
 	.map_io		= omap3_map_io,
 	.reserve	= omap_reserve,
