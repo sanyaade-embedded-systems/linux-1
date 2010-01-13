@@ -452,6 +452,15 @@ config PCH_PHUB
 	  To compile this driver as a module, choose M here: the module will
 	  be called pch_phub.
 
+config USRP_E
+	tristate "USRP-E FPGA interface driver"
+	default n
+	help
+	 This driver is for the Ettus Research USRP Embedded Software
+	 Defined Radio platform.
+
+	 If you do not plan to run this kernel on that hardware choose N.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
