@@ -16,9 +16,17 @@
  * OMAP2430-specific definitions
  */
 
-#define OTG_REVISION		0x400
-
-#define OTG_SYSCONFIG		0x404
+#define MENTOR_BASE_OFFSET	0
+#if	defined(CONFIG_ARCH_OMAP2430)
+#define	OMAP_HSOTG_BASE		(OMAP243X_HS_BASE)
+#elif	defined(CONFIG_ARCH_OMAP3430)
+#define	OMAP_HSOTG_BASE		(OMAP34XX_HSUSB_OTG_BASE)
+#elif defined(CONFIG_ARCH_OMAP4)
+#define OMAP_HSOTG_BASE		(OMAP44XX_HSUSB_OTG_BASE)
+#endif
+#define OMAP_HSOTG(offset)	(OMAP_HSOTG_BASE + 0x400 + (offset))
+#define OTG_REVISION		OMAP_HSOTG(0x0)
+#define OTG_SYSCONFIG		OMAP_HSOTG(0x4)
 #	define	MIDLEMODE	12	/* bit position */
 #	define	FORCESTDBY		(0 << MIDLEMODE)
 #	define	NOSTDBY			(1 << MIDLEMODE)
