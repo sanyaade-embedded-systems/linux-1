@@ -214,7 +214,7 @@ static irqreturn_t twl6030charger_ctrl_interrupt(int irq, void *_di)
 
 	if (chg_sts & VBUS_DET) {
 		charger_source = 2;
-		printk(KERN_INFO "USB charger detected\n");
+		printk(KERN_INFO "USB charger detected, started usb charging\n");
 		twl_i2c_write_u8(TWL6030_MODULE_CHARGER, MBAT_TEMP,
 							CONTROLLER_INT_MASK);
 		twl_i2c_write_u8(TWL6030_MODULE_CHARGER,
@@ -242,7 +242,7 @@ static irqreturn_t twl6030charger_ctrl_interrupt(int irq, void *_di)
 		twl_i2c_write_u8(TWL6030_MODULE_BQ, 0x04,
 					REG_SPECIAL_CHARGER_VOLTAGE);
 		twl_i2c_write_u8(TWL6030_MODULE_BQ, 0x04, REG_SAFETY_LIMIT);
-		printk(KERN_INFO "A/C charger detected\n");
+		printk(KERN_INFO "AC charger detected, started AC charging\n");
 		ret = twl_i2c_write_u8(TWL6030_MODULE_CHARGER,
 				CONTROLLER_CTRL1_EN_CHARGER |
 				CONTROLLER_CTRL1_SEL_CHARGER ,
@@ -261,7 +261,7 @@ static irqreturn_t twl6030charger_ctrl_interrupt(int irq, void *_di)
 	}
 	/* FIXME How to detect 1-0 events */
 
-	power_supply_changed(&di->bat);
+/*	power_supply_changed(&di->bat); FIXME regression with nfs */
 
 	return IRQ_HANDLED;
 }
@@ -279,7 +279,7 @@ static irqreturn_t twl6030charger_fault_interrupt(int irq, void *_di)
 						CHARGERUSB_STATUS_INT1);
 	ret = twl_i2c_read_u8(TWL6030_MODULE_CHARGER, &usb_charge_sts2,
 						CHARGERUSB_STATUS_INT2);
-	power_supply_changed(&di->bat);
+/*	power_supply_changed(&di->bat); FIXME regression with nfs */
 	return IRQ_HANDLED;
 }
 
@@ -431,7 +431,7 @@ static void twl6030_bk_bci_battery_work(struct work_struct *work)
 		twl6030_bk_bci_monitor_work.work);
 
 	twl6030_bk_bci_battery_read_status(di);
-	schedule_delayed_work(&di->twl6030_bk_bci_monitor_work, 500);
+	schedule_delayed_work(&di->twl6030_bk_bci_monitor_work, 5000);
 }
 
 static void twl6030_bci_battery_read_status(struct twl6030_bci_device_info *di)
@@ -473,7 +473,7 @@ static void twl6030_bci_battery_work(struct work_struct *work)
 		struct twl6030_bci_device_info, twl6030_bci_monitor_work.work);
 
 	twl6030_bci_battery_update_status(di);
-	schedule_delayed_work(&di->twl6030_bci_monitor_work, 100);
+	schedule_delayed_work(&di->twl6030_bci_monitor_work, 1000);
 }
 
 
