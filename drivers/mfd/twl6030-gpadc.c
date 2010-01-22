@@ -370,6 +370,7 @@ static int __init twl6030_gpadc_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err_pdata;
 	}
+	gpadc->dev = &pdev->dev;
 
 	ret = misc_register(&twl6030_gpadc_device);
 	if (ret) {
