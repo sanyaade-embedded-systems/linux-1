@@ -1088,6 +1088,16 @@ int omap_hwmod_set_slave_idlemode(struct omap_hwmod *oh, u8 idlemode)
 	return retval;
 }
 
+u32 omap_hwmod_read_sysc(struct omap_hwmod *oh)
+{
+	return oh->_sysc_cache;
+}
+
+void omap_hwmod_write_sysc(u32 v, struct omap_hwmod *oh)
+{
+	_write_sysconfig(v, oh);
+}
+
 /**
  * omap_hwmod_register - register a struct omap_hwmod
  * @oh: struct omap_hwmod *
