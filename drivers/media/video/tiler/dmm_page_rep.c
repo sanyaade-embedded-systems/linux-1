@@ -218,9 +218,9 @@ enum errorCodeT dmm_phys_page_rep_deinit(void)
  * @see
  */
 /* ========================================================================== */
-unsigned long *dmm_get_phys_page(void)
+struct dmmPhysPgLLT *dmm_get_phys_page(void)
 {
-	unsigned long *physPgPtr = NULL;
+	struct dmmPhysPgLLT *page = NULL;
 	int r = -1;
 
 	mutex_lock(&mtx);
@@ -251,7 +251,7 @@ unsigned long *dmm_get_phys_page(void)
 		tmpPgNode->nextPhysPg = NULL;
 		usedPagesStack = tmpPgNode;
 
-		physPgPtr = tmpPgNode->physPgPtr;
+		page = tmpPgNode;
 		freePageCnt--;
 	}
 
@@ -260,7 +260,7 @@ unsigned long *dmm_get_phys_page(void)
 	check_stack(usedPagesStack, "used: ", __LINE__);
 #endif
 	mutex_unlock(&mtx);
-	return physPgPtr;
+	return page;
 }
 
 /* ========================================================================== */
@@ -343,5 +343,51 @@ enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr)
 	check_stack(usedPagesStack, "used: ", __LINE__);
 #endif
 	return DMM_WRONG_PARAM;
+}
+
+enum errorCodeT dmm_free_phys_page_quick(struct dmmPhysPgLLT *page)
+{
+	mutex_lock(&mtx);
+
+	/* remove from list */
+	if (page->prevPhysPg != NULL) {
+		page->prevPhysPg->nextPhysPg =
+			page->nextPhysPg;
+	}
+
+	if (page->nextPhysPg != NULL) {
+		page->nextPhysPg->prevPhysPg =
+			page->prevPhysPg;
+	} else if (page == usedPagesStack) {
+		usedPagesStack = usedPagesStack->prevPhysPg;
+	} else {
+		mutex_unlock(&mtx);
+		lajosdump(page);
+		return DMM_SYS_ERROR;
+	}
+
+	/* add to end of freepages */
+	if (freePagesStack != NULL)
+		freePagesStack->nextPhysPg = page;
+	page->prevPhysPg = freePagesStack;
+	freePagesStack = page;
+	freePageCnt++;
+
+	while (freePageCnt > DMM_MNGD_PHYS_PAGES &&
+				freePagesStack != NULL) {
+		page = freePagesStack->prevPhysPg;
+		__free_page(freePagesStack->page_addr);
+		kfree(freePagesStack);
+		freePagesStack = page;
+		freePageCnt--;
+	}
+	freePagesStack->nextPhysPg = NULL;
+
+	mutex_unlock(&mtx);
+#ifdef CHECK_STACK
+	check_stack(freePagesStack, "free: ", __LINE__);
+	check_stack(usedPagesStack, "used: ", __LINE__);
+#endif
+	return DMM_NO_ERROR;
 }
 

@@ -50,6 +50,7 @@ struct dmmTILERContPageAreaT {
 	unsigned long dma_size;
 	dma_addr_t dma_pa;
 	unsigned long *patPageEntries;
+	struct dmmPhysPgLLT *topPage;
 };
 
 struct dmmTILERContPageAreaSpecT {

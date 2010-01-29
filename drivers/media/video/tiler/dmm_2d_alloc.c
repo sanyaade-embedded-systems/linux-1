@@ -1624,6 +1624,7 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 			to free them.
 		*/
 		if (delItm->pgAr.patCustomPages == MSP_FALSE) {
+			struct dmmPhysPgLLT *topPage = areaRem->topPage;
 			numPages = (delItm->pgAr.x1 - delItm->pgAr.x0 + 1)*
 				(delItm->pgAr.y1 - delItm->pgAr.y0 + 1);
 			/* Get the area to free associated physical memory pages
@@ -1637,10 +1638,10 @@ enum MSP_BOOL dealloc_2d_area(struct dmmTILERContCtxT *dmmTilerCtx,
 				pool leave it be.
 			*/
 			for (i = 0;
-				i < numPages && eCode == DMM_NO_ERROR; i++) {
-				eCode = dmm_free_phys_page(
-					(unsigned long *)
-					(delItm->pgAr.patPageEntries[i]));
+				i < numPages && eCode == DMM_NO_ERROR &&
+				topPage; i++) {
+				eCode = dmm_free_phys_page_quick(topPage);
+				topPage = topPage->nextPg;
 			}
 		}
 

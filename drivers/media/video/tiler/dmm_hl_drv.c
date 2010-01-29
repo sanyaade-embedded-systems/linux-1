@@ -120,7 +120,8 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 		if (dmm_tiler_populate_pat_page_entry_data(bfrPages,
 				NULL,
 				NULL,
-				(void *)bufferMappedZone->patPageEntries
+				(void *)bufferMappedZone->patPageEntries,
+				&(bufferMappedZone->topPage)
 							  ) != DMM_NO_ERROR) {
 			eCode = DMM_SYS_ERROR;
 			return eCode;
@@ -166,16 +167,22 @@ enum errorCodeT dmm_pat_phy2virt_mapping(
 enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long numPages,
 		unsigned long **pageEntries,
 		unsigned long **pageEntriesSpace,
-		void *custmPagesPtr)
+		void *custmPagesPtr,
+		struct dmmPhysPgLLT **topPage)
 {
 	signed long iter;
 	unsigned long *patAreaEntries = NULL;
+	struct dmmPhysPgLLT *page = NULL;
 
 	patAreaEntries = (unsigned long *)custmPagesPtr;
 
+	*topPage = NULL;
 	for (iter = 0; iter < numPages; iter++) {
+		*topPage = page = dmm_get_phys_page();
+		page->nextPg = NULL;
+		topPage = &(page->nextPg);
 		patAreaEntries[iter] =
-				(unsigned long)dmm_get_phys_page();
+				(unsigned long)page->physPgPtr;
 		if (patAreaEntries[iter] == 0x0)
 			return DMM_SYS_ERROR;
 	}

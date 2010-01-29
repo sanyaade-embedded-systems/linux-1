@@ -206,6 +206,7 @@
 struct dmmPhysPgLLT {
 	struct dmmPhysPgLLT *nextPhysPg;
 	struct dmmPhysPgLLT *prevPhysPg;
+	struct dmmPhysPgLLT *nextPg;
 	unsigned long *physPgPtr;
 	struct page *page_addr;
 };
@@ -385,7 +386,8 @@ enum errorCodeT dmm_tiler_container_map_area(
 enum errorCodeT dmm_tiler_populate_pat_page_entry_data(unsigned long bfrSize,
 		unsigned long **pageEntries,
 		unsigned long **pageEntriesSpace,
-		void *custmPagesPtr);
+		void *custmPagesPtr,
+		struct dmmPhysPgLLT **topPage);
 
 /* ========================================================================== */
 /**
@@ -521,7 +523,7 @@ enum errorCodeT dmm_phys_page_rep_deinit(void);
  * @see
  */
 /* ========================================================================== */
-unsigned long *dmm_get_phys_page(void);
+struct dmmPhysPgLLT *dmm_get_phys_page(void);
 
 /* ========================================================================== */
 /**
@@ -542,6 +544,7 @@ unsigned long *dmm_get_phys_page(void);
  */
 /* ========================================================================== */
 enum errorCodeT dmm_free_phys_page(unsigned long *physPgPtr);
+enum errorCodeT dmm_free_phys_page_quick(struct dmmPhysPgLLT *page);
 
 /* ========================================================================== */
 /**
