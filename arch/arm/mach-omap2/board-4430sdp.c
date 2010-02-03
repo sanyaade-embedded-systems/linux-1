@@ -562,6 +562,17 @@ static struct regulator_init_data sdp4430_vusb = {
 	},
 };
 
+static struct twl4030_codec_data twl6040_codec = {
+#ifdef CONFIG_OMAP4_AUDIO_PWRON
+	.audpwron_gpio  = 127,
+#else
+	/* provide GPIO number above the valid value
+	 * to mean there is no GPIO connected. */
+	.audpwron_gpio  = 1024,
+	.naudint_irq    = OMAP44XX_IRQ_SYS_2N,
+#endif
+};
+
 static struct twl4030_platform_data sdp4430_twldata = {
 	.irq_base	= TWL6030_IRQ_BASE,
 	.irq_end	= TWL6030_IRQ_END,
@@ -577,6 +588,9 @@ static struct twl4030_platform_data sdp4430_twldata = {
 	.vaux1		= &sdp4430_vaux1,
 	.vaux2		= &sdp4430_vaux2,
 	.vaux3		= &sdp4430_vaux3,
+
+	/* children */
+	.codec		= &twl6040_codec,
 };
 
 static struct cma3000_platform_data cma3000_platform_data = {
