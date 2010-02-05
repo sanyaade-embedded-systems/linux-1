@@ -214,6 +214,8 @@ DSP_STATUS CHNLSM_InterruptDSP2(struct WMD_DEV_CONTEXT *pDevContext,
 	DBG_Trace(DBG_LEVEL3, "writing %x to Mailbox\n",
 		  wMbVal);
 
+	udelay(1000);
+	udelay(1000);
 	
 	notifyStatus = notify_sendevent(handle,/*PROC_TESLA*/0,
                 ((NOTIFY_SYSTEM_KEY<<16)|NOTIFY_TESLA_EVENTNUMBER),
