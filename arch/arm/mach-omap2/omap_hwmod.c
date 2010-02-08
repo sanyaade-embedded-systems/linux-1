@@ -416,9 +416,10 @@ static int _init_main_clk(struct omap_hwmod *oh)
 	if (IS_ERR(c))
 		ret = -EINVAL;
 	oh->_clk = c;
-
+#if 0
 	WARN(!c->clkdm, "omap_hwmod: %s: missing clockdomain for %s.\n",
 	     oh->main_clk, c->name);
+#endif
 
 	return ret;
 }
@@ -524,6 +525,8 @@ static int _disable_clocks(struct omap_hwmod *oh)
 	int i;
 
 	pr_debug("omap_hwmod: %s: disabling clocks\n", oh->name);
+
+	return 0;
 
 	if (oh->_clk && !IS_ERR(oh->_clk))
 		clk_disable(oh->_clk);
@@ -909,7 +912,9 @@ static int _enable(struct omap_hwmod *oh)
 
 	/* XXX mux balls */
 
+#if 0
 	_add_initiator_dep(oh, mpu_oh);
+#endif
 	_enable_clocks(oh);
 
 	if (oh->class->sysc) {
@@ -945,7 +950,9 @@ static int _idle(struct omap_hwmod *oh)
 
 	if (oh->class->sysc)
 		_sysc_idle(oh);
+#if 0
 	_del_initiator_dep(oh, mpu_oh);
+#endif
 	_disable_clocks(oh);
 
 	oh->_state = _HWMOD_STATE_IDLE;
@@ -1230,10 +1237,11 @@ int omap_hwmod_late_init(void)
 	/* XXX check return value */
 	r = omap_hwmod_for_each(_init_clocks);
 	WARN(r, "omap_hwmod: omap_hwmod_late_init(): _init_clocks failed\n");
-
+#if 0
 	mpu_oh = omap_hwmod_lookup(MPU_INITIATOR_NAME);
 	WARN(!mpu_oh, "omap_hwmod: could not find MPU initiator hwmod %s\n",
 	     MPU_INITIATOR_NAME);
+#endif
 
 	omap_hwmod_for_each(_setup);
 
@@ -1532,7 +1540,10 @@ struct powerdomain *omap_hwmod_get_pwrdm(struct omap_hwmod *oh)
 int omap_hwmod_add_initiator_dep(struct omap_hwmod *oh,
 				 struct omap_hwmod *init_oh)
 {
+#if 0
 	return _add_initiator_dep(oh, init_oh);
+#endif
+	return 0;
 }
 
 /*
@@ -1557,7 +1568,10 @@ int omap_hwmod_add_initiator_dep(struct omap_hwmod *oh,
 int omap_hwmod_del_initiator_dep(struct omap_hwmod *oh,
 				 struct omap_hwmod *init_oh)
 {
+#if 0
 	return _del_initiator_dep(oh, init_oh);
+#endif
+	return 0;
 }
 
 /**
