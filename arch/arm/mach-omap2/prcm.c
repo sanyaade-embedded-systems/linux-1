@@ -233,8 +233,8 @@ u32 prm_read_mod_bits_shift(s16 domain, s16 idx, u32 mask)
 	u32 v;
 
 	/* CHIRON CPU0/1 domains are not part of PRM */
-	if ((domain == OMAP4430_CHIRONSS_CHIRONSS_CPU0_MOD) ||
-			(domain == OMAP4430_CHIRONSS_CHIRONSS_CPU1_MOD))
+	if (cpu_is_omap44xx() && ((domain == OMAP4430_CHIRONSS_CHIRONSS_CPU0_MOD)
+			|| (domain == OMAP4430_CHIRONSS_CHIRONSS_CPU1_MOD)))
 		v = chiron_read_mod_reg(domain, idx);
 	else
 		v = prm_read_mod_reg(domain, idx);
