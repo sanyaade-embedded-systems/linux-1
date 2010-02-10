@@ -1783,6 +1783,7 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 	host->dev	= &pdev->dev;
 	host->dev->dma_mask = &pdata->dma_mask;
 	host->dma_ch	= -1;
+	host->adma_table = NULL;
 	host->irq	= irq;
 	host->id	= pdev->id;
 	host->slot_id	= 0;
@@ -2001,6 +2002,9 @@ err_irq:
 	}
 
 err1:
+	if(host->adma_table != NULL)
+		dma_free_coherent(NULL, ADMA_TABLE_SZ,
+			host->adma_table, host->phy_adma_table);
 	iounmap(host->base);
 err:
 	dev_dbg(mmc_dev(host->mmc), "Probe Failed\n");
@@ -2024,6 +2028,10 @@ static int omap_hsmmc_remove(struct platform_device *pdev)
 		if (mmc_slot(host).card_detect_irq)
 			free_irq(mmc_slot(host).card_detect_irq, host);
 		flush_scheduled_work();
+
+		if(host->adma_table != NULL)
+			dma_free_coherent(NULL, ADMA_TABLE_SZ,
+				host->adma_table, host->phy_adma_table);
 
 		mmc_host_disable(host->mmc);
 		clk_disable(host->iclk);
