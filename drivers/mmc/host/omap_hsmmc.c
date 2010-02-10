@@ -1783,6 +1783,7 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 	host->dev	= &pdev->dev;
 	host->dev->dma_mask = &pdata->dma_mask;
 	host->dma_ch	= -1;
+	host->adma_table = NULL;
 	host->irq	= irq;
 	host->id	= pdev->id;
 	host->slot_id	= 0;
@@ -1791,15 +1792,17 @@ static int __init omap_hsmmc_probe(struct platform_device *pdev)
 	host->power_mode = -1;
 	host->dma_type = DMA_TYPE_SDMA;
 
-	ctrlr_caps = OMAP_HSMMC_READ(host->base, CAPA);
-	if (ctrlr_caps & CAPA_ADMA_SUPPORT) {
-		/* FIXME: passing the device structure fails
-		 * due to unset conherency mask
-		 */
-		host->adma_table = dma_alloc_coherent(NULL, ADMA_TABLE_SZ,
-					&host->phy_adma_table, 0);
-		if (host->adma_table != NULL)
-			host->dma_type = DMA_TYPE_ADMA;
+	if (cpu_is_omap44xx()) {
+		ctrlr_caps = OMAP_HSMMC_READ(host->base, CAPA);
+		if (ctrlr_caps & CAPA_ADMA_SUPPORT) {
+			/* FIXME: passing the device structure fails
+			 * due to unset conherency mask
+			 */
+			host->adma_table = dma_alloc_coherent(NULL,
+				ADMA_TABLE_SZ, &host->phy_adma_table, 0);
+			if (host->adma_table != NULL)
+				host->dma_type = DMA_TYPE_ADMA;
+		}
 	}
 	dev_dbg(mmc_dev(host->mmc), "DMA Mode=%d\n", host->dma_type);
 
@@ -1999,6 +2002,9 @@ err_irq:
 	}
 
 err1:
+	if(host->adma_table != NULL)
+		dma_free_coherent(NULL, ADMA_TABLE_SZ,
+			host->adma_table, host->phy_adma_table);
 	iounmap(host->base);
 err:
 	dev_dbg(mmc_dev(host->mmc), "Probe Failed\n");
@@ -2022,6 +2028,10 @@ static int omap_hsmmc_remove(struct platform_device *pdev)
 		if (mmc_slot(host).card_detect_irq)
 			free_irq(mmc_slot(host).card_detect_irq, host);
 		flush_scheduled_work();
+
+		if(host->adma_table != NULL)
+			dma_free_coherent(NULL, ADMA_TABLE_SZ,
+				host->adma_table, host->phy_adma_table);
 
 		mmc_host_disable(host->mmc);
 		clk_disable(host->iclk);
