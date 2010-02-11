@@ -641,7 +641,6 @@ void set_fb_fix(struct fb_info *fbi)
 		}
 
 		fix->smem_len = var->yres_virtual * fix->line_length;
-	} 
 	} else if (ofbi->rotation_type != OMAP_DSS_ROT_TILER) {	
 		fix->line_length =
 			(var->xres_virtual * var->bits_per_pixel) >> 3;
@@ -1028,6 +1027,7 @@ int omapfb_apply_changes(struct fb_info *fbi, int init)
 				outw = var->xres;
 				outh = var->yres;
 			}
+		    }
 		} else {
 			/*sv it comes here for vid1 on fb */
 			DBG("its vid pipeline so sclaing is enabled, still we will not scale for output size,just maintain the input size");
@@ -1190,6 +1190,7 @@ static int omapfb_mmap(struct fb_info *fbi, struct vm_area_struct *vma)
 	if (io_remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
 			     vma->vm_end - vma->vm_start, vma->vm_page_prot))
 		return -EAGAIN;
+	}
 	/* vm_ops.open won't be called for mmap itself. */
 	atomic_inc(&ofbi->map_count);
 	return 0;
@@ -1389,7 +1390,7 @@ static void omapfb_free_fbmem(struct fb_info *fbi)
 	rg = &ofbi->region;
 
 	if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
-		tiler_free_buf(rg->paddr);
+/* TODO: to be added for TILER */
 	} else {
  	if (rg->paddr)
  		if (omap_vram_free(rg->paddr, rg->size))
@@ -1450,7 +1451,12 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 	void __iomem *vaddr;
 	int r;
 
-	rg = &ofbi->region;
+	u16 h, w;
+	unsigned long pstride;
+	size_t psize;
+
+ 
+ 	rg = &ofbi->region;
 	memset(rg, 0, sizeof(*rg));
 
 	size = PAGE_ALIGN(size);
@@ -1464,7 +1470,7 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 			w = fbi->fix.line_length /
 				(fbi->var.bits_per_pixel >> 3);
 			h = size / fbi->fix.line_length;
-			err = tiler_alloc_buf(TILFMT_32BIT, w, h, &paddr);
+			err = tiler_alloc(TILFMT_32BIT, w, h, &paddr);
 			if (err != 0x0)
 				return -ENOMEM;
 			r = 0;
