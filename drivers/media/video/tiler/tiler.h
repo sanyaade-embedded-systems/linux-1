@@ -110,8 +110,12 @@ void tiler_alloc_packed(int *count, enum tiler_fmt fmt, unsigned long width,
 			void **allocptr, int aligned);
 
 void tiler_alloc_packed_nv12(int *count, unsigned long width,
-				unsigned long height, void **y_sysptr,
-				void **uv_allocptr, int aligned );
+				unsigned long height,
+				void **y_sysptr,
+				void **uv_sysptr,
+				void **y_allocptr,
+				void **uv_allocptr,
+				s32 aligned);
 
 #endif
 

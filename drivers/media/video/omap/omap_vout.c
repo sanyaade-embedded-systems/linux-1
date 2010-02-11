@@ -602,7 +602,7 @@ static int omap_vout_tiler_buffer_setup(struct omap_vout_device *vout,
 			bpp == 2 ? TILFMT_16BIT :
 			bpp == 4 ? TILFMT_32BIT : TILFMT_INVALID);
 		if (fmt == TILFMT_INVALID)
-		default:
+//		default:
 			return -ENOMEM;
 		tiler_alloc_packed(&n_alloc, fmt, pix->width,
 			pix->height,
