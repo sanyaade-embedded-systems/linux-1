@@ -38,6 +38,7 @@
 #include <plat/display.h>
 
 #include "dss.h"
+#include <mach/tiler.h>
 #include "../../../media/video/tiler/tiler.h"
 
 #ifndef CONFIG_ARCH_OMAP4
@@ -2298,7 +2299,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	unsigned int field_offset = 0;
 
 	u8 orientation = 0;
-	struct dmmViewOrientT orient;
+	struct tiler_view_orient orient;
 	unsigned long r, mir_x, mir_y;
 	unsigned long tiler_width, tiler_height;
 	void __iomem *reg = NULL;
@@ -2465,13 +2466,13 @@ static int _dispc_setup_plane(enum omap_plane plane,
 				(if rotation is applied before mirroring) */
 		memset(&orient, 0, sizeof(orient));
 		tiler_rotate_view(&orient, rotation * 90);
-		orient.dmmXInvert ^= mir_x;
-		orient.dmmYInvert ^= mir_y;
+		orient.x_invert ^= mir_x;
+		orient.y_invert ^= mir_y;
 
-		printk(KERN_INFO "RYX = %d %d %d\n", orient.dmm90Rotate,
-				orient.dmmYInvert, orient.dmmXInvert);
+		printk(KERN_INFO "RYX = %d %d %d\n", orient.rotate_90,
+				orient.y_invert, orient.x_invert);
 
-		if (orient.dmm90Rotate & 1) {
+		if (orient.rotate_90 & 1) {
 			tiler_height = width;
 			tiler_width = height;
 		} else {
@@ -3553,8 +3554,7 @@ int dispc_set_clock_div(struct dispc_clock_info *cinfo)
 	DSSDBG("pck = %lu (%u)\n", cinfo->pck, cinfo->pck_div);
 
 	/* TODO: update here for LCD2 support */
-	dispc_set_lcd_divisor(OMAP_DSS_CHANNEL_LCD, cinfo->lck_div,
-							cinfo->pck_div);
+	dispc_set_lcd_divisor(OMAP_DSS_CHANNEL_LCD, 1, 6);
 
 	return 0;
 }
