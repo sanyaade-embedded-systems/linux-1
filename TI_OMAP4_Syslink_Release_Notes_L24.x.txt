@@ -1,0 +1,204 @@
+================================================================================
+OMAP4 Syslink List Handoff
+================================================================================
+
+Author		: Hari Kanigeri
+Date		: Nov 30 2009
+
+===========
+Summary:
+===========
+OMAP4 Syslink consists of required set of drivers for Multi Core
+communication. The communication is mainly divided into Chiron to Tesla and
+Chiron to Ducati processors. Below sections provide details on the components
+in detail.
+
+=================
+Tesla MPU Bridge
+=================
+Tesla MPU bridge is the communication driver between the Chiron and
+Tesla processor.
+
+=============
+Syslink IPC
+=============
+Syslink IPC is the communication driver between the Chiron and Ducati cores.
+
+==============
+Proc manager
+==============
+	- Implemented initial version of Proc module. Proc module controls Ducati
+	Processors and supports IPC mechanism. Ducati enabler is now part of Proc
+	module.
+
+===============
+Notify module
+===============
+	Notify module provides an abstraction to underlying communiation layer,
+	notify clients(e.g notify_tesladriver & notify_ducatidriver) would register
+	with notify driver(omap_notify) with the supported set of functions
+	and the notify users (syslink ipc, tesla bridgedriver) use
+	notify driver to use client functionalities.
+
+=============
+Sources:
+=============
+All the above module sources are available along with the
+linux-omap4 kernel sources hosted in
+
+http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=summary
+
+Tesla Bridge api and sample sources are available in omapzoom.org in below link
+
+http://dev.omapzoom.org/?p=tisyslink/userspace-syslink.git;a=summary
+
+=======
+Setup:
+=======
+SDC4430
+CCSv4
+
+=====================
+Build Instructions:
+=====================
+
+Building the Linux Kernel and syslink components.
+
+All syslink component sources are now available along with Kernel sources under
+the drivers/dsp folders, They can be built as modules by below steps.
+
+Tesla Bridge driver sources available in folder drivers/dsp/bridge
+
+Syslink IPC component enables communication between Chiron and Ducati cores. The
+sources for Syslink components are available in folder drivers/dsp/syslink
+
+Proc manager driver initializes and programs
+MMU page table entries which is required for Ducati image loading.
+
+Please follow the below steps to build all the drivers.
+
+From the Kernel sources run below commands.
+
+	1. export PATH varible to arm codesourcey cross compiler.
+
+	2. export ARCH=arm
+
+	3. make distclean
+
+	4. make CROSS_COMPILE=arm-none-linux-gnueabi- omap_4430sdp_defconfig
+
+	5. Run make menuconfig
+
+	6. Select drivers under
+		Deivice Drivers -->Sys_Link  --->
+						<*>  OMAP IPC Module
+						<*>  OMAP Notify Module
+						<*>  Mailbox Dispatcher
+						<*>  OMAP Notify Tesla Module
+						<*>  OMAP Notify Ducati Module
+						<*>  Syslink Procmgr
+						<*>  Proc 4430
+		Device Drivers --><M> DSP Bridge driver-->
+						[*]   DSP Bridge Debug Support
+
+		Select DSP Bridge Debug Support option as above.
+	7. Save Configuration
+
+	8. Build the kernel by running below commands.
+
+	9. Add mkimage path to the PATH variable (for uImage building).
+
+	10. make CROSS_COMPILE=arm-none-linux-gnueabi- uImage
+
+	11. On successful uImage is built under arch/arm/boot.
+
+
+=======================================
+Building Syslink and Tesla user space modules
+=======================================
+
+	Follow the README document in the user-space root folder
+
+Running Tesla Samples
+=======================
+
+	1. Boot the kernel with Ramdisk consisting all the drivers and Tesla
+		images, samples, API libraries.
+
+	2. Once kernel is booted, cd into the folder where all the binaries are
+		placed.
+
+	3. install all the drivers in the sequence as below, this step is
+		required only if the drivers are build as modules,
+		if all the drivers are build as part of the kernel one can
+		ignore steps 3 and 4
+
+		insmod dspbridge.ko
+
+		insmod bridgedriver.ko
+
+
+	4.Load the image using cexec.out
+
+		./cexec.out ddspbase_tiomap4430.dof64T
+
+		Below are the commands for running
+		samples.
+
+		./scale.out 10
+		./zerocopymsg.out
+		./strmcopy.out 0 install_bridge out-strm-file.
+		./ping.out 10
+		./dmmcopy.out inoustall_bridge out-dmm-file
+
+
+Running Bridge Samples in Dynamic loading mode:
+
+	1. load dynbase image.
+		./cexec.out dynbase_tiomap4430.dof64T
+
+	2. Register the required dll as below.
+		./dynreg.out -r strmcopydyn_4430.dll64T
+
+	3. Run the strmcopy sample.
+		./strmcopy.out 0 install_bridge out-strm
+
+
+=======================
+Running Syslink Samples
+=======================
+
+	1. NotifyPing.out
+
+	2. messageQApp.out
+
+	3. rcm_singletest.out
+
+	4. syslink_tilertest.out
+
+
+==============
+Tesla Bridge
+==============
+Features Introduced
+--------------------------
+- Tesla Unicache enabled.
+- Tesla Bridge validated on SDC4430.
+- BIOS6 support
+
+==============
+Syslink
+==============
+- Cache functionality is added to Syslink ProcMgr API.
+- Syslink Trace daemon added to print traces from SysM3 and AppM3 on the Linux console.
+- All basic RCM and MessageQ samples are validated using SysMgr enabled baseimages on both SysM3 & AppM3.
+- DucatiPlatform.xs file updated to include a new trace section. The trace section is carved out of the cacheable IPC region.
+- All basic Ducati Syslink IPC (Notify, MessageQ) and RCM samples, and Bridge samples have been validated. Tiler sample also has been validated with the latest TILER pre-release.
+
+Important Notes
+--------------------
+
+Syslink now uses 49MB of memory from the 512MB RAM.
+
+Memory for Syslink needs to be set aside during bootargs. A suggested command at the u-boot prompt is:
+set bootargs root=/dev/ram0 rw mem=463M console=ttyS2,115200n8 initrd=0x81600000,20M ramdisk_size=20480

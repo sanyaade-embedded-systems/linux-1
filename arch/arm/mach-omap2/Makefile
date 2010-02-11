@@ -62,7 +62,7 @@ mailbox_mach-objs			:= mailbox.o
 
 iommu-y					+= iommu2.o
 iommu-$(CONFIG_ARCH_OMAP3)		+= omap3-iommu.o
-
+iommu-$(CONFIG_ARCH_OMAP4)              += omap4-iommu.o
 obj-$(CONFIG_OMAP_IOMMU)		+= $(iommu-y)
 
 i2c-omap-$(CONFIG_I2C_OMAP)		:= i2c.o
@@ -123,3 +123,4 @@ obj-y					+= $(onenand-m) $(onenand-y)
 
 smc91x-$(CONFIG_SMC91X)			:= gpmc-smc91x.o
 obj-y					+= $(smc91x-m) $(smc91x-y)
+obj-$(CONFIG_MPU_BRIDGE)                += dspbridge.o

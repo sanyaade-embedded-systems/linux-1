@@ -28,6 +28,7 @@
 
 #include <plat/mailbox.h>
 
+static struct workqueue_struct *mboxd;
 static struct omap_mbox *mboxes;
 static DEFINE_RWLOCK(mboxes_lock);
 
@@ -70,11 +71,10 @@ static int __mbox_msg_send(struct omap_mbox *mbox, mbox_msg_t msg)
 	int ret = 0, i = 1000;
 
 	while (mbox_fifo_full(mbox)) {
-		if (mbox->ops->type == OMAP_MBOX_TYPE2)
-			return -1;
 		if (--i == 0)
 			return -1;
 		udelay(1);
+		printk(KERN_ERR "Mailbox FIFO full %d\n", i);
 	}
 	mbox_fifo_write(mbox, msg);
 	return ret;
@@ -83,7 +83,13 @@ static int __mbox_msg_send(struct omap_mbox *mbox, mbox_msg_t msg)
 
 int omap_mbox_msg_send(struct omap_mbox *mbox, mbox_msg_t msg)
 {
+	/* Directly calling __mbox_msg_send since Tesla is already running
+	in a tasklet */
+	return __mbox_msg_send(mbox, msg);
 
+	/* FIXME Work queue is not used to send mailbox messages.
+	 Directly calling __mbox_msg_send().*/
+#if 0
 	struct request *rq;
 	struct request_queue *q = mbox->txq->queue;
 
@@ -95,6 +101,7 @@ int omap_mbox_msg_send(struct omap_mbox *mbox, mbox_msg_t msg)
 	tasklet_schedule(&mbox->txq->tasklet);
 
 	return 0;
+#endif
 }
 EXPORT_SYMBOL(omap_mbox_msg_send);
 
@@ -135,6 +142,7 @@ static void mbox_rx_work(struct work_struct *work)
 	mbox_msg_t msg;
 	unsigned long flags;
 
+
 	while (1) {
 		spin_lock_irqsave(q->queue_lock, flags);
 		rq = blk_fetch_request(q);
@@ -146,6 +154,7 @@ static void mbox_rx_work(struct work_struct *work)
 		blk_end_request_all(rq, 0);
 		mbox->rxq->callback((void *)msg);
 	}
+
 }
 
 /*
@@ -179,7 +188,7 @@ static void __mbox_rx_interrupt(struct omap_mbox *mbox)
 
 		msg = mbox_fifo_read(mbox);
 
-
+		rq->special = (void *)msg;
 		blk_insert_request(q, rq, 0, (void *)msg);
 		if (mbox->ops->type == OMAP_MBOX_TYPE1)
 			break;
@@ -188,7 +197,7 @@ static void __mbox_rx_interrupt(struct omap_mbox *mbox)
 	/* no more messages in the fifo. clear IRQ source. */
 	ack_mbox_irq(mbox, IRQ_RX);
 nomem:
-	schedule_work(&mbox->rxq->work);
+	queue_work(mboxd, &mbox->rxq->work);
 }
 
 static irqreturn_t mbox_interrupt(int irq, void *p)
@@ -401,12 +410,17 @@ EXPORT_SYMBOL(omap_mbox_unregister);
 
 static int __init omap_mbox_init(void)
 {
+	mboxd = create_workqueue("mboxd");
+	if (!mboxd)
+		return -ENOMEM;
+
 	return 0;
 }
 module_init(omap_mbox_init);
 
 static void __exit omap_mbox_exit(void)
 {
+	destroy_workqueue(mboxd);
 }
 module_exit(omap_mbox_exit);
 
