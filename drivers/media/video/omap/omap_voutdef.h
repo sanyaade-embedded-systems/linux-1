@@ -97,6 +97,10 @@ struct omap_vout_device {
 	unsigned long buf_virt_addr[VIDEO_MAX_FRAME];
 	unsigned long buf_phy_addr[VIDEO_MAX_FRAME];
 
+	/* keep which buffers we actually allocated (via tiler) */
+	unsigned long buf_phy_uv_addr_alloced[VIDEO_MAX_FRAME];
+	unsigned long buf_phy_addr_alloced[VIDEO_MAX_FRAME];
+
 /* NV12 support*/
 	unsigned long buf_phy_uv_addr[VIDEO_MAX_FRAME];
 	u8 *queued_buf_uv_addr[VIDEO_MAX_FRAME];
