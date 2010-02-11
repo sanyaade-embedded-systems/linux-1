@@ -24,7 +24,10 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-void tiler_alloc_packed(s32 *count, enum tiler_fmt fmt, u32 width, u32 height,
+void tiler_alloc_packed(int *count, 
+			enum tiler_fmt fmt, 
+			unsigned long width, 
+			unsigned long height,
 			void **sysptr, void **allocptr, s32 aligned)
 {
 	int til_width, bpp, bpt, buf_width, alloc_width, map_width;
@@ -132,7 +135,10 @@ static int layout_packed_nv12(char *offsets, int y_width, int uv_width,
 	return i;
 }
 
-void tiler_alloc_packed_nv12(s32 *count, u32 width, u32 height, void **y_sysptr,
+void tiler_alloc_packed_nv12(int *count, 
+				unsigned long width, 
+				unsigned long height, 
+				void **y_sysptr,
 				void **uv_sysptr, void **y_allocptr,
 				void **uv_allocptr, s32 aligned)
 {
