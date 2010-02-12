@@ -34,6 +34,7 @@
 #include <plat/gpmc.h>
 #include <plat/serial.h>
 #include <plat/vram.h>
+#include <plat/gpio.h>
 
 #include "clock2xxx.h"
 #include "clock3xxx.h"
@@ -325,4 +326,5 @@ void __init omap2_init_common_hw(struct omap_sdrc_params *sdrc_cs0,
 	_omap2_init_reprogram_sdrc();
 #endif
 	gpmc_init();
+	omap_gpio_early_init();
 }
