@@ -22,6 +22,7 @@
 #include <linux/kernel.h>
 #include <linux/list.h>
 #include <linux/clk.h>
+#include <linux/errno.h>
 
 #include <plat/control.h>
 #include <plat/clkdev_omap.h>
@@ -2690,6 +2691,9 @@ int __init omap4xxx_clk_init(void)
 	if (cpu_is_omap44xx()) {
 		cpu_mask = RATE_IN_4430;
 		cpu_clkflg = CK_443X;
+	} else {
+		printk(KERN_ERR "clock init failed: Unknown platform\n");
+		return -EINVAL;
 	}
 
 	clk_init(&omap2_clk_functions);
