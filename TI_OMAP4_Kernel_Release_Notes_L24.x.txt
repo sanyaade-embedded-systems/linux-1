@@ -222,12 +222,22 @@ Add the following in bootargs "omapfb.numfb=2"
 Add the following in bootargs "omapdss.debug=1"
 
 
-3.4.3 Running triple display usecase
+3.4.3 Enabling HDMI and Running triple display usecase
 
 1) As HDMI is TI restricted, please apply the patch 
 "OMAP4_HDMI_AV_coreLib_TI_restricted_L24.4_v2.patch" from link 
 https://gforge01.dal.design.ti.com/gf/project/omap_hdmi/docman/?subdir=122 
-on top of kernel-display and enable HDMI in menuconfig.
+on top of kernel-display and enable HDMI in menuconfig, as follows:
+
+	Device Drivers -->
+		Graphics Support -->
+			OMAP2/3 Display Subsystem support --->
+				HDMI support
+		Sound card support -->
+			Advanced Linux Sound Architecture -->
+				ALSA for SoC audio support -->
+					SOC Audio support for HDMI interface on SDP4430
+			
 
 2) Change OMAPFB_NUM_FBS=1 in menuconfig
 	Device Drivers ---> 
