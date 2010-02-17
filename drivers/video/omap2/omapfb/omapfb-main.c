@@ -641,14 +641,15 @@ void set_fb_fix(struct fb_info *fbi)
 		}
 
 		fix->smem_len = var->yres_virtual * fix->line_length;
-	} else if (ofbi->rotation_type != OMAP_DSS_ROT_TILER) {	
+	} else if (ofbi->rotation_type != OMAP_DSS_ROT_TILER) {
 		fix->line_length =
 			(var->xres_virtual * var->bits_per_pixel) >> 3;
 
 		/* tiler line length is set during allocation, and cannot
-		   be changed */
+		   be changed */		
 	}
 
+	fix->smem_start = omapfb_get_region_paddr(ofbi);
 	fix->smem_len = rg->size;
 
 	fix->type = FB_TYPE_PACKED_PIXELS;
@@ -876,8 +877,8 @@ static int omapfb_setup_overlay(struct fb_info *fbi, struct omap_overlay *ovl,
 			posx, posy, outw, outh);
 
 	if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
-		xres = var->xres;
-		yres = var->yres;
+			xres = var->xres;
+			yres = var->yres;
 	} else {
 	if (rotation == FB_ROTATE_CW || rotation == FB_ROTATE_CCW) {
 		xres = var->yres;
@@ -958,15 +959,12 @@ static int omapfb_setup_overlay(struct fb_info *fbi, struct omap_overlay *ovl,
 
 	info.pos_x = posx;
 	info.pos_y = posy;
-	info.out_width = outw;
-	
 	if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
 		info.out_width =
 			((rotation == 1) | (rotation == 3)) ? outh : outw;
 	} else {
 		info.width = outw;
 	}
-	
 	info.out_height = outh;
 
 	r = ovl->set_overlay_info(ovl, &info);
@@ -1013,7 +1011,6 @@ int omapfb_apply_changes(struct fb_info *fbi, int init)
 
 		if (init || (ovl->caps & OMAP_DSS_OVL_CAP_SCALE) == 0) {
 			int rotation = (var->rotate + ofbi->rotation[i]) % 4;
-
 			if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
 					outw = var->xres;
 					outh = var->yres;
@@ -1025,6 +1022,7 @@ int omapfb_apply_changes(struct fb_info *fbi, int init)
 			} else {
 				outw = var->xres;
 				outh = var->yres;
+				}
 			}
 		    }
 		} else {
@@ -1389,16 +1387,12 @@ static void omapfb_free_fbmem(struct fb_info *fbi)
 	rg = &ofbi->region;
 
 	if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
-	tiler_free(rg->paddr);	
+		tiler_free(rg->paddr);
 	} else {
- 	if (rg->paddr)
- 		if (omap_vram_free(rg->paddr, rg->size))
- 			dev_err(fbdev->dev, "VRAM FREE failed\n");
-	}
-
 	if (rg->paddr)
 		if (omap_vram_free(rg->paddr, rg->size))
 			dev_err(fbdev->dev, "VRAM FREE failed\n");
+	}
 
 	if (rg->vaddr)
 		iounmap(rg->vaddr);
@@ -1449,6 +1443,10 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 	struct omapfb2_mem_region *rg;
 	void __iomem *vaddr;
 	int r;
+	u16 h = 0, w = 0;
+	unsigned long pstride;
+	size_t psize;
+
 
 	u16 h, w;
 	unsigned long pstride;
@@ -1476,7 +1474,6 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 		} else {
 			r = omap_vram_alloc(OMAPFB_MEMTYPE_SDRAM, size, &paddr);
 		}
-
 	} else {
 		DBG("reserving %lu bytes at %lx for fb %d\n", size, paddr,
 				ofbi->id);
@@ -1492,7 +1489,7 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 		vaddr = ioremap_wc(paddr, size);
 
 		if (!vaddr) {
-			dev_err(fbdev->dev, 
+			dev_err(fbdev->dev,
 				"failed to ioremap framebuffer\n");
 			omap_vram_free(paddr, size);
 			return -ENOMEM;
@@ -1562,7 +1559,7 @@ static int omapfb_alloc_fbmem_display(struct fb_info *fbi, unsigned long size,
 
 		if (ofbi->rotation_type == OMAP_DSS_ROT_VRFB) {
 			//size = max(omap_vrfb_min_phys_size(w, h, bytespp),
-			//		omap_vrfb_min_phys_size(h, w, bytespp));
+				//	omap_vrfb_min_phys_size(h, w, bytespp));
 
 			DBG("adjusting fb mem size for VRFB, %u -> %lu\n",
 					w * h * bytespp, size);
@@ -1897,7 +1894,6 @@ static int omapfb_fb_init(struct omapfb2_device *fbdev, struct fb_info *fbi)
 				var->xres = w;
 				var->yres = h;
 		} else {
-
 		if (rotation == FB_ROTATE_CW ||
 				rotation == FB_ROTATE_CCW) {
 			var->xres = h;
@@ -2027,7 +2023,6 @@ static int omapfb_create_framebuffers(struct omapfb2_device *fbdev)
 		ofbi->id = i;
 
 		/* assign these early, so that fb alloc can use them */
-		
 		if (def_vrfb == 1) {
 			ofbi->rotation_type = OMAP_DSS_ROT_VRFB;
 		} else if (def_tiler == 1) {

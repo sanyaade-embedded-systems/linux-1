@@ -2300,7 +2300,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 
 	u8 orientation = 0;
 	struct tiler_view_orient orient;
-	unsigned long r, mir_x, mir_y;
+	unsigned long r, mir_x = 0, mir_y = 0;
 	unsigned long tiler_width, tiler_height;
 	void __iomem *reg = NULL;
 
@@ -2460,7 +2460,6 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	if ((paddr >= 0x60000000) && (paddr <= 0x7fffffff)) {
 		calc_tiler_row_rotation(rotation, width, frame_height,
 						color_mode, &row_inc);
-
 		orientation = calc_tiler_orientation(rotation, (u8)mirror);
 		/* get rotated top-left coordinate
 				(if rotation is applied before mirroring) */
