@@ -1025,7 +1025,6 @@ int omapfb_apply_changes(struct fb_info *fbi, int init)
 				}
 			}
 		    }
-		} else {
 			/*sv it comes here for vid1 on fb */
 			DBG("its vid pipeline so sclaing is enabled, still we will not scale for output size,just maintain the input size");
 			int rotation = (var->rotate + ofbi->rotation[i]) % 4;
@@ -1056,7 +1055,6 @@ int omapfb_apply_changes(struct fb_info *fbi, int init)
 
 		if (!init && ovl->manager)
 			ovl->manager->apply(ovl->manager);
-	}
 	DBG("apply changes done from omapfb"); //sv
 	return 0;
 err:
@@ -1448,11 +1446,6 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 	size_t psize;
 
 
-	u16 h, w;
-	unsigned long pstride;
-	size_t psize;
-
- 
  	rg = &ofbi->region;
 	memset(rg, 0, sizeof(*rg));
 
