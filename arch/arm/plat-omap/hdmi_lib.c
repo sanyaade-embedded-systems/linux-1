@@ -995,12 +995,12 @@ static void hdmi_w1_audio_disable(void)
 
 static void hdmi_w1_audio_start(void)
 {
-	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 0, 30, 30);
+	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 1, 30, 30);
 }
 
 static void hdmi_w1_audio_stop(void)
 {
-	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 1, 30, 30);
+	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 0, 30, 30);
 }
 
 static int hdmi_w1_audio_config(void)
