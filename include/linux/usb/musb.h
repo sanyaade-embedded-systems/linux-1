@@ -30,7 +30,6 @@ struct musb_hdrc_eps_bits {
 struct musb_hdrc_config {
 	/* MUSB configuration-specific details */
 	unsigned	multipoint:1;	/* multipoint device */
-	unsigned	dyn_fifo:1;	/* supports dynamic fifo sizing */
 	unsigned	soft_con:1;	/* soft connect required */
 	unsigned	utm_16:1;	/* utm data witdh is 16 bits */
 	unsigned	big_endian:1;	/* true if CPU uses big-endian */
