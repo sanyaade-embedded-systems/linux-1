@@ -525,7 +525,17 @@ static int __devexit omap_kp_remove(struct platform_device *pdev)
 
 	/* disable keypad interrupt handling */
 	tasklet_disable(&kp_tasklet);
-	if (cpu_is_omap24xx()) {
+
+	if (!cpu_is_omap24xx()) {
+		omap_kp->irq = platform_get_irq(pdev, 0);
+		if (!cpu_is_omap44xx()) {
+			omap_writew(1, OMAP1_MPUIO_BASE +
+					OMAP_MPUIO_KBD_MASKIT);
+			free_irq(omap_kp->irq, 0);
+		} else {
+			free_irq(152, omap_kp);
+		}
+	} else {
 		int i;
 		for (i = 0; i < omap_kp->cols; i++)
 			gpio_free(col_gpios[i]);
@@ -533,9 +543,6 @@ static int __devexit omap_kp_remove(struct platform_device *pdev)
 			gpio_free(row_gpios[i]);
 			free_irq(gpio_to_irq(row_gpios[i]), 0);
 		}
-	} else {
-		omap_writew(1, OMAP1_MPUIO_BASE + OMAP_MPUIO_KBD_MASKIT);
-		free_irq(omap_kp->irq, 0);
 	}
 
 	del_timer_sync(&omap_kp->timer);
@@ -543,6 +550,8 @@ static int __devexit omap_kp_remove(struct platform_device *pdev)
 
 	/* unregister everything */
 	input_unregister_device(omap_kp->input);
+
+	device_remove_file(&pdev->dev, &dev_attr_enable);
 
 	kfree(omap_kp);
 
