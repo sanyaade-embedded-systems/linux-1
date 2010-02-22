@@ -959,12 +959,14 @@ static int omapfb_setup_overlay(struct fb_info *fbi, struct omap_overlay *ovl,
 
 	info.pos_x = posx;
 	info.pos_y = posy;
+
 	if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
 		info.out_width =
 			((rotation == 1) | (rotation == 3)) ? outh : outw;
 	} else {
 		info.width = outw;
 	}
+
 	info.out_height = outh;
 
 	r = ovl->set_overlay_info(ovl, &info);
@@ -1024,7 +1026,7 @@ int omapfb_apply_changes(struct fb_info *fbi, int init)
 				outh = var->yres;
 				}
 			}
-		    }
+		    } else {
 			/*sv it comes here for vid1 on fb */
 			DBG("its vid pipeline so sclaing is enabled, still we will not scale for output size,just maintain the input size");
 			int rotation = (var->rotate + ofbi->rotation[i]) % 4;
@@ -1055,6 +1057,7 @@ int omapfb_apply_changes(struct fb_info *fbi, int init)
 
 		if (!init && ovl->manager)
 			ovl->manager->apply(ovl->manager);
+	}
 	DBG("apply changes done from omapfb"); //sv
 	return 0;
 err:
@@ -1177,11 +1180,11 @@ static int omapfb_mmap(struct fb_info *fbi, struct vm_area_struct *vma)
 			off += 2*64*TILER_WIDTH;
 		}
 	} else {
-		vma->vm_pgoff = off >> PAGE_SHIFT;
-	        vma->vm_flags |= VM_IO | VM_RESERVED;
-	        vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
-		vma->vm_ops = &mmap_user_ops;
-	
+	    vma->vm_pgoff = off >> PAGE_SHIFT;
+	vma->vm_flags |= VM_IO | VM_RESERVED;
+	vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
+	vma->vm_ops = &mmap_user_ops;
+	vma->vm_private_data = ofbi;
 	if (io_remap_pfn_range(vma, vma->vm_start, off >> PAGE_SHIFT,
 			     vma->vm_end - vma->vm_start, vma->vm_page_prot))
 		return -EAGAIN;
@@ -1445,8 +1448,8 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 	unsigned long pstride;
 	size_t psize;
 
-
- 	rg = &ofbi->region;
+ 	
+	rg = &ofbi->region;
 	memset(rg, 0, sizeof(*rg));
 
 	size = PAGE_ALIGN(size);
@@ -1563,7 +1566,6 @@ static int omapfb_alloc_fbmem_display(struct fb_info *fbi, unsigned long size,
 			w = 2048;
 			DBG("adjusting fb mem size for TILER, %dx%d -> %dx%d\n",
 				oldw, oldh, w, h);
-
 		} else if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
 			/* round up width to tiler size */
 			w = ALIGN(w, PAGE_SIZE / bytespp);
