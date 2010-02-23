@@ -103,7 +103,7 @@ config SND_OMAP_SOC_SDP4430
 
 config SND_OMAP_SOC_HDMI
 	tristate "SoC Audio support for HDMI interface on SDP4430"
-	depends on SND_OMAP_SOC_SDP4430
+	depends on SND_OMAP_SOC_SDP4430 && OMAP2_DSS_HDMI
 	help
 	  Say Y if you want to add support for HDMI interface on SDP4430
 
