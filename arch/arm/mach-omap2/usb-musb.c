@@ -92,6 +92,11 @@ void __init usb_musb_init(struct omap_musb_board_data *board_data)
 		musb_resources[0].start = OMAP243X_HS_BASE;
 	} else if (cpu_is_omap34xx()) {
 		musb_resources[0].start = OMAP34XX_HSUSB_OTG_BASE;
+		/* OMAP3EVM Rev >= E can source 500mA */
+		if (get_omap3_evm_rev() >= OMAP3EVM_BOARD_GEN_2) {
+			musb_plat.power = 250;
+			musb_plat.extvbus = 1;
+		}
 	} else if (cpu_is_omap44xx()) {
 		musb_resources[0].start = OMAP44XX_HSUSB_OTG_BASE;
 		musb_resources[1].start = OMAP44XX_IRQ_HS_USB_MC_N;
