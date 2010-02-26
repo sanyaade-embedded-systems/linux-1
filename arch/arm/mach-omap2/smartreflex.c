@@ -425,6 +425,12 @@ int sr_enable(int srid, u32 target_opp_no)
 		sr->err_minlimit = (target_opp_no > 2) ?
 			OMAP3430_SR_ERRMINLIMIT_HIGHOPP :
 			OMAP3430_SR_ERRMINLIMIT_LOWOPP;
+	else if (cpu_is_omap3630())
+		sr->err_minlimit = (target_opp_no > 2) ?
+			OMAP3630_SR_ERRMINLIMIT_HIGHOPP :
+			((target_opp_no == 1) ?
+			OMAP3630_SR_ERRMINLIMIT_OPP50 :
+			OMAP3630_SR_ERRMINLIMIT_OPP100);
 
 	/*Enable the clocks and configure SR*/
 	sr_clk_enable(sr);

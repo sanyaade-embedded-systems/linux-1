@@ -194,12 +194,12 @@ static struct omap_hwmod omap36xx_mpu_hwmod = {
 
 /* SR common */
 static struct omap_hwmod_sysc_fields omap36xx_sr_sysc_fields = {
-	.clkact_shift   = 20,
+	.sidle_shift	= 24,
 };
 
 static struct omap_hwmod_sysconfig omap36xx_sr_if_ctrl = {
-	.sysc_offs      = 0x24,
-	.sysc_flags     = (SYSC_HAS_CLOCKACTIVITY | SYSC_NO_CACHE),
+	.sysc_offs      = 0x38,
+	.sysc_flags     = (SYSC_HAS_SIDLEMODE | SYSC_NO_CACHE),
 	.clockact       = CLOCKACT_TEST_ICLK,
 	.sysc_fields    = &omap36xx_sr_sysc_fields,
 };
@@ -219,7 +219,6 @@ static struct omap_hwmod omap36xx_sr1_hwmod = {
 	.slaves_cnt     = ARRAY_SIZE(omap36xx_sr1_slaves),
 	.sysconfig      = &omap36xx_sr_if_ctrl,
 	.omap_chip      = OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
-	.flags          = HWMOD_SET_DEFAULT_CLOCKACT,
 };
 
 /* SR2 */
@@ -237,7 +236,6 @@ static struct omap_hwmod omap36xx_sr2_hwmod = {
 	.slaves_cnt     = ARRAY_SIZE(omap36xx_sr2_slaves),
 	.sysconfig      = &omap36xx_sr_if_ctrl,
 	.omap_chip      = OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
-	.flags          = HWMOD_SET_DEFAULT_CLOCKACT,
 };
 
 static __initdata struct omap_hwmod *omap36xx_hwmods[] = {

@@ -137,6 +137,10 @@
 #define OMAP3430_SR_ERRMAXLIMIT		0x02
 #define OMAP3430_SR_ERRMINLIMIT_HIGHOPP	0xF9
 #define OMAP3430_SR_ERRMINLIMIT_LOWOPP	0xF4
+
+#define OMAP3630_SR_ERRMINLIMIT_OPP50	0xF4
+#define OMAP3630_SR_ERRMINLIMIT_OPP100	0xF9
+#define OMAP3630_SR_ERRMINLIMIT_HIGHOPP	0xFA
 /*TODO:3630/OMAP4 values if it has to come from this file*/
 
 /* Info for enabling SR in T2/gaia. ToDo: Move it to twl4030_power.c */

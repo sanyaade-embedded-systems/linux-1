@@ -495,13 +495,15 @@ void omap_sram_idle(void)
 	 * Disable smartreflex before entering WFI.
 	 * Only needed if we are going to enter retention or off.
 	 */
+	if (mpu_next_state <= PWRDM_POWER_RET)
+		omap_smartreflex_disable(SR1);
+
 	fclk_status = cm_read_mod_reg(OMAP3430_PER_MOD, CM_FCLKEN) |
 			cm_read_mod_reg(CORE_MOD, CM_FCLKEN1) |
-			cm_read_mod_reg(CORE_MOD, OMAP3430ES2_CM_FCLKEN3);
+			cm_read_mod_reg(CORE_MOD, OMAP3430ES2_CM_FCLKEN3) |
+			cm_read_mod_reg(OMAP3430_DSS_MOD, CM_FCLKEN);
 
 	if (!fclk_status) {
-		if (mpu_next_state <= PWRDM_POWER_RET)
-			omap_smartreflex_disable(SR1);
 		if (core_next_state <= PWRDM_POWER_RET)
 			omap_smartreflex_disable(SR2);
 	}
@@ -593,9 +595,10 @@ void omap_sram_idle(void)
 	 * Enable smartreflex after WFI. Only needed if we entered
 	 * retention or off
 	 */
+	if (mpu_next_state <= PWRDM_POWER_RET)
+		omap_smartreflex_enable(SR1);
+
 	if (!fclk_status) {
-		if (mpu_next_state <= PWRDM_POWER_RET)
-			omap_smartreflex_enable(SR1);
 		if (core_next_state <= PWRDM_POWER_RET)
 			omap_smartreflex_enable(SR2);
 	}

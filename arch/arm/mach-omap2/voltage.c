@@ -77,6 +77,17 @@ struct vc_reg_info {
 } vc_reg;
 
 /**
+ * Voltage processor errorgain values for OMAP3630
+ */
+u32 omap3630_vp_errorgain[] = {
+	OMAP3630_VP_ERRORGAIN_OPP50,
+	OMAP3630_VP_ERRORGAIN_OPP100,
+	OMAP3630_VP_ERRORGAIN_OPPTB,
+	OMAP3630_VP_ERRORGAIN_OPP1GB,
+};
+
+
+/**
  * Default voltage controller settings for OMAP3
  */
 static struct prm_setup_vc vc_config = {
@@ -273,9 +284,12 @@ static void __init vp_reg_offs_configure(int vp_id)
 {
 	struct clk *sys_ck;
 	u32 sys_clk_speed, timeout_val;
+	int current_vdd_opp;
 
 	if (cpu_is_omap34xx()) {
 		if (vp_id == VP1) {
+			current_vdd_opp = get_vdd1_opp();
+
 			vp_reg[vp_id].vp_vonfig_reg =
 					OMAP3430_PRM_VP1_CONFIG;
 			vp_reg[vp_id].vp_vstepmin_reg =
@@ -288,13 +302,20 @@ static void __init vp_reg_offs_configure(int vp_id)
 					OMAP3430_PRM_VP1_STATUS;
 			vp_reg[vp_id].vp_voltage_reg =
 					OMAP3430_PRM_VP1_VOLTAGE;
-			/* OMAP3430 has error gain varying btw higher and
-			 * lower opp's
-			 */
-			vp_reg[vp_id].vp_errorgain = (((get_vdd1_opp() > 2) ?
+			if (cpu_is_omap343x())
+				/* OMAP3430 has error gain varying btw higher
+				 * and lower opp's
+				 */
+				vp_reg[vp_id].vp_errorgain =
+					(((current_vdd_opp > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
+			else if (cpu_is_omap3630())
+				vp_reg[vp_id].vp_errorgain =
+					(omap3630_vp_errorgain[current_vdd_opp]
+					<< OMAP3430_ERRORGAIN_SHIFT);
+
 			vp_reg[vp_id].vp_vddmin = (OMAP3_VP1_VLIMITTO_VDDMIN <<
 					OMAP3430_VDDMIN_SHIFT);
 			vp_reg[vp_id].vp_vddmax = (OMAP3_VP1_VLIMITTO_VDDMAX <<
@@ -302,6 +323,8 @@ static void __init vp_reg_offs_configure(int vp_id)
 			vp_reg[vp_id].vp_tranxdone_status =
 					OMAP3430_VP1_TRANXDONE_ST;
 		} else if (vp_id == VP2) {
+			current_vdd_opp = get_vdd2_opp();
+
 			vp_reg[vp_id].vp_vonfig_reg =
 					OMAP3430_PRM_VP2_CONFIG;
 			vp_reg[vp_id].vp_vstepmin_reg =
@@ -314,13 +337,20 @@ static void __init vp_reg_offs_configure(int vp_id)
 					OMAP3430_PRM_VP2_STATUS;
 			vp_reg[vp_id].vp_voltage_reg =
 					OMAP3430_PRM_VP2_VOLTAGE;
-			/* OMAP3430 has error gain varying btw higher and
-			 * lower opp's
-			 */
-			vp_reg[vp_id].vp_errorgain = (((get_vdd2_opp() > 2) ?
+			if (cpu_is_omap343x())
+				/* OMAP3430 has error gain varying btw higher
+				 * and lower opp's
+				 */
+				vp_reg[vp_id].vp_errorgain =
+					(((current_vdd_opp > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
+			else if (cpu_is_omap3630())
+				vp_reg[vp_id].vp_errorgain =
+					(omap3630_vp_errorgain[current_vdd_opp]
+					<< OMAP3430_ERRORGAIN_SHIFT);
+
 			vp_reg[vp_id].vp_vddmin = (OMAP3_VP2_VLIMITTO_VDDMIN <<
 					OMAP3430_VDDMIN_SHIFT);
 			vp_reg[vp_id].vp_vddmax = (OMAP3_VP2_VLIMITTO_VDDMAX <<
