@@ -351,8 +351,9 @@ void omap_uart_resume_idle(int num)
 			}
 
 			/* Check for normal UART wakeup */
-			if (__raw_readl(uart->wk_st) & uart->wk_mask)
-				omap_uart_block_sleep(uart);
+			if (uart->wk_st && uart->wk_mask)
+				if(__raw_readl(uart->wk_st) & uart->wk_mask)
+					omap_uart_block_sleep(uart);
 			return;
 		}
 	}
@@ -463,6 +464,7 @@ static void omap_uart_idle_init(struct omap_uart_state *uart)
 			break;
 		}
 		uart->wk_mask = wk_mask;
+
 	} else {
 		uart->wk_en = 0;
 		uart->wk_st = 0;
