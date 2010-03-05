@@ -1,5 +1,5 @@
 
-15 February 2010
+5 March 2010
 
 
 1.  Introduction
@@ -221,17 +221,6 @@ Add the following in bootargs "omapfb.numfb=2"
 3.4.2.3 Enabling DSS DEBUG prints
 Add the following in bootargs "omapdss.debug=1"
 
------ Cut here ------
-pcm.!default {
-	type plug
-	slave.pcm {
-		type hw
-		card 0
-		device 3
-	}
-}
------ Cut here ------
-
 
 3.5 Enabling Power Management Features
 
@@ -323,13 +312,30 @@ None
 
 Refer to Program schedule.
 
+
 4.5 Defects Fixed in This Release
 
-None
+OMAPS00213792 : System freeze when try to access a same memory location from 
+		2 different threads/applications when L2 cache is enabled
+OMAPS00213993 : MUSB in host mode fails to configure devices
+OMAPS00214289 : Soft Lock up is seen with busy box FS over NFS when a USB
+		flash drive is connected to MUSB port.
+OMAPS00213823 : Keypad driver doesn't work as module if clock changes are
+		added
+OMAPS00212043 : MMC Reads are taking too long 
+OMAPS00210302 : Ethernet: Registration: Kernel Crash
+OMAPS00213835 : OMAP4 Keypad - map SHIFT key to enable entering of numbers
+OMAPS00213836 : OMAP4 Battery - Increase charging current to 1.5 A.
+OMAPS00211269 : L24.2 DSS Deadlock issue.
+OMAPS00211271 : DSS : ISR Events need to be interpreted correctly.
+OMAPS00205479 : Tiller Alloc failed while Multiple tiler buffer.
+
 
 4.6 Open Defects
 
-None
+OMAPS00214290 : MUSB Tx throughput degrades with Poky FS accessed over NFS.
+OMAPS00214647 : File system on MMC get corrupted when enabling L2 cache
+
 
 4.7 Open Change Requests
 
