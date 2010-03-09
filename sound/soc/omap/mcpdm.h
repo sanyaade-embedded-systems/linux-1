@@ -120,6 +120,11 @@ struct omap_mcpdm_link {
 struct omap_mcpdm_platform_data {
 	unsigned long phys_base;
 	u16 irq;
+
+	int (*device_enable) (struct platform_device *pdev);
+	int (*device_shutdown) (struct platform_device *pdev);
+	int (*device_idle) (struct platform_device *pdev);
+	int (*device_disable) (struct platform_device *pdev);
 };
 
 struct omap_mcpdm {
