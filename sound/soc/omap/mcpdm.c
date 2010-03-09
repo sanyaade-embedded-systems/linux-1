@@ -323,9 +323,15 @@ static irqreturn_t omap_mcpdm_irq_handler(int irq, void *dev_id)
 
 int omap_mcpdm_request(void)
 {
+	struct platform_device *pdev;
+	struct omap_mcpdm_platform_data *pdata;
 	int ret;
 
-	clk_enable(mcpdm->clk);
+	pdev = container_of(mcpdm->dev, struct platform_device, dev);
+	pdata = pdev->dev.platform_data;
+
+	if (pdata->device_enable)
+		pdata->device_enable(pdev);
 
 	spin_lock(&mcpdm->lock);
 
@@ -352,12 +358,19 @@ int omap_mcpdm_request(void)
 	return 0;
 
 err:
-	clk_disable(mcpdm->clk);
+	if (pdata->device_disable)
+		pdata->device_disable(pdev);
 	return ret;
 }
 
 void omap_mcpdm_free(void)
 {
+	struct platform_device *pdev;
+	struct omap_mcpdm_platform_data *pdata;
+
+	pdev = container_of(mcpdm->dev, struct platform_device, dev);
+	pdata = pdev->dev.platform_data;
+
 	spin_lock(&mcpdm->lock);
 	if (mcpdm->free) {
 		dev_err(mcpdm->dev, "McPDM interface is already free\n");
@@ -367,8 +380,12 @@ void omap_mcpdm_free(void)
 	mcpdm->free = 1;
 	spin_unlock(&mcpdm->lock);
 
-	clk_disable(mcpdm->clk);
+	if (pdata->device_idle)
+		pdata->device_idle(pdev);
 
+#if 0
+	clk_disable(mcpdm->clk);
+#endif
 	free_irq(mcpdm->irq, (void *)mcpdm);
 }
 
@@ -401,6 +418,21 @@ int omap_mcpdm_set_offset(int offset1, int offset2)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+static int omap_mcpdm_suspend(struct platform_device *dev, pm_message_t state)
+{
+	return 0;
+}
+
+static int omap_mcpdm_resume(struct platform_device *dev)
+{
+	return 0;
+}
+#else
+#define omap_mcpdm_suspend	NULL
+#define omap_mcpdm_resume	NULL
+#endif
+
 static int __devinit omap_mcpdm_probe(struct platform_device *pdev)
 {
 	struct resource *res;
@@ -420,6 +452,7 @@ static int __devinit omap_mcpdm_probe(struct platform_device *pdev)
 
 	spin_lock_init(&mcpdm->lock);
 	mcpdm->free = 1;
+
 	mcpdm->io_base = ioremap(res->start, resource_size(res));
 	if (!mcpdm->io_base) {
 		ret = -ENOMEM;
@@ -427,12 +460,9 @@ static int __devinit omap_mcpdm_probe(struct platform_device *pdev)
 	}
 
 	mcpdm->irq = platform_get_irq(pdev, 0);
-
-	mcpdm->clk = clk_get(&pdev->dev, "pdm_ck");
-	if (IS_ERR(mcpdm->clk)) {
-		ret = PTR_ERR(mcpdm->clk);
-		dev_err(&pdev->dev, "unable to get pdm_ck: %d\n", ret);
-		goto err_clk;
+	if (!mcpdm->irq) {
+		ret = -EINVAL;
+		goto err_irq;
 	}
 
 	mcpdm->dev = &pdev->dev;
@@ -440,7 +470,7 @@ static int __devinit omap_mcpdm_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_clk:
+err_irq:
 	iounmap(mcpdm->io_base);
 err_resource:
 	kfree(mcpdm);
@@ -451,10 +481,15 @@ exit:
 static int __devexit omap_mcpdm_remove(struct platform_device *pdev)
 {
 	struct omap_mcpdm *mcpdm_ptr = platform_get_drvdata(pdev);
+	struct omap_mcpdm_platform_data *pdata = pdev->dev.platform_data;
 
 	platform_set_drvdata(pdev, NULL);
-
+#if 0
 	clk_put(mcpdm_ptr->clk);
+#endif
+
+	if (pdata->device_shutdown)
+		pdata->device_shutdown(pdev);
 
 	iounmap(mcpdm_ptr->io_base);
 
