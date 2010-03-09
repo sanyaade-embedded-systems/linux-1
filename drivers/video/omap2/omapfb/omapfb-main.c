@@ -45,6 +45,8 @@ static char *def_vram;
 static int def_vrfb;
 static int def_rotate;
 static int def_mirror;
+unsigned int omapfb_size = 0;
+module_param_named(fb_size, omapfb_size,int,0644);
 
 #ifdef DEBUG
 unsigned int omapfb_debug;
@@ -1437,6 +1439,12 @@ static int omapfb_alloc_fbmem_display(struct fb_info *fbi, unsigned long size,
 		} else {
 			size = w * h * bytespp;
 		}
+	}
+
+	if(omapfb_size)
+	{
+		if(omapfb_size > size)
+			size = omapfb_size;
 	}
 
 	if (!size)
