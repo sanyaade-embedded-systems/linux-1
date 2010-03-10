@@ -332,8 +332,7 @@ struct omap_hwmod_omap2_prcm {
  * @submodule_wkdep_bit: bit shift of the WKDEP range
  */
 struct omap_hwmod_omap4_prcm {
-	u32 module_offs;
-	u16 device_offs;
+	void __iomem    *clkctrl_reg;
 	u8 submodule_wkdep_bit;
 };
 
