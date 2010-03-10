@@ -14,6 +14,8 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/io.h>
+
 #include "prcm-common.h"
 
 #define OMAP2420_CM_REGADDR(module, reg)				\
