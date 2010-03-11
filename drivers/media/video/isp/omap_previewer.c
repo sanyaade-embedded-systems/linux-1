@@ -1183,6 +1183,7 @@ static int __init omap_previewer_init(void)
 		dev_err(prev_dev, OMAP_PREV_NAME ": initialization "
 				"failed. could not register character "
 				"device\n");
+		kfree(device);
 		return -ENODEV;
 	}
 
@@ -1224,6 +1225,7 @@ fail3:
 	platform_driver_unregister(&omap_previewer_driver);
 fail2:
 	unregister_chrdev(prev_major, OMAP_PREV_NAME);
+	kfree(device);
 
 	return ret;
 }
