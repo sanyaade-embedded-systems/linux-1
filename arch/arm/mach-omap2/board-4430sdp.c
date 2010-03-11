@@ -78,7 +78,7 @@ static int omap_keymap[] = {
 	KEY(3, 1, KEY_SEND),
 	KEY(3, 2, KEY_END),
 	KEY(3, 3, KEY_F1),
-	KEY(3, 4, KEY_F2),
+	KEY(3, 4, KEY_LEFTSHIFT),
 	KEY(3, 5, KEY_F3),
 	KEY(3, 6, KEY_BACK),
 	KEY(3, 7, KEY_UNKNOWN),
@@ -108,7 +108,7 @@ static int omap_keymap[] = {
 	KEY(6, 4, KEY_L),
 	KEY(6, 5, KEY_M),
 	KEY(6, 6, KEY_P),
-	KEY(6, 7, KEY_SELECT),
+	KEY(6, 7, KEY_OK),
 
 	KEY(7, 0, KEY_UNKNOWN),
 	KEY(7, 1, KEY_ENTER),
@@ -346,12 +346,11 @@ static void __init omap_4430sdp_init_irq(void)
 {
 	omap_board_config = sdp4430_config;
 	omap_board_config_size = ARRAY_SIZE(sdp4430_config);
+	gic_init_irq();
 	omap2_init_common_hw(NULL, NULL);
 #ifdef CONFIG_OMAP_32K_TIMER
 	omap2_gp_clockevent_set_gptimer(1);
 #endif
-	gic_init_irq();
-	omap_gpio_init();
 }
 
 static struct regulator_init_data sdp4430_vaux1 = {

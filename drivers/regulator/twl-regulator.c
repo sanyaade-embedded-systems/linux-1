@@ -367,11 +367,17 @@ twlldo_set_voltage(struct regulator_dev *rdev, int min_uV, int max_uV)
 		/* REVISIT for VAUX2, first match may not be best/lowest */
 
 		/* use the first in-range value */
-		if (min_uV <= uV && uV <= max_uV)
+		if (min_uV <= uV && uV <= max_uV) {
+			if (twl_class_is_6030())
+				/*
+				 * Use the below formula to calculate vsel
+				 * mV = 1000mv + 100mv * (vsel - 1)
+				 */
+				vsel = (LDO_MV(mV) - 1000)/100 + 1;
 			return twlreg_write(info, TWL_MODULE_PM_RECEIVER,
 							VREG_VOLTAGE, vsel);
+		}
 	}
-
 	return -EDOM;
 }
 
@@ -384,8 +390,17 @@ static int twlldo_get_voltage(struct regulator_dev *rdev)
 	if (vsel < 0)
 		return vsel;
 
-	vsel &= info->table_len - 1;
-	return LDO_MV(info->table[vsel]) * 1000;
+	if (twl_class_is_4030()) {
+		vsel &= info->table_len - 1;
+		return LDO_MV(info->table[vsel]) * 1000;
+	} else if (twl_class_is_6030()) {
+		/*
+		 * Use the below formula to calculate vsel
+		 * mV = 1000mv + 100mv * (vsel - 1)
+		 */
+		return (1000 + (100 * (vsel - 1))) * 1000;
+	}
+	return -EDOM;
 }
 
 static struct regulator_ops twlldo_ops = {
@@ -519,16 +534,16 @@ static struct twlreg_info twl_regs[] = {
 	/* 6030 REG with base as PMC Slave Misc : 0x0030 */
 	/* Turnon-delay and remap configuration values for 6030 are not
 	   verified since the specification is not public */
-	TWL6030_ADJUSTABLE_LDO(VAUX1_6030, 0x54, 37, 0, 0x08),
-	TWL6030_ADJUSTABLE_LDO(VAUX2_6030, 0x58, 38, 0, 0x08),
-	TWL6030_ADJUSTABLE_LDO(VAUX3_6030, 0x5c, 39, 0, 0x08),
-	TWL6030_ADJUSTABLE_LDO(VMMC, 0x68, 40, 0, 0x08),
-	TWL6030_ADJUSTABLE_LDO(VPP, 0x6c, 41, 0, 0x08),
-	TWL6030_ADJUSTABLE_LDO(VUSIM, 0x74, 42, 0, 0x08),
-	TWL6030_FIXED_LDO(VANA, 0x50, 2100, 43, 0, 0x08),
-	TWL6030_FIXED_LDO(VCXIO, 0x60, 1800, 44, 0, 0x08),
-	TWL6030_FIXED_LDO(VDAC, 0x64, 1800, 45, 0, 0x08),
-	TWL6030_FIXED_LDO(VUSB, 0x70, 3300, 46, 0, 0x08)
+	TWL6030_ADJUSTABLE_LDO(VAUX1_6030, 0x54, 37, 0, 0x21),
+	TWL6030_ADJUSTABLE_LDO(VAUX2_6030, 0x58, 38, 0, 0x21),
+	TWL6030_ADJUSTABLE_LDO(VAUX3_6030, 0x5c, 39, 0, 0x21),
+	TWL6030_ADJUSTABLE_LDO(VMMC, 0x68, 40, 0, 0x21),
+	TWL6030_ADJUSTABLE_LDO(VPP, 0x6c, 41, 0, 0x21),
+	TWL6030_ADJUSTABLE_LDO(VUSIM, 0x74, 42, 0, 0x21),
+	TWL6030_FIXED_LDO(VANA, 0x50, 2100, 43, 0, 0x21),
+	TWL6030_FIXED_LDO(VCXIO, 0x60, 1800, 44, 0, 0x21),
+	TWL6030_FIXED_LDO(VDAC, 0x64, 1800, 45, 0, 0x21),
+	TWL6030_FIXED_LDO(VUSB, 0x70, 3300, 46, 0, 0x21)
 };
 
 static int twlreg_probe(struct platform_device *pdev)

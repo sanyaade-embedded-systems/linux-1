@@ -125,6 +125,8 @@ struct ks8851_net {
 	struct spi_transfer	spi_xfer2[2];
 };
 
+struct workqueue_struct *eth_wq;
+
 static int msg_enable;
 
 #define ks_info(_ks, _msg...) dev_info(&(_ks)->spidev->dev, _msg)
@@ -425,7 +427,7 @@ static irqreturn_t ks8851_irq(int irq, void *pw)
 	struct ks8851_net *ks = pw;
 
 	disable_irq_nosync(irq);
-	schedule_work(&ks->irq_work);
+	queue_work(eth_wq, &ks->irq_work);
 	return IRQ_HANDLED;
 }
 
@@ -950,7 +952,7 @@ static netdev_tx_t ks8851_start_xmit(struct sk_buff *skb,
 	}
 
 	spin_unlock(&ks->statelock);
-	schedule_work(&ks->tx_work);
+	queue_work(eth_wq,&ks->tx_work);
 
 	return ret;
 }
@@ -1030,7 +1032,7 @@ static void ks8851_set_rx_mode(struct net_device *dev)
 
 	if (memcmp(&rxctrl, &ks->rxctrl, sizeof(rxctrl)) != 0) {
 		memcpy(&ks->rxctrl, &rxctrl, sizeof(ks->rxctrl));
-		schedule_work(&ks->rxctrl_work);
+		queue_work(eth_wq, &ks->rxctrl_work);
 	}
 
 	spin_unlock(&ks->statelock);
@@ -1260,6 +1262,8 @@ static int __devinit ks8851_probe(struct spi_device *spi)
 	mutex_init(&ks->lock);
 	spin_lock_init(&ks->statelock);
 
+	eth_wq = create_workqueue("eth_workqueue");
+
 	INIT_WORK(&ks->tx_work, ks8851_tx_work);
 	INIT_WORK(&ks->irq_work, ks8851_irq_work);
 	INIT_WORK(&ks->rxctrl_work, ks8851_rxctrl_work);
@@ -1360,6 +1364,18 @@ static int __devexit ks8851_remove(struct spi_device *spi)
 	return 0;
 }
 
+static int ks8851_suspend(struct spi_device *spi, pm_message_t message)
+{
+	disable_irq_nosync(spi->irq);
+	return 0;
+}
+
+static int ks8851_resume(struct spi_device *spi)
+{
+	enable_irq(spi->irq);
+	return 0;
+}
+
 static struct spi_driver ks8851_driver = {
 	.driver = {
 		.name = "ks8851",
@@ -1367,6 +1383,8 @@ static struct spi_driver ks8851_driver = {
 	},
 	.probe = ks8851_probe,
 	.remove = __devexit_p(ks8851_remove),
+	.suspend = ks8851_suspend,
+	.resume = ks8851_resume,
 };
 
 static int __init ks8851_init(void)
@@ -1376,6 +1394,7 @@ static int __init ks8851_init(void)
 
 static void __exit ks8851_exit(void)
 {
+	destroy_workqueue(eth_wq);
 	spi_unregister_driver(&ks8851_driver);
 }
 

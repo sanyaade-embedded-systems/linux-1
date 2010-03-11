@@ -16,7 +16,9 @@
 #include <linux/list.h>
 #include <linux/err.h>
 #include <linux/clk.h>
+#include <linux/io.h>
 #include <plat/control.h>
+#include <plat/sram.h>
 #include <plat/clockdomain.h>
 #include <plat/powerdomain.h>
 #include "prm.h"
@@ -32,6 +34,8 @@ struct power_state {
 };
 
 static LIST_HEAD(pwrst_list);
+
+int (*_omap_sram_idle)(void);
 
 static struct powerdomain *cpu0_pwrdm, *cpu1_pwrdm, *mpu_pwrdm;
 
@@ -90,20 +94,38 @@ static int omap4_pm_prepare(void)
 static int omap4_pm_suspend(void)
 {
 	u32 scu_pwr_st;
+	struct power_state *pwrst;
+	int state;
 
 	/* Program the CPU to hit RET */
 	/* Program the SCU power state register */
 	scu_pwr_st = omap_readl(0x48240008);
 	scu_pwr_st |= 0x2;
 	omap_writel(scu_pwr_st, 0x48240008);
-	pwrdm_set_next_pwrst(cpu0_pwrdm, PWRDM_POWER_RET);
-	pwrdm_set_next_pwrst(mpu_pwrdm, PWRDM_POWER_RET);
-	asm volatile("wfi\n"
-		:
-		:
-		: "memory", "cc");
-	pwrdm_set_next_pwrst(mpu_pwrdm, PWRDM_POWER_ON);
-	pwrdm_set_next_pwrst(cpu0_pwrdm, PWRDM_POWER_ON);
+	/* Read current next_pwrsts */
+	list_for_each_entry(pwrst, &pwrst_list, node)
+		pwrst->saved_state = pwrdm_read_next_pwrst(pwrst->pwrdm);
+	/* Set ones wanted by suspend */
+	list_for_each_entry(pwrst, &pwrst_list, node)
+		if (strcmp(pwrst->pwrdm->name, "cpu1_pwrdm"))
+			if (set_pwrdm_state(pwrst->pwrdm, PWRDM_POWER_RET))
+				goto restore;
+
+	if (_omap_sram_idle)
+		_omap_sram_idle();
+	else
+		asm volatile("wfi\n"
+			:
+			:
+			: "memory", "cc");
+restore:
+	/* Restore next_pwrsts */
+	list_for_each_entry(pwrst, &pwrst_list, node) {
+		state = pwrdm_read_pwrst(pwrst->pwrdm);
+		printk("Powerdomain (%s) entered state %d\n", pwrst->pwrdm->name, state);
+		if (strcmp(pwrst->pwrdm->name, "cpu1_pwrdm"))
+			set_pwrdm_state(pwrst->pwrdm, pwrst->saved_state);
+	}
 	scu_pwr_st = omap_readl(0x48240008);
 	scu_pwr_st &= ~0x2;
 	omap_writel(scu_pwr_st, 0x48240008);
@@ -182,26 +204,29 @@ static int __init clkdms_setup(struct clockdomain *clkdm, void *unused)
 	if (clkdm->flags & CLKDM_CAN_ENABLE_AUTO)
 		omap2_clkdm_allow_idle(clkdm);
 	else if (clkdm->flags & CLKDM_CAN_FORCE_SLEEP &&
-		 atomic_read(&clkdm->usecount) == 0)
+		atomic_read(&clkdm->usecount) == 0)
 		omap2_clkdm_sleep(clkdm);
 	return 0;
 }
 
+#ifdef CONFIG_PM
+void omap_push_sram_idle(void)
+{
+	_omap_sram_idle = omap_sram_push(omap44xx_cpu_suspend,
+						omap44xx_cpu_suspend_sz);
+}
+#endif
+
 static int __init omap4_pm_init(void)
 {
-	int ret;
+	int ret = 0;
 
 	if (!cpu_is_omap44xx())
 		return -ENODEV;
 
 	printk(KERN_ERR "Power Management for TI OMAP4.\n");
 
-	/*
-	 * TODO: Not all drivers are PM adapted yet. Doing this
-	 * here not might result in issues as this overrides some
-	 * settings done in the bootloader.
-	 */
-#if 0
+#ifdef CONFIG_PM
 	ret = pwrdm_for_each(pwrdms_setup, NULL);
 	if (ret) {
 		printk(KERN_ERR "Failed to setup powerdomains\n");

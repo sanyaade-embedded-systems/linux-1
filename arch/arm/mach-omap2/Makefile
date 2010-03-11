@@ -3,7 +3,8 @@
 #
 
 # Common support
-obj-y := id.o io.o control.o mux.o devices.o serial.o gpmc.o timer-gp.o omap_hwmod.o
+obj-y := id.o io.o control.o mux.o devices.o serial.o gpmc.o dmtimers.o \
+	 timer-gp.o omap_hwmod.o omap_hwmod_common_data.o gpio.o
 
 omap-2-3-common				= irq.o sdrc.o
 omap-3-4-common				= dpll.o
@@ -45,7 +46,8 @@ endif
 # PRCM
 obj-$(CONFIG_ARCH_OMAP2)		+= cm.o
 obj-$(CONFIG_ARCH_OMAP3)		+= cm.o
-obj-$(CONFIG_ARCH_OMAP4)		+= cm4xxx.o voltage.o opp4xxx.o cpuidle44xx.o pm44xx.o
+obj-$(CONFIG_ARCH_OMAP4)		+= cm4xxx.o voltage.o opp4xxx.o \
+					   cpuidle44xx.o pm44xx.o sleep44xx.o
 
 # Clock framework
 obj-$(CONFIG_ARCH_OMAP2)		+= clock2xxx.o clock2xxx_data.o

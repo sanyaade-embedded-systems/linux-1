@@ -136,12 +136,24 @@ static void _write_sysconfig(u32 v, struct omap_hwmod *oh)
 static int _set_master_standbymode(struct omap_hwmod *oh, u8 standbymode,
 				   u32 *v)
 {
+	u32 mstandby_mask;
+	u8 mstandby_shift;
+
 	if (!oh->sysconfig ||
 	    !(oh->sysconfig->sysc_flags & SYSC_HAS_MIDLEMODE))
 		return -EINVAL;
 
-	*v &= ~SYSC_MIDLEMODE_MASK;
-	*v |= __ffs(standbymode) << SYSC_MIDLEMODE_SHIFT;
+	if (!oh->sysconfig->sysc_fields) {
+		WARN(!oh->sysconfig->sysc_fields, "offset struct for "
+			"sysconfig not provided!\n");
+		return -EINVAL;
+	}
+
+	mstandby_shift = oh->sysconfig->sysc_fields->midle_shift;
+	mstandby_mask = (0x3 << mstandby_shift);
+
+	*v &= ~mstandby_mask;
+	*v |= __ffs(standbymode) << mstandby_shift;
 
 	return 0;
 }
@@ -158,12 +170,24 @@ static int _set_master_standbymode(struct omap_hwmod *oh, u8 standbymode,
  */
 static int _set_slave_idlemode(struct omap_hwmod *oh, u8 idlemode, u32 *v)
 {
+	u32 sidle_mask;
+	u8 sidle_shift;
+
 	if (!oh->sysconfig ||
 	    !(oh->sysconfig->sysc_flags & SYSC_HAS_SIDLEMODE))
 		return -EINVAL;
 
-	*v &= ~SYSC_SIDLEMODE_MASK;
-	*v |= __ffs(idlemode) << SYSC_SIDLEMODE_SHIFT;
+	if (!oh->sysconfig->sysc_fields) {
+		WARN(!oh->sysconfig->sysc_fields, "offset struct for "
+			"sysconfig not provided!\n");
+		return -EINVAL;
+	}
+
+	sidle_shift = oh->sysconfig->sysc_fields->sidle_shift;
+	sidle_mask = (0x3 << sidle_shift);
+
+	*v &= ~sidle_mask;
+	*v |= __ffs(idlemode) << sidle_shift;
 
 	return 0;
 }
@@ -181,12 +205,24 @@ static int _set_slave_idlemode(struct omap_hwmod *oh, u8 idlemode, u32 *v)
  */
 static int _set_clockactivity(struct omap_hwmod *oh, u8 clockact, u32 *v)
 {
+	u32 clkact_mask;
+	u8  clkact_shift;
+
 	if (!oh->sysconfig ||
 	    !(oh->sysconfig->sysc_flags & SYSC_HAS_CLOCKACTIVITY))
 		return -EINVAL;
 
-	*v &= ~SYSC_CLOCKACTIVITY_MASK;
-	*v |= clockact << SYSC_CLOCKACTIVITY_SHIFT;
+	if (!oh->sysconfig->sysc_fields) {
+		WARN(!oh->sysconfig->sysc_fields, "offset struct for "
+			"sysconfig not provided!\n");
+		return -EINVAL;
+	}
+
+	clkact_shift = oh->sysconfig->sysc_fields->clkact_shift;
+	clkact_mask = (0x3 << clkact_shift);
+
+	*v &= ~clkact_mask;
+	*v |= clockact << clkact_shift;
 
 	return 0;
 }
@@ -201,11 +237,21 @@ static int _set_clockactivity(struct omap_hwmod *oh, u8 clockact, u32 *v)
  */
 static int _set_softreset(struct omap_hwmod *oh, u32 *v)
 {
+	u32 softrst_mask;
+
 	if (!oh->sysconfig ||
 	    !(oh->sysconfig->sysc_flags & SYSC_HAS_SOFTRESET))
 		return -EINVAL;
 
-	*v |= SYSC_SOFTRESET_MASK;
+	if (!oh->sysconfig->sysc_fields) {
+		WARN(!oh->sysconfig->sysc_fields, "offset struct for "
+			"sysconfig not provided!\n");
+		return -EINVAL;
+	}
+
+	softrst_mask = (0x1 << oh->sysconfig->sysc_fields->srst_shift);
+
+	*v |= softrst_mask;
 
 	return 0;
 }
@@ -226,12 +272,24 @@ static int _set_softreset(struct omap_hwmod *oh, u32 *v)
 static int _set_module_autoidle(struct omap_hwmod *oh, u8 autoidle,
 				u32 *v)
 {
+	u32 autoidle_mask;
+	u8 autoidle_shift;
+
 	if (!oh->sysconfig ||
 	    !(oh->sysconfig->sysc_flags & SYSC_HAS_AUTOIDLE))
 		return -EINVAL;
 
-	*v &= ~SYSC_AUTOIDLE_MASK;
-	*v |= autoidle << SYSC_AUTOIDLE_SHIFT;
+	if (!oh->sysconfig->sysc_fields) {
+		WARN(oh->sysconfig->sysc_fields, "offset struct for "
+			"sysconfig not provided!\n");
+		return -EINVAL;
+	}
+
+	autoidle_shift = oh->sysconfig->sysc_fields->autoidle_shift;
+	autoidle_mask = (0x3 << autoidle_shift);
+
+	*v &= ~autoidle_mask;
+	*v |= autoidle << autoidle_shift;
 
 	return 0;
 }
@@ -245,14 +303,22 @@ static int _set_module_autoidle(struct omap_hwmod *oh, u8 autoidle,
  */
 static int _enable_wakeup(struct omap_hwmod *oh)
 {
-	u32 v;
+	u32 v, wakeup_mask;
 
 	if (!oh->sysconfig ||
 	    !(oh->sysconfig->sysc_flags & SYSC_HAS_ENAWAKEUP))
 		return -EINVAL;
 
+	if (!oh->sysconfig->sysc_fields) {
+		WARN(!oh->sysconfig->sysc_fields, "offset struct for "
+			"sysconfig not provided!\n");
+		return -EINVAL;
+	}
+
+	wakeup_mask = (0x1 << oh->sysconfig->sysc_fields->enwkup_shift);
+
 	v = oh->_sysc_cache;
-	v |= SYSC_ENAWAKEUP_MASK;
+	v |= wakeup_mask;
 	_write_sysconfig(v, oh);
 
 	/* XXX test pwrdm_get_wken for this hwmod's subsystem */
@@ -271,14 +337,22 @@ static int _enable_wakeup(struct omap_hwmod *oh)
  */
 static int _disable_wakeup(struct omap_hwmod *oh)
 {
-	u32 v;
+	u32 v, wakeup_mask;
 
 	if (!oh->sysconfig ||
 	    !(oh->sysconfig->sysc_flags & SYSC_HAS_ENAWAKEUP))
 		return -EINVAL;
 
+	if (!oh->sysconfig->sysc_fields) {
+		WARN(!oh->sysconfig->sysc_fields, "offset struct for "
+			"sysconfig not provided!\n");
+		return -EINVAL;
+	}
+
+	wakeup_mask = (0x1 << oh->sysconfig->sysc_fields->enwkup_shift);
+
 	v = oh->_sysc_cache;
-	v &= ~SYSC_ENAWAKEUP_MASK;
+	v &= ~wakeup_mask;
 	_write_sysconfig(v, oh);
 
 	/* XXX test pwrdm_get_wken for this hwmod's subsystem */
@@ -352,9 +426,10 @@ static int _init_main_clk(struct omap_hwmod *oh)
 	if (IS_ERR(c))
 		ret = -EINVAL;
 	oh->_clk = c;
-
+#if 0
 	WARN(!c->clkdm, "omap_hwmod: %s: missing clockdomain for %s.\n",
 	     oh->clkdev_con_id, c->name);
+#endif
 
 	return ret;
 }
@@ -464,7 +539,18 @@ static int _disable_clocks(struct omap_hwmod *oh)
 	pr_debug("omap_hwmod: %s: disabling clocks\n", oh->name);
 
 	if (oh->_clk && !IS_ERR(oh->_clk))
-		clk_disable(oh->_clk);
+#ifdef CONFIG_PM
+		if (!strcmp(oh->_clk->name, "emif1_ck") ||
+				!strcmp(oh->_clk->name, "emif2_ck") ||
+				!strcmp(oh->_clk->name, "gpmc_ck"))
+			return 0;
+		else
+#else
+		if (cpu_is_omap44xx())
+			return 0;
+		else
+#endif
+			clk_disable(oh->_clk);
 
 	if (oh->slaves_cnt > 0) {
 		for (i = 0, os = *oh->slaves; i < oh->slaves_cnt; i++, os++) {
@@ -843,7 +929,9 @@ static int _enable(struct omap_hwmod *oh)
 
 	/* XXX mux balls */
 
+#if 0
 	_add_initiator_dep(oh, mpu_oh);
+#endif
 	_enable_clocks(oh);
 
 	if (oh->sysconfig) {
@@ -869,7 +957,13 @@ static int _enable(struct omap_hwmod *oh)
  */
 static int _idle(struct omap_hwmod *oh)
 {
-	if (oh->_state != _HWMOD_STATE_ENABLED) {
+	/*
+	 * To idle, hwmod must be enabled, EXCEPT if hwmod was
+	 * initialized using the INIT_NO_IDLE flag.  In this case it
+	 * will not yet be enabled so we have to allow it to be idled.
+	 */
+	if ((oh->_state != _HWMOD_STATE_ENABLED) &&
+	    !(oh->flags & HWMOD_INIT_NO_IDLE)) {
 		WARN(1, "omap_hwmod: %s: idle state can only be entered from "
 		     "enabled state\n", oh->name);
 		return -EINVAL;
@@ -879,10 +973,15 @@ static int _idle(struct omap_hwmod *oh)
 
 	if (oh->sysconfig)
 		_sysc_idle(oh);
+#if 0
 	_del_initiator_dep(oh, mpu_oh);
+#endif
 	_disable_clocks(oh);
 
 	oh->_state = _HWMOD_STATE_IDLE;
+
+	/* Clear init flag which should only affect first call to idle */
+	oh->flags &= ~HWMOD_INIT_NO_IDLE;
 
 	return 0;
 }
@@ -993,6 +1092,16 @@ void omap_hwmod_writel(u32 v, struct omap_hwmod *oh, u16 reg_offs)
 	__raw_writel(v, oh->_rt_va + reg_offs);
 }
 
+u32 omap_hwmod_read_sysc(struct omap_hwmod *oh)
+{
+	return oh->_sysc_cache;
+}
+
+void omap_hwmod_write_sysc(u32 v, struct omap_hwmod *oh)
+{
+	_write_sysconfig(v, oh);
+}
+
 /**
  * omap_hwmod_register - register a struct omap_hwmod
  * @oh: struct omap_hwmod *
@@ -1077,7 +1186,7 @@ struct omap_hwmod *omap_hwmod_lookup(const char *name)
 int omap_hwmod_for_each(int (*fn)(struct omap_hwmod *oh))
 {
 	struct omap_hwmod *temp_oh;
-	int ret;
+	int ret = 0;
 
 	if (!fn)
 		return -EINVAL;
@@ -1143,10 +1252,11 @@ int omap_hwmod_late_init(void)
 	/* XXX check return value */
 	r = omap_hwmod_for_each(_init_clocks);
 	WARN(r, "omap_hwmod: omap_hwmod_late_init(): _init_clocks failed\n");
-
+#if 0
 	mpu_oh = omap_hwmod_lookup(MPU_INITIATOR_NAME);
 	WARN(!mpu_oh, "omap_hwmod: could not find MPU initiator hwmod %s\n",
 	     MPU_INITIATOR_NAME);
+#endif
 
 	omap_hwmod_for_each(_setup);
 
@@ -1445,7 +1555,10 @@ struct powerdomain *omap_hwmod_get_pwrdm(struct omap_hwmod *oh)
 int omap_hwmod_add_initiator_dep(struct omap_hwmod *oh,
 				 struct omap_hwmod *init_oh)
 {
+#if 0
 	return _add_initiator_dep(oh, init_oh);
+#endif
+	return 0;
 }
 
 /*
@@ -1470,7 +1583,10 @@ int omap_hwmod_add_initiator_dep(struct omap_hwmod *oh,
 int omap_hwmod_del_initiator_dep(struct omap_hwmod *oh,
 				 struct omap_hwmod *init_oh)
 {
+#if 0
 	return _del_initiator_dep(oh, init_oh);
+#endif
+	return 0;
 }
 
 /**

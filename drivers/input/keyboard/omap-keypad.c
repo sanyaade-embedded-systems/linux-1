@@ -34,6 +34,7 @@
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
 #include <linux/errno.h>
+#include <linux/clk.h>
 #include <mach/gpio.h>
 #include <plat/keypad.h>
 #include <plat/menelaus.h>
@@ -85,6 +86,7 @@ static int kp_cur_group = -1;
 struct omap_kp {
 	struct input_dev *input;
 	struct timer_list timer;
+	struct clk *cclk;
 	int irq;
 	unsigned int rows;
 	unsigned int cols;
@@ -148,7 +150,7 @@ static irqreturn_t omap_kp_interrupt(int irq, void *dev_id)
 		/* disable keyboard interrupt and schedule for handling */
 		omap_writel(OMAP4_KBD_IRQDISABLE, OMAP4_KBDOCP_BASE +
 				OMAP4_KBD_IRQENABLE);
-  } else
+	} else
 		/* disable keyboard interrupt and schedule for handling */
 		omap_writew(1, OMAP1_MPUIO_BASE + OMAP_MPUIO_KBD_MASKIT);
 
@@ -257,14 +259,9 @@ static void omap_kp_tasklet(unsigned long data)
 				continue;
 
 			kp_cur_group = key & GROUP_MASK;
-			if (cpu_is_omap44xx())
-				input_report_key(omap_kp_data->input,
-					key & ~GROUP_MASK, new_state[col]
-						 & (1 << row));
-			else
-				input_report_key(omap_kp_data->input,
-					 key & ~GROUP_MASK, new_state[col]
-						 & (1 << row));
+			input_report_key(omap_kp_data->input,
+				key & ~GROUP_MASK, new_state[col]
+					 & (1 << row));
 #endif
 		}
 	}
@@ -372,6 +369,15 @@ static int __devinit omap_kp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	if (cpu_is_omap44xx()) {
+		omap_kp->cclk = clk_get(NULL, "keyboard_ck");
+		if (IS_ERR(omap_kp->cclk))
+			goto err0;
+		ret = clk_enable(omap_kp->cclk);
+		if (ret)
+			printk(KERN_ERR " Unable to get keyboard_ck \n");
+	}
+
 	platform_set_drvdata(pdev, omap_kp);
 
 	omap_kp->input = input_dev;
@@ -436,6 +442,10 @@ static int __devinit omap_kp_probe(struct platform_device *pdev)
 	__set_bit(EV_KEY, input_dev->evbit);
 	for (i = 0; keymap[i] != 0; i++)
 		__set_bit(keymap[i] & KEY_MAX, input_dev->keybit);
+
+	if (cpu_is_omap44xx())
+		__set_bit(KEY_OK, input_dev->keybit);
+
 	input_dev->name = "omap-keypad";
 	input_dev->phys = "omap-keypad/input0";
 	input_dev->dev.parent = &pdev->dev;
@@ -512,7 +522,8 @@ err2:
 err1:
 	for (i = col_idx - 1; i >=0; i--)
 		gpio_free(col_gpios[i]);
-
+	clk_put(omap_kp->cclk);
+err0:
 	kfree(omap_kp);
 	input_free_device(input_dev);
 
@@ -525,7 +536,16 @@ static int __devexit omap_kp_remove(struct platform_device *pdev)
 
 	/* disable keypad interrupt handling */
 	tasklet_disable(&kp_tasklet);
-	if (cpu_is_omap24xx()) {
+	if (!cpu_is_omap24xx()) {
+		omap_kp->irq = platform_get_irq(pdev, 0);
+		if (!cpu_is_omap44xx()) {
+			omap_writew(1, OMAP1_MPUIO_BASE +
+					OMAP_MPUIO_KBD_MASKIT);
+			free_irq(omap_kp->irq, 0);
+		} else {
+			free_irq(152, omap_kp);
+		}
+	} else {
 		int i;
 		for (i = 0; i < omap_kp->cols; i++)
 			gpio_free(col_gpios[i]);
@@ -533,16 +553,20 @@ static int __devexit omap_kp_remove(struct platform_device *pdev)
 			gpio_free(row_gpios[i]);
 			free_irq(gpio_to_irq(row_gpios[i]), 0);
 		}
-	} else {
-		omap_writew(1, OMAP1_MPUIO_BASE + OMAP_MPUIO_KBD_MASKIT);
-		free_irq(omap_kp->irq, 0);
 	}
 
 	del_timer_sync(&omap_kp->timer);
 	tasklet_kill(&kp_tasklet);
 
+	if (cpu_is_omap44xx()) {
+		clk_disable(omap_kp->cclk);
+		clk_put(omap_kp->cclk);
+	}
+
 	/* unregister everything */
 	input_unregister_device(omap_kp->input);
+
+	device_remove_file(&pdev->dev, &dev_attr_enable);
 
 	kfree(omap_kp);
 
