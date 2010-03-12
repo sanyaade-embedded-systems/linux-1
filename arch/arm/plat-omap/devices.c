@@ -193,8 +193,7 @@ void omap_mcbsp_register_board_cfg(struct omap_mcbsp_platform_data *config,
 
 /*-------------------------------------------------------------------------*/
 
-#if defined(CONFIG_SND_OMAP_SOC_MCPDM) || \
-		defined(CONFIG_SND_OMAP_SOC_MCPDM_MODULE)
+#if defined(CONFIG_OMAP_MCPDM) || defined(CONFIG_OMAP_MCPDM_MODULE)
 
 static struct resource mcpdm_resources[] = {
 	{
