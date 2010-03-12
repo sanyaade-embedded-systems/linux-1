@@ -6,8 +6,12 @@ config SND_OMAP_SOC_MCBSP
 	tristate
 	select OMAP_MCBSP
 
+config OMAP_MCPDM
+	tristate
+
 config SND_OMAP_SOC_MCPDM
 	tristate
+	select OMAP_MCPDM
 
 config SND_OMAP_SOC_N810
 	tristate "SoC Audio support for Nokia N810"
