@@ -5996,6 +5996,7 @@ static struct omap_hwmod omap44xx_mpuss_hwmod = {
 static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 
 	/* interconnect */
+#if 0
 	&omap44xx_dmm_hwmod,
 	&omap44xx_l3_instr_hwmod,
 	&omap44xx_l3_1_hwmod,
@@ -6032,12 +6033,14 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 	&omap44xx_elm_hwmod,
 	&omap44xx_emif1_hwmod,
 	&omap44xx_emif2_hwmod,
+#endif
 	&omap44xx_gpio1_hwmod,
 	&omap44xx_gpio2_hwmod,
 	&omap44xx_gpio3_hwmod,
 	&omap44xx_gpio4_hwmod,
 	&omap44xx_gpio5_hwmod,
 	&omap44xx_gpio6_hwmod,
+#if 0
 	&omap44xx_gpmc_hwmod,
 	&omap44xx_gptimer1_hwmod,
 	&omap44xx_gptimer10_hwmod,
@@ -6051,10 +6054,12 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 	&omap44xx_gptimer8_hwmod,
 	&omap44xx_gptimer9_hwmod,
 	&omap44xx_hdq1w_hwmod,
+#endif
 	&omap44xx_i2c1_hwmod,
 	&omap44xx_i2c2_hwmod,
 	&omap44xx_i2c3_hwmod,
 	&omap44xx_i2c4_hwmod,
+#if 0
 	&omap44xx_keyboard_hwmod,
 	&omap44xx_mailbox_hwmod,
 	&omap44xx_mcasp_hwmod,
@@ -6079,10 +6084,12 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 	&omap44xx_sr_iva_hwmod,
 	&omap44xx_sr_mpu_hwmod,
 	&omap44xx_synctimer_hwmod,
+#endif
 	&omap44xx_uart1_hwmod,
 	&omap44xx_uart2_hwmod,
 	&omap44xx_uart3_hwmod,
 	&omap44xx_uart4_hwmod,
+#if 0
 	&omap44xx_usb_tll_hwmod,
 	&omap44xx_usbphyocp2scp_hwmod,
 	&omap44xx_usim_hwmod,
@@ -6104,6 +6111,7 @@ static __initdata struct omap_hwmod *omap44xx_hwmods[] = {
 	&omap44xx_usb_host_hwmod,
 	&omap44xx_usb_host_fs_hwmod,
 	&omap44xx_usb_otg_hwmod,
+#endif
 
 	/* processor */
 	&omap44xx_cpu0_hwmod,
