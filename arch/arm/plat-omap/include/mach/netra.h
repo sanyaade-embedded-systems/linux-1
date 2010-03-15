@@ -51,5 +51,25 @@
 #define OMAP34XX_DSP_MEM_BASE	(OMAP34XX_DSP_BASE + 0x0)
 #define OMAP34XX_DSP_IPI_BASE	(OMAP34XX_DSP_BASE + 0x1000000)
 #define OMAP34XX_DSP_MMU_BASE	(OMAP34XX_DSP_BASE + 0x2000000)
+
+#define NETRA_IPSS_USBSS_BASE	0x47400000
+#define NETRA_IPSS_USBSS_LEN	0xFFF
+#define NETRA_IPSS_USB0_BASE	0x47401000
+#define NETRA_IPSS_USB1_BASE	0x47401800
+#define NETRA_USB_CPPIDMA_BASE	0x47402000
+#define NETRA_USB_CPPIDMA_LEN	0x5FFF
+
+#define NETRA_PRE_SILICON_HAPS	/* define only for netra bringup */
+
+#ifdef NETRA_PRE_SILICON_HAPS
+/* only for HAPS54 platform */
+#define NETRA_USBSSINT_IRQ	10 /* usb subsystem interrupt*/
+#define NETRA_USBSINT0_IRQ	11 /* usb controller0 intrpt */
+#define NETRA_USBSINT1_IRQ	12 /* usb controller1 intrpt */
+#else
+#define NETRA_USBSSINT_IRQ	49 /* usb subsystem interrupt*/
+#define NETRA_USBSINT0_IRQ	50 /* usb controller0 intrpt */
+#define NETRA_USBSINT1_IRQ	51 /* usb controller1 intrpt */
+#endif
 #endif /* __ASM_ARCH_NETRA_H */
 
