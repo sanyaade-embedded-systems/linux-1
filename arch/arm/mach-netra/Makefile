@@ -9,6 +9,7 @@ obj-y := irq.o io.o sdrc.o control.o mux.o \
 			#!@@ HAPS54 !-> timer-gp.o 
 
 # Clock framework
+obj-y					+= usb-musb.o
 obj-$(CONFIG_ARCH_NETRA)		+= clock34xx.o
 
 # DSP
