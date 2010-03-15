@@ -108,7 +108,8 @@
 	!defined(CONFIG_ARCH_OMAP15XX) && \
 	!defined(CONFIG_ARCH_OMAP16XX) && \
 	!defined(CONFIG_ARCH_OMAP24XX) && \
-	!defined(CONFIG_ARCH_OMAP34XX)
+	!defined(CONFIG_ARCH_OMAP34XX) && \
+	!defined(CONFIG_ARCH_NETRA)
 #error "Power management for this processor not implemented yet"
 #endif
 
