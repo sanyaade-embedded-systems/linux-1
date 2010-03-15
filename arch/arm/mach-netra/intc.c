@@ -300,8 +300,18 @@ int avalanche_intc_set_type(unsigned int irq, unsigned int flow_type)
 
 static inline void avalanche_intc_enable_irq( unsigned int irq )
 {
-    avalanche_hw0_icregs->iceisr = irq;
-}  
+	/*
+	* !!HACK!!
+	* Clear interrupt pending status before enabling interurpts - needed to
+	* avoid spurious interrupts observed on HAPS platform.
+	* __IMPORTANT__: This may have a side effect when an interrupt is missed
+	* which might occur just after the handler has exited - unless of course
+	* the interrupt status from device remains active.
+	*/
+	avalanche_intc_clear_status(irq);
+
+	avalanche_hw0_icregs->iceisr = irq;
+}
 
 static inline void avalanche_intc_disable_irq( unsigned int irq )
 {   
