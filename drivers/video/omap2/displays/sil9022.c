@@ -1109,7 +1109,7 @@ static int hdmi_panel_enable(struct omap_dss_device *dssdev)
 
 #ifdef CONFIG_PM
 	struct hdmi_platform_data *pdata = dssdev->dev.platform_data;
-	if (pdata->set_min_bus_tput)
+	if (pdata->set_min_bus_tput) {
 		if (cpu_is_omap3630()) {
 			pdata->set_min_bus_tput(&sil9022_client->dev,
 						OCP_INITIATOR_AGENT,
@@ -1119,6 +1119,7 @@ static int hdmi_panel_enable(struct omap_dss_device *dssdev)
 						OCP_INITIATOR_AGENT,
 						166 * 1000 * 4);
 		}
+	}
 #endif
 
 	if (dssdev->platform_enable)
