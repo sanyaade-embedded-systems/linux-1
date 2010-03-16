@@ -203,4 +203,5 @@ int __init omap_plat_register_i2c_bus(int bus_id, u32 clkrate,
 	else if (cpu_class_is_omap2())
 		return omap2_i2c_add_bus(bus_id);
 
+	return 0;
 }

@@ -287,7 +287,7 @@ static void omap_uart_disable_wakeup(struct omap_uart_state *uart)
 	}
 }
 
-static void omap_uart_smart_idle_enable(struct omap_uart_state *uart,
+static void  omap_uart_smart_idle_enable(struct omap_uart_state *uart,
 					  int enable)
 {
 	struct plat_serial8250_port *p = uart->p;
