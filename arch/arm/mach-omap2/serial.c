@@ -254,7 +254,7 @@ static void omap_uart_disable_wakeup(struct omap_uart_state *uart)
 	}
 }
 
-static inline void omap_uart_smart_idle_enable(struct omap_uart_state *p,
+static inline int omap_uart_smart_idle_enable(struct omap_uart_state *p,
 					       int enable)
 {
 	u32 sysc;
@@ -286,6 +286,8 @@ static inline void omap_uart_smart_idle_enable(struct omap_uart_state *p,
 		sysc |= 0x1 << sidle_shift;
 	}
 	omap_hwmod_write_sysc(sysc, p->oh);
+
+	return 0;
 }
 
 static void omap_uart_block_sleep(struct omap_uart_state *uart)
