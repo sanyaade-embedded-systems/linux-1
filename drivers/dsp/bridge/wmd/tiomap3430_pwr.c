@@ -33,7 +33,6 @@
 
 /* ------------------------------------ Hardware Abstraction Layer */
 #include <hw_defs.h>
-#include <hw_dspssC64P.h>
 #include <hw_prcm.h>
 #include <hw_mmu.h>
 

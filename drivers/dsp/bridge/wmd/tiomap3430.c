@@ -43,7 +43,6 @@
 
 /* ------------------------------------ Hardware Abstraction Layer */
 #include <hw_defs.h>
-#include <hw_dspssC64P.h>
 #include <hw_prcm.h>
 #include <hw_mmu.h>
 
@@ -78,6 +77,7 @@
 #define MMU_LARGE_PAGE_MASK      0xFFFF0000
 #define MMU_SMALL_PAGE_MASK      0xFFFFF000
 #define PAGES_II_LVL_TABLE   512
+#define OMAP3_IVA2_BOOTADDR_MASK 0xFFFFFC00
 
 #define MMU_GFLUSH 0x60
 
@@ -475,21 +475,16 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 		/* hw_rst_reset(resources.dwPrcmBase, HW_RST1_IVA2); */
 		if (DSP_SUCCEEDED(status)) {
 			hw_rst_reset(resources.dw_prm_base, HW_RST1_IVA2);
-			if (dsp_debug) {
-				/* Set the bootmode to self loop */
-				dev_dbg(bridge, "Set boot mode to self loop"
-					" for IVA2 Device\n");
-				hw_dspss_boot_mode_set
-				    (resources.dw_sys_ctrl_base,
-				     HW_DSPSYSC_SELFLOOPBOOT, dwDSPAddr);
-			} else {
-				/* Set the bootmode to '0' - direct boot */
-				dev_dbg(bridge, "Set boot mode to direct boot"
-					" for IVA2 Device\n");
-				hw_dspss_boot_mode_set
-				    (resources.dw_sys_ctrl_base,
-				     HW_DSPSYSC_DIRECTBOOT, dwDSPAddr);
-			}
+			/* Mask address with 1K for compatibility */
+			__raw_writel(dwDSPAddr & OMAP3_IVA2_BOOTADDR_MASK,
+					OMAP343X_CTRL_REGADDR(
+					OMAP343X_CONTROL_IVA2_BOOTADDR));
+			/*
+			 * Set bootmode to self loop if dsp_debug flag is true
+			 */
+			__raw_writel((dsp_debug) ? OMAP3_IVA2_BOOTMOD_IDLE : 0,
+					OMAP343X_CTRL_REGADDR(
+					OMAP343X_CONTROL_IVA2_BOOTMOD));
 		}
 	}
 	if (DSP_SUCCEEDED(status)) {
