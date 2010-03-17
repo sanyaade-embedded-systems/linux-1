@@ -359,6 +359,7 @@ struct musb {
 
 	struct device		*controller;
 	void __iomem		*ctrl_base;
+	void __iomem            *usbss_base;
 	void __iomem		*mregs;
 
 #ifdef CONFIG_USB_TUSB6010
