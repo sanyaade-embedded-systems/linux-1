@@ -19,7 +19,7 @@
 
 #ifndef _CPPI41_DMA_H_
 #define _CPPI41_DMA_H_
-#include <plat/usb.h>
+//#include <plat/usb.h>
 
 /**
  * struct usb_cppi41_info - CPPI 4.1 USB implementation details

@@ -139,5 +139,5 @@
 #define USB_CPPI41_NUM_CH       15
 
 extern void set_threshold(u8 ctrl_id, u8 epn, u8 count, u8 is_tx);
-
+void usb_nop_xceiv_register(void);
 #endif

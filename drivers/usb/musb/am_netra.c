@@ -469,7 +469,7 @@ int __init cppi41_init(struct musb *musb)
 	cppi41_dma_base = ioremap(NETRA_USB_CPPIDMA_BASE,
 					NETRA_USB_CPPIDMA_LEN);
 
-	printk(KERN_INFO, "cppi41_dma_base = %p\n", cppi41_dma_base);
+	printk(KERN_INFO "cppi41_dma_base = %p\n", cppi41_dma_base);
 
 	/* init mappings */
 	cppi41_queue_mgr[0].q_mgr_rgn_base	= (void *)((u32)cppi41_dma_base

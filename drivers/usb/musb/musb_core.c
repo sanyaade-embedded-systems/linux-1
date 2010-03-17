@@ -117,7 +117,7 @@
 #else
 #define	cpu_is_am_netra()	(0)
 #endif
-
+#define cpu_is_omap3505()	(0)
 unsigned musb_debug;
 module_param_named(debug, musb_debug, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(debug, "Debug message level. Default = 0");
@@ -2087,7 +2087,7 @@ bad_config:
 	if (status == 0) {
 		if (cpu_is_am_netra()) {
 			sprintf(drvbuf, "driver/musb_hdrc.%d", 0);
-			musb_debug_create((drvbuf, musb);
+			musb_debug_create(drvbuf, musb);
 		} else
 			musb_debug_create("driver/musb_hdrc", musb);
 	}

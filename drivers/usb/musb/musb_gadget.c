@@ -1168,7 +1168,7 @@ static int musb_gadget_queue(struct usb_ep *ep, struct usb_request *req,
 	list_add_tail(&(request->request.list), &(musb_ep->req_list));
 
 	/* it this is the head of the queue, start i/o ... */
-	if (musb->queue_logic || !musb_ep->busy
+	if (musb->can_dma_queue || !musb_ep->busy
 		&& &request->request.list == musb_ep->req_list.next)
 		musb_ep_restart(musb, request);
 
