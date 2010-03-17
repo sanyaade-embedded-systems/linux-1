@@ -107,12 +107,16 @@
 
 #include "musb_core.h"
 
-
 #ifdef CONFIG_ARCH_DAVINCI
 #include "davinci.h"
 #endif
 
-
+#ifdef CONFIG_ARCH_NETRA
+#define	cpu_is_am_netra()	(1)
+#include "am_netra.h"
+#else
+#define	cpu_is_am_netra()	(0)
+#endif
 
 unsigned musb_debug;
 module_param_named(debug, musb_debug, uint, S_IRUGO | S_IWUSR);
@@ -221,7 +225,7 @@ void musb_read_fifo(struct musb_hw_ep *hw_ep, u16 len, u8 *dst)
 	DBG(4, "%cX ep%d fifo %p count %d buf %p\n",
 			'R', hw_ep->epnum, fifo, len, dst);
 
-	if (cpu_is_omap3517() || cpu_is_omap3505()) {
+	if (cpu_is_omap3517() || cpu_is_omap3505() ||  cpu_is_am_netra()) {
 		/* Bytewise or wordwise data read from FIFO is corrupted
 		 * if AM3517EVM is configured as gadget */
 		musb_fifo_read_unaligned(fifo, dst, len);
@@ -996,7 +1000,7 @@ static void musb_shutdown(struct platform_device *pdev)
  */
 #if defined(CONFIG_USB_TUSB6010) || \
 	defined(CONFIG_ARCH_OMAP2430) || defined(CONFIG_ARCH_OMAP3) || \
-	defined(CONFIG_MACH_OMAP3517EVM)
+	defined(CONFIG_MACH_OMAP3517EVM) || defined(CONFIG_ARCH_NETRA)
 static ushort __initdata fifo_mode = 4;
 #else
 static ushort __initdata fifo_mode = 2;
@@ -1886,6 +1890,7 @@ musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
 	int			status;
 	struct musb		*musb;
 	struct musb_hdrc_platform_data *plat = dev->platform_data;
+	u8 drvbuf[100];
 
 	/* The driver might handle more features than the board; OK.
 	 * Fail when the board needs a feature that's not enabled.
@@ -2079,8 +2084,13 @@ bad_config:
 			? "DMA" : "PIO",
 			musb->nIrq);
 
-	if (status == 0)
-		musb_debug_create("driver/musb_hdrc", musb);
+	if (status == 0) {
+		if (cpu_is_am_netra()) {
+			sprintf(drvbuf, "driver/musb_hdrc.%d", 0);
+			musb_debug_create((drvbuf, musb);
+		} else
+			musb_debug_create("driver/musb_hdrc", musb);
+	}
 
 	return 0;
 
