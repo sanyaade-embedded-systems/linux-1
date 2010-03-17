@@ -93,8 +93,6 @@ static s32 driver_major;
 static char *base_img;
 char *iva_img;
 static s32 shm_size = 0x500000;	/* 5 MB */
-static u32 phys_mempool_base;
-static u32 phys_mempool_size;
 static int tc_wordswapon;	/* Default value is always false */
 #ifdef CONFIG_BRIDGE_RECOVERY
 #define REC_TIMEOUT 5000       /* recovery timeout in msecs */
@@ -141,13 +139,6 @@ MODULE_PARM_DESC(base_img, "DSP base image, default = NULL");
 module_param(shm_size, int, 0);
 MODULE_PARM_DESC(shm_size, "shm size, default = 4 MB, minimum = 64 KB");
 
-module_param(phys_mempool_base, uint, 0);
-MODULE_PARM_DESC(phys_mempool_base,
-		 "Physical memory pool base passed to driver");
-
-module_param(phys_mempool_size, uint, 0);
-MODULE_PARM_DESC(phys_mempool_size,
-		 "Physical memory pool size passed to driver");
 module_param(tc_wordswapon, int, 0);
 MODULE_PARM_DESC(tc_wordswapon, "TC Word Swap Option. default = 0");
 
@@ -293,18 +284,9 @@ static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 	}
 	dev_dbg(bridge, "%s: requested shm_size = 0x%x\n", __func__, shm_size);
 
-	if (pdata->phys_mempool_base && pdata->phys_mempool_size) {
-		phys_mempool_base = pdata->phys_mempool_base;
-		phys_mempool_size = pdata->phys_mempool_size;
-	}
-
-	dev_dbg(bridge, "%s: phys_mempool_base = 0x%x \n", __func__,
-		phys_mempool_base);
-
-	dev_dbg(bridge, "%s: phys_mempool_size = 0x%x\n", __func__,
-		phys_mempool_base);
-	if ((phys_mempool_base > 0x0) && (phys_mempool_size > 0x0))
-		mem_ext_phys_pool_init(phys_mempool_base, phys_mempool_size);
+	if ((pdata->phys_mempool_base > 0) && (pdata->phys_mempool_size > 0))
+		mem_ext_phys_pool_init(pdata->phys_mempool_base,
+						pdata->phys_mempool_size);
 	if (tc_wordswapon) {
 		dev_dbg(bridge, "%s: TC Word Swap is enabled\n", __func__);
 		reg_set_value(TCWORDSWAP, (u8 *) &tc_wordswapon,
@@ -691,6 +673,7 @@ static ssize_t mpu_address_show(struct device *dev,
 	u32 mem_poolsize = 0;
 	u32 GppPa = 0, DspVa = 0;
 	u32 armPhyMemOffUncached = 0;
+	struct dspbridge_platform_data *pdata = bridge->platform_data;
 	hdev_obj = (struct dev_object *)drv_get_first_dev_object();
 	dev_get_wmd_context(hdev_obj, &dw_context);
 	if (!dw_context) {
@@ -710,7 +693,7 @@ static ssize_t mpu_address_show(struct device *dev,
 	 * the offset value for cached address region
 	 * on DSP address space
 	 */
-	mem_poolsize = phys_mempool_base - 0x20000000;
+	mem_poolsize = pdata->phys_mempool_base - 0x20000000;
 
 	/* Retrive the above calculated addresses */
 	return sprintf(buf, "mempoolsizeOffset 0x%x GppPaOffset 0x%x\n",
