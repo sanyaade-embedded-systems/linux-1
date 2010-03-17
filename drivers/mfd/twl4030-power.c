@@ -33,7 +33,6 @@
 #include <mach/board-zoom.h>
 
 static u8 twl4030_start_script_address = 0x2b;
-static u32 twl4030_rev;
 
 #define PWR_P1_SW_EVENTS	0x10
 #define PWR_DEVOFF	(1<<0)
@@ -547,6 +546,7 @@ int twl4030_remove_script(u8 flags)
 }
 
 #ifdef CONFIG_TWL5030_GLITCH_FIX
+static u32 twl4030_rev;
 /**
  * @brief twl_workaround - Fix for TWL5030 Silicon Errata 27 & 28:
  * 27 - VDD1, VDD2, may have glitches when their output value is updated.
