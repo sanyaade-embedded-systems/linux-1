@@ -873,7 +873,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		is_cur_offs = (rx_ch->curr_offset == 0);
 	}
 
-	if (is_peripheral_active(cppi->musb)) {
+	if (0 /*is_peripheral_active(cppi->musb)*/) {
 		/* TODO: temporary fix for CDC/RNDIS which needs to be in
 		 * GENERIC_RNDIS mode. Without this RNDIS gadget taking
 		 * more then 2K ms for a 64 byte pings.
@@ -884,7 +884,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		if (!strcmp(gadget_driver->driver.name, "g_ether")) {
 			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
 		} else {
-			max_rx_transfer_size = 512;
+			max_rx_transfer_size = rx_ch->pkt_size;
 			cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
 		}
 		pkt_len = 0;
@@ -899,6 +899,8 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		 */
 		if (is_cur_offs && (pkt_size & 0x3f) == 0
 				&& length >= min_pkt * pkt_size) {
+			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
+			cppi41_autoreq_update(rx_ch, USB_AUTOREQ_ALL_BUT_EOP);
 
 			if (likely(length < 0x10000))
 				pkt_size = length - length % pkt_size;
@@ -909,11 +911,8 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 				bd_split = 1;
 			}
 			cppi41_set_ep_size(rx_ch, pkt_size);
-
-			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
-			cppi41_autoreq_update(rx_ch, USB_AUTOREQ_ALL_BUT_EOP);
 		} else {
-			max_rx_transfer_size = 512;
+			max_rx_transfer_size = rx_ch->pkt_size;
 			cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
 			cppi41_autoreq_update(rx_ch, USB_NO_AUTOREQ);
 		}
@@ -929,7 +928,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 
 	if (bd_split) {
 		n_bd = 2;
-		length = length - 2 * 512;
+		length = length - 2 * rx_ch->pkt_size;
 	}
 
 	for (i = 0; i < n_bd ; ++i) {
@@ -959,7 +958,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		rx_ch->curr_offset += pkt_len;
 		if (bd_split) {
 			if (i == 0)
-				length = 512;
+				length = rx_ch->pkt_size;
 			if (i == 1)
 				first_pd->next_virt_pd_ptr = curr_pd;
 			else {
