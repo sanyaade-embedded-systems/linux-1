@@ -104,7 +104,7 @@ static noinline void debug_writel(unsigned long val)
 		"stmfd r13!, {r11,r12}\n"
 		"ldr r12, =0x100\n"
 		"dsb\n"
-		"smc\n"
+		"smc #0\n"
 		"ldmfd r13!, {r11,r12}\n"
 		: : "r" (r0)
 		: "r4", "r5", "r10", "lr");
