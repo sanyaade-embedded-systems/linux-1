@@ -314,7 +314,7 @@ static int __init omap_l2_cache_init(void)
 		"mov r0, #1\n"
 		"ldr r12, =0x102\n"
 		"dsb\n"
-		"smc\n"
+		"smc #0\n"
 		"ldmfd r13!, {r0-r12, r14}");
 
 	/* 32KB way size, 16-way associativity,
