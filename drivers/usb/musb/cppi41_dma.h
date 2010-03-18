@@ -21,6 +21,10 @@
 #define _CPPI41_DMA_H_
 //#include <plat/usb.h>
 
+#ifdef CONFIG_ARCH_NETRA
+#include "am_netra.h"
+#endif
+
 /**
  * struct usb_cppi41_info - CPPI 4.1 USB implementation details
  * @dma_block:	DMA block number

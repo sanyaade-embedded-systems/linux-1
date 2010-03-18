@@ -46,7 +46,7 @@
 /*
  * Data structure definitions
  */
-
+int can_dma_queue;
 /*
  * USB Packet Descriptor
  */
@@ -859,7 +859,7 @@ static void cppi41_set_ep_size(struct cppi41_channel *rx_ch, u32 pkt_size)
 static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 {
 	struct cppi41 *cppi = rx_ch->channel.private_data;
-	struct usb_pkt_desc *curr_pd;
+	struct usb_pkt_desc *curr_pd, *first_pd;
 	struct cppi41_host_pkt_desc *hw_desc;
 	u32 length = rx_ch->length - rx_ch->curr_offset;
 	u32 pkt_size = rx_ch->pkt_size;
@@ -868,7 +868,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 	u32 min_pkt = 2, bd_split = 0, is_cur_offs = 1;
 	struct usb_gadget_driver *gadget_driver;
 
-	if (is_cpu_am_netra()) {
+	if (cpu_is_am_netra()) {
 		min_pkt = 3;
 		is_cur_offs = (rx_ch->curr_offset == 0);
 	}
@@ -904,7 +904,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 				pkt_size = length - length % pkt_size;
 			else
 				pkt_size = 0x10000;
-			if (is_cpu_am_netra()) {
+			if (cpu_is_am_netra()) {
 				pkt_size = 0;
 				bd_split = 1;
 			}
@@ -1009,7 +1009,7 @@ sched:
 	 * HCD arranged ReqPkt for the first packet.
 	 * We arrange it for all but the last one.
 	 */
-	if (!is_cpu_am_netra() && is_host_active(cppi->musb)
+	if (!cpu_is_am_netra() && is_host_active(cppi->musb)
 		&& rx_ch->channel.actual_len) {
 		void __iomem *epio = rx_ch->end_pt->regs;
 		u16 csr = musb_readw(epio, MUSB_RXCSR);
@@ -1482,6 +1482,7 @@ static void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 {
 	struct cppi41_queue_obj rx_queue_obj;
 	unsigned long pd_addr;
+	u32 orig_buf_len;
 	u8 lock = 0, num_bd;
 
 	if (cppi41_queue_init(&rx_queue_obj, usb_cppi41_info.q_mgr,
@@ -1518,7 +1519,7 @@ static void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 			 * bd-queue to dma queue if any
 			 */
 			if (!lock) {
-				num_bd = cppi41_send_bd_queue(tx_ch);
+				num_bd = cppi41_send_bd_queue(rx_ch);
 				dprintk("tx: queue (%d) nbd queued\n", num_bd);
 				lock = 1;
 			}

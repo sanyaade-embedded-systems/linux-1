@@ -589,7 +589,7 @@ static inline void musb_configure_ep0(struct musb *musb)
 }
 #endif /* CONFIG_BLACKFIN */
 
-
+extern int can_dma_queue;
 /***************************** Glue it together *****************************/
 
 extern const char musb_driver_name[];

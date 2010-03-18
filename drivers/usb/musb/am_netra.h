@@ -10,7 +10,7 @@
 #ifndef __MUSB_HDRDF_H__
 #define __MUSB_HDRDF_H__
 
-
+#define cpu_is_am_netra()       (1)
 #define	NETRA_USB0_OTGSS_OFFS		0x1000
 
 /* Netra USB susbsystem register offsets */
@@ -80,8 +80,8 @@
 #define USB_EP_INTR_STATUS_REG		(USB_IRQ_STATUS_0)
 #define USB_CORE_INTR_STATUS_REG	(USB_IRQ_STATUS_1)
 
-#define USB_TXMODE_REG		0x0070
-#define USB_RXMODE_REG		0x0074
+#define USB_TX_MODE_REG		0x0070
+#define USB_RX_MODE_REG		0x0074
 
 #define USB_GRNDIS_EPSIZE_OFFS	0X0080
 #define USB_GENERIC_RNDIS_EP_SIZE_REG(n) (0x0080 + (((n) - 1) << 2))

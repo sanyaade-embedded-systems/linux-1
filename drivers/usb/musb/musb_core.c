@@ -2091,7 +2091,7 @@ bad_config:
 		} else
 			musb_debug_create("driver/musb_hdrc", musb);
 	}
-
+	can_dma_queue = 1;
 	return 0;
 
 fail2:
