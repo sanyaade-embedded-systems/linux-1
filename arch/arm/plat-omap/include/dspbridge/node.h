@@ -60,7 +60,7 @@ extern dsp_status node_allocate(struct proc_object *hprocessor,
 				OPTIONAL IN CONST struct dsp_cbdata
 				*pargs, OPTIONAL IN CONST struct dsp_nodeattrin
 				*attr_in,
-				OUT struct node_object **ph_node,
+				OUT struct node_res_object **noderes,
 				struct process_context *pr_ctxt);
 
 /*
@@ -261,7 +261,7 @@ extern dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
  *  Ensures:
  *      DSP_SOK:            hnode is invalid.
  */
-extern dsp_status node_delete(struct node_object *hnode,
+extern dsp_status node_delete(struct node_res_object *hnoderes,
 			      struct process_context *pr_ctxt);
 
 /*

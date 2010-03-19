@@ -34,15 +34,10 @@ extern dsp_status drv_remove_all_resources(bhandle pPctxt);
 extern dsp_status drv_remove_proc_context(struct drv_object *hDRVObject,
 					  bhandle pr_ctxt);
 
-extern dsp_status drv_get_node_res_element(bhandle hnode, bhandle node_res,
-					   bhandle ctxt);
-
 extern dsp_status drv_insert_node_res_element(bhandle hnode, bhandle node_res,
 					      bhandle ctxt);
 
 extern void drv_proc_node_update_heap_status(bhandle hNodeRes, s32 status);
-
-extern dsp_status drv_remove_node_res_element(bhandle node_res, bhandle status);
 
 extern void drv_proc_node_update_status(bhandle hNodeRes, s32 status);
 

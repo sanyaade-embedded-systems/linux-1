@@ -295,7 +295,7 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 			 IN CONST struct dsp_uuid *pNodeId,
 			 OPTIONAL IN CONST struct dsp_cbdata *pargs,
 			 OPTIONAL IN CONST struct dsp_nodeattrin *attr_in,
-			 OUT struct node_object **ph_node,
+			 OUT struct node_res_object **noderes,
 			 struct process_context *pr_ctxt)
 {
 	struct node_mgr *hnode_mgr;
@@ -328,10 +328,10 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(hprocessor != NULL);
-	DBC_REQUIRE(ph_node != NULL);
+	DBC_REQUIRE(noderes != NULL);
 	DBC_REQUIRE(pNodeId != NULL);
 
-	*ph_node = NULL;
+	*noderes = NULL;
 
 	status = proc_get_processor_id(hprocessor, &proc_id);
 
@@ -654,9 +654,6 @@ func_cont:
 		 * (for overlay and dll) */
 		pnode->phase_split = true;
 
-		if (DSP_SUCCEEDED(status))
-			*ph_node = pnode;
-
 		/* Notify all clients registered for DSP_NODESTATECHANGE. */
 		proc_notify_all_clients(hprocessor, DSP_NODESTATECHANGE);
 	} else {
@@ -667,16 +664,22 @@ func_cont:
 	}
 
 	if (DSP_SUCCEEDED(status)) {
-		drv_insert_node_res_element(*ph_node, &node_res, pr_ctxt);
+		status = drv_insert_node_res_element(pnode, &node_res, pr_ctxt);
+		if (DSP_FAILED(status)) {
+			delete_node(pnode, pr_ctxt);
+			goto func_end;
+		}
+
+		*noderes = (struct node_res_object *)node_res;
 		drv_proc_node_update_heap_status(node_res, true);
 		drv_proc_node_update_status(node_res, true);
 	}
-	DBC_ENSURE((DSP_FAILED(status) && (*ph_node == NULL)) ||
-			(DSP_SUCCEEDED(status) && *ph_node));
+	DBC_ENSURE((DSP_FAILED(status) && (*noderes == NULL)) ||
+		   (DSP_SUCCEEDED(status) && pnode));
 func_end:
 	dev_dbg(bridge, "%s: hprocessor: %p pNodeId: %p pargs: %p attr_in: %p "
-		"ph_node: %p status: 0x%x\n", __func__, hprocessor,
-		pNodeId, pargs, attr_in, ph_node, status);
+		"node_res: %p status: 0x%x\n", __func__, hprocessor,
+		pNodeId, pargs, attr_in, noderes, status);
 	return status;
 }
 
@@ -1435,10 +1438,10 @@ dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
  *      Loads the node's delete function if necessary. Free GPP side resources
  *      after node's delete function returns.
  */
-dsp_status node_delete(struct node_object *hnode,
+dsp_status node_delete(struct node_res_object *hnoderes,
 		       struct process_context *pr_ctxt)
 {
-	struct node_object *pnode = (struct node_object *)hnode;
+	struct node_object *pnode = hnoderes->hnode;
 	struct node_mgr *hnode_mgr;
 	struct proc_object *hprocessor;
 	struct disp_object *disp_obj;
@@ -1451,32 +1454,32 @@ dsp_status node_delete(struct node_object *hnode,
 	u32 proc_id;
 	struct bridge_drv_interface *intf_fxns;
 
-	bhandle node_res;
+	bhandle node_res = hnoderes;
 
 	struct dsp_processorstate proc_state;
 	DBC_REQUIRE(refs > 0);
 
-	if (!hnode) {
+	if (!pnode) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
 	/* create struct dsp_cbdata struct for PWR call */
 	cb_data.cb_data = PWR_TIMEOUT;
-	hnode_mgr = hnode->hnode_mgr;
-	hprocessor = hnode->hprocessor;
+	hnode_mgr = pnode->hnode_mgr;
+	hprocessor = pnode->hprocessor;
 	disp_obj = hnode_mgr->disp_obj;
-	node_type = node_get_type(hnode);
+	node_type = node_get_type(pnode);
 	intf_fxns = hnode_mgr->intf_fxns;
 	/* Enter critical section */
 	mutex_lock(&hnode_mgr->node_mgr_lock);
 
-	state = node_get_state(hnode);
+	state = node_get_state(pnode);
 	/*  Execute delete phase code for non-device node in all cases
 	 *  except when the node was only allocated. Delete phase must be
 	 *  executed even if create phase was executed, but failed.
 	 *  If the node environment pointer is non-NULL, the delete phase
 	 *  code must be  executed. */
-	if (!(state == NODE_ALLOCATED && hnode->node_env == (u32) NULL) &&
+	if (!(state == NODE_ALLOCATED && pnode->node_env == (u32) NULL) &&
 	    node_type != NODE_DEVICE) {
 		status = proc_get_processor_id(pnode->hprocessor, &proc_id);
 		if (DSP_FAILED(status))
@@ -1489,26 +1492,26 @@ dsp_status node_delete(struct node_object *hnode,
 			 *  is now ok to unload it. If the node is running, we
 			 *  will unload the execute phase only after deleting
 			 *  the node. */
-			if (state == NODE_PAUSED && hnode->loaded &&
-			    hnode->phase_split) {
+			if (state == NODE_PAUSED && pnode->loaded &&
+			    pnode->phase_split) {
 				/* Ok to unload execute code as long as node
 				 * is not * running */
 				status1 =
 				    hnode_mgr->nldr_fxns.
-				    pfn_unload(hnode->nldr_node_obj,
+				    pfn_unload(pnode->nldr_node_obj,
 					       NLDR_EXECUTE);
-				hnode->loaded = false;
-				NODE_SET_STATE(hnode, NODE_DONE);
+				pnode->loaded = false;
+				NODE_SET_STATE(pnode, NODE_DONE);
 			}
 			/* Load delete phase code if not loaded or if haven't
 			 * * unloaded EXECUTE phase */
-			if ((!(hnode->loaded) || (state == NODE_RUNNING)) &&
-			    hnode->phase_split) {
+			if ((!(pnode->loaded) || (state == NODE_RUNNING)) &&
+			    pnode->phase_split) {
 				status =
 				    hnode_mgr->nldr_fxns.
-				    pfn_load(hnode->nldr_node_obj, NLDR_DELETE);
+				    pfn_load(pnode->nldr_node_obj, NLDR_DELETE);
 				if (DSP_SUCCEEDED(status))
-					hnode->loaded = true;
+					pnode->loaded = true;
 				else
 					pr_err("%s: fail - load delete code:"
 					       " 0x%x\n", __func__, status);
@@ -1517,14 +1520,14 @@ dsp_status node_delete(struct node_object *hnode,
 func_cont1:
 		if (DSP_SUCCEEDED(status)) {
 			/* Unblock a thread trying to terminate the node */
-			(void)sync_set_event(hnode->sync_done);
+			(void)sync_set_event(pnode->sync_done);
 			if (proc_id == DSP_UNIT) {
 				/* ul_delete_fxn = address of node's delete
 				 * function */
-				status = get_fxn_address(hnode, &ul_delete_fxn,
+				status = get_fxn_address(pnode, &ul_delete_fxn,
 							 DELETEPHASE);
 			} else if (proc_id == IVA_UNIT)
-				ul_delete_fxn = (u32) hnode->node_env;
+				ul_delete_fxn = (u32) pnode->node_env;
 			if (DSP_SUCCEEDED(status)) {
 				status = proc_get_state(hprocessor,
 						&proc_state,
@@ -1532,22 +1535,22 @@ func_cont1:
 						       dsp_processorstate));
 				if (proc_state.proc_state != PROC_ERROR) {
 					status =
-					    disp_node_delete(disp_obj, hnode,
+					    disp_node_delete(disp_obj, pnode,
 							     hnode_mgr->
 							     ul_fxn_addrs
 							     [RMSDELETENODE],
 							     ul_delete_fxn,
-							     hnode->node_env);
+							     pnode->node_env);
 				} else
-					NODE_SET_STATE(hnode, NODE_DONE);
+					NODE_SET_STATE(pnode, NODE_DONE);
 
 				/* Unload execute, if not unloaded, and delete
 				 * function */
 				if (state == NODE_RUNNING &&
-				    hnode->phase_split) {
+				    pnode->phase_split) {
 					status1 =
 					    hnode_mgr->nldr_fxns.
-					    pfn_unload(hnode->nldr_node_obj,
+					    pfn_unload(pnode->nldr_node_obj,
 						       NLDR_EXECUTE);
 				}
 				if (DSP_FAILED(status1))
@@ -1555,10 +1558,10 @@ func_cont1:
 					       " 0x%x\n", __func__, status1);
 
 				status1 =
-				    hnode_mgr->nldr_fxns.pfn_unload(hnode->
+				    hnode_mgr->nldr_fxns.pfn_unload(pnode->
 							    nldr_node_obj,
 							    NLDR_DELETE);
-				hnode->loaded = false;
+				pnode->loaded = false;
 				if (DSP_FAILED(status1))
 					pr_err("%s: fail - unload delete code: "
 					       "0x%x\n", __func__, status1);
@@ -1567,25 +1570,30 @@ func_cont1:
 	}
 	/* Free host side resources even if a failure occurred */
 	/* Remove node from hnode_mgr->node_list */
-	lst_remove_elem(hnode_mgr->node_list, (struct list_head *)hnode);
+	lst_remove_elem(hnode_mgr->node_list, (struct list_head *)pnode);
 	hnode_mgr->num_nodes--;
 	/* Decrement count of nodes created on DSP */
 	if ((state != NODE_ALLOCATED) || ((state == NODE_ALLOCATED) &&
-					  (hnode->node_env != (u32) NULL)))
+					  (pnode->node_env != (u32) NULL)))
 		hnode_mgr->num_created--;
 	/*  Free host-side resources allocated by node_create()
 	 *  delete_node() fails if SM buffers not freed by client! */
-	if (drv_get_node_res_element(hnode, &node_res, pr_ctxt) !=
-	    DSP_ENOTFOUND)
-		drv_proc_node_update_status(node_res, false);
-	delete_node(hnode, pr_ctxt);
+	drv_proc_node_update_status(node_res, false);
+	delete_node(pnode, pr_ctxt);
 
-	drv_remove_node_res_element(node_res, pr_ctxt);
+	/*
+	 * Release all Node resources and its context
+	 */
+	spin_lock(&pr_ctxt->node_idp->lock);
+	idr_remove(pr_ctxt->node_idp, ((struct node_res_object *)node_res)->id);
+	spin_unlock(&pr_ctxt->node_idp->lock);
+	kfree(node_res);
+
 	/* Exit critical section */
 	mutex_unlock(&hnode_mgr->node_mgr_lock);
 	proc_notify_clients(hprocessor, DSP_NODESTATECHANGE);
 func_end:
-	dev_dbg(bridge, "%s: hnode: %p status 0x%x\n", __func__, hnode, status);
+	dev_dbg(bridge, "%s: pnode: %p status 0x%x\n", __func__, pnode, status);
 	return status;
 }
 
