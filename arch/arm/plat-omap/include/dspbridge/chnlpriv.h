@@ -45,9 +45,9 @@
 #define CHNL_MODEMASK       0x1001
 
 /* Higher level channel states: */
-#define CHNL_STATEREADY     0x0000	/* Channel ready for I/O. */
-#define CHNL_STATECANCEL    0x0001	/* I/O was cancelled. */
-#define CHNL_STATEEOS       0x0002	/* End Of Stream reached. */
+#define CHNL_STATEREADY		0	/* Channel ready for I/O. */
+#define CHNL_STATECANCEL	1	/* I/O was cancelled. */
+#define CHNL_STATEEOS		2	/* End Of Stream reached. */
 
 /* Determine if user supplied an event for this channel: */
 #define CHNL_IS_USER_EVENT(mode)  (mode & CHNL_MODEUSEREVENT)
@@ -74,7 +74,7 @@ struct chnl_info {
 	/*Abstraction of I/O completion event. */
 	struct sync_object *sync_event;
 	u32 dw_mode;		/* Channel mode. */
-	u32 dw_state;		/* Current channel state. */
+	u8 dw_state;		/* Current channel state. */
 	u32 bytes_tx;		/* Total bytes transferred. */
 	u32 cio_cs;		/* Number of IOCs in queue. */
 	u32 cio_reqs;		/* Number of IO Requests in queue. */

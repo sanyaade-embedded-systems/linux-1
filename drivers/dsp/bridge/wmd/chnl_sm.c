@@ -98,7 +98,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 	struct chnl_irp *chnl_packet_obj = NULL;
 	struct wmd_dev_context *dev_ctxt;
 	struct dev_object *dev_obj;
-	u32 dw_state;
+	u8 dw_state;
 	bool is_eos;
 	struct chnl_mgr *chnl_mgr_obj = pchnl->chnl_mgr_obj;
 	u8 *host_sys_buf = NULL;
