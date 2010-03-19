@@ -181,7 +181,8 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	struct wmd_dev_context *hwmd_context = NULL;
 	struct cfg_devnode *dev_node_obj;
 	struct chnl_mgr *hchnl_mgr;
-	u32 dev_type;
+	u8 dev_type;
+
 	/* Check requirements */
 	if (!phIOMgr || !pMgrAttrs || pMgrAttrs->word_size == 0) {
 		status = DSP_EHANDLE;

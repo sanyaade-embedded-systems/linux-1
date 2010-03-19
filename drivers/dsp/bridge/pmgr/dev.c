@@ -1041,7 +1041,7 @@ dsp_status dev_remove_proc_object(struct dev_object *hdev_obj, u32 proc_obj)
 	return status;
 }
 
-dsp_status dev_get_dev_type(struct dev_object *hdevObject, u32 *dev_type)
+dsp_status dev_get_dev_type(struct dev_object *hdevObject, u8 *dev_type)
 {
 	dsp_status status = DSP_SOK;
 	struct dev_object *dev_obj = (struct dev_object *)hdevObject;

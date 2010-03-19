@@ -1313,7 +1313,7 @@ dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
 	char *sz_zl_file = "";
 	struct nldr_attrs nldr_attrs_obj;
 	dsp_status status = DSP_SOK;
-	u32 dev_type;
+	u8 dev_type;
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phNodeMgr != NULL);
 	DBC_REQUIRE(hdev_obj != NULL);

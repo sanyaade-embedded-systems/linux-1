@@ -351,7 +351,7 @@ extern dsp_status dev_get_dev_node(struct dev_object *hdev_obj,
  *      else:           *phDevNode is NULL.
  */
 extern dsp_status dev_get_dev_type(struct dev_object *hdevObject,
-				   u32 *dev_type);
+					u8 *dev_type);
 
 /*
  *  ======== dev_get_first ========

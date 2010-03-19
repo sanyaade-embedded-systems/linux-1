@@ -195,7 +195,7 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 	struct mgr_processorextinfo *ext_info;
 	struct dev_object *hdev_obj;
 	struct drv_object *hdrv_obj;
-	s32 dev_type;
+	u8 dev_type;
 	struct cfg_devnode *dev_node;
 	bool proc_detect = false;
 
@@ -209,7 +209,7 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 	if (DSP_SUCCEEDED(status)) {
 		status = drv_get_dev_object(processor_id, hdrv_obj, &hdev_obj);
 		if (DSP_SUCCEEDED(status)) {
-			status = dev_get_dev_type(hdev_obj, (u32 *) &dev_type);
+			status = dev_get_dev_type(hdev_obj, (u8 *) &dev_type);
 			status = dev_get_dev_node(hdev_obj, &dev_node);
 			if (dev_type != DSP_UNIT)
 				status = DSP_EFAIL;

@@ -380,7 +380,8 @@ dsp_status wcd_init_complete2(void)
 	dsp_status status = DSP_SOK;
 	struct cfg_devnode *dev_node;
 	struct dev_object *hdev_obj;
-	u32 dev_type, tmp;
+	u8 dev_type;
+	u32 tmp;
 
 	DBC_REQUIRE(wcd_c_refs > 0);
 

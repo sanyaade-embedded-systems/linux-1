@@ -96,7 +96,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 	u32 ul_chnl_id;
 	struct chnl_attr chnl_attr_obj;
 	dsp_status status = DSP_SOK;
-	u32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDispObject != NULL);
@@ -278,7 +278,7 @@ dsp_status disp_node_create(struct disp_object *disp_obj,
 	u32 max;
 	dsp_status status = DSP_SOK;
 	struct dsp_nodeinfo node_info;
-	u32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(disp_obj);
@@ -493,7 +493,7 @@ dsp_status disp_node_delete(struct disp_object *disp_obj,
 	u32 dw_arg;
 	struct rms_command *rms_cmd;
 	dsp_status status = DSP_SOK;
-	u32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(disp_obj);
@@ -547,7 +547,7 @@ dsp_status disp_node_run(struct disp_object *disp_obj,
 	u32 dw_arg;
 	struct rms_command *rms_cmd;
 	dsp_status status = DSP_SOK;
-	u32 dev_type;
+	u8 dev_type;
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(disp_obj);
 	DBC_REQUIRE(hnode != NULL);

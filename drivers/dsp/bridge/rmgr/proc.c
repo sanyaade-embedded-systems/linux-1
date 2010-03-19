@@ -126,7 +126,7 @@ proc_attach(u32 processor_id,
 	struct proc_object *p_proc_object = NULL;
 	struct mgr_object *hmgr_obj = NULL;
 	struct drv_object *hdrv_obj = NULL;
-	u32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(ph_processor != NULL);
@@ -236,10 +236,10 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
 				struct dev_object *hdev_obj,
 				u32 size, char *execFile)
 {
-	s32 dev_type;
+	u8 dev_type;
 	s32 len;
 
-	dev_get_dev_type(hdev_obj, (u32 *) &dev_type);
+	dev_get_dev_type(hdev_obj, (u8 *) &dev_type);
 	if (dev_type == DSP_UNIT) {
 		return cfg_get_exec_file(dev_node_obj, size, execFile);
 	} else if (dev_type == IVA_UNIT) {
@@ -274,7 +274,7 @@ dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 	char sz_exec_file[MAXCMDLINELEN];
 	char *argv[2];
 	struct mgr_object *hmgr_obj = NULL;
-	s32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(dev_node_obj != NULL);
@@ -306,7 +306,7 @@ dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 		goto func_cont;
 
 	/* Get the default executable for this board... */
-	dev_get_dev_type(hdev_obj, (u32 *) &dev_type);
+	dev_get_dev_type(hdev_obj, (u8 *) &dev_type);
 	p_proc_object->processor_id = dev_type;
 	status = get_exec_file(dev_node_obj, hdev_obj, sizeof(sz_exec_file),
 			       sz_exec_file);
