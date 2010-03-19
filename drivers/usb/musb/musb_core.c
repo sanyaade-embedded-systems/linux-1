@@ -1847,6 +1847,9 @@ static void musb_free(struct musb *musb)
 	}
 
 #ifdef CONFIG_USB_MUSB_HDRC_HCD
+	if (musb->gb_queue)
+		destroy_workqueue(musb->gb_queue);
+	free_queue(musb);
 	usb_put_hcd(musb_to_hcd(musb));
 #else
 	kfree(musb);
@@ -1905,6 +1908,9 @@ bad_config:
 		return -ENOMEM;
 
 	spin_lock_init(&musb->lock);
+#ifdef CONFIG_USB_MUSB_HDRC_HCD
+	spin_lock_init(&musb->qlock);
+#endif
 	musb->board_mode = plat->mode;
 	musb->board_set_power = plat->set_power;
 	musb->set_clock = plat->set_clock;
@@ -2062,8 +2068,25 @@ bad_config:
 	if (status == 0)
 		musb_debug_create("driver/musb_hdrc", musb);
 
+#ifdef CONFIG_USB_MUSB_HDRC_HCD
+	musb->gb_queue = create_singlethread_workqueue(dev_name(dev));
+	if (musb->gb_queue == NULL)
+		goto fail2;
+
+	/* Init giveback workqueue */
+	INIT_WORK(&musb->gb_work, musb_gb_work);
+
+	/* init queue */
+	init_queue(musb);
+	if (!musb->qhead)
+		goto fail3;
+#endif
 	return 0;
 
+#ifdef CONFIG_USB_MUSB_HDRC_HCD
+fail3:
+	destroy_workqueue(musb->gb_queue);
+#endif
 fail2:
 	musb_platform_exit(musb);
 fail:
