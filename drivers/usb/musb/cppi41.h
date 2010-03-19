@@ -208,7 +208,9 @@ struct cppi41_host_pkt_desc {
 	u32 next_desc_ptr;	/* Pointer to the next buffer descriptor */
 	u32 orig_buf_len;	/* Original buffer length */
 	u32 orig_buf_ptr;	/* Original buffer pointer */
-	u32 stk_comms_info[2];	/* Network stack private communications info */
+	/*u32 stk_comms_info[2];*/ /*FIXME commented to fix host pkt desc to
+					align 64 bytes */
+				/* Network stack private communications info */
 };
 
 /*

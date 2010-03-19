@@ -865,15 +865,17 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 	u32 pkt_size = rx_ch->pkt_size;
 	u32 max_rx_transfer_size = 128 * 1024;
 	u32 i, n_bd , pkt_len;
-	u32 min_pkt = 2, bd_split = 0, is_cur_offs = 1;
+	u32 min_pkt = 2, bd_split = 0, is_cur_offs = 1, nseg = 2;
 	struct usb_gadget_driver *gadget_driver;
+	u32 inf_dma_mode = 0;
 
 	if (cpu_is_am_netra()) {
+		inf_dma_mode = 1;
 		min_pkt = 3;
 		is_cur_offs = (rx_ch->curr_offset == 0);
 	}
 
-	if (0 /*is_peripheral_active(cppi->musb)*/) {
+	if (is_peripheral_active(cppi->musb)) {
 		/* TODO: temporary fix for CDC/RNDIS which needs to be in
 		 * GENERIC_RNDIS mode. Without this RNDIS gadget taking
 		 * more then 2K ms for a 64 byte pings.
@@ -883,14 +885,27 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 #endif
 		if (!strcmp(gadget_driver->driver.name, "g_ether")) {
 			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
+			pkt_len = 0;
+			if (rx_ch->length < max_rx_transfer_size)
+				pkt_len = rx_ch->length;
+			cppi41_set_ep_size(rx_ch, pkt_len);
 		} else {
-			max_rx_transfer_size = rx_ch->pkt_size;
-			cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
+
+			if (inf_dma_mode && is_cur_offs
+				&& (pkt_size & 0x3f) == 0
+				&& length >= min_pkt * pkt_size) {
+				if (inf_dma_mode) {
+					bd_split = 1;
+					nseg = 1;
+					cppi41_set_ep_size(rx_ch, 0);
+					cppi41_mode_update(rx_ch,
+						USB_GENERIC_RNDIS_MODE);
+				}
+			} else {
+				max_rx_transfer_size = rx_ch->pkt_size;
+				cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
+			}
 		}
-		pkt_len = 0;
-		if (rx_ch->length < max_rx_transfer_size)
-			pkt_len = rx_ch->length;
-		cppi41_set_ep_size(rx_ch, pkt_len);
 	} else {
 		/*
 		 * Rx can use the generic RNDIS mode where we can
@@ -899,18 +914,18 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		 */
 		if (is_cur_offs && (pkt_size & 0x3f) == 0
 				&& length >= min_pkt * pkt_size) {
-			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
-			cppi41_autoreq_update(rx_ch, USB_AUTOREQ_ALL_BUT_EOP);
-
-			if (likely(length < 0x10000))
-				pkt_size = length - length % pkt_size;
-			else
-				pkt_size = 0x10000;
-			if (cpu_is_am_netra()) {
+			if (inf_dma_mode) {
 				pkt_size = 0;
 				bd_split = 1;
+			} else {
+				if (likely(length < 0x10000))
+					pkt_size = length - length % pkt_size;
+				else
+					pkt_size = 0x10000;
 			}
 			cppi41_set_ep_size(rx_ch, pkt_size);
+			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
+			cppi41_autoreq_update(rx_ch, USB_AUTOREQ_ALL_BUT_EOP);
 		} else {
 			max_rx_transfer_size = rx_ch->pkt_size;
 			cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
@@ -928,7 +943,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 
 	if (bd_split) {
 		n_bd = 2;
-		length = length - 2 * rx_ch->pkt_size;
+		length = length - nseg * rx_ch->pkt_size;
 	}
 
 	for (i = 0; i < n_bd ; ++i) {
