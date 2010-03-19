@@ -132,7 +132,7 @@ extern dsp_status cfg_get_exec_file(IN struct cfg_devnode *dev_node_obj,
  *      DSP_SOK:    *pdwValue is set to the retrieved u32(non-Zero).
  *      else:       *pdwValue is set to 0L.
  */
-extern dsp_status cfg_get_object(OUT u32 *pdwValue, u32 dw_type);
+extern dsp_status cfg_get_object(OUT u32 *pdwValue, u8 dw_type);
 
 /*
  *  ======== cfg_get_perf_value ========
@@ -243,6 +243,6 @@ extern dsp_status cfg_set_dev_object(IN struct cfg_devnode *dev_node_obj,
  *  Ensures:
  *      DSP_SOK:        The Private u32 was successfully set.
  */
-extern dsp_status cfg_set_object(IN u32 dwValue, IN u32 dw_type);
+extern dsp_status cfg_set_object(IN u32 dwValue, u8 dw_type);
 
 #endif /* CFG_ */

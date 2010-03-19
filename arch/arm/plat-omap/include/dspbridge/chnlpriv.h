@@ -83,7 +83,7 @@ struct chnl_info {
 
 /* Channel manager info: */
 struct chnl_mgrinfo {
-	u32 dw_type;		/* Type of channel class library. */
+	u8 dw_type;		/* Type of channel class library. */
 	/* Channel handle, given the channel id. */
 	struct chnl_object *chnl_obj;
 	u32 open_channels;	/* Number of open channels. */

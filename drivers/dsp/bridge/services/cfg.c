@@ -142,7 +142,7 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
  *  Purpose:
  *      Retrieve the Object handle from the Registry
  */
-dsp_status cfg_get_object(OUT u32 *pdwValue, u32 dw_type)
+dsp_status cfg_get_object(OUT u32 *pdwValue, u8 dw_type)
 {
 	dsp_status status = DSP_EINVALIDARG;
 	struct drv_data *drv_datap = dev_get_drvdata(bridge);
@@ -228,7 +228,7 @@ dsp_status cfg_set_dev_object(struct cfg_devnode *dev_node_obj, u32 dwValue)
  *  Purpose:
  *      Store the Driver Object handle
  */
-dsp_status cfg_set_object(u32 dwValue, u32 dw_type)
+dsp_status cfg_set_object(u32 dwValue, u8 dw_type)
 {
 	dsp_status status = DSP_EINVALIDARG;
 	struct drv_data *drv_datap = dev_get_drvdata(bridge);

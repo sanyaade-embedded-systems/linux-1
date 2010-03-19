@@ -127,7 +127,7 @@ struct chnl_mgr {
 	u32 max_channels;	/* Total number of channels */
 	u32 open_channels;	/* Total number of open channels */
 	struct chnl_object **ap_channel;	/* Array of channels */
-	u32 dw_type;		/* Type of channel class library */
+	u8 dw_type;		/* Type of channel class library */
 	/* If no shm syms, return for CHNL_Open */
 	dsp_status chnl_open_status;
 };
