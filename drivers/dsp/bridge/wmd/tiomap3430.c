@@ -167,7 +167,7 @@ struct page_info {
 
 /* Attributes used to manage the DSP MMU page tables */
 struct pg_table_attrs {
-	struct sync_csobject *hcs_obj;	/* Critical section object handle */
+	spinlock_t pg_lock;	/* Critical section object handle */
 
 	u32 l1_base_pa;		/* Physical address of the L1 PT */
 	u32 l1_base_va;		/* Virtual  address of the L1 PT */
@@ -1068,10 +1068,8 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 	else
 		status = DSP_EMEMORY;
 
-	if (DSP_SUCCEEDED(status))
-		status = sync_initialize_cs(&pt_attrs->hcs_obj);
-
 	if (DSP_SUCCEEDED(status)) {
+		spin_lock_init(&pt_attrs->pg_lock);
 		/* Set the Endianism Register *//* Need to set this */
 		/* Retrieve the TC u16 SWAP Option */
 		status = reg_get_value(TCWORDSWAP, (u8 *) &tc_word_swap,
@@ -1098,9 +1096,6 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 		*ppDevContext = dev_context;
 	} else {
 		if (pt_attrs != NULL) {
-			if (pt_attrs->hcs_obj)
-				sync_delete_cs(pt_attrs->hcs_obj);
-
 			kfree(pt_attrs->pg_info);
 
 			if (pt_attrs->l2_tbl_alloc_va) {
@@ -1196,9 +1191,6 @@ static dsp_status bridge_dev_destroy(struct wmd_dev_context *hDevContext)
 	wmd_brd_delete(dev_context);
 	if (dev_context->pt_attrs) {
 		pt_attrs = dev_context->pt_attrs;
-		if (pt_attrs->hcs_obj)
-			sync_delete_cs(pt_attrs->hcs_obj);
-
 		kfree(pt_attrs->pg_info);
 
 		if (pt_attrs->l2_tbl_alloc_va) {
@@ -1633,7 +1625,7 @@ static dsp_status bridge_brd_mem_un_map(struct wmd_dev_context *hDevContext,
 			va_curr += pte_size;
 			pte_addr_l2 += (pte_size >> 12) * sizeof(u32);
 		}
-		sync_enter_cs(pt->hcs_obj);
+		spin_lock(&pt->pg_lock);
 		if (rem_bytes_l2 == 0) {
 			pt->pg_info[l2_page_num].num_entries -= pte_count;
 			if (pt->pg_info[l2_page_num].num_entries == 0) {
@@ -1646,7 +1638,7 @@ static dsp_status bridge_brd_mem_un_map(struct wmd_dev_context *hDevContext,
 					status = DSP_SOK;
 				else {
 					status = DSP_EFAIL;
-					sync_leave_cs(pt->hcs_obj);
+					spin_unlock(&pt->pg_lock);
 					goto EXIT_LOOP;
 				}
 			}
@@ -1654,7 +1646,7 @@ static dsp_status bridge_brd_mem_un_map(struct wmd_dev_context *hDevContext,
 		} else
 			status = DSP_EFAIL;
 
-		sync_leave_cs(pt->hcs_obj);
+		spin_unlock(&pt->pg_lock);
 		continue;
 skip_coarse_page:
 		/* va_curr aligned to pte_size? */
@@ -1817,7 +1809,7 @@ static dsp_status pte_set(struct pg_table_attrs *pt, u32 pa, u32 va,
 		} else {
 			return DSP_EFAIL;
 		}
-		sync_enter_cs(pt->hcs_obj);
+		spin_lock(&pt->pg_lock);
 		if (pte_size == HW_MMU_COARSE_PAGE_SIZE) {
 			/* Get the L2 PA from the L1 PTE, and find
 			 * corresponding L2 VA */
@@ -1864,7 +1856,7 @@ static dsp_status pte_set(struct pg_table_attrs *pt, u32 pa, u32 va,
 				l2_base_pa, l2_page_num,
 				pt->pg_info[l2_page_num].num_entries);
 		}
-		sync_leave_cs(pt->hcs_obj);
+		spin_unlock(&pt->pg_lock);
 	}
 	if (DSP_SUCCEEDED(status)) {
 		dev_dbg(bridge, "PTE: pg_tbl_va %x, pa %x, va %x, size %x\n",

@@ -63,7 +63,6 @@ struct strm_mgr {
 	struct dev_object *dev_obj;	/* Device for this processor */
 	struct chnl_mgr *hchnl_mgr;	/* Channel manager */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
-	struct sync_csobject *sync_obj;	/* For critical sections */
 };
 
 /*
@@ -233,8 +232,6 @@ dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
 			DBC_ASSERT(strm_mgr_obj->intf_fxns != NULL);
 		}
 	}
-	if (DSP_SUCCEEDED(status))
-		status = sync_initialize_cs(&strm_mgr_obj->sync_obj);
 
 	if (DSP_SUCCEEDED(status))
 		*phStrmMgr = strm_mgr_obj;
@@ -870,11 +867,6 @@ static dsp_status delete_strm(struct strm_object *hStrm)
  */
 static void delete_strm_mgr(struct strm_mgr *strm_mgr_obj)
 {
-	if (MEM_IS_VALID_HANDLE(strm_mgr_obj, STRMMGR_SIGNATURE)) {
-
-		if (strm_mgr_obj->sync_obj)
-			sync_delete_cs(strm_mgr_obj->sync_obj);
-
+	if (MEM_IS_VALID_HANDLE(strm_mgr_obj, STRMMGR_SIGNATURE))
 		MEM_FREE_OBJECT(strm_mgr_obj);
-	}
 }

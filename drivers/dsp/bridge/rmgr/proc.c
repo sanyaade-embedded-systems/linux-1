@@ -106,7 +106,7 @@ struct proc_object {
 
 static u32 refs;
 
-struct sync_csobject *proc_lock;	/* For critical sections */
+DEFINE_MUTEX(proc_lock);	/* For critical sections */
 
 /*  ----------------------------------- Function Prototypes */
 static dsp_status proc_monitor(struct proc_object *hprocessor);
@@ -655,9 +655,6 @@ void proc_exit(void)
 {
 	DBC_REQUIRE(refs > 0);
 
-	if (proc_lock)
-		(void)sync_delete_cs(proc_lock);
-
 	refs--;
 
 	DBC_ENSURE(refs >= 0);
@@ -779,9 +776,6 @@ bool proc_init(void)
 	bool ret = true;
 
 	DBC_REQUIRE(refs >= 0);
-
-	if (refs == 0)
-		(void)sync_initialize_cs(&proc_lock);
 
 	if (ret)
 		refs++;
@@ -1096,7 +1090,7 @@ dsp_status proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
 		goto func_end;
 	}
 	/* Critical section */
-	(void)sync_enter_cs(proc_lock);
+	mutex_lock(&proc_lock);
 	dmm_get_handle(p_proc_object, &dmm_mgr);
 	if (dmm_mgr)
 		status = dmm_map_memory(dmm_mgr, va_align, size_align);
@@ -1117,7 +1111,7 @@ dsp_status proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
 	} else {
 		dmm_un_map_memory(dmm_mgr, va_align, &size_align);
 	}
-	(void)sync_leave_cs(proc_lock);
+	mutex_unlock(&proc_lock);
 
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -1442,7 +1436,7 @@ dsp_status proc_un_map(void *hprocessor, void *map_addr,
 	}
 
 	/* Critical section */
-	(void)sync_enter_cs(proc_lock);
+	mutex_lock(&proc_lock);
 	/*
 	 * Update DMM structures. Get the size to unmap.
 	 * This function returns error if the VA is not mapped
@@ -1453,7 +1447,7 @@ dsp_status proc_un_map(void *hprocessor, void *map_addr,
 		status = (*p_proc_object->intf_fxns->pfn_brd_mem_un_map)
 		    (p_proc_object->hwmd_context, va_align, size_align);
 	}
-	(void)sync_leave_cs(proc_lock);
+	mutex_unlock(&proc_lock);
 	if (DSP_FAILED(status))
 		goto func_end;
 

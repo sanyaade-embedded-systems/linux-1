@@ -57,7 +57,7 @@ struct dmm_object {
 	u32 dw_signature;	/* Used for object validation */
 	/* Dmm Lock is used to serialize access mem manager for
 	 * multi-threads. */
-	struct sync_csobject *dmm_lock;	/* Lock to access dmm mgr */
+	spinlock_t dmm_lock;	/* Lock to access dmm mgr */
 };
 
 /*  ----------------------------------- Globals */
@@ -98,7 +98,6 @@ dsp_status dmm_create_tables(struct dmm_object *dmm_mgr, u32 addr, u32 size)
 
 	status = dmm_delete_tables(dmm_obj);
 	if (DSP_SUCCEEDED(status)) {
-		sync_enter_cs(dmm_obj->dmm_lock);
 		dyn_mem_map_beg = addr;
 		table_size = PG_ALIGN_HIGH(size, PG_SIZE4K) / PG_SIZE4K;
 		/*  Create the free list */
@@ -113,7 +112,6 @@ dsp_status dmm_create_tables(struct dmm_object *dmm_mgr, u32 addr, u32 size)
 			free_size = table_size * PG_SIZE4K;
 			virtual_mapping_table[0].region_size = table_size;
 		}
-		sync_leave_cs(dmm_obj->dmm_lock);
 	}
 
 	if (DSP_FAILED(status))
@@ -140,11 +138,8 @@ dsp_status dmm_create(OUT struct dmm_object **phDmmMgr,
 	/* create, zero, and tag a cmm mgr object */
 	MEM_ALLOC_OBJECT(dmm_obj, struct dmm_object, DMMSIGNATURE);
 	if (dmm_obj != NULL) {
-		status = sync_initialize_cs(&dmm_obj->dmm_lock);
-		if (DSP_SUCCEEDED(status))
-			*phDmmMgr = dmm_obj;
-		else
-			dmm_destroy(dmm_obj);
+		spin_lock_init(&dmm_obj->dmm_lock);
+		*phDmmMgr = dmm_obj;
 	} else {
 		status = DSP_EMEMORY;
 	}
@@ -165,11 +160,8 @@ dsp_status dmm_destroy(struct dmm_object *dmm_mgr)
 	DBC_REQUIRE(refs > 0);
 	if (MEM_IS_VALID_HANDLE(dmm_mgr, DMMSIGNATURE)) {
 		status = dmm_delete_tables(dmm_obj);
-		if (DSP_SUCCEEDED(status)) {
-			/* Delete CS & dmm mgr object */
-			sync_delete_cs(dmm_obj->dmm_lock);
+		if (DSP_SUCCEEDED(status))
 			MEM_FREE_OBJECT(dmm_obj);
-		}
 	} else
 		status = DSP_EHANDLE;
 
@@ -183,18 +175,13 @@ dsp_status dmm_destroy(struct dmm_object *dmm_mgr)
  */
 dsp_status dmm_delete_tables(struct dmm_object *dmm_mgr)
 {
-	struct dmm_object *dmm_obj = (struct dmm_object *)dmm_mgr;
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	if (MEM_IS_VALID_HANDLE(dmm_mgr, DMMSIGNATURE)) {
-		/* Delete all DMM tables */
-		sync_enter_cs(dmm_obj->dmm_lock);
-
+	/* Delete all DMM tables */
+	if (MEM_IS_VALID_HANDLE(dmm_mgr, DMMSIGNATURE))
 		vfree(virtual_mapping_table);
-
-		sync_leave_cs(dmm_obj->dmm_lock);
-	} else
+	else
 		status = DSP_EHANDLE;
 	return status;
 }
@@ -274,7 +261,7 @@ dsp_status dmm_map_memory(struct dmm_object *dmm_mgr, u32 addr, u32 size)
 	struct map_page *chunk;
 	dsp_status status = DSP_SOK;
 
-	sync_enter_cs(dmm_obj->dmm_lock);
+	spin_lock(&dmm_obj->dmm_lock);
 	/* Find the Reserved memory chunk containing the DSP block to
 	 * be mapped */
 	chunk = (struct map_page *)get_region(addr);
@@ -284,7 +271,7 @@ dsp_status dmm_map_memory(struct dmm_object *dmm_mgr, u32 addr, u32 size)
 		chunk->mapped_size = (size / PG_SIZE4K);
 	} else
 		status = DSP_ENOTFOUND;
-	sync_leave_cs(dmm_obj->dmm_lock);
+	spin_unlock(&dmm_obj->dmm_lock);
 
 	dev_dbg(bridge, "%s dmm_mgr %p, addr %x, size %x\n\tstatus %x, "
 		"chunk %p", __func__, dmm_mgr, addr, size, status, chunk);
@@ -306,7 +293,7 @@ dsp_status dmm_reserve_memory(struct dmm_object *dmm_mgr, u32 size,
 	u32 rsv_addr = 0;
 	u32 rsv_size = 0;
 
-	sync_enter_cs(dmm_obj->dmm_lock);
+	spin_lock(&dmm_obj->dmm_lock);
 
 	/* Try to get a DSP chunk from the free list */
 	node = get_free_region(size);
@@ -335,7 +322,7 @@ dsp_status dmm_reserve_memory(struct dmm_object *dmm_mgr, u32 size,
 		/*dSP chunk of given size is not available */
 		status = DSP_EMEMORY;
 
-	sync_leave_cs(dmm_obj->dmm_lock);
+	spin_unlock(&dmm_obj->dmm_lock);
 
 	dev_dbg(bridge, "%s dmm_mgr %p, size %x, prsv_addr %p\n\tstatus %x, "
 		"rsv_addr %x, rsv_size %x\n", __func__, dmm_mgr, size,
@@ -355,7 +342,7 @@ dsp_status dmm_un_map_memory(struct dmm_object *dmm_mgr, u32 addr, u32 *psize)
 	struct map_page *chunk;
 	dsp_status status = DSP_SOK;
 
-	sync_enter_cs(dmm_obj->dmm_lock);
+	spin_lock(&dmm_obj->dmm_lock);
 	chunk = get_mapped_region(addr);
 	if (chunk == NULL)
 		status = DSP_ENOTFOUND;
@@ -366,7 +353,7 @@ dsp_status dmm_un_map_memory(struct dmm_object *dmm_mgr, u32 addr, u32 *psize)
 		chunk->mapped = false;
 		chunk->mapped_size = 0;
 	}
-	sync_leave_cs(dmm_obj->dmm_lock);
+	spin_unlock(&dmm_obj->dmm_lock);
 
 	dev_dbg(bridge, "%s: dmm_mgr %p, addr %x, psize %p\n\tstatus %x, "
 		"chunk %p\n", __func__, dmm_mgr, addr, psize, status, chunk);
@@ -387,7 +374,7 @@ dsp_status dmm_un_reserve_memory(struct dmm_object *dmm_mgr, u32 rsv_addr)
 	dsp_status status = DSP_SOK;
 	u32 chunk_size;
 
-	sync_enter_cs(dmm_obj->dmm_lock);
+	spin_lock(&dmm_obj->dmm_lock);
 
 	/* Find the chunk containing the reserved address */
 	chunk = get_mapped_region(rsv_addr);
@@ -415,7 +402,7 @@ dsp_status dmm_un_reserve_memory(struct dmm_object *dmm_mgr, u32 rsv_addr)
 		 *the whole mapping table
 		 */
 	}
-	sync_leave_cs(dmm_obj->dmm_lock);
+	spin_unlock(&dmm_obj->dmm_lock);
 
 	dev_dbg(bridge, "%s: dmm_mgr %p, rsv_addr %x\n\tstatus %x chunk %p",
 		__func__, dmm_mgr, rsv_addr, status, chunk);
@@ -520,7 +507,7 @@ u32 dmm_mem_map_dump(struct dmm_object *dmm_mgr)
 	u32 freemem = 0;
 	u32 bigsize = 0;
 
-	sync_enter_cs(dmm_mgr->dmm_lock);
+	spin_lock(&dmm_mgr->dmm_lock);
 
 	if (virtual_mapping_table != NULL) {
 		for (i = 0; i < table_size; i +=
@@ -543,13 +530,13 @@ u32 dmm_mem_map_dump(struct dmm_object *dmm_mgr)
 			}
 		}
 	}
+	spin_unlock(&dmm_mgr->dmm_lock);
 	printk(KERN_INFO "Total DSP VA FREE memory = %d Mbytes\n",
 	       freemem / (1024 * 1024));
 	printk(KERN_INFO "Total DSP VA USED memory= %d Mbytes \n",
 	       (((table_size * PG_SIZE4K) - freemem)) / (1024 * 1024));
 	printk(KERN_INFO "DSP VA - Biggest FREE block = %d Mbytes \n\n",
 	       (bigsize * PG_SIZE4K / (1024 * 1024)));
-	sync_leave_cs(dmm_mgr->dmm_lock);
 
 	return 0;
 }

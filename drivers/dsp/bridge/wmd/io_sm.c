@@ -102,7 +102,6 @@ struct io_mgr {
 	u8 *msg_output;		/* Address of output messages */
 	u32 usm_buf_size;	/* Size of a shared memory I/O channel */
 	bool shared_irq;	/* Is this IRQ shared? */
-	struct sync_csobject *hcs_obj;	/* Critical section object handle */
 	u32 word_size;		/* Size in bytes of DSP word */
 	u16 intr_val;		/* Interrupt value */
 	/* Private extnd proc info; mmu setup */
@@ -223,8 +222,6 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	pio_mgr->hchnl_mgr = hchnl_mgr;
 	pio_mgr->word_size = pMgrAttrs->word_size;
 	pio_mgr->shared_mem = shared_mem;
-	if (DSP_SUCCEEDED(status))
-		status = sync_initialize_cs(&pio_mgr->hcs_obj);
 
 	if (dev_type == DSP_UNIT) {
 		/* Create an IO DPC */
@@ -306,7 +303,6 @@ dsp_status bridge_io_destroy(struct io_mgr *hio_mgr)
 #ifndef DSP_TRACEBUF_DISABLED
 		kfree(hio_mgr->pmsg);
 #endif
-		sync_delete_cs(hio_mgr->hcs_obj);	/* Leak Fix. */
 		/* Free this IO manager object */
 		MEM_FREE_OBJECT(hio_mgr);
 	} else {

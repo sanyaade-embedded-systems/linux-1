@@ -108,7 +108,7 @@ struct cmm_object {
 	/*
 	 * Cmm Lock is used to serialize access mem manager for multi-threads.
 	 */
-	struct sync_csobject *cmm_lock;	/* Lock to access cmm mgr */
+	struct mutex cmm_lock;	/* Lock to access cmm mgr */
 	struct lst_list *node_free_list_head;	/* Free list of memory nodes */
 	u32 ul_min_block_size;	/* Min SM block; default 16 bytes */
 	u32 dw_page_size;	/* Memory Page size (1k/4k) */
@@ -202,7 +202,7 @@ void *cmm_calloc_buf(struct cmm_object *hcmm_mgr, u32 usize,
 			    ((usize - 1) & ~(cmm_mgr_obj->ul_min_block_size -
 					     1))
 			    + cmm_mgr_obj->ul_min_block_size;
-			sync_enter_cs(cmm_mgr_obj->cmm_lock);
+			mutex_lock(&cmm_mgr_obj->cmm_lock);
 			pnode = get_free_block(allocator, usize);
 		}
 		if (pnode) {
@@ -242,7 +242,7 @@ void *cmm_calloc_buf(struct cmm_object *hcmm_mgr, u32 usize,
 				*pp_buf_va = (void *)pnode->dw_va;
 			}
 		}
-		sync_leave_cs(cmm_mgr_obj->cmm_lock);
+		mutex_unlock(&cmm_mgr_obj->cmm_lock);
 	}
 	return buf_pa;
 }
@@ -298,7 +298,7 @@ dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
 					       node_free_list_head->head);
 		}
 		if (DSP_SUCCEEDED(status))
-			status = sync_initialize_cs(&cmm_obj->cmm_lock);
+			mutex_init(&cmm_obj->cmm_lock);
 
 		if (DSP_SUCCEEDED(status))
 			*ph_cmm_mgr = cmm_obj;
@@ -329,7 +329,7 @@ dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce)
 		status = DSP_EHANDLE;
 		return status;
 	}
-	sync_enter_cs(cmm_mgr_obj->cmm_lock);
+	mutex_lock(&cmm_mgr_obj->cmm_lock);
 	/* If not force then fail if outstanding allocations exist */
 	if (!bForce) {
 		/* Check for outstanding memory allocations */
@@ -362,10 +362,10 @@ dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce)
 		/* delete NodeFreeList list */
 		kfree(cmm_mgr_obj->node_free_list_head);
 	}
-	sync_leave_cs(cmm_mgr_obj->cmm_lock);
+	mutex_unlock(&cmm_mgr_obj->cmm_lock);
 	if (DSP_SUCCEEDED(status)) {
 		/* delete CS & cmm mgr object */
-		sync_delete_cs(cmm_mgr_obj->cmm_lock);
+		mutex_destroy(&cmm_mgr_obj->cmm_lock);
 		MEM_FREE_OBJECT(cmm_mgr_obj);
 	}
 	return status;
@@ -413,7 +413,7 @@ dsp_status cmm_free_buf(struct cmm_object *hcmm_mgr, void *buf_pa,
 	/* get the allocator for this segment id */
 	allocator = get_allocator(cmm_mgr_obj, ul_seg_id);
 	if (allocator != NULL) {
-		sync_enter_cs(cmm_mgr_obj->cmm_lock);
+		mutex_lock(&cmm_mgr_obj->cmm_lock);
 		mnode_obj =
 		    (struct cmm_mnode *)lst_first(allocator->in_use_list_head);
 		while (mnode_obj) {
@@ -431,7 +431,7 @@ dsp_status cmm_free_buf(struct cmm_object *hcmm_mgr, void *buf_pa,
 			    lst_next(allocator->in_use_list_head,
 				     (struct list_head *)mnode_obj);
 		}
-		sync_leave_cs(cmm_mgr_obj->cmm_lock);
+		mutex_unlock(&cmm_mgr_obj->cmm_lock);
 	}
 	return status;
 }
@@ -480,7 +480,7 @@ dsp_status cmm_get_info(struct cmm_object *hcmm_mgr,
 		status = DSP_EHANDLE;
 		return status;
 	}
-	sync_enter_cs(cmm_mgr_obj->cmm_lock);
+	mutex_lock(&cmm_mgr_obj->cmm_lock);
 	cmm_info_obj->ul_num_gppsm_segs = 0;	/* # of SM segments */
 	/* Total # of outstanding alloc */
 	cmm_info_obj->ul_total_in_use_cnt = 0;
@@ -521,7 +521,7 @@ dsp_status cmm_get_info(struct cmm_object *hcmm_mgr,
 			}
 		}
 	}			/* end for */
-	sync_leave_cs(cmm_mgr_obj->cmm_lock);
+	mutex_unlock(&cmm_mgr_obj->cmm_lock);
 	return status;
 }
 
@@ -576,7 +576,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 		return status;
 	}
 	/* make sure we have room for another allocator */
-	sync_enter_cs(cmm_mgr_obj->cmm_lock);
+	mutex_lock(&cmm_mgr_obj->cmm_lock);
 	slot_seg = get_slot(cmm_mgr_obj);
 	if (slot_seg < 0) {
 		/* get a slot number */
@@ -657,7 +657,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 		cmm_mgr_obj->pa_gppsm_seg_tab[slot_seg] = psma;
 
 func_end:
-	sync_leave_cs(cmm_mgr_obj->cmm_lock);
+	mutex_unlock(&cmm_mgr_obj->cmm_lock);
 	return status;
 }
 
@@ -681,7 +681,7 @@ dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 
 		if ((ul_id > 0) && (ul_id <= CMM_MAXGPPSEGS)) {
 			while (ul_id <= CMM_MAXGPPSEGS) {
-				sync_enter_cs(cmm_mgr_obj->cmm_lock);
+				mutex_lock(&cmm_mgr_obj->cmm_lock);
 				/* slot = seg_id-1 */
 				psma = cmm_mgr_obj->pa_gppsm_seg_tab[ul_id - 1];
 				if (psma != NULL) {
@@ -693,7 +693,7 @@ dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 				} else if (ul_seg_id != CMM_ALLSEGMENTS) {
 					status = DSP_EFAIL;
 				}
-				sync_leave_cs(cmm_mgr_obj->cmm_lock);
+				mutex_unlock(&cmm_mgr_obj->cmm_lock);
 				if (ul_seg_id != CMM_ALLSEGMENTS)
 					break;
 
