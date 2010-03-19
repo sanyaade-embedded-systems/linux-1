@@ -123,7 +123,7 @@ struct chnl_mgr {
 	u32 dw_output_mask;	/* Host output channels w/ full buffers */
 	u32 dw_last_output;	/* Last output channel fired from DPC */
 	/* Critical section object handle */
-	struct sync_csobject *hcs_obj;
+	spinlock_t chnl_mgr_lock;
 	u32 word_size;		/* Size in bytes of DSP word */
 	u32 max_channels;	/* Total number of channels */
 	u32 open_channels;	/* Total number of open channels */

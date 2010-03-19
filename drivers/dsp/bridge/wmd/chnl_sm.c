@@ -167,7 +167,7 @@ func_cont:
 	 * If DPC is scheduled in process context (iosm_schedule) and any
 	 * non-mailbox interrupt occurs, that DPC will run and break CS. Hence
 	 * we disable ALL DPCs. We will try to disable ONLY IO DPC later. */
-	sync_enter_cs(chnl_mgr_obj->hcs_obj);
+	spin_lock_bh(&chnl_mgr_obj->chnl_mgr_lock);
 	omap_mbox_disable_irq(dev_ctxt->mbox, IRQ_RX);
 	if (pchnl->chnl_type == CHNL_PCPY) {
 		/* This is a processor-copy channel. */
@@ -227,7 +227,7 @@ func_cont:
 
 	}
 	omap_mbox_enable_irq(dev_ctxt->mbox, IRQ_RX);
-	sync_leave_cs(chnl_mgr_obj->hcs_obj);
+	spin_unlock_bh(&chnl_mgr_obj->chnl_mgr_lock);
 	if (mb_val != 0)
 		io_intr_dsp2(chnl_mgr_obj->hio_mgr, mb_val);
 
@@ -270,7 +270,7 @@ dsp_status bridge_chnl_cancel_io(struct chnl_object *chnl_obj)
 
 	/*  Mark this channel as cancelled, to prevent further IORequests or
 	 *  IORequests or dispatching. */
-	sync_enter_cs(chnl_mgr_obj->hcs_obj);
+	spin_lock_bh(&chnl_mgr_obj->chnl_mgr_lock);
 	pchnl->dw_state |= CHNL_STATECANCEL;
 	if (LST_IS_EMPTY(pchnl->pio_requests))
 		goto func_cont;
@@ -300,7 +300,7 @@ dsp_status bridge_chnl_cancel_io(struct chnl_object *chnl_obj)
 		}
 	}
 func_cont:
-	sync_leave_cs(chnl_mgr_obj->hcs_obj);
+	spin_unlock_bh(&chnl_mgr_obj->chnl_mgr_lock);
 func_end:
 	return status;
 }
@@ -338,7 +338,9 @@ func_cont:
 		pchnl->dw_signature = 0x0000;
 		/* Free the slot in the channel manager: */
 		pchnl->chnl_mgr_obj->ap_channel[pchnl->chnl_id] = NULL;
+		spin_lock_bh(&pchnl->chnl_mgr_obj->chnl_mgr_lock);
 		pchnl->chnl_mgr_obj->open_channels -= 1;
+		spin_unlock_bh(&pchnl->chnl_mgr_obj->chnl_mgr_lock);
 		if (pchnl->ntfy_obj) {
 			ntfy_delete(pchnl->ntfy_obj);
 			pchnl->ntfy_obj = NULL;
@@ -419,9 +421,7 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 			chnl_mgr_obj->dw_last_output = 0;
 			chnl_mgr_obj->hdev_obj = hdev_obj;
 			if (DSP_SUCCEEDED(status))
-				status =
-				    sync_initialize_dpccs
-				    (&chnl_mgr_obj->hcs_obj);
+				spin_lock_init(&chnl_mgr_obj->chnl_mgr_lock);
 		} else {
 			status = DSP_EMEMORY;
 		}
@@ -461,9 +461,6 @@ dsp_status bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr)
 				dev_dbg(bridge, "%s: Error status 0x%x\n",
 					__func__, status);
 		}
-		/* release critical section */
-		if (chnl_mgr_obj->hcs_obj)
-			sync_delete_cs(chnl_mgr_obj->hcs_obj);
 
 		/* Free channel manager object: */
 		kfree(chnl_mgr_obj->ap_channel);
@@ -626,7 +623,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 		}
 	}
 	/* See comment in AddIOReq */
-	sync_enter_cs(pchnl->chnl_mgr_obj->hcs_obj);
+	spin_lock_bh(&pchnl->chnl_mgr_obj->chnl_mgr_lock);
 	omap_mbox_disable_irq(dev_ctxt->mbox, IRQ_RX);
 	if (dequeue_ioc) {
 		/* Dequeue IOC and set pIOC; */
@@ -679,7 +676,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 		sync_reset_event(pchnl->sync_event);
 	}
 	omap_mbox_enable_irq(dev_ctxt->mbox, IRQ_RX);
-	sync_leave_cs(pchnl->chnl_mgr_obj->hcs_obj);
+	spin_unlock_bh(&pchnl->chnl_mgr_obj->chnl_mgr_lock);
 	if (dequeue_ioc
 	    && (pchnl->chnl_type == CHNL_PCPY && pchnl->chnl_id > 1)) {
 		if (!(ioc.pbuf < (void *)USERMODE_ADDR))
@@ -885,9 +882,9 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 	} else {
 		/* Insert channel object in channel manager: */
 		chnl_mgr_obj->ap_channel[pchnl->chnl_id] = pchnl;
-		sync_enter_cs(chnl_mgr_obj->hcs_obj);
+		spin_lock_bh(&chnl_mgr_obj->chnl_mgr_lock);
 		chnl_mgr_obj->open_channels++;
-		sync_leave_cs(chnl_mgr_obj->hcs_obj);
+		spin_unlock_bh(&chnl_mgr_obj->chnl_mgr_lock);
 		/* Return result... */
 		pchnl->dw_signature = CHNL_SIGNATURE;
 		pchnl->dw_state = CHNL_STATEREADY;

@@ -86,7 +86,7 @@ struct msg_mgr {
 
 	struct io_mgr *hio_mgr;	/* IO manager */
 	struct lst_list *queue_list;	/* List of MSG_QUEUEs */
-	struct sync_csobject *sync_cs;	/* For critical sections */
+	spinlock_t msg_mgr_lock;	/* For critical sections */
 	/* Signalled when MsgFrame is available */
 	struct sync_object *sync_event;
 	struct lst_list *msg_free_list;	/* Free MsgFrames ready to be filled */

@@ -95,14 +95,12 @@ dsp_status bridge_msg_create(OUT struct msg_mgr **phMsgMgr,
 			INIT_LIST_HEAD(&msg_mgr_obj->queue_list->head);
 			INIT_LIST_HEAD(&msg_mgr_obj->msg_free_list->head);
 			INIT_LIST_HEAD(&msg_mgr_obj->msg_used_list->head);
-			status = sync_initialize_dpccs(&msg_mgr_obj->sync_cs);
+			spin_lock_init(&msg_mgr_obj->msg_mgr_lock);
 		}
 
 		/*  Create an event to be used by bridge_msg_put() in waiting
 		 *  for an available free frame from the message manager. */
-		if (DSP_SUCCEEDED(status))
-			status =
-			    sync_open_event(&msg_mgr_obj->sync_event, NULL);
+		status = sync_open_event(&msg_mgr_obj->sync_event, NULL);
 
 		if (DSP_SUCCEEDED(status))
 			*phMsgMgr = msg_mgr_obj;
@@ -182,7 +180,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 
 	if (DSP_SUCCEEDED(status)) {
 		/* Enter critical section */
-		(void)sync_enter_cs(hmsg_mgr->sync_cs);
+		spin_lock_bh(&hmsg_mgr->msg_mgr_lock);
 		/* Initialize message frames and put in appropriate queues */
 		for (i = 0; i < max_msgs && DSP_SUCCEEDED(status); i++) {
 			status = add_new_msg(hmsg_mgr->msg_free_list);
@@ -205,7 +203,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 
 		}
 		/* Exit critical section */
-		(void)sync_leave_cs(hmsg_mgr->sync_cs);
+		spin_unlock_bh(&hmsg_mgr->msg_mgr_lock);
 	} else {
 		delete_msg_queue(msg_q, 0);
 	}
@@ -248,7 +246,7 @@ void bridge_msg_delete_queue(struct msg_queue *msg_queue_obj)
 		io_msg_pend = msg_queue_obj->io_msg_pend;
 	}
 	/* Remove message queue from hmsg_mgr->queue_list */
-	(void)sync_enter_cs(hmsg_mgr->sync_cs);
+	spin_lock_bh(&hmsg_mgr->msg_mgr_lock);
 	lst_remove_elem(hmsg_mgr->queue_list,
 			(struct list_head *)msg_queue_obj);
 	/* Free the message queue object */
@@ -258,7 +256,7 @@ void bridge_msg_delete_queue(struct msg_queue *msg_queue_obj)
 	if (LST_IS_EMPTY(hmsg_mgr->msg_free_list))
 		sync_reset_event(hmsg_mgr->sync_event);
 func_cont:
-	(void)sync_leave_cs(hmsg_mgr->sync_cs);
+	spin_unlock_bh(&hmsg_mgr->msg_mgr_lock);
 func_end:
 	return;
 }
@@ -290,7 +288,7 @@ dsp_status bridge_msg_get(struct msg_queue *msg_queue_obj,
 	}
 
 	/* Enter critical section */
-	(void)sync_enter_cs(hmsg_mgr->sync_cs);
+	spin_lock_bh(&hmsg_mgr->msg_mgr_lock);
 	/* If a message is already there, get it */
 	if (!LST_IS_EMPTY(msg_queue_obj->msg_used_list)) {
 		msg_frame_obj = (struct msg_frame *)
@@ -317,7 +315,7 @@ dsp_status bridge_msg_get(struct msg_queue *msg_queue_obj,
 
 	}
 	/* Exit critical section */
-	(void)sync_leave_cs(hmsg_mgr->sync_cs);
+	spin_unlock_bh(&hmsg_mgr->msg_mgr_lock);
 	if (DSP_SUCCEEDED(status) && !got_msg) {
 		/*  Wait til message is available, timeout, or done. We don't
 		 *  have to schedule the DPC, since the DSP will send messages
@@ -327,11 +325,11 @@ dsp_status bridge_msg_get(struct msg_queue *msg_queue_obj,
 		status = sync_wait_on_multiple_events(syncs, 2, utimeout,
 						      &index);
 		/* Enter critical section */
-		(void)sync_enter_cs(hmsg_mgr->sync_cs);
+		spin_lock_bh(&hmsg_mgr->msg_mgr_lock);
 		if (msg_queue_obj->done) {
 			msg_queue_obj->io_msg_pend--;
 			/* Exit critical section */
-			(void)sync_leave_cs(hmsg_mgr->sync_cs);
+			spin_unlock_bh(&hmsg_mgr->msg_mgr_lock);
 			/*  Signal that we're not going to access msg_queue_obj
 			 *  anymore, so it can be deleted. */
 			(void)sync_set_event(msg_queue_obj->sync_done_ack);
@@ -361,7 +359,7 @@ dsp_status bridge_msg_get(struct msg_queue *msg_queue_obj,
 				sync_set_event(msg_queue_obj->sync_event);
 			}
 			/* Exit critical section */
-			(void)sync_leave_cs(hmsg_mgr->sync_cs);
+			spin_unlock_bh(&hmsg_mgr->msg_mgr_lock);
 		}
 	}
 func_end:
@@ -393,7 +391,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 		goto func_end;
 	}
 
-	(void)sync_enter_cs(hmsg_mgr->sync_cs);
+	spin_lock_bh(&hmsg_mgr->msg_mgr_lock);
 
 	/* If a message frame is available, use it */
 	if (!LST_IS_EMPTY(hmsg_mgr->msg_free_list)) {
@@ -412,7 +410,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 			sync_reset_event(hmsg_mgr->sync_event);
 
 		/* Release critical section before scheduling DPC */
-		(void)sync_leave_cs(hmsg_mgr->sync_cs);
+		spin_unlock_bh(&hmsg_mgr->msg_mgr_lock);
 		/* Schedule a DPC, to do the actual data transfer: */
 		iosm_schedule(hmsg_mgr->hio_mgr);
 	} else {
@@ -421,7 +419,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 		else
 			msg_queue_obj->io_msg_pend++;
 
-		(void)sync_leave_cs(hmsg_mgr->sync_cs);
+		spin_unlock_bh(&hmsg_mgr->msg_mgr_lock);
 	}
 	if (DSP_SUCCEEDED(status) && !put_msg) {
 		/* Wait til a free message frame is available, timeout,
@@ -433,11 +431,11 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 		if (DSP_FAILED(status))
 			goto func_end;
 		/* Enter critical section */
-		(void)sync_enter_cs(hmsg_mgr->sync_cs);
+		spin_lock_bh(&hmsg_mgr->msg_mgr_lock);
 		if (msg_queue_obj->done) {
 			msg_queue_obj->io_msg_pend--;
 			/* Exit critical section */
-			(void)sync_leave_cs(hmsg_mgr->sync_cs);
+			spin_unlock_bh(&hmsg_mgr->msg_mgr_lock);
 			/*  Signal that we're not going to access msg_queue_obj
 			 *  anymore, so it can be deleted. */
 			(void)sync_set_event(msg_queue_obj->sync_done_ack);
@@ -474,7 +472,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 				sync_set_event(hmsg_mgr->sync_event);
 func_cont:
 			/* Exit critical section */
-			(void)sync_leave_cs(hmsg_mgr->sync_cs);
+			spin_unlock_bh(&hmsg_mgr->msg_mgr_lock);
 		}
 	}
 func_end:
@@ -584,9 +582,6 @@ static void delete_msg_mgr(struct msg_mgr *hmsg_mgr)
 
 	if (hmsg_mgr->sync_event)
 		sync_close_event(hmsg_mgr->sync_event);
-
-	if (hmsg_mgr->sync_cs)
-		sync_delete_cs(hmsg_mgr->sync_cs);
 
 	MEM_FREE_OBJECT(hmsg_mgr);
 func_end:

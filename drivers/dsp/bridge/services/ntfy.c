@@ -44,7 +44,7 @@
 struct ntfy_object {
 	u32 dw_signature;	/* For object validation */
 	struct lst_list *notify_list;	/* List of notifier objects */
-	struct sync_csobject *sync_obj;	/* For critical sections */
+	spinlock_t ntfy_lock;	/* For critical sections */
 };
 
 /*
@@ -84,20 +84,18 @@ dsp_status ntfy_create(struct ntfy_object **phNtfy)
 	MEM_ALLOC_OBJECT(notify_obj, struct ntfy_object, NTFY_SIGNATURE);
 
 	if (notify_obj) {
+		spin_lock_init(&notify_obj->ntfy_lock);
 
-		status = sync_initialize_dpccs(&notify_obj->sync_obj);
-		if (DSP_SUCCEEDED(status)) {
-			notify_obj->notify_list =
-			    mem_calloc(sizeof(struct lst_list), MEM_NONPAGED);
-			if (notify_obj->notify_list == NULL) {
-				(void)sync_delete_cs(notify_obj->sync_obj);
-				MEM_FREE_OBJECT(notify_obj);
-				status = DSP_EMEMORY;
-			} else {
-				INIT_LIST_HEAD(&notify_obj->notify_list->head);
-				*phNtfy = notify_obj;
-			}
+		notify_obj->notify_list = mem_calloc(sizeof(struct lst_list),
+							MEM_NONPAGED);
+		if (!notify_obj->notify_list) {
+			MEM_FREE_OBJECT(notify_obj);
+			status = DSP_EMEMORY;
+		} else {
+			INIT_LIST_HEAD(&notify_obj->notify_list->head);
+			*phNtfy = notify_obj;
 		}
+
 	} else {
 		status = DSP_EMEMORY;
 	}
@@ -130,8 +128,6 @@ void ntfy_delete(struct ntfy_object *ntfy_obj)
 		DBC_ASSERT(LST_IS_EMPTY(ntfy_obj->notify_list));
 		kfree(ntfy_obj->notify_list);
 	}
-	if (ntfy_obj->sync_obj)
-		(void)sync_delete_cs(ntfy_obj->sync_obj);
 
 	MEM_FREE_OBJECT(ntfy_obj);
 }
@@ -174,7 +170,7 @@ void ntfy_notify(struct ntfy_object *ntfy_obj, u32 event_mask)
 	 *  event_mask events.
 	 */
 
-	(void)sync_enter_cs(ntfy_obj->sync_obj);
+	spin_lock_bh(&ntfy_obj->ntfy_lock);
 
 	notifier_obj = (struct notifier *)lst_first(ntfy_obj->notify_list);
 	while (notifier_obj != NULL) {
@@ -190,7 +186,7 @@ void ntfy_notify(struct ntfy_object *ntfy_obj, u32 event_mask)
 						notifier_obj);
 	}
 
-	(void)sync_leave_cs(ntfy_obj->sync_obj);
+	spin_unlock_bh(&ntfy_obj->ntfy_lock);
 }
 
 /*
@@ -224,7 +220,7 @@ dsp_status ntfy_register(struct ntfy_object *ntfy_obj,
 	if (DSP_FAILED(status))
 		return status;
 
-	(void)sync_enter_cs(ntfy_obj->sync_obj);
+	spin_lock_bh(&ntfy_obj->ntfy_lock);
 
 	notifier_obj = (struct notifier *)lst_first(ntfy_obj->notify_list);
 	while (notifier_obj != NULL) {
@@ -282,7 +278,7 @@ dsp_status ntfy_register(struct ntfy_object *ntfy_obj,
 			notifier_obj->event_mask = event_mask;
 		}
 	}
-	(void)sync_leave_cs(ntfy_obj->sync_obj);
+	spin_unlock_bh(&ntfy_obj->ntfy_lock);
 	return status;
 }
 
