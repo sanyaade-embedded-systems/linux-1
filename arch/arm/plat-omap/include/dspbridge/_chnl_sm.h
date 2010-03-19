@@ -124,8 +124,8 @@ struct chnl_mgr {
 	/* Critical section object handle */
 	spinlock_t chnl_mgr_lock;
 	u32 word_size;		/* Size in bytes of DSP word */
-	u32 max_channels;	/* Total number of channels */
-	u32 open_channels;	/* Total number of open channels */
+	u8 max_channels;	/* Total number of channels */
+	u8 open_channels;	/* Total number of open channels */
 	struct chnl_object **ap_channel;	/* Array of channels */
 	u8 dw_type;		/* Type of channel class library */
 	/* If no shm syms, return for CHNL_Open */

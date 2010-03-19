@@ -385,7 +385,7 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 {
 	dsp_status status = DSP_SOK;
 	struct chnl_mgr *chnl_mgr_obj = NULL;
-	s32 max_channels;
+	u8 max_channels;
 
 	/* Check DBC requirements: */
 	DBC_REQUIRE(phChnlMgr != NULL);

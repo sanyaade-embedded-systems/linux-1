@@ -86,14 +86,14 @@ struct chnl_mgrinfo {
 	u8 dw_type;		/* Type of channel class library. */
 	/* Channel handle, given the channel id. */
 	struct chnl_object *chnl_obj;
-	u32 open_channels;	/* Number of open channels. */
-	u32 max_channels;	/* total # of chnls supported */
+	u8 open_channels;	/* Number of open channels. */
+	u8 max_channels;	/* total # of chnls supported */
 };
 
 /* Channel Manager Attrs: */
 struct chnl_mgrattrs {
 	/* Max number of channels this manager can use. */
-	u32 max_channels;
+	u8 max_channels;
 	u32 word_size;		/* DSP Word size. */
 };
 
