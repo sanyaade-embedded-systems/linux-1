@@ -145,7 +145,7 @@ dsp_status drv_remove_node_res_element(bhandle hNodeRes, bhandle hPCtxt)
 static dsp_status drv_proc_free_node_res(bhandle hPCtxt)
 {
 	struct process_context *ctxt = (struct process_context *)hPCtxt;
-	dsp_status status = DSP_SOK;
+	dsp_status status;
 	struct node_res_object *node_list = NULL;
 	struct node_res_object *node_res_obj = NULL;
 	u32 node_state;
@@ -159,21 +159,15 @@ static dsp_status drv_proc_free_node_res(bhandle hPCtxt)
 			if (node_state <= NODE_DELETING) {
 				if ((node_state == NODE_RUNNING) ||
 				    (node_state == NODE_PAUSED) ||
-				    (node_state == NODE_TERMINATING)) {
-					status = node_terminate
+				    (node_state == NODE_TERMINATING))
+					node_terminate
 					    (node_res_obj->hnode, &status);
-					status =
-					    node_delete(node_res_obj->hnode,
-							ctxt);
-				} else if ((node_state == NODE_ALLOCATED)
-					   || (node_state == NODE_CREATED))
-					status =
-					    node_delete(node_res_obj->hnode,
-							ctxt);
+
+				node_delete(node_res_obj->hnode, ctxt);
 			}
 		}
 	}
-	return status;
+	return 0;
 }
 
 /* Release all Mapped and Reserved DMM resources */
