@@ -767,7 +767,7 @@ u32 procwrap_get_trace(union Trapped_Args *args, void *pr_ctxt)
 	if (args->args_proc_gettrace.max_size > MAX_TRACEBUFLEN)
 		return DSP_ESIZE;
 
-	pbuf = mem_calloc(args->args_proc_gettrace.max_size, MEM_NONPAGED);
+	pbuf = kzalloc(args->args_proc_gettrace.max_size, GFP_KERNEL);
 	if (pbuf != NULL) {
 		status = proc_get_trace(args->args_proc_gettrace.hprocessor,
 					pbuf,

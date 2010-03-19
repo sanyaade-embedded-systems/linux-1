@@ -38,7 +38,7 @@ void *gs_alloc(u32 size)
 {
 	void *p;
 
-	p = mem_calloc(size, MEM_PAGED);
+	p = kzalloc(size, GFP_KERNEL);
 	if (p == NULL)
 		return NULL;
 	cumsize += size;

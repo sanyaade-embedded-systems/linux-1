@@ -494,9 +494,9 @@ func_cont:
 		 *  dais socket nodes. */
 		if (node_type != NODE_MESSAGE) {
 			num_streams = MAX_INPUTS(pnode) + MAX_OUTPUTS(pnode);
-			pnode->stream_connect = mem_calloc(num_streams *
+			pnode->stream_connect = kzalloc(num_streams *
 					sizeof(struct dsp_streamconnect),
-					MEM_PAGED);
+					GFP_KERNEL);
 			if (num_streams > 0 && pnode->stream_connect == NULL)
 				status = DSP_EMEMORY;
 
@@ -504,19 +504,17 @@ func_cont:
 		if (DSP_SUCCEEDED(status) && (node_type == NODE_TASK ||
 					      node_type == NODE_DAISSOCKET)) {
 			/* Allocate arrays for maintainig stream connections */
-			pnode->inputs =
-			    mem_calloc(MAX_INPUTS(pnode) *
-				       sizeof(struct stream_chnl), MEM_PAGED);
-			pnode->outputs =
-			    mem_calloc(MAX_OUTPUTS(pnode) *
-				       sizeof(struct stream_chnl), MEM_PAGED);
+			pnode->inputs = kzalloc(MAX_INPUTS(pnode) *
+					sizeof(struct stream_chnl), GFP_KERNEL);
+			pnode->outputs = kzalloc(MAX_OUTPUTS(pnode) *
+					sizeof(struct stream_chnl), GFP_KERNEL);
 			ptask_args = &(pnode->create_args.asa.task_arg_obj);
-			ptask_args->strm_in_def =
-			    mem_calloc(MAX_INPUTS(pnode) *
-				       sizeof(struct node_strmdef), MEM_PAGED);
-			ptask_args->strm_out_def =
-			    mem_calloc(MAX_OUTPUTS(pnode) *
-				       sizeof(struct node_strmdef), MEM_PAGED);
+			ptask_args->strm_in_def = kzalloc(MAX_INPUTS(pnode) *
+						sizeof(struct node_strmdef),
+						GFP_KERNEL);
+			ptask_args->strm_out_def = kzalloc(MAX_OUTPUTS(pnode) *
+						sizeof(struct node_strmdef),
+						GFP_KERNEL);
 			if ((MAX_INPUTS(pnode) > 0 && (pnode->inputs == NULL ||
 						       ptask_args->strm_in_def
 						       == NULL))
@@ -551,8 +549,8 @@ func_cont:
 			if ((pargs != NULL) && (pargs->cb_data > 0)) {
 				pmsg_args =
 				    &(pnode->create_args.asa.node_msg_args);
-				pmsg_args->pdata =
-				    mem_calloc(pargs->cb_data, MEM_PAGED);
+				pmsg_args->pdata = kzalloc(pargs->cb_data,
+								GFP_KERNEL);
 				if (pmsg_args->pdata == NULL) {
 					status = DSP_EMEMORY;
 				} else {
@@ -969,10 +967,9 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 			hNode2->inputs[uStream2].type = NODECONNECT;
 			hNode1->outputs[uStream1].dev_id = pipe_id;
 			hNode2->inputs[uStream2].dev_id = pipe_id;
-			output->sz_device = mem_calloc(PIPENAMELEN + 1,
-						       MEM_PAGED);
-			input->sz_device = mem_calloc(PIPENAMELEN + 1,
-						      MEM_PAGED);
+			output->sz_device = kzalloc(PIPENAMELEN + 1,
+							GFP_KERNEL);
+			input->sz_device = kzalloc(PIPENAMELEN + 1, GFP_KERNEL);
 			if (output->sz_device == NULL ||
 			    input->sz_device == NULL) {
 				/* Undo the connection */
@@ -1038,7 +1035,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 			status = DSP_ENOMORECONNECTIONS;
 			goto func_cont2;
 		}
-		pstr_dev_name = mem_calloc(HOSTNAMELEN + 1, MEM_PAGED);
+		pstr_dev_name = kzalloc(HOSTNAMELEN + 1, GFP_KERNEL);
 		if (pstr_dev_name != NULL)
 			goto func_cont2;
 
@@ -1092,12 +1089,12 @@ func_cont2:
 		pstream->type = DEVICECONNECT;
 		dw_length = strlen(dev_node_obj->pstr_dev_name);
 		if (conn_param != NULL) {
-			pstrm_def->sz_device = mem_calloc(dw_length + 1 + (u32)
-							  conn_param->cb_data,
-							  MEM_PAGED);
+			pstrm_def->sz_device = kzalloc(dw_length + 1 +
+							conn_param->cb_data,
+							GFP_KERNEL);
 		} else {
-			pstrm_def->sz_device = mem_calloc(dw_length + 1,
-							  MEM_PAGED);
+			pstrm_def->sz_device = kzalloc(dw_length + 1,
+							GFP_KERNEL);
 		}
 		if (pstrm_def->sz_device == NULL) {
 			status = DSP_EMEMORY;
@@ -1331,8 +1328,8 @@ dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
 	MEM_ALLOC_OBJECT(node_mgr_obj, struct node_mgr, NODEMGR_SIGNATURE);
 	if (node_mgr_obj) {
 		node_mgr_obj->hdev_obj = hdev_obj;
-		node_mgr_obj->node_list = mem_calloc(sizeof(struct lst_list),
-						     MEM_NONPAGED);
+		node_mgr_obj->node_list = kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 		node_mgr_obj->pipe_map = gb_create(MAXPIPES);
 		node_mgr_obj->pipe_done_map = gb_create(MAXPIPES);
 		if (node_mgr_obj->node_list == NULL
@@ -2948,7 +2945,7 @@ static dsp_status get_node_props(struct dcd_manager *hdcd_mgr,
 			DBC_REQUIRE(pndb_props->ac_name);
 			len = strlen(pndb_props->ac_name);
 			DBC_ASSERT(len < MAXDEVNAMELEN);
-			hnode->pstr_dev_name = mem_calloc(len + 1, MEM_PAGED);
+			hnode->pstr_dev_name = kzalloc(len + 1, GFP_KERNEL);
 			if (hnode->pstr_dev_name == NULL) {
 				status = DSP_EMEMORY;
 			} else {

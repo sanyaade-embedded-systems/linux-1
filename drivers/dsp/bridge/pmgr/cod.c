@@ -234,7 +234,7 @@ dsp_status cod_create(OUT struct cod_manager **phMgr, char *pstrDummyFile,
 	if (attrs != NULL)
 		return DSP_ENOTIMPL;
 
-	mgr_new = mem_calloc(sizeof(struct cod_manager), MEM_NONPAGED);
+	mgr_new = kzalloc(sizeof(struct cod_manager), GFP_KERNEL);
 	if (mgr_new == NULL)
 		return DSP_EMEMORY;
 
@@ -566,7 +566,7 @@ dsp_status cod_open(struct cod_manager *hmgr, IN char *pszCoffPath,
 
 	*pLib = NULL;
 
-	lib = mem_calloc(sizeof(struct cod_libraryobj), MEM_NONPAGED);
+	lib = kzalloc(sizeof(struct cod_libraryobj), GFP_KERNEL);
 	if (lib == NULL)
 		status = DSP_EMEMORY;
 

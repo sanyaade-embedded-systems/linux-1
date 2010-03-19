@@ -262,7 +262,7 @@ static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 
 	/*  Autostart flag.  This should be set to true if the DSP image should
 	 *  be loaded and run during bridge module initialization */
-	drv_datap = mem_calloc(sizeof(struct drv_data), MEM_PAGED);
+	drv_datap = kzalloc(sizeof(struct drv_data), GFP_KERNEL);
 	if (drv_datap) {
 		drv_datap->shm_size = shm_size;
 		drv_datap->tc_wordswapon = tc_wordswapon;
@@ -449,7 +449,7 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	}
 #endif
 
-	pr_ctxt = mem_calloc(sizeof(struct process_context), MEM_PAGED);
+	pr_ctxt = kzalloc(sizeof(struct process_context), GFP_KERNEL);
 	if (pr_ctxt) {
 		pr_ctxt->res_state = PROC_RES_ALLOCATED;
 		spin_lock_init(&pr_ctxt->dmm_map_lock);

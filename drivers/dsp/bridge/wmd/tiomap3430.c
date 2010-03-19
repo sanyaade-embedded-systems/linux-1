@@ -892,7 +892,7 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 
 	/* Allocate and initialize a data structure to contain the mini driver
 	 *  state, which becomes the context for later calls into this WMD. */
-	dev_context = mem_calloc(sizeof(struct wmd_dev_context), MEM_NONPAGED);
+	dev_context = kzalloc(sizeof(struct wmd_dev_context), GFP_KERNEL);
 	if (!dev_context) {
 		status = DSP_EMEMORY;
 		goto func_end;
@@ -919,7 +919,7 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 	if (!dev_context->dw_dsp_base_addr)
 		status = DSP_EFAIL;
 
-	pt_attrs = mem_calloc(sizeof(struct pg_table_attrs), MEM_NONPAGED);
+	pt_attrs = kzalloc(sizeof(struct pg_table_attrs), GFP_KERNEL);
 	if (pt_attrs != NULL) {
 		/* Assuming that we use only DSP's memory map
 		 * until 0x4000:0000 , we would need only 1024
@@ -982,9 +982,8 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 			memset((u8 *) pt_attrs->l2_base_va, 0x00,
 			       pt_attrs->l2_size);
 
-		pt_attrs->pg_info = mem_calloc(pt_attrs->l2_num_pages *
-					       sizeof(struct page_info),
-					       MEM_NONPAGED);
+		pt_attrs->pg_info = kzalloc(pt_attrs->l2_num_pages *
+					sizeof(struct page_info), GFP_KERNEL);
 		dev_dbg(bridge,
 			"L1 pa %x, va %x, size %x\n L2 pa %x, va "
 			"%x, size %x\n", pt_attrs->l1_base_pa,

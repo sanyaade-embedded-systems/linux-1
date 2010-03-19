@@ -289,8 +289,8 @@ dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
 		if (DSP_SUCCEEDED(status)) {
 			/* create node free list */
 			cmm_obj->node_free_list_head =
-					mem_calloc(sizeof(struct lst_list),
-						   MEM_NONPAGED);
+					kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 			if (cmm_obj->node_free_list_head == NULL)
 				status = DSP_EMEMORY;
 			else
@@ -611,9 +611,8 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 			/* return the actual segment identifier */
 			*pulSegId = (u32) slot_seg + 1;
 			/* create memory free list */
-			psma->free_list_head = mem_calloc(sizeof(struct
-								 lst_list),
-							  MEM_NONPAGED);
+			psma->free_list_head = kzalloc(sizeof(struct lst_list),
+								GFP_KERNEL);
 			if (psma->free_list_head == NULL) {
 				status = DSP_EMEMORY;
 				goto func_end;
@@ -622,9 +621,8 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 		}
 		if (DSP_SUCCEEDED(status)) {
 			/* create memory in-use list */
-			psma->in_use_list_head = mem_calloc(sizeof(struct
-								   lst_list),
-							    MEM_NONPAGED);
+			psma->in_use_list_head = kzalloc(sizeof(struct
+							lst_list), GFP_KERNEL);
 			if (psma->in_use_list_head == NULL) {
 				status = DSP_EMEMORY;
 				goto func_end;
@@ -797,8 +795,7 @@ static struct cmm_mnode *get_node(struct cmm_object *cmm_mgr_obj, u32 dw_pa,
 	DBC_REQUIRE(ul_size != 0);
 	/* Check cmm mgr's node freelist */
 	if (LST_IS_EMPTY(cmm_mgr_obj->node_free_list_head)) {
-		pnode = (struct cmm_mnode *)mem_calloc(sizeof(struct cmm_mnode),
-						       MEM_PAGED);
+		pnode = kzalloc(sizeof(struct cmm_mnode), GFP_KERNEL);
 	} else {
 		/* surely a valid element */
 		pnode = (struct cmm_mnode *)

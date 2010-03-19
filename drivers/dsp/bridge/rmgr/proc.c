@@ -862,7 +862,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 	/*Prepend "PROC_ID=<nproc_id>"to envp array for target. */
 	envp_elems = get_envp_count((char **)user_envp);
 	cnew_envp = (envp_elems ? (envp_elems + 1) : (envp_elems + 2));
-	new_envp = mem_calloc(cnew_envp * sizeof(char **), MEM_PAGED);
+	new_envp = kzalloc(cnew_envp * sizeof(char **), GFP_KERNEL);
 	if (new_envp) {
 		status = snprintf(sz_proc_id, MAXPROCIDLEN, PROC_ENVPROCID,
 				  nproc_id);
@@ -927,8 +927,8 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 					   NULL);
 				/* Allocate memory for pszLastCoff */
 				p_proc_object->psz_last_coff =
-				    mem_calloc((strlen((char *)user_args[0]) +
-						1), MEM_PAGED);
+						kzalloc((strlen(user_args[0]) +
+						1), GFP_KERNEL);
 				/* If memory allocated, save COFF file name */
 				if (p_proc_object->psz_last_coff) {
 					strncpy(p_proc_object->psz_last_coff,

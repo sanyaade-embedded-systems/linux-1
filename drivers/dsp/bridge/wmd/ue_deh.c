@@ -254,8 +254,8 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 			printk(KERN_INFO
 			       "bridge_deh_notify: DSP_MMUFAULT, fault "
 			       "address = 0x%x\n", (unsigned int)fault_addr);
-			dummy_va_addr =
-			    (u32) mem_calloc(sizeof(char) * 0x1000, MEM_PAGED);
+			dummy_va_addr = (u32) kzalloc(sizeof(char) * 0x1000,
+								GFP_ATOMIC);
 			mem_physical =
 			    VIRT_TO_PHYS(PG_ALIGN_LOW
 					 ((u32) dummy_va_addr, PG_SIZE4K));

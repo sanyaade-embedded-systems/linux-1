@@ -251,8 +251,8 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 	}
 	/* Create the Processor List */
 	if (DSP_SUCCEEDED(status)) {
-		dev_obj->proc_list = mem_calloc(sizeof(struct lst_list),
-						MEM_NONPAGED);
+		dev_obj->proc_list = kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 		if (!(dev_obj->proc_list))
 			status = DSP_EFAIL;
 		else

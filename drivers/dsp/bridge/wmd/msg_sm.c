@@ -78,15 +78,15 @@ dsp_status bridge_msg_create(OUT struct msg_mgr **phMsgMgr,
 		msg_mgr_obj->on_exit = msgCallback;
 		msg_mgr_obj->hio_mgr = hio_mgr;
 		/* List of MSG_QUEUEs */
-		msg_mgr_obj->queue_list = mem_calloc(sizeof(struct lst_list),
-						     MEM_NONPAGED);
+		msg_mgr_obj->queue_list = kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 		/*  Queues of message frames for messages to the DSP. Message
 		 * frames will only be added to the free queue when a
 		 * msg_queue object is created. */
-		msg_mgr_obj->msg_free_list = mem_calloc(sizeof(struct lst_list),
-							MEM_NONPAGED);
-		msg_mgr_obj->msg_used_list = mem_calloc(sizeof(struct lst_list),
-							MEM_NONPAGED);
+		msg_mgr_obj->msg_free_list = kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
+		msg_mgr_obj->msg_used_list = kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 		if (msg_mgr_obj->queue_list == NULL ||
 		    msg_mgr_obj->msg_free_list == NULL ||
 		    msg_mgr_obj->msg_used_list == NULL) {
@@ -152,10 +152,8 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 	msg_q->arg = arg;	/* Node handle */
 	msg_q->msgq_id = msgq_id;	/* Node env (not valid yet) */
 	/* Queues of Message frames for messages from the DSP */
-	msg_q->msg_free_list =
-	    mem_calloc(sizeof(struct lst_list), MEM_NONPAGED);
-	msg_q->msg_used_list =
-	    mem_calloc(sizeof(struct lst_list), MEM_NONPAGED);
+	msg_q->msg_free_list = kzalloc(sizeof(struct lst_list), GFP_KERNEL);
+	msg_q->msg_used_list = kzalloc(sizeof(struct lst_list), GFP_KERNEL);
 	if (msg_q->msg_free_list == NULL || msg_q->msg_used_list == NULL)
 		status = DSP_EMEMORY;
 	else {
@@ -575,8 +573,7 @@ static dsp_status add_new_msg(struct lst_list *msgList)
 	struct msg_frame *pmsg;
 	dsp_status status = DSP_SOK;
 
-	pmsg = (struct msg_frame *)mem_calloc(sizeof(struct msg_frame),
-					      MEM_PAGED);
+	pmsg = kzalloc(sizeof(struct msg_frame), GFP_ATOMIC);
 	if (pmsg != NULL) {
 		lst_init_elem((struct list_head *)pmsg);
 		lst_put_tail(msgList, (struct list_head *)pmsg);

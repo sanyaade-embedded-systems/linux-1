@@ -164,7 +164,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 		/* Allocate buffer for commands, replies */
 		disp_obj->ul_bufsize = pDispAttrs->ul_chnl_buf_size;
 		disp_obj->ul_bufsize_rms = RMS_COMMANDBUFSIZE;
-		disp_obj->pbuf = mem_calloc(disp_obj->ul_bufsize, MEM_PAGED);
+		disp_obj->pbuf = kzalloc(disp_obj->ul_bufsize, GFP_KERNEL);
 		if (disp_obj->pbuf == NULL)
 			status = DSP_EMEMORY;
 	}

@@ -1968,7 +1968,7 @@ dsp_status print_dsp_trace_buffer(struct wmd_dev_context *hwmd_context)
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	psz_buf = mem_calloc(ul_num_bytes + 2, MEM_NONPAGED);
+	psz_buf = kzalloc(ul_num_bytes + 2, GFP_ATOMIC);
 	if (psz_buf != NULL) {
 		/* Read trace buffer data */
 		status = (*intf_fxns->pfn_brd_read)(pwmd_context,
@@ -2178,7 +2178,7 @@ dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
 		if (total_size > MAX_MMU_DBGBUFF)
 			total_size = MAX_MMU_DBGBUFF;
 
-		buffer = mem_calloc(total_size, MEM_NONPAGED);
+		buffer = kzalloc(total_size, GFP_ATOMIC);
 		buffer_end =  buffer + total_size / 4;
 
 		if (!buffer) {
@@ -2345,8 +2345,7 @@ void dump_dl_modules(struct wmd_dev_context *wmd_context)
 		 */
 		if (module_size > module_struct_size) {
 			kfree(module_struct);
-			module_struct = mem_calloc(module_size+128,
-							MEM_NONPAGED);
+			module_struct = kzalloc(module_size+128, GFP_ATOMIC);
 			module_struct_size = module_size+128;
 			pr_debug("%s: allocated module struct %p %d\n",
 				__func__, module_struct, module_struct_size);

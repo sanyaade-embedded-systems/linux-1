@@ -84,8 +84,7 @@ dsp_status drv_insert_node_res_element(bhandle hnode, bhandle hNodeRes,
 	dsp_status status = DSP_SOK;
 	struct node_res_object *temp_node_res = NULL;
 
-	*node_res_obj = (struct node_res_object *)mem_calloc
-	    (1 * sizeof(struct node_res_object), MEM_PAGED);
+	*node_res_obj = kzalloc(sizeof(struct node_res_object), GFP_KERNEL);
 	if (*node_res_obj == NULL)
 		status = DSP_EHANDLE;
 
@@ -282,8 +281,7 @@ dsp_status drv_proc_insert_strm_res_element(bhandle hStreamHandle,
 	dsp_status status = DSP_SOK;
 	struct strm_res_object *temp_strm_res = NULL;
 
-	*pstrm_res = (struct strm_res_object *)
-	    mem_calloc(1 * sizeof(struct strm_res_object), MEM_PAGED);
+	*pstrm_res = kzalloc(sizeof(struct strm_res_object), GFP_KERNEL);
 	if (*pstrm_res == NULL)
 		status = DSP_EHANDLE;
 
@@ -438,13 +436,12 @@ dsp_status drv_create(OUT struct drv_object **phDRVObject)
 	MEM_ALLOC_OBJECT(pdrv_object, struct drv_object, SIGNATURE);
 	if (pdrv_object) {
 		/* Create and Initialize List of device objects */
-		pdrv_object->dev_list = mem_calloc(sizeof(struct lst_list),
-						   MEM_NONPAGED);
+		pdrv_object->dev_list = kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 		if (pdrv_object->dev_list) {
 			/* Create and Initialize List of device Extension */
 			pdrv_object->dev_node_string =
-					mem_calloc(sizeof(struct lst_list),
-						   MEM_NONPAGED);
+				kzalloc(sizeof(struct lst_list), GFP_KERNEL);
 			if (!(pdrv_object->dev_node_string)) {
 				status = DSP_EFAIL;
 			} else {
@@ -754,7 +751,7 @@ dsp_status drv_request_resources(u32 dw_context, u32 *pDevNodeString)
 
 	status = cfg_get_object((u32 *) &pdrv_object, REG_DRV_OBJECT);
 	if (DSP_SUCCEEDED(status)) {
-		pszdev_node = mem_calloc(sizeof(struct drv_ext), MEM_NONPAGED);
+		pszdev_node = kzalloc(sizeof(struct drv_ext), GFP_KERNEL);
 		if (pszdev_node) {
 			lst_init_elem(&pszdev_node->link);
 			strncpy(pszdev_node->sz_string,
@@ -875,7 +872,7 @@ dsp_status drv_request_bridge_res_dsp(void **phost_resources)
 
 	dw_buff_size = sizeof(struct cfg_hostres);
 
-	host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
+	host_res = kzalloc(dw_buff_size, GFP_KERNEL);
 
 	if (host_res != NULL) {
 		request_bridge_resources(host_res);

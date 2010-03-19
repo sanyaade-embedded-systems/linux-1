@@ -403,7 +403,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 	DBC_REQUIRE(pObjDef != NULL);
 	DBC_REQUIRE(pObjUuid != NULL);
 
-	sz_uuid = (char *)mem_calloc(MAXUUIDLEN, MEM_PAGED);
+	sz_uuid = kzalloc(MAXUUIDLEN, GFP_KERNEL);
 	if (!sz_uuid) {
 		status = DSP_EMEMORY;
 		goto func_end;
@@ -492,7 +492,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 	}
 
 	/* Allocate zeroed buffer. */
-	psz_coff_buf = mem_calloc(ul_len + 4, MEM_PAGED);
+	psz_coff_buf = kzalloc(ul_len + 4, GFP_KERNEL);
 #ifdef _DB_TIOMAP
 	if (strstr(dcd_key->path, "iva") == NULL) {
 		/* Locate section by objectID and read its content. */
@@ -576,7 +576,7 @@ dsp_status dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
 	}
 
 	/* Allocate zeroed buffer. */
-	psz_coff_buf = mem_calloc(ul_len + 4, MEM_PAGED);
+	psz_coff_buf = kzalloc(ul_len + 4, GFP_KERNEL);
 #ifdef _DB_TIOMAP
 	if (strstr(pszCoffPath, "iva") == NULL) {
 		/* Locate section by objectID and read its content. */
@@ -1166,7 +1166,7 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		DBC_REQUIRE(token);
 		token_len = strlen(token);
 		pGenObj->obj_data.node_obj.pstr_create_phase_fxn =
-		    mem_calloc(token_len + 1, MEM_PAGED);
+					kzalloc(token_len + 1, GFP_KERNEL);
 		if (!pGenObj->obj_data.node_obj.pstr_create_phase_fxn) {
 			status = DSP_EMEMORY;
 			break;
@@ -1181,7 +1181,7 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		DBC_REQUIRE(token);
 		token_len = strlen(token);
 		pGenObj->obj_data.node_obj.pstr_execute_phase_fxn =
-		    mem_calloc(token_len + 1, MEM_PAGED);
+					kzalloc(token_len + 1, GFP_KERNEL);
 		if (!pGenObj->obj_data.node_obj.pstr_execute_phase_fxn) {
 			status = DSP_EMEMORY;
 			break;
@@ -1196,7 +1196,7 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		DBC_REQUIRE(token);
 		token_len = strlen(token);
 		pGenObj->obj_data.node_obj.pstr_delete_phase_fxn =
-		    mem_calloc(token_len + 1, MEM_PAGED);
+					kzalloc(token_len + 1, GFP_KERNEL);
 		if (!pGenObj->obj_data.node_obj.pstr_delete_phase_fxn) {
 			status = DSP_EMEMORY;
 			break;
@@ -1219,7 +1219,7 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		if (token) {
 			token_len = strlen(token);
 			pGenObj->obj_data.node_obj.pstr_i_alg_name =
-			    mem_calloc(token_len + 1, MEM_PAGED);
+					kzalloc(token_len + 1, GFP_KERNEL);
 			if (!pGenObj->obj_data.node_obj.pstr_i_alg_name) {
 				status = DSP_EMEMORY;
 				break;
@@ -1454,7 +1454,7 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 	}
 
 	/* Allocate a buffer for file name */
-	psz_file_name = mem_calloc(dw_data_size, MEM_PAGED);
+	psz_file_name = kzalloc(dw_data_size, GFP_KERNEL);
 	if (psz_file_name == NULL) {
 		status = DSP_EMEMORY;
 	} else {
@@ -1483,7 +1483,7 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 		goto func_cont;
 
 	/* Allocate zeroed buffer. */
-	psz_coff_buf = mem_calloc(ul_len + 4, MEM_PAGED);
+	psz_coff_buf = kzalloc(ul_len + 4, GFP_KERNEL);
 	if (psz_coff_buf == NULL)
 		status = DSP_EMEMORY;
 

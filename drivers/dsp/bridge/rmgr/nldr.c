@@ -493,8 +493,8 @@ dsp_status nldr_create(OUT struct nldr_object **phNldr,
 						    &ul_len);
 		if (DSP_SUCCEEDED(status)) {
 			psz_coff_buf =
-			    mem_calloc(ul_len * nldr_obj->us_dsp_mau_size,
-				       MEM_PAGED);
+				kzalloc(ul_len * nldr_obj->us_dsp_mau_size,
+								GFP_KERNEL);
 			if (!psz_coff_buf) {
 				status = DSP_EMEMORY;
 			}
@@ -521,10 +521,10 @@ dsp_status nldr_create(OUT struct nldr_object **phNldr,
 	}
 	/* Parse dynamic load memory segments */
 	if (DSP_SUCCEEDED(status) && dload_segs > 0) {
-		rmm_segs = mem_calloc(sizeof(struct rmm_segment) * dload_segs,
-				      MEM_PAGED);
+		rmm_segs = kzalloc(sizeof(struct rmm_segment) * dload_segs,
+								GFP_KERNEL);
 		nldr_obj->seg_table =
-		    mem_calloc(sizeof(u32) * dload_segs, MEM_PAGED);
+				kzalloc(sizeof(u32) * dload_segs, GFP_KERNEL);
 		if (rmm_segs == NULL || nldr_obj->seg_table == NULL) {
 			status = DSP_EMEMORY;
 		} else {
@@ -579,8 +579,8 @@ dsp_status nldr_create(OUT struct nldr_object **phNldr,
 		if (DSP_SUCCEEDED(status) && nldr_obj->ovly_nodes > 0) {
 			/* Allocate table for overlay nodes */
 			nldr_obj->ovly_table =
-			    mem_calloc(sizeof(struct ovly_node) *
-				       nldr_obj->ovly_nodes, MEM_PAGED);
+					kzalloc(sizeof(struct ovly_node) *
+					nldr_obj->ovly_nodes, GFP_KERNEL);
 			/* Put overlay nodes in the table */
 			nldr_obj->ovly_nid = 0;
 			status = dcd_get_objects(nldr_obj->hdcd_mgr, sz_zl_file,
@@ -1050,7 +1050,7 @@ static dsp_status add_ovly_node(struct dsp_uuid *uuid_obj,
 			len =
 			    strlen(obj_def.obj_data.node_obj.ndb_props.ac_name);
 			node_name = obj_def.obj_data.node_obj.ndb_props.ac_name;
-			pbuf = mem_calloc(len + 1, MEM_PAGED);
+			pbuf = kzalloc(len + 1, GFP_KERNEL);
 			if (pbuf == NULL) {
 				status = DSP_EMEMORY;
 			} else {
@@ -1105,7 +1105,7 @@ static dsp_status add_ovly_sect(struct nldr_object *nldr_obj,
 
 	if (!ovly_section) {
 		/* New section */
-		new_sect = mem_calloc(sizeof(struct ovly_sect), MEM_PAGED);
+		new_sect = kzalloc(sizeof(struct ovly_sect), GFP_KERNEL);
 		if (new_sect == NULL) {
 			status = DSP_EMEMORY;
 		} else {
@@ -1276,7 +1276,7 @@ static dsp_status load_lib(struct nldr_nodeobject *nldr_node_obj,
 	}
 	root->lib = NULL;
 	/* Allocate a buffer for library file name of size DBL_MAXPATHLENGTH */
-	psz_file_name = mem_calloc(DBLL_MAXPATHLENGTH, MEM_PAGED);
+	psz_file_name = kzalloc(DBLL_MAXPATHLENGTH, GFP_KERNEL);
 	if (psz_file_name == NULL)
 		status = DSP_EMEMORY;
 
@@ -1343,19 +1343,19 @@ static dsp_status load_lib(struct nldr_nodeobject *nldr_node_obj,
 		/* nd_libs = #of dependent libraries */
 		root->dep_libs = nd_libs - np_libs;
 		if (nd_libs > 0) {
-			dep_lib_uui_ds = mem_calloc(sizeof(struct dsp_uuid) *
-						    nd_libs, MEM_PAGED);
+			dep_lib_uui_ds = kzalloc(sizeof(struct dsp_uuid) *
+							nd_libs, GFP_KERNEL);
 			persistent_dep_libs =
-			    mem_calloc(sizeof(bool) * nd_libs, MEM_PAGED);
+				kzalloc(sizeof(bool) * nd_libs, GFP_KERNEL);
 			if (!dep_lib_uui_ds || !persistent_dep_libs)
 				status = DSP_EMEMORY;
 
 			if (root->dep_libs > 0) {
 				/* Allocate arrays for dependent lib UUIDs,
 				 * lib nodes */
-				root->dep_libs_tree = mem_calloc
-				    (sizeof(struct lib_node) *
-				     (root->dep_libs), MEM_PAGED);
+				root->dep_libs_tree = kzalloc
+						(sizeof(struct lib_node) *
+						(root->dep_libs), GFP_KERNEL);
 				if (!(root->dep_libs_tree))
 					status = DSP_EMEMORY;
 

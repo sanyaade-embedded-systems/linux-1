@@ -631,8 +631,8 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 			zl_lib->open_ref++;
 			zl_lib->target_obj = zl_target;
 			/* Keep a copy of the file name */
-			zl_lib->file_name = mem_calloc(strlen(file) + 1,
-						       MEM_PAGED);
+			zl_lib->file_name = kzalloc(strlen(file) + 1,
+							GFP_KERNEL);
 			if (zl_lib->file_name == NULL) {
 				status = DSP_EMEMORY;
 			} else {
@@ -1137,8 +1137,7 @@ static struct dynload_symbol *dbll_add_to_symbol_table(struct dynamic_loader_sym
 		}
 	}
 	/* Allocate string to copy symbol name */
-	symbol.name = (char *)mem_calloc(strlen((char *const)name) + 1,
-					 MEM_PAGED);
+	symbol.name = kzalloc(strlen((char *const)name) + 1, GFP_KERNEL);
 	if (symbol.name == NULL)
 		return NULL;
 
@@ -1192,7 +1191,7 @@ static void *allocate(struct dynamic_loader_sym *this, unsigned memsize)
 	lib = ldr_sym->lib;
 	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
 
-	buf = mem_calloc(memsize, MEM_PAGED);
+	buf = kzalloc(memsize, GFP_KERNEL);
 
 	return buf;
 }
@@ -1270,9 +1269,9 @@ static int dbll_rmm_alloc(struct dynamic_loader_allocate *this,
 	DBC_REQUIRE(info->name);
 	token_len = strlen((char *)(info->name)) + 1;
 
-	sz_sect_name = mem_calloc(token_len, MEM_PAGED);
-	sz_last_token = mem_calloc(token_len, MEM_PAGED);
-	sz_sec_last_token = mem_calloc(token_len, MEM_PAGED);
+	sz_sect_name = kzalloc(token_len, GFP_KERNEL);
+	sz_last_token = kzalloc(token_len, GFP_KERNEL);
+	sz_sec_last_token = kzalloc(token_len, GFP_KERNEL);
 
 	if (sz_sect_name == NULL || sz_sec_last_token == NULL ||
 	    sz_last_token == NULL) {

@@ -62,7 +62,7 @@ extern void *mem_alloc(IN u32 byte_size, IN enum mem_poolattrs type);
  */
 #define MEM_ALLOC_OBJECT(pObj, Obj, Signature)		\
 do {							\
-	pObj = mem_calloc(sizeof(Obj), MEM_NONPAGED);	\
+	pObj = kzalloc(sizeof(Obj), GFP_KERNEL);	\
 	if (pObj) {					\
 		pObj->dw_signature = Signature;		\
 	}						\

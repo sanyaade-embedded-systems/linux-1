@@ -407,9 +407,8 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 		DBC_ASSERT(pMgrAttrs->max_channels == CHNL_MAXCHANNELS);
 		max_channels = CHNL_MAXCHANNELS + CHNL_MAXCHANNELS * CHNL_PCPY;
 		/* Create array of channels: */
-		chnl_mgr_obj->ap_channel =
-		    mem_calloc(sizeof(struct chnl_object *) * max_channels,
-			       MEM_NONPAGED);
+		chnl_mgr_obj->ap_channel = kzalloc(sizeof(struct chnl_object *)
+						* max_channels, GFP_KERNEL);
 		if (chnl_mgr_obj->ap_channel) {
 			/* Initialize chnl_mgr object: */
 			/* Shared memory driver. */
@@ -946,7 +945,7 @@ static struct lst_list *create_chirp_list(u32 uChirps)
 	struct chnl_irp *chnl_packet_obj;
 	u32 i;
 
-	chirp_list = mem_calloc(sizeof(struct lst_list), MEM_NONPAGED);
+	chirp_list = kzalloc(sizeof(struct lst_list), GFP_KERNEL);
 
 	if (chirp_list) {
 		INIT_LIST_HEAD(&chirp_list->head);
@@ -990,9 +989,7 @@ static struct chnl_irp *make_new_chirp(void)
 {
 	struct chnl_irp *chnl_packet_obj;
 
-	chnl_packet_obj =
-	    (struct chnl_irp *)mem_calloc(sizeof(struct chnl_irp),
-					  MEM_NONPAGED);
+	chnl_packet_obj = kzalloc(sizeof(struct chnl_irp), GFP_KERNEL);
 	if (chnl_packet_obj != NULL) {
 		/* lst_init_elem only resets the list's member values. */
 		lst_init_elem(&chnl_packet_obj->link);
