@@ -337,7 +337,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	u32 ul_pad_size = 0;
 	u32 i;
 	dsp_status status = DSP_SOK;
-	u32 num_procs = 0;
+	u8 num_procs = 0;
 	s32 ndx = 0;
 	/* DSP MMU setup table */
 	struct wmdioctl_extproc ae_proc[WMDIOCTL_NUMOFMMUTLB];

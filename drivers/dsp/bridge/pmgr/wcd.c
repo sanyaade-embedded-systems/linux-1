@@ -445,7 +445,7 @@ u32 mgrwrap_enum_node_info(union Trapped_Args *args, void *pr_ctxt)
 u32 mgrwrap_enum_proc_info(union Trapped_Args *args, void *pr_ctxt)
 {
 	u8 *processor_info;
-	u32 num_procs;
+	u8 num_procs;
 	dsp_status status = DSP_SOK;
 	u32 size = args->args_mgr_enumproc_info.processor_info_size;
 

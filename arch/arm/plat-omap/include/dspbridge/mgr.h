@@ -153,7 +153,7 @@ extern dsp_status mgr_enum_processor_info(u32 processor_id,
 					  OUT struct dsp_processorinfo
 					  *processor_info,
 					  u32 processor_info_size,
-					  OUT u32 *pu_num_procs);
+					  OUT u8 *pu_num_procs);
 /*
  *  ======== mgr_exit ========
  *  Purpose:
