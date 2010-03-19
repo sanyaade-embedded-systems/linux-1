@@ -1035,7 +1035,7 @@ inline void find_node_handle(struct node_res_object **noderes,
 {
 	rcu_read_lock();
 	*noderes = idr_find(((struct process_context *)pr_ctxt)->node_idp,
-								(int)hnode);
+								(int)hnode - 1);
 	rcu_read_unlock();
 	return;
 }
@@ -1094,6 +1094,8 @@ u32 nodewrap_allocate(union Trapped_Args *args, void *pr_ctxt)
 		if (DSP_FAILED(status)) {
 			status = DSP_EPOINTER;
 			node_delete(node_res, pr_ctxt);
+		} else {
+			*args->args_node_allocate.ph_node += 1;
 		}
 	}
 func_cont:
