@@ -141,7 +141,7 @@ struct chnl_object {
 	struct chnl_mgr *chnl_mgr_obj;
 	u32 chnl_id;		/* Channel id */
 	u8 dw_state;		/* Current channel state */
-	u32 chnl_mode;		/* Chnl mode and attributes */
+	s8 chnl_mode;		/* Chnl mode and attributes */
 	/* Chnl I/O completion event (user mode) */
 	bhandle user_event;
 	/* Abstract syncronization object */

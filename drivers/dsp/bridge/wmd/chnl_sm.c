@@ -252,7 +252,7 @@ dsp_status bridge_chnl_cancel_io(struct chnl_object *chnl_obj)
 	dsp_status status = DSP_SOK;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 	u32 chnl_id = -1;
-	short int chnl_mode;
+	s8 chnl_mode;
 	struct chnl_irp *chnl_packet_obj;
 	struct chnl_mgr *chnl_mgr_obj = NULL;
 
@@ -481,7 +481,7 @@ dsp_status bridge_chnl_flush_io(struct chnl_object *chnl_obj, u32 dwTimeOut)
 {
 	dsp_status status = DSP_SOK;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
-	short int chnl_mode = -1;
+	s8 chnl_mode = -1;
 	struct chnl_mgr *chnl_mgr_obj;
 	struct chnl_ioc chnl_ioc_obj;
 	/* Check args: */
@@ -747,7 +747,7 @@ dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
 dsp_status bridge_chnl_idle(struct chnl_object *chnl_obj, u32 dwTimeOut,
 			    bool fFlush)
 {
-	short int chnl_mode;
+	s8 chnl_mode;
 	struct chnl_mgr *chnl_mgr_obj;
 	dsp_status status = DSP_SOK;
 
@@ -775,7 +775,7 @@ dsp_status bridge_chnl_idle(struct chnl_object *chnl_obj, u32 dwTimeOut,
  *      Open a new half-duplex channel to the DSP board.
  */
 dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
-			    struct chnl_mgr *hchnl_mgr, short int chnl_mode,
+			    struct chnl_mgr *hchnl_mgr, s8 chnl_mode,
 			    u32 uChnlId, CONST IN struct chnl_attr *pattrs)
 {
 	dsp_status status = DSP_SOK;

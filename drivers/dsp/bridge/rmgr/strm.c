@@ -466,7 +466,7 @@ dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 	struct bridge_drv_interface *intf_fxns;
 	u32 ul_chnl_id;
 	struct strm_object *strm_obj = NULL;
-	short int chnl_mode;
+	s8 chnl_mode;
 	struct chnl_attr chnl_attr_obj;
 	dsp_status status = DSP_SOK;
 	struct cmm_object *hcmm_mgr = NULL;	/* Shared memory manager hndl */

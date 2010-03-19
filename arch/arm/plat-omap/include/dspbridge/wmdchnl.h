@@ -33,7 +33,7 @@ extern dsp_status bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr);
 
 extern dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 				   struct chnl_mgr *hchnl_mgr,
-				   short int chnl_mode,
+				   s8 chnl_mode,
 				   u32 uChnlId,
 				   CONST IN OPTIONAL struct chnl_attr
 				   *pattrs);
