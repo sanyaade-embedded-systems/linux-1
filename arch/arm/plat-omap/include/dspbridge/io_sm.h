@@ -123,7 +123,7 @@ void dsp_wdt_set_enable(bool);
 
 extern void io_request_chnl(struct io_mgr *hio_mgr,
 			    struct chnl_object *pchnl,
-			    u32 iMode, OUT u16 *pwMbVal);
+			    u8 iMode, OUT u16 *pwMbVal);
 
 /*
  *  ======== iosm_schedule ========

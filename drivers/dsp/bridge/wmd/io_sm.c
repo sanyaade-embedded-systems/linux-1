@@ -134,16 +134,16 @@ struct io_mgr {
 
 /* Function Prototypes */
 static void io_dispatch_chnl(IN struct io_mgr *pio_mgr,
-			     IN OUT struct chnl_object *pchnl, u32 iMode);
+				IN OUT struct chnl_object *pchnl, u8 iMode);
 static void io_dispatch_msg(IN struct io_mgr *pio_mgr,
 			    struct msg_mgr *hmsg_mgr);
 static void io_dispatch_pm(struct io_mgr *pio_mgr);
 static void notify_chnl_complete(struct chnl_object *pchnl,
 				 struct chnl_irp *chnl_packet_obj);
 static void input_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-		       u32 iMode);
+			u8 iMode);
 static void output_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-			u32 iMode);
+			u8 iMode);
 static void input_msg(struct io_mgr *pio_mgr, struct msg_mgr *hmsg_mgr);
 static void output_msg(struct io_mgr *pio_mgr, struct msg_mgr *hmsg_mgr);
 static u32 find_ready_output(struct chnl_mgr *chnl_mgr_obj,
@@ -869,7 +869,7 @@ func_end:
  *      Proc-copy chanl dispatch.
  */
 static void io_dispatch_chnl(IN struct io_mgr *pio_mgr,
-			     IN OUT struct chnl_object *pchnl, u32 iMode)
+				IN OUT struct chnl_object *pchnl, u8 iMode)
 {
 	if (!pio_mgr)
 		goto func_end;
@@ -1047,7 +1047,7 @@ void io_mbox_msg(u32 msg)
  *      interrupts the DSP.
  */
 void io_request_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-		     u32 iMode, OUT u16 *pwMbVal)
+			u8 iMode, OUT u16 *pwMbVal)
 {
 	struct chnl_mgr *chnl_mgr_obj;
 	struct shm *sm;
@@ -1149,7 +1149,7 @@ func_end:
  *      Dispatch a buffer on an input channel.
  */
 static void input_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-		       u32 iMode)
+			u8 iMode)
 {
 	struct chnl_mgr *chnl_mgr_obj;
 	struct shm *sm;
@@ -1435,7 +1435,7 @@ func_end:
  *      Dispatch a buffer on an output channel.
  */
 static void output_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-			u32 iMode)
+			u8 iMode)
 {
 	struct chnl_mgr *chnl_mgr_obj;
 	struct shm *sm;
