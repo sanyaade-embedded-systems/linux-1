@@ -818,9 +818,9 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	    (hio_mgr->ul_trace_buffer_current - ul_dsp_va);
 	/* Calculate the size of trace buffer */
 	kfree(hio_mgr->pmsg);
-	hio_mgr->pmsg = mem_alloc(((hio_mgr->ul_trace_buffer_end -
-				    hio_mgr->ul_trace_buffer_begin) *
-				   hio_mgr->word_size) + 2, MEM_NONPAGED);
+	hio_mgr->pmsg = kmalloc(((hio_mgr->ul_trace_buffer_end -
+				hio_mgr->ul_trace_buffer_begin) *
+				hio_mgr->word_size) + 2, GFP_KERNEL);
 	if (!hio_mgr->pmsg)
 		status = DSP_EMEMORY;
 

@@ -420,7 +420,7 @@ u32 mgrwrap_enum_node_info(union Trapped_Args *args, void *pr_ctxt)
 	if (size < sizeof(struct dsp_ndbprops))
 		return DSP_ESIZE;
 
-	pndb_props = mem_alloc(size, MEM_NONPAGED);
+	pndb_props = kmalloc(size, GFP_KERNEL);
 	if (pndb_props == NULL)
 		status = DSP_EMEMORY;
 
@@ -452,7 +452,7 @@ u32 mgrwrap_enum_proc_info(union Trapped_Args *args, void *pr_ctxt)
 	if (size < sizeof(struct dsp_processorinfo))
 		return DSP_ESIZE;
 
-	processor_info = mem_alloc(size, MEM_NONPAGED);
+	processor_info = kmalloc(size, GFP_KERNEL);
 	if (processor_info == NULL)
 		status = DSP_EMEMORY;
 
@@ -491,7 +491,7 @@ u32 mgrwrap_register_object(union Trapped_Args *args, void *pr_ctxt)
 	path_size = strlen_user((char *)
 				args->args_mgr_registerobject.psz_path_name) +
 	    1;
-	psz_path_name = mem_alloc(path_size, MEM_NONPAGED);
+	psz_path_name = kmalloc(path_size, GFP_KERNEL);
 	if (!psz_path_name)
 		goto func_end;
 	ret = strncpy_from_user(psz_path_name,
@@ -620,7 +620,7 @@ u32 procwrap_ctrl(union Trapped_Args *args, void *pr_ctxt)
 			goto func_end;
 		}
 		cb_data_size += sizeof(u32);
-		pargs = mem_alloc(cb_data_size, MEM_NONPAGED);
+		pargs = kmalloc(cb_data_size, GFP_KERNEL);
 		if (pargs == NULL) {
 			status = DSP_EMEMORY;
 			goto func_end;
@@ -798,7 +798,7 @@ u32 procwrap_load(union Trapped_Args *args, void *pr_ctxt)
 		goto func_cont;
 	}
 
-	argv = mem_alloc(count * sizeof(u8 *), MEM_NONPAGED);
+	argv = kmalloc(count * sizeof(u8 *), GFP_KERNEL);
 	if (!argv) {
 		status = DSP_EMEMORY;
 		goto func_cont;
@@ -818,7 +818,7 @@ u32 procwrap_load(union Trapped_Args *args, void *pr_ctxt)
 			/* len is increased by 1 to accommodate NULL */
 			len = strlen_user((char *)temp) + 1;
 			/* Kernel space pointer to argument */
-			argv[i] = mem_alloc(len, MEM_NONPAGED);
+			argv[i] = kmalloc(len, GFP_KERNEL);
 			if (argv[i]) {
 				CP_FM_USR(argv[i], temp, status, len);
 				if (DSP_FAILED(status)) {
@@ -840,7 +840,7 @@ u32 procwrap_load(union Trapped_Args *args, void *pr_ctxt)
 			get_user(temp, args->args_proc_load.user_envp + count);
 			count++;
 		} while (temp);
-		envp = mem_alloc(count * sizeof(u8 *), MEM_NONPAGED);
+		envp = kmalloc(count * sizeof(u8 *), GFP_KERNEL);
 		if (!envp) {
 			status = DSP_EMEMORY;
 			goto func_cont;
@@ -858,7 +858,7 @@ u32 procwrap_load(union Trapped_Args *args, void *pr_ctxt)
 			/* len is increased by 1 to accommodate NULL */
 			len = strlen_user((char *)temp) + 1;
 			/* Kernel space pointer to argument */
-			envp[i] = mem_alloc(len, MEM_NONPAGED);
+			envp[i] = kmalloc(len, GFP_KERNEL);
 			if (envp[i]) {
 				CP_FM_USR(envp[i], temp, status, len);
 				if (DSP_FAILED(status)) {
@@ -1040,7 +1040,7 @@ u32 nodewrap_allocate(union Trapped_Args *args, void *pr_ctxt)
 
 		cb_data_size += sizeof(u32);
 		if (DSP_SUCCEEDED(status)) {
-			pargs = mem_alloc(cb_data_size, MEM_NONPAGED);
+			pargs = kmalloc(cb_data_size, GFP_KERNEL);
 			if (pargs == NULL)
 				status = DSP_EMEMORY;
 
@@ -1141,7 +1141,7 @@ u32 nodewrap_connect(union Trapped_Args *args, void *pr_ctxt)
 
 		cb_data_size += sizeof(u32);
 		if (DSP_SUCCEEDED(status)) {
-			pargs = mem_alloc(cb_data_size, MEM_NONPAGED);
+			pargs = kmalloc(cb_data_size, GFP_KERNEL);
 			if (pargs == NULL) {
 				status = DSP_EMEMORY;
 				goto func_cont;
@@ -1351,7 +1351,7 @@ u32 nodewrap_get_uuid_props(union Trapped_Args *args, void *pr_ctxt)
 		  1);
 	if (DSP_FAILED(status))
 		goto func_cont;
-	pnode_props = mem_alloc(sizeof(struct dsp_ndbprops), MEM_NONPAGED);
+	pnode_props = kmalloc(sizeof(struct dsp_ndbprops), GFP_KERNEL);
 	if (pnode_props != NULL) {
 		status =
 		    node_get_uuid_props(args->args_node_getuuidprops.hprocessor,
@@ -1377,7 +1377,7 @@ u32 strmwrap_allocate_buffer(union Trapped_Args *args, void *pr_ctxt)
 	if (num_bufs > MAX_BUFS)
 		return DSP_EINVALIDARG;
 
-	ap_buffer = mem_alloc((num_bufs * sizeof(u8 *)), MEM_NONPAGED);
+	ap_buffer = kmalloc((num_bufs * sizeof(u8 *)), GFP_KERNEL);
 
 	status = strm_allocate_buffer(args->args_strm_allocatebuffer.hstream,
 				      args->args_strm_allocatebuffer.usize,
@@ -1416,7 +1416,7 @@ u32 strmwrap_free_buffer(union Trapped_Args *args, void *pr_ctxt)
 	if (num_bufs > MAX_BUFS)
 		return DSP_EINVALIDARG;
 
-	ap_buffer = mem_alloc((num_bufs * sizeof(u8 *)), MEM_NONPAGED);
+	ap_buffer = kmalloc((num_bufs * sizeof(u8 *)), GFP_KERNEL);
 
 	CP_FM_USR(ap_buffer, args->args_strm_freebuffer.ap_buffer, status,
 		  num_bufs);

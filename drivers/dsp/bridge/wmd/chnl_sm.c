@@ -145,7 +145,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 			goto func_cont;
 		}
 		/* if addr in user mode, then copy to kernel space */
-		host_sys_buf = mem_alloc(buf_size, MEM_NONPAGED);
+		host_sys_buf = kmalloc(buf_size, GFP_KERNEL);
 		if (host_sys_buf == NULL) {
 			status = DSP_EMEMORY;
 			goto func_end;

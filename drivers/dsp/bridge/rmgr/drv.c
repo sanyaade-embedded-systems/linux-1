@@ -356,8 +356,8 @@ dsp_status drv_remove_all_strm_res_elements(bhandle hPCtxt)
 		strm_res = strm_tmp;
 		strm_tmp = strm_tmp->next;
 		if (strm_res->num_bufs) {
-			ap_buffer = mem_alloc((strm_res->num_bufs *
-					       sizeof(u8 *)), MEM_NONPAGED);
+			ap_buffer = kmalloc((strm_res->num_bufs *
+					sizeof(u8 *)), GFP_KERNEL);
 			if (ap_buffer) {
 				status = strm_free_buffer(strm_res->hstream,
 							  ap_buffer,
