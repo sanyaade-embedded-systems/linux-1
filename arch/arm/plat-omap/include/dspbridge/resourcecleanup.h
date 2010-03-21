@@ -47,12 +47,6 @@ extern dsp_status drv_proc_insert_strm_res_element(bhandle hStrm,
 						   bhandle strm_res,
 						   bhandle pPctxt);
 
-extern dsp_status drv_get_strm_res_element(bhandle hStrm, bhandle strm_res,
-					   bhandle ctxt);
-
-extern dsp_status drv_proc_remove_strm_res_element(bhandle strm_res,
-						   bhandle ctxt);
-
 extern dsp_status drv_remove_all_strm_res_elements(bhandle ctxt);
 
 extern enum node_state node_get_state(bhandle hnode);

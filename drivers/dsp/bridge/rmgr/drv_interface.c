@@ -456,7 +456,6 @@ static int bridge_open(struct inode *ip, struct file *filp)
 		INIT_LIST_HEAD(&pr_ctxt->dmm_map_list);
 		spin_lock_init(&pr_ctxt->dmm_rsv_lock);
 		INIT_LIST_HEAD(&pr_ctxt->dmm_rsv_list);
-		mutex_init(&pr_ctxt->strm_mutex);
 
 		pr_ctxt->node_idp = kzalloc(sizeof(struct idr), GFP_KERNEL);
 		if (pr_ctxt->node_idp) {
@@ -464,11 +463,21 @@ static int bridge_open(struct inode *ip, struct file *filp)
 			spin_lock_init(&pr_ctxt->node_idp->lock);
 		} else {
 			status = -ENOMEM;
+			goto err;
 		}
+
+		pr_ctxt->strm_idp = kzalloc(sizeof(struct idr), GFP_KERNEL);
+		if (pr_ctxt->strm_idp) {
+			idr_init(pr_ctxt->strm_idp);
+			spin_lock_init(&pr_ctxt->strm_idp->lock);
+		} else {
+			status = -ENOMEM;
+		}
+
 	} else {
 		status = -ENOMEM;
 	}
-
+err:
 	filp->private_data = pr_ctxt;
 
 #ifdef CONFIG_BRIDGE_RECOVERY

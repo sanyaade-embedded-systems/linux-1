@@ -96,20 +96,19 @@ static void delete_strm_mgr(struct strm_mgr *strm_mgr_obj);
  *  Purpose:
  *      Allocates buffers for a stream.
  */
-dsp_status strm_allocate_buffer(struct strm_object *hStrm, u32 usize,
+dsp_status strm_allocate_buffer(struct strm_res_object *strmres, u32 usize,
 				OUT u8 **ap_buffer, u32 num_bufs,
 				struct process_context *pr_ctxt)
 {
 	dsp_status status = DSP_SOK;
 	u32 alloc_cnt = 0;
 	u32 i;
-
-	bhandle hstrm_res;
+	struct strm_object *hstrm = strmres->hstream;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(ap_buffer != NULL);
 
-	if (hStrm) {
+	if (hstrm) {
 		/*
 		 * Allocate from segment specified at time of stream open.
 		 */
@@ -124,8 +123,8 @@ dsp_status strm_allocate_buffer(struct strm_object *hStrm, u32 usize,
 		goto func_end;
 
 	for (i = 0; i < num_bufs; i++) {
-		DBC_ASSERT(hStrm->xlator != NULL);
-		(void)cmm_xlator_alloc_buf(hStrm->xlator, &ap_buffer[i], usize);
+		DBC_ASSERT(hstrm->xlator != NULL);
+		(void)cmm_xlator_alloc_buf(hstrm->xlator, &ap_buffer[i], usize);
 		if (ap_buffer[i] == NULL) {
 			status = DSP_EMEMORY;
 			alloc_cnt = i;
@@ -133,14 +132,12 @@ dsp_status strm_allocate_buffer(struct strm_object *hStrm, u32 usize,
 		}
 	}
 	if (DSP_FAILED(status))
-		strm_free_buffer(hStrm, ap_buffer, alloc_cnt, pr_ctxt);
+		strm_free_buffer(strmres, ap_buffer, alloc_cnt, pr_ctxt);
 
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	if (drv_get_strm_res_element(hStrm, &hstrm_res, pr_ctxt) !=
-	    DSP_ENOTFOUND)
-		drv_proc_update_strm_res(num_bufs, hstrm_res);
+	drv_proc_update_strm_res(num_bufs, strmres);
 
 func_end:
 	return status;
@@ -151,46 +148,45 @@ func_end:
  *  Purpose:
  *      Close a stream opened with strm_open().
  */
-dsp_status strm_close(struct strm_object *hStrm,
+dsp_status strm_close(struct strm_res_object *strmres,
 		      struct process_context *pr_ctxt)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct chnl_info chnl_info_obj;
 	dsp_status status = DSP_SOK;
-
-	bhandle hstrm_res;
+	struct strm_object *hstrm = strmres->hstream;
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!hStrm) {
+	if (!hstrm) {
 		status = DSP_EHANDLE;
 	} else {
 		/* Have all buffers been reclaimed? If not, return
 		 * DSP_EPENDING */
-		intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
+		intf_fxns = hstrm->strm_mgr_obj->intf_fxns;
 		status =
-		    (*intf_fxns->pfn_chnl_get_info) (hStrm->chnl_obj,
+		    (*intf_fxns->pfn_chnl_get_info) (hstrm->chnl_obj,
 						     &chnl_info_obj);
 		DBC_ASSERT(DSP_SUCCEEDED(status));
 
 		if (chnl_info_obj.cio_cs > 0 || chnl_info_obj.cio_reqs > 0)
 			status = DSP_EPENDING;
 		else
-			status = delete_strm(hStrm);
+			status = delete_strm(hstrm);
 	}
 
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	if (drv_get_strm_res_element(hStrm, &hstrm_res, pr_ctxt) !=
-	    DSP_ENOTFOUND)
-		drv_proc_remove_strm_res_element(hstrm_res, pr_ctxt);
+	spin_lock(&pr_ctxt->strm_idp->lock);
+	idr_remove(pr_ctxt->strm_idp, strmres->id);
+	spin_unlock(&pr_ctxt->strm_idp->lock);
 func_end:
 	DBC_ENSURE(status == DSP_SOK || status == DSP_EHANDLE ||
 		   status == DSP_EPENDING || status == DSP_EFAIL);
 
-	dev_dbg(bridge, "%s: hStrm: %p, status 0x%x\n", __func__,
-		hStrm, status);
+	dev_dbg(bridge, "%s: hstrm: %p, status 0x%x\n", __func__,
+		hstrm, status);
 	return status;
 }
 
@@ -272,33 +268,30 @@ void strm_exit(void)
  *  Purpose:
  *      Frees the buffers allocated for a stream.
  */
-dsp_status strm_free_buffer(struct strm_object *hStrm, u8 ** ap_buffer,
+dsp_status strm_free_buffer(struct strm_res_object *strmres, u8 ** ap_buffer,
 			    u32 num_bufs, struct process_context *pr_ctxt)
 {
 	dsp_status status = DSP_SOK;
 	u32 i = 0;
-
-	bhandle hstrm_res = NULL;
+	struct strm_object *hstrm = strmres->hstream;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(ap_buffer != NULL);
 
-	if (!hStrm)
+	if (!hstrm)
 		status = DSP_EHANDLE;
 
 	if (DSP_SUCCEEDED(status)) {
 		for (i = 0; i < num_bufs; i++) {
-			DBC_ASSERT(hStrm->xlator != NULL);
+			DBC_ASSERT(hstrm->xlator != NULL);
 			status =
-			    cmm_xlator_free_buf(hStrm->xlator, ap_buffer[i]);
+			    cmm_xlator_free_buf(hstrm->xlator, ap_buffer[i]);
 			if (DSP_FAILED(status))
 				break;
 			ap_buffer[i] = NULL;
 		}
 	}
-	if (drv_get_strm_res_element(hStrm, hstrm_res, pr_ctxt) !=
-	    DSP_ENOTFOUND)
-		drv_proc_update_strm_res(num_bufs - i, hstrm_res);
+	drv_proc_update_strm_res(num_bufs - i, strmres);
 
 	return status;
 }
@@ -466,7 +459,7 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
  */
 dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 		     IN struct strm_attr *pattr,
-		     OUT struct strm_object **phStrm,
+		     OUT struct strm_res_object **strmres,
 		     struct process_context *pr_ctxt)
 {
 	struct strm_mgr *strm_mgr_obj;
@@ -481,9 +474,9 @@ dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 	bhandle hstrm_res;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(phStrm != NULL);
+	DBC_REQUIRE(strmres != NULL);
 	DBC_REQUIRE(pattr != NULL);
-	*phStrm = NULL;
+	*strmres = NULL;
 	if (dir != DSP_TONODE && dir != DSP_FROMNODE) {
 		status = DSP_EDIRECTION;
 	} else {
@@ -593,22 +586,26 @@ func_cont:
 		}
 	}
 	if (DSP_SUCCEEDED(status)) {
-		*phStrm = strm_obj;
-		drv_proc_insert_strm_res_element(*phStrm, &hstrm_res, pr_ctxt);
+		status = drv_proc_insert_strm_res_element(strm_obj,
+							&hstrm_res, pr_ctxt);
+		if (DSP_FAILED(status))
+			delete_strm(strm_obj);
+		else
+			*strmres = (struct strm_res_object *)hstrm_res;
 	} else {
 		(void)delete_strm(strm_obj);
 	}
 
 	/* ensure we return a documented error code */
-	DBC_ENSURE((DSP_SUCCEEDED(status) && *phStrm) ||
-		   (*phStrm == NULL && (status == DSP_EHANDLE ||
+	DBC_ENSURE((DSP_SUCCEEDED(status) && strm_obj) ||
+		   (*strmres == NULL && (status == DSP_EHANDLE ||
 					status == DSP_EDIRECTION
 					|| status == DSP_EVALUE
 					|| status == DSP_EFAIL)));
 
 	dev_dbg(bridge, "%s: hnode: %p dir: 0x%x index: 0x%x pattr: %p "
-		"phStrm: %p status: 0x%x\n", __func__,
-		hnode, dir, index, pattr, phStrm, status);
+		"strmres: %p status: 0x%x\n", __func__,
+		hnode, dir, index, pattr, strmres, status);
 	return status;
 }
 

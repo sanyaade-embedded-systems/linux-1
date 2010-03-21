@@ -44,7 +44,7 @@
  *      ap_buffer != NULL.
  *  Ensures:
  */
-extern dsp_status strm_allocate_buffer(struct strm_object *hStrm,
+extern dsp_status strm_allocate_buffer(struct strm_res_object *strmres,
 				       u32 usize,
 				       OUT u8 **ap_buffer,
 				       u32 num_bufs,
@@ -66,7 +66,7 @@ extern dsp_status strm_allocate_buffer(struct strm_object *hStrm,
  *      strm_init(void) called.
  *  Ensures:
  */
-extern dsp_status strm_close(struct strm_object *hStrm,
+extern dsp_status strm_close(struct strm_res_object *strmres,
 			     struct process_context *pr_ctxt);
 
 /*
@@ -137,7 +137,7 @@ extern void strm_exit(void);
  *      ap_buffer != NULL.
  *  Ensures:
  */
-extern dsp_status strm_free_buffer(struct strm_object *hStrm,
+extern dsp_status strm_free_buffer(struct strm_res_object *strmres,
 				   u8 **ap_buffer, u32 num_bufs,
 				   struct process_context *pr_ctxt);
 
@@ -273,7 +273,7 @@ extern dsp_status strm_issue(struct strm_object *hStrm, IN u8 * pbuf,
  */
 extern dsp_status strm_open(struct node_object *hnode, u32 dir,
 			    u32 index, IN struct strm_attr *pattr,
-			    OUT struct strm_object **phStrm,
+			    OUT struct strm_res_object **strmres,
 			    struct process_context *pr_ctxt);
 
 /*
