@@ -228,7 +228,7 @@ const static struct v4l2_fmtdesc omap_formats[] = {
 static unsigned long omap_vout_alloc_buffer(u32 buf_size, u32 *phys_addr)
 {
 	unsigned long virt_addr, addr;
-	u32 order, size;
+	u32 size;
 
 	size = PAGE_ALIGN(buf_size);
 	virt_addr = (u32) alloc_pages_exact(size, GFP_KERNEL | GFP_DMA);
@@ -2853,7 +2853,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 
 		if (vout->linked) {
 			if (omapvid_link_en_ovl(1, addr))
-				return -EINVAL;
+				return;
 		} else {
 			/* First save the configuration in ovelray structure */
 			r = omapvid_init(vout, addr);
@@ -2913,7 +2913,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 			    vout->cropped_offset;
 			if (vout->linked) {
 				if (omapvid_link_en_ovl(1, addr))
-					return -EINVAL;
+					return;
 			} else {
 				/* First save the configuration */
 				/* in ovelray structure */
