@@ -1026,6 +1026,7 @@ static int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 		syncif.hdpol = 0;
 		syncif.ipmod = RAW;
 		syncif.vdpol = 0;
+		syncif.bt_r656_en = 0;
 		ispccdc_config_sync_if(isp_ccdc, syncif);
 		ispccdc_config_imgattr(isp_ccdc, colptn);
 		blkcfg.oblen = 0;
@@ -1043,6 +1044,7 @@ static int ispccdc_config_datapath(struct isp_ccdc_device *isp_ccdc,
 		syncif.hdpol = 0;
 		syncif.ipmod = YUV16;
 		syncif.vdpol = 1;
+		syncif.bt_r656_en = 0;
 		ispccdc_config_imgattr(isp_ccdc, 0);
 		ispccdc_config_sync_if(isp_ccdc, syncif);
 		blkcfg.oblen = 0;
@@ -1669,6 +1671,11 @@ int __init isp_ccdc_init(struct device *dev)
 	if (IS_ERR_VALUE(isp_ccdc->lsc_table_inuse))
 		return -ENOMEM;
 	p = da_to_va(isp->iommu, isp_ccdc->lsc_table_inuse);
+	if (!p) {
+		WARN(!p, "%s: No va found for iommu da(%x)?",
+		     kobject_name(&dev->kobj), isp_ccdc->lsc_table_inuse);
+		return -ENOMEM;
+	}
 	memset(p, 0x40, LSC_TABLE_INIT_SIZE);
 
 	isp_ccdc->shadow_update = 0;
