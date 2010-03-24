@@ -389,7 +389,7 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	MEM_ALLOC_OBJECT(pnode, struct node_object, NODE_SIGNATURE);
+	pnode = kzalloc(sizeof(struct node_object), GFP_KERNEL);
 	if (pnode == NULL) {
 		status = DSP_EMEMORY;
 		goto func_end;
@@ -1325,7 +1325,7 @@ dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
 
 	*phNodeMgr = NULL;
 	/* Allocate Node manager object */
-	MEM_ALLOC_OBJECT(node_mgr_obj, struct node_mgr, NODEMGR_SIGNATURE);
+	node_mgr_obj = kzalloc(sizeof(struct node_mgr), GFP_KERNEL);
 	if (node_mgr_obj) {
 		node_mgr_obj->hdev_obj = hdev_obj;
 		node_mgr_obj->node_list = kzalloc(sizeof(struct lst_list),

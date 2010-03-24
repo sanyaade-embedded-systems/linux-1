@@ -137,7 +137,7 @@ dsp_status dmm_create(OUT struct dmm_object **phDmmMgr,
 
 	*phDmmMgr = NULL;
 	/* create, zero, and tag a cmm mgr object */
-	MEM_ALLOC_OBJECT(dmm_obj, struct dmm_object, DMMSIGNATURE);
+	dmm_obj = kzalloc(sizeof(struct dmm_object), GFP_KERNEL);
 	if (dmm_obj != NULL) {
 		spin_lock_init(&dmm_obj->dmm_lock);
 		*phDmmMgr = dmm_obj;

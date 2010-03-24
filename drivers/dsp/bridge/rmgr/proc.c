@@ -155,7 +155,7 @@ proc_attach(u32 processor_id,
 		goto func_end;
 
 	/* If we made it this far, create the Proceesor object: */
-	MEM_ALLOC_OBJECT(p_proc_object, struct proc_object, PROC_SIGNATURE);
+	p_proc_object = kzalloc(sizeof(struct proc_object), GFP_KERNEL);
 	/* Fill out the Processor Object: */
 	if (p_proc_object == NULL) {
 		status = DSP_EMEMORY;
@@ -291,7 +291,7 @@ dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	MEM_ALLOC_OBJECT(p_proc_object, struct proc_object, PROC_SIGNATURE);
+	p_proc_object = kzalloc(sizeof(struct proc_object), GFP_KERNEL);
 	if (p_proc_object == NULL) {
 		status = DSP_EMEMORY;
 		goto func_end;

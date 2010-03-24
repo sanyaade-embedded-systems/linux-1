@@ -72,7 +72,7 @@ dsp_status bridge_msg_create(OUT struct msg_mgr **phMsgMgr,
 	}
 	*phMsgMgr = NULL;
 	/* Allocate msg_ctrl manager object */
-	MEM_ALLOC_OBJECT(msg_mgr_obj, struct msg_mgr, MSGMGR_SIGNATURE);
+	msg_mgr_obj = kzalloc(sizeof(struct msg_mgr), GFP_KERNEL);
 
 	if (msg_mgr_obj) {
 		msg_mgr_obj->on_exit = msgCallback;
@@ -141,7 +141,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 
 	*phMsgQueue = NULL;
 	/* Allocate msg_queue object */
-	MEM_ALLOC_OBJECT(msg_q, struct msg_queue, MSGQ_SIGNATURE);
+	msg_q = kzalloc(sizeof(struct msg_queue), GFP_KERNEL);
 	if (!msg_q) {
 		status = DSP_EMEMORY;
 		goto func_end;

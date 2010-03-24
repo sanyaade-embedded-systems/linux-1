@@ -166,7 +166,7 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 	 * storage. */
 	if (DSP_SUCCEEDED(status)) {
 		DBC_ASSERT(drv_fxns);
-		MEM_ALLOC_OBJECT(dev_obj, struct dev_object, SIGNATURE);
+		dev_obj = kzalloc(sizeof(struct dev_object), GFP_KERNEL);
 		if (dev_obj) {
 			/* Fill out the rest of the Dev Object structure: */
 			dev_obj->dev_node_obj = dev_node_obj;

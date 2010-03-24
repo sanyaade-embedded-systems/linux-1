@@ -347,8 +347,7 @@ dsp_status nldr_allocate(struct nldr_object *nldr_obj, void *priv_ref,
 	/* Initialize handle in case of failure */
 	*phNldrNode = NULL;
 	/* Allocate node object */
-	MEM_ALLOC_OBJECT(nldr_node_obj, struct nldr_nodeobject,
-			 NLDR_NODESIGNATURE);
+	nldr_node_obj = kzalloc(sizeof(struct nldr_nodeobject), GFP_KERNEL);
 
 	if (nldr_node_obj == NULL) {
 		status = DSP_EMEMORY;
@@ -462,7 +461,7 @@ dsp_status nldr_create(OUT struct nldr_object **phNldr,
 	DBC_REQUIRE(pattrs->pfn_write != NULL);
 
 	/* Allocate dynamic loader object */
-	MEM_ALLOC_OBJECT(nldr_obj, struct nldr_object, NLDR_SIGNATURE);
+	nldr_obj = kzalloc(sizeof(struct nldr_object), GFP_KERNEL);
 	if (nldr_obj) {
 		nldr_obj->hdev_obj = hdev_obj;
 		status = dev_get_cod_mgr(hdev_obj, &cod_mgr);

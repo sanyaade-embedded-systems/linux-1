@@ -148,7 +148,7 @@ dsp_status dcd_create_manager(IN char *pszZlDllName,
 		goto func_end;
 
 	/* Create a DCD object. */
-	MEM_ALLOC_OBJECT(dcd_mgr_obj, struct dcd_manager, SIGNATURE);
+	dcd_mgr_obj = kzalloc(sizeof(struct dcd_manager), GFP_KERNEL);
 	if (dcd_mgr_obj != NULL) {
 		/* Fill out the object. */
 		dcd_mgr_obj->cod_mgr = cod_mgr;

@@ -397,8 +397,8 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 	DBC_REQUIRE(pMgrAttrs->max_channels <= CHNL_MAXCHANNELS);
 	DBC_REQUIRE(pMgrAttrs->word_size != 0);
 
-	/* Allocate channel manager object: */
-	MEM_ALLOC_OBJECT(chnl_mgr_obj, struct chnl_mgr, CHNL_MGRSIGNATURE);
+	/* Allocate channel manager object */
+	chnl_mgr_obj = kzalloc(sizeof(struct chnl_mgr), GFP_KERNEL);
 	if (chnl_mgr_obj) {
 		/* The max_channels attr must equal the # of supported
 		 * chnls for each transport(# chnls for PCPY = DDMA =
@@ -816,7 +816,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 
 	DBC_ASSERT(uChnlId < chnl_mgr_obj->max_channels);
 	/* Create channel object: */
-	MEM_ALLOC_OBJECT(pchnl, struct chnl_object, 0x0000);
+	pchnl = kzalloc(sizeof(struct chnl_object), GFP_KERNEL);
 	if (!pchnl) {
 		status = DSP_EMEMORY;
 		goto func_end;

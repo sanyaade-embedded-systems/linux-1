@@ -91,7 +91,7 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 	DBC_ASSERT(hwmd_context);
 	dummy_va_addr = 0;
 	/* Allocate IO manager object: */
-	MEM_ALLOC_OBJECT(deh_mgr_obj, struct deh_mgr, SIGNATURE);
+	deh_mgr_obj = kzalloc(sizeof(struct deh_mgr), GFP_KERNEL);
 	if (deh_mgr_obj == NULL) {
 		status = DSP_EMEMORY;
 	} else {

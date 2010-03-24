@@ -265,7 +265,7 @@ dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
 
 	*ph_cmm_mgr = NULL;
 	/* create, zero, and tag a cmm mgr object */
-	MEM_ALLOC_OBJECT(cmm_obj, struct cmm_object, CMMSIGNATURE);
+	cmm_obj = kzalloc(sizeof(struct cmm_object), GFP_KERNEL);
 	if (cmm_obj != NULL) {
 		if (pMgrAttrs == NULL)
 			pMgrAttrs = &cmm_dfltmgrattrs;	/* set defaults */
@@ -592,7 +592,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/* create, zero, and tag an SM allocator object */
-		MEM_ALLOC_OBJECT(psma, struct cmm_allocator, SMEMSIGNATURE);
+		psma = kzalloc(sizeof(struct cmm_allocator), GFP_KERNEL);
 	}
 	if (psma != NULL) {
 		psma->hcmm_mgr = hcmm_mgr;	/* ref to parent */
@@ -982,7 +982,7 @@ dsp_status cmm_xlator_create(OUT struct cmm_xlatorobject **phXlator,
 	if (pXlatorAttrs == NULL)
 		pXlatorAttrs = &cmm_dfltxlatorattrs;	/* set defaults */
 
-	MEM_ALLOC_OBJECT(xlator_object, struct cmm_xlator, CMMXLATESIGNATURE);
+	xlator_object = kzalloc(sizeof(struct cmm_xlator), GFP_KERNEL);
 	if (xlator_object != NULL) {
 		xlator_object->hcmm_mgr = hcmm_mgr;	/* ref back to CMM */
 		/* SM seg_id */

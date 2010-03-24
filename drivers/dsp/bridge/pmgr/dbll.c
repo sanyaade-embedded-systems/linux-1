@@ -256,7 +256,7 @@ dsp_status dbll_create(struct dbll_tar_obj **target_obj,
 	DBC_REQUIRE(target_obj != NULL);
 
 	/* Allocate DBL target object */
-	MEM_ALLOC_OBJECT(pzl_target, struct dbll_tar_obj, DBLL_TARGSIGNATURE);
+	pzl_target = kzalloc(sizeof(struct dbll_tar_obj), GFP_KERNEL);
 	if (target_obj != NULL) {
 		if (pzl_target == NULL) {
 			*target_obj = NULL;
@@ -620,8 +620,7 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 	}
 	if (zl_lib == NULL) {
 		/* Allocate DBL library object */
-		MEM_ALLOC_OBJECT(zl_lib, struct dbll_library_obj,
-				 DBLL_LIBSIGNATURE);
+		zl_lib = kzalloc(sizeof(struct dbll_library_obj), GFP_KERNEL);
 		if (zl_lib == NULL) {
 			status = DSP_EMEMORY;
 		} else {

@@ -441,7 +441,7 @@ dsp_status drv_create(OUT struct drv_object **phDRVObject)
 	DBC_REQUIRE(phDRVObject != NULL);
 	DBC_REQUIRE(refs > 0);
 
-	MEM_ALLOC_OBJECT(pdrv_object, struct drv_object, SIGNATURE);
+	pdrv_object = kzalloc(sizeof(struct drv_object), GFP_KERNEL);
 	if (pdrv_object) {
 		/* Create and Initialize List of device objects */
 		pdrv_object->dev_list = kzalloc(sizeof(struct lst_list),

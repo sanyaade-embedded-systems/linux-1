@@ -65,7 +65,7 @@ dsp_status mgr_create(OUT struct mgr_object **phMgrObject,
 	DBC_REQUIRE(phMgrObject != NULL);
 	DBC_REQUIRE(refs > 0);
 
-	MEM_ALLOC_OBJECT(pmgr_obj, struct mgr_object, SIGNATURE);
+	pmgr_obj = kzalloc(sizeof(struct mgr_object), GFP_KERNEL);
 	if (pmgr_obj) {
 		status = dcd_create_manager(ZLDLLNAME, &pmgr_obj->hdcd_mgr);
 		if (DSP_SUCCEEDED(status)) {

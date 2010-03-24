@@ -110,7 +110,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 	*phDispObject = NULL;
 
 	/* Allocate Node Dispatcher object */
-	MEM_ALLOC_OBJECT(disp_obj, struct disp_object, DISP_SIGNATURE);
+	disp_obj = kzalloc(sizeof(struct disp_object), GFP_KERNEL);
 	if (disp_obj == NULL)
 		status = DSP_EMEMORY;
 	else

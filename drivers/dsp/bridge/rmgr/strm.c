@@ -217,7 +217,7 @@ dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
 
 	*phStrmMgr = NULL;
 	/* Allocate STRM manager object */
-	MEM_ALLOC_OBJECT(strm_mgr_obj, struct strm_mgr, STRMMGR_SIGNATURE);
+	strm_mgr_obj = kzalloc(sizeof(struct strm_mgr), GFP_KERNEL);
 	if (strm_mgr_obj == NULL)
 		status = DSP_EMEMORY;
 	else
@@ -501,7 +501,7 @@ dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 		status = node_get_strm_mgr(hnode, &strm_mgr_obj);
 
 	if (DSP_SUCCEEDED(status)) {
-		MEM_ALLOC_OBJECT(strm_obj, struct strm_object, STRM_SIGNATURE);
+		strm_obj = kzalloc(sizeof(struct strm_object), GFP_KERNEL);
 		if (strm_obj == NULL) {
 			status = DSP_EMEMORY;
 		} else {

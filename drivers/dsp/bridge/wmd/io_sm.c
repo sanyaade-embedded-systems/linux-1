@@ -214,7 +214,7 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	shared_mem = (struct shm *)-1;
 
 	/* Allocate IO manager object */
-	MEM_ALLOC_OBJECT(pio_mgr, struct io_mgr, IO_MGRSIGNATURE);
+	pio_mgr = kzalloc(sizeof(struct io_mgr), GFP_KERNEL);
 	if (pio_mgr == NULL) {
 		status = DSP_EMEMORY;
 		goto func_end;

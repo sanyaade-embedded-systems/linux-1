@@ -185,7 +185,7 @@ dsp_status rmm_create(struct rmm_target_obj **target_obj,
 	DBC_REQUIRE(num_segs == 0 || seg_tab != NULL);
 
 	/* Allocate DBL target object */
-	MEM_ALLOC_OBJECT(target, struct rmm_target_obj, RMM_TARGSIGNATURE);
+	target = kzalloc(sizeof(struct rmm_target_obj), GFP_KERNEL);
 
 	if (target == NULL)
 		status = DSP_EMEMORY;
