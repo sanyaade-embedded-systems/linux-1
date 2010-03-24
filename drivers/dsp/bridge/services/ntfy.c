@@ -133,26 +133,6 @@ void ntfy_delete(struct ntfy_object *ntfy_obj)
 }
 
 /*
- *  ======== ntfy_exit ========
- *  Purpose:
- *      Discontinue usage of NTFY module.
- */
-void ntfy_exit(void)
-{
-	/* Do nothing */
-}
-
-/*
- *  ======== ntfy_init ========
- *  Purpose:
- *      Initialize the NTFY module.
- */
-bool ntfy_init(void)
-{
-	return true;
-}
-
-/*
  *  ======== ntfy_notify ========
  *  Purpose:
  *      Execute notify function (signal event) for every

@@ -31,7 +31,6 @@ struct ntfy_object;
  *      DSP_SOK:        Success.
  *      DSP_EMEMORY:    Memory allocation failure.
  *  Requires:
- *      ntfy_init(void) called.
  *      phNtfy != NULL.
  *  Ensures:
  *      DSP_SUCCEEDED(status) <==>  IS_VALID(*phNtfy).
@@ -46,34 +45,10 @@ extern dsp_status ntfy_create(OUT struct ntfy_object **phNtfy);
  *      ntfy_obj:  Handle returned from ntfy_create().
  *  Returns:
  *  Requires:
- *      ntfy_init(void) called.
  *      IS_VALID(ntfy_obj).
  *  Ensures:
  */
 extern void ntfy_delete(IN struct ntfy_object *ntfy_obj);
-
-/*
- *  ======== ntfy_exit ========
- *  Purpose:
- *      Discontinue usage of NTFY module.
- *  Parameters:
- *  Returns:
- *  Requires:
- *      ntfy_init(void) successfully called before.
- *  Ensures:
- */
-extern void ntfy_exit(void);
-
-/*
- *  ======== ntfy_init ========
- *  Purpose:
- *      Initialize the NTFY module.
- *  Parameters:
- *  Returns:
- *      TRUE if initialization succeeded, FALSE otherwise.
- *  Ensures:
- */
-extern bool ntfy_init(void);
 
 /*
  *  ======== ntfy_notify ========
@@ -86,7 +61,6 @@ extern bool ntfy_init(void);
  *      event_mask: The type of event that has occurred.
  *  Returns:
  *  Requires:
- *      ntfy_init(void) called.
  *      IS_VALID(ntfy_obj).
  *  Ensures:
  */
@@ -112,7 +86,6 @@ extern void ntfy_notify(IN struct ntfy_object *ntfy_obj, IN u32 event_mask);
  *      DSP_EHANDLE:        NULL hnotification, hnotification event name
  *                          too long, or hnotification event name NULL.
  *  Requires:
- *      ntfy_init(void) called.
  *      IS_VALID(ntfy_obj).
  *      hnotification != NULL.
  *      notify_type is DSP_SIGNALEVENT
