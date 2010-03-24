@@ -470,18 +470,22 @@ static void __exit bt_drv_exit(void)
 	if (hst) {
 		struct hci_dev *hdev = hst->hdev;
 
-		if (hdev)
+		if (hdev == NULL) {
+			BT_DRV_ERR("Invalid hdev memory");
+			kfree(hst);
+		} else {
 			hci_st_close(hdev);
+			if (test_and_clear_bit(BT_DRV_RUNNING, &hst->flags)) {
+				/* Remove HCI device (hciX) created
+				 * in module init.
+				 */
+				hci_unregister_dev(hdev);
 
-		if (test_and_clear_bit(BT_DRV_RUNNING, &hst->flags)) {
-			/* Remove HCI device (hciX) created in module init */
-			hci_unregister_dev(hdev);
-
-			/* Free HCI device memory */
-			hci_free_dev(hdev);
+				/* Free HCI device memory */
+				hci_free_dev(hdev);
+			}
 		}
 	}
-
 	BTDRV_API_EXIT(0);
 }
 
