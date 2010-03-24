@@ -94,7 +94,7 @@ static struct platform_device omap_i2c_devices[] = {
  * from the kernel command line
  */
 #define OMAP_I2C_CMDLINE_SETUP	(BIT(31))
-#define OMAP_I2C_MAX_CONTROLLERS 	3
+#define OMAP_I2C_MAX_CONTROLLERS 	4
 
 static struct omap_i2c_platform_data omap_i2c_pdata[OMAP_I2C_MAX_CONTROLLERS];
 
