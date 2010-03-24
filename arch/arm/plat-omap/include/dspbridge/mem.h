@@ -90,20 +90,6 @@ do {							\
 extern void *mem_calloc(IN u32 byte_size, IN enum mem_poolattrs type);
 
 /*
- *  ======== mem_exit ========
- *  Purpose:
- *      Discontinue usage of module; free resources when reference count
- *      reaches 0.
- *  Parameters:
- *  Returns:
- *  Requires:
- *      MEM is initialized.
- *  Ensures:
- *      Resources used by module are freed when cRef reaches zero.
- */
-extern void mem_exit(void);
-
-/*
  *  ======== MEM_FREE_OBJECT ========
  *  Purpose:
  *      Utility macro to invalidate an object's signature, and deallocate it.
@@ -136,19 +122,6 @@ do {					\
  *      If byte_size > 0, number of pages returned > 0.
  */
 extern s32 mem_get_num_pages(IN void *paddr, IN u32 byte_size);
-
-/*
- *  ======== services_mem_init ========
- *  Purpose:
- *      Initializes private state of MEM module.
- *  Parameters:
- *  Returns:
- *      TRUE if initialized; FALSE if error occured.
- *  Requires:
- *  Ensures:
- *      MEM initialized.
- */
-extern bool services_mem_init(void);
 
 /*
  *  ======== MEM_IS_VALID_HANDLE ========

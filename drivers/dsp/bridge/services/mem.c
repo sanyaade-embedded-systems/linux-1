@@ -96,21 +96,3 @@ void *mem_calloc(u32 byte_size, enum mem_poolattrs type)
 	return mem;
 }
 
-/*
- *  ======== mem_exit ========
- *  Purpose:
- *      Discontinue usage of the MEM module.
- */
-void mem_exit(void)
-{
-}
-
-/*
- *  ======== services_mem_init ========
- *  Purpose:
- *      Initialize MEM module private state.
- */
-bool services_mem_init(void)
-{
-	return true;
-}
