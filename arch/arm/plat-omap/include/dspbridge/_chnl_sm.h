@@ -148,8 +148,6 @@ struct chnl_object {
 	bhandle user_event;
 	/* Abstract syncronization object */
 	struct sync_object *sync_event;
-	/* Name of Sync event */
-	char sz_event_name[SYNC_MAXNAMELENGTH + 1];
 	u32 process;		/* Process which created this channel */
 	u32 pcb_arg;		/* Argument to use with callback */
 	struct lst_list *pio_requests;	/* List of IOR's to driver */

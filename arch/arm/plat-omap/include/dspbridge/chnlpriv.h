@@ -83,10 +83,6 @@ struct chnl_info {
 	u32 cio_cs;		/* Number of IOCs in queue. */
 	u32 cio_reqs;		/* Number of IO Requests in queue. */
 	u32 process;		/* Process owning this channel. */
-	/*
-	 * Name of channel I/O completion event. Not required in Linux
-	 */
-	char sz_event_name[CHNL_MAXEVTNAMELEN + 1];
 };
 
 /* Channel manager info: */

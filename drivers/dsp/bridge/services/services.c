@@ -46,7 +46,6 @@ void services_exit(void)
 {
 	/* Uninitialize all SERVICES modules here */
 	ntfy_exit();
-	sync_exit();
 	clk_exit();
 	reg_exit();
 	cfg_exit();
@@ -62,24 +61,20 @@ bool services_init(void)
 {
 	bool ret = true;
 	bool fcfg, fmem;
-	bool freg, fsync, fclk, fntfy;
+	bool freg, fclk, fntfy;
 
 	/* Perform required initialization of SERVICES modules. */
 	fmem = services_mem_init();
 	freg = reg_init();
 	fcfg = cfg_init();
-	fsync = sync_init();
 	fclk = services_clk_init();
 	fntfy = ntfy_init();
 
-	ret = fcfg && fmem && freg && fsync && fclk;
+	ret = fcfg && fmem && freg && fclk;
 
 	if (!ret) {
 		if (fntfy)
 			ntfy_exit();
-
-		if (fsync)
-			sync_exit();
 
 		if (fclk)
 			clk_exit();

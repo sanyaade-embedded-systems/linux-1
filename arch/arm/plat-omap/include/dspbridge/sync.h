@@ -20,14 +20,11 @@
 #define _SYNC_H
 
 #include <dspbridge/errbase.h>
-#define SIGNATURECS     0x53435953	/* "SYCS" (in reverse) */
-#define SIGNATUREDPCCS  0x53445953	/* "SYDS" (in reverse) */
+#include <dspbridge/dbdefs.h>
+
 
 /* Special timeout value indicating an infinite wait: */
 #define SYNC_INFINITE  0xffffffff
-
-/* Maximum string length of a named event */
-#define SYNC_MAXNAMELENGTH 32
 
 /**
  * struct sync_object - the basic sync_object structure
@@ -39,118 +36,6 @@ struct sync_object{
 	struct completion comp;
 	struct completion *multi_comp;
 };
-
-/* Generic SYNC CS object: */
-struct sync_csobject {
-	u32 dw_signature;	/* used for object validation */
-	struct semaphore sem;
-};
-
-/* SYNC object attributes: */
-struct sync_attrs {
-	bhandle user_event;	/* Platform's User Mode synch. object. */
-	bhandle kernel_event;	/* Platform's Kernel Mode sync. object. */
-	u32 dw_reserved1;	/* For future expansion. */
-	u32 dw_reserved2;	/* For future expansion. */
-};
-
-/*
- *  ======== sync_delete_cs ========
- *  Purpose:
- *      Delete a critical section.
- *  Parameters:
- *      hcs_obj: critical section handle.
- *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid handle.
- *  Requires:
- *  Ensures:
- */
-extern dsp_status sync_delete_cs(IN struct sync_csobject *hcs_obj);
-
-/*
- *  ======== sync_enter_cs ========
- *  Purpose:
- *      Enter the critical section.
- *  Parameters:
- *      hcs_obj: critical section handle.
- *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid handle.
- *  Requires:
- *  Ensures:
- */
-extern dsp_status sync_enter_cs(IN struct sync_csobject *hcs_obj);
-
-/*
- *  ======== sync_exit ========
- *  Purpose:
- *      Discontinue usage of module; free resources when reference count
- *      reaches 0.
- *  Parameters:
- *  Returns:
- *  Requires:
- *      SYNC initialized.
- *  Ensures:
- *      Resources used by module are freed when cRef reaches zero.
- */
-extern void sync_exit(void);
-
-/*
- *  ======== sync_init ========
- *  Purpose:
- *      Initializes private state of SYNC module.
- *  Parameters:
- *  Returns:
- *      TRUE if initialized; FALSE if error occured.
- *  Requires:
- *  Ensures:
- *      SYNC initialized.
- */
-extern bool sync_init(void);
-
-/*
- *  ======== sync_initialize_cs ========
- *  Purpose:
- *      Initialize the critical section.
- *  Parameters:
- *      hcs_obj: critical section handle.
- *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Out of memory.
- *  Requires:
- *  Ensures:
- */
-extern dsp_status sync_initialize_cs(OUT struct sync_csobject **phCSObj);
-
-/*
- *  ======== sync_initialize_dpccs ========
- *  Purpose:
- *      Initialize the critical section between process context and DPC.
- *  Parameters:
- *      hcs_obj: critical section handle.
- *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Out of memory.
- *  Requires:
- *  Ensures:
- */
-extern dsp_status sync_initialize_dpccs(OUT struct sync_csobject
-					**phCSObj);
-
-/*
- *  ======== sync_leave_cs ========
- *  Purpose:
- *      Leave the critical section.
- *  Parameters:
- *      hcs_obj: critical section handle.
- *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid handle.
- *  Requires:
- *  Ensures:
- */
-extern dsp_status sync_leave_cs(IN struct sync_csobject *hcs_obj);
 
 /**
  * sync_init_event() - set initial state for a sync_event element
@@ -164,23 +49,6 @@ static inline void sync_init_event(struct sync_object *event)
 	init_completion(&event->comp);
 	event->multi_comp = NULL;
 }
-
-/*
- * ========= sync_post_message ========
- *  Purpose:
- *      To post a windows message
- *  Parameters:
- *      hWindow:    Handle to the window
- *      uMsg:       Message to be posted
- *  Returns:
- *      DSP_SOK:        Success
- *      DSP_EFAIL:      Post message failed
- *      DSP_EHANDLE:    Invalid Window handle
- *  Requires:
- *      SYNC initialized
- *  Ensures
- */
-extern dsp_status sync_post_message(IN bhandle hWindow, IN u32 uMsg);
 
 /**
  * sync_reset_event() - reset a sync_event element
