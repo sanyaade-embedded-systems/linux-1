@@ -1383,7 +1383,7 @@ static dsp_status load_lib(struct nldr_nodeobject *nldr_node_obj,
 			 * the deplib is already included */
 			if (!rootPersistent && persistent_dep_libs[i] &&
 			    *nldr_node_obj->pf_phase_split) {
-				if ((nldr_node_obj->pers_libs) > MAXLIBS) {
+				if ((nldr_node_obj->pers_libs) >= MAXLIBS) {
 					status = DSP_EDYNLOAD;
 					break;
 				}
