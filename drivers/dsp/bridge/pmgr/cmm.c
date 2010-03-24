@@ -366,7 +366,7 @@ dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce)
 	if (DSP_SUCCEEDED(status)) {
 		/* delete CS & cmm mgr object */
 		mutex_destroy(&cmm_mgr_obj->cmm_lock);
-		MEM_FREE_OBJECT(cmm_mgr_obj);
+		kfree(cmm_mgr_obj);
 	}
 	return status;
 }
@@ -755,7 +755,7 @@ static void un_register_gppsm_seg(struct cmm_allocator *psma)
 		MEM_UNMAP_LINEAR_ADDRESS((void *)psma->dw_vm_base);
 
 	/* Free allocator itself */
-	MEM_FREE_OBJECT(psma);
+	kfree(psma);
 }
 
 /*
@@ -1010,7 +1010,7 @@ dsp_status cmm_xlator_delete(struct cmm_xlatorobject *xlator, bool bForce)
 	DBC_REQUIRE(refs > 0);
 
 	if (MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE)) {
-		MEM_FREE_OBJECT(xlator_obj);
+		kfree(xlator_obj);
 	} else {
 		status = DSP_EHANDLE;
 	}

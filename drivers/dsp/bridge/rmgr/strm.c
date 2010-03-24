@@ -853,7 +853,7 @@ static dsp_status delete_strm(struct strm_object *hStrm)
 				}
 			}
 		}
-		MEM_FREE_OBJECT(hStrm);
+		kfree(hStrm);
 	} else {
 		status = DSP_EHANDLE;
 	}
@@ -868,5 +868,5 @@ static dsp_status delete_strm(struct strm_object *hStrm)
 static void delete_strm_mgr(struct strm_mgr *strm_mgr_obj)
 {
 	if (MEM_IS_VALID_HANDLE(strm_mgr_obj, STRMMGR_SIGNATURE))
-		MEM_FREE_OBJECT(strm_mgr_obj);
+		kfree(strm_mgr_obj);
 }

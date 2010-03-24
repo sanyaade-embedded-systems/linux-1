@@ -237,7 +237,7 @@ void dbll_close(struct dbll_library_obj *zl_lib)
 			gh_delete(zl_lib->sym_tab);
 
 		/* remove the library object itself */
-		MEM_FREE_OBJECT(zl_lib);
+		kfree(zl_lib);
 		zl_lib = NULL;
 	}
 }
@@ -286,7 +286,7 @@ void dbll_delete(struct dbll_tar_obj *target)
 	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_target, DBLL_TARGSIGNATURE));
 
 	if (zl_target != NULL)
-		MEM_FREE_OBJECT(zl_target);
+		kfree(zl_target);
 
 }
 

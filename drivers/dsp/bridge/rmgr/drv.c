@@ -514,7 +514,7 @@ dsp_status drv_destroy(struct drv_object *hDRVObject)
 	 */
 	kfree(pdrv_object->dev_list);
 	kfree(pdrv_object->dev_node_string);
-	MEM_FREE_OBJECT(pdrv_object);
+	kfree(pdrv_object);
 	/* Update the DRV Object in Registry to be 0 */
 	(void)cfg_set_object(0, REG_DRV_OBJECT);
 	DBC_ENSURE(!MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));

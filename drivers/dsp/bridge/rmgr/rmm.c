@@ -296,7 +296,7 @@ void rmm_delete(struct rmm_target_obj *target)
 		kfree(target->free_list);
 	}
 
-	MEM_FREE_OBJECT(target);
+	kfree(target);
 }
 
 /*

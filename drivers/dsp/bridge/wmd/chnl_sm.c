@@ -369,7 +369,7 @@ func_cont:
 			pchnl->free_packets_list = NULL;
 		}
 		/* Release channel object. */
-		MEM_FREE_OBJECT(pchnl);
+		kfree(pchnl);
 		pchnl = NULL;
 	}
 	DBC_ENSURE(DSP_FAILED(status) ||
@@ -468,7 +468,7 @@ dsp_status bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr)
 		/* Set hchnl_mgr to NULL in device object. */
 		dev_set_chnl_mgr(chnl_mgr_obj->hdev_obj, NULL);
 		/* Free this Chnl Mgr object: */
-		MEM_FREE_OBJECT(hchnl_mgr);
+		kfree(hchnl_mgr);
 	} else {
 		status = DSP_EHANDLE;
 	}
@@ -888,7 +888,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 			kfree(pchnl->ntfy_obj);
 			pchnl->ntfy_obj = NULL;
 		}
-		MEM_FREE_OBJECT(pchnl);
+		kfree(pchnl);
 	} else {
 		/* Insert channel object in channel manager: */
 		chnl_mgr_obj->ap_channel[pchnl->chnl_id] = pchnl;

@@ -166,7 +166,7 @@ dsp_status bridge_deh_destroy(struct deh_mgr *hdeh_mgr)
 		tasklet_kill(&deh_mgr_obj->dpc_tasklet);
 
 		/* Deallocate the DEH manager object */
-		MEM_FREE_OBJECT(deh_mgr_obj);
+		kfree(deh_mgr_obj);
 		/* The GPTimer is no longer needed */
 		omap_dm_timer_free(timer);
 		timer = NULL;

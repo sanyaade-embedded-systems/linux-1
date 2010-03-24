@@ -190,7 +190,7 @@ dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr)
 		cod_delete(dcd_mgr_obj->cod_mgr);
 
 		/* Deallocate a DCD manager object. */
-		MEM_FREE_OBJECT(dcd_mgr_obj);
+		kfree(dcd_mgr_obj);
 
 		status = DSP_SOK;
 	}

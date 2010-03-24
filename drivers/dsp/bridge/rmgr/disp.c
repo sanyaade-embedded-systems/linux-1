@@ -628,7 +628,7 @@ static void delete_disp(struct disp_object *disp_obj)
 		}
 		kfree(disp_obj->pbuf);
 
-		MEM_FREE_OBJECT(disp_obj);
+		kfree(disp_obj);
 	}
 }
 

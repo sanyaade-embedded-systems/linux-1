@@ -75,11 +75,11 @@ dsp_status mgr_create(OUT struct mgr_object **phMgrObject,
 				*phMgrObject = pmgr_obj;
 			} else {
 				dcd_destroy_manager(pmgr_obj->hdcd_mgr);
-				MEM_FREE_OBJECT(pmgr_obj);
+				kfree(pmgr_obj);
 			}
 		} else {
 			/* failed to Create DCD Manager */
-			MEM_FREE_OBJECT(pmgr_obj);
+			kfree(pmgr_obj);
 		}
 	} else {
 		status = DSP_EMEMORY;
@@ -106,7 +106,7 @@ dsp_status mgr_destroy(struct mgr_object *hmgr_obj)
 	if (hmgr_obj->hdcd_mgr)
 		dcd_destroy_manager(hmgr_obj->hdcd_mgr);
 
-	MEM_FREE_OBJECT(pmgr_obj);
+	kfree(pmgr_obj);
 	/* Update the Registry with NULL for MGR Object */
 	(void)cfg_set_object(0, REG_MGR_OBJECT);
 

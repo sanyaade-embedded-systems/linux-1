@@ -611,7 +611,7 @@ static void delete_msg_mgr(struct msg_mgr *hmsg_mgr)
 
 	kfree(hmsg_mgr->sync_event);
 
-	MEM_FREE_OBJECT(hmsg_mgr);
+	kfree(hmsg_mgr);
 func_end:
 	return;
 }
@@ -663,7 +663,7 @@ static void delete_msg_queue(struct msg_queue *msg_queue_obj, u32 uNumToDSP)
 	kfree(msg_queue_obj->sync_done);
 	kfree(msg_queue_obj->sync_done_ack);
 
-	MEM_FREE_OBJECT(msg_queue_obj);
+	kfree(msg_queue_obj);
 func_end:
 	return;
 

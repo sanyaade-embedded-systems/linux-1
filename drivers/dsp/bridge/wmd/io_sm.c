@@ -302,7 +302,7 @@ dsp_status bridge_io_destroy(struct io_mgr *hio_mgr)
 		kfree(hio_mgr->pmsg);
 #endif
 		/* Free this IO manager object */
-		MEM_FREE_OBJECT(hio_mgr);
+		kfree(hio_mgr);
 	} else {
 		status = DSP_EHANDLE;
 	}

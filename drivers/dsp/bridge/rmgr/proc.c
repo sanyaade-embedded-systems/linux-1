@@ -179,9 +179,9 @@ proc_attach(u32 processor_id,
 		status = dev_get_wmd_context(hdev_obj,
 					     &p_proc_object->hwmd_context);
 		if (DSP_FAILED(status))
-			MEM_FREE_OBJECT(p_proc_object);
+			kfree(p_proc_object);
 	} else
-		MEM_FREE_OBJECT(p_proc_object);
+		kfree(p_proc_object);
 
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -216,7 +216,7 @@ proc_attach(u32 processor_id,
 				kfree(p_proc_object->ntfy_obj);
 			}
 
-			MEM_FREE_OBJECT(p_proc_object);
+			kfree(p_proc_object);
 		}
 		if (DSP_SUCCEEDED(status)) {
 			*ph_processor = (void *)p_proc_object;
@@ -226,7 +226,7 @@ proc_attach(u32 processor_id,
 		}
 	} else {
 		/* Don't leak memory if DSP_FAILED */
-		MEM_FREE_OBJECT(p_proc_object);
+		kfree(p_proc_object);
 	}
 func_end:
 	DBC_ENSURE((status == DSP_EFAIL && *ph_processor == NULL) ||
@@ -327,7 +327,7 @@ dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 	kfree(p_proc_object->psz_last_coff);
 	p_proc_object->psz_last_coff = NULL;
 func_cont:
-	MEM_FREE_OBJECT(p_proc_object);
+	kfree(p_proc_object);
 func_end:
 	return status;
 }
@@ -417,7 +417,7 @@ dsp_status proc_detach(struct process_context *pr_ctxt)
 		(void)dev_remove_proc_object(p_proc_object->hdev_obj,
 					     (u32) p_proc_object);
 		/* Free the Processor Object */
-		MEM_FREE_OBJECT(p_proc_object);
+		kfree(p_proc_object);
 		pr_ctxt->hprocessor = NULL;
 	} else {
 		status = DSP_EHANDLE;

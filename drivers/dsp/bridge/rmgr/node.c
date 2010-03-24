@@ -2644,7 +2644,7 @@ static void delete_node(struct node_object *hnode,
 	kfree(hnode->nldr_node_obj);
 	hnode->nldr_node_obj = NULL;
 	hnode->hnode_mgr = NULL;
-	MEM_FREE_OBJECT(hnode);
+	kfree(hnode);
 	hnode = NULL;
 func_end:
 	return;
@@ -2707,7 +2707,7 @@ static void delete_node_mgr(struct node_mgr *hnode_mgr)
 		if (hnode_mgr->loader_init)
 			hnode_mgr->nldr_fxns.pfn_exit();
 
-		MEM_FREE_OBJECT(hnode_mgr);
+		kfree(hnode_mgr);
 	}
 }
 

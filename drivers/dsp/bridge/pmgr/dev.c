@@ -271,8 +271,7 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 		if (dev_obj && dev_obj->dmm_mgr)
 			dmm_destroy(dev_obj->dmm_mgr);
 
-		if (dev_obj)
-			MEM_FREE_OBJECT(dev_obj);
+		kfree(dev_obj);
 
 		*phDevObject = NULL;
 	}
@@ -405,7 +404,7 @@ dsp_status dev_destroy_device(struct dev_object *hdev_obj)
 			/* Free The library * LDR_FreeModule
 			 * (dev_obj->module_obj); */
 			/* Free this dev object: */
-			MEM_FREE_OBJECT(dev_obj);
+			kfree(dev_obj);
 			dev_obj = NULL;
 		}
 	} else {

@@ -422,7 +422,7 @@ dsp_status nldr_allocate(struct nldr_object *nldr_obj, void *priv_ref,
 	}
 	/* Cleanup on failure */
 	if (DSP_FAILED(status) && nldr_node_obj)
-		MEM_FREE_OBJECT(nldr_node_obj);
+		kfree(nldr_node_obj);
 
 	DBC_ENSURE((DSP_SUCCEEDED(status) &&
 		    MEM_IS_VALID_HANDLE(((struct nldr_nodeobject
@@ -665,7 +665,7 @@ void nldr_delete(struct nldr_object *nldr_obj)
 		}
 		kfree(nldr_obj->ovly_table);
 	}
-	MEM_FREE_OBJECT(nldr_obj);
+	kfree(nldr_obj);
 	DBC_ENSURE(!MEM_IS_VALID_HANDLE(nldr_obj, NLDR_SIGNATURE));
 }
 

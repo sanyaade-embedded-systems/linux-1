@@ -162,7 +162,7 @@ dsp_status dmm_destroy(struct dmm_object *dmm_mgr)
 	if (MEM_IS_VALID_HANDLE(dmm_mgr, DMMSIGNATURE)) {
 		status = dmm_delete_tables(dmm_obj);
 		if (DSP_SUCCEEDED(status))
-			MEM_FREE_OBJECT(dmm_obj);
+			kfree(dmm_obj);
 	} else
 		status = DSP_EHANDLE;
 
