@@ -213,7 +213,7 @@ void dbll_close(struct dbll_library_obj *zl_lib)
 	struct dbll_tar_obj *zl_target;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(zl_lib->open_ref > 0);
 	zl_target = zl_lib->target_obj;
 	zl_lib->open_ref--;
@@ -265,11 +265,8 @@ dsp_status dbll_create(struct dbll_tar_obj **target_obj,
 			pzl_target->attrs = *pattrs;
 			*target_obj = (struct dbll_tar_obj *)pzl_target;
 		}
-		DBC_ENSURE((DSP_SUCCEEDED(status) &&
-			    MEM_IS_VALID_HANDLE(((struct dbll_tar_obj
-						  *)(*target_obj)),
-						DBLL_TARGSIGNATURE))
-			   || (DSP_FAILED(status) && *target_obj == NULL));
+		DBC_ENSURE((DSP_SUCCEEDED(status) && *target_obj) ||
+				(DSP_FAILED(status) && *target_obj == NULL));
 	}
 
 	return status;
@@ -283,7 +280,7 @@ void dbll_delete(struct dbll_tar_obj *target)
 	struct dbll_tar_obj *zl_target = (struct dbll_tar_obj *)target;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_target, DBLL_TARGSIGNATURE));
+	DBC_REQUIRE(zl_target);
 
 	if (zl_target != NULL)
 		kfree(zl_target);
@@ -317,7 +314,7 @@ bool dbll_get_addr(struct dbll_library_obj *zl_lib, char *name,
 	bool status = false;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(name != NULL);
 	DBC_REQUIRE(ppSym != NULL);
 	DBC_REQUIRE(zl_lib->sym_tab != NULL);
@@ -342,7 +339,7 @@ void dbll_get_attrs(struct dbll_tar_obj *target, struct dbll_attrs *pattrs)
 	struct dbll_tar_obj *zl_target = (struct dbll_tar_obj *)target;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_target, DBLL_TARGSIGNATURE));
+	DBC_REQUIRE(zl_target);
 	DBC_REQUIRE(pattrs != NULL);
 
 	if ((pattrs != NULL) && (zl_target != NULL))
@@ -362,7 +359,7 @@ bool dbll_get_c_addr(struct dbll_library_obj *zl_lib, char *name,
 	bool status = false;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(ppSym != NULL);
 	DBC_REQUIRE(zl_lib->sym_tab != NULL);
 	DBC_REQUIRE(name != NULL);
@@ -400,7 +397,7 @@ dsp_status dbll_get_sect(struct dbll_library_obj *lib, char *name, u32 *paddr,
 	DBC_REQUIRE(name != NULL);
 	DBC_REQUIRE(paddr != NULL);
 	DBC_REQUIRE(psize != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 
 	/* If DOFF file is not open, we open it. */
 	if (zl_lib != NULL) {
@@ -471,7 +468,7 @@ dsp_status dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
 	dsp_status status = DSP_SOK;
 	bool opened_doff = false;
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(pEntry != NULL);
 	DBC_REQUIRE(attrs != NULL);
 
@@ -587,7 +584,7 @@ dsp_status dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
 dsp_status dbll_load_sect(struct dbll_library_obj *zl_lib, char *sectName,
 			  struct dbll_attrs *attrs)
 {
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 
 	return DSP_ENOTIMPL;
 }
@@ -604,7 +601,7 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_target, DBLL_TARGSIGNATURE));
+	DBC_REQUIRE(zl_target);
 	DBC_REQUIRE(zl_target->attrs.fopen != NULL);
 	DBC_REQUIRE(file != NULL);
 	DBC_REQUIRE(pLib != NULL);
@@ -725,10 +722,8 @@ func_cont:
 			dbll_close((struct dbll_library_obj *)zl_lib);
 
 	}
-	DBC_ENSURE((DSP_SUCCEEDED(status) && (zl_lib->open_ref > 0) &&
-		    MEM_IS_VALID_HANDLE(((struct dbll_library_obj *)(*pLib)),
-					DBLL_LIBSIGNATURE))
-		   || (DSP_FAILED(status) && *pLib == NULL));
+	DBC_ENSURE((DSP_SUCCEEDED(status) && (zl_lib->open_ref > 0) && *pLib)
+				|| (DSP_FAILED(status) && *pLib == NULL));
 
 	dev_dbg(bridge, "%s: target: %p file: %s pLib: %p, status 0x%x\n",
 		__func__, target, file, pLib, status);
@@ -751,7 +746,7 @@ dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(name != NULL);
 	DBC_REQUIRE(pContent != NULL);
 	DBC_REQUIRE(size != 0);
@@ -816,7 +811,7 @@ void dbll_set_attrs(struct dbll_tar_obj *target, struct dbll_attrs *pattrs)
 {
 	struct dbll_tar_obj *zl_target = (struct dbll_tar_obj *)target;
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_target, DBLL_TARGSIGNATURE));
+	DBC_REQUIRE(zl_target);
 	DBC_REQUIRE(pattrs != NULL);
 
 	if ((pattrs != NULL) && (zl_target != NULL))
@@ -833,7 +828,7 @@ void dbll_unload(struct dbll_library_obj *lib, struct dbll_attrs *attrs)
 	s32 err = 0;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(zl_lib->load_ref > 0);
 	dev_dbg(bridge, "%s: lib: %p\n", __func__, lib);
 	zl_lib->load_ref--;
@@ -998,7 +993,7 @@ static int dbll_read_buffer(struct dynamic_loader_stream *this, void *buffer,
 
 	DBC_REQUIRE(this != NULL);
 	lib = pstream->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	if (lib != NULL) {
 		bytes_read =
@@ -1020,7 +1015,7 @@ static int dbll_set_file_posn(struct dynamic_loader_stream *this,
 
 	DBC_REQUIRE(this != NULL);
 	lib = pstream->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	if (lib != NULL) {
 		status = (*(lib->target_obj->attrs.fseek)) (lib->fp, (long)pos,
@@ -1046,7 +1041,7 @@ static struct dynload_symbol *dbll_find_symbol(struct dynamic_loader_sym *this,
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	if (lib != NULL) {
 		if (lib->target_obj->attrs.sym_lookup) {
@@ -1095,7 +1090,7 @@ static struct dynload_symbol *find_in_symbol_table(struct dynamic_loader_sym
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	DBC_REQUIRE(lib->sym_tab != NULL);
 
 	sym = (struct dbll_symbol *)gh_find(lib->sym_tab, (char *)name);
@@ -1121,7 +1116,7 @@ static struct dynload_symbol *dbll_add_to_symbol_table(struct dynamic_loader_sym
 	DBC_REQUIRE(this != NULL);
 	DBC_REQUIRE(name);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	/* Check to see if symbol is already defined in symbol table */
 	if (!(lib->target_obj->attrs.base_image)) {
@@ -1172,7 +1167,7 @@ static void dbll_purge_symbol_table(struct dynamic_loader_sym *this,
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	/* May not need to do anything */
 }
@@ -1188,7 +1183,7 @@ static void *allocate(struct dynamic_loader_sym *this, unsigned memsize)
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	buf = kzalloc(memsize, GFP_KERNEL);
 
@@ -1205,7 +1200,7 @@ static void deallocate(struct dynamic_loader_sym *this, void *memPtr)
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	kfree(memPtr);
 }
@@ -1222,7 +1217,7 @@ static void dbll_err_report(struct dynamic_loader_sym *this, const char *errstr,
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	vsnprintf((char *)temp_buf, MAXEXPR, (char *)errstr, args);
 	dev_dbg(bridge, "%s\n", temp_buf);
 }
@@ -1256,7 +1251,7 @@ static int dbll_rmm_alloc(struct dynamic_loader_allocate *this,
 
 	DBC_REQUIRE(this != NULL);
 	lib = dbll_alloc_obj->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	mem_sect_type =
 	    (stype == DLOAD_TEXT) ? DBLL_CODE : (stype ==
@@ -1368,7 +1363,7 @@ static void rmm_dealloc(struct dynamic_loader_allocate *this,
 	    DBLL_DATA;
 	DBC_REQUIRE(this != NULL);
 	lib = dbll_alloc_obj->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	/* segid was set by alloc function */
 	segid = (u32) info->context;
 	if (mem_sect_type == DBLL_CODE)
@@ -1408,7 +1403,7 @@ static int read_mem(struct dynamic_loader_initialize *this, void *buf,
 
 	DBC_REQUIRE(this != NULL);
 	lib = init_obj->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	/* Need bridge_brd_read function */
 	return bytes_read;
 }
@@ -1429,7 +1424,7 @@ static int write_mem(struct dynamic_loader_initialize *this, void *buf,
 
 	DBC_REQUIRE(this != NULL);
 	lib = init_obj->lib;
-	if (!MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE))
+	if (!lib)
 		return false;
 
 	target_obj = lib->target_obj;
@@ -1500,7 +1495,7 @@ static int execute(struct dynamic_loader_initialize *this, ldr_addr start)
 
 	DBC_REQUIRE(this != NULL);
 	lib = init_obj->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	/* Save entry point */
 	if (lib != NULL)
 		lib->entry = (u32) start;

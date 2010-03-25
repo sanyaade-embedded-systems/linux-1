@@ -133,8 +133,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 	struct msg_queue *msg_q;
 	dsp_status status = DSP_SOK;
 
-	if (!MEM_IS_VALID_HANDLE(hmsg_mgr, MSGMGR_SIGNATURE) ||
-	    phMsgQueue == NULL || !hmsg_mgr->msg_free_list) {
+	if (!hmsg_mgr || phMsgQueue == NULL || !hmsg_mgr->msg_free_list) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -244,7 +243,7 @@ func_end:
  */
 void bridge_msg_delete(struct msg_mgr *hmsg_mgr)
 {
-	if (MEM_IS_VALID_HANDLE(hmsg_mgr, MSGMGR_SIGNATURE))
+	if (hmsg_mgr)
 		delete_msg_mgr(hmsg_mgr);
 }
 
@@ -257,8 +256,7 @@ void bridge_msg_delete_queue(struct msg_queue *msg_queue_obj)
 	struct msg_mgr *hmsg_mgr;
 	u32 io_msg_pend;
 
-	if (!MEM_IS_VALID_HANDLE(msg_queue_obj, MSGQ_SIGNATURE) ||
-	    !msg_queue_obj->hmsg_mgr)
+	if (!msg_queue_obj || !msg_queue_obj->hmsg_mgr)
 		goto func_end;
 
 	hmsg_mgr = msg_queue_obj->hmsg_mgr;
@@ -302,8 +300,7 @@ dsp_status bridge_msg_get(struct msg_queue *msg_queue_obj,
 	u32 index;
 	dsp_status status = DSP_SOK;
 
-	if (!MEM_IS_VALID_HANDLE(msg_queue_obj, MSGQ_SIGNATURE) ||
-	    pmsg == NULL) {
+	if (!msg_queue_obj || pmsg == NULL) {
 		status = DSP_EMEMORY;
 		goto func_end;
 	}
@@ -407,8 +404,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 	u32 index;
 	dsp_status status = DSP_SOK;
 
-	if (!MEM_IS_VALID_HANDLE(msg_queue_obj, MSGQ_SIGNATURE) || !pmsg ||
-	    !msg_queue_obj->hmsg_mgr) {
+	if (!msg_queue_obj || !pmsg || !msg_queue_obj->hmsg_mgr) {
 		status = DSP_EMEMORY;
 		goto func_end;
 	}
@@ -515,8 +511,7 @@ dsp_status bridge_msg_register_notify(struct msg_queue *msg_queue_obj,
 {
 	dsp_status status = DSP_SOK;
 
-	if (!MEM_IS_VALID_HANDLE(msg_queue_obj, MSGQ_SIGNATURE)
-	    || !hnotification) {
+	if (!msg_queue_obj || !hnotification) {
 		status = DSP_EMEMORY;
 		goto func_end;
 	}
@@ -560,7 +555,7 @@ void bridge_msg_set_queue_id(struct msg_queue *msg_queue_obj, u32 msgq_id)
 	 *  node is created, we need this function to set msg_queue_obj->msgq_id
 	 *  to the node environment, after the node is created.
 	 */
-	if (MEM_IS_VALID_HANDLE(msg_queue_obj, MSGQ_SIGNATURE))
+	if (msg_queue_obj)
 		msg_queue_obj->msgq_id = msgq_id;
 }
 
@@ -589,7 +584,7 @@ static dsp_status add_new_msg(struct lst_list *msgList)
  */
 static void delete_msg_mgr(struct msg_mgr *hmsg_mgr)
 {
-	if (!MEM_IS_VALID_HANDLE(hmsg_mgr, MSGMGR_SIGNATURE))
+	if (!hmsg_mgr)
 		goto func_end;
 
 	if (hmsg_mgr->queue_list) {
@@ -625,7 +620,7 @@ static void delete_msg_queue(struct msg_queue *msg_queue_obj, u32 uNumToDSP)
 	struct msg_frame *pmsg;
 	u32 i;
 
-	if (!MEM_IS_VALID_HANDLE(msg_queue_obj, MSGQ_SIGNATURE) ||
+	if (!msg_queue_obj ||
 	    !msg_queue_obj->hmsg_mgr || !msg_queue_obj->hmsg_mgr->msg_free_list)
 		goto func_end;
 

@@ -285,7 +285,7 @@ static struct node_ldr_fxns nldr_fxns = {
 enum node_state node_get_state(bhandle hnode)
 {
 	struct node_object *pnode = (struct node_object *)hnode;
-	if (!MEM_IS_VALID_HANDLE(pnode, NODE_SIGNATURE))
+	if (!pnode)
 		return -1;
 	else
 		return pnode->node_state;
@@ -677,8 +677,7 @@ func_cont:
 		drv_proc_node_update_status(node_res, true);
 	}
 	DBC_ENSURE((DSP_FAILED(status) && (*ph_node == NULL)) ||
-		   (DSP_SUCCEEDED(status)
-		    && MEM_IS_VALID_HANDLE((*ph_node), NODE_SIGNATURE)));
+			(DSP_SUCCEEDED(status) && *ph_node));
 func_end:
 	dev_dbg(bridge, "%s: hprocessor: %p pNodeId: %p pargs: %p attr_in: %p "
 		"ph_node: %p status: 0x%x\n", __func__, hprocessor,
@@ -706,7 +705,7 @@ DBAPI node_alloc_msg_buf(struct node_object *hnode, u32 usize,
 
 	DBC_REQUIRE(usize > 0);
 
-	if (!MEM_IS_VALID_HANDLE(pnode, NODE_SIGNATURE))
+	if (!pnode)
 		status = DSP_EHANDLE;
 	else if (node_get_type(pnode) == NODE_DEVICE)
 		status = DSP_ENODETYPE;
@@ -789,7 +788,7 @@ dsp_status node_change_priority(struct node_object *hnode, s32 prio)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE) || !hnode->hnode_mgr) {
+	if (!hnode || !hnode->hnode_mgr) {
 		status = DSP_EHANDLE;
 	} else {
 		hnode_mgr = hnode->hnode_mgr;
@@ -860,10 +859,8 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 	dsp_status status = DSP_SOK;
 	DBC_REQUIRE(refs > 0);
 
-	if ((hNode1 != (struct node_object *)DSP_HGPPNODE &&
-	     !MEM_IS_VALID_HANDLE(hNode1, NODE_SIGNATURE)) ||
-	    (hNode2 != (struct node_object *)DSP_HGPPNODE &&
-	     !MEM_IS_VALID_HANDLE(hNode2, NODE_SIGNATURE)))
+	if ((hNode1 != (struct node_object *)DSP_HGPPNODE && !hNode1) ||
+		(hNode2 != (struct node_object *)DSP_HGPPNODE && !hNode2))
 		status = DSP_EHANDLE;
 
 	if (DSP_SUCCEEDED(status)) {
@@ -1169,7 +1166,7 @@ dsp_status node_create(struct node_object *hnode)
 #endif
 
 	DBC_REQUIRE(refs > 0);
-	if (!MEM_IS_VALID_HANDLE(pnode, NODE_SIGNATURE)) {
+	if (!pnode) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1431,8 +1428,7 @@ dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
 		delete_node_mgr(node_mgr_obj);
 
 	DBC_ENSURE((DSP_FAILED(status) && (*phNodeMgr == NULL)) ||
-		   (DSP_SUCCEEDED(status) &&
-		    MEM_IS_VALID_HANDLE((*phNodeMgr), NODEMGR_SIGNATURE)));
+			(DSP_SUCCEEDED(status) && *phNodeMgr));
 
 	return status;
 }
@@ -1465,7 +1461,7 @@ dsp_status node_delete(struct node_object *hnode,
 	struct dsp_processorstate proc_state;
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	if (!hnode) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1609,7 +1605,7 @@ dsp_status node_delete_mgr(struct node_mgr *hnode_mgr)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (MEM_IS_VALID_HANDLE(hnode_mgr, NODEMGR_SIGNATURE))
+	if (hnode_mgr)
 		delete_node_mgr(hnode_mgr);
 	else
 		status = DSP_EHANDLE;
@@ -1634,7 +1630,7 @@ dsp_status node_enum_nodes(struct node_mgr *hnode_mgr, void **node_tab,
 	DBC_REQUIRE(pu_num_nodes != NULL);
 	DBC_REQUIRE(pu_allocated != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hnode_mgr, NODEMGR_SIGNATURE)) {
+	if (!hnode_mgr) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1649,8 +1645,7 @@ dsp_status node_enum_nodes(struct node_mgr *hnode_mgr, void **node_tab,
 		hnode = (struct node_object *)lst_first(hnode_mgr->
 			node_list);
 		for (i = 0; i < hnode_mgr->num_nodes; i++) {
-			DBC_ASSERT(MEM_IS_VALID_HANDLE(hnode,
-				  NODE_SIGNATURE));
+			DBC_ASSERT(hnode);
 			node_tab[i] = hnode;
 			hnode = (struct node_object *)lst_next
 				(hnode_mgr->node_list,
@@ -1695,7 +1690,7 @@ dsp_status node_free_msg_buf(struct node_object *hnode, IN u8 * pbuffer,
 	DBC_REQUIRE(pnode != NULL);
 	DBC_REQUIRE(pnode->xlator != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	if (!hnode) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1735,7 +1730,7 @@ dsp_status node_get_attr(struct node_object *hnode,
 	DBC_REQUIRE(pattr != NULL);
 	DBC_REQUIRE(attr_size >= sizeof(struct dsp_nodeattr));
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	if (!hnode) {
 		status = DSP_EHANDLE;
 	} else {
 		hnode_mgr = hnode->hnode_mgr;
@@ -1779,7 +1774,7 @@ dsp_status node_get_channel_id(struct node_object *hnode, u32 dir, u32 index,
 	DBC_REQUIRE(dir == DSP_TONODE || dir == DSP_FROMNODE);
 	DBC_REQUIRE(pulId != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	if (!hnode) {
 		status = DSP_EHANDLE;
 		return status;
 	}
@@ -1826,7 +1821,7 @@ dsp_status node_get_message(struct node_object *hnode,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pmsg != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	if (!hnode) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1895,7 +1890,7 @@ dsp_status node_get_nldr_obj(struct node_mgr *hnode_mgr,
 	struct node_mgr *node_mgr_obj = hnode_mgr;
 	DBC_REQUIRE(phNldrObj != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hnode_mgr, NODEMGR_SIGNATURE))
+	if (!hnode_mgr)
 		status = DSP_EHANDLE;
 	else
 		*phNldrObj = node_mgr_obj->nldr_obj;
@@ -1917,7 +1912,7 @@ dsp_status node_get_strm_mgr(struct node_object *hnode,
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE))
+	if (!hnode)
 		status = DSP_EHANDLE;
 	else
 		*phStrmMgr = hnode->hnode_mgr->strm_mgr_obj;
@@ -1931,8 +1926,8 @@ dsp_status node_get_strm_mgr(struct node_object *hnode,
 enum nldr_loadtype node_get_load_type(struct node_object *hnode)
 {
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE));
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	DBC_REQUIRE(hnode);
+	if (!hnode) {
 		dev_dbg(bridge, "%s: Failed. hnode: %p\n", __func__, hnode);
 		return -1;
 	} else {
@@ -1948,8 +1943,8 @@ enum nldr_loadtype node_get_load_type(struct node_object *hnode)
 u32 node_get_timeout(struct node_object *hnode)
 {
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE));
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	DBC_REQUIRE(hnode);
+	if (!hnode) {
 		dev_dbg(bridge, "%s: failed. hnode: %p\n", __func__, hnode);
 		return 0;
 	} else {
@@ -1969,7 +1964,7 @@ enum node_type node_get_type(struct node_object *hnode)
 	if (hnode == (struct node_object *)DSP_HGPPNODE)
 		node_type = NODE_GPP;
 	else {
-		if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE))
+		if (!hnode)
 			node_type = -1;
 		else
 			node_type = hnode->ntype;
@@ -1998,7 +1993,7 @@ bool node_init(void)
  */
 void node_on_exit(struct node_object *hnode, s32 nStatus)
 {
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE))
+	if (!hnode)
 		return;
 
 	/* Set node state to done */
@@ -2035,7 +2030,7 @@ dsp_status node_pause(struct node_object *hnode)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	if (!hnode) {
 		status = DSP_EHANDLE;
 	} else {
 		node_type = node_get_type(hnode);
@@ -2120,7 +2115,7 @@ dsp_status node_put_message(struct node_object *hnode,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pmsg != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	if (!hnode) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -2212,7 +2207,7 @@ dsp_status node_register_notify(struct node_object *hnode, u32 event_mask,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(hnotification != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	if (!hnode) {
 		status = DSP_EHANDLE;
 	} else {
 		/* Check if event mask is a valid node related event */
@@ -2272,7 +2267,7 @@ dsp_status node_run(struct node_object *hnode)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+	if (!hnode) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -2293,7 +2288,7 @@ dsp_status node_run(struct node_object *hnode)
 		goto func_end;
 
 	hnode_mgr = hnode->hnode_mgr;
-	if (!MEM_IS_VALID_HANDLE(hnode_mgr, NODEMGR_SIGNATURE)) {
+	if (!hnode_mgr) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -2392,7 +2387,7 @@ dsp_status node_terminate(struct node_object *hnode, OUT dsp_status *pstatus)
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pstatus != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE) || !hnode->hnode_mgr) {
+	if (!hnode || !hnode->hnode_mgr) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -2502,7 +2497,7 @@ func_cont:
 		 * deleted. */
 		mutex_lock(&hnode_mgr->node_mgr_lock);
 		/* Make sure node wasn't deleted while we blocked */
-		if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE)) {
+		if (!hnode) {
 			status = DSP_EFAIL;
 		} else {
 			*pstatus = hnode->exit_status;
@@ -2537,10 +2532,10 @@ static void delete_node(struct node_object *hnode,
 	    (struct proc_object *)hnode->hprocessor;
 #endif
 	dsp_status status;
-	if (!MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE))
+	if (!hnode)
 		goto func_end;
 	hnode_mgr = hnode->hnode_mgr;
-	if (!MEM_IS_VALID_HANDLE(hnode_mgr, NODEMGR_SIGNATURE))
+	if (!hnode_mgr)
 		goto func_end;
 	xlator = hnode->xlator;
 	node_type = node_get_type(hnode);
@@ -2659,7 +2654,7 @@ static void delete_node_mgr(struct node_mgr *hnode_mgr)
 {
 	struct node_object *hnode;
 
-	if (MEM_IS_VALID_HANDLE(hnode_mgr, NODEMGR_SIGNATURE)) {
+	if (hnode_mgr) {
 		/* Free resources */
 		if (hnode_mgr->hdcd_mgr)
 			dcd_destroy_manager(hnode_mgr->hdcd_mgr);
@@ -2881,7 +2876,7 @@ void get_node_info(struct node_object *hnode, struct dsp_nodeinfo *pNodeInfo)
 {
 	u32 i;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE));
+	DBC_REQUIRE(hnode);
 	DBC_REQUIRE(pNodeInfo != NULL);
 
 	pNodeInfo->cb_struct = sizeof(struct dsp_nodeinfo);
@@ -3156,7 +3151,7 @@ static u32 ovly(void *priv_ref, u32 ulDspRunAddr, u32 ulDspLoadAddr,
 	struct wmd_dev_context *hwmd_context;
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE));
+	DBC_REQUIRE(hnode);
 
 	hnode_mgr = hnode->hnode_mgr;
 
@@ -3198,7 +3193,7 @@ static u32 mem_write(void *priv_ref, u32 ulDspAddr, void *pbuf,
 	struct wmd_dev_context *hwmd_context;
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hnode, NODE_SIGNATURE));
+	DBC_REQUIRE(hnode);
 	DBC_REQUIRE(nMemSpace & DBLL_CODE || nMemSpace & DBLL_DATA);
 
 	hnode_mgr = hnode->hnode_mgr;

@@ -159,7 +159,7 @@ dsp_status dmm_destroy(struct dmm_object *dmm_mgr)
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	if (MEM_IS_VALID_HANDLE(dmm_mgr, DMMSIGNATURE)) {
+	if (dmm_mgr) {
 		status = dmm_delete_tables(dmm_obj);
 		if (DSP_SUCCEEDED(status))
 			kfree(dmm_obj);
@@ -180,7 +180,7 @@ dsp_status dmm_delete_tables(struct dmm_object *dmm_mgr)
 
 	DBC_REQUIRE(refs > 0);
 	/* Delete all DMM tables */
-	if (MEM_IS_VALID_HANDLE(dmm_mgr, DMMSIGNATURE))
+	if (dmm_mgr)
 		vfree(virtual_mapping_table);
 	else
 		status = DSP_EHANDLE;

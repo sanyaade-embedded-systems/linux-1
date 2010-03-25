@@ -111,7 +111,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 	/* Validate args:  */
 	if (pHostBuf == NULL) {
 		status = DSP_EPOINTER;
-	} else if (!MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
+	} else if (!pchnl) {
 		status = DSP_EHANDLE;
 	} else if (is_eos && CHNL_IS_INPUT(pchnl->chnl_mode)) {
 		status = CHNL_E_NOEOS;
@@ -258,7 +258,7 @@ dsp_status bridge_chnl_cancel_io(struct chnl_object *chnl_obj)
 	struct chnl_mgr *chnl_mgr_obj = NULL;
 
 	/* Check args: */
-	if (MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE) && pchnl->chnl_mgr_obj) {
+	if (pchnl && pchnl->chnl_mgr_obj) {
 		chnl_id = pchnl->chnl_id;
 		chnl_mode = pchnl->chnl_mode;
 		chnl_mgr_obj = pchnl->chnl_mgr_obj;
@@ -319,7 +319,7 @@ dsp_status bridge_chnl_close(struct chnl_object *chnl_obj)
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 
 	/* Check args: */
-	if (!MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
+	if (!pchnl) {
 		status = DSP_EHANDLE;
 		goto func_cont;
 	}
@@ -372,8 +372,7 @@ func_cont:
 		kfree(pchnl);
 		pchnl = NULL;
 	}
-	DBC_ENSURE(DSP_FAILED(status) ||
-		   !MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE));
+	DBC_ENSURE(DSP_FAILED(status) || !pchnl);
 	return status;
 }
 
@@ -450,7 +449,7 @@ dsp_status bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr)
 	struct chnl_mgr *chnl_mgr_obj = hchnl_mgr;
 	u32 chnl_id;
 
-	if (MEM_IS_VALID_HANDLE(hchnl_mgr, CHNL_MGRSIGNATURE)) {
+	if (hchnl_mgr) {
 		/* Close all open channels: */
 		for (chnl_id = 0; chnl_id < chnl_mgr_obj->max_channels;
 		     chnl_id++) {
@@ -488,7 +487,7 @@ dsp_status bridge_chnl_flush_io(struct chnl_object *chnl_obj, u32 dwTimeOut)
 	struct chnl_mgr *chnl_mgr_obj;
 	struct chnl_ioc chnl_ioc_obj;
 	/* Check args: */
-	if (MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
+	if (pchnl) {
 		if ((dwTimeOut == CHNL_IOCNOWAIT)
 		    && CHNL_IS_OUTPUT(pchnl->chnl_mode)) {
 			status = DSP_EINVALIDARG;
@@ -539,7 +538,7 @@ dsp_status bridge_chnl_get_info(struct chnl_object *chnl_obj,
 	dsp_status status = DSP_SOK;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 	if (pInfo != NULL) {
-		if (MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
+		if (pchnl) {
 			/* Return the requested information: */
 			pInfo->hchnl_mgr = pchnl->chnl_mgr_obj;
 			pInfo->event_obj = pchnl->user_event;
@@ -583,7 +582,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 	/* Check args: */
 	if (pIOC == NULL) {
 		status = DSP_EPOINTER;
-	} else if (!MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
+	} else if (!pchnl) {
 		status = DSP_EHANDLE;
 	} else if (dwTimeOut == CHNL_IOCNOWAIT) {
 		if (LST_IS_EMPTY(pchnl->pio_completions))
@@ -720,7 +719,7 @@ dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
 
 	if (pMgrInfo != NULL) {
 		if (uChnlID <= CHNL_MAXCHANNELS) {
-			if (MEM_IS_VALID_HANDLE(hchnl_mgr, CHNL_MGRSIGNATURE)) {
+			if (hchnl_mgr) {
 				/* Return the requested information: */
 				pMgrInfo->chnl_obj =
 				    chnl_mgr_obj->ap_channel[uChnlID];
@@ -754,7 +753,7 @@ dsp_status bridge_chnl_idle(struct chnl_object *chnl_obj, u32 dwTimeOut,
 	struct chnl_mgr *chnl_mgr_obj;
 	dsp_status status = DSP_SOK;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(chnl_obj, CHNL_SIGNATURE));
+	DBC_REQUIRE(chnl_obj);
 
 	chnl_mode = chnl_obj->chnl_mode;
 	chnl_mgr_obj = chnl_obj->chnl_mgr_obj;
@@ -795,7 +794,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 	if (pattrs->uio_reqs == 0) {
 		status = DSP_EINVALIDARG;
 	} else {
-		if (!MEM_IS_VALID_HANDLE(hchnl_mgr, CHNL_MGRSIGNATURE)) {
+		if (!hchnl_mgr) {
 			status = DSP_EHANDLE;
 		} else {
 			if (uChnlId != CHNL_PICKFREE) {
@@ -901,9 +900,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 		*phChnl = pchnl;
 	}
 func_end:
-	DBC_ENSURE((DSP_SUCCEEDED(status) &&
-		    MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) ||
-		   (*phChnl == NULL));
+	DBC_ENSURE((DSP_SUCCEEDED(status) && pchnl) || (*phChnl == NULL));
 	return status;
 }
 
@@ -1008,7 +1005,7 @@ static dsp_status search_free_channel(struct chnl_mgr *chnl_mgr_obj,
 	dsp_status status = CHNL_E_OUTOFSTREAMS;
 	u32 i;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(chnl_mgr_obj, CHNL_MGRSIGNATURE));
+	DBC_REQUIRE(chnl_mgr_obj);
 
 	for (i = 0; i < chnl_mgr_obj->max_channels; i++) {
 		if (chnl_mgr_obj->ap_channel[i] == NULL) {

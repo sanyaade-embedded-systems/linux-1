@@ -191,7 +191,7 @@ void *cmm_calloc_buf(struct cmm_object *hcmm_mgr, u32 usize,
 	if (pp_buf_va != NULL)
 		*pp_buf_va = NULL;
 
-	if ((MEM_IS_VALID_HANDLE(cmm_mgr_obj, CMMSIGNATURE)) && (usize != 0)) {
+	if (cmm_mgr_obj && (usize != 0)) {
 		if (pattrs->ul_seg_id > 0) {
 			/* SegId > 0 is SM */
 			/* get the allocator object for this segment id */
@@ -325,7 +325,7 @@ dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce)
 	struct cmm_mnode *pnode;
 
 	DBC_REQUIRE(refs > 0);
-	if (!MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) {
+	if (!hcmm_mgr) {
 		status = DSP_EHANDLE;
 		return status;
 	}
@@ -405,8 +405,7 @@ dsp_status cmm_free_buf(struct cmm_object *hcmm_mgr, void *buf_pa,
 		pattrs = &cmm_dfltalctattrs;
 		ul_seg_id = pattrs->ul_seg_id;
 	}
-	if (!(MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) ||
-	    !(ul_seg_id > 0)) {
+	if (!hcmm_mgr || !(ul_seg_id > 0)) {
 		status = DSP_EHANDLE;
 		return status;
 	}
@@ -476,7 +475,7 @@ dsp_status cmm_get_info(struct cmm_object *hcmm_mgr,
 
 	DBC_REQUIRE(cmm_info_obj != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) {
+	if (!hcmm_mgr) {
 		status = DSP_EHANDLE;
 		return status;
 	}
@@ -571,7 +570,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 		"dw_dsp_base %x ul_dsp_size %x dw_gpp_base_va %x\n", __func__,
 		dw_gpp_base_pa, ul_size, dwDSPAddrOffset, dw_dsp_base,
 		ul_dsp_size, dw_gpp_base_va);
-	if (!MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) {
+	if (!hcmm_mgr) {
 		status = DSP_EHANDLE;
 		return status;
 	}
@@ -673,7 +672,7 @@ dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 	u32 ul_id = ul_seg_id;
 
 	DBC_REQUIRE(ul_seg_id > 0);
-	if (MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) {
+	if (hcmm_mgr) {
 		if (ul_seg_id == CMM_ALLSEGMENTS)
 			ul_id = 1;
 
@@ -948,7 +947,7 @@ static struct cmm_allocator *get_allocator(struct cmm_object *cmm_mgr_obj,
 	allocator = cmm_mgr_obj->pa_gppsm_seg_tab[ul_seg_id - 1];
 	if (allocator != NULL) {
 		/* make sure it's for real */
-		if (!MEM_IS_VALID_HANDLE(allocator, SMEMSIGNATURE)) {
+		if (!allocator) {
 			allocator = NULL;
 			DBC_ASSERT(false);
 		}
@@ -1009,7 +1008,7 @@ dsp_status cmm_xlator_delete(struct cmm_xlatorobject *xlator, bool bForce)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE)) {
+	if (xlator_obj) {
 		kfree(xlator_obj);
 	} else {
 		status = DSP_EHANDLE;
@@ -1035,7 +1034,7 @@ void *cmm_xlator_alloc_buf(struct cmm_xlatorobject *xlator, void *pVaBuf,
 	DBC_REQUIRE(uPaSize > 0);
 	DBC_REQUIRE(xlator_obj->ul_seg_id > 0);
 
-	if (MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE)) {
+	if (xlator_obj) {
 		attrs.ul_seg_id = xlator_obj->ul_seg_id;
 		*(volatile u32 *)pVaBuf = 0;
 		/* Alloc SM */
@@ -1068,7 +1067,7 @@ dsp_status cmm_xlator_free_buf(struct cmm_xlatorobject *xlator, void *pBufVa)
 	DBC_REQUIRE(pBufVa != NULL);
 	DBC_REQUIRE(xlator_obj->ul_seg_id > 0);
 
-	if (MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE)) {
+	if (xlator_obj) {
 		/* convert Va to Pa so we can free it. */
 		buf_pa = cmm_xlator_translate(xlator, pBufVa, CMM_VA2PA);
 		if (buf_pa) {
@@ -1099,7 +1098,7 @@ dsp_status cmm_xlator_info(struct cmm_xlatorobject *xlator, IN OUT u8 ** paddr,
 	DBC_REQUIRE(paddr != NULL);
 	DBC_REQUIRE((uSegId > 0) && (uSegId <= CMM_MAXGPPSEGS));
 
-	if (MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE)) {
+	if (xlator_obj) {
 		if (set_info) {
 			/* set translators virtual address range */
 			xlator_obj->dw_virt_base = (u32) *paddr;
@@ -1129,14 +1128,14 @@ void *cmm_xlator_translate(struct cmm_xlatorobject *xlator, void *paddr,
 	DBC_REQUIRE(paddr != NULL);
 	DBC_REQUIRE((xType >= CMM_VA2PA) && (xType <= CMM_DSPPA2PA));
 
-	if (!MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE))
+	if (!xlator_obj)
 		goto loop_cont;
 
 	cmm_mgr_obj = (struct cmm_object *)xlator_obj->hcmm_mgr;
 	/* get this translator's default SM allocator */
 	DBC_ASSERT(xlator_obj->ul_seg_id > 0);
 	allocator = cmm_mgr_obj->pa_gppsm_seg_tab[xlator_obj->ul_seg_id - 1];
-	if (!MEM_IS_VALID_HANDLE(allocator, SMEMSIGNATURE))
+	if (!allocator)
 		goto loop_cont;
 
 	if ((xType == CMM_VA2DSPPA) || (xType == CMM_VA2PA) ||

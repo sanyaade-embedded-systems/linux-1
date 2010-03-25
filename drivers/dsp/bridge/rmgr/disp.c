@@ -175,8 +175,7 @@ func_cont:
 		delete_disp(disp_obj);
 
 	DBC_ENSURE(((DSP_FAILED(status)) && ((*phDispObject == NULL))) ||
-		   ((DSP_SUCCEEDED(status)) &&
-		    (MEM_IS_VALID_HANDLE((*phDispObject), DISP_SIGNATURE))));
+				((DSP_SUCCEEDED(status)) && *phDispObject));
 	return status;
 }
 
@@ -187,11 +186,11 @@ func_cont:
 void disp_delete(struct disp_object *disp_obj)
 {
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 
 	delete_disp(disp_obj);
 
-	DBC_ENSURE(!MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_ENSURE(!disp_obj);
 }
 
 /*
@@ -237,7 +236,7 @@ dsp_status disp_node_change_priority(struct disp_object *disp_obj,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 	DBC_REQUIRE(hnode != NULL);
 
 	/* Send message to RMS to change priority */
@@ -286,7 +285,7 @@ dsp_status disp_node_create(struct disp_object *disp_obj,
 	u32 dev_type;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 	DBC_REQUIRE(hnode != NULL);
 	DBC_REQUIRE(node_get_type(hnode) != NODE_DEVICE);
 	DBC_REQUIRE(pNodeEnv != NULL);
@@ -501,7 +500,7 @@ dsp_status disp_node_delete(struct disp_object *disp_obj,
 	u32 dev_type;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 	DBC_REQUIRE(hnode != NULL);
 
 	status = dev_get_dev_type(disp_obj->hdev_obj, &dev_type);
@@ -554,7 +553,7 @@ dsp_status disp_node_run(struct disp_object *disp_obj,
 	dsp_status status = DSP_SOK;
 	u32 dev_type;
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 	DBC_REQUIRE(hnode != NULL);
 
 	status = dev_get_dev_type(disp_obj->hdev_obj, &dev_type);
@@ -603,7 +602,7 @@ static void delete_disp(struct disp_object *disp_obj)
 	dsp_status status = DSP_SOK;
 	struct bridge_drv_interface *intf_fxns;
 
-	if (MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE)) {
+	if (disp_obj) {
 		intf_fxns = disp_obj->intf_fxns;
 
 		/* Free Node Dispatcher resources */

@@ -72,9 +72,9 @@ irqreturn_t mmu_fault_isr(int irq, IN void *pRefData)
 	struct cfg_hostres *resources;
 
 	DBC_REQUIRE(irq == INT_DSP_MMU_IRQ);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE));
+	DBC_REQUIRE(deh_mgr_obj);
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 
 		dev_context =
 		    (struct wmd_dev_context *)deh_mgr_obj->hwmd_context;

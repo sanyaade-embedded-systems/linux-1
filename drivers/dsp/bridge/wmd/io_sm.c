@@ -288,8 +288,8 @@ func_end:
 dsp_status bridge_io_destroy(struct io_mgr *hio_mgr)
 {
 	dsp_status status = DSP_SOK;
-	if (MEM_IS_VALID_HANDLE(hio_mgr, IO_MGRSIGNATURE)) {
 
+	if (hio_mgr) {
 #ifdef CONFIG_BRIDGE_WDT3
 		free_irq(INT_34XX_WDT3_IRQ, (void *)hio_mgr);
 #endif
@@ -378,8 +378,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	/* The message manager is destroyed when the board is stopped. */
 	dev_get_msg_mgr(hio_mgr->hdev_obj, &hio_mgr->hmsg_mgr);
 	hmsg_mgr = hio_mgr->hmsg_mgr;
-	if (!MEM_IS_VALID_HANDLE(hchnl_mgr, CHNL_MGRSIGNATURE) ||
-	    !MEM_IS_VALID_HANDLE(hmsg_mgr, MSGMGR_SIGNATURE)) {
+	if (!hchnl_mgr || !hmsg_mgr) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -838,7 +837,7 @@ func_end:
  */
 u32 io_buf_size(struct io_mgr *hio_mgr)
 {
-	if (MEM_IS_VALID_HANDLE(hio_mgr, IO_MGRSIGNATURE))
+	if (hio_mgr)
 		return hio_mgr->usm_buf_size;
 	else
 		return 0;
@@ -853,7 +852,7 @@ void io_cancel_chnl(struct io_mgr *hio_mgr, u32 ulChnl)
 	struct io_mgr *pio_mgr = (struct io_mgr *)hio_mgr;
 	struct shm *sm;
 
-	if (!MEM_IS_VALID_HANDLE(hio_mgr, IO_MGRSIGNATURE))
+	if (!hio_mgr)
 		goto func_end;
 	sm = hio_mgr->shared_mem;
 
@@ -873,7 +872,7 @@ func_end:
 static void io_dispatch_chnl(IN struct io_mgr *pio_mgr,
 			     IN OUT struct chnl_object *pchnl, u32 iMode)
 {
-	if (!MEM_IS_VALID_HANDLE(pio_mgr, IO_MGRSIGNATURE))
+	if (!pio_mgr)
 		goto func_end;
 
 	/* See if there is any data available for transfer */
@@ -893,7 +892,7 @@ func_end:
  */
 static void io_dispatch_msg(IN struct io_mgr *pio_mgr, struct msg_mgr *hmsg_mgr)
 {
-	if (!MEM_IS_VALID_HANDLE(pio_mgr, IO_MGRSIGNATURE))
+	if (!pio_mgr)
 		goto func_end;
 
 	/* We are performing both input and output processing. */
@@ -962,12 +961,12 @@ void io_dpc(IN OUT unsigned long pRefData)
 	u32 requested;
 	u32 serviced;
 
-	if (!MEM_IS_VALID_HANDLE(pio_mgr, IO_MGRSIGNATURE))
+	if (!pio_mgr)
 		goto func_end;
 	chnl_mgr_obj = pio_mgr->hchnl_mgr;
 	dev_get_msg_mgr(pio_mgr->hdev_obj, &msg_mgr_obj);
 	dev_get_deh_mgr(pio_mgr->hdev_obj, &hdeh_mgr);
-	if (!MEM_IS_VALID_HANDLE(chnl_mgr_obj, CHNL_MGRSIGNATURE))
+	if (!chnl_mgr_obj)
 		goto func_end;
 
 	requested = pio_mgr->dpc_req;
@@ -992,7 +991,7 @@ void io_dpc(IN OUT unsigned long pRefData)
 		}
 		io_dispatch_chnl(pio_mgr, NULL, IO_SERVICE);
 #ifdef CHNL_MESSAGES
-		if (MEM_IS_VALID_HANDLE(msg_mgr_obj, MSGMGR_SIGNATURE))
+		if (msg_mgr_obj)
 			io_dispatch_msg(pio_mgr, msg_mgr_obj);
 #endif
 #ifndef DSP_TRACEBUF_DISABLED
@@ -1096,7 +1095,7 @@ void iosm_schedule(struct io_mgr *pio_mgr)
 {
 	unsigned long flags;
 
-	if (!MEM_IS_VALID_HANDLE(pio_mgr, IO_MGRSIGNATURE))
+	if (!pio_mgr)
 		return;
 
 	/* Increment count of DPC's pending. */
@@ -1403,7 +1402,7 @@ static void notify_chnl_complete(struct chnl_object *pchnl,
 {
 	bool signal_event;
 
-	if (!MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE) || !pchnl->sync_event ||
+	if (!pchnl || !pchnl->sync_event ||
 	    !pchnl->pio_completions || !chnl_packet_obj)
 		goto func_end;
 

@@ -531,7 +531,7 @@ dsp_status dev_get_deh_mgr(struct dev_object *hdev_obj,
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDehMgr != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hdev_obj, SIGNATURE));
+	DBC_REQUIRE(hdev_obj);
 	if (IS_VALID_HANDLE(hdev_obj)) {
 		*phDehMgr = hdev_obj->hdeh_mgr;
 	} else {
@@ -621,7 +621,7 @@ dsp_status dev_get_io_mgr(struct dev_object *hdev_obj,
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phIOMgr != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hdev_obj, SIGNATURE));
+	DBC_REQUIRE(hdev_obj);
 
 	if (IS_VALID_HANDLE(hdev_obj)) {
 		*phIOMgr = hdev_obj->hio_mgr;
@@ -660,7 +660,7 @@ void dev_get_msg_mgr(struct dev_object *hdev_obj, OUT struct msg_mgr **phMsgMgr)
 {
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phMsgMgr != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hdev_obj, SIGNATURE));
+	DBC_REQUIRE(hdev_obj);
 
 	*phMsgMgr = hdev_obj->hmsg_mgr;
 }

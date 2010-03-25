@@ -85,8 +85,7 @@ dsp_status mgr_create(OUT struct mgr_object **phMgrObject,
 		status = DSP_EMEMORY;
 	}
 
-	DBC_ENSURE(DSP_FAILED(status) ||
-		   MEM_IS_VALID_HANDLE(pmgr_obj, SIGNATURE));
+	DBC_ENSURE(DSP_FAILED(status) || pmgr_obj);
 	return status;
 }
 
@@ -100,7 +99,7 @@ dsp_status mgr_destroy(struct mgr_object *hmgr_obj)
 	struct mgr_object *pmgr_obj = (struct mgr_object *)hmgr_obj;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hmgr_obj, SIGNATURE));
+	DBC_REQUIRE(hmgr_obj);
 
 	/* Free resources */
 	if (hmgr_obj->hdcd_mgr)
@@ -110,8 +109,7 @@ dsp_status mgr_destroy(struct mgr_object *hmgr_obj)
 	/* Update the Registry with NULL for MGR Object */
 	(void)cfg_set_object(0, REG_MGR_OBJECT);
 
-	DBC_ENSURE(DSP_FAILED(status) ||
-		   !MEM_IS_VALID_HANDLE(hmgr_obj, SIGNATURE));
+	DBC_ENSURE(DSP_FAILED(status) || !hmgr_obj);
 
 	return status;
 }
@@ -142,7 +140,7 @@ dsp_status mgr_enum_node_info(u32 node_id, OUT struct dsp_ndbprops *pndb_props,
 	if (DSP_FAILED(status))
 		goto func_cont;
 
-	DBC_ASSERT(MEM_IS_VALID_HANDLE(pmgr_obj, SIGNATURE));
+	DBC_ASSERT(pmgr_obj);
 	/* Forever loop till we hit failed or no more items in the
 	 * Enumeration. We will exit the loop other than DSP_SOK; */
 	while (status == DSP_SOK) {
@@ -232,7 +230,7 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 		dev_dbg(bridge, "%s: Failed to get MGR Object\n", __func__);
 		goto func_end;
 	}
-	DBC_ASSERT(MEM_IS_VALID_HANDLE(pmgr_obj, SIGNATURE));
+	DBC_ASSERT(pmgr_obj);
 	/* Forever loop till we hit no more items in the
 	 * Enumeration. We will exit the loop other than DSP_SOK; */
 	while (status1 == DSP_SOK) {
@@ -322,7 +320,7 @@ dsp_status mgr_get_dcd_handle(struct mgr_object *hMGRHandle,
 	DBC_REQUIRE(phDCDHandle != NULL);
 
 	*phDCDHandle = (u32) NULL;
-	if (MEM_IS_VALID_HANDLE(pmgr_obj, SIGNATURE)) {
+	if (pmgr_obj) {
 		*phDCDHandle = (u32) pmgr_obj->hdcd_mgr;
 		status = DSP_SOK;
 	}

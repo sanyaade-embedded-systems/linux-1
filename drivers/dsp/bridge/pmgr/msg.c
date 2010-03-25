@@ -98,7 +98,7 @@ void msg_delete(struct msg_mgr *hmsg_mgr)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (MEM_IS_VALID_HANDLE(msg_mgr_obj, MSGMGR_SIGNATURE)) {
+	if (msg_mgr_obj) {
 		intf_fxns = msg_mgr_obj->intf_fxns;
 
 		/* Let WMD message module destroy the msg_mgr: */

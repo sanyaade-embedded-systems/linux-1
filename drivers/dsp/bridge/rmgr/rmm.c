@@ -105,7 +105,7 @@ dsp_status rmm_alloc(struct rmm_target_obj *target, u32 segid, u32 size,
 	u32 addr;
 	dsp_status status = DSP_SOK;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(target, RMM_TARGSIGNATURE));
+	DBC_REQUIRE(target);
 	DBC_REQUIRE(dspAddr != NULL);
 	DBC_REQUIRE(size > 0);
 	DBC_REQUIRE(reserve || (target->num_segs > 0));
@@ -253,8 +253,7 @@ func_cont:
 
 	}
 
-	DBC_ENSURE((DSP_SUCCEEDED(status) && MEM_IS_VALID_HANDLE((*target_obj),
-							RMM_TARGSIGNATURE))
+	DBC_ENSURE((DSP_SUCCEEDED(status) && *target_obj)
 		   || (DSP_FAILED(status) && *target_obj == NULL));
 
 	return status;
@@ -270,7 +269,7 @@ void rmm_delete(struct rmm_target_obj *target)
 	struct rmm_header *next;
 	u32 i;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(target, RMM_TARGSIGNATURE));
+	DBC_REQUIRE(target);
 
 	kfree(target->seg_tab);
 
@@ -320,7 +319,7 @@ bool rmm_free(struct rmm_target_obj *target, u32 segid, u32 addr, u32 size,
 	struct rmm_ovly_sect *sect;
 	bool ret = true;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(target, RMM_TARGSIGNATURE));
+	DBC_REQUIRE(target);
 
 	DBC_REQUIRE(reserved || segid < target->num_segs);
 	DBC_REQUIRE(reserved || (addr >= target->seg_tab[segid].base &&

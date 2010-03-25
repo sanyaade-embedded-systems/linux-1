@@ -475,8 +475,7 @@ dsp_status drv_create(OUT struct drv_object **phDRVObject)
 		kfree(pdrv_object);
 	}
 
-	DBC_ENSURE(DSP_FAILED(status) ||
-		   MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_ENSURE(DSP_FAILED(status) || pdrv_object);
 	return status;
 }
 
@@ -505,7 +504,7 @@ dsp_status drv_destroy(struct drv_object *hDRVObject)
 	struct drv_object *pdrv_object = (struct drv_object *)hDRVObject;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_REQUIRE(pdrv_object);
 
 	/*
 	 *  Delete the List if it exists.Should not come here
@@ -517,7 +516,7 @@ dsp_status drv_destroy(struct drv_object *hDRVObject)
 	kfree(pdrv_object);
 	/* Update the DRV Object in Registry to be 0 */
 	(void)cfg_set_object(0, REG_DRV_OBJECT);
-	DBC_ENSURE(!MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_ENSURE(!pdrv_object);
 	return status;
 }
 
@@ -536,7 +535,7 @@ dsp_status drv_get_dev_object(u32 index, struct drv_object *hdrv_obj,
 #endif
 	struct dev_object *dev_obj;
 	u32 i;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_obj, SIGNATURE));
+	DBC_REQUIRE(pdrv_obj);
 	DBC_REQUIRE(phDevObject != NULL);
 	DBC_REQUIRE(index >= 0);
 	DBC_REQUIRE(refs > 0);
@@ -685,7 +684,7 @@ dsp_status drv_insert_dev_object(struct drv_object *hDRVObject,
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(hdev_obj != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_REQUIRE(pdrv_object);
 	DBC_ASSERT(pdrv_object->dev_list);
 
 	lst_put_tail(pdrv_object->dev_list, (struct list_head *)hdev_obj);
@@ -710,7 +709,7 @@ dsp_status drv_remove_dev_object(struct drv_object *hDRVObject,
 	struct list_head *cur_elem;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_REQUIRE(pdrv_object);
 	DBC_REQUIRE(hdev_obj != NULL);
 
 	DBC_REQUIRE(pdrv_object->dev_list != NULL);

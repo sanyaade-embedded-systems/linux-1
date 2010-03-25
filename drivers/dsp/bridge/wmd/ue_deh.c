@@ -151,7 +151,7 @@ dsp_status bridge_deh_destroy(struct deh_mgr *hdeh_mgr)
 	dsp_status status = DSP_SOK;
 	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)hdeh_mgr;
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 		/* Release dummy VA buffer */
 		bridge_deh_release_dummy_mem();
 		/* If notification object exists, delete it */
@@ -186,7 +186,7 @@ dsp_status bridge_deh_register_notify(struct deh_mgr *hdeh_mgr, u32 event_mask,
 	dsp_status status = DSP_SOK;
 	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)hdeh_mgr;
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 		if (event_mask)
 			status = ntfy_register(deh_mgr_obj->ntfy_obj,
 				hnotification, event_mask, notify_type);
@@ -215,7 +215,7 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 	u32 cnt = 0;
 
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 		printk(KERN_INFO
 		       "bridge_deh_notify: ********** DEVICE EXCEPTION "
 		       "**********\n");
@@ -387,7 +387,7 @@ dsp_status bridge_deh_get_info(struct deh_mgr *hdeh_mgr,
 	DBC_REQUIRE(deh_mgr_obj);
 	DBC_REQUIRE(pErrInfo);
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 		/* Copy DEH error info structure to PROC error info
 		 * structure. */
 		pErrInfo->dw_err_mask = deh_mgr_obj->err_info.dw_err_mask;

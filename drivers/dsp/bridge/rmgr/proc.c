@@ -230,10 +230,7 @@ proc_attach(u32 processor_id,
 	}
 func_end:
 	DBC_ENSURE((status == DSP_EFAIL && *ph_processor == NULL) ||
-		   (DSP_SUCCEEDED(status) &&
-		    MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) ||
-		   (status == DSP_SALREADYATTACHED &&
-		    MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)));
+			(DSP_SUCCEEDED(status) && p_proc_object));
 
 	return status;
 }
@@ -351,7 +348,7 @@ dsp_status proc_ctrl(void *hprocessor, u32 dw_cmd, IN struct dsp_cbdata * arg)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		/* intercept PWR deep sleep command */
 		if (dw_cmd == WMDIOCTL_DEEPSLEEP) {
 			timeout = arg->cb_data;
@@ -402,7 +399,7 @@ dsp_status proc_detach(struct process_context *pr_ctxt)
 
 	p_proc_object = (struct proc_object *)pr_ctxt->hprocessor;
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		if (p_proc_object->ntfy_obj) {
 			/* Notify the Client */
 			ntfy_notify(p_proc_object->ntfy_obj,
@@ -445,7 +442,7 @@ dsp_status proc_enum_nodes(void *hprocessor, void **node_tab,
 	DBC_REQUIRE(pu_num_nodes != NULL);
 	DBC_REQUIRE(pu_allocated != NULL);
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		if (DSP_SUCCEEDED(dev_get_node_manager(p_proc_object->hdev_obj,
 						       &hnode_mgr))) {
 			if (hnode_mgr) {
@@ -543,7 +540,7 @@ static dsp_status proc_memory_sync(void *hprocessor, void *pmpu_addr,
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto err_out;
 	}
@@ -606,7 +603,7 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 	DBC_REQUIRE(resource_info != NULL);
 	DBC_REQUIRE(resource_info_size >= sizeof(struct dsp_resourceinfo));
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -683,7 +680,7 @@ dsp_status proc_get_dev_object(void *hprocessor,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDevObject != NULL);
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		*phDevObject = p_proc_object->hdev_obj;
 		status = DSP_SOK;
 	} else {
@@ -715,7 +712,7 @@ dsp_status proc_get_state(void *hprocessor,
 	DBC_REQUIRE(proc_state_obj != NULL);
 	DBC_REQUIRE(state_info_size >= sizeof(struct dsp_processorstate));
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		/* First, retrieve BRD state information */
 		status = (*p_proc_object->intf_fxns->pfn_brd_status)
 		    (p_proc_object->hwmd_context, &brd_status);
@@ -839,7 +836,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 	do_gettimeofday(&tv1);
 #endif
 	/* Call the WMD_BRD_Load fxn */
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1096,7 +1093,7 @@ dsp_status proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
 	size_align = PG_ALIGN_HIGH(ul_size + (u32) pmpu_addr - pa_align,
 				   PG_SIZE4K);
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1167,7 +1164,7 @@ dsp_status proc_register_notify(void *hprocessor, u32 event_mask,
 	DBC_REQUIRE(refs > 0);
 
 	/* Check processor handle */
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1241,7 +1238,7 @@ dsp_status proc_reserve_memory(void *hprocessor, u32 ul_size,
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct dmm_rsv_object *rsv_obj;
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1290,7 +1287,7 @@ dsp_status proc_start(void *hprocessor)
 	int brd_state;
 
 	DBC_REQUIRE(refs > 0);
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1368,7 +1365,7 @@ dsp_status proc_stop(void *hprocessor)
 	int brd_state;
 
 	DBC_REQUIRE(refs > 0);
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1435,7 +1432,7 @@ dsp_status proc_un_map(void *hprocessor, void *map_addr,
 	struct dmm_map_object *map_obj;
 
 	va_align = PG_ALIGN_LOW((u32) map_addr, PG_SIZE4K);
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1496,7 +1493,7 @@ dsp_status proc_un_reserve_memory(void *hprocessor, void *prsv_addr,
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct dmm_rsv_object *rsv_obj;
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1556,7 +1553,7 @@ static dsp_status proc_monitor(struct proc_object *p_proc_object)
 	int brd_state;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE));
+	DBC_REQUIRE(p_proc_object);
 
 	/* This is needed only when Device is loaded when it is
 	 * already 'ACTIVE' */
@@ -1639,10 +1636,10 @@ dsp_status proc_notify_clients(void *hProc, u32 uEvents)
 	dsp_status status = DSP_SOK;
 	struct proc_object *p_proc_object = (struct proc_object *)hProc;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE));
+	DBC_REQUIRE(p_proc_object);
 	DBC_REQUIRE(IS_VALID_PROC_EVENT(uEvents));
 	DBC_REQUIRE(refs > 0);
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1666,7 +1663,7 @@ dsp_status proc_notify_all_clients(void *hProc, u32 uEvents)
 	DBC_REQUIRE(IS_VALID_PROC_EVENT(uEvents));
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (!p_proc_object) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -1687,7 +1684,7 @@ dsp_status proc_get_processor_id(void *hProc, u32 * procID)
 	dsp_status status = DSP_SOK;
 	struct proc_object *p_proc_object = (struct proc_object *)hProc;
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE))
+	if (p_proc_object)
 		*procID = p_proc_object->processor_id;
 	else
 		status = DSP_EHANDLE;

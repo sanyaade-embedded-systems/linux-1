@@ -342,7 +342,7 @@ dsp_status nldr_allocate(struct nldr_object *nldr_obj, void *priv_ref,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(node_props != NULL);
 	DBC_REQUIRE(phNldrNode != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(nldr_obj, NLDR_SIGNATURE));
+	DBC_REQUIRE(nldr_obj);
 
 	/* Initialize handle in case of failure */
 	*phNldrNode = NULL;
@@ -424,9 +424,7 @@ dsp_status nldr_allocate(struct nldr_object *nldr_obj, void *priv_ref,
 	if (DSP_FAILED(status) && nldr_node_obj)
 		kfree(nldr_node_obj);
 
-	DBC_ENSURE((DSP_SUCCEEDED(status) &&
-		    MEM_IS_VALID_HANDLE(((struct nldr_nodeobject
-					  *)(*phNldrNode)), NLDR_NODESIGNATURE))
+	DBC_ENSURE((DSP_SUCCEEDED(status) && *phNldrNode)
 		   || (DSP_FAILED(status) && *phNldrNode == NULL));
 	return status;
 }
@@ -605,9 +603,7 @@ dsp_status nldr_create(OUT struct nldr_object **phNldr,
 		*phNldr = NULL;
 	}
 	/* FIXME:Temp. Fix. Must be removed */
-	DBC_ENSURE((DSP_SUCCEEDED(status) &&
-		    MEM_IS_VALID_HANDLE(((struct nldr_object *)*phNldr),
-					NLDR_SIGNATURE))
+	DBC_ENSURE((DSP_SUCCEEDED(status) && *phNldr)
 		   || (DSP_FAILED(status) && (*phNldr == NULL)));
 	return status;
 }
@@ -621,7 +617,7 @@ void nldr_delete(struct nldr_object *nldr_obj)
 	struct ovly_sect *next;
 	u16 i;
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(nldr_obj, NLDR_SIGNATURE));
+	DBC_REQUIRE(nldr_obj);
 
 	nldr_obj->ldr_fxns.exit_fxn();
 	if (nldr_obj->rmm)
@@ -666,7 +662,7 @@ void nldr_delete(struct nldr_object *nldr_obj)
 		kfree(nldr_obj->ovly_table);
 	}
 	kfree(nldr_obj);
-	DBC_ENSURE(!MEM_IS_VALID_HANDLE(nldr_obj, NLDR_SIGNATURE));
+	DBC_ENSURE(!nldr_obj);
 }
 
 /*
@@ -698,7 +694,7 @@ dsp_status nldr_get_fxn_addr(struct nldr_nodeobject *nldr_node_obj,
 	s32 i = 0;
 	struct lib_node root = { NULL, 0, NULL };
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(nldr_node_obj, NLDR_NODESIGNATURE));
+	DBC_REQUIRE(nldr_node_obj);
 	DBC_REQUIRE(pulAddr != NULL);
 	DBC_REQUIRE(pstrFxn != NULL);
 
@@ -788,7 +784,7 @@ dsp_status nldr_get_rmm_manager(struct nldr_object *hNldrObject,
 	struct nldr_object *nldr_obj = hNldrObject;
 	DBC_REQUIRE(phRmmMgr != NULL);
 
-	if (MEM_IS_VALID_HANDLE(hNldrObject, NLDR_SIGNATURE)) {
+	if (hNldrObject) {
 		*phRmmMgr = nldr_obj->rmm;
 	} else {
 		*phRmmMgr = NULL;
@@ -829,7 +825,7 @@ dsp_status nldr_load(struct nldr_nodeobject *nldr_node_obj,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(nldr_node_obj, NLDR_NODESIGNATURE));
+	DBC_REQUIRE(nldr_node_obj);
 
 	nldr_obj = nldr_node_obj->nldr_obj;
 
@@ -891,7 +887,7 @@ dsp_status nldr_unload(struct nldr_nodeobject *nldr_node_obj,
 	s32 i = 0;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(nldr_node_obj, NLDR_NODESIGNATURE));
+	DBC_REQUIRE(nldr_node_obj);
 
 	if (nldr_node_obj != NULL) {
 		if (nldr_node_obj->dynamic) {
@@ -1645,7 +1641,7 @@ static dsp_status remote_alloc(void **pRef, u16 space, u32 size,
 	struct rmm_addr *rmm_addr_obj = (struct rmm_addr *)dspAddr;
 	bool mem_load_req = false;
 	dsp_status status = DSP_EMEMORY;	/* Set to fail */
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hnode, NLDR_NODESIGNATURE));
+	DBC_REQUIRE(hnode);
 	DBC_REQUIRE(space == DBLL_CODE || space == DBLL_DATA ||
 		    space == DBLL_BSS);
 	nldr_obj = hnode->nldr_obj;
@@ -1758,7 +1754,7 @@ static dsp_status remote_free(void **pRef, u16 space, u32 dspAddr,
 	u32 word_size;
 	dsp_status status = DSP_EMEMORY;	/* Set to fail */
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(nldr_obj, NLDR_SIGNATURE));
+	DBC_REQUIRE(nldr_obj);
 
 	rmm = nldr_obj->rmm;
 

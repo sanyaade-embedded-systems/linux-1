@@ -115,7 +115,7 @@ dsp_status strm_allocate_buffer(struct strm_object *hStrm, u32 usize,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(ap_buffer != NULL);
 
-	if (MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (hStrm) {
 		/*
 		 * Allocate from segment specified at time of stream open.
 		 */
@@ -168,7 +168,7 @@ dsp_status strm_close(struct strm_object *hStrm,
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (!hStrm) {
 		status = DSP_EHANDLE;
 	} else {
 		/* Have all buffers been reclaimed? If not, return
@@ -239,8 +239,7 @@ dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
 		delete_strm_mgr(strm_mgr_obj);
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) &&
-		   (MEM_IS_VALID_HANDLE((*phStrmMgr), STRMMGR_SIGNATURE) ||
-		    (DSP_FAILED(status) && *phStrmMgr == NULL)));
+		(*phStrmMgr || (DSP_FAILED(status) && *phStrmMgr == NULL)));
 
 	return status;
 }
@@ -253,11 +252,11 @@ dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
 void strm_delete(struct strm_mgr *strm_mgr_obj)
 {
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(strm_mgr_obj, STRMMGR_SIGNATURE));
+	DBC_REQUIRE(strm_mgr_obj);
 
 	delete_strm_mgr(strm_mgr_obj);
 
-	DBC_ENSURE(!MEM_IS_VALID_HANDLE(strm_mgr_obj, STRMMGR_SIGNATURE));
+	DBC_ENSURE(!strm_mgr_obj);
 }
 
 /*
@@ -290,7 +289,7 @@ dsp_status strm_free_buffer(struct strm_object *hStrm, u8 ** ap_buffer,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(ap_buffer != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE))
+	if (!hStrm)
 		status = DSP_EHANDLE;
 
 	if (DSP_SUCCEEDED(status)) {
@@ -328,7 +327,7 @@ dsp_status strm_get_info(struct strm_object *hStrm,
 	DBC_REQUIRE(stream_info != NULL);
 	DBC_REQUIRE(stream_info_size >= sizeof(struct stream_info));
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (!hStrm) {
 		status = DSP_EHANDLE;
 	} else {
 		if (stream_info_size < sizeof(struct stream_info)) {
@@ -389,7 +388,7 @@ dsp_status strm_idle(struct strm_object *hStrm, bool fFlush)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (!hStrm) {
 		status = DSP_EHANDLE;
 	} else {
 		intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
@@ -437,7 +436,7 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pbuf != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (!hStrm) {
 		status = DSP_EHANDLE;
 	} else {
 		intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
@@ -607,8 +606,7 @@ func_cont:
 	}
 
 	/* ensure we return a documented error code */
-	DBC_ENSURE((DSP_SUCCEEDED(status) &&
-		    MEM_IS_VALID_HANDLE((*phStrm), STRM_SIGNATURE)) ||
+	DBC_ENSURE((DSP_SUCCEEDED(status) && *phStrm) ||
 		   (*phStrm == NULL && (status == DSP_EHANDLE ||
 					status == DSP_EDIRECTION
 					|| status == DSP_EVALUE
@@ -638,7 +636,7 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 	DBC_REQUIRE(pulBytes != NULL);
 	DBC_REQUIRE(pdw_arg != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (!hStrm) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -717,7 +715,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(hnotification != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (!hStrm) {
 		status = DSP_EHANDLE;
 	} else if ((event_mask & ~((DSP_STREAMIOCOMPLETION) |
 				   DSP_STREAMDONE)) != 0) {
@@ -765,7 +763,7 @@ dsp_status strm_select(IN struct strm_object **strm_tab, u32 nStrms,
 
 	*pmask = 0;
 	for (i = 0; i < nStrms; i++) {
-		if (!MEM_IS_VALID_HANDLE(strm_tab[i], STRM_SIGNATURE)) {
+		if (!strm_tab[i]) {
 			status = DSP_EHANDLE;
 			break;
 		}
@@ -838,7 +836,7 @@ static dsp_status delete_strm(struct strm_object *hStrm)
 	struct bridge_drv_interface *intf_fxns;
 	dsp_status status = DSP_SOK;
 
-	if (MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (hStrm) {
 		if (hStrm->chnl_obj) {
 			intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
 			/* Channel close can fail only if the channel handle
@@ -867,6 +865,6 @@ static dsp_status delete_strm(struct strm_object *hStrm)
  */
 static void delete_strm_mgr(struct strm_mgr *strm_mgr_obj)
 {
-	if (MEM_IS_VALID_HANDLE(strm_mgr_obj, STRMMGR_SIGNATURE))
+	if (strm_mgr_obj)
 		kfree(strm_mgr_obj);
 }
