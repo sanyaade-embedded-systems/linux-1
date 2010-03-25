@@ -1274,6 +1274,7 @@ static int omap_vout_release(struct file *file)
 	if ((flg_720 == VIDEO_720_ENABLE) ||
 	    (flg_720 == VIDEO_720_RESIZER_N_STREAMING)) {
 		rsz_put_resource();
+		rsz_configured  = 0;
 		flg_720 = VIDEO_720_DISABLE;
 	}
 
