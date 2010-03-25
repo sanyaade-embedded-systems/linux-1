@@ -27,9 +27,6 @@
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
 
-/*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
-
 /*  ----------------------------------- Mini Driver */
 #include <dspbridge/wmd.h>
 

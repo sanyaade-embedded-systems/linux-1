@@ -28,7 +28,6 @@
 #include <dspbridge/drv.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 #include <dspbridge/cfg.h>
 
 /*  ----------------------------------- specific to this file */

@@ -26,7 +26,6 @@
 #include <dspbridge/dbc.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 #include <dspbridge/drv.h>
 
 /*  ----------------------------------- Link Driver */

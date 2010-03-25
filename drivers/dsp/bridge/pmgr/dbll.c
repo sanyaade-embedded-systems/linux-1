@@ -27,7 +27,6 @@
 #include <dspbridge/gh.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 
 /* Dynamic loader library interface */
 #include <dspbridge/dynamic_loader.h>

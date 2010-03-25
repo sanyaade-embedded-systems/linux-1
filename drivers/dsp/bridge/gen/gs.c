@@ -20,11 +20,11 @@
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
 #include <linux/types.h>
-/*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/gs.h>
+
+#include <linux/slab.h>
 
 /*  ----------------------------------- Globals */
 static u32 cumsize;

@@ -30,7 +30,6 @@
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/cfg.h>
 #include <dspbridge/list.h>
-#include <dspbridge/mem.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/drv.h>

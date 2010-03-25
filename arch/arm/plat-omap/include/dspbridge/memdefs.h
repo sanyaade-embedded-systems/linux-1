@@ -19,13 +19,6 @@
 #ifndef MEMDEFS_
 #define MEMDEFS_
 
-/* Memory Pool Attributes: */
-enum mem_poolattrs {
-	MEM_PAGED = 0,
-	MEM_NONPAGED = 1,
-	MEM_LARGEVIRTMEM = 2
-};
-
 /*
  *  MEM_VIRTUALSEGID is used by Node & Strm to access virtual address space in
  *  the correct client process context.

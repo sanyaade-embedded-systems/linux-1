@@ -31,7 +31,6 @@
 #include <dspbridge/cfg.h>
 #include <dspbridge/ldr.h>
 #include <dspbridge/list.h>
-#include <dspbridge/mem.h>
 
 /*  ----------------------------------- Platform Manager */
 #include <dspbridge/cod.h>

@@ -33,7 +33,6 @@
 #include <dspbridge/errbase.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 #include <dspbridge/sync.h>
 
 /*  ----------------------------------- Platform Manager */

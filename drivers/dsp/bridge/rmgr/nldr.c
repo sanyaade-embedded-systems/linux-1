@@ -24,9 +24,6 @@
 
 #include <dspbridge/dbc.h>
 
-/* OS adaptation layer */
-#include <dspbridge/mem.h>
-
 /* Platform manager */
 #include <dspbridge/cod.h>
 #include <dspbridge/dev.h>

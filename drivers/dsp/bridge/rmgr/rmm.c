@@ -47,7 +47,6 @@
 
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/list.h>
-#include <dspbridge/mem.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/rmm.h>

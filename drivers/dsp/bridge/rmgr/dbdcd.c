@@ -33,9 +33,6 @@
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
 
-/*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
-
 /*  ----------------------------------- Platform Manager */
 #include <dspbridge/cod.h>
 

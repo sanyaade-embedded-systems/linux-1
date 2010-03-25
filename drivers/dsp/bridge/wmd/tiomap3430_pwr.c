@@ -23,9 +23,6 @@
 #include <dspbridge/drv.h>
 #include <dspbridge/io_sm.h>
 
-/*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
-
 /*  ----------------------------------- Platform Manager */
 #include <dspbridge/brddefs.h>
 #include <dspbridge/dev.h>

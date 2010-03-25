@@ -35,7 +35,6 @@
 
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/ldr.h>
-#include <dspbridge/mem.h>
 
 /*  ----------------------------------- Platform Manager */
 /* Include appropriate loader header file */
