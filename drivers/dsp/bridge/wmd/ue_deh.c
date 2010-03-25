@@ -86,7 +86,12 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 		status = DSP_EMEMORY;
 	} else {
 		/* Create an NTFY object to manage notifications */
-		status = ntfy_create(&deh_mgr_obj->ntfy_obj);
+		deh_mgr_obj->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
+							GFP_KERNEL);
+		if (deh_mgr_obj->ntfy_obj)
+			ntfy_init(deh_mgr_obj->ntfy_obj);
+		else
+			status = DSP_EMEMORY;
 
 		/* Create a MMUfault DPC */
 		tasklet_init(&deh_mgr_obj->dpc_tasklet, mmu_fault_dpc,
@@ -139,8 +144,10 @@ dsp_status bridge_deh_destroy(struct deh_mgr *hdeh_mgr)
 		/* Release dummy VA buffer */
 		bridge_deh_release_dummy_mem();
 		/* If notification object exists, delete it */
-		if (deh_mgr_obj->ntfy_obj)
+		if (deh_mgr_obj->ntfy_obj) {
 			(void)ntfy_delete(deh_mgr_obj->ntfy_obj);
+			kfree(deh_mgr_obj->ntfy_obj);
+		}
 		/* Disable DSP MMU fault */
 		free_irq(INT_DSP_MMU_IRQ, deh_mgr_obj);
 

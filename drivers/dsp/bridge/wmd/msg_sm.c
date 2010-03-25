@@ -175,8 +175,14 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 	}
 
 	/* Create a notification list for message ready notification. */
-	if (DSP_SUCCEEDED(status))
-		status = ntfy_create(&msg_q->ntfy_obj);
+	if (DSP_SUCCEEDED(status)) {
+		msg_q->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
+							GFP_KERNEL);
+		if (msg_q->ntfy_obj)
+			ntfy_init(msg_q->ntfy_obj);
+		else
+			status = DSP_EMEMORY;
+	}
 
 	/*  Create events that will be used to synchronize cleanup
 	 *  when the object is deleted. sync_done will be set to
@@ -648,8 +654,10 @@ static void delete_msg_queue(struct msg_queue *msg_queue_obj, u32 uNumToDSP)
 		msg_queue_obj->msg_used_list = NULL;
 	}
 
-	if (msg_queue_obj->ntfy_obj)
+	if (msg_queue_obj->ntfy_obj) {
 		ntfy_delete(msg_queue_obj->ntfy_obj);
+		kfree(msg_queue_obj->ntfy_obj);
+	}
 
 	kfree(msg_queue_obj->sync_event);
 	kfree(msg_queue_obj->sync_done);

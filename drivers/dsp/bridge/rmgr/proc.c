@@ -191,7 +191,13 @@ proc_attach(u32 processor_id,
 	/* This is created with no event mask, no notify mask
 	 * and no valid handle to the notification. They all get
 	 * filled up when proc_register_notify is called */
-	status = ntfy_create(&p_proc_object->ntfy_obj);
+	p_proc_object->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
+							GFP_KERNEL);
+	if (p_proc_object->ntfy_obj)
+		ntfy_init(p_proc_object->ntfy_obj);
+	else
+		status = DSP_EMEMORY;
+
 	if (DSP_SUCCEEDED(status)) {
 		/* Insert the Processor Object into the DEV List.
 		 * Return handle to this Processor Object:
@@ -206,8 +212,10 @@ proc_attach(u32 processor_id,
 			if (p_proc_object->is_already_attached)
 				status = DSP_SALREADYATTACHED;
 		} else {
-			if (p_proc_object->ntfy_obj)
+			if (p_proc_object->ntfy_obj) {
 				ntfy_delete(p_proc_object->ntfy_obj);
+				kfree(p_proc_object->ntfy_obj);
+			}
 
 			MEM_FREE_OBJECT(p_proc_object);
 		}
@@ -402,6 +410,7 @@ dsp_status proc_detach(struct process_context *pr_ctxt)
 				    DSP_PROCESSORDETACH);
 			/* Remove the notification memory */
 			ntfy_delete(p_proc_object->ntfy_obj);
+			kfree(p_proc_object->ntfy_obj);
 		}
 		kfree(p_proc_object->psz_last_coff);
 		p_proc_object->psz_last_coff = NULL;

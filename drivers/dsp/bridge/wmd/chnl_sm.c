@@ -343,6 +343,7 @@ func_cont:
 		spin_unlock_bh(&pchnl->chnl_mgr_obj->chnl_mgr_lock);
 		if (pchnl->ntfy_obj) {
 			ntfy_delete(pchnl->ntfy_obj);
+			kfree(pchnl->ntfy_obj);
 			pchnl->ntfy_obj = NULL;
 		}
 		/* Reset channel event: (NOTE: user_event freed in user
@@ -836,8 +837,14 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 	else
 		status = DSP_EMEMORY;
 
-	if (DSP_SUCCEEDED(status))
-		status = ntfy_create(&pchnl->ntfy_obj);
+	if (DSP_SUCCEEDED(status)) {
+		pchnl->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
+							GFP_KERNEL);
+		if (pchnl->ntfy_obj)
+			ntfy_init(pchnl->ntfy_obj);
+		else
+			status = DSP_EMEMORY;
+	}
 
 	if (DSP_SUCCEEDED(status)) {
 		if (pchnl->pio_completions && pchnl->pio_requests &&
@@ -879,6 +886,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 
 		if (pchnl->ntfy_obj) {
 			ntfy_delete(pchnl->ntfy_obj);
+			kfree(pchnl->ntfy_obj);
 			pchnl->ntfy_obj = NULL;
 		}
 		MEM_FREE_OBJECT(pchnl);

@@ -39,15 +39,6 @@
 #define NTFY_SIGNATURE      0x5946544e	/* "YFTN" */
 
 /*
- *  ======== ntfy_object ========
- */
-struct ntfy_object {
-	u32 dw_signature;	/* For object validation */
-	struct lst_list *notify_list;	/* List of notifier objects */
-	spinlock_t ntfy_lock;	/* For critical sections */
-};
-
-/*
  *  ======== notifier ========
  *  This object will be created when a client registers for events.
  */
@@ -67,45 +58,6 @@ struct notifier {
 
 /*  ----------------------------------- Function Prototypes */
 static void delete_notify(struct notifier *notifier_obj);
-
-/*
- *  ======== ntfy_create ========
- *  Purpose:
- *      Create an empty list of notifications.
- */
-dsp_status ntfy_create(struct ntfy_object **phNtfy)
-{
-	struct ntfy_object *notify_obj;
-	dsp_status status = DSP_SOK;
-
-	DBC_REQUIRE(phNtfy != NULL);
-
-	*phNtfy = NULL;
-	MEM_ALLOC_OBJECT(notify_obj, struct ntfy_object, NTFY_SIGNATURE);
-
-	if (notify_obj) {
-		spin_lock_init(&notify_obj->ntfy_lock);
-
-		notify_obj->notify_list = mem_calloc(sizeof(struct lst_list),
-							MEM_NONPAGED);
-		if (!notify_obj->notify_list) {
-			MEM_FREE_OBJECT(notify_obj);
-			status = DSP_EMEMORY;
-		} else {
-			INIT_LIST_HEAD(&notify_obj->notify_list->head);
-			*phNtfy = notify_obj;
-		}
-
-	} else {
-		status = DSP_EMEMORY;
-	}
-
-	DBC_ENSURE((DSP_FAILED(status) && *phNtfy == NULL) ||
-		   (DSP_SUCCEEDED(status) && MEM_IS_VALID_HANDLE((*phNtfy),
-							 NTFY_SIGNATURE)));
-
-	return status;
-}
 
 /*
  *  ======== ntfy_delete ========
@@ -128,8 +80,6 @@ void ntfy_delete(struct ntfy_object *ntfy_obj)
 		DBC_ASSERT(LST_IS_EMPTY(ntfy_obj->notify_list));
 		kfree(ntfy_obj->notify_list);
 	}
-
-	MEM_FREE_OBJECT(ntfy_obj);
 }
 
 /*

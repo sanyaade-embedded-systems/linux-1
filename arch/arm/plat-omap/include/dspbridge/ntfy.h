@@ -19,23 +19,29 @@
 #ifndef NTFY_
 #define NTFY_
 
-struct ntfy_object;
+#include <dspbridge/list.h>
 
 /*
- *  ======== ntfy_create ========
- *  Purpose:
- *      Create an empty list of notifications.
- *  Parameters:
- *      phNtfy:         Location to store handle on output.
- *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Memory allocation failure.
- *  Requires:
- *      phNtfy != NULL.
- *  Ensures:
- *      DSP_SUCCEEDED(status) <==>  IS_VALID(*phNtfy).
+ *  ======== ntfy_object ========
  */
-extern dsp_status ntfy_create(OUT struct ntfy_object **phNtfy);
+struct ntfy_object {
+	u32 dw_signature;	/* For object validation */
+	struct lst_list *notify_list;	/* List of notifier objects */
+	spinlock_t ntfy_lock;	/* For critical sections */
+};
+
+/**
+ * ntfy_init() - Set the initial state of the ntfy_object structure.
+ * @no:		pointer to ntfy_object structure.
+ *
+ * This function sets the initial state of the ntfy_object in order it
+ * can be used by the other ntfy functions.
+ */
+
+static inline void ntfy_init(struct ntfy_object *no)
+{
+	INIT_LIST_HEAD(&no->notify_list->head);
+}
 
 /*
  *  ======== ntfy_delete ========

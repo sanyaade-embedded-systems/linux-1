@@ -471,8 +471,14 @@ func_cont:
 		pnode->prio = attr_in->prio;
 	}
 	/* Create object to manage notifications */
-	if (DSP_SUCCEEDED(status))
-		status = ntfy_create(&pnode->ntfy_obj);
+	if (DSP_SUCCEEDED(status)) {
+		pnode->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
+							GFP_KERNEL);
+		if (pnode->ntfy_obj)
+			ntfy_init(pnode->ntfy_obj);
+		else
+			status = DSP_EMEMORY;
+	}
 
 	if (DSP_SUCCEEDED(status)) {
 		node_type = node_get_type(pnode);
@@ -1327,7 +1333,12 @@ dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
 			status = DSP_EMEMORY;
 		} else {
 			INIT_LIST_HEAD(&node_mgr_obj->node_list->head);
-			status = ntfy_create(&node_mgr_obj->ntfy_obj);
+			node_mgr_obj->ntfy_obj = kmalloc(
+				sizeof(struct ntfy_object), GFP_KERNEL);
+			if (node_mgr_obj->ntfy_obj)
+				ntfy_init(node_mgr_obj->ntfy_obj);
+			else
+				status = DSP_EMEMORY;
 		}
 		node_mgr_obj->num_created = 0;
 	} else {
@@ -2602,6 +2613,7 @@ static void delete_node(struct node_object *hnode,
 
 	if (hnode->ntfy_obj) {
 		ntfy_delete(hnode->ntfy_obj);
+		kfree(hnode->ntfy_obj);
 		hnode->ntfy_obj = NULL;
 	}
 
@@ -2657,8 +2669,10 @@ static void delete_node_mgr(struct node_mgr *hnode_mgr)
 			kfree(hnode_mgr->node_list);
 		}
 		mutex_destroy(&hnode_mgr->node_mgr_lock);
-		if (hnode_mgr->ntfy_obj)
+		if (hnode_mgr->ntfy_obj) {
 			ntfy_delete(hnode_mgr->ntfy_obj);
+			kfree(hnode_mgr->ntfy_obj);
+		}
 
 		if (hnode_mgr->pipe_map)
 			gb_delete(hnode_mgr->pipe_map);
