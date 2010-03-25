@@ -173,8 +173,12 @@ dsp_status bridge_deh_register_notify(struct deh_mgr *hdeh_mgr, u32 event_mask,
 	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)hdeh_mgr;
 
 	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
-		status = ntfy_register(deh_mgr_obj->ntfy_obj, hnotification,
-				       event_mask, notify_type);
+		if (event_mask)
+			status = ntfy_register(deh_mgr_obj->ntfy_obj,
+				hnotification, event_mask, notify_type);
+		else
+			status = ntfy_unregister(deh_mgr_obj->ntfy_obj,
+							hnotification);
 	}
 
 	return status;

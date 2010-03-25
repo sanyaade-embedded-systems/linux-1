@@ -19,16 +19,47 @@
 #ifndef NTFY_
 #define NTFY_
 
-#include <dspbridge/list.h>
+#include <dspbridge/host_os.h>
+#include <dspbridge/dbdefs.h>
+#include <dspbridge/errbase.h>
+#include <dspbridge/sync.h>
 
-/*
- *  ======== ntfy_object ========
+/**
+ * ntfy_object - head structure to nofify dspbridge events
+ * @head:	List of notify objects
+ * @ntfy_lock:	lock for list access.
+ *
  */
 struct ntfy_object {
-	u32 dw_signature;	/* For object validation */
-	struct lst_list *notify_list;	/* List of notifier objects */
+	struct raw_notifier_head head;/* List of notifier objects */
 	spinlock_t ntfy_lock;	/* For critical sections */
 };
+
+/**
+ * ntfy_event - structure store specify event to be notified
+ * @noti_block:	List of notify objects
+ * @event:	event that it respond
+ * @type: 	event type (only DSP_SIGNALEVENT supported)
+ * @sync_obj:	sync_event used to set the event
+ *
+ */
+struct ntfy_event {
+	struct notifier_block noti_block;
+	u32 event;	/* Events to be notified about */
+	u32 type;	/* Type of notification to be sent */
+	struct sync_object sync_obj;
+};
+
+
+/**
+ * dsp_notifier_event() - callback function to nofity events
+ * @this:		pointer to itself struct notifier_block
+ * @event:	event to be notified.
+ * @data:		Currently not used.
+ *
+ */
+int dsp_notifier_event(struct notifier_block *this, unsigned long event,
+			   void *data);
 
 /**
  * ntfy_init() - Set the initial state of the ntfy_object structure.
@@ -40,65 +71,148 @@ struct ntfy_object {
 
 static inline void ntfy_init(struct ntfy_object *no)
 {
-	INIT_LIST_HEAD(&no->notify_list->head);
+	spin_lock_init(&no->ntfy_lock);
+	RAW_INIT_NOTIFIER_HEAD(&no->head);
 }
 
-/*
- *  ======== ntfy_delete ========
- *  Purpose:
- *      Free resources allocated in ntfy_create.
- *  Parameters:
- *      ntfy_obj:  Handle returned from ntfy_create().
- *  Returns:
- *  Requires:
- *      IS_VALID(ntfy_obj).
- *  Ensures:
+/**
+ * ntfy_delete() - delete list of nofy events registered.
+ * @ntfy_obj:	Pointer to the ntfy object structure.
+ *
+ * This function is used to remove all the notify events  registered.
+ * unregister function is not needed in this function, to unregister
+ * a ntfy_event please look at ntfy_register function.
+ *
  */
-extern void ntfy_delete(IN struct ntfy_object *ntfy_obj);
+static inline void ntfy_delete(struct ntfy_object *ntfy_obj)
+{
+	struct ntfy_event *ne;
+	struct notifier_block *nb;
 
-/*
- *  ======== ntfy_notify ========
- *  Purpose:
- *      Execute notify function (signal event or post message) for every
- *      element in the notification list that is to be notified about the
- *      event specified in event_mask.
- *  Parameters:
- *      ntfy_obj:      Handle returned from ntfy_create().
- *      event_mask: The type of event that has occurred.
- *  Returns:
- *  Requires:
- *      IS_VALID(ntfy_obj).
- *  Ensures:
+	spin_lock_bh(&ntfy_obj->ntfy_lock);
+	nb = ntfy_obj->head.head;
+	while (nb) {
+		ne = container_of(nb, struct ntfy_event, noti_block);
+		nb = nb->next;
+		kfree(ne);
+	}
+	spin_unlock_bh(&ntfy_obj->ntfy_lock);
+}
+
+/**
+ * ntfy_notify() - nofity all event register for an specific event.
+ * @ntfy_obj:	Pointer to the ntfy_object structure.
+ * @event:	event to be notified.
+ *
+ * This function traverses all the ntfy events registers and
+ * set the event with mach with @event.
  */
-extern void ntfy_notify(IN struct ntfy_object *ntfy_obj, IN u32 event_mask);
+static inline void ntfy_notify(struct ntfy_object *ntfy_obj, u32 event)
+{
+	spin_lock_bh(&ntfy_obj->ntfy_lock);
+	raw_notifier_call_chain(&ntfy_obj->head, event, NULL);
+	spin_unlock_bh(&ntfy_obj->ntfy_lock);
+}
 
-/*
- *  ======== ntfy_register ========
- *  Purpose:
- *      Add a notification element to the list. If the notification is already
- *      registered, and event_mask != 0, the notification will get posted for
- *      events specified in the new event mask. If the notification is already
- *      registered and event_mask == 0, the notification will be unregistered.
- *  Parameters:
- *      ntfy_obj:              Handle returned from ntfy_create().
- *      hnotification:      Handle to a dsp_notification object.
- *      event_mask:         Events to be notified about.
- *      notify_type:        Type of notification: DSP_SIGNALEVENT.
- *  Returns:
- *      DSP_SOK:            Success.
- *      DSP_EMEMORY:        Insufficient memory.
- *      DSP_EVALUE:         event_mask is 0 and hnotification was not
- *                          previously registered.
- *      DSP_EHANDLE:        NULL hnotification, hnotification event name
- *                          too long, or hnotification event name NULL.
- *  Requires:
- *      IS_VALID(ntfy_obj).
- *      hnotification != NULL.
- *      notify_type is DSP_SIGNALEVENT
- *  Ensures:
+
+
+/**
+ * ntfy_init() - Create and initialize a ntfy_event structure.
+ * @event:	event that the ntfy event will respond
+ * @type		event type (only DSP_SIGNALEVENT supported)
+ *
+ * This function create a ntfy_event element and sets the event it will
+ * respond the ntfy_event in order it can be used by the other ntfy functions.
+ * In case of success it will return a pointer to the ntfy_event struct
+ * created. Otherwise it will return NULL;
  */
-extern dsp_status ntfy_register(IN struct ntfy_object *ntfy_obj,
-				IN struct dsp_notification *hnotification,
-				IN u32 event_mask, IN u32 notify_type);
 
-#endif /* NTFY_ */
+static inline struct ntfy_event *ntfy_event_create(u32 event, u32 type)
+{
+	struct ntfy_event *ne;
+	ne = kmalloc(sizeof(struct ntfy_event), GFP_KERNEL);
+	if (ne) {
+		sync_init_event(&ne->sync_obj);
+		ne->noti_block.notifier_call = dsp_notifier_event;
+		ne->event = event;
+		ne->type = type;
+	}
+	return ne;
+}
+
+/**
+ * ntfy_register() - register new ntfy_event into a given ntfy_object
+ * @ntfy_obj:	Pointer to the ntfy_object structure.
+ * @noti:		Pointer to the handle to be returned to the user space.
+ * @event	event that the ntfy event will respond
+ * @type		event type (only DSP_SIGNALEVENT supported)
+ *
+ * This function register a new ntfy_event into the ntfy_object list,
+ * which will respond to the @event passed.
+ * This function will return DSP_SOK in case of error.
+ * DSP_EHANDLE in case of bad pointers and
+ * DSP_EMemory in case of no memory to create ntfy_event.
+ */
+static  inline dsp_status ntfy_register(struct ntfy_object *ntfy_obj,
+			 struct dsp_notification *noti,
+			 u32 event, u32 type)
+{
+	struct ntfy_event *ne;
+	dsp_status status = DSP_SOK;
+
+	if (!noti || !ntfy_obj) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
+	if (!event) {
+		status = DSP_EINVALIDARG;
+		goto func_end;
+	}
+	ne = ntfy_event_create(event, type);
+	if (!ne) {
+		status = DSP_EMEMORY;
+		goto func_end;
+	}
+	noti->handle = &ne->sync_obj;
+
+	spin_lock_bh(&ntfy_obj->ntfy_lock);
+	raw_notifier_chain_register(&ntfy_obj->head, &ne->noti_block);
+	spin_unlock_bh(&ntfy_obj->ntfy_lock);
+func_end:
+	return status;
+}
+
+/**
+ * ntfy_unregister() - unregister a ntfy_event from a given ntfy_object
+ * @ntfy_obj:	Pointer to the ntfy_object structure.
+ * @noti:		Pointer to the event that will be removed.
+ *
+ * This function unregister a ntfy_event from the ntfy_object list,
+ * @noti contains the event which is wanted to be removed.
+ * This function will return DSP_SOK in case of error.
+ * DSP_EHANDLE in case of bad pointers and
+ * DSP_EMemory in case of no memory to create ntfy_event.
+ */
+static  inline dsp_status ntfy_unregister(struct ntfy_object *ntfy_obj,
+			 struct dsp_notification *noti)
+{
+	dsp_status status = DSP_SOK;
+	struct ntfy_event *ne;
+
+	if (!noti || !ntfy_obj) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
+
+	ne = container_of((struct sync_object *)noti, struct ntfy_event,
+								sync_obj);
+	spin_lock_bh(&ntfy_obj->ntfy_lock);
+	raw_notifier_chain_unregister(&ntfy_obj->head,
+						&ne->noti_block);
+	kfree(ne);
+	spin_unlock_bh(&ntfy_obj->ntfy_lock);
+func_end:
+	return status;
+}
+
+#endif				/* NTFY_ */

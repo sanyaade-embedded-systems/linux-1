@@ -533,9 +533,12 @@ dsp_status bridge_msg_register_notify(struct msg_queue *msg_queue_obj,
 		goto func_end;
 	}
 
-	status =
-	    ntfy_register(msg_queue_obj->ntfy_obj, hnotification, event_mask,
-			  notify_type);
+	if (event_mask)
+		status = ntfy_register(msg_queue_obj->ntfy_obj, hnotification,
+						event_mask, notify_type);
+	else
+		status = ntfy_unregister(msg_queue_obj->ntfy_obj,
+							hnotification);
 
 	if (status == DSP_EVALUE) {
 		/*  Not registered. Ok, since we couldn't have known. Node

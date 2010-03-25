@@ -920,8 +920,11 @@ dsp_status bridge_chnl_register_notify(struct chnl_object *chnl_obj,
 
 	DBC_ASSERT(!(event_mask & ~(DSP_STREAMDONE | DSP_STREAMIOCOMPLETION)));
 
-	status = ntfy_register(chnl_obj->ntfy_obj, hnotification, event_mask,
-			       notify_type);
+	if (event_mask)
+		status = ntfy_register(chnl_obj->ntfy_obj, hnotification,
+						event_mask, notify_type);
+	else
+		status = ntfy_unregister(chnl_obj->ntfy_obj, hnotification);
 
 	return status;
 }
