@@ -685,7 +685,7 @@ int fm_mixer_init(struct fmdrv_ops *fmdev)
 
 	/* Add FM mixer controls to the card */
 	strcpy(fmdev->card->mixername, FM_DRV_MIXER_NAME);
-	for (idx = 0; idx < ARRAY_SIZE(snd_fm_controls); idx++) {
+	for (idx = 0; idx < NO_OF_ENTRIES_IN_ARRAY(snd_fm_controls); idx++) {
 		ret = snd_ctl_add(fmdev->card,
 				  snd_ctl_new1(&snd_fm_controls[idx], fmdev));
 		if (ret < 0) {
@@ -705,9 +705,9 @@ int fm_mixer_init(struct fmdrv_ops *fmdev)
 		return ret;
 	}
 
-	strcpy(fmdev->card->driver, FM_DRV_CARD_NAME);
-	strcpy(fmdev->card->shortname, FM_DRV_CARD_NAME);
-	sprintf(fmdev->card->longname, FM_DRV_CARD_NAME);
+	strcpy(fmdev->card->driver, FM_DRV_NAME);
+	strcpy(fmdev->card->shortname, FM_DRV_CARD_SHORT_NAME);
+	sprintf(fmdev->card->longname, FM_DRV_CARD_LONG_NAME);
 
 	FMDRV_API_EXIT(0);
 	return 0;

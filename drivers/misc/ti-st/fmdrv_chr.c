@@ -205,7 +205,7 @@ static struct sk_buff *convert2_channel_4(struct sk_buff *ch8_skb)
 		ch4_skb->data[chan4_index++] = *ptr;
 		ptr++;
 	}
-
+	kfree(chan4_mem);
 	/* plen would be chan8_index - pkt_type - evt code */
 	ch4_skb->data[CHAN4_PLEN_POS] =
 	    chan8_index - CHAN4_PKT_TYPE_SIZE - CHAN4_EVT_TYPE_SIZE;
@@ -333,22 +333,24 @@ long fm_rx_task(void)
 	FM_CHR_DRV_START();
 
 	skb = NULL;
-
 	spin_lock(&fm_chr_dev->lock);
 
-	/* Dequeue the skb received from the FM_ST interface */
-	if (!skb_queue_empty(&fm_chr_dev->rx_q))
-		skb = skb_dequeue(&fm_chr_dev->rx_q);
-	else {
+	if (skb_queue_empty(&fm_chr_dev->rx_q)) {
 		FM_CHR_DRV_ERR(" Rx Queue empty ");
 		spin_unlock(&fm_chr_dev->lock);
+		return FM_CHR_DRV_ERR_FAILURE;
+	}
 
+	/* Dequeue the skb received from the FM_ST interface */
+	skb = skb_dequeue(&fm_chr_dev->rx_q);
+	if (skb == NULL) {
+		FM_CHR_DRV_ERR(" Dequeued skb from Rx queue is NULL ");
+		spin_unlock(&fm_chr_dev->lock);
 		return FM_CHR_DRV_ERR_FAILURE;
 	}
 
 	/* Send a signal to TI FM stack when an Interrupt packet arrives */
-	if (skb != NULL
-	    && skb->data[CHAN8_RESP_FM_OPCODE_POS] == CHAN8_FM_INTERRUPT) {
+	if (skb->data[CHAN8_RESP_FM_OPCODE_POS] == CHAN8_FM_INTERRUPT) {
 		FM_CHR_DRV_VER(" Interrupt arrived: ");
 
 #ifdef VERBOSE
@@ -600,7 +602,7 @@ ssize_t fm_chr_read(struct file *fil, char __user *data, size_t size,
 	}
 #ifdef VERBOSE
 	printk(KERN_INFO "Read: Before conversion\n");
-	for (len = 0; (skb != NULL) && len < skb->len; len++)
+	for (len = 0; len < skb->len; len++)
 		printk(KERN_INFO "0x%02x ", skb->data[len]);
 	printk("\n");
 #endif
