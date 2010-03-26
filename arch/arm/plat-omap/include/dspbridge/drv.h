@@ -482,4 +482,37 @@ extern void mem_flush_cache(void *pMemBuf, u32 byte_size, s32 FlushType);
 extern void mem_free_phys_mem(void *pVirtualAddress,
 			      u32 pPhysicalAddress, u32 byte_size);
 
+/*
+ *  ======== MEM_LINEAR_ADDRESS ========
+ *  Purpose:
+ *      Get the linear address corresponding to the given physical address.
+ *  Parameters:
+ *      pPhysAddr:  Physical address to be mapped.
+ *      byte_size:     Number of bytes in physical range to map.
+ *  Returns:
+ *      The corresponding linear address, or NULL if unsuccessful.
+ *  Requires:
+ *      MEM initialized.
+ *  Ensures:
+ *  Notes:
+ *      If valid linear address is returned, be sure to call
+ *      MEM_UNMAP_LINEAR_ADDRESS().
+ */
+#define MEM_LINEAR_ADDRESS(pPhyAddr, byte_size) pPhyAddr
+
+/*
+ *  ======== MEM_UNMAP_LINEAR_ADDRESS ========
+ *  Purpose:
+ *      Unmap the linear address mapped in MEM_LINEAR_ADDRESS.
+ *  Parameters:
+ *      pBaseAddr: Ptr to mapped memory (as returned by MEM_LINEAR_ADDRESS()).
+ *  Returns:
+ *  Requires:
+ *      - MEM initialized.
+ *      - pBaseAddr is a valid linear address mapped in MEM_LINEAR_ADDRESS.
+ *  Ensures:
+ *      - pBaseAddr no longer points to a valid linear address.
+ */
+#define MEM_UNMAP_LINEAR_ADDRESS(pBaseAddr) {}
+
 #endif /* DRV_ */
