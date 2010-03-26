@@ -29,6 +29,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/i2c/twl.h>
+#include <linux/clk.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -56,6 +57,7 @@ struct twl6040_data {
 	struct snd_pcm_hw_constraint_list *sysclk_constraints;
 	struct completion ready;
 	int configure;
+	struct clk *clk;
 };
 
 /*
@@ -1438,6 +1440,15 @@ static int __devinit abe_twl6040_codec_probe(struct platform_device *pdev)
 		}
 	}
 
+	priv->clk = clk_get(&pdev->dev, "aess_fclk");
+	if (IS_ERR(priv->clk)) {
+		ret = PTR_ERR(priv->clk);
+		dev_err(&pdev->dev, "unable to get aess_fclk: %d\n", ret);
+		goto clk_err;
+	}
+
+	clk_enable(priv->clk);
+
 	/* init vio registers */
 	twl6040_init_vio_regs(codec);
 
@@ -1467,6 +1478,9 @@ irq_err:
 	if (naudint)
 		free_irq(naudint, codec);
 gpio2_err:
+	clk_disable(priv->clk);
+	clk_put(priv->clk);
+clk_err:
 	if (gpio_is_valid(audpwron))
 		gpio_free(audpwron);
 gpio1_err:
@@ -1487,6 +1501,9 @@ static int __devexit abe_twl6040_codec_remove(struct platform_device *pdev)
 
 	if (naudint)
 		free_irq(naudint, twl6040_codec);
+
+	clk_disable(priv->clk);
+	clk_put(priv->clk);
 
 	snd_soc_unregister_dais(abe_dai, ARRAY_SIZE(abe_dai));
 	snd_soc_unregister_codec(twl6040_codec);
