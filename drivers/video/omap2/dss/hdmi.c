@@ -254,14 +254,16 @@ static void hdmi_disable_display(struct omap_dss_device *dssdev)
 
 	dssdev->driver->disable(dssdev);
 
-	dispc_enable_lcd_out(0);
-
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dss_select_clk_source(0, 0);
+	dispc_go(OMAP_DSS_CHANNEL_LCD);
+	while(dispc_go_busy(OMAP_DSS_CHANNEL_LCD));
 	dsi_pll_uninit();
 	enable_vpll2_power(0);
 	dss_clk_disable(DSS_CLK_FCK2);
 #endif
+
+	dispc_enable_lcd_out(0);
 
 	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
@@ -281,14 +283,16 @@ static int hdmi_display_suspend(struct omap_dss_device *dssdev)
 	if (dssdev->driver->suspend)
 		dssdev->driver->suspend(dssdev);
 
-	dispc_enable_lcd_out(0);
-
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	dss_select_clk_source(0, 0);
+	dispc_go(OMAP_DSS_CHANNEL_LCD);
+	while(dispc_go_busy(OMAP_DSS_CHANNEL_LCD));
 	dsi_pll_uninit();
 	enable_vpll2_power(0);
 	dss_clk_disable(DSS_CLK_FCK2);
 #endif
+
+	dispc_enable_lcd_out(0);
 
 	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
@@ -328,24 +332,25 @@ static int hdmi_display_resume(struct omap_dss_device *dssdev)
 	if (dssdev->driver->resume) {
 		r = dssdev->driver->resume(dssdev);
 		if (r)
-			goto err1;
+			goto err0;
 	}
 
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 
 	return 0;
 
-err1:
-	dispc_enable_lcd_out(0);
-
-#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 err0:
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	DSSERR("<%s!!> err0: failed to init DSI_PLL = %d\n", __func__, r);
 	dss_select_clk_source(0, 0);
+	dispc_go(OMAP_DSS_CHANNEL_LCD);
+	while(dispc_go_busy(OMAP_DSS_CHANNEL_LCD));
 	dsi_pll_uninit();
 	dss_clk_disable(DSS_CLK_FCK2);
 	enable_vpll2_power(0);
 #endif
+	dispc_enable_lcd_out(0);
+
 	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
 	return r;
 
