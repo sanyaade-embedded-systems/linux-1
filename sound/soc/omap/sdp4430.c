@@ -34,6 +34,7 @@
 #include "omap-mcpdm.h"
 #include "omap-pcm.h"
 #include "../codecs/twl6040.h"
+#include "../codecs/abe-twl6040.h"
 
 static int twl6040_power_mode;
 
