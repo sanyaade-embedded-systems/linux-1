@@ -34,6 +34,7 @@
 #include "omap-mcpdm.h"
 #include "omap-pcm.h"
 #include "../codecs/twl6040.h"
+#include "../codecs/abe-twl6040.h"
 
 static struct snd_soc_dai_link sdp4430_dai;
 static struct snd_soc_card snd_soc_sdp4430;
