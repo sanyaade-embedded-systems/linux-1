@@ -89,7 +89,7 @@ static const u8 twl6040_reg[TWL6040_CACHEREGNUM] = {
 	0x00, /* TWL6040_VIBDATR	0x1B	*/
 	0x00, /* TWL6040_HKCTL1		0x1C	*/
 	0x00, /* TWL6040_HKCTL2		0x1D	*/
-	0x00, /* TWL6040_GPOCTL		0x1E	*/
+	0x02, /* TWL6040_GPOCTL		0x1E	*/
 	0x00, /* TWL6040_ALB		0x1F	*/
 	0x00, /* TWL6040_DLB		0x20	*/
 	0x00, /* not used		0x21	*/
@@ -201,7 +201,7 @@ static int twl6040_read_reg_volatile(struct snd_soc_codec *codec,
 	if (reg >= TWL6040_CACHEREGNUM)
 		return -EIO;
 
-	twl_i2c_read_u8(TWL4030_MODULE_AUDIO_VOICE, &value, reg);
+	twl_i2c_read_u8(TWL_MODULE_AUDIO_VOICE, &value, reg);
 	twl6040_write_reg_cache(codec, reg, value);
 
 	return value;
@@ -217,7 +217,7 @@ static int twl6040_write(struct snd_soc_codec *codec,
 		return -EIO;
 
 	twl6040_write_reg_cache(codec, reg, value);
-	return twl_i2c_write_u8(TWL4030_MODULE_AUDIO_VOICE, value, reg);
+	return twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, value, reg);
 }
 
 static void twl6040_init_vio_regs(struct snd_soc_codec *codec)
@@ -380,7 +380,7 @@ static irqreturn_t twl6040_naudint_handler(int irq, void *data)
 	struct twl6040_data *priv = codec->private_data;
 	u8 intid;
 
-	twl_i2c_read_u8(TWL4030_MODULE_AUDIO_VOICE, &intid, TWL6040_REG_INTID);
+	twl_i2c_read_u8(TWL_MODULE_AUDIO_VOICE, &intid, TWL6040_REG_INTID);
 
 	switch (intid) {
 	case TWL6040_THINT:
@@ -643,7 +643,7 @@ static int twl6040_power_up_completion(struct snd_soc_codec *codec,
 				msecs_to_jiffies(48));
 
 	if (!time_left) {
-		twl_i2c_read_u8(TWL4030_MODULE_AUDIO_VOICE, &intid,
+		twl_i2c_read_u8(TWL_MODULE_AUDIO_VOICE, &intid,
 							TWL6040_REG_INTID);
 		if (!(intid & TWL6040_READYINT)) {
 			dev_err(codec->dev, "timeout waiting for READYINT\n");
@@ -1028,17 +1028,7 @@ static int twl6040_probe(struct platform_device *pdev)
 				ARRAY_SIZE(twl6040_snd_controls));
 	twl6040_add_widgets(codec);
 
-	if (ret < 0) {
-		dev_err(&pdev->dev, "failed to register card\n");
-		goto card_err;
-	}
-
-	return ret;
-
-card_err:
-	snd_soc_free_pcms(socdev);
-	snd_soc_dapm_free(socdev);
-	return ret;
+	return 0;
 }
 
 static int twl6040_remove(struct platform_device *pdev)
