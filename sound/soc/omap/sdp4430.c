@@ -31,7 +31,7 @@
 #include <plat/mux.h>
 
 #include "mcpdm.h"
-#include "omap-mcpdm.h"
+#include "omap-abe.h"
 #include "omap-pcm.h"
 #include "../codecs/twl6040.h"
 #include "../codecs/abe-twl6040.h"
@@ -162,21 +162,51 @@ static int sdp4430_twl6040_init(struct snd_soc_codec *codec)
 }
 
 /* Digital audio interface glue - connects codec <--> CPU */
-static struct snd_soc_dai_link sdp4430_dai = {
-	.name = "ABE-TWL6040",
-	.stream_name = "ABE-TWL6040",
-	.cpu_dai = &omap_mcpdm_dai,
-	.codec_dai = &abe_dai,
-	.init = sdp4430_twl6040_init,
-	.ops = &sdp4430_ops,
+static struct snd_soc_dai_link sdp4430_dai[] = {
+	{
+		.name = "abe-twl6040",
+		.stream_name = "Multimedia",
+		.cpu_dai = &omap_abe_dai[OMAP_ABE_MM_DAI],
+		.codec_dai = &abe_dai[0],
+		.init = sdp4430_twl6040_init,
+		.ops = &sdp4430_ops,
+	},
+	{
+		.name = "abe-twl6040",
+		.stream_name = "Tones DL",
+		.cpu_dai = &omap_abe_dai[OMAP_ABE_TONES_DL_DAI],
+		.codec_dai = &abe_dai[1],
+		.ops = &sdp4430_ops,
+	},
+	{
+		.name = "abe-twl6040",
+		.stream_name = "Voice",
+		.cpu_dai = &omap_abe_dai[OMAP_ABE_VOICE_DAI],
+		.codec_dai = &abe_dai[2],
+		.ops = &sdp4430_ops,
+	},
+	{
+		.name = "abe-twl6040",
+		.stream_name = "Digital Uplink",
+		.cpu_dai = &omap_abe_dai[OMAP_ABE_DIG_UPLINK_DAI],
+		.codec_dai = &abe_dai[3],
+		.ops = &sdp4430_ops,
+	},
+	{
+		.name = "abe-twl6040",
+		.stream_name = "Vibrator",
+		.cpu_dai = &omap_abe_dai[OMAP_ABE_VIB_DAI],
+		.codec_dai = &abe_dai[4],
+		.ops = &sdp4430_ops,
+	},
 };
 
 /* Audio machine driver */
 static struct snd_soc_card snd_soc_sdp4430 = {
 	.name = "SDP4430",
 	.platform = &omap_soc_platform,
-	.dai_link = &sdp4430_dai,
-	.num_links = 1,
+	.dai_link = sdp4430_dai,
+	.num_links = ARRAY_SIZE(sdp4430_dai),
 };
 
 /* Audio subsystem */
