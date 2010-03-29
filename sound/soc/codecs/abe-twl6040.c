@@ -1,5 +1,5 @@
 /*
- * ALSA SoC TWL6040 codec driver
+ * ALSA SoC ABE-TWL6040 codec driver
  *
  * Author:	 Misael Lopez Cruz <x0052729@ti.com>
  *
@@ -38,9 +38,10 @@
 #include <sound/tlv.h>
 
 #include "twl6040.h"
+#include "abe-twl6040.h"
+#include "abe/abe_main.h"
 
-#define TWL6040_RATES	 (SNDRV_PCM_RATE_88200 | SNDRV_PCM_RATE_96000)
-#define TWL6040_FORMATS	 (SNDRV_PCM_FMTBIT_S32_LE)
+#define ABE_FORMATS	 (SNDRV_PCM_FMTBIT_S32_LE)
 
 /* codec private data */
 struct twl6040_data {
@@ -53,6 +54,7 @@ struct twl6040_data {
 	unsigned int sysclk;
 	struct snd_pcm_hw_constraint_list *sysclk_constraints;
 	struct completion ready;
+	int configure;
 };
 
 /*
@@ -252,6 +254,18 @@ static void twl6040_init_vdd_regs(struct snd_soc_codec *codec)
 		reg = twl6040_vdd_reg[i];
 		twl6040_write(codec, reg, cache[reg]);
 	}
+}
+
+static void abe_init_chip(struct snd_soc_codec *codec)
+{
+	abe_opp_t OPP = ABE_OPP100;
+
+	abe_init_mem();
+	abe_reset_hal();
+	/* Config OPP 100 for now */
+	abe_set_opp_processing(OPP);
+	/* "tick" of the audio engine */
+	abe_write_event_generator(EVENT_TIMER);
 }
 
 /* twl6040 codec manual power-up sequence */
@@ -639,7 +653,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"HFR", NULL, "Handsfree Right Driver"},
 };
 
-static int twl6040_add_widgets(struct snd_soc_codec *codec)
+static int abe_twl6040_add_widgets(struct snd_soc_codec *codec)
 {
 	snd_soc_dapm_new_controls(codec, twl6040_dapm_widgets,
 				 ARRAY_SIZE(twl6040_dapm_widgets));
@@ -675,7 +689,7 @@ static int twl6040_power_up_completion(struct snd_soc_codec *codec,
 	return 0;
 }
 
-static int twl6040_set_bias_level(struct snd_soc_codec *codec,
+static int abe_twl6040_set_bias_level(struct snd_soc_codec *codec,
 				enum snd_soc_bias_level level)
 {
 	struct twl6040_data *priv = codec->private_data;
@@ -747,8 +761,8 @@ static int twl6040_set_bias_level(struct snd_soc_codec *codec,
 /* set of rates for each pll: low-power and high-performance */
 
 static unsigned int lp_rates[] = {
-	88200,
-	96000,
+	44100,
+	48000,
 };
 
 static struct snd_pcm_hw_constraint_list lp_constraints = {
@@ -757,111 +771,15 @@ static struct snd_pcm_hw_constraint_list lp_constraints = {
 };
 
 static unsigned int hp_rates[] = {
-	96000,
+	8000,
+	16000,
+	48000,
 };
 
 static struct snd_pcm_hw_constraint_list hp_constraints = {
 	.count	= ARRAY_SIZE(hp_rates),
 	.list	= hp_rates,
 };
-
-static int twl6040_startup(struct snd_pcm_substream *substream,
-			struct snd_soc_dai *dai)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->card->codec;
-	struct twl6040_data *priv = codec->private_data;
-
-	if (!priv->sysclk) {
-		dev_err(codec->dev,
-			"no mclk configured, call set_sysclk() on init\n");
-		return -EINVAL;
-	}
-
-	/*
-	 * capture is not supported at 17.64 MHz,
-	 * it's reserved for headset low-power playback scenario
-	 */
-	if ((priv->sysclk == 17640000) && substream->stream) {
-		dev_err(codec->dev,
-			"capture mode is not supported at %dHz\n",
-			priv->sysclk);
-		return -EINVAL;
-	}
-
-	snd_pcm_hw_constraint_list(substream->runtime, 0,
-				SNDRV_PCM_HW_PARAM_RATE,
-				priv->sysclk_constraints);
-
-	return 0;
-}
-
-static int twl6040_hw_params(struct snd_pcm_substream *substream,
-			struct snd_pcm_hw_params *params,
-			struct snd_soc_dai *dai)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->card->codec;
-	struct twl6040_data *priv = codec->private_data;
-	u8 lppllctl;
-	int rate;
-
-	/* nothing to do for high-perf pll, it supports only 48 kHz */
-	if (priv->pll == TWL6040_HPPLL_ID)
-		return 0;
-
-	lppllctl = twl6040_read_reg_cache(codec, TWL6040_REG_LPPLLCTL);
-
-	rate = params_rate(params);
-	switch (rate) {
-	case 88200:
-		lppllctl |= TWL6040_LPLLFIN;
-		priv->sysclk = 17640000;
-		break;
-	case 96000:
-		lppllctl &= ~TWL6040_LPLLFIN;
-		priv->sysclk = 19200000;
-		break;
-	default:
-		dev_err(codec->dev, "unsupported rate %d\n", rate);
-		return -EINVAL;
-	}
-
-	twl6040_write(codec, TWL6040_REG_LPPLLCTL, lppllctl);
-
-	return 0;
-}
-
-static int twl6040_trigger(struct snd_pcm_substream *substream,
-			int cmd, struct snd_soc_dai *dai)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_device *socdev = rtd->socdev;
-	struct snd_soc_codec *codec = socdev->card->codec;
-	struct twl6040_data *priv = codec->private_data;
-
-	switch (cmd) {
-	case SNDRV_PCM_TRIGGER_START:
-	case SNDRV_PCM_TRIGGER_RESUME:
-		/*
-		 * low-power playback mode is restricted
-		 * for headset path only
-		 */
-		if ((priv->sysclk == 17640000) && priv->non_lp) {
-			dev_err(codec->dev,
-				"some enabled paths aren't supported at %dHz\n",
-				priv->sysclk);
-			return -EPERM;
-		}
-		break;
-	default:
-		break;
-	}
-
-	return 0;
-}
 
 static int twl6040_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 		int clk_id, unsigned int freq, int dir)
@@ -970,62 +888,427 @@ static int twl6040_set_dai_sysclk(struct snd_soc_dai *codec_dai,
 	return 0;
 }
 
-static struct snd_soc_dai_ops twl6040_dai_ops = {
-	.startup	= twl6040_startup,
-	.hw_params	= twl6040_hw_params,
-	.trigger	= twl6040_trigger,
-	.set_sysclk	= twl6040_set_dai_sysclk,
-};
-
-struct snd_soc_dai twl6040_dai = {
-	.name = "twl6040",
-	.playback = {
-		.stream_name = "Playback",
-		.channels_min = 1,
-		.channels_max = 4,
-		.rates = TWL6040_RATES,
-		.formats = TWL6040_FORMATS,
-	},
-	.capture = {
-		.stream_name = "Capture",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = TWL6040_RATES,
-		.formats = TWL6040_FORMATS,
-	},
-	.ops = &twl6040_dai_ops,
-};
-EXPORT_SYMBOL_GPL(twl6040_dai);
-
-#ifdef CONFIG_PM
-static int twl6040_suspend(struct platform_device *pdev, pm_message_t state)
+static int abe_mm_startup(struct snd_pcm_substream *substream,
+			struct snd_soc_dai *dai)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6040_data *priv = codec->private_data;
 
-	twl6040_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	if (!priv->sysclk) {
+		dev_err(codec->dev,
+			"no mclk configured, call set_sysclk() on init\n");
+		return -EINVAL;
+	}
+
+	/*
+	 * capture is not supported at 17.64 MHz,
+	 * it's reserved for headset low-power playback scenario
+	 */
+	if ((priv->sysclk == 17640000) && substream->stream) {
+		dev_err(codec->dev,
+			"capture mode is not supported at %dHz\n",
+			priv->sysclk);
+		return -EINVAL;
+	}
+
+	snd_pcm_hw_constraint_list(substream->runtime, 0,
+				SNDRV_PCM_HW_PARAM_RATE,
+				priv->sysclk_constraints);
+
+	if (!priv->configure++) {
+		abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_AMIC,
+			(abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_AMIC]);
+
+		abe_write_gain(GAINS_DL1, GAIN_0dB,  RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_DL1, GAIN_0dB,  RAMP_0MS, GAIN_RIGHT_OFFSET);
+		abe_write_gain(GAINS_DL2, GAIN_0dB,  RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_DL2, GAIN_0dB,  RAMP_0MS, GAIN_RIGHT_OFFSET);
+
+		abe_write_gain(GAINS_AMIC , GAIN_M6dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_AMIC, GAIN_M6dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+
+		abe_write_gain(GAINS_SPLIT, GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_SPLIT, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+
+		abe_write_gain(GAINS_DL1, GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_DL1, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+		abe_write_gain(GAINS_DL2, GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_DL2, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+	}
+	return 0;
+}
+
+static int abe_mm_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params,
+			struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
+	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6040_data *priv = codec->private_data;
+	u8 lppllctl;
+	int rate;
+	unsigned int sysclk;
+	abe_data_format_t format;
+	abe_dma_t dma_sink;
+
+	lppllctl = twl6040_read_reg_cache(codec, TWL6040_REG_LPPLLCTL);
+
+	rate = params_rate(params);
+	switch (rate) {
+	case 44100:
+		lppllctl |= TWL6040_LPLLFIN;
+		sysclk = 17640000;
+		break;
+	case 48000:
+	/* Select output frequency 19.2 MHz */
+		lppllctl &= ~TWL6040_LPLLFIN;
+		sysclk = 19200000;
+		break;
+	default:
+		dev_err(codec->dev, "unsupported rate %d\n", rate);
+		return -EINVAL;
+	}
+
+	if (priv->pll == TWL6040_LPPLL_ID) {
+		priv->sysclk = sysclk;
+		twl6040_write(codec, TWL6040_REG_LPPLLCTL, lppllctl);
+	}
+
+	format.f = rate;
+	format.samp_format = STEREO_MSB;
+	if (!substream->stream)
+		abe_connect_cbpr_dmareq_port(MM_DL_PORT, &format, ABE_CBPR0_IDX, &dma_sink);
+	else
+		abe_connect_cbpr_dmareq_port(MM_UL_PORT, &format, ABE_CBPR3_IDX, &dma_sink);
 
 	return 0;
 }
 
-static int twl6040_resume(struct platform_device *pdev)
+static int abe_mm_trigger(struct snd_pcm_substream *substream,
+			int cmd, struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
+	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6040_data *priv = codec->private_data;
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+		/*
+		 * low-power playback mode is restricted
+		 * for headset path only
+		 */
+		if ((priv->sysclk == 17640000) && priv->non_lp) {
+			dev_err(codec->dev,
+				"some enabled paths aren't supported at %dHz\n",
+				priv->sysclk);
+			return -EPERM;
+		}
+		if (!substream->stream)
+			abe_enable_data_transfer(MM_DL_PORT);
+		else
+			abe_enable_data_transfer(MM_UL_PORT);
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+		if (!substream->stream)
+			abe_disable_data_transfer(MM_DL_PORT);
+		else
+			abe_disable_data_transfer(MM_UL_PORT);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static struct snd_soc_dai_ops abe_mm_dai_ops = {
+	.startup	= abe_mm_startup,
+	.hw_params	= abe_mm_hw_params,
+	.trigger	= abe_mm_trigger,
+	.set_sysclk	= twl6040_set_dai_sysclk,
+};
+
+static int abe_tones_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params,
+			struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
+	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6040_data *priv = codec->private_data;
+	u8 lppllctl;
+	int rate;
+	unsigned int sysclk;
+	abe_data_format_t format;
+	abe_dma_t dma_sink;
+
+	lppllctl = twl6040_read_reg_cache(codec, TWL6040_REG_LPPLLCTL);
+
+	rate = params_rate(params);
+	switch (rate) {
+	case 44100:
+		lppllctl |= TWL6040_LPLLFIN;
+		sysclk = 17640000;
+		break;
+	case 48000:
+	/* Select output frequency 19.2 MHz */
+		lppllctl &= ~TWL6040_LPLLFIN;
+		sysclk = 19200000;
+		break;
+	default:
+		dev_err(codec->dev, "unsupported rate %d\n", rate);
+		return -EINVAL;
+	}
+
+	if (priv->pll == TWL6040_LPPLL_ID) {
+		priv->sysclk = sysclk;
+		twl6040_write(codec, TWL6040_REG_LPPLLCTL, lppllctl);
+	}
+
+	format.f = rate;
+	format.samp_format = STEREO_MSB;
+	if (!substream->stream)
+		abe_connect_cbpr_dmareq_port(TONES_DL_PORT, &format,
+							ABE_CBPR5_IDX, &dma_sink);
+
+	return 0;
+}
+
+static int abe_tones_trigger(struct snd_pcm_substream *substream,
+			int cmd, struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
+	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6040_data *priv = codec->private_data;
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+		/*
+		 * low-power playback mode is restricted
+		 * for headset path only
+		 */
+		if ((priv->sysclk == 17640000) && priv->non_lp) {
+			dev_err(codec->dev,
+				"some enabled paths aren't supported at %dHz\n",
+				priv->sysclk);
+			return -EPERM;
+		}
+		if (!substream->stream)
+			abe_enable_data_transfer(TONES_DL_PORT);
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+		if (!substream->stream)
+			abe_disable_data_transfer(TONES_DL_PORT);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static struct snd_soc_dai_ops abe_tones_dai_ops = {
+	.startup	= abe_mm_startup,
+	.hw_params	= abe_tones_hw_params,
+	.trigger	= abe_tones_trigger,
+	.set_sysclk	= twl6040_set_dai_sysclk,
+};
+
+static int abe_voice_hw_params(struct snd_pcm_substream *substream,
+			struct snd_pcm_hw_params *params,
+			struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
+	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6040_data *priv = codec->private_data;
+	u8 lppllctl;
+	int rate;
+	abe_data_format_t format;
+	abe_dma_t dma_sink;
+
+	rate = params_rate(params);
+	switch (rate) {
+	case 16000:
+	case 8000:
+	/* Select output frequency 19.2 MHz */
+		if (priv->pll == TWL6040_LPPLL_ID) {
+			lppllctl = twl6040_read_reg_cache(codec, TWL6040_REG_LPPLLCTL);
+			lppllctl &= ~TWL6040_LPLLFIN;
+			priv->sysclk = 19200000;
+			twl6040_write(codec, TWL6040_REG_LPPLLCTL, lppllctl);
+		}
+		break;
+	default:
+		dev_err(codec->dev, "unsupported rate %d\n", rate);
+		return -EINVAL;
+	}
+
+	format.f = rate;
+	format.samp_format = STEREO_MSB;
+	if (!substream->stream)
+		abe_connect_cbpr_dmareq_port(VX_DL_PORT, &format, ABE_CBPR1_IDX, &dma_sink);
+	else
+		abe_connect_cbpr_dmareq_port(VX_UL_PORT, &format, ABE_CBPR2_IDX, &dma_sink);
+
+	return 0;
+}
+
+static int abe_voice_trigger(struct snd_pcm_substream *substream,
+					int cmd, struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
+	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6040_data *priv = codec->private_data;
+
+	switch (cmd) {
+	case SNDRV_PCM_TRIGGER_START:
+		/*
+		 * low-power playback mode is restricted
+		 * for headset path only
+		 */
+		if ((priv->sysclk == 17640000) && priv->non_lp) {
+			dev_err(codec->dev,
+				"some enabled paths aren't supported at %dHz\n",
+				priv->sysclk);
+			return -EPERM;
+		}
+		if (!substream->stream)
+			abe_enable_data_transfer(VX_DL_PORT);
+		else
+			abe_enable_data_transfer(VX_UL_PORT);
+		break;
+	case SNDRV_PCM_TRIGGER_STOP:
+		if (!substream->stream)
+			abe_disable_data_transfer(VX_DL_PORT);
+		else
+			abe_disable_data_transfer(VX_UL_PORT);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static struct snd_soc_dai_ops abe_voice_dai_ops = {
+	.startup	= abe_mm_startup,
+	.hw_params	= abe_voice_hw_params,
+	.trigger	= abe_voice_trigger,
+	.set_sysclk	= twl6040_set_dai_sysclk,
+};
+
+/* Audio Backend DAIs */
+struct snd_soc_dai abe_dai[] = {
+	/* Multimedia: MM-UL2, MM-DL */
+	{
+		.name = "Multimedia",
+		.playback = {
+			.stream_name = "Playback",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
+			.formats = ABE_FORMATS,
+		},
+		.capture = {
+			.stream_name = "Capture",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_48000,
+			.formats = ABE_FORMATS,
+		},
+		.ops = &abe_mm_dai_ops,
+	},
+	/* Tones DL: MM-DL2 */
+	{
+		.name = "Tones DL",
+		.playback = {
+			.stream_name = "Playback",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
+			.formats = ABE_FORMATS,
+		},
+		.ops = &abe_tones_dai_ops,
+	},
+	/* Voice: VX-UL, VX-DL */
+	{
+		.name = "Voice",
+		.playback = {
+			.stream_name = "Playback",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
+			.formats = ABE_FORMATS,
+		},
+		.capture = {
+			.stream_name = "Capture",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
+			.formats = ABE_FORMATS,
+		},
+		.ops = &abe_voice_dai_ops,
+	},
+	/* Digital Uplink: MM-UL */
+	{
+		.name = "Digital Uplink",
+		.capture = {
+			.stream_name = "Capture",
+			.channels_min = 2,
+			.channels_max = 10,
+			.rates = SNDRV_PCM_RATE_48000,
+			.formats = ABE_FORMATS,
+		},
+	},
+	/* Vibrator: VIB-DL */
+	{
+		.name = "Vibrator",
+		.playback = {
+			.stream_name = "Playback",
+			.channels_min = 2,
+			.channels_max = 2,
+			.rates = SNDRV_PCM_RATE_48000,
+			.formats = ABE_FORMATS,
+		},
+	},
+};
+
+#ifdef CONFIG_PM
+static int abe_twl6040_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec = socdev->card->codec;
 
-	twl6040_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-	twl6040_set_bias_level(codec, codec->suspend_bias_level);
+	abe_twl6040_set_bias_level(codec, SND_SOC_BIAS_OFF);
+
+	return 0;
+}
+
+static int abe_twl6040_resume(struct platform_device *pdev)
+{
+	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
+	struct snd_soc_codec *codec = socdev->card->codec;
+
+	abe_twl6040_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	abe_twl6040_set_bias_level(codec, codec->suspend_bias_level);
 
 	return 0;
 }
 #else
-#define twl6040_suspend NULL
-#define twl6040_resume NULL
+#define abe_twl6040_suspend NULL
+#define abe_twl6040_resume NULL
 #endif
 
 static struct snd_soc_codec *twl6040_codec;
 
-static int twl6040_probe(struct platform_device *pdev)
+static int abe_twl6040_probe(struct platform_device *pdev)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec;
@@ -1043,19 +1326,20 @@ static int twl6040_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+	abe_init_chip(codec);
 	snd_soc_add_controls(codec, twl6040_snd_controls,
 				ARRAY_SIZE(twl6040_snd_controls));
-	twl6040_add_widgets(codec);
+	abe_twl6040_add_widgets(codec);
 
 	return 0;
 }
 
-static int twl6040_remove(struct platform_device *pdev)
+static int abe_twl6040_remove(struct platform_device *pdev)
 {
 	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
 	struct snd_soc_codec *codec = socdev->card->codec;
 
-	twl6040_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	abe_twl6040_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	snd_soc_free_pcms(socdev);
 	snd_soc_dapm_free(socdev);
 	kfree(codec);
@@ -1063,15 +1347,15 @@ static int twl6040_remove(struct platform_device *pdev)
 	return 0;
 }
 
-struct snd_soc_codec_device soc_codec_dev_twl6040 = {
-	.probe = twl6040_probe,
-	.remove = twl6040_remove,
-	.suspend = twl6040_suspend,
-	.resume = twl6040_resume,
+struct snd_soc_codec_device soc_codec_dev_abe_twl6040 = {
+	.probe = abe_twl6040_probe,
+	.remove = abe_twl6040_remove,
+	.suspend = abe_twl6040_suspend,
+	.resume = abe_twl6040_resume,
 };
-EXPORT_SYMBOL_GPL(soc_codec_dev_twl6040);
+EXPORT_SYMBOL_GPL(soc_codec_dev_abe_twl6040);
 
-static int __devinit twl6040_codec_probe(struct platform_device *pdev)
+static int __devinit abe_twl6040_codec_probe(struct platform_device *pdev)
 {
 	struct twl4030_codec_data *twl_codec = pdev->dev.platform_data;
 	struct snd_soc_codec *codec;
@@ -1096,16 +1380,14 @@ static int __devinit twl6040_codec_probe(struct platform_device *pdev)
 
 	codec = &priv->codec;
 	codec->dev = &pdev->dev;
-	twl6040_dai.dev = &pdev->dev;
-
 	codec->name = "twl6040";
 	codec->owner = THIS_MODULE;
 	codec->read = twl6040_read_reg_cache;
 	codec->write = twl6040_write;
-	codec->set_bias_level = twl6040_set_bias_level;
+	codec->set_bias_level = abe_twl6040_set_bias_level;
 	codec->private_data = priv;
-	codec->dai = &twl6040_dai;
-	codec->num_dai = 1;
+	codec->dai = abe_dai;
+	codec->num_dai = ARRAY_SIZE(abe_dai);
 	codec->reg_cache_size = ARRAY_SIZE(twl6040_reg);
 	codec->reg_cache = kmemdup(twl6040_reg, sizeof(twl6040_reg),
 					GFP_KERNEL);
@@ -1155,7 +1437,7 @@ static int __devinit twl6040_codec_probe(struct platform_device *pdev)
 	twl6040_init_vio_regs(codec);
 
 	/* power on device */
-	ret = twl6040_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+	ret = abe_twl6040_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 	if (ret)
 		goto irq_err;
 
@@ -1165,7 +1447,7 @@ static int __devinit twl6040_codec_probe(struct platform_device *pdev)
 
 	twl6040_codec = codec;
 
-	ret = snd_soc_register_dai(&twl6040_dai);
+	ret = snd_soc_register_dais(abe_dai, ARRAY_SIZE(abe_dai));
 	if (ret)
 		goto dai_err;
 
@@ -1175,7 +1457,7 @@ dai_err:
 	snd_soc_unregister_codec(codec);
 	twl6040_codec = NULL;
 reg_err:
-	twl6040_set_bias_level(codec, SND_SOC_BIAS_OFF);
+	abe_twl6040_set_bias_level(codec, SND_SOC_BIAS_OFF);
 irq_err:
 	if (naudint)
 		free_irq(naudint, codec);
@@ -1189,7 +1471,7 @@ cache_err:
 	return ret;
 }
 
-static int __devexit twl6040_codec_remove(struct platform_device *pdev)
+static int __devexit abe_twl6040_codec_remove(struct platform_device *pdev)
 {
 	struct twl6040_data *priv = twl6040_codec->private_data;
 	int audpwron = priv->audpwron;
@@ -1201,7 +1483,7 @@ static int __devexit twl6040_codec_remove(struct platform_device *pdev)
 	if (naudint)
 		free_irq(naudint, twl6040_codec);
 
-	snd_soc_unregister_dai(&twl6040_dai);
+	snd_soc_unregister_dais(abe_dai, ARRAY_SIZE(abe_dai));
 	snd_soc_unregister_codec(twl6040_codec);
 
 	kfree(twl6040_codec);
@@ -1210,27 +1492,27 @@ static int __devexit twl6040_codec_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver twl6040_codec_driver = {
+static struct platform_driver abe_twl6040_codec_driver = {
 	.driver = {
 		.name = "twl6040_codec",
 		.owner = THIS_MODULE,
 	},
-	.probe = twl6040_codec_probe,
-	.remove = __devexit_p(twl6040_codec_remove),
+	.probe = abe_twl6040_codec_probe,
+	.remove = __devexit_p(abe_twl6040_codec_remove),
 };
 
-static int __init twl6040_codec_init(void)
+static int __init abe_twl6040_codec_init(void)
 {
-	return platform_driver_register(&twl6040_codec_driver);
+	return platform_driver_register(&abe_twl6040_codec_driver);
 }
-module_init(twl6040_codec_init);
+module_init(abe_twl6040_codec_init);
 
-static void __exit twl6040_codec_exit(void)
+static void __exit abe_twl6040_codec_exit(void)
 {
-	platform_driver_unregister(&twl6040_codec_driver);
+	platform_driver_unregister(&abe_twl6040_codec_driver);
 }
-module_exit(twl6040_codec_exit);
+module_exit(abe_twl6040_codec_exit);
 
-MODULE_DESCRIPTION("ASoC TWL6040 codec driver");
+MODULE_DESCRIPTION("ASoC ABE-TWL6040 codec driver");
 MODULE_AUTHOR("Misael Lopez Cruz");
 MODULE_LICENSE("GPL");
