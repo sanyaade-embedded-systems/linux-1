@@ -960,6 +960,9 @@ static s32 map_block(enum tiler_fmt fmt, u32 width, u32 height, u32 gid,
 	}
 	up_read(&mm->mmap_sem);
 
+	/* Ensure the data reaches to main memory before PAT refill */
+	wmb();
+
 	if (refill_pat(TMM(fmt), &mi->area, mem))
 		goto fault;
 
@@ -1313,6 +1316,9 @@ s32 alloc_block(enum tiler_fmt fmt, u32 width, u32 height,
 		mi->mem = tmm_get(TMM(fmt), mi->num_pg);
 		if (!mi->mem)
 			goto cleanup;
+
+		/* Ensure the data reaches to main memory before PAT refill */
+		wmb();
 
 		/* program PAT */
 		if (refill_pat(TMM(fmt), &mi->area, mi->mem))
