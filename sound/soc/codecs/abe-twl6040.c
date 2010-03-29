@@ -260,14 +260,20 @@ static void twl6040_init_vdd_regs(struct snd_soc_codec *codec)
 
 static void abe_init_chip(struct snd_soc_codec *codec)
 {
+	struct twl6040_data *priv = codec->private_data;
 	abe_opp_t OPP = ABE_OPP100;
 
 	abe_init_mem();
+	/* aess_clk has to be enabled to access hal register.
+	 * Disabel the clk after it has been used.
+	 */
+	clk_enable(priv->clk);
 	abe_reset_hal();
 	/* Config OPP 100 for now */
 	abe_set_opp_processing(OPP);
 	/* "tick" of the audio engine */
 	abe_write_event_generator(EVENT_TIMER);
+	clk_disable(priv->clk);
 }
 
 /* twl6040 codec manual power-up sequence */
@@ -920,6 +926,7 @@ static int abe_mm_startup(struct snd_pcm_substream *substream,
 				priv->sysclk_constraints);
 
 	if (!priv->configure++) {
+		clk_enable(priv->clk);
 		abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_AMIC,
 			(abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_AMIC]);
 
@@ -1027,9 +1034,22 @@ static int abe_mm_trigger(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static void abe_mm_shutdown(struct snd_pcm_substream *substream,
+				struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
+	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6040_data *priv = codec->private_data;
+
+	if(!--priv->configure)
+		clk_disable(priv->clk);
+}
+
 static struct snd_soc_dai_ops abe_mm_dai_ops = {
 	.startup	= abe_mm_startup,
 	.hw_params	= abe_mm_hw_params,
+	.shutdown	= abe_mm_shutdown,
 	.trigger	= abe_mm_trigger,
 	.set_sysclk	= twl6040_set_dai_sysclk,
 };
@@ -1202,6 +1222,7 @@ static int abe_voice_trigger(struct snd_pcm_substream *substream,
 static struct snd_soc_dai_ops abe_voice_dai_ops = {
 	.startup	= abe_mm_startup,
 	.hw_params	= abe_voice_hw_params,
+	.shutdown	= abe_mm_shutdown,
 	.trigger	= abe_voice_trigger,
 	.set_sysclk	= twl6040_set_dai_sysclk,
 };
@@ -1442,8 +1463,6 @@ static int __devinit abe_twl6040_codec_probe(struct platform_device *pdev)
 		goto clk_err;
 	}
 
-	clk_enable(priv->clk);
-
 	/* init vio registers */
 	twl6040_init_vio_regs(codec);
 
@@ -1473,7 +1492,6 @@ irq_err:
 	if (naudint)
 		free_irq(naudint, codec);
 gpio2_err:
-	clk_disable(priv->clk);
 	clk_put(priv->clk);
 clk_err:
 	if (gpio_is_valid(audpwron))
@@ -1497,7 +1515,6 @@ static int __devexit abe_twl6040_codec_remove(struct platform_device *pdev)
 	if (naudint)
 		free_irq(naudint, twl6040_codec);
 
-	clk_disable(priv->clk);
 	clk_put(priv->clk);
 
 	snd_soc_unregister_dais(abe_dai, ARRAY_SIZE(abe_dai));
