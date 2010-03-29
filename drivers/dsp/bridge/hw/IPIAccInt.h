@@ -22,5 +22,5 @@
 #define SYSC_IVA2BOOTADDR_OFFSET                0x400
 #define SYSC_IVA2BOOTADDR_MASK                 0xfffffc00
 
-#endif				/* _IPI_ACC_INT_H */
+#endif /* _IPI_ACC_INT_H */
 /* EOF */

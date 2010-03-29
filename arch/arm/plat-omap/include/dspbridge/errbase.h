@@ -26,11 +26,11 @@
 #define ERRBASE_
 
 /* Base of generic errors and component errors */
-#define DSP_SBASE               (DSP_STATUS)0x00008000
-#define DSP_EBASE               (DSP_STATUS)0x80008000
+#define DSP_SBASE               (dsp_status)0x00008000
+#define DSP_EBASE               (dsp_status)0x80008000
 
-#define DSP_COMP_EBASE          (DSP_STATUS)0x80040200
-#define DSP_COMP_ELAST          (DSP_STATUS)0x80047fff
+#define DSP_COMP_EBASE          (dsp_status)0x80040200
+#define DSP_COMP_ELAST          (dsp_status)0x80047fff
 
 /* SUCCESS Codes */
 
@@ -162,7 +162,7 @@
  * found in the COFF file. */
 #define DSP_ESYMBOL                 (DSP_EBASE + 0x1c)
 
-/* UUID not found in registry.  */
+/* UUID not found in registry. */
 #define DSP_EUUID                   (DSP_EBASE + 0x1d)
 
 /* Unable to read content of DCD data section ; this is typically caused by
@@ -200,7 +200,7 @@
 /* Multiple instances are not allowed. */
 #define DSP_EMULINST                (DSP_EBASE + 0x2c)
 
-/* A specified entity was not found.  */
+/* A specified entity was not found. */
 #define DSP_ENOTFOUND               (DSP_EBASE + 0x2d)
 
 /* A DSP I/O resource is not available. */
@@ -270,7 +270,7 @@
 /* The mini-driver expected a newer version of the class driver. */
 #define DEV_E_NEWWMD                (DEV_EBASE + 0x00)
 
-/* WMD_DRV_Entry function returned a NULL function interface table. */
+/* bridge_drv_entry function returned a NULL function interface table. */
 #define DEV_E_NULLWMDINTF           (DEV_EBASE + 0x01)
 
 /* FAILURE Codes : LDR */
@@ -395,7 +395,7 @@
 /* Wait for flush operation on an output channel timed out. */
 #define CHNL_E_WAITTIMEOUT          (CHNL_EBASE + 0x15)
 
-/* User supplied hEvent must be specified with pstrEventName attribute */
+/* User supplied event_obj must be specified with pstr_event_name attribute */
 #define CHNL_E_BADUSEREVENT         (CHNL_EBASE + 0x16)
 
 /* Illegal user event name specified */
@@ -443,4 +443,4 @@
 /* Insufficient space to hold data in registry value. */
 #define REG_E_MOREDATA              (REG_EBASE + 0x03)
 
-#endif				/* ERRBASE_ */
+#endif /* ERRBASE_ */

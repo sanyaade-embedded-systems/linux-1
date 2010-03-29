@@ -22,15 +22,15 @@
 #define IO_MAXIRQ   0xff	/* Arbitrarily large number. */
 
 /* IO Objects: */
-	struct IO_MGR;
+struct io_mgr;
 
 /* IO manager attributes: */
-	struct IO_ATTRS {
-		u8 bIRQ;	/* Channel's I/O IRQ number. */
-		bool fShared;	/* TRUE if the IRQ is shareable. */
-		u32 uWordSize;	/* DSP Word size. */
-		u32 dwSMBase;	/* Physical base address of shared memory. */
-		u32 uSMLength;	/* Size (in bytes) of shared memory. */
-	} ;
+struct io_attrs {
+	u8 birq;		/* Channel's I/O IRQ number. */
+	bool irq_shared;	/* TRUE if the IRQ is shareable. */
+	u32 word_size;		/* DSP Word size. */
+	u32 shm_base;		/* Physical base address of shared memory. */
+	u32 usm_length;		/* Size (in bytes) of shared memory. */
+};
 
-#endif				/* IODEFS_ */
+#endif /* IODEFS_ */

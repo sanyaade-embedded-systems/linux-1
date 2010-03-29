@@ -22,37 +22,37 @@
 #define RMM_
 
 /*
- *  ======== RMM_Addr ========
+ *  ======== rmm_addr ========
  *  DSP address + segid
  */
-struct RMM_Addr {
+struct rmm_addr {
 	u32 addr;
 	s32 segid;
-} ;
+};
 
 /*
- *  ======== RMM_Segment ========
+ *  ======== rmm_segment ========
  *  Memory segment on the DSP available for remote allocations.
  */
-struct RMM_Segment {
+struct rmm_segment {
 	u32 base;		/* Base of the segment */
 	u32 length;		/* Size of the segment (target MAUs) */
 	s32 space;		/* Code or data */
 	u32 number;		/* Number of Allocated Blocks */
-} ;
+};
 
 /*
  *  ======== RMM_Target ========
  */
-struct RMM_TargetObj;
+struct rmm_target_obj;
 
 /*
- *  ======== RMM_alloc ========
+ *  ======== rmm_alloc ========
  *
- *  RMM_alloc is used to remotely allocate or reserve memory on the DSP.
+ *  rmm_alloc is used to remotely allocate or reserve memory on the DSP.
  *
  *  Parameters:
- *      target          - Target returned from RMM_create().
+ *      target          - Target returned from rmm_create().
  *      segid           - Memory segment to allocate from.
  *      size            - Size (target MAUS) to allocate.
  *      align           - alignment.
@@ -70,68 +70,68 @@ struct RMM_TargetObj;
  *      Valid target.
  *      dspAddr != NULL.
  *      size > 0
- *      reserve || target->numSegs > 0.
+ *      reserve || target->num_segs > 0.
  *  Ensures:
  */
-extern DSP_STATUS RMM_alloc(struct RMM_TargetObj *target, u32 segid, u32 size,
+extern dsp_status rmm_alloc(struct rmm_target_obj *target, u32 segid, u32 size,
 			    u32 align, u32 *dspAdr, bool reserve);
 
 /*
- *  ======== RMM_create ========
+ *  ======== rmm_create ========
  *  Create a target object with memory segments for remote allocation. If
- *  segTab == NULL or numSegs == 0, memory can only be reserved through
- *  RMM_alloc().
+ *  seg_tab == NULL or num_segs == 0, memory can only be reserved through
+ *  rmm_alloc().
  *
  *  Parameters:
- *      pTarget:        - Location to store target on output.
- *      segTab:         - Table of memory segments.
- *      numSegs:        - Number of memory segments.
+ *      target_obj:        - Location to store target on output.
+ *      seg_tab:         - Table of memory segments.
+ *      num_segs:        - Number of memory segments.
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EMEMORY:    Memory allocation failed.
  *  Requires:
  *      RMM initialized.
- *      pTarget != NULL.
- *      numSegs == 0 || segTab != NULL.
+ *      target_obj != NULL.
+ *      num_segs == 0 || seg_tab != NULL.
  *  Ensures:
- *      Success:        Valid *pTarget.
- *      Failure:        *pTarget == NULL.
+ *      Success:        Valid *target_obj.
+ *      Failure:        *target_obj == NULL.
  */
-extern DSP_STATUS RMM_create(struct RMM_TargetObj **pTarget,
-			     struct RMM_Segment segTab[], u32 numSegs);
+extern dsp_status rmm_create(struct rmm_target_obj **target_obj,
+			     struct rmm_segment seg_tab[], u32 num_segs);
 
 /*
- *  ======== RMM_delete ========
- *  Delete target allocated in RMM_create().
+ *  ======== rmm_delete ========
+ *  Delete target allocated in rmm_create().
  *
  *  Parameters:
- *      target          - Target returned from RMM_create().
+ *      target          - Target returned from rmm_create().
  *  Returns:
  *  Requires:
  *      RMM initialized.
  *      Valid target.
  *  Ensures:
  */
-extern void RMM_delete(struct RMM_TargetObj *target);
+extern void rmm_delete(struct rmm_target_obj *target);
 
 /*
- *  ======== RMM_exit ========
+ *  ======== rmm_exit ========
  *  Exit the RMM module
  *
  *  Parameters:
  *  Returns:
  *  Requires:
- *      RMM_init successfully called.
+ *      rmm_init successfully called.
  *  Ensures:
  */
-extern void RMM_exit(void);
+extern void rmm_exit(void);
 
 /*
- *  ======== RMM_free ========
- *  Free or unreserve memory allocated through RMM_alloc().
+ *  ======== rmm_free ========
+ *  Free or unreserve memory allocated through rmm_alloc().
  *
  *  Parameters:
- *      target:         - Target returned from RMM_create().
+ *      target:         - Target returned from rmm_create().
  *      segid:          - Segment of memory to free.
  *      dspAddr:        - Address to free or unreserve.
  *      size:           - Size of memory to free or unreserve.
@@ -140,15 +140,15 @@ extern void RMM_exit(void);
  *  Requires:
  *      RMM initialized.
  *      Valid target.
- *      reserved || segid < target->numSegs.
+ *      reserved || segid < target->num_segs.
  *      reserve || [dspAddr, dspAddr + size] is a valid memory range.
  *  Ensures:
  */
-extern bool RMM_free(struct RMM_TargetObj *target, u32 segid, u32 dspAddr,
+extern bool rmm_free(struct rmm_target_obj *target, u32 segid, u32 dspAddr,
 		     u32 size, bool reserved);
 
 /*
- *  ======== RMM_init ========
+ *  ======== rmm_init ========
  *  Initialize the RMM module
  *
  *  Parameters:
@@ -158,10 +158,10 @@ extern bool RMM_free(struct RMM_TargetObj *target, u32 segid, u32 dspAddr,
  *  Requires:
  *  Ensures:
  */
-extern bool RMM_init(void);
+extern bool rmm_init(void);
 
 /*
- *  ======== RMM_stat ========
+ *  ======== rmm_stat ========
  *  Obtain  memory segment status
  *
  *  Parameters:
@@ -172,10 +172,10 @@ extern bool RMM_init(void);
  *      TRUE:   Success.
  *      FALSE:  Failure.
  *  Requires:
- *      segid < target->numSegs
+ *      segid < target->num_segs
  *  Ensures:
  */
-extern bool RMM_stat(struct RMM_TargetObj *target, enum DSP_MEMTYPE segid,
-		     struct DSP_MEMSTAT *pMemStatBuf);
+extern bool rmm_stat(struct rmm_target_obj *target, enum dsp_memtype segid,
+		     struct dsp_memstat *pMemStatBuf);
 
-#endif				/* RMM_ */
+#endif /* RMM_ */

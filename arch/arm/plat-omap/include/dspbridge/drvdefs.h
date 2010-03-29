@@ -20,6 +20,6 @@
 #define DRVDEFS_
 
 /* WCD Driver Object */
-	struct DRV_OBJECT;
+struct drv_object;
 
-#endif				/* DRVDEFS_ */
+#endif /* DRVDEFS_ */

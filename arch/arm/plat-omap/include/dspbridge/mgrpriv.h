@@ -25,21 +25,21 @@
 #define MGR_MAXTLBENTRIES  32
 
 /* RM MGR Object */
-	struct MGR_OBJECT;
+struct mgr_object;
 
-	struct MGR_TLBENTRY {
-		u32 ulDspVirt;	/* DSP virtual address */
-		u32 ulGppPhys;	/* GPP physical address */
-	} ;
+struct mgr_tlbentry {
+	u32 ul_dsp_virt;	/* DSP virtual address */
+	u32 ul_gpp_phys;	/* GPP physical address */
+};
 
 /*
  *  The DSP_PROCESSOREXTINFO structure describes additional extended
  *  capabilities of a DSP processor not exposed to user.
  */
-	struct MGR_PROCESSOREXTINFO {
-		struct DSP_PROCESSORINFO tyBasic;    /* user processor info */
-		/* private dsp mmu entries */
-		struct MGR_TLBENTRY tyTlb[MGR_MAXTLBENTRIES];
-	} ;
+struct mgr_processorextinfo {
+	struct dsp_processorinfo ty_basic;	/* user processor info */
+	/* private dsp mmu entries */
+	struct mgr_tlbentry ty_tlb[MGR_MAXTLBENTRIES];
+};
 
-#endif				/* MGRPRIV_ */
+#endif /* MGRPRIV_ */

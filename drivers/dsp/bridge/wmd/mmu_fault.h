@@ -20,16 +20,15 @@
 #define MMU_FAULT_
 
 /*
- *  ======== MMU_FaultDpc ========
+ *  ======== mmu_fault_dpc ========
  *      Deferred procedure call to handle DSP MMU fault.
  */
-	void MMU_FaultDpc(IN unsigned long pRefData);
+void mmu_fault_dpc(IN unsigned long pRefData);
 
 /*
- *  ======== MMU_FaultIsr ========
+ *  ======== mmu_fault_isr ========
  *      ISR to be triggered by a DSP MMU fault interrupt.
  */
-irqreturn_t  MMU_FaultIsr(int irq, IN void *pRefData);
+irqreturn_t mmu_fault_isr(int irq, IN void *pRefData);
 
-#endif				/* MMU_FAULT_ */
-
+#endif /* MMU_FAULT_ */

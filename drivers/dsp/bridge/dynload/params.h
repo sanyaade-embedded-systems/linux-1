@@ -23,9 +23,12 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-/*
- * Host Properties
- */
+/******************************************************************************
+ *
+ *							Host Properties
+ *
+ **************************************************************************** */
+
 #define BITS_PER_BYTE 8		/* bits in the standard PC/SUN byte */
 #define LOG_BITS_PER_BYTE 3	/* log base 2 of same */
 #define BYTE_MASK ((1U<<BITS_PER_BYTE)-1)
@@ -37,8 +40,10 @@
 #define FMT_UI32 "0x%lx"
 #define FMT8_UI32 "%08lx"	/* same but no 0x, fixed width field */
 #else
-#define BITS_PER_AU 8	/* bits in the smallest addressable data storage unit */
-#define LOG_BITS_PER_AU 3  /* log base 2 of the same; useful for shift counts */
+/* bits in the smallest addressable data storage unit */
+#define BITS_PER_AU 8
+/* log base 2 of the same; useful for shift counts */
+#define LOG_BITS_PER_AU 3
 #define FMT_UI32 "0x%x"
 #define FMT8_UI32 "%08x"
 #endif
@@ -49,16 +54,18 @@
 
 /* !! don't be tempted to insert type definitions here; use <stdint.h> !! */
 
-/*
- * Target Properties
- */
+/******************************************************************************
+ *
+ *							Target Properties
+ *
+ **************************************************************************** */
 
-/*--------------------------------------------------------------------------*/
-/* TMS320C6x Target Specific Parameters (byte-addressable)                  */
-/*--------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------- */
+/* TMS320C6x Target Specific Parameters (byte-addressable) */
+/*-------------------------------------------------------------------------- */
 #if TMS32060
-#define MEMORG          0x0L	/* Size of configured memory  */
-#define MEMSIZE         0x0L	/* (full address space)  */
+#define MEMORG          0x0L	/* Size of configured memory */
+#define MEMSIZE         0x0L	/* (full address space) */
 
 #define CINIT_ALIGN     8	/* alignment of cinit record in TDATA AUs */
 #define CINIT_COUNT	4	/* width of count field in TDATA AUs */
@@ -66,7 +73,7 @@
 #define CINIT_PAGE_BITS	0	/* Number of LSBs of address that
 				 * are page number */
 
-#define LENIENT_SIGNED_RELEXPS 0	/* DOES SIGNED ALLOW MAX UNSIGNED   */
+#define LENIENT_SIGNED_RELEXPS 0	/* DOES SIGNED ALLOW MAX UNSIGNED */
 
 #undef TARGET_ENDIANNESS	/* may be big or little endian */
 
@@ -74,13 +81,12 @@
 #define TARGET_WORD_ALIGN(zz) (((zz) + 0x3) & -0x4)
 #endif
 
-
 /*--------------------------------------------------------------------------
  *
  *			DEFAULT SETTINGS and DERIVED PROPERTIES
  *
  * This section establishes defaults for values not specified above
- *--------------------------------------------------------------------------*/
+ *-------------------------------------------------------------------------- */
 #ifndef TARGET_AU_BITS
 #define TARGET_AU_BITS 8	/* width of the target addressable unit */
 #define LOG_TARGET_AU_BITS 3	/* log2 of same */
@@ -111,7 +117,9 @@
 #endif
 
 /*
+ *
  * Useful properties and conversions derived from the above
+ *
  */
 
 /*
@@ -201,11 +209,11 @@
 
 /* the unit in which we process target image data */
 #if TARGET_AU_BITS <= 8
-typedef u8 TgtAU_t;
+typedef u8 tgt_au_t;
 #elif TARGET_AU_BITS <= 16
-typedef u16 TgtAU_t;
+typedef u16 tgt_au_t;
 #else
-typedef u32 TgtAU_t;
+typedef u32 tgt_au_t;
 #endif
 
 /* size of that unit */

@@ -32,81 +32,84 @@
 #include <dspbridge/list.h>
 
 /*  ----------------------------------- Defines */
-#define MEM_512MB   0x1fffffff
+#define MEM512MB   0x1fffffff
 
 /*  ----------------------------------- Globals */
-static bool extPhysMemPoolEnabled;
+static bool ext_phys_mem_pool_enabled;
 
-struct extPhysMemPool {
-	u32 physMemBase;
-	u32 physMemSize;
-	u32 virtMemBase;
-	u32 nextPhysAllocPtr;
+struct ext_phys_mem_pool {
+	u32 phys_mem_base;
+	u32 phys_mem_size;
+	u32 virt_mem_base;
+	u32 next_phys_alloc_ptr;
 };
 
-static struct extPhysMemPool extMemPool;
+static struct ext_phys_mem_pool ext_mem_pool;
 
-void MEM_ExtPhysPoolInit(u32 poolPhysBase, u32 poolSize)
+void mem_ext_phys_pool_init(u32 poolPhysBase, u32 poolSize)
 {
-	u32 poolVirtBase;
+	u32 pool_virt_base;
 
 	/* get the virtual address for the physical memory pool passed */
-	poolVirtBase = (u32)ioremap(poolPhysBase, poolSize);
+	pool_virt_base = (u32) ioremap(poolPhysBase, poolSize);
 
-	if ((void **)poolVirtBase == NULL) {
+	if ((void **)pool_virt_base == NULL) {
 		pr_err("%s: external physical memory map failed\n", __func__);
-		extPhysMemPoolEnabled = false;
+		ext_phys_mem_pool_enabled = false;
 	} else {
-		extMemPool.physMemBase = poolPhysBase;
-		extMemPool.physMemSize = poolSize;
-		extMemPool.virtMemBase = poolVirtBase;
-		extMemPool.nextPhysAllocPtr = poolPhysBase;
-		extPhysMemPoolEnabled = true;
+		ext_mem_pool.phys_mem_base = poolPhysBase;
+		ext_mem_pool.phys_mem_size = poolSize;
+		ext_mem_pool.virt_mem_base = pool_virt_base;
+		ext_mem_pool.next_phys_alloc_ptr = poolPhysBase;
+		ext_phys_mem_pool_enabled = true;
 	}
 }
 
-void MEM_ExtPhysPoolRelease(void)
+void mem_ext_phys_pool_release(void)
 {
-	if (extPhysMemPoolEnabled) {
-		iounmap((void *)(extMemPool.virtMemBase));
-		extPhysMemPoolEnabled = false;
+	if (ext_phys_mem_pool_enabled) {
+		iounmap((void *)(ext_mem_pool.virt_mem_base));
+		ext_phys_mem_pool_enabled = false;
 	}
 }
 
 /*
- *  ======== MEM_ExtPhysMemAlloc ========
+ *  ======== mem_ext_phys_mem_alloc ========
  *  Purpose:
  *     Allocate physically contiguous, uncached memory from external memory pool
  */
 
-static void *MEM_ExtPhysMemAlloc(u32 bytes, u32 align, OUT u32 *pPhysAddr)
+static void *mem_ext_phys_mem_alloc(u32 bytes, u32 align, OUT u32 * pPhysAddr)
 {
-	u32 newAllocPtr;
+	u32 new_alloc_ptr;
 	u32 offset;
-	u32 virtAddr;
+	u32 virt_addr;
 
 	if (align == 0)
 		align = 1;
 
-	if (bytes > ((extMemPool.physMemBase + extMemPool.physMemSize)
-	    - extMemPool.nextPhysAllocPtr)) {
+	if (bytes > ((ext_mem_pool.phys_mem_base + ext_mem_pool.phys_mem_size)
+		     - ext_mem_pool.next_phys_alloc_ptr)) {
 		pPhysAddr = NULL;
 		return NULL;
 	} else {
-		offset = (extMemPool.nextPhysAllocPtr & (align - 1));
+		offset = (ext_mem_pool.next_phys_alloc_ptr & (align - 1));
 		if (offset == 0)
-			newAllocPtr = extMemPool.nextPhysAllocPtr;
+			new_alloc_ptr = ext_mem_pool.next_phys_alloc_ptr;
 		else
-			newAllocPtr = (extMemPool.nextPhysAllocPtr) +
-				      (align - offset);
-		if ((newAllocPtr + bytes) <=
-		    (extMemPool.physMemBase + extMemPool.physMemSize)) {
+			new_alloc_ptr = (ext_mem_pool.next_phys_alloc_ptr) +
+			    (align - offset);
+		if ((new_alloc_ptr + bytes) <=
+		    (ext_mem_pool.phys_mem_base + ext_mem_pool.phys_mem_size)) {
 			/* we can allocate */
-			*pPhysAddr = newAllocPtr;
-			extMemPool.nextPhysAllocPtr = newAllocPtr + bytes;
-			virtAddr = extMemPool.virtMemBase + (newAllocPtr -
-				   extMemPool.physMemBase);
-			return (void *)virtAddr;
+			*pPhysAddr = new_alloc_ptr;
+			ext_mem_pool.next_phys_alloc_ptr =
+			    new_alloc_ptr + bytes;
+			virt_addr =
+			    ext_mem_pool.virt_mem_base + (new_alloc_ptr -
+							  ext_mem_pool.
+							  phys_mem_base);
+			return (void *)virt_addr;
 		} else {
 			*pPhysAddr = 0;
 			return NULL;
@@ -115,24 +118,24 @@ static void *MEM_ExtPhysMemAlloc(u32 bytes, u32 align, OUT u32 *pPhysAddr)
 }
 
 /*
- *  ======== MEM_Alloc ========
+ *  ======== mem_alloc ========
  *  Purpose:
  *      Allocate memory from the paged or non-paged pools.
  */
-void *MEM_Alloc(u32 cBytes, enum MEM_POOLATTRS type)
+void *mem_alloc(u32 byte_size, enum mem_poolattrs type)
 {
-	void *pMem = NULL;
+	void *mem = NULL;
 
-	if (cBytes > 0) {
+	if (byte_size > 0) {
 		switch (type) {
 		case MEM_NONPAGED:
-		/* If non-paged memory required, see note at top of file. */
+			/* Fall through */
 		case MEM_PAGED:
-			pMem = kmalloc(cBytes,
-				(in_atomic()) ? GFP_ATOMIC : GFP_KERNEL);
+			mem = kmalloc(byte_size,
+				      (in_atomic())? GFP_ATOMIC : GFP_KERNEL);
 			break;
 		case MEM_LARGEVIRTMEM:
-			pMem = vmalloc(cBytes);
+			mem = vmalloc(byte_size);
 			break;
 
 		default:
@@ -140,104 +143,105 @@ void *MEM_Alloc(u32 cBytes, enum MEM_POOLATTRS type)
 		}
 	}
 
-	return pMem;
+	return mem;
 }
 
 /*
- *  ======== MEM_AllocPhysMem ========
+ *  ======== mem_alloc_phys_mem ========
  *  Purpose:
  *      Allocate physically contiguous, uncached memory
  */
-void *MEM_AllocPhysMem(u32 cBytes, u32 ulAlign, OUT u32 *pPhysicalAddress)
+void *mem_alloc_phys_mem(u32 byte_size, u32 ulAlign, OUT u32 * pPhysicalAddress)
 {
-	void *pVaMem = NULL;
-	dma_addr_t paMem;
+	void *va_mem = NULL;
+	dma_addr_t pa_mem;
 
-	if (cBytes > 0) {
-		if (extPhysMemPoolEnabled) {
-			pVaMem = MEM_ExtPhysMemAlloc(cBytes, ulAlign,
-						    (u32 *)&paMem);
+	if (byte_size > 0) {
+		if (ext_phys_mem_pool_enabled) {
+			va_mem = mem_ext_phys_mem_alloc(byte_size, ulAlign,
+							(u32 *) &pa_mem);
 		} else
-			pVaMem = dma_alloc_coherent(NULL, cBytes, &paMem,
-				(in_atomic()) ? GFP_ATOMIC : GFP_KERNEL);
-		if (pVaMem == NULL) {
+			va_mem = dma_alloc_coherent(NULL, byte_size, &pa_mem,
+						    (in_atomic())? GFP_ATOMIC :
+						    GFP_KERNEL);
+		if (va_mem == NULL) {
 			*pPhysicalAddress = 0;
 		} else {
-			*pPhysicalAddress = paMem;
+			*pPhysicalAddress = pa_mem;
 		}
 	}
-	return pVaMem;
+	return va_mem;
 }
 
 /*
- *  ======== MEM_Calloc ========
+ *  ======== mem_calloc ========
  *  Purpose:
  *      Allocate zero-initialized memory from the paged or non-paged pools.
  */
-void *MEM_Calloc(u32 cBytes, enum MEM_POOLATTRS type)
+void *mem_calloc(u32 byte_size, enum mem_poolattrs type)
 {
-	void *pMem = NULL;
+	void *mem = NULL;
 
-	if (cBytes > 0) {
+	if (byte_size > 0) {
 		switch (type) {
 		case MEM_NONPAGED:
-		/* If non-paged memory required, see note at top of file. */
+			/*  Fall through */
 		case MEM_PAGED:
-			pMem = kzalloc(cBytes,
-				(in_atomic()) ? GFP_ATOMIC : GFP_KERNEL);
+			mem = kzalloc(byte_size,
+				      (in_atomic())? GFP_ATOMIC : GFP_KERNEL);
 			break;
 		case MEM_LARGEVIRTMEM:
-			pMem = __vmalloc(cBytes,
-				GFP_KERNEL | __GFP_HIGHMEM | __GFP_ZERO,
-				PAGE_KERNEL);
+			mem = __vmalloc(byte_size,
+					GFP_KERNEL | __GFP_HIGHMEM | __GFP_ZERO,
+					PAGE_KERNEL);
 			break;
 		default:
 			break;
 		}
 	}
 
-	return pMem;
+	return mem;
 }
 
 /*
- *  ======== MEM_Exit ========
+ *  ======== mem_exit ========
  *  Purpose:
  *      Discontinue usage of the MEM module.
  */
-void MEM_Exit(void)
+void mem_exit(void)
 {
 }
 
 /*
- *  ======== MEM_FlushCache ========
+ *  ======== mem_flush_cache ========
  *  Purpose:
  *      Flush cache
  */
-void MEM_FlushCache(void *pMemBuf, u32 cBytes, u32 FlushType)
+void mem_flush_cache(void *pMemBuf, u32 byte_size, u32 FlushType)
 {
 	if (!pMemBuf)
 		return;
 
 	switch (FlushType) {
-	/* invalidate only */
+		/* invalidate only */
 	case PROC_INVALIDATE_MEM:
-		dmac_inv_range(pMemBuf, pMemBuf + cBytes);
-		outer_inv_range(__pa((u32)pMemBuf), __pa((u32)pMemBuf +
-				cBytes));
-	break;
-	/* writeback only */
+		dmac_inv_range(pMemBuf, pMemBuf + byte_size);
+		outer_inv_range(__pa((u32) pMemBuf), __pa((u32) pMemBuf +
+							  byte_size));
+		break;
+		/* writeback only */
 	case PROC_WRITEBACK_MEM:
-		dmac_clean_range(pMemBuf, pMemBuf + cBytes);
-		outer_clean_range(__pa((u32)pMemBuf), __pa((u32)pMemBuf +
-				  cBytes));
-	break;
-	/* writeback and invalidate */
+		dmac_clean_range(pMemBuf, pMemBuf + byte_size);
+		outer_clean_range(__pa((u32) pMemBuf), __pa((u32) pMemBuf +
+							    byte_size));
+		break;
+		/* writeback and invalidate */
 	case PROC_WRITEBACK_INVALIDATE_MEM:
-		dmac_flush_range(pMemBuf, pMemBuf + cBytes);
-		outer_flush_range(__pa((u32)pMemBuf), __pa((u32)pMemBuf +
-				  cBytes));
-	break;
-	/* Writeback and Invalidate all */
+		dmac_flush_range(pMemBuf, pMemBuf + byte_size);
+		outer_flush_range(__pa((u32) pMemBuf), __pa((u32) pMemBuf +
+							    byte_size));
+		break;
+		/* Writeback and Invalidate all */
 	case PROC_WRBK_INV_ALL:
 		__cpuc_flush_kern_all();
 		break;
@@ -246,26 +250,26 @@ void MEM_FlushCache(void *pMemBuf, u32 cBytes, u32 FlushType)
 }
 
 /*
- *  ======== MEM_FreePhysMem ========
+ *  ======== mem_free_phys_mem ========
  *  Purpose:
  *      Free the given block of physically contiguous memory.
  */
-void MEM_FreePhysMem(void *pVirtualAddress, u32 pPhysicalAddress,
-		     u32 cBytes)
+void mem_free_phys_mem(void *pVirtualAddress, u32 pPhysicalAddress,
+		       u32 byte_size)
 {
-	DBC_Require(pVirtualAddress != NULL);
+	DBC_REQUIRE(pVirtualAddress != NULL);
 
-	if (!extPhysMemPoolEnabled)
-		dma_free_coherent(NULL, cBytes, pVirtualAddress,
-				 pPhysicalAddress);
+	if (!ext_phys_mem_pool_enabled)
+		dma_free_coherent(NULL, byte_size, pVirtualAddress,
+				  pPhysicalAddress);
 }
 
 /*
- *  ======== MEM_Init ========
+ *  ======== services_mem_init ========
  *  Purpose:
  *      Initialize MEM module private state.
  */
-bool MEM_Init(void)
+bool services_mem_init(void)
 {
 	return true;
 }

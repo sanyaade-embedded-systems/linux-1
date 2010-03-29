@@ -28,21 +28,21 @@
 /* Assertion Macros: */
 #ifdef CONFIG_BRIDGE_DEBUG
 
-#define DBC_Assert(exp) 						       \
+#define DBC_ASSERT(exp) 						       \
 do {									       \
 	if (!(exp))							       \
 		pr_err("%s, line %d: Assertion (" #exp ") failed.\n", \
 		__FILE__, __LINE__);					       \
 } while (0)
-#define DBC_Require DBC_Assert	/* Function Precondition.  */
-#define DBC_Ensure  DBC_Assert	/* Function Postcondition. */
+#define DBC_REQUIRE DBC_ASSERT	/* Function Precondition.  */
+#define DBC_ENSURE  DBC_ASSERT	/* Function Postcondition. */
 
 #else
 
-#define DBC_Assert(exp) {}
-#define DBC_Require(exp) {}
-#define DBC_Ensure(exp) {}
+#define DBC_ASSERT(exp) {}
+#define DBC_REQUIRE(exp) {}
+#define DBC_ENSURE(exp) {}
 
-#endif				/* DEBUG */
+#endif /* DEBUG */
 
-#endif				/* DBC_ */
+#endif /* DBC_ */

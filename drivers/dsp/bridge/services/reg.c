@@ -35,69 +35,69 @@
 #include <regsup.h>
 
 /*
- *  ======== REG_DeleteValue ========
+ *  ======== reg_delete_value ========
  *  Deletes a registry entry value.  NOTE:  A registry entry value is not the
  *  same as *  a registry key.
  */
-DSP_STATUS REG_DeleteValue(IN CONST char *pstrValue)
+dsp_status reg_delete_value(IN CONST char *pstrValue)
 {
-	DSP_STATUS status;
-	DBC_Require(strlen(pstrValue) < REG_MAXREGPATHLENGTH);
+	dsp_status status;
+	DBC_REQUIRE(strlen(pstrValue) < REG_MAXREGPATHLENGTH);
 
-	status = regsupDeleteValue(pstrValue);
+	status = regsup_delete_value(pstrValue);
 
 	return status;
 }
 
 /*
- *  ======== REG_EnumValue ========
+ *  ======== reg_enum_value ========
  *  Enumerates a registry key and retrieve values stored under the key.
  *  We will assume the input pdwValueSize is smaller than
  *  REG_MAXREGPATHLENGTH for implementation purposes.
  */
-DSP_STATUS REG_EnumValue(IN u32 dwIndex,
-			 IN CONST char *pstrKey, IN OUT char *pstrValue,
-			 IN OUT u32 *pdwValueSize, IN OUT char *pstrData,
-			 IN OUT u32 *pdwDataSize)
+dsp_status reg_enum_value(IN u32 dw_index,
+			  IN CONST char *pstrKey, IN OUT char *pstrValue,
+			  IN OUT u32 *pdwValueSize, IN OUT char *pstrData,
+			  IN OUT u32 *pdwDataSize)
 {
-	DSP_STATUS status;
+	dsp_status status;
 
-	DBC_Require(pstrKey && pstrValue && pdwValueSize && pstrData &&
+	DBC_REQUIRE(pstrKey && pstrValue && pdwValueSize && pstrData &&
 		    pdwDataSize);
-	DBC_Require(*pdwValueSize <= REG_MAXREGPATHLENGTH);
-       DBC_Require(strlen(pstrKey) < REG_MAXREGPATHLENGTH);
+	DBC_REQUIRE(*pdwValueSize <= REG_MAXREGPATHLENGTH);
+	DBC_REQUIRE(strlen(pstrKey) < REG_MAXREGPATHLENGTH);
 
-	status = regsupEnumValue(dwIndex, pstrKey, pstrValue, pdwValueSize,
-				 pstrData, pdwDataSize);
+	status = regsup_enum_value(dw_index, pstrKey, pstrValue, pdwValueSize,
+				   pstrData, pdwDataSize);
 
 	return status;
 }
 
 /*
- *  ======== REG_Exit ========
+ *  ======== reg_exit ========
  *  Discontinue usage of the REG module.
  */
-void REG_Exit(void)
+void reg_exit(void)
 {
-	regsupExit();
+	regsup_exit();
 }
 
 /*
- *  ======== REG_GetValue ========
+ *  ======== reg_get_value ========
  *  Retrieve a value from the registry.
  */
-DSP_STATUS REG_GetValue(IN CONST char *pstrValue, OUT u8 *pbData,
-			IN OUT u32 *pdwDataSize)
+dsp_status reg_get_value(IN CONST char *pstrValue, OUT u8 * pbData,
+			 IN OUT u32 *pdwDataSize)
 {
-	DSP_STATUS status;
+	dsp_status status;
 
-	DBC_Require(pstrValue && pbData);
-       DBC_Require(strlen(pstrValue) < REG_MAXREGPATHLENGTH);
+	DBC_REQUIRE(pstrValue && pbData);
+	DBC_REQUIRE(strlen(pstrValue) < REG_MAXREGPATHLENGTH);
 
-	/*  We need to use regsup calls...  */
-	/*  ...for now we don't need the key handle or  */
-	/*  the subkey, all we need is the value to lookup.  */
-	if (regsupGetValue((char *)pstrValue, pbData, pdwDataSize) == DSP_SOK)
+	/*  We need to use regsup calls... */
+	/*  ...for now we don't need the key handle or */
+	/*  the subkey, all we need is the value to lookup. */
+	if (regsup_get_value((char *)pstrValue, pbData, pdwDataSize) == DSP_SOK)
 		status = DSP_SOK;
 	else
 		status = DSP_EFAIL;
@@ -106,38 +106,37 @@ DSP_STATUS REG_GetValue(IN CONST char *pstrValue, OUT u8 *pbData,
 }
 
 /*
- *  ======== REG_Init ========
+ *  ======== reg_init ========
  *  Initialize the REG module's private state.
  */
-bool REG_Init(void)
+bool reg_init(void)
 {
-	bool fInit;
+	bool ret;
 
-	fInit = regsupInit();
+	ret = regsup_init();
 
-	return fInit;
+	return ret;
 }
 
 /*
- *  ======== REG_SetValue ========
+ *  ======== reg_set_value ========
  *  Set a value in the registry.
  */
-DSP_STATUS REG_SetValue(IN CONST char *pstrValue, IN u8 *pbData,
-			IN u32 dwDataSize)
+dsp_status reg_set_value(IN CONST char *pstrValue, IN u8 * pbData,
+			 IN u32 dw_data_size)
 {
-	DSP_STATUS status;
+	dsp_status status;
 
-	DBC_Require(pstrValue && pbData);
-	DBC_Require(dwDataSize > 0);
-	DBC_Require(strlen(pstrValue) < REG_MAXREGPATHLENGTH);
+	DBC_REQUIRE(pstrValue && pbData);
+	DBC_REQUIRE(dw_data_size > 0);
+	DBC_REQUIRE(strlen(pstrValue) < REG_MAXREGPATHLENGTH);
 
 	/*
 	 * We need to use regsup calls
 	 * for now we don't need the key handle or
 	 * the subkey, all we need is the value to lookup.
 	 */
-	status = regsupSetValue((char *)pstrValue, pbData, dwDataSize);
+	status = regsup_set_value((char *)pstrValue, pbData, dw_data_size);
 
 	return status;
 }
-

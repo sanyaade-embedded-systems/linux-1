@@ -128,7 +128,7 @@
 #define MBX_DEH_USERS_BASE  0x100	/* 256 */
 #define MBX_DEH_LIMIT       0x3FF	/* 1023 */
 #define MBX_DEH_RESET       0x101	/* DSP RESET (DEH) */
-#define MBX_DEH_EMMU        0X103 /*DSP MMU FAULT RECOVERY*/
+#define MBX_DEH_EMMU        0X103	/*DSP MMU FAULT RECOVERY */
 
 /*
  *  Link driver command/status codes.
@@ -173,10 +173,10 @@
 #define MBX_PM_OPP_CHNG(OPP) (MBX_PM_CLASS | MBX_PM_TYPE_OPP_PRECHNG | (OPP))
 #define MBX_PM_RET (MBX_PM_CLASS | MBX_PM_TYPE_PWR_CHNG | 0x0006)
 #define MBX_PM_HIB (MBX_PM_CLASS | MBX_PM_TYPE_PWR_CHNG | 0x0002)
-#define MBX_PM_OPP_1 0
-#define MBX_PM_OPP_2 1
-#define MBX_PM_OPP_3 2
-#define MBX_PM_OPP_4 3
+#define MBX_PM_OPP1 0
+#define MBX_PM_OPP2 1
+#define MBX_PM_OPP3 2
+#define MBX_PM_OPP4 3
 #define MBX_OLDOPP_EXTRACT(OPPMSG) ((0x00F0 & (OPPMSG)) >> 4)
 #define MBX_NEWOPP_EXTRACT(OPPMSG) (0x000F & (OPPMSG))
 #define MBX_PREVOPP_EXTRACT(OPPMSG) ((0x00F0 & (OPPMSG)) >> 4)
@@ -195,4 +195,4 @@
 /* Zero-Copy channel */
 #define MBX_SETZCPYVAL(x)  (MBX_ZCPY_CLASS | (x << MBX_ZCPY_CHNLSHIFT))
 
-#endif				/* _MBX_SH_H */
+#endif /* _MBX_SH_H */

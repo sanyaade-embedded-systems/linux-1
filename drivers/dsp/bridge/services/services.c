@@ -37,64 +37,63 @@
 #include <dspbridge/services.h>
 
 /*
- *  ======== SERVICES_Exit ========
+ *  ======== services_exit ========
  *  Purpose:
  *      Discontinue usage of module; free resources when reference count
  *      reaches 0.
  */
-void SERVICES_Exit(void)
+void services_exit(void)
 {
 	/* Uninitialize all SERVICES modules here */
-	NTFY_Exit();
-	SYNC_Exit();
-	CLK_Exit();
-	REG_Exit();
-	CFG_Exit();
-	MEM_Exit();
+	ntfy_exit();
+	sync_exit();
+	clk_exit();
+	reg_exit();
+	cfg_exit();
+	mem_exit();
 }
 
 /*
- *  ======== SERVICES_Init ========
+ *  ======== services_init ========
  *  Purpose:
  *      Initializes SERVICES modules.
  */
-bool SERVICES_Init(void)
+bool services_init(void)
 {
-	bool fInit = true;
-	bool fCFG, fMEM;
-	bool fREG, fSYNC, fCLK, fNTFY;
+	bool ret = true;
+	bool fcfg, fmem;
+	bool freg, fsync, fclk, fntfy;
 
 	/* Perform required initialization of SERVICES modules. */
-	fMEM = MEM_Init();
-	fREG = REG_Init();
-	fCFG = CFG_Init();
-	fSYNC = SYNC_Init();
-	fCLK  = CLK_Init();
-	fNTFY = NTFY_Init();
+	fmem = services_mem_init();
+	freg = reg_init();
+	fcfg = cfg_init();
+	fsync = sync_init();
+	fclk = services_clk_init();
+	fntfy = ntfy_init();
 
-	fInit = fCFG && fMEM && fREG && fSYNC && fCLK;
+	ret = fcfg && fmem && freg && fsync && fclk;
 
-	if (!fInit) {
-		if (fNTFY)
-			NTFY_Exit();
+	if (!ret) {
+		if (fntfy)
+			ntfy_exit();
 
-		if (fSYNC)
-			SYNC_Exit();
+		if (fsync)
+			sync_exit();
 
-		if (fCLK)
-			CLK_Exit();
+		if (fclk)
+			clk_exit();
 
-		if (fREG)
-			REG_Exit();
+		if (freg)
+			reg_exit();
 
-		if (fCFG)
-			CFG_Exit();
+		if (fcfg)
+			cfg_exit();
 
-		if (fMEM)
-			MEM_Exit();
+		if (fmem)
+			mem_exit();
 
 	}
 
-	return fInit;
+	return ret;
 }
-

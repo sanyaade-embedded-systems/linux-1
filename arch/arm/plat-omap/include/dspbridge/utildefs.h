@@ -29,11 +29,11 @@
 #define UTIL_MAXARGVS       10
 
 /* Platform specific important info */
-	struct UTIL_SYSINFO {
-		/* Granularity of page protection; usually 1k or 4k */
-		u32 dwPageSize;
-		u32 dwAllocationGranularity; /* VM granularity, usually 64K */
-		u32 dwNumberOfProcessors;	/* Used as sanity check */
-	} ;
+struct util_sysinfo {
+	/* Granularity of page protection; usually 1k or 4k */
+	u32 dw_page_size;
+	u32 dw_allocation_granularity;	/* VM granularity, usually 64K */
+	u32 dw_number_of_processors;	/* Used as sanity check */
+};
 
-#endif				/* UTILDEFS_ */
+#endif /* UTILDEFS_ */

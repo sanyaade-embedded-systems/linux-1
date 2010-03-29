@@ -52,27 +52,27 @@
 #ifdef CONFIG_PM
 extern s32 dsp_test_sleepstate;
 #endif
-extern struct MAILBOX_CONTEXT mboxsetting;
+extern struct mailbox_context mboxsetting;
 
 /*
  *  ======== handle_constraints_set ========
  *  	Sets new DSP constraint
  */
-DSP_STATUS handle_constraints_set(struct WMD_DEV_CONTEXT *pDevContext,
-				  IN void *pArgs)
+dsp_status handle_constraints_set(struct wmd_dev_context *dev_context,
+				  IN void *pargs)
 {
 #ifdef CONFIG_BRIDGE_DVFS
 	u32 opp_idx;
 	struct dspbridge_platform_data *pdata =
-		omap_dspbridge_dev->dev.platform_data;
+	    omap_dspbridge_dev->dev.platform_data;
 
 	/* pick up the opp index */
-	opp_idx = *(((u32 *)(pArgs)) + 1);
+	opp_idx = *(((u32 *) (pargs)) + 1);
 
 	/* Sanity check to ensure things are fine */
 	if (!opp_idx || (opp_idx > pdata->dsp_num_speeds)) {
 		pr_err("%s: DSP requested for an invalid OPP %d Vs %d->%d!\n",
-			__func__, opp_idx, 1, pdata->dsp_num_speeds);
+		       __func__, opp_idx, 1, pdata->dsp_num_speeds);
 		return DSP_EINVALIDARG;
 	}
 	/* Read the target value requested by DSP  */
@@ -80,44 +80,45 @@ DSP_STATUS handle_constraints_set(struct WMD_DEV_CONTEXT *pDevContext,
 
 	/* Set the new opp value */
 	if (pdata->dsp_set_min_opp)
-		(*pdata->dsp_set_min_opp)(opp_idx);
+		(*pdata->dsp_set_min_opp) (opp_idx);
 #endif /* #ifdef CONFIG_BRIDGE_DVFS */
 	return DSP_SOK;
 }
 
 /*
- *  ======== handle_hibernation_fromDSP ========
+ *  ======== handle_hibernation_from_dsp ========
  *  	Handle Hibernation requested from DSP
  */
-DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
+dsp_status handle_hibernation_from_dsp(struct wmd_dev_context *dev_context)
 {
-	DSP_STATUS status = DSP_SOK;
+	dsp_status status = DSP_SOK;
 #ifdef CONFIG_PM
 	u16 timeout = PWRSTST_TIMEOUT / 10;
-	struct CFG_HOSTRES resources;
-	enum HW_PwrState_t pwrState;
+	struct cfg_hostres resources;
+	enum hw_pwr_state_t pwr_state;
 #ifdef CONFIG_BRIDGE_DVFS
 	u32 opplevel;
-	struct IO_MGR *hIOMgr;
+	struct io_mgr *hio_mgr;
 	struct dspbridge_platform_data *pdata =
-				omap_dspbridge_dev->dev.platform_data;
+	    omap_dspbridge_dev->dev.platform_data;
 #endif
 
-	status = CFG_GetHostResources(
-		 (struct CFG_DEVNODE *)DRV_GetFirstDevExtension(), &resources);
+	status = cfg_get_host_resources((struct cfg_devnode *)
+					drv_get_first_dev_extension(),
+					&resources);
 	if (DSP_FAILED(status))
 		return status;
 
-	HW_PWR_IVA2StateGet(resources.dwPrmBase, HW_PWR_DOMAIN_DSP,
-			    &pwrState);
+	hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
+			      &pwr_state);
 	/* Wait for DSP to move into OFF state */
-	while ((pwrState != HW_PWR_STATE_OFF) && --timeout) {
+	while ((pwr_state != HW_PWR_STATE_OFF) && --timeout) {
 		if (msleep_interruptible(10)) {
 			pr_err("Waiting for DSP OFF mode interrupted\n");
 			return DSP_EFAIL;
 		}
-		HW_PWR_IVA2StateGet(resources.dwPrmBase, HW_PWR_DOMAIN_DSP,
-				    &pwrState);
+		hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
+				      &pwr_state);
 	}
 	if (timeout == 0) {
 		pr_err("%s: Timed out waiting for DSP off mode\n", __func__);
@@ -126,10 +127,10 @@ DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
 	} else {
 
 		/* Save mailbox settings */
-		omap_mbox_save_ctx(pDevContext->mbox);
+		omap_mbox_save_ctx(dev_context->mbox);
 
 		/* Turn off DSP Peripheral clocks and DSP Load monitor timer */
-		status = DSP_PeripheralClocks_Disable(pDevContext, NULL);
+		status = dsp_peripheral_clocks_disable(dev_context, NULL);
 #ifdef CONFIG_BRIDGE_WDT3
 		/*
 		 * Disable WDT clocks and ISR on DSP commanded
@@ -141,19 +142,19 @@ DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
 
 		if (DSP_SUCCEEDED(status)) {
 			/* Update the Bridger Driver state */
-			pDevContext->dwBrdState = BRD_DSP_HIBERNATION;
+			dev_context->dw_brd_state = BRD_DSP_HIBERNATION;
 #ifdef CONFIG_BRIDGE_DVFS
-			DEV_GetIOMgr(pDevContext->hDevObject, &hIOMgr);
-			if (!hIOMgr)
+			dev_get_io_mgr(dev_context->hdev_obj, &hio_mgr);
+			if (!hio_mgr)
 				return DSP_EHANDLE;
-			IO_SHMsetting(hIOMgr, SHM_GETOPP, &opplevel);
+			io_sh_msetting(hio_mgr, SHM_GETOPP, &opplevel);
 
 			/*
 			 * Set the OPP to low level before moving to OFF
 			 * mode
 			 */
 			if (pdata->dsp_set_min_opp)
-				(*pdata->dsp_set_min_opp)(VDD1_OPP1);
+				(*pdata->dsp_set_min_opp) (VDD1_OPP1);
 			status = DSP_SOK;
 #endif /* CONFIG_BRIDGE_DVFS */
 		}
@@ -163,51 +164,49 @@ DSP_STATUS handle_hibernation_fromDSP(struct WMD_DEV_CONTEXT *pDevContext)
 }
 
 /*
- *  ======== SleepDSP ========
+ *  ======== sleep_dsp ========
  *  	Put DSP in low power consuming state.
  */
-DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
-		   IN void *pArgs)
+dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
+		     IN void *pargs)
 {
-	DSP_STATUS status = DSP_SOK;
+	dsp_status status = DSP_SOK;
 #ifdef CONFIG_PM
-	struct CFG_HOSTRES resources;
+	struct cfg_hostres resources;
 #ifdef CONFIG_BRIDGE_NTFY_PWRERR
-	struct DEH_MGR *hDehMgr;
+	struct deh_mgr *hdeh_mgr;
 #endif /* CONFIG_BRIDGE_NTFY_PWRERR */
 	u16 timeout = PWRSTST_TIMEOUT / 10;
-	enum HW_PwrState_t pwrState, targetPwrState;
+	enum hw_pwr_state_t pwr_state, target_pwr_state;
 
 	/* Check if sleep code is valid */
-	if ((dwCmd != PWR_DEEPSLEEP) && (dwCmd != PWR_EMERGENCYDEEPSLEEP))
+	if ((dw_cmd != PWR_DEEPSLEEP) && (dw_cmd != PWR_EMERGENCYDEEPSLEEP))
 		return DSP_EINVALIDARG;
 
-	status = CFG_GetHostResources(
-		 (struct CFG_DEVNODE *)DRV_GetFirstDevExtension(), &resources);
+	status = cfg_get_host_resources((struct cfg_devnode *)
+					drv_get_first_dev_extension(),
+					&resources);
 	if (DSP_FAILED(status))
 		return status;
 
-	switch (pDevContext->dwBrdState) {
+	switch (dev_context->dw_brd_state) {
 	case BRD_RUNNING:
-		omap_mbox_save_ctx(pDevContext->mbox);
+		omap_mbox_save_ctx(dev_context->mbox);
 		if (dsp_test_sleepstate == HW_PWR_STATE_OFF) {
-			sm_interrupt_dsp(pDevContext,
-					     MBX_PM_DSPHIBERNATE);
+			sm_interrupt_dsp(dev_context, MBX_PM_DSPHIBERNATE);
 			dev_dbg(bridge, "PM: %s - sent hibernate cmd to DSP\n",
-								__func__);
-			targetPwrState = HW_PWR_STATE_OFF;
+				__func__);
+			target_pwr_state = HW_PWR_STATE_OFF;
 		} else {
-			sm_interrupt_dsp(pDevContext,
-					     MBX_PM_DSPRETENTION);
-			targetPwrState = HW_PWR_STATE_RET;
+			sm_interrupt_dsp(dev_context, MBX_PM_DSPRETENTION);
+			target_pwr_state = HW_PWR_STATE_RET;
 		}
 		break;
 	case BRD_RETENTION:
-		omap_mbox_save_ctx(pDevContext->mbox);
+		omap_mbox_save_ctx(dev_context->mbox);
 		if (dsp_test_sleepstate == HW_PWR_STATE_OFF) {
-			sm_interrupt_dsp(pDevContext,
-					     MBX_PM_DSPHIBERNATE);
-			targetPwrState = HW_PWR_STATE_OFF;
+			sm_interrupt_dsp(dev_context, MBX_PM_DSPHIBERNATE);
+			target_pwr_state = HW_PWR_STATE_OFF;
 		} else
 			return DSP_SOK;
 		break;
@@ -215,47 +214,47 @@ DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
 	case BRD_DSP_HIBERNATION:
 		/* Already in Hibernation, so just return */
 		dev_dbg(bridge, "PM: %s - DSP already in hibernation\n",
-								__func__);
+			__func__);
 		return DSP_SOK;
 	case BRD_STOPPED:
 		dev_dbg(bridge, "PM: %s - Board in STOP state\n", __func__);
 		return DSP_SALREADYASLEEP;
 	default:
 		dev_dbg(bridge, "PM: %s - Bridge in Illegal state\n", __func__);
-			return DSP_EFAIL;
+		return DSP_EFAIL;
 	}
 
 	/* Get the PRCM DSP power domain status */
-	HW_PWR_IVA2StateGet(resources.dwPrmBase, HW_PWR_DOMAIN_DSP,
-			&pwrState);
+	hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
+			      &pwr_state);
 
 	/* Wait for DSP to move into target power state */
-	while ((pwrState != targetPwrState) && --timeout) {
+	while ((pwr_state != target_pwr_state) && --timeout) {
 		if (msleep_interruptible(10)) {
 			pr_err("Waiting for DSP to Suspend interrupted\n");
 			return DSP_EFAIL;
 		}
-		HW_PWR_IVA2StateGet(resources.dwPrmBase, HW_PWR_DOMAIN_DSP,
-				    &pwrState);
+		hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
+				      &pwr_state);
 	}
 
 	if (!timeout) {
 		pr_err("%s: Timed out waiting for DSP off mode, state %x\n",
-							__func__, pwrState);
+		       __func__, pwr_state);
 #ifdef CONFIG_BRIDGE_NTFY_PWRERR
-		DEV_GetDehMgr(pDevContext->hDevObject, &hDehMgr);
-		WMD_DEH_Notify(hDehMgr, DSP_PWRERROR, 0);
+		dev_get_deh_mgr(dev_context->hdev_obj, &hdeh_mgr);
+		bridge_deh_notify(hdeh_mgr, DSP_PWRERROR, 0);
 #endif /* CONFIG_BRIDGE_NTFY_PWRERR */
 		return WMD_E_TIMEOUT;
 	} else {
 		/* Update the Bridger Driver state */
 		if (dsp_test_sleepstate == HW_PWR_STATE_OFF)
-			pDevContext->dwBrdState = BRD_HIBERNATION;
+			dev_context->dw_brd_state = BRD_HIBERNATION;
 		else
-			pDevContext->dwBrdState = BRD_RETENTION;
+			dev_context->dw_brd_state = BRD_RETENTION;
 
-		/* Turn off DSP Peripheral clocks  */
-		status = DSP_PeripheralClocks_Disable(pDevContext, NULL);
+		/* Turn off DSP Peripheral clocks */
+		status = dsp_peripheral_clocks_disable(dev_context, NULL);
 #ifdef CONFIG_BRIDGE_WDT3
 		/*
 		 * Disable WDT clocks and ISR on BSP commanded
@@ -268,14 +267,14 @@ DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
 			return status;
 		}
 #ifdef CONFIG_BRIDGE_DVFS
-		else if (targetPwrState == HW_PWR_STATE_OFF) {
+		else if (target_pwr_state == HW_PWR_STATE_OFF) {
 			struct dspbridge_platform_data *pdata =
-				omap_dspbridge_dev->dev.platform_data;
+			    omap_dspbridge_dev->dev.platform_data;
 			/*
 			 * Set the OPP to low level before moving to OFF mode
 			 */
 			if (pdata->dsp_set_min_opp)
-				(*pdata->dsp_set_min_opp)(VDD1_OPP1);
+				(*pdata->dsp_set_min_opp) (VDD1_OPP1);
 		}
 #endif /* CONFIG_BRIDGE_DVFS */
 	}
@@ -283,118 +282,118 @@ DSP_STATUS SleepDSP(struct WMD_DEV_CONTEXT *pDevContext, IN u32 dwCmd,
 	return status;
 }
 
-
 /*
- *  ======== WakeDSP ========
+ *  ======== wake_dsp ========
  *  	Wake up DSP from sleep.
  */
-DSP_STATUS WakeDSP(struct WMD_DEV_CONTEXT *pDevContext, IN void *pArgs)
+dsp_status wake_dsp(struct wmd_dev_context *dev_context, IN void *pargs)
 {
-	DSP_STATUS status = DSP_SOK;
+	dsp_status status = DSP_SOK;
 #ifdef CONFIG_PM
 
 	/* Check the BRD/WMD state, if it is not 'SLEEP' then return failure */
-	if (pDevContext->dwBrdState == BRD_RUNNING ||
-	    pDevContext->dwBrdState == BRD_STOPPED) {
+	if (dev_context->dw_brd_state == BRD_RUNNING ||
+	    dev_context->dw_brd_state == BRD_STOPPED) {
 		/* The Device is in 'RET' or 'OFF' state and WMD state is not
-		 * 'SLEEP', this means state inconsistency, so return  */
+		 * 'SLEEP', this means state inconsistency, so return */
 		return DSP_SOK;
 	}
 
 	/* Send a wakeup message to DSP */
-	sm_interrupt_dsp(pDevContext, MBX_PM_DSPWAKEUP);
+	sm_interrupt_dsp(dev_context, MBX_PM_DSPWAKEUP);
 
 	/* Set the device state to RUNNIG */
-	pDevContext->dwBrdState = BRD_RUNNING;
+	dev_context->dw_brd_state = BRD_RUNNING;
 #endif /* CONFIG_PM */
 	return status;
 }
 
 /*
- *  ======== DSPPeripheralClkCtrl ========
+ *  ======== dsp_peripheral_clk_ctrl ========
  *  	Enable/Disable the DSP peripheral clocks as needed..
  */
-DSP_STATUS DSPPeripheralClkCtrl(struct WMD_DEV_CONTEXT *pDevContext,
-				IN void *pArgs)
+dsp_status dsp_peripheral_clk_ctrl(struct wmd_dev_context *dev_context,
+				   IN void *pargs)
 {
-	u32 extClk = 0;
-	u32 extClkId = 0;
-	u32 extClkCmd = 0;
-	u32 clkIdIndex = MBX_PM_MAX_RESOURCES;
-	u32 tmpIndex;
-	u32 dspPerClksBefore;
-	DSP_STATUS status = DSP_SOK;
-	DSP_STATUS status1 = DSP_SOK;
-	struct CFG_HOSTRES resources;
+	u32 ext_clk = 0;
+	u32 ext_clk_id = 0;
+	u32 ext_clk_cmd = 0;
+	u32 clk_id_index = MBX_PM_MAX_RESOURCES;
+	u32 tmp_index;
+	u32 dsp_per_clks_before;
+	dsp_status status = DSP_SOK;
+	dsp_status status1 = DSP_SOK;
+	struct cfg_hostres resources;
 	u32 value;
 
-	dspPerClksBefore = pDevContext->uDspPerClks;
+	dsp_per_clks_before = dev_context->dsp_per_clks;
 
-	extClk = (u32)*((u32 *)pArgs);
+	ext_clk = (u32) *((u32 *) pargs);
 
-	status = CFG_GetHostResources(
-			(struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
-			&resources);
+	status = cfg_get_host_resources((struct cfg_devnode *)
+					drv_get_first_dev_extension(),
+					&resources);
 
 	if (DSP_FAILED(status))
 		return DSP_EFAIL;
 
-	extClkId = extClk & MBX_PM_CLK_IDMASK;
+	ext_clk_id = ext_clk & MBX_PM_CLK_IDMASK;
 
 	/* process the power message -- TODO, keep it in a separate function */
-	for (tmpIndex = 0; tmpIndex < MBX_PM_MAX_RESOURCES; tmpIndex++) {
-		if (extClkId == BPWR_CLKID[tmpIndex]) {
-			clkIdIndex = tmpIndex;
+	for (tmp_index = 0; tmp_index < MBX_PM_MAX_RESOURCES; tmp_index++) {
+		if (ext_clk_id == bpwr_clkid[tmp_index]) {
+			clk_id_index = tmp_index;
 			break;
 		}
 	}
 	/* TODO -- Assert may be a too hard restriction here.. May be we should
 	 * just return with failure when the CLK ID does not match */
-	/* DBC_Assert(clkIdIndex < MBX_PM_MAX_RESOURCES);*/
-	if (clkIdIndex == MBX_PM_MAX_RESOURCES) {
+	/* DBC_ASSERT(clk_id_index < MBX_PM_MAX_RESOURCES); */
+	if (clk_id_index == MBX_PM_MAX_RESOURCES) {
 		/* return with a more meaningfull error code */
 		return DSP_EFAIL;
 	}
-	extClkCmd = (extClk >> MBX_PM_CLK_CMDSHIFT) & MBX_PM_CLK_CMDMASK;
-	switch (extClkCmd) {
-	case BPWR_DisableClock:
+	ext_clk_cmd = (ext_clk >> MBX_PM_CLK_CMDSHIFT) & MBX_PM_CLK_CMDMASK;
+	switch (ext_clk_cmd) {
+	case BPWR_DISABLE_CLOCK:
 		/* Call BP to disable the needed clock */
-		status1 = CLK_Disable(BPWR_Clks[clkIdIndex].intClk);
-		status = CLK_Disable(BPWR_Clks[clkIdIndex].funClk);
-		if (BPWR_CLKID[clkIdIndex] == BPWR_MCBSP1) {
+		status1 = services_clk_disable(bpwr_clks[clk_id_index].int_clk);
+		status = services_clk_disable(bpwr_clks[clk_id_index].fun_clk);
+		if (bpwr_clkid[clk_id_index] == BPWR_MCBSP1) {
 			/* clear MCBSP1_CLKS, on McBSP1 OFF */
-			value = __raw_readl(resources.dwSysCtrlBase + 0x274);
+			value = __raw_readl(resources.dw_sys_ctrl_base + 0x274);
 			value &= ~(1 << 2);
-			__raw_writel(value, resources.dwSysCtrlBase + 0x274);
-		} else if (BPWR_CLKID[clkIdIndex] == BPWR_MCBSP2) {
+			__raw_writel(value, resources.dw_sys_ctrl_base + 0x274);
+		} else if (bpwr_clkid[clk_id_index] == BPWR_MCBSP2) {
 			/* clear MCBSP2_CLKS, on McBSP2 OFF */
-			value = __raw_readl(resources.dwSysCtrlBase + 0x274);
+			value = __raw_readl(resources.dw_sys_ctrl_base + 0x274);
 			value &= ~(1 << 6);
-			__raw_writel(value, resources.dwSysCtrlBase + 0x274);
+			__raw_writel(value, resources.dw_sys_ctrl_base + 0x274);
 		}
-		DSPClkWakeupEventCtrl(BPWR_Clks[clkIdIndex].clkId, false);
+		dsp_clk_wakeup_event_ctrl(bpwr_clks[clk_id_index].clk_id,
+					  false);
 		if ((DSP_SUCCEEDED(status)) && (DSP_SUCCEEDED(status1))) {
-			(pDevContext->uDspPerClks) &=
-				(~((u32) (1 << clkIdIndex)));
+			(dev_context->dsp_per_clks) &=
+			    (~((u32) (1 << clk_id_index)));
 		}
 		break;
-	case BPWR_EnableClock:
-		status1 = CLK_Enable(BPWR_Clks[clkIdIndex].intClk);
-		status = CLK_Enable(BPWR_Clks[clkIdIndex].funClk);
-		if (BPWR_CLKID[clkIdIndex] == BPWR_MCBSP1) {
+	case BPWR_ENABLE_CLOCK:
+		status1 = services_clk_enable(bpwr_clks[clk_id_index].int_clk);
+		status = services_clk_enable(bpwr_clks[clk_id_index].fun_clk);
+		if (bpwr_clkid[clk_id_index] == BPWR_MCBSP1) {
 			/* set MCBSP1_CLKS, on McBSP1 ON */
-			value = __raw_readl(resources.dwSysCtrlBase + 0x274);
+			value = __raw_readl(resources.dw_sys_ctrl_base + 0x274);
 			value |= 1 << 2;
-			__raw_writel(value, resources.dwSysCtrlBase + 0x274);
-		} else if (BPWR_CLKID[clkIdIndex] == BPWR_MCBSP2) {
+			__raw_writel(value, resources.dw_sys_ctrl_base + 0x274);
+		} else if (bpwr_clkid[clk_id_index] == BPWR_MCBSP2) {
 			/* set MCBSP2_CLKS, on McBSP2 ON */
-			value = __raw_readl(resources.dwSysCtrlBase + 0x274);
+			value = __raw_readl(resources.dw_sys_ctrl_base + 0x274);
 			value |= 1 << 6;
-			__raw_writel(value, resources.dwSysCtrlBase + 0x274);
+			__raw_writel(value, resources.dw_sys_ctrl_base + 0x274);
 		}
-		DSPClkWakeupEventCtrl(BPWR_Clks[clkIdIndex].clkId, true);
+		dsp_clk_wakeup_event_ctrl(bpwr_clks[clk_id_index].clk_id, true);
 		if ((DSP_SUCCEEDED(status)) && (DSP_SUCCEEDED(status1))) {
-			(pDevContext->uDspPerClks) |= (1 << clkIdIndex);
+			(dev_context->dsp_per_clks) |= (1 << clk_id_index);
 		}
 		break;
 	default:
@@ -407,30 +406,31 @@ DSP_STATUS DSPPeripheralClkCtrl(struct WMD_DEV_CONTEXT *pDevContext,
 }
 
 /*
- *  ========PreScale_DSP========
+ *  ========pre_scale_dsp========
  *  Sends prescale notification to DSP
  *
  */
-DSP_STATUS PreScale_DSP(struct WMD_DEV_CONTEXT *pDevContext, IN void *pArgs)
+dsp_status pre_scale_dsp(struct wmd_dev_context *dev_context, IN void *pargs)
 {
 #ifdef CONFIG_BRIDGE_DVFS
 	u32 level;
 	u32 voltage_domain;
 
-	voltage_domain = *((u32 *)pArgs);
-	level = *((u32 *)pArgs + 1);
+	voltage_domain = *((u32 *) pargs);
+	level = *((u32 *) pargs + 1);
 
 	dev_dbg(bridge, "OPP: %s voltage_domain = %x, level = 0x%x\n",
-					__func__, voltage_domain, level);
-	if ((pDevContext->dwBrdState == BRD_HIBERNATION) ||
-			(pDevContext->dwBrdState == BRD_RETENTION) ||
-			(pDevContext->dwBrdState == BRD_DSP_HIBERNATION)) {
-		dev_dbg(bridge, "OPP: %s IVA in sleep. No message to DSP\n", __func__);
+		__func__, voltage_domain, level);
+	if ((dev_context->dw_brd_state == BRD_HIBERNATION) ||
+	    (dev_context->dw_brd_state == BRD_RETENTION) ||
+	    (dev_context->dw_brd_state == BRD_DSP_HIBERNATION)) {
+		dev_dbg(bridge, "OPP: %s IVA in sleep. No message to DSP\n",
+			__func__);
 		return DSP_SOK;
-	} else if ((pDevContext->dwBrdState == BRD_RUNNING)) {
+	} else if ((dev_context->dw_brd_state == BRD_RUNNING)) {
 		/* Send a prenotificatio to DSP */
 		dev_dbg(bridge, "OPP: %s sent notification to DSP\n", __func__);
-		sm_interrupt_dsp(pDevContext, MBX_PM_SETPOINT_PRENOTIFY);
+		sm_interrupt_dsp(dev_context, MBX_PM_SETPOINT_PRENOTIFY);
 		return DSP_SOK;
 	} else {
 		return DSP_EFAIL;
@@ -440,40 +440,40 @@ DSP_STATUS PreScale_DSP(struct WMD_DEV_CONTEXT *pDevContext, IN void *pArgs)
 }
 
 /*
- *  ========PostScale_DSP========
+ *  ========post_scale_dsp========
  *  Sends postscale notification to DSP
  *
  */
-DSP_STATUS PostScale_DSP(struct WMD_DEV_CONTEXT *pDevContext, IN void *pArgs)
+dsp_status post_scale_dsp(struct wmd_dev_context *dev_context, IN void *pargs)
 {
-	DSP_STATUS status = DSP_SOK;
+	dsp_status status = DSP_SOK;
 #ifdef CONFIG_BRIDGE_DVFS
 	u32 level;
 	u32 voltage_domain;
-	struct IO_MGR *hIOMgr;
+	struct io_mgr *hio_mgr;
 
-	status = DEV_GetIOMgr(pDevContext->hDevObject, &hIOMgr);
-	if (!hIOMgr)
+	status = dev_get_io_mgr(dev_context->hdev_obj, &hio_mgr);
+	if (!hio_mgr)
 		return DSP_EHANDLE;
 
-	voltage_domain = *((u32 *)pArgs);
-	level = *((u32 *)pArgs + 1);
+	voltage_domain = *((u32 *) pargs);
+	level = *((u32 *) pargs + 1);
 	dev_dbg(bridge, "OPP: %s voltage_domain = %x, level = 0x%x\n",
-					__func__, voltage_domain, level);
-	if ((pDevContext->dwBrdState == BRD_HIBERNATION) ||
-			(pDevContext->dwBrdState == BRD_RETENTION) ||
-			(pDevContext->dwBrdState == BRD_DSP_HIBERNATION)) {
+		__func__, voltage_domain, level);
+	if ((dev_context->dw_brd_state == BRD_HIBERNATION) ||
+	    (dev_context->dw_brd_state == BRD_RETENTION) ||
+	    (dev_context->dw_brd_state == BRD_DSP_HIBERNATION)) {
 		/* Update the OPP value in shared memory */
-		IO_SHMsetting(hIOMgr, SHM_CURROPP, &level);
-		dev_dbg(bridge, "OPP: %s IVA in sleep. Wrote to SHM\n",
-								__func__);
-	} else  if ((pDevContext->dwBrdState == BRD_RUNNING)) {
+		io_sh_msetting(hio_mgr, SHM_CURROPP, &level);
+		dev_dbg(bridge, "OPP: %s IVA in sleep. Wrote to shm\n",
+			__func__);
+	} else if ((dev_context->dw_brd_state == BRD_RUNNING)) {
 		/* Update the OPP value in shared memory */
-		IO_SHMsetting(hIOMgr, SHM_CURROPP, &level);
+		io_sh_msetting(hio_mgr, SHM_CURROPP, &level);
 		/* Send a post notification to DSP */
-		sm_interrupt_dsp(pDevContext, MBX_PM_SETPOINT_POSTNOTIFY);
-		dev_dbg(bridge, "OPP: %s wrote to SHM. Sent post notification "
-							"to DSP\n", __func__);
+		sm_interrupt_dsp(dev_context, MBX_PM_SETPOINT_POSTNOTIFY);
+		dev_dbg(bridge, "OPP: %s wrote to shm. Sent post notification "
+			"to DSP\n", __func__);
 	} else {
 		status = DSP_EFAIL;
 	}
@@ -482,84 +482,88 @@ DSP_STATUS PostScale_DSP(struct WMD_DEV_CONTEXT *pDevContext, IN void *pArgs)
 }
 
 /*
- *  ========DSP_PeripheralClocks_Disable========
+ *  ========dsp_peripheral_clocks_disable========
  *  Disables all the peripheral clocks that were requested by DSP
  */
-DSP_STATUS DSP_PeripheralClocks_Disable(struct WMD_DEV_CONTEXT *pDevContext,
-					IN void *pArgs)
+dsp_status dsp_peripheral_clocks_disable(struct wmd_dev_context *dev_context,
+					 IN void *pargs)
 {
-	u32 clkIdx;
-	DSP_STATUS status = DSP_SOK;
-	struct CFG_HOSTRES resources;
+	u32 clk_idx;
+	dsp_status status = DSP_SOK;
+	struct cfg_hostres resources;
 	u32 value;
 
-	status = CFG_GetHostResources(
-			(struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
-			&resources);
+	status = cfg_get_host_resources((struct cfg_devnode *)
+					drv_get_first_dev_extension(),
+					&resources);
 
-	for (clkIdx = 0; clkIdx < MBX_PM_MAX_RESOURCES; clkIdx++) {
-		if (((pDevContext->uDspPerClks) >> clkIdx) & 0x01) {
+	for (clk_idx = 0; clk_idx < MBX_PM_MAX_RESOURCES; clk_idx++) {
+		if (((dev_context->dsp_per_clks) >> clk_idx) & 0x01) {
 			/* Disables the interface clock of the peripheral */
-			status = CLK_Disable(BPWR_Clks[clkIdx].intClk);
-			if (BPWR_CLKID[clkIdx] == BPWR_MCBSP1) {
+			status =
+			    services_clk_disable(bpwr_clks[clk_idx].int_clk);
+			if (bpwr_clkid[clk_idx] == BPWR_MCBSP1) {
 				/* clear MCBSP1_CLKS, on McBSP1 OFF */
-				value = __raw_readl(resources.dwSysCtrlBase
-								+ 0x274);
+				value = __raw_readl(resources.dw_sys_ctrl_base
+						    + 0x274);
 				value &= ~(1 << 2);
-				__raw_writel(value, resources.dwSysCtrlBase
-								+ 0x274);
-			} else if (BPWR_CLKID[clkIdx] == BPWR_MCBSP2) {
+				__raw_writel(value, resources.dw_sys_ctrl_base
+					     + 0x274);
+			} else if (bpwr_clkid[clk_idx] == BPWR_MCBSP2) {
 				/* clear MCBSP2_CLKS, on McBSP2 OFF */
-				value = __raw_readl(resources.dwSysCtrlBase
-								+ 0x274);
+				value = __raw_readl(resources.dw_sys_ctrl_base
+						    + 0x274);
 				value &= ~(1 << 6);
-				__raw_writel(value, resources.dwSysCtrlBase
-								+ 0x274);
+				__raw_writel(value, resources.dw_sys_ctrl_base
+					     + 0x274);
 			}
 
 			/* Disables the functional clock of the periphearl */
-			status = CLK_Disable(BPWR_Clks[clkIdx].funClk);
+			status =
+			    services_clk_disable(bpwr_clks[clk_idx].fun_clk);
 		}
 	}
 	return status;
 }
 
 /*
- *  ========DSP_PeripheralClocks_Enable========
+ *  ========dsp_peripheral_clocks_enable========
  *  Enables all the peripheral clocks that were requested by DSP
  */
-DSP_STATUS DSP_PeripheralClocks_Enable(struct WMD_DEV_CONTEXT *pDevContext,
-				      IN void *pArgs)
+dsp_status dsp_peripheral_clocks_enable(struct wmd_dev_context *dev_context,
+					IN void *pargs)
 {
-	u32 clkIdx;
-	DSP_STATUS int_clk_status = DSP_EFAIL, fun_clk_status = DSP_EFAIL;
-	struct CFG_HOSTRES resources;
+	u32 clk_idx;
+	dsp_status int_clk_status = DSP_EFAIL, fun_clk_status = DSP_EFAIL;
+	struct cfg_hostres resources;
 	u32 value;
 
-	CFG_GetHostResources((struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
-			&resources);
+	cfg_get_host_resources((struct cfg_devnode *)
+			       drv_get_first_dev_extension(), &resources);
 
-	for (clkIdx = 0; clkIdx < MBX_PM_MAX_RESOURCES; clkIdx++) {
-		if (((pDevContext->uDspPerClks) >> clkIdx) & 0x01) {
+	for (clk_idx = 0; clk_idx < MBX_PM_MAX_RESOURCES; clk_idx++) {
+		if (((dev_context->dsp_per_clks) >> clk_idx) & 0x01) {
 			/* Enable the interface clock of the peripheral */
-			int_clk_status = CLK_Enable(BPWR_Clks[clkIdx].intClk);
-			if (BPWR_CLKID[clkIdx] == BPWR_MCBSP1) {
+			int_clk_status =
+			    services_clk_enable(bpwr_clks[clk_idx].int_clk);
+			if (bpwr_clkid[clk_idx] == BPWR_MCBSP1) {
 				/* set MCBSP1_CLKS, on McBSP1 ON */
-				value = __raw_readl(resources.dwSysCtrlBase
-								+ 0x274);
+				value = __raw_readl(resources.dw_sys_ctrl_base
+						    + 0x274);
 				value |= 1 << 2;
-				__raw_writel(value, resources.dwSysCtrlBase
-								+ 0x274);
-			} else if (BPWR_CLKID[clkIdx] == BPWR_MCBSP2) {
+				__raw_writel(value, resources.dw_sys_ctrl_base
+					     + 0x274);
+			} else if (bpwr_clkid[clk_idx] == BPWR_MCBSP2) {
 				/* set MCBSP2_CLKS, on McBSP2 ON */
-				value = __raw_readl(resources.dwSysCtrlBase
-								+ 0x274);
+				value = __raw_readl(resources.dw_sys_ctrl_base
+						    + 0x274);
 				value |= 1 << 6;
-				__raw_writel(value, resources.dwSysCtrlBase
-								+ 0x274);
+				__raw_writel(value, resources.dw_sys_ctrl_base
+					     + 0x274);
 			}
 			/* Enable the functional clock of the periphearl */
-			fun_clk_status = CLK_Enable(BPWR_Clks[clkIdx].funClk);
+			fun_clk_status =
+			    services_clk_enable(bpwr_clks[clk_idx].fun_clk);
 		}
 	}
 	if ((int_clk_status | fun_clk_status) != DSP_SOK)
@@ -567,24 +571,27 @@ DSP_STATUS DSP_PeripheralClocks_Enable(struct WMD_DEV_CONTEXT *pDevContext,
 	return DSP_SOK;
 }
 
-void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
+void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 {
-	struct CFG_HOSTRES resources;
-	DSP_STATUS status = DSP_SOK;
+	struct cfg_hostres resources;
+	dsp_status status = DSP_SOK;
 	u32 iva2_grpsel;
 	u32 mpu_grpsel;
 
-	status = CFG_GetHostResources(
-		(struct CFG_DEVNODE *)DRV_GetFirstDevExtension(), &resources);
+	status = cfg_get_host_resources((struct cfg_devnode *)
+					drv_get_first_dev_extension(),
+					&resources);
 	if (DSP_FAILED(status))
 		return;
 
 	switch (ClkId) {
-	case BPWR_GPTimer5:
-		iva2_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA8));
-		mpu_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA4));
+	case BPWR_GP_TIMER5:
+		iva2_grpsel = (u32) *((reg_uword32 *)
+				       ((u32) (resources.dw_per_pm_base) +
+					0xA8));
+		mpu_grpsel = (u32) *((reg_uword32 *)
+				      ((u32) (resources.dw_per_pm_base) +
+				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_GPT5;
 			mpu_grpsel &= ~OMAP3430_GRPSEL_GPT5;
@@ -592,16 +599,18 @@ void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_GPT5;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_GPT5;
 		}
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA8))
-				= iva2_grpsel;
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA4))
-				= mpu_grpsel;
-	break;
-	case BPWR_GPTimer6:
-		iva2_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA8));
-		mpu_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA4));
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		    = iva2_grpsel;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		    = mpu_grpsel;
+		break;
+	case BPWR_GP_TIMER6:
+		iva2_grpsel = (u32) *((reg_uword32 *)
+				       ((u32) (resources.dw_per_pm_base) +
+					0xA8));
+		mpu_grpsel = (u32) *((reg_uword32 *)
+				      ((u32) (resources.dw_per_pm_base) +
+				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_GPT6;
 			mpu_grpsel &= ~OMAP3430_GRPSEL_GPT6;
@@ -609,16 +618,18 @@ void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_GPT6;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_GPT6;
 		}
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA8))
-							= iva2_grpsel;
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA4))
-							= mpu_grpsel;
-	break;
-	case BPWR_GPTimer7:
-		iva2_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA8));
-		mpu_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA4));
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		    = iva2_grpsel;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		    = mpu_grpsel;
+		break;
+	case BPWR_GP_TIMER7:
+		iva2_grpsel = (u32) *((reg_uword32 *)
+				       ((u32) (resources.dw_per_pm_base) +
+					0xA8));
+		mpu_grpsel = (u32) *((reg_uword32 *)
+				      ((u32) (resources.dw_per_pm_base) +
+				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_GPT7;
 			mpu_grpsel &= ~OMAP3430_GRPSEL_GPT7;
@@ -626,16 +637,18 @@ void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_GPT7;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_GPT7;
 		}
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA8))
-							= iva2_grpsel;
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA4))
-							= mpu_grpsel;
-	break;
-	case BPWR_GPTimer8:
-		iva2_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA8));
-		mpu_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA4));
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		    = iva2_grpsel;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		    = mpu_grpsel;
+		break;
+	case BPWR_GP_TIMER8:
+		iva2_grpsel = (u32) *((reg_uword32 *)
+				       ((u32) (resources.dw_per_pm_base) +
+					0xA8));
+		mpu_grpsel = (u32) *((reg_uword32 *)
+				      ((u32) (resources.dw_per_pm_base) +
+				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_GPT8;
 			mpu_grpsel &= ~OMAP3430_GRPSEL_GPT8;
@@ -643,16 +656,18 @@ void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_GPT8;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_GPT8;
 		}
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA8))
-							= iva2_grpsel;
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA4))
-							= mpu_grpsel;
-	break;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		    = iva2_grpsel;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		    = mpu_grpsel;
+		break;
 	case BPWR_MCBSP1:
-		iva2_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwCorePmBase) + 0xA8));
-		mpu_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwCorePmBase) + 0xA4));
+		iva2_grpsel = (u32) *((reg_uword32 *)
+				       ((u32) (resources.dw_core_pm_base) +
+					0xA8));
+		mpu_grpsel = (u32) *((reg_uword32 *)
+				      ((u32) (resources.dw_core_pm_base) +
+				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP1;
 			mpu_grpsel &= ~OMAP3430_GRPSEL_MCBSP1;
@@ -660,16 +675,18 @@ void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP1;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP1;
 		}
-		*((REG_UWORD32 *) ((u32) (resources.dwCorePmBase) + 0xA8))
-							= iva2_grpsel;
-		*((REG_UWORD32 *) ((u32) (resources.dwCorePmBase) + 0xA4))
-							= mpu_grpsel;
-	break;
+		*((reg_uword32 *) ((u32) (resources.dw_core_pm_base) + 0xA8))
+		    = iva2_grpsel;
+		*((reg_uword32 *) ((u32) (resources.dw_core_pm_base) + 0xA4))
+		    = mpu_grpsel;
+		break;
 	case BPWR_MCBSP2:
-		iva2_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA8));
-		mpu_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA4));
+		iva2_grpsel = (u32) *((reg_uword32 *)
+				       ((u32) (resources.dw_per_pm_base) +
+					0xA8));
+		mpu_grpsel = (u32) *((reg_uword32 *)
+				      ((u32) (resources.dw_per_pm_base) +
+				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP2;
 			mpu_grpsel &= ~OMAP3430_GRPSEL_MCBSP2;
@@ -677,16 +694,18 @@ void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP2;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP2;
 		}
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA8))
-							= iva2_grpsel;
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA4))
-							= mpu_grpsel;
-	break;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		    = iva2_grpsel;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		    = mpu_grpsel;
+		break;
 	case BPWR_MCBSP3:
-		iva2_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA8));
-		mpu_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA4));
+		iva2_grpsel = (u32) *((reg_uword32 *)
+				       ((u32) (resources.dw_per_pm_base) +
+					0xA8));
+		mpu_grpsel = (u32) *((reg_uword32 *)
+				      ((u32) (resources.dw_per_pm_base) +
+				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP3;
 			mpu_grpsel &= ~OMAP3430_GRPSEL_MCBSP3;
@@ -694,16 +713,18 @@ void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP3;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP3;
 		}
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA8))
-							= iva2_grpsel;
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA4))
-							= mpu_grpsel;
-	break;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		    = iva2_grpsel;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		    = mpu_grpsel;
+		break;
 	case BPWR_MCBSP4:
-		iva2_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA8));
-		mpu_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwPerPmBase) + 0xA4));
+		iva2_grpsel = (u32) *((reg_uword32 *)
+				       ((u32) (resources.dw_per_pm_base) +
+					0xA8));
+		mpu_grpsel = (u32) *((reg_uword32 *)
+				      ((u32) (resources.dw_per_pm_base) +
+				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP4;
 			mpu_grpsel &= ~OMAP3430_GRPSEL_MCBSP4;
@@ -711,16 +732,18 @@ void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP4;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP4;
 		}
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA8))
-							= iva2_grpsel;
-		*((REG_UWORD32 *) ((u32) (resources.dwPerPmBase) + 0xA4))
-							= mpu_grpsel;
-	break;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		    = iva2_grpsel;
+		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		    = mpu_grpsel;
+		break;
 	case BPWR_MCBSP5:
-		iva2_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwCorePmBase) + 0xA8));
-		mpu_grpsel = (u32) *((REG_UWORD32 *)
-				((u32) (resources.dwCorePmBase) + 0xA4));
+		iva2_grpsel = (u32) *((reg_uword32 *)
+				       ((u32) (resources.dw_core_pm_base) +
+					0xA8));
+		mpu_grpsel = (u32) *((reg_uword32 *)
+				      ((u32) (resources.dw_core_pm_base) +
+				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP5;
 			mpu_grpsel &= ~OMAP3430_GRPSEL_MCBSP5;
@@ -728,10 +751,10 @@ void DSPClkWakeupEventCtrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP5;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP5;
 		}
-		*((REG_UWORD32 *) ((u32) (resources.dwCorePmBase) + 0xA8))
-							= iva2_grpsel;
-		*((REG_UWORD32 *) ((u32) (resources.dwCorePmBase) + 0xA4))
-							= mpu_grpsel;
-	break;
+		*((reg_uword32 *) ((u32) (resources.dw_core_pm_base) + 0xA8))
+		    = iva2_grpsel;
+		*((reg_uword32 *) ((u32) (resources.dw_core_pm_base) + 0xA4))
+		    = mpu_grpsel;
+		break;
 	}
 }

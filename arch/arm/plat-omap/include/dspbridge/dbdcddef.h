@@ -20,7 +20,7 @@
 #define DBDCDDEF_
 
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/mgrpriv.h>		/* for MGR_PROCESSOREXTINFO */
+#include <dspbridge/mgrpriv.h>	/* for mgr_processorextinfo */
 
 /*
  *  The following defines are critical elements for the DCD module:
@@ -33,39 +33,38 @@
 #define DCD_REGISTER_SECTION    ".dcd_register"
 
 /* DCD Manager Object */
-	struct DCD_MANAGER;
+struct dcd_manager;
 
 /* DCD Node Properties */
-	struct DCD_NODEPROPS {
-		struct DSP_NDBPROPS ndbProps;
-		u32 uMsgSegid;
-		u32 uMsgNotifyType;
-		char *pstrCreatePhaseFxn;
-		char *pstrDeletePhaseFxn;
-		char *pstrExecutePhaseFxn;
-		char *pstrIAlgName;
+struct dcd_nodeprops {
+	struct dsp_ndbprops ndb_props;
+	u32 msg_segid;
+	u32 msg_notify_type;
+	char *pstr_create_phase_fxn;
+	char *pstr_delete_phase_fxn;
+	char *pstr_execute_phase_fxn;
+	char *pstr_i_alg_name;
 
-		/* Dynamic load properties */
-		u16 usLoadType;	/* Static, dynamic, overlay */
-		u32 ulDataMemSegMask;	/* Data memory requirements */
-		u32 ulCodeMemSegMask;	/* Code memory requirements */
-	} ;
+	/* Dynamic load properties */
+	u16 us_load_type;	/* Static, dynamic, overlay */
+	u32 ul_data_mem_seg_mask;	/* Data memory requirements */
+	u32 ul_code_mem_seg_mask;	/* Code memory requirements */
+};
 
 /* DCD Generic Object Type */
-	struct DCD_GENERICOBJ {
-		union dcdObjUnion {
-			struct DCD_NODEPROPS nodeObj;	/* node object. */
-			/* processor object. */
-			struct DSP_PROCESSORINFO procObj;
-			/* extended proc object (private) */
-			struct MGR_PROCESSOREXTINFO extProcObj;
-		} objData;
-	} ;
+struct dcd_genericobj {
+	union dcdObjUnion {
+		struct dcd_nodeprops node_obj;	/* node object. */
+		/* processor object. */
+		struct dsp_processorinfo proc_info;
+		/* extended proc object (private) */
+		struct mgr_processorextinfo ext_proc_obj;
+	} obj_data;
+};
 
 /* DCD Internal Callback Type */
-       typedef DSP_STATUS(*DCD_REGISTERFXN) (IN struct DSP_UUID *pUuid,
-						IN enum DSP_DCDOBJTYPE objType,
-						IN void *handle);
+typedef dsp_status(*dcd_registerfxn) (IN struct dsp_uuid *uuid_obj,
+				      IN enum dsp_dcdobjtype obj_type,
+				      IN void *handle);
 
-#endif				/* DBDCDDEF_ */
-
+#endif /* DBDCDDEF_ */

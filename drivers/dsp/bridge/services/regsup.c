@@ -34,191 +34,191 @@
 /*  ----------------------------------- This */
 #include <regsup.h>
 
-struct RegValue {
+struct reg_value {
 	struct list_head link;	/* Make it linked to a list */
-	char name[MAXREGPATHLENGTH];   /*  Name of a given value entry  */
-	u32 dataSize;		/*  Size of the data  */
-	void *pData;		/*  Pointer to the actual data  */
+	char name[MAXREGPATHLENGTH];	/*  Name of a given value entry */
+	u32 data_size;		/*  Size of the data */
+	void *pdata;		/*  Pointer to the actual data */
 };
 
-/*  Pointer to the registry support key  */
-static struct LST_LIST regKey, *pRegKey = &regKey;
+/*  Pointer to the registry support key */
+static struct lst_list reg_key, *reg_key_list = &reg_key;
 
 /*
- *  ======== regsupInit ========
+ *  ======== regsup_init ========
  *  Purpose:
  *      Initialize the Registry Support module's private state.
  */
-bool regsupInit(void)
+bool regsup_init(void)
 {
-	INIT_LIST_HEAD(&pRegKey->head);
+	INIT_LIST_HEAD(&reg_key_list->head);
 	return true;
 }
 
 /*
- *  ======== regsupExit ========
+ *  ======== regsup_exit ========
  *  Purpose:
  *      Release all registry support allocations.
  */
-void regsupExit(void)
+void regsup_exit(void)
 {
-	struct RegValue *rv;
-	/*  Now go through each entry and free all resources.  */
-	while (!LST_IsEmpty(pRegKey)) {
-		rv = (struct RegValue *) LST_GetHead(pRegKey);
+	struct reg_value *rv;
+	/*  Now go through each entry and free all resources. */
+	while (!LST_IS_EMPTY(reg_key_list)) {
+		rv = (struct reg_value *)lst_get_head(reg_key_list);
 
-		kfree(rv->pData);
+		kfree(rv->pdata);
 		kfree(rv);
 	}
 }
 
 /*
- *  ======== regsupGetValue ========
+ *  ======== regsup_get_value ========
  *  Purpose:
  *      Get the value of the entry having the given name.
  */
-DSP_STATUS regsupGetValue(char *valName, void *pBuf, u32 *dataSize)
+dsp_status regsup_get_value(char *valName, void *pbuf, u32 * data_size)
 {
-	DSP_STATUS retVal = DSP_EFAIL;
-	struct RegValue *rv = (struct RegValue *) LST_First(pRegKey);
+	dsp_status ret = DSP_EFAIL;
+	struct reg_value *rv = (struct reg_value *)lst_first(reg_key_list);
 
-	/*  Need to search through the entries looking for the right one.  */
+	/*  Need to search through the entries looking for the right one. */
 	while (rv) {
-		/*  See if the name matches.  */
+		/*  See if the name matches. */
 		if (strncmp(rv->name, valName, MAXREGPATHLENGTH) == 0) {
-			/*  We have a match!  Copy out the data.  */
-			memcpy(pBuf, rv->pData, rv->dataSize);
+			/*  We have a match!  Copy out the data. */
+			memcpy(pbuf, rv->pdata, rv->data_size);
 
-			/*  Get the size for the caller.  */
-			*dataSize = rv->dataSize;
+			/*  Get the size for the caller. */
+			*data_size = rv->data_size;
 
-			/*  Set our status to good and exit.  */
-			retVal = DSP_SOK;
+			/*  Set our status to good and exit. */
+			ret = DSP_SOK;
 			break;
 		}
-		rv = (struct RegValue *) LST_Next(pRegKey,
-						(struct list_head *) rv);
+		rv = (struct reg_value *)lst_next(reg_key_list,
+						  (struct list_head *)rv);
 	}
 
-	dev_dbg(bridge, "REG: get %s, status = 0x%x\n", valName, retVal);
+	dev_dbg(bridge, "REG: get %s, status = 0x%x\n", valName, ret);
 
-	return retVal;
+	return ret;
 }
 
 /*
- *  ======== regsupSetValue ========
+ *  ======== regsup_set_value ========
  *  Purpose:
  *      Sets the value of the entry having the given name.
  */
-DSP_STATUS regsupSetValue(char *valName, void *pBuf, u32 dataSize)
+dsp_status regsup_set_value(char *valName, void *pbuf, u32 data_size)
 {
-	DSP_STATUS retVal = DSP_EFAIL;
-	struct RegValue *rv = (struct RegValue *) LST_First(pRegKey);
+	dsp_status ret = DSP_EFAIL;
+	struct reg_value *rv = (struct reg_value *)lst_first(reg_key_list);
 
-	/*  Need to search through the entries looking for the right one.  */
+	/*  Need to search through the entries looking for the right one. */
 	while (rv) {
-		/*  See if the name matches.  */
+		/*  See if the name matches. */
 		if (strncmp(rv->name, valName, MAXREGPATHLENGTH) == 0) {
-			/*  Make sure the new data size is the same.  */
-			if (dataSize != rv->dataSize) {
-				/*  The caller needs a different data size!  */
-				kfree(rv->pData);
-				rv->pData = MEM_Alloc(dataSize, MEM_NONPAGED);
-				if (rv->pData == NULL)
+			/*  Make sure the new data size is the same. */
+			if (data_size != rv->data_size) {
+				/*  The caller needs a different data size! */
+				kfree(rv->pdata);
+				rv->pdata = mem_alloc(data_size, MEM_NONPAGED);
+				if (rv->pdata == NULL)
 					break;
 			}
 
-			/*  We have a match!  Copy out the data.  */
-			memcpy(rv->pData, pBuf, dataSize);
+			/*  We have a match!  Copy out the data. */
+			memcpy(rv->pdata, pbuf, data_size);
 
 			/* Reset datasize - overwrite if new or same */
-			rv->dataSize = dataSize;
+			rv->data_size = data_size;
 
-			/*  Set our status to good and exit.  */
-			retVal = DSP_SOK;
+			/*  Set our status to good and exit. */
+			ret = DSP_SOK;
 			break;
 		}
-	       rv = (struct RegValue *) LST_Next(pRegKey,
-					(struct list_head *) rv);
+		rv = (struct reg_value *)lst_next(reg_key_list,
+						  (struct list_head *)rv);
 	}
 
-	/*  See if we found a match or if this is a new entry  */
+	/*  See if we found a match or if this is a new entry */
 	if (!rv) {
-		/*  No match, need to make a new entry  */
-		struct RegValue *new = MEM_Calloc(sizeof(struct RegValue),
-						MEM_NONPAGED);
+		/*  No match, need to make a new entry */
+		struct reg_value *new = mem_calloc(sizeof(struct reg_value),
+						   MEM_NONPAGED);
 
 		strncat(new->name, valName, MAXREGPATHLENGTH - 1);
-		new->pData = MEM_Alloc(dataSize, MEM_NONPAGED);
-		if (new->pData != NULL) {
-			memcpy(new->pData, pBuf, dataSize);
-			new->dataSize = dataSize;
-			LST_PutTail(pRegKey, (struct list_head *) new);
-			retVal = DSP_SOK;
+		new->pdata = mem_alloc(data_size, MEM_NONPAGED);
+		if (new->pdata != NULL) {
+			memcpy(new->pdata, pbuf, data_size);
+			new->data_size = data_size;
+			lst_put_tail(reg_key_list, (struct list_head *)new);
+			ret = DSP_SOK;
 		}
 	}
 
-	dev_dbg(bridge, "REG: set %s, status = 0x%x", valName, retVal);
+	dev_dbg(bridge, "REG: set %s, status = 0x%x", valName, ret);
 
-	return retVal;
+	return ret;
 }
 
 /*
- *  ======== regsupEnumValue ========
+ *  ======== regsup_enum_value ========
  *  Purpose:
  *      Returns registry "values" and their "data" under a (sub)key.
  */
-DSP_STATUS regsupEnumValue(IN u32 dwIndex, IN CONST char *pstrKey,
-			   IN OUT char *pstrValue, IN OUT u32 *pdwValueSize,
-			   IN OUT char *pstrData, IN OUT u32 *pdwDataSize)
+dsp_status regsup_enum_value(IN u32 dw_index, IN CONST char *pstrKey,
+			     IN OUT char *pstrValue, IN OUT u32 * pdwValueSize,
+			     IN OUT char *pstrData, IN OUT u32 * pdwDataSize)
 {
-	DSP_STATUS retVal = REG_E_INVALIDSUBKEY;
-	struct RegValue *rv = (struct RegValue *) LST_First(pRegKey);
-       u32 dwKeyLen;
+	dsp_status ret = REG_E_INVALIDSUBKEY;
+	struct reg_value *rv = (struct reg_value *)lst_first(reg_key_list);
+	u32 dw_key_len;
 	u32 count = 0;
 
-       DBC_Require(pstrKey);
-       dwKeyLen = strlen(pstrKey);
+	DBC_REQUIRE(pstrKey);
+	dw_key_len = strlen(pstrKey);
 
-	/*  Need to search through the entries looking for the right one.  */
+	/*  Need to search through the entries looking for the right one. */
 	while (rv) {
-		/*  See if the name matches.  */
-		if (strncmp(rv->name, pstrKey, dwKeyLen) == 0 &&
-			count++ == dwIndex) {
-			/*  We have a match!  Copy out the data.  */
-			memcpy(pstrData, rv->pData, rv->dataSize);
-			/*  Get the size for the caller.  */
-			*pdwDataSize = rv->dataSize;
-			*pdwValueSize = strlen(&(rv->name[dwKeyLen]));
-			strncpy(pstrValue, &(rv->name[dwKeyLen]),
-				    *pdwValueSize + 1);
-			/*  Set our status to good and exit.  */
-			retVal = DSP_SOK;
+		/*  See if the name matches. */
+		if (strncmp(rv->name, pstrKey, dw_key_len) == 0 &&
+		    count++ == dw_index) {
+			/*  We have a match!  Copy out the data. */
+			memcpy(pstrData, rv->pdata, rv->data_size);
+			/*  Get the size for the caller. */
+			*pdwDataSize = rv->data_size;
+			*pdwValueSize = strlen(&(rv->name[dw_key_len]));
+			strncpy(pstrValue, &(rv->name[dw_key_len]),
+				*pdwValueSize + 1);
+			/*  Set our status to good and exit. */
+			ret = DSP_SOK;
 			break;
 		}
-	       rv = (struct RegValue *) LST_Next(pRegKey,
-						(struct list_head *) rv);
+		rv = (struct reg_value *)lst_next(reg_key_list,
+						  (struct list_head *)rv);
 	}
 
-	if (count && DSP_FAILED(retVal))
-		retVal = REG_E_NOMOREITEMS;
+	if (count && DSP_FAILED(ret))
+		ret = REG_E_NOMOREITEMS;
 
 	dev_dbg(bridge, "REG: enum Key %s, Value %s, status = 0x%x",
-					pstrKey, pstrValue, retVal);
+		pstrKey, pstrValue, ret);
 
-	return retVal;
+	return ret;
 }
 
 /*
- *  ======== regsupDeleteValue ========
+ *  ======== regsup_delete_value ========
  */
-DSP_STATUS regsupDeleteValue(IN CONST char *pstrValue)
+dsp_status regsup_delete_value(IN CONST char *pstrValue)
 {
-	DSP_STATUS retVal = DSP_EFAIL;
-	struct RegValue *rv = (struct RegValue *) LST_First(pRegKey);
+	dsp_status ret = DSP_EFAIL;
+	struct reg_value *rv = (struct reg_value *)lst_first(reg_key_list);
 
 	while (rv) {
-		/*  See if the name matches.  */
+		/*  See if the name matches. */
 		if (strncmp(rv->name, pstrValue, MAXREGPATHLENGTH) == 0) {
 			/* We have a match!  Delete this key.  To delete a
 			 * key, we free all resources associated with this
@@ -226,21 +226,20 @@ DSP_STATUS regsupDeleteValue(IN CONST char *pstrValue)
 			 * the array, we copy that entry into this deleted
 			 * key.
 			 */
-			LST_RemoveElem(pRegKey, (struct list_head *)rv);
-			kfree(rv->pData);
+			lst_remove_elem(reg_key_list, (struct list_head *)rv);
+			kfree(rv->pdata);
 			kfree(rv);
 
-			/*  Set our status to good and exit...  */
-			retVal = DSP_SOK;
+			/*  Set our status to good and exit... */
+			ret = DSP_SOK;
 			break;
 		}
-		rv = (struct RegValue *)LST_Next(pRegKey,
-				(struct list_head *)rv);
+		rv = (struct reg_value *)lst_next(reg_key_list,
+						  (struct list_head *)rv);
 	}
 
-	dev_dbg(bridge, "REG: del %s, status = 0x%x", pstrValue, retVal);
+	dev_dbg(bridge, "REG: del %s, status = 0x%x", pstrValue, ret);
 
-	return retVal;
+	return ret;
 
 }
-

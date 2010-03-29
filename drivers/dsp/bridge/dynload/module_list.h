@@ -58,11 +58,11 @@
 
 #include <linux/types.h>
 
-/* Global pointer to the modules_header structure*/
+/* Global pointer to the modules_header structure */
 #define MODULES_HEADER "_DLModules"
 #define MODULES_HEADER_NO_UNDERSCORE "DLModules"
 
-/* Initial version number*/
+/* Initial version number */
 #define INIT_VERSION 1
 
 /* Verification number -- to be recorded in each module record */
@@ -76,8 +76,11 @@ struct dll_sect;
  * its address is contained in the global _DLModules pointer */
 struct modules_header {
 
-	/* Address of the first dll_module record in the list or NULL.
-	 Note: for C55x this is a word address (C55x data is word-addressable)*/
+	/*
+	 * Address of the first dll_module record in the list or NULL.
+	 * Note: for C55x this is a word address (C55x data is
+	 * word-addressable)
+	 */
 	u32 first_module;
 
 	/* Combined storage size (in target addressable units) of the
@@ -90,11 +93,12 @@ struct modules_header {
 	 * the list */
 	u16 update_flag;
 
-} ;
+};
 
 /* for each 32-bits in above structure, a bitmap, LSB first, whose bits are:
  * 0 => a 32-bit value, 1 => 2 16-bit values */
-#define MODULES_HEADER_BITMAP 0x2 /* swapping bitmap for type modules_header */
+/* swapping bitmap for type modules_header */
+#define MODULES_HEADER_BITMAP 0x2
 
 /* information recorded about each section in a module */
 struct dll_sect {
@@ -113,7 +117,7 @@ struct dll_sect {
 	 * (C55 addresses are really only 24-bits wide). */
 	u32 sect_run_adr;
 
-} ;
+};
 
 /* the rest of the entries in the list are module records */
 struct dll_module {
@@ -146,10 +150,10 @@ struct dll_module {
 
 	/* Array of num_sects elements of the module's section records */
 	struct dll_sect sects[1];
-} ;
+};
 
 /* for each 32 bits in above structure, a bitmap, LSB first, whose bits are:
  * 0 => a 32-bit value, 1 => 2 16-bit values */
 #define DLL_MODULE_BITMAP 0x6	/* swapping bitmap for type dll_module */
 
-#endif				/* _MODULE_LIST_H_ */
+#endif /* _MODULE_LIST_H_ */

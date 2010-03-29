@@ -25,13 +25,13 @@
 #include <IPIAccInt.h>
 
 /* HW FUNCTIONS */
-HW_STATUS HW_DSPSS_BootModeSet(const void __iomem *baseAddress,
-		      enum HW_DSPSYSC_BootMode_t bootMode,
-		      const u32 bootAddress)
+hw_status hw_dspss_boot_mode_set(const void __iomem *baseAddress,
+				 enum hw_dspsysc_boot_mode_t bootMode,
+				 const u32 bootAddress)
 {
-	HW_STATUS status = RET_OK;
+	hw_status status = RET_OK;
 	u32 offset = SYSC_IVA2BOOTMOD_OFFSET;
-	u32 alignedBootAddr;
+	u32 aligned_boot_addr;
 
 	/* if Boot mode it DIRECT BOOT, check that the bootAddress is
 	 * aligned to atleast 1K :: TODO */
@@ -39,9 +39,9 @@ HW_STATUS HW_DSPSS_BootModeSet(const void __iomem *baseAddress,
 
 	offset = SYSC_IVA2BOOTADDR_OFFSET;
 
-	alignedBootAddr = bootAddress & SYSC_IVA2BOOTADDR_MASK;
+	aligned_boot_addr = bootAddress & SYSC_IVA2BOOTADDR_MASK;
 
-	__raw_writel(alignedBootAddr, (baseAddress) + offset);
+	__raw_writel(aligned_boot_addr, (baseAddress) + offset);
 
 	return status;
 }

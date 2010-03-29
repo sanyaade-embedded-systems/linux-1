@@ -22,7 +22,6 @@ static int __init bridge_init(void);	/* Initialize bridge */
 static void __exit bridge_exit(void);	/* Opposite of initialize */
 static int bridge_open(struct inode *, struct file *);	/* Open */
 static int bridge_release(struct inode *, struct file *);	/* Release */
-static long bridge_ioctl(struct file *, unsigned int,
-			unsigned long);
+static long bridge_ioctl(struct file *, unsigned int, unsigned long);
 static int bridge_mmap(struct file *filp, struct vm_area_struct *vma);
-#endif				/* ifndef _DRV_INTERFACE_H_ */
+#endif /* ifndef _DRV_INTERFACE_H_ */

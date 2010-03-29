@@ -27,8 +27,8 @@
 #define STATIC_EXPR_STK_SIZE 10
 
 #include <linux/types.h>
-typedef unsigned int            uint_least32_t;
-typedef unsigned short int	uint_least16_t;
+typedef unsigned int uint_least32_t;
+typedef unsigned short int uint_least16_t;
 
 #include "doff.h"
 #include <dspbridge/dynamic_loader.h>
