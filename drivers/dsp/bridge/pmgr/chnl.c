@@ -103,7 +103,7 @@ dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
 		}
 	}
 
-	DBC_ENSURE(DSP_FAILED(status) || CHNL_IS_VALID_MGR(chnl_mgr_obj));
+	DBC_ENSURE(DSP_FAILED(status) || chnl_mgr_obj);
 
 	return status;
 }
@@ -121,7 +121,7 @@ dsp_status chnl_destroy(struct chnl_mgr *hchnl_mgr)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (CHNL_IS_VALID_MGR(chnl_mgr_obj)) {
+	if (chnl_mgr_obj) {
 		intf_fxns = chnl_mgr_obj->intf_fxns;
 		/* Let WMD channel module destroy the chnl_mgr: */
 		status = (*intf_fxns->pfn_chnl_destroy) (hchnl_mgr);
@@ -129,7 +129,7 @@ dsp_status chnl_destroy(struct chnl_mgr *hchnl_mgr)
 		status = DSP_EHANDLE;
 	}
 
-	DBC_ENSURE(DSP_FAILED(status) || !CHNL_IS_VALID_MGR(chnl_mgr_obj));
+	DBC_ENSURE(DSP_FAILED(status) || !chnl_mgr_obj);
 
 	return status;
 }

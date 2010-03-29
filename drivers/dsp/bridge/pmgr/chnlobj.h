@@ -23,13 +23,6 @@
 #include <dspbridge/chnldefs.h>
 #include <dspbridge/wmd.h>
 
-/* Object validateion macros: */
-#define CHNL_IS_VALID_MGR(h) \
-		((h != NULL) && ((h)->dw_signature == CHNL_MGRSIGNATURE))
-
-#define CHNL_IS_VALID_CHNL(h)\
-		((h != NULL) && ((h)->dw_signature == CHNL_SIGNATURE))
-
 /*
  *  This struct is the first field in a chnl_mgr struct, as implemented in
  *  a WMD channel class library.  Other, implementation specific fields
