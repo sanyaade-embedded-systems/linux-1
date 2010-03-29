@@ -36,6 +36,10 @@
 #include "../codecs/twl6040.h"
 #include "../codecs/abe-twl6040.h"
 
+#ifdef CONFIG_SND_OMAP_SOC_HDMI
+#include "omap-hdmi.h"
+#endif
+
 static struct snd_soc_dai_link sdp4430_dai[];
 static struct snd_soc_card snd_soc_sdp4430;
 static int twl6040_power_mode;
@@ -154,6 +158,19 @@ static int sdp4430_twl6040_init(struct snd_soc_codec *codec)
 	return ret;
 }
 
+#ifdef CONFIG_SND_OMAP_SOC_HDMI
+struct snd_soc_dai null_dai = {
+	.name = "null",
+	.playback = {
+		.stream_name = "Playback",
+		.channels_min = 2,
+		.channels_max = 8,
+		.rates = SNDRV_PCM_RATE_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE,
+	},
+};
+#endif
+
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link sdp4430_dai[] = {
 	{
@@ -187,6 +204,14 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 		.cpu_dai = &omap_abe_dai[OMAP_ABE_VIB_DAI],
 		.codec_dai = &abe_dai[4],
 	},
+#ifdef CONFIG_SND_OMAP_SOC_HDMI
+	{
+		.name = "hdmi",
+		.stream_name = "HDMI",
+		.cpu_dai = &omap_hdmi_dai,
+		.codec_dai = &null_dai,
+	},
+#endif
 };
 
 /* Audio machine driver */
@@ -214,6 +239,10 @@ static int __init sdp4430_soc_init(void)
 		return -ENODEV;
 	}
 	printk(KERN_INFO "SDP4430 SoC init\n");
+
+#ifdef CONFIG_SND_OMAP_SOC_HDMI
+	snd_soc_register_dais(&null_dai, 1);
+#endif
 
 	sdp4430_snd_device = platform_device_alloc("soc-audio", -1);
 	if (!sdp4430_snd_device) {
