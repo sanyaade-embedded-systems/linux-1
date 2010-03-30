@@ -612,7 +612,7 @@ static void hdmi_power_off(struct omap_dss_device *dssdev)
 	hdmi_enable_clocks(0);
 
 	/* reset to default */
-	hdmi.code = 16;
+
 }
 
 static int hdmi_enable_display(struct omap_dss_device *dssdev)
@@ -665,6 +665,8 @@ static void hdmi_disable_display(struct omap_dss_device *dssdev)
 	omap_dss_stop_device(dssdev);
 
 	hdmi_power_off(dssdev);
+
+	hdmi.code = 16; /*setting to default only in case of disable and not suspend*/
 end:
 	mutex_unlock(&hdmi.lock);
 }
@@ -674,6 +676,20 @@ static int hdmi_display_suspend(struct omap_dss_device *dssdev)
 	int r = 0;
 
 	DSSDBG("hdmi_display_suspend\n");
+		mutex_lock(&hdmi.lock);
+	if (dssdev->state == OMAP_DSS_DISPLAY_DISABLED)
+		goto end;
+
+	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
+		goto end;
+
+	dssdev->state = OMAP_DSS_DISPLAY_SUSPENDED;
+
+	omap_dss_stop_device(dssdev);
+
+	hdmi_power_off(dssdev);
+end:
+	mutex_unlock(&hdmi.lock);
 	return r;
 }
 
@@ -682,6 +698,29 @@ static int hdmi_display_resume(struct omap_dss_device *dssdev)
 	int r = 0;
 
 	DSSDBG("hdmi_display_resume\n");
+	mutex_lock(&hdmi.lock);
+
+	/* the tv overlay manager is shared*/
+	r = omap_dss_start_device(dssdev);
+	if (r) {
+		DSSERR("failed to start device\n");
+		goto err;
+	}
+
+	if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE) {
+		r = -EINVAL;
+		goto err;
+	}
+
+	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
+	r = hdmi_power_on(dssdev);
+	if (r) {
+		DSSERR("failed to power on device\n");
+		goto err;
+	}
+
+err:
+	mutex_unlock(&hdmi.lock);
 
 	return r;
 }
