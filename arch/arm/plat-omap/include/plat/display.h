@@ -307,6 +307,10 @@ enum dsi {
 #define DSI1_GPIO_102 102
 #define HDMI_GPIO_60 60
 #define HDMI_GPIO_41 41
+#define DLP_4430_GPIO_40	40
+#define DLP_4430_GPIO_44	44
+#define DLP_4430_GPIO_45	45
+#define DLP_4430_GPIO_59	59
 
 void dsi_bus_lock(enum dsi lcd_ix);
 void dsi_bus_unlock(enum dsi lcd_ix);
@@ -624,6 +628,10 @@ struct omap_dss_driver {
 			u16 x, u16 y, u16 w, u16 h);
 };
 
+struct pico_platform_data {
+	u8 gpio_intr;
+};
+
 int omap_dss_register_driver(struct omap_dss_driver *);
 void omap_dss_unregister_driver(struct omap_dss_driver *);
 
@@ -649,6 +657,8 @@ struct omap_overlay *omap_dss_get_overlay(int num);
 typedef void (*omap_dispc_isr_t) (void *arg, u32 mask);
 int omap_dispc_register_isr(omap_dispc_isr_t isr, void *arg, u32 mask);
 int omap_dispc_unregister_isr(omap_dispc_isr_t isr, void *arg, u32 mask);
+bool dispc_go_busy(enum omap_channel channel);
+void dispc_go(enum omap_channel channel);
 
 int omap_dispc_wait_for_irq_timeout(u32 irqmask, unsigned long timeout);
 int omap_dispc_wait_for_irq_interruptible_timeout(u32 irqmask,
