@@ -110,6 +110,7 @@ static const u8 twl6040_reg[TWL6040_CACHEREGNUM] = {
 	0x00, /* TWL6040_HFOTRIM	0x2C	*/
 	0x09, /* TWL6040_ACCCTL		0x2D	*/
 	0x00, /* TWL6040_STATUS (ro)	0x2E	*/
+	0x00, /* TWL6040_SHADOW		0x2F	*/
 };
 
 /*
@@ -205,10 +206,13 @@ static int twl6040_read_reg_volatile(struct snd_soc_codec *codec,
 	if (reg >= TWL6040_CACHEREGNUM)
 		return -EIO;
 
-	twl_i2c_read_u8(TWL_MODULE_AUDIO_VOICE, &value, reg);
-	twl6040_write_reg_cache(codec, reg, value);
-
-	return value;
+	if (likely(reg < TWL6040_REG_SHADOW)) {
+		twl_i2c_read_u8(TWL_MODULE_AUDIO_VOICE, &value, reg);
+		twl6040_write_reg_cache(codec, reg, value);
+		return value;
+	} else {
+		return twl6040_read_reg_cache(codec, reg);
+	}
 }
 
 /*
@@ -221,7 +225,10 @@ static int twl6040_write(struct snd_soc_codec *codec,
 		return -EIO;
 
 	twl6040_write_reg_cache(codec, reg, value);
-	return twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, value, reg);
+	 if (likely(reg < TWL6040_REG_SHADOW))
+		return twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, value, reg);
+	else
+		return 0;
 }
 
 static void twl6040_init_vio_regs(struct snd_soc_codec *codec)
@@ -429,6 +436,106 @@ static irqreturn_t twl6040_naudint_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static int snd_soc_put_dl1_mixer(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	struct snd_soc_dapm_widget *widget = snd_kcontrol_chip(kcontrol);
+	unsigned int shift = mc->shift;
+	int mask;
+	int err;
+	unsigned short val;
+	char *name = kcontrol->id.name;
+
+	mask = 1 << shift;
+	val = (ucontrol->value.integer.value[0] << shift);
+
+	if (strcmp(name, "DL1 Mixer Tones") == 0) {
+		if (val)
+			abe_write_mixer(MIXDL1, GAIN_M6dB,
+					RAMP_0MS, MIX_DL1_INPUT_TONES);
+		else
+			abe_write_mixer(MIXDL1, MUTE_GAIN,
+					RAMP_0MS, MIX_DL1_INPUT_TONES);
+	} else if (strcmp(name, "DL1 Mixer Voice") == 0) {
+		if (val)
+			abe_write_mixer(MIXDL1, GAIN_M6dB,
+					RAMP_1MS, MIX_DL1_INPUT_VX_DL);
+		else
+			abe_write_mixer(MIXDL1, MUTE_GAIN,
+					RAMP_0MS, MIX_DL1_INPUT_VX_DL);
+	} else if (strcmp(name, "DL1 Mixer Multimedia") == 0) {
+		if (val)
+			abe_write_mixer(MIXDL1, GAIN_M6dB,
+					RAMP_2MS, MIX_DL1_INPUT_MM_DL);
+		else
+			abe_write_mixer(MIXDL1, MUTE_GAIN,
+					RAMP_0MS, MIX_DL1_INPUT_MM_DL);
+	} else if (strcmp(name, "DL1 Mixer Multimedia Uplink") == 0) {
+		if (val)
+			abe_write_mixer(MIXDL1, GAIN_M6dB,
+					RAMP_5MS, MIX_DL1_INPUT_MM_UL2);
+		else
+			abe_write_mixer(MIXDL1, MUTE_GAIN,
+					RAMP_0MS, MIX_DL1_INPUT_MM_UL2);
+	}
+
+	err = snd_soc_update_bits(widget->codec, TWL6040_REG_SHADOW, mask, val);
+
+	return err;
+}
+
+static int snd_soc_put_dl2_mixer(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_mixer_control *mc =
+		(struct soc_mixer_control *)kcontrol->private_value;
+	struct snd_soc_dapm_widget *widget = snd_kcontrol_chip(kcontrol);
+	unsigned int shift = mc->shift;
+	int mask;
+	int err;
+	unsigned short val;
+	char *name = kcontrol->id.name;
+
+	mask = 1 << shift;
+	val = (ucontrol->value.integer.value[0] << shift);
+
+	if (strcmp(name, "DL2 Mixer Tones") == 0) {
+		if (val)
+			abe_write_mixer(MIXDL2, GAIN_M6dB,
+				RAMP_0MS, MIX_DL2_INPUT_TONES);
+		else
+			abe_write_mixer(MIXDL2, MUTE_GAIN,
+				RAMP_0MS, MIX_DL2_INPUT_TONES);
+	} else if (strcmp(name, "DL2 Mixer Voice") == 0) {
+		if (val)
+			abe_write_mixer(MIXDL2, GAIN_M6dB,
+				RAMP_1MS, MIX_DL2_INPUT_VX_DL);
+		else
+			abe_write_mixer(MIXDL2, MUTE_GAIN,
+				RAMP_0MS, MIX_DL2_INPUT_VX_DL);
+	} else if (strcmp(name, "DL2 Mixer Multimedia") == 0) {
+		if (val)
+			abe_write_mixer(MIXDL2, GAIN_M6dB,
+				RAMP_2MS, MIX_DL2_INPUT_MM_DL);
+		else
+			abe_write_mixer(MIXDL2, MUTE_GAIN,
+				RAMP_0MS, MIX_DL2_INPUT_MM_DL);
+	} else if (strcmp(name, "DL2 Mixer Multimedia Uplink") == 0) {
+		if (val)
+			abe_write_mixer(MIXDL2, GAIN_M6dB,
+				RAMP_5MS, MIX_DL2_INPUT_MM_UL2);
+		else
+			abe_write_mixer(MIXDL2, MUTE_GAIN,
+				RAMP_0MS, MIX_DL2_INPUT_MM_UL2);
+	}
+
+	err = snd_soc_update_bits(widget->codec, TWL6040_REG_SHADOW, mask, val);
+
+	return err;
+}
+
 /*
  * MICATT volume control:
  * from -6 to 0 dB in 6 dB steps
@@ -477,6 +584,29 @@ static const struct snd_kcontrol_new amicl_control =
 
 static const struct snd_kcontrol_new amicr_control =
 	SOC_DAPM_ENUM("Route", twl6040_enum[1]);
+
+static const struct snd_kcontrol_new dl1_mixer_controls[] = {
+	SOC_SINGLE_EXT("Tones", TWL6040_REG_SHADOW, 0, 1, 0,
+		snd_soc_dapm_get_volsw, snd_soc_put_dl1_mixer),
+	SOC_SINGLE_EXT("Voice", TWL6040_REG_SHADOW, 1, 1, 0,
+		snd_soc_dapm_get_volsw, snd_soc_put_dl1_mixer),
+	SOC_SINGLE_EXT("Multimedia Uplink", TWL6040_REG_SHADOW, 2, 1, 0,
+		snd_soc_dapm_get_volsw, snd_soc_put_dl1_mixer),
+	SOC_SINGLE_EXT("Multimedia", TWL6040_REG_SHADOW, 3, 1, 0,
+		snd_soc_dapm_get_volsw, snd_soc_put_dl1_mixer),
+};
+
+static const struct snd_kcontrol_new dl2_mixer_controls[] = {
+	SOC_SINGLE_EXT("Tones", TWL6040_REG_SHADOW, 4, 1, 0,
+		snd_soc_dapm_get_volsw, snd_soc_put_dl2_mixer),
+	SOC_SINGLE_EXT("Voice", TWL6040_REG_SHADOW, 5, 1, 0,
+		snd_soc_dapm_get_volsw, snd_soc_put_dl2_mixer),
+	SOC_SINGLE_EXT("Multimedia Uplink", TWL6040_REG_SHADOW, 6, 1, 0,
+		snd_soc_dapm_get_volsw, snd_soc_put_dl2_mixer),
+	SOC_SINGLE_EXT("Multimedia", TWL6040_REG_SHADOW, 7, 1, 0,
+		snd_soc_dapm_get_volsw, snd_soc_put_dl2_mixer),
+};
+
 
 /* Headset DAC playback switches */
 static const struct snd_kcontrol_new hsdacl_switch_controls =
@@ -546,6 +676,13 @@ static const struct snd_soc_dapm_widget twl6040_dapm_widgets[] = {
 	SND_SOC_DAPM_MUX("Analog Right Capture Route",
 			SND_SOC_NOPM, 0, 0, &amicr_control),
 
+	SND_SOC_DAPM_MIXER("DL1 Mixer",
+			SND_SOC_NOPM, 0, 0, dl1_mixer_controls,
+			ARRAY_SIZE(dl1_mixer_controls)),
+	SND_SOC_DAPM_MIXER("DL2 Mixer",
+			SND_SOC_NOPM, 0, 0, dl2_mixer_controls,
+			ARRAY_SIZE(dl2_mixer_controls)),
+
 	/* Analog capture PGAs */
 	SND_SOC_DAPM_PGA("MicAmpL",
 			TWL6040_REG_MICLCTL, 0, 0, NULL, 0),
@@ -567,6 +704,15 @@ static const struct snd_soc_dapm_widget twl6040_dapm_widgets[] = {
 			TWL6040_REG_DMICBCTL, 0, 0),
 	SND_SOC_DAPM_MICBIAS("Digital Mic2 Bias",
 			TWL6040_REG_DMICBCTL, 4, 0),
+
+	SND_SOC_DAPM_AIF_IN("AIFIN Tones", "Playback", 0,
+			SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_IN("AIFIN Voice", "Playback", 1,
+			SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_IN("AIFIN Multimedia Uplink", "Playback", 2,
+			SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_IN("AIFIN Multimedia", "Playback", 3,
+			SND_SOC_NOPM, 0, 0),
 
 	/* DACs */
 	SND_SOC_DAPM_DAC("HSDAC Left", "Headset Playback",
@@ -634,6 +780,14 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"ADC Right", NULL, "MicAmpR"},
 
 	/* Headset playback path */
+	{"DL1 Mixer", "Tones", "AIFIN Tones"},
+	{"DL1 Mixer", "Voice", "AIFIN Voice"},
+	{"DL1 Mixer", "Multimedia Uplink", "AIFIN Multimedia Uplink"},
+	{"DL1 Mixer", "Multimedia", "AIFIN Multimedia"},
+
+	{"HSDAC Left", NULL, "DL1 Mixer"},
+	{"HSDAC Right", NULL, "DL1 Mixer"},
+
 	{"HSDAC Left Playback", "Switch", "HSDAC Left"},
 	{"HSDAC Right Playback", "Switch", "HSDAC Right"},
 
@@ -648,6 +802,14 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"EP", NULL, "Earphone Driver"},
 
 	/* Handsfree playback path */
+	{"DL2 Mixer", "Tones", "AIFIN Tones"},
+	{"DL2 Mixer", "Voice", "AIFIN Voice"},
+	{"DL2 Mixer", "Multimedia Uplink", "AIFIN Multimedia Uplink"},
+	{"DL2 Mixer", "Multimedia", "AIFIN Multimedia"},
+
+	{"HFDAC Left", NULL, "DL2 Mixer"},
+	{"HFDAC Right", NULL, "DL2 Mixer"},
+
 	{"HFDAC Left Playback", "Switch", "HFDAC Left"},
 	{"HFDAC Right Playback", "Switch", "HFDAC Right"},
 
