@@ -32,6 +32,8 @@
 #include <linux/i2c/twl.h>
 
 #include <plat/display.h>
+#include <plat/omap_hwmod.h>
+
 #include "dss.h"
 
 #ifndef CONFIG_ARCH_OMAP4
