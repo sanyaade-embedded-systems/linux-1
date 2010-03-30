@@ -321,11 +321,22 @@ static struct omap_dss_device sdp4430_lcd2_device = {
 
 static int sdp4430_panel_enable_hdmi(struct omap_dss_device *dssdev)
 {
+	gpio_request(HDMI_GPIO_60 , "hdmi_gpio_60");
+	gpio_request(HDMI_GPIO_41 , "hdmi_gpio_41");
+	gpio_direction_output(HDMI_GPIO_60, 0);
+	gpio_direction_output(HDMI_GPIO_41, 0);
+	gpio_set_value(HDMI_GPIO_60, 1);
+	gpio_set_value(HDMI_GPIO_41, 1);
+	gpio_set_value(HDMI_GPIO_60, 0);
+
 	return 0;
 }
 
 static int sdp4430_panel_disable_hdmi(struct omap_dss_device *dssdev)
 {
+	gpio_set_value(HDMI_GPIO_60, 1);
+	gpio_set_value(HDMI_GPIO_41, 1);
+
 	return 0;
 }
 static void __init sdp4430_hdmi_init(void)
