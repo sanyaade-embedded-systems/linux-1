@@ -58,8 +58,8 @@ static struct resource i2c_resources[][2] = {
 #if	defined(CONFIG_ARCH_OMAP3)
 	{ I2C_RESOURCE_BUILDER(OMAP2_I2C_BASE3, INT_34XX_I2C3_IRQ) },
 #endif
-#if 	define(CONFIG_ARCH_TI816X)
-	{ I2C_RESOURCE_BUILDER(TI816x_I2C_BASE0, INT_TI816x_I2C0_IRQ) },
+#if 	defined(CONFIG_ARCH_TI816X)
+	{ I2C_RESOURCE_BUILDER(TI816x_I2C_BASE0, TI816X_IRQ_I2C0) },
 #endif	
 };
 
@@ -118,7 +118,7 @@ static int __init omap_i2c_add_bus(int bus_id)
 		if (cpu_class_is_omap1()) {
 			base = OMAP1_I2C_BASE;
 			irq = INT_I2C;
-		} else if (cpu_class_is_ti816x()) {
+		} else if (cpu_is_ti816x()) {
 			base = TI816x_I2C_BASE0;
 			irq = INT_I2C;
 		} else {
