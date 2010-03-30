@@ -89,7 +89,7 @@ static struct {
 
 void __iomem  *dss_base;
 void __iomem  *dispc_base;
-
+EXPORT_SYMBOL(dispc_base);
 
 static int _omap_dss_wait_reset(void);
 

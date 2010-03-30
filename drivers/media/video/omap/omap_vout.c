@@ -1569,7 +1569,7 @@ static int omap_vout_release(struct file *file)
 
 		mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE |
-			DISPC_IRQ_FRAMEDONE2;
+			DISPC_IRQ_FRAMEDONE2 | DISPC_IRQ_VSYNC2;
 
 		omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 		vout->streaming = 0;
@@ -2295,7 +2295,7 @@ static int vidioc_streamon(struct file *file, void *fh,
 
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE |
-			DISPC_IRQ_FRAMEDONE2;
+			DISPC_IRQ_FRAMEDONE2 | DISPC_IRQ_VSYNC2;
 
 	omap_dispc_register_isr(omap_vout_isr, vout, mask);
 
@@ -2339,7 +2339,7 @@ static int vidioc_streamoff(struct file *file, void *fh,
 	vout->streaming = 0;
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
 			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE |
-			DISPC_IRQ_FRAMEDONE2;
+			DISPC_IRQ_FRAMEDONE2 | DISPC_IRQ_VSYNC2;
 
 	omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 
@@ -2983,10 +2983,17 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 			break;
 
 	case OMAP_DISPLAY_TYPE_DPI:
-			if (!(irqstatus & DISPC_IRQ_VSYNC)) {
+			if (!(irqstatus & (DISPC_IRQ_VSYNC | DISPC_IRQ_VSYNC2))) {
 				spin_unlock_irqrestore(&vout->vbq_lock, flags);
 			return;
 		}
+#ifdef CONFIG_PANEL_PICO_DLP
+		if (dispc_go_busy(OMAP_DSS_CHANNEL_LCD2)) {
+				spin_unlock(&vout->vbq_lock);
+				printk("dpi busy %d !! \n", cur_display->type);
+				return;
+		}
+#endif
 			break;
 
 #if CONFIG_OMAP2_DSS_HDMI
@@ -3085,6 +3092,10 @@ venc:
 			if (r)
 				printk(KERN_ERR VOUT_NAME
 						"failed to change mode\n");
+
+#ifdef CONFIG_PANEL_PICO_DLP
+			dispc_go(OMAP_DSS_CHANNEL_LCD2);
+#endif
 
 #if !(CONFIG_OMAP2_DSS_HDMI)
 end:
