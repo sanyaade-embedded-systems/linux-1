@@ -462,6 +462,7 @@ int nameserver_remotenotify_get(void *rhandle,
 	/* Pend on the semaphore */
 	retval = down_interruptible(obj->sem_handle);
 	if (retval) {
+		retval = -EINTR ;
 		goto exit;
 	}
 
