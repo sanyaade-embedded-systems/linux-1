@@ -3220,7 +3220,7 @@ unsigned long dispc_fclk_rate(void)
 		r = dss_clk_get_rate(DSS_CLK_FCK1);
 	else
 #ifdef CONFIG_OMAP2_DSS_DSI
-		r = dsi_get_dsi1_pll_rate();
+		r = dsi_get_dsi1_pll_rate(0);
 #else
 	BUG();
 #endif
@@ -3554,14 +3554,14 @@ int dispc_calc_clock_rates(unsigned long dispc_fclk_rate,
 	return 0;
 }
 
-int dispc_set_clock_div(struct dispc_clock_info *cinfo)
+int dispc_set_clock_div(enum omap_channel channel,
+		struct dispc_clock_info *cinfo)
 {
 	DSSDBG("lck = %lu (%u)\n", cinfo->lck, cinfo->lck_div);
 	DSSDBG("pck = %lu (%u)\n", cinfo->pck, cinfo->pck_div);
 
-	/* TODO: update here for LCD2 support */
-	dispc_set_lcd_divisor(OMAP_DSS_CHANNEL_LCD, 1,
-							6);
+	dispc_set_lcd_divisor(channel, cinfo->lck_div,
+		cinfo->pck_div);
 
 	return 0;
 }
