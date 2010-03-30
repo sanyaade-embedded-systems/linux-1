@@ -700,15 +700,15 @@ void dispc_go(enum omap_channel channel)
 		bit = 1; /* DIGITALENABLE */
 
 #ifdef CONFIG_ARCH_OMAP4
-	if (channel == OMAP_DSS_CHANNEL_LCD2)
-		REG_FLD_MOD(DISPC_CONTROL2, 1, 0, 0);
-	else
-		 REG_FLD_MOD(DISPC_CONTROL, 1, 0, 0);
-
+	if (channel == OMAP_DSS_CHANNEL_LCD2) {
+		if (REG_GET(DISPC_CONTROL2, bit, bit) == 0)
+			goto end;
+	} else
 #endif
-	if (REG_GET(DISPC_CONTROL, bit, bit) == 0)
-		goto end;
-
+	{
+		if (REG_GET(DISPC_CONTROL, bit, bit) == 0)
+                        goto end;
+	}
 #ifdef CONFIG_ARCH_OMAP4
 	if (channel != OMAP_DSS_CHANNEL_DIGIT)
 #else
@@ -751,6 +751,7 @@ void dispc_go(enum omap_channel channel)
 end:
 	enable_clocks(0);
 }
+
 
 static void _dispc_write_firh_reg(enum omap_plane plane, int reg, u32 value)
 {
