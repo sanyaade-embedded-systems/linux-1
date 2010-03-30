@@ -59,7 +59,6 @@
 
 #include <dspbridge/resourcecleanup.h>
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-#define PROC_SIGNATURE	   0x434F5250	/* "PROC" (in reverse). */
 #define MAXCMDLINELEN       255
 #define PROC_ENVPROCID      "PROC_ID=%d"
 #define MAXPROCIDLEN	(8 + 5)

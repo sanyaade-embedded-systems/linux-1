@@ -38,9 +38,6 @@
 #include <_msg_sm.h>
 #include <dspbridge/wmdmsg.h>
 
-/*  ----------------------------------- Defines, Data Structures, Typedefs */
-#define MSGQ_SIGNATURE      0x5147534d	/* "QGSM" */
-
 /*  ----------------------------------- Function Prototypes */
 static dsp_status add_new_msg(struct lst_list *msgList);
 static void delete_msg_mgr(struct msg_mgr *hmsg_mgr);

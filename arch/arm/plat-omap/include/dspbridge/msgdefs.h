@@ -19,8 +19,6 @@
 #ifndef MSGDEFS_
 #define MSGDEFS_
 
-#define MSGMGR_SIGNATURE    0x4d47534d	/* "MGSM" */
-
 /* msg_ctrl Objects: */
 struct msg_mgr;
 struct msg_queue;

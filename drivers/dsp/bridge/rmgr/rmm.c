@@ -51,8 +51,6 @@
 /*  ----------------------------------- This */
 #include <dspbridge/rmm.h>
 
-#define RMM_TARGSIGNATURE   0x544d4d52	/* "TMMR" */
-
 /*
  *  ======== rmm_header ========
  *  This header is used to maintain a list of free memory blocks.

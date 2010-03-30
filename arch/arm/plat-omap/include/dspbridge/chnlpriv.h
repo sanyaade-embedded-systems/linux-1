@@ -23,10 +23,6 @@
 #include <dspbridge/devdefs.h>
 #include <dspbridge/sync.h>
 
-/* CHNL Object validation signatures: */
-#define CHNL_MGRSIGNATURE   0x52474D43	/* "CMGR" (in reverse). */
-#define CHNL_SIGNATURE      0x4C4E4843	/* "CHNL" (in reverse). */
-
 /* Channel manager limits: */
 #define CHNL_MAXCHANNELS    32	/* Max channels available per transport */
 

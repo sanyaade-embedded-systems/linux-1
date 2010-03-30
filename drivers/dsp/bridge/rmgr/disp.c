@@ -46,8 +46,6 @@
 /*  ----------------------------------- This */
 #include <dspbridge/disp.h>
 
-#define DISP_SIGNATURE       0x50534944	/* "PSID" */
-
 /* Size of a reply from RMS */
 #define REPLYSIZE (3 * sizeof(rms_word))
 

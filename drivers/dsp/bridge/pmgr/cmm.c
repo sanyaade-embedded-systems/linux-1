@@ -52,11 +52,6 @@
 #include <dspbridge/cmm.h>
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-/* Object signatures */
-#define CMMSIGNATURE       0x004d4d43	/* "CMM"   (in reverse) */
-#define SMEMSIGNATURE      0x4D454D53	/* "SMEM"  SM space */
-#define CMMXLATESIGNATURE  0x584d4d43	/* "CMMX"  CMM Xlator */
-
 #define NEXT_PA(pnode)   (pnode->dw_pa + pnode->ul_size)
 
 /* Other bus/platform translations */

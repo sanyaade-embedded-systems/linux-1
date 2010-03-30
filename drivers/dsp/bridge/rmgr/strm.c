@@ -46,9 +46,6 @@
 #include <dspbridge/resourcecleanup.h>
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-#define STRM_SIGNATURE      0x4d525453	/* "MRTS" */
-#define STRMMGR_SIGNATURE   0x5254534d	/* "RTSM" */
-
 #define DEFAULTTIMEOUT      10000
 #define DEFAULTNUMBUFS      2
 

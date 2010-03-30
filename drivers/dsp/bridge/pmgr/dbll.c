@@ -36,9 +36,6 @@
 #include <dspbridge/dbll.h>
 #include <dspbridge/rmm.h>
 
-#define DBLL_TARGSIGNATURE      0x544c4c44	/* "TLLD" */
-#define DBLL_LIBSIGNATURE       0x4c4c4c44	/* "LLLD" */
-
 /* Number of buckets for symbol hash table */
 #define MAXBUCKETS 211
 

@@ -36,9 +36,6 @@
 
 #include <dspbridge/nldr.h>
 
-#define NLDR_SIGNATURE      0x52444c4e	/* "RDLN" */
-#define NLDR_NODESIGNATURE  0x4e444c4e	/* "NDLN" */
-
 /* Name of section containing dynamic load mem */
 #define DYNMEMSECT  ".dspbridge_mem"
 

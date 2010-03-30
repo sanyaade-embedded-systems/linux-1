@@ -55,7 +55,6 @@
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
 
-#define SIGNATURE           0x5f564544	/* "DEV_" (in reverse) */
 #define MAKEVERSION(major, minor)   (major * 10 + minor)
 #define WCDVERSION          MAKEVERSION(WCD_MAJOR_VERSION, WCD_MINOR_VERSION)
 

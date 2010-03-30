@@ -22,8 +22,6 @@
 #include <dspbridge/ntfy.h>
 #include <dspbridge/wmd.h>
 
-#define SIGNATURE       0x5f484544	/* "DEH_" backwards */
-
 /* DEH Manager: only one created per board: */
 struct deh_mgr {
 	struct wmd_dev_context *hwmd_context;	/* WMD device context. */

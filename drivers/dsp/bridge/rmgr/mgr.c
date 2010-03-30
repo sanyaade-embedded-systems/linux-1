@@ -40,7 +40,6 @@
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
 #define ZLDLLNAME               ""
-#define SIGNATURE               0x5f52474d	/* "MGR_" (in reverse) */
 
 struct mgr_object {
 	struct dcd_manager *hdcd_mgr;	/* Proc/Node data manager */

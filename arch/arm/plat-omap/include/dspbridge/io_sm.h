@@ -30,8 +30,6 @@
 #define IO_SERVICE          2
 #define IO_MAXSERVICE       IO_SERVICE
 
-#define IO_MGRSIGNATURE     0x494f4D43	/* "IOGR" */
-
 #define DSP_FIELD_ADDR(type, field, base, wordsize) \
     ((((s32)&(((type *)0)->field)) / wordsize) + (u32)base)
 

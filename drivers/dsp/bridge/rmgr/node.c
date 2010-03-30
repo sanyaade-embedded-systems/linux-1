@@ -68,9 +68,6 @@
 #include <dspbridge/resourcecleanup.h>
 #include <_tiomap.h>
 
-#define NODE_SIGNATURE      0x45444f4e	/* "EDON" */
-#define NODEMGR_SIGNATURE   0x52474d4e	/* "RGMN" */
-
 #define HOSTPREFIX	  "/host"
 #define PIPEPREFIX	  "/dbpipe"
 

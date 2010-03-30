@@ -43,9 +43,6 @@
 #include <dspbridge/dmm.h>
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-/* Object signatures */
-#define DMMSIGNATURE       0x004d4d44	/* "DMM"   (in reverse) */
-
 #define DMM_ADDR_VIRTUAL(a) \
 	(((struct map_page *)(a) - virtual_mapping_table) * PG_SIZE4K +\
 	dyn_mem_map_beg)

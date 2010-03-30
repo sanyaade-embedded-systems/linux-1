@@ -43,8 +43,6 @@
 #include <dspbridge/resourcecleanup.h>
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-#define SIGNATURE   0x5f52474d	/* "DRV_" (in reverse) */
-
 struct drv_object {
 	struct lst_list *dev_list;
 	struct lst_list *dev_node_string;

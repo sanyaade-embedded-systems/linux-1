@@ -43,8 +43,6 @@
 #include <dspbridge/dbdcd.h>
 
 /*  ----------------------------------- Global defines. */
-#define SIGNATURE       0x5f444344	/* "DCD_" (in reverse). */
-
 #define MAX_INT2CHAR_LENGTH     16	/* Max int2char len of 32 bit int */
 
 /* Name of section containing dependent libraries */
