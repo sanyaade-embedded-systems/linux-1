@@ -139,7 +139,11 @@ static void hsmmc23_before_set_reg(struct device *dev, int slot,
 	}
 }
 
+#ifndef CONFIG_ARCH_TI816X
 static struct omap_mmc_platform_data *hsmmc_data[OMAP34XX_NR_MMC] __initdata;
+#else
+static struct omap_mmc_platform_data *hsmmc_data[TI816X_NR_MMC] __initdata;
+#endif
 
 void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 {
@@ -150,6 +154,11 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 	if (cpu_is_omap2430()) {
 		control_pbias_offset = OMAP243X_CONTROL_PBIAS_LITE;
 		control_devconf1_offset = OMAP243X_CONTROL_DEVCONF1;
+	} else if (cpu_is_ti816x()) {
+		/*
+		 * TODO:Add TI816X specific definitions here.
+		 * Control.h yet to be populated
+		 */
 	} else {
 		control_pbias_offset = OMAP343X_CONTROL_PBIAS_LITE;
 		control_devconf1_offset = OMAP343X_CONTROL_DEVCONF1;
@@ -218,6 +227,7 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 
 		switch (c->mmc) {
 		case 1:
+			/* TODO: Do we need these functions for TI816X? */
 			/* on-chip level shifting via PBIAS0/PBIAS1 */
 			mmc->slots[0].before_set_reg = hsmmc1_before_set_reg;
 			mmc->slots[0].after_set_reg = hsmmc1_after_set_reg;
@@ -247,7 +257,11 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 		hsmmc_data[c->mmc - 1] = mmc;
 	}
 
-	omap2_init_mmc(hsmmc_data, OMAP34XX_NR_MMC);
+	if (!cpu_is_ti816x()) {
+		omap2_init_mmc(hsmmc_data, OMAP34XX_NR_MMC);
+	} else {
+		omap2_init_mmc(hsmmc_data, TI816X_NR_MMC);
+	}
 
 	/* pass the device nodes back to board setup code */
 	for (c = controllers; c->mmc; c++) {
