@@ -88,7 +88,6 @@
 /* IO Manager: only one created per board */
 struct io_mgr {
 	/* These four fields must be the first fields in a io_mgr_ struct */
-	u32 dw_signature;	/* Used for object validation */
 	struct wmd_dev_context *hwmd_context;	/* WMD device context */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
 	struct dev_object *hdev_obj;	/* Device this board represents */

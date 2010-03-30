@@ -43,7 +43,6 @@
 #define SIGNATURE               0x5f52474d	/* "MGR_" (in reverse) */
 
 struct mgr_object {
-	u32 dw_signature;
 	struct dcd_manager *hdcd_mgr;	/* Proc/Node data manager */
 };
 

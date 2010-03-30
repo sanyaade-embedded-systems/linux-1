@@ -64,7 +64,6 @@ struct dev_object {
 	/* LST requires "link" to be first field! */
 	struct list_head link;	/* Link to next dev_object. */
 	u32 dev_type;		/* Device Type */
-	u32 dw_signature;	/* Used for object validation. */
 	struct cfg_devnode *dev_node_obj;	/* Platform specific dev id */
 	struct wmd_dev_context *hwmd_context;	/* WMD Context Handle */
 	struct bridge_drv_interface wmd_interface;	/* Function interface to WMD. */

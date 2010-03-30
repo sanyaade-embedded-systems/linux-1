@@ -63,7 +63,6 @@
  *  ======== disp_object ========
  */
 struct disp_object {
-	u32 dw_signature;	/* Used for object validation */
 	struct dev_object *hdev_obj;	/* Device for this processor */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
 	struct chnl_mgr *hchnl_mgr;	/* Channel manager */

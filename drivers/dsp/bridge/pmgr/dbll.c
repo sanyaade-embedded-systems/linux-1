@@ -60,7 +60,6 @@
  *  ======== dbll_tar_obj ========
  */
 struct dbll_tar_obj {
-	u32 dw_signature;	/* For object validation */
 	struct dbll_attrs attrs;
 	struct dbll_library_obj *head;	/* List of all opened libraries */
 };
@@ -113,7 +112,6 @@ struct dbll_init_obj {
  *  ======== dbll_library_obj ========
  */
 struct dbll_library_obj {
-	u32 dw_signature;	/* For object validation */
 	struct dbll_library_obj *next;	/* Next library in target's list */
 	struct dbll_library_obj *prev;	/* Previous in the list */
 	struct dbll_tar_obj *target_obj;	/* target for this library */

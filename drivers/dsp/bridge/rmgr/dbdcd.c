@@ -52,7 +52,6 @@
 
 /* DCD specific structures. */
 struct dcd_manager {
-	u32 dw_signature;	/* Used for object validation. */
 	struct cod_manager *cod_mgr;	/* Handle to COD manager object. */
 };
 

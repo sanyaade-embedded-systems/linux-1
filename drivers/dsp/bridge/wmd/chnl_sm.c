@@ -334,7 +334,6 @@ func_cont:
 		DBC_ASSERT((pchnl->dw_state & CHNL_STATECANCEL));
 		/* Invalidate channel object: Protects from
 		 * CHNL_GetIOCompletion(). */
-		pchnl->dw_signature = 0x0000;
 		/* Free the slot in the channel manager: */
 		pchnl->chnl_mgr_obj->ap_channel[pchnl->chnl_id] = NULL;
 		spin_lock_bh(&pchnl->chnl_mgr_obj->chnl_mgr_lock);
@@ -894,7 +893,6 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 		chnl_mgr_obj->open_channels++;
 		spin_unlock_bh(&chnl_mgr_obj->chnl_mgr_lock);
 		/* Return result... */
-		pchnl->dw_signature = CHNL_SIGNATURE;
 		pchnl->dw_state = CHNL_STATEREADY;
 		*phChnl = pchnl;
 	}

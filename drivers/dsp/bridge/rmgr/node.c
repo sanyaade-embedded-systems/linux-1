@@ -126,7 +126,6 @@
  *  ======== node_mgr ========
  */
 struct node_mgr {
-	u32 dw_signature;	/* For object validation */
 	struct dev_object *hdev_obj;	/* Device object */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
 	struct dcd_manager *hdcd_mgr;	/* Proc/Node data manager */
@@ -187,7 +186,6 @@ struct stream_chnl {
  */
 struct node_object {
 	struct list_head list_elem;
-	u32 dw_signature;	/* For object validation */
 	struct node_mgr *hnode_mgr;	/* The manager of this node */
 	struct proc_object *hprocessor;	/* Back pointer to processor */
 	struct dsp_uuid node_uuid;	/* Node's ID */

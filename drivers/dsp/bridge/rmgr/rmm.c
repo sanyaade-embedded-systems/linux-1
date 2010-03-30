@@ -78,7 +78,6 @@ struct rmm_ovly_sect {
  *  ======== rmm_target_obj ========
  */
 struct rmm_target_obj {
-	u32 dw_signature;
 	struct rmm_segment *seg_tab;
 	struct rmm_header **free_list;
 	u32 num_segs;

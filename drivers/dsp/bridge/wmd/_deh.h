@@ -26,7 +26,6 @@
 
 /* DEH Manager: only one created per board: */
 struct deh_mgr {
-	u32 dw_signature;	/* Used for object validation. */
 	struct wmd_dev_context *hwmd_context;	/* WMD device context. */
 	struct ntfy_object *ntfy_obj;	/* NTFY object */
 	struct dsp_errorinfo err_info;	/* DSP exception info. */

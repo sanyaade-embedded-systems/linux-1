@@ -58,7 +58,6 @@
  *  channels of a stream.
  */
 struct strm_mgr {
-	u32 dw_signature;
 	struct dev_object *dev_obj;	/* Device for this processor */
 	struct chnl_mgr *hchnl_mgr;	/* Channel manager */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
@@ -69,7 +68,6 @@ struct strm_mgr {
  *  This object is allocated in strm_open().
  */
 struct strm_object {
-	u32 dw_signature;
 	struct strm_mgr *strm_mgr_obj;
 	struct chnl_object *chnl_obj;
 	u32 dir;		/* DSP_TONODE or DSP_FROMNODE */

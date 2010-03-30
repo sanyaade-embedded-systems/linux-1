@@ -30,7 +30,6 @@
  */
 struct chnl_mgr_ {
 	/* These must be the first fields in a chnl_mgr struct: */
-	u32 dw_signature;	/* Used for object validation. */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD. */
 };
 
@@ -41,7 +40,6 @@ struct chnl_mgr_ {
  */
 struct chnl_object_ {
 	/* These must be the first fields in a chnl_object struct: */
-	u32 dw_signature;	/* Used for object validation. */
 	struct chnl_mgr_ *chnl_mgr_obj;	/* Pointer back to channel manager. */
 };
 

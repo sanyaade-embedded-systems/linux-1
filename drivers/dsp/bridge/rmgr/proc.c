@@ -82,7 +82,6 @@ extern char *iva_img;
 /* The proc_object structure. */
 struct proc_object {
 	struct list_head link;	/* Link to next proc_object */
-	u32 dw_signature;	/* Used for object validation */
 	struct dev_object *hdev_obj;	/* Device this PROC represents */
 	u32 process;		/* Process owning this Processor */
 	struct mgr_object *hmgr_obj;	/* Manager Object Handle */

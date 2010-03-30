@@ -53,7 +53,6 @@
 
 /* DMM Mgr */
 struct dmm_object {
-	u32 dw_signature;	/* Used for object validation */
 	/* Dmm Lock is used to serialize access mem manager for
 	 * multi-threads. */
 	spinlock_t dmm_lock;	/* Lock to access dmm mgr */

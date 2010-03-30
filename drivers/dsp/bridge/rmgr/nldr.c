@@ -207,7 +207,6 @@ struct ovly_node {
  *  Overlay loader object.
  */
 struct nldr_object {
-	u32 dw_signature;	/* For object validation */
 	struct dev_object *hdev_obj;	/* Device object */
 	struct dcd_manager *hdcd_mgr;	/* Proc/Node data manager */
 	struct dbll_tar_obj *dbll;	/* The DBL loader */
@@ -233,7 +232,6 @@ struct nldr_object {
  *  Dynamic node object. This object is created when a node is allocated.
  */
 struct nldr_nodeobject {
-	u32 dw_signature;	/* For object validation */
 	struct nldr_object *nldr_obj;	/* Dynamic loader handle */
 	void *priv_ref;		/* Handle to pass to dbl_write_fxn */
 	struct dsp_uuid uuid;	/* Node's UUID */

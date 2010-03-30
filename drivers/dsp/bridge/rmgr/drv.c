@@ -46,7 +46,6 @@
 #define SIGNATURE   0x5f52474d	/* "DRV_" (in reverse) */
 
 struct drv_object {
-	u32 dw_signature;
 	struct lst_list *dev_list;
 	struct lst_list *dev_node_string;
 };

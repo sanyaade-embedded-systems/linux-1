@@ -112,7 +112,6 @@ struct shm {
 
 	/* Channel Manager: only one created per board: */
 struct chnl_mgr {
-	u32 dw_signature;	/* Used for object validation */
 	/* Function interface to WMD */
 	struct bridge_drv_interface *intf_fxns;
 	struct io_mgr *hio_mgr;	/* IO manager */
@@ -138,7 +137,6 @@ struct chnl_mgr {
  *     up to CHNL_MAXCHANNELS + CHNL_MAXDDMACHNLS per board.
  */
 struct chnl_object {
-	u32 dw_signature;	/* Used for object validation */
 	/* Pointer back to channel manager */
 	struct chnl_mgr *chnl_mgr_obj;
 	u32 chnl_id;		/* Channel id */

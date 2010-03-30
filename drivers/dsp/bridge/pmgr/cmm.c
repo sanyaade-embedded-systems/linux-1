@@ -70,7 +70,6 @@
  *      vma - virtual memory allocator.(not used).
  */
 struct cmm_allocator {		/* sma */
-	u32 dw_signature;	/* SMA allocator signature SMEMSIGNATURE */
 	unsigned int shm_base;	/* Start of physical SM block */
 	u32 ul_sm_size;		/* Size of SM block in bytes */
 	unsigned int dw_vm_base;	/* Start of VM block. (Dev driver
@@ -88,7 +87,6 @@ struct cmm_allocator {		/* sma */
 };
 
 struct cmm_xlator {		/* Pa<->Va translator object */
-	u32 dw_signature;	/* "CMMX" */
 	/* CMM object this translator associated */
 	struct cmm_object *hcmm_mgr;
 	/*
@@ -103,7 +101,6 @@ struct cmm_xlator {		/* Pa<->Va translator object */
 
 /* CMM Mgr */
 struct cmm_object {
-	u32 dw_signature;	/* Used for object validation */
 	/*
 	 * Cmm Lock is used to serialize access mem manager for multi-threads.
 	 */
