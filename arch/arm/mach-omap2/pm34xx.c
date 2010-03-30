@@ -491,6 +491,16 @@ void omap_sram_idle(void)
 		omap2_clkdm_deny_idle(mpu_pwrdm->pwrdm_clkdms[0]);
 
 	/* CORE */
+	if (core_next_state <= PWRDM_POWER_RET) {
+		omap_smartreflex_disable(SR2);
+		if (cpu_is_omap3630())
+			program_vdd2_opp_3630();
+		else if (cpu_is_omap3430())
+			program_vdd2_opp_3430();
+		cm_rmw_mod_reg_bits(OMAP3430_AUTO_CORE_DPLL_MASK,
+						0x1, PLL_MOD, CM_AUTOIDLE);
+	}
+
 	if (core_next_state < PWRDM_POWER_ON) {
 		omap_uart_prepare_idle(0, core_next_state & core_logic_state);
 		omap_uart_prepare_idle(1, core_next_state & core_logic_state);
@@ -546,8 +556,6 @@ void omap_sram_idle(void)
 	if (!fclk_status) {
 		if ((mpu_next_state <= PWRDM_POWER_RET) && (iva_next_state <=PWRDM_POWER_RET))
 			omap_smartreflex_disable(SR1);
-		if (core_next_state <= PWRDM_POWER_RET)
-			omap_smartreflex_disable(SR2);
 	}
 
 	/*
@@ -633,16 +641,23 @@ void omap_sram_idle(void)
 	}
 	omap3_intc_resume_idle();
 
+	if (core_next_state <= PWRDM_POWER_RET) {
+		cm_rmw_mod_reg_bits(OMAP3430_AUTO_CORE_DPLL_MASK,
+						0x0, PLL_MOD, CM_AUTOIDLE);
+		if (cpu_is_omap3630())
+			reprogram_vdd2_opp_3630();
+		else if (cpu_is_omap3430())
+			reprogram_vdd2_opp_3430();
+		omap_smartreflex_enable(SR2);
+	}
+
 	/*
 	 * Enable smartreflex after WFI. Only needed if we entered
 	 * retention or off
 	 */
-	if (!fclk_status) {
-		if (mpu_next_state <= PWRDM_POWER_RET)
-			omap_smartreflex_enable(SR1);
-		if (core_next_state <= PWRDM_POWER_RET)
-			omap_smartreflex_enable(SR2);
-	}
+	if ((mpu_next_state <= PWRDM_POWER_RET) && !fclk_status)
+		omap_smartreflex_enable(SR1);
+
 	/* PER */
 	if (per_next_state < PWRDM_POWER_ON) {
 		omap3_per_gpio_wait_ready();
@@ -681,6 +696,7 @@ void omap_sram_idle(void)
 
 	omap2_clkdm_allow_idle(mpu_pwrdm->pwrdm_clkdms[0]);
 }
+
 
 int omap3_can_sleep(void)
 {
