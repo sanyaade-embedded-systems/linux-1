@@ -297,6 +297,16 @@ enum dsi {
 			dsi2 = 1,
 			};
 
+#define PWM2ON		0x03
+#define PWM2OFF		0x04
+#define TOGGLE3		0x92
+
+#define DSI1_GPIO_27 27
+#define DSI2_GPIO_59 59
+#define DSI2_GPIO_104 104
+#define DSI1_GPIO_102 102
+#define HDMI_GPIO_60 60
+#define HDMI_GPIO_41 41
 
 void dsi_bus_lock(enum dsi lcd_ix);
 void dsi_bus_unlock(enum dsi lcd_ix);

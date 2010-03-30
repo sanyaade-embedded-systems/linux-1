@@ -42,6 +42,7 @@
 #include <linux/i2c/twl.h>
 #include <linux/regulator/machine.h>
 #include "mmc-twl4030.h"
+#include <linux/delay.h>
 
 static int ts_gpio;
 
@@ -205,10 +206,63 @@ static struct omap2_mcspi_device_config dummy2_mcspi_config = {
 #endif
 /* Display */
 static int sdp4430_panel_enable_lcd(struct omap_dss_device *dssdev) {
+	if (dssdev->channel == OMAP_DSS_CHANNEL_LCD2) {
+
+		gpio_request(DSI2_GPIO_104, "dsi2_en_gpio");
+		gpio_direction_output(DSI2_GPIO_104, 0);
+		mdelay(500);
+		gpio_set_value(DSI2_GPIO_104, 1);
+		mdelay(500);
+		gpio_set_value(DSI2_GPIO_104, 0);
+		mdelay(500);
+		gpio_set_value(DSI2_GPIO_104, 1);
+
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0xFF, PWM2ON); /*0xBD = 0xFF*/
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, PWM2OFF); /*0xBE = 0x7F*/
+		twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, TOGGLE3);
+
+		gpio_request(DSI2_GPIO_59, "dsi2_bl_gpio");
+		gpio_direction_output(DSI2_GPIO_59, 1);
+		mdelay(120);
+		gpio_set_value(DSI2_GPIO_59, 0);
+		mdelay(120);
+		gpio_set_value(DSI2_GPIO_59, 1);
+
+	} else {
+		gpio_request(DSI1_GPIO_102, "dsi1_en_gpio");
+		gpio_direction_output(DSI1_GPIO_102, 0);
+		mdelay(500);
+		gpio_set_value(DSI1_GPIO_102, 1);
+		mdelay(500);
+		gpio_set_value(DSI1_GPIO_102, 0);
+		mdelay(500);
+		gpio_set_value(DSI1_GPIO_102, 1);
+
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0xFF, PWM2ON); /*0xBD = 0xFF*/
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, PWM2OFF); /*0xBE = 0x7F*/
+		twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, TOGGLE3);
+
+		gpio_request(DSI1_GPIO_27, "dsi1_bl_gpio");
+		gpio_direction_output(DSI1_GPIO_27, 1);
+		mdelay(120);
+		gpio_set_value(DSI1_GPIO_27, 0);
+		mdelay(120);
+		gpio_set_value(DSI1_GPIO_27, 1);
+
+	}
+
 	return 0;
 }
 
 static int sdp4430_panel_disable_lcd(struct omap_dss_device *dssdev) {
+
+	if (dssdev->channel == OMAP_DSS_CHANNEL_LCD2) {
+		gpio_set_value(DSI2_GPIO_104, 1);
+		gpio_set_value(DSI2_GPIO_59, 0);
+	} else {
+		gpio_set_value(DSI1_GPIO_102, 1);
+		gpio_set_value(DSI1_GPIO_27, 0);
+	}
 	return 0;
 }
 
