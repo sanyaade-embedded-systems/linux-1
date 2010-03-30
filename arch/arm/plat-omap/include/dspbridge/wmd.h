@@ -318,7 +318,7 @@ typedef dsp_status(*fxn_brd_write) (struct wmd_dev_context *hDevContext,
  *          0 < max_channels <= CHNL_MAXCHANNELS.
  *          birq <= 15.
  *          word_size > 0.
- *      IS_VALID_HANDLE(hdev_obj)
+ *      hdev_obj != NULL
  *      No channel manager exists for this board.
  *  Ensures:
  */

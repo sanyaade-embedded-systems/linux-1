@@ -45,8 +45,6 @@
 /*  ----------------------------------- Global defines. */
 #define SIGNATURE       0x5f444344	/* "DCD_" (in reverse). */
 
-#define IS_VALID_HANDLE(h) (((h) != NULL) && (h->dw_signature == SIGNATURE))
-
 #define MAX_INT2CHAR_LENGTH     16	/* Max int2char len of 32 bit int */
 
 /* Name of section containing dependent libraries */
@@ -93,7 +91,7 @@ dsp_status dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
 
 	DBC_REQUIRE(refs > 0);
 
-	if (IS_VALID_HANDLE(hdcd_mgr))
+	if (hdcd_mgr)
 		status = dcd_get_objects(hdcd_mgr, pszCoffPath,
 					 (dcd_registerfxn) dcd_register_object,
 					 (void *)pszCoffPath);
@@ -115,7 +113,7 @@ dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
 
 	DBC_REQUIRE(refs > 0);
 
-	if (IS_VALID_HANDLE(hdcd_mgr))
+	if (hdcd_mgr)
 		status = dcd_get_objects(hdcd_mgr, pszCoffPath,
 					 (dcd_registerfxn) dcd_register_object,
 					 NULL);
@@ -182,7 +180,7 @@ dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr)
 
 	DBC_REQUIRE(refs >= 0);
 
-	if (IS_VALID_HANDLE(hdcd_mgr)) {
+	if (hdcd_mgr) {
 		/* Delete the COD manager. */
 		cod_delete(dcd_mgr_obj->cod_mgr);
 
@@ -337,7 +335,7 @@ dsp_status dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(IS_VALID_HANDLE(hdcd_mgr));
+	DBC_REQUIRE(hdcd_mgr);
 	DBC_REQUIRE(uuid_obj != NULL);
 	DBC_REQUIRE(pDepLibUuids != NULL);
 	DBC_REQUIRE(pPersistentDepLibs != NULL);
@@ -360,7 +358,7 @@ dsp_status dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(IS_VALID_HANDLE(hdcd_mgr));
+	DBC_REQUIRE(hdcd_mgr);
 	DBC_REQUIRE(pNumLibs != NULL);
 	DBC_REQUIRE(pNumPersLibs != NULL);
 	DBC_REQUIRE(uuid_obj != NULL);
@@ -406,7 +404,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 		goto func_end;
 	}
 
-	if (!IS_VALID_HANDLE(hdcd_mgr)) {
+	if (!hdcd_mgr) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -553,7 +551,7 @@ dsp_status dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
 	s32 object_type;
 
 	DBC_REQUIRE(refs > 0);
-	if (!IS_VALID_HANDLE(hdcd_mgr)) {
+	if (!hdcd_mgr) {
 		status = DSP_EHANDLE;
 		goto func_end;
 	}
@@ -660,7 +658,7 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 	DBC_REQUIRE(uuid_obj != NULL);
 	DBC_REQUIRE(pstrLibName != NULL);
 	DBC_REQUIRE(pdwSize != NULL);
-	DBC_REQUIRE(IS_VALID_HANDLE(hdcd_mgr));
+	DBC_REQUIRE(hdcd_mgr);
 
 	dev_dbg(bridge, "%s: hdcd_mgr %p, uuid_obj %p, pstrLibName %p, pdwSize "
 		"%p\n", __func__, hdcd_mgr, uuid_obj, pstrLibName, pdwSize);
@@ -1439,7 +1437,7 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 
 	DBC_REQUIRE(refs > 0);
 
-	DBC_REQUIRE(IS_VALID_HANDLE(hdcd_mgr));
+	DBC_REQUIRE(hdcd_mgr);
 	DBC_REQUIRE(pNumLibs != NULL);
 	DBC_REQUIRE(uuid_obj != NULL);
 
