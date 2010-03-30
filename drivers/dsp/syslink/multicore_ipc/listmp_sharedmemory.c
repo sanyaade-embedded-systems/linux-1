@@ -468,6 +468,7 @@ int listmp_sharedmemory_delete(listmp_sharedmemory_handle *listmp_handleptr)
 	listmp_sharedmemory_object *handle = NULL;
 	struct listmp_sharedmemory_obj *obj = NULL;
 	listmp_sharedmemory_params *params = NULL;
+	u32 key;
 
 	if (atomic_cmpmask_and_lt(&(listmp_sharedmemory_state.ref_count),
 			LISTMPSHAREDMEMORY_MAKE_MAGICSTAMP(0),
@@ -504,10 +505,8 @@ int listmp_sharedmemory_delete(listmp_sharedmemory_handle *listmp_handleptr)
 	}
 
 	/* Remove from  the local list */
-	status = mutex_lock_interruptible(
+	key = mutex_lock_interruptible(
 				listmp_sharedmemory_state.local_gate);
-	if (status)
-		goto exit;
 	list_del(&obj->list_elem);
 	mutex_unlock(listmp_sharedmemory_state.local_gate);
 
@@ -526,8 +525,7 @@ int listmp_sharedmemory_delete(listmp_sharedmemory_handle *listmp_handleptr)
 	}
 
 	/* Free memory for the processor info's */
-	if (obj)
-		kfree(obj->owner);
+	kfree(obj->owner);
 	/* Now free the handle */
 	kfree(obj);
 	obj = NULL;
@@ -588,6 +586,7 @@ int listmp_sharedmemory_open(listmp_sharedmemory_handle *listmp_handleptr,
 	int status = 0;
 	bool done_flag = false;
 	struct list_head *elem;
+	u32 key;
 	u32 shared_shm_base;
 	struct listmp_attrs *attrs;
 
@@ -623,10 +622,8 @@ int listmp_sharedmemory_open(listmp_sharedmemory_handle *listmp_handleptr,
 	list_for_each(elem, &listmp_sharedmemory_state.obj_list) {
 		if (((struct listmp_sharedmemory_obj *)elem)->params.shared_addr
 						== params->shared_addr) {
-			status = mutex_lock_interruptible(
+			key = mutex_lock_interruptible(
 				listmp_sharedmemory_state.local_gate);
-			if (status)
-				goto exit;
 			if (((struct listmp_sharedmemory_obj *)elem)
 				->owner->proc_id
 				== multiproc_get_id(NULL))
@@ -644,10 +641,8 @@ int listmp_sharedmemory_open(listmp_sharedmemory_handle *listmp_handleptr,
 						->params.name != NULL)){
 			if (strcmp(((struct listmp_sharedmemory_obj *)elem)
 				->params.name, params->name) == 0) {
-				status = mutex_lock_interruptible(
+				key = mutex_lock_interruptible(
 					listmp_sharedmemory_state.local_gate);
-				if (status)
-					goto exit;
 				if (((struct listmp_sharedmemory_obj *)elem)
 					->owner->proc_id
 					== multiproc_get_id(NULL))
@@ -721,6 +716,7 @@ int listmp_sharedmemory_close(listmp_sharedmemory_handle  listmp_handle)
 	listmp_sharedmemory_object *handle = NULL;
 	struct listmp_sharedmemory_obj *obj = NULL;
 	listmp_sharedmemory_params *params = NULL;
+	u32 key;
 
 	if (atomic_cmpmask_and_lt(&(listmp_sharedmemory_state.ref_count),
 			LISTMPSHAREDMEMORY_MAKE_MAGICSTAMP(0),
@@ -741,10 +737,8 @@ int listmp_sharedmemory_close(listmp_sharedmemory_handle  listmp_handle)
 		goto exit;
 	}
 
-	status = mutex_lock_interruptible(
+	key = mutex_lock_interruptible(
 		listmp_sharedmemory_state.local_gate);
-	if (status)
-		goto exit;
 	if (obj->owner->proc_id == multiproc_get_id(NULL))
 		(obj)->owner->open_count--;
 
