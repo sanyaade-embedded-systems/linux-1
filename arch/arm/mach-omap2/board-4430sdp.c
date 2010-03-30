@@ -283,7 +283,7 @@ static struct omap_dss_device sdp4430_lcd_device = {
 		.data1_pol	= 0,
 		.data2_lane	= 3,
 		.data2_pol	= 0,
-		.ext_te		= true,
+		.ext_te		= false,
 		.ext_te_gpio	= 101,
 		.div		= {
 			.regm		= 150,
@@ -312,7 +312,7 @@ static struct omap_dss_device sdp4430_lcd2_device = {
 		.data1_pol	= 0,
 		.data2_lane	= 3,
 		.data2_pol	= 0,
-		.ext_te		= true,
+		.ext_te		= false,
 		.ext_te_gpio	= 103,
 		.div		= {
 			.regm		= 150,
@@ -588,8 +588,6 @@ static void __init omap_4430sdp_init_irq(void)
 	omap2_gp_clockevent_set_gptimer(1);
 #endif
 	gic_init_irq();
-	omap_gpio_init();
-
 }
 
 static struct regulator_init_data sdp4430_vaux1 = {
