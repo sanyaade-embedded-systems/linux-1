@@ -315,19 +315,15 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 		}
 	}
 
-	for (j = 0; j < 256; j++)
-		checksum += pEDID[j];
-
-	if (checksum != 0) {
-		printk("E-EDID checksum failed!!");
-		return -1;
-	}
-
 	if (pEDID[0x14] == 0x80) {/* Digital Display */
 		if (pEDID[0x7e] == 0x00) {/* No Extention Block */
-			DBG("DVI Display\n");
+			for (j = 0; j < 128; j++)
+			checksum += pEDID[j];
+			DBG("No extension 128 bit checksum\n");
 		} else {
-			DBG("HDMI Display\n");
+			for (j = 0; j < 256; j++)
+			checksum += pEDID[j];
+			DBG("Extension present 256 bit checksum\n");
 			/* HDMI_CORE_DDC_READ_EXTBLOCK(); */
 		}
 	} else {
@@ -371,6 +367,10 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 	for (i = 0x6c; i < 0x7e; i++)
 		DBG("%02x\n", pEDID[i]);
 #endif
+	if (checksum != 0) {
+		printk("E-EDID checksum failed!!");
+		return -1;
+	}
 	return 0;
 }
 
