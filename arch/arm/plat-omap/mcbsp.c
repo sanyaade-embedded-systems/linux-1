@@ -37,6 +37,7 @@ void omap_mcbsp_write(void __iomem *io_base, u16 reg, u32 val)
 	else
 		__raw_writel(val, io_base + reg);
 }
+EXPORT_SYMBOL(omap_mcbsp_write);
 
 int omap_mcbsp_read(void __iomem *io_base, u16 reg)
 {
@@ -45,6 +46,7 @@ int omap_mcbsp_read(void __iomem *io_base, u16 reg)
 	else
 		return __raw_readl(io_base + reg);
 }
+EXPORT_SYMBOL(omap_mcbsp_read);
 
 #define OMAP_MCBSP_READ(base, reg) \
 			omap_mcbsp_read(base, OMAP_MCBSP_REG_##reg)
