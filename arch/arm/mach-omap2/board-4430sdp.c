@@ -625,7 +625,6 @@ static void __init omap_4430sdp_init_irq(void)
 #ifdef CONFIG_OMAP_32K_TIMER
 	omap2_gp_clockevent_set_gptimer(1);
 #endif
-	gic_init_irq();
 }
 
 static struct regulator_init_data sdp4430_vaux1 = {
