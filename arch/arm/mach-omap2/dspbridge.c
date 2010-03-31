@@ -12,7 +12,8 @@
  */
 
 #include <linux/platform_device.h>
-
+#include "prm.h"
+#include "cm.h"
 #ifdef CONFIG_BRIDGE_DVFS
 #include <plat/omap-pm.h>
 #include <plat/opp.h>
@@ -42,6 +43,12 @@ static struct dspbridge_platform_data dspbridge_pdata __initdata = {
 	.cpu_set_freq	 = omap_pm_cpu_set_freq,
 	.cpu_get_freq	 = omap_pm_cpu_get_freq,
 #endif
+	.dsp_prm_read	= prm_read_mod_reg,
+	.dsp_prm_write	= prm_write_mod_reg,
+	.dsp_prm_rmw_bits = prm_rmw_mod_reg_bits,
+	.dsp_cm_read	= cm_read_mod_reg,
+	.dsp_cm_write	= cm_write_mod_reg,
+	.dsp_cm_rmw_bits = cm_rmw_mod_reg_bits,
 };
 
 /**

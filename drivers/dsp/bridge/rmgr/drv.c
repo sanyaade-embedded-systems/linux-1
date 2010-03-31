@@ -892,10 +892,6 @@ static dsp_status request_bridge_resources(u32 dw_context, s32 bRequest)
 			host_res->dw_mem_base[1] = 0;
 			host_res->dw_mem_phys[1] = 0;
 
-			if (host_res->dw_prm_base)
-				iounmap(host_res->dw_prm_base);
-			if (host_res->dw_cm_base)
-				iounmap(host_res->dw_cm_base);
 			if (host_res->dw_mem_base[0])
 				iounmap((void *)host_res->dw_mem_base[0]);
 			if (host_res->dw_mem_base[2])
@@ -917,8 +913,6 @@ static dsp_status request_bridge_resources(u32 dw_context, s32 bRequest)
 			if (host_res->dw_sys_ctrl_base)
 				iounmap(host_res->dw_sys_ctrl_base);
 
-			host_res->dw_prm_base = NULL;
-			host_res->dw_cm_base = NULL;
 			host_res->dw_mem_base[0] = (u32) NULL;
 			host_res->dw_mem_base[2] = (u32) NULL;
 			host_res->dw_mem_base[3] = (u32) NULL;
@@ -944,18 +938,12 @@ static dsp_status request_bridge_resources(u32 dw_context, s32 bRequest)
 		host_res->num_mem_windows = 2;
 		/* First window is for DSP internal memory */
 
-		host_res->dw_prm_base = ioremap(OMAP_IVA2_PRM_BASE,
-						OMAP_IVA2_PRM_SIZE);
-		host_res->dw_cm_base = ioremap(OMAP_IVA2_CM_BASE,
-					       OMAP_IVA2_CM_SIZE);
 		host_res->dw_sys_ctrl_base = ioremap(OMAP_SYSC_BASE,
 						     OMAP_SYSC_SIZE);
 		dev_dbg(bridge, "dw_mem_base[0] 0x%x\n",
 			host_res->dw_mem_base[0]);
 		dev_dbg(bridge, "dw_mem_base[3] 0x%x\n",
 			host_res->dw_mem_base[3]);
-		dev_dbg(bridge, "dw_prm_base %p\n", host_res->dw_prm_base);
-		dev_dbg(bridge, "dw_cm_base %p\n", host_res->dw_cm_base);
 		dev_dbg(bridge, "dw_wd_timer_dsp_base %p\n",
 			host_res->dw_wd_timer_dsp_base);
 		dev_dbg(bridge, "dw_dmmu_base %p\n", host_res->dw_dmmu_base);
@@ -1045,8 +1033,6 @@ static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 bRequest)
 			host_res->dw_mem_base[3]);
 		dev_dbg(bridge, "dw_mem_base[4] 0x%x\n",
 			host_res->dw_mem_base[4]);
-		dev_dbg(bridge, "dw_prm_base %p\n", host_res->dw_prm_base);
-		dev_dbg(bridge, "dw_cm_base %p\n", host_res->dw_cm_base);
 		dev_dbg(bridge, "dw_wd_timer_dsp_base %p\n",
 			host_res->dw_wd_timer_dsp_base);
 		dev_dbg(bridge, "dw_dmmu_base %p\n", host_res->dw_dmmu_base);

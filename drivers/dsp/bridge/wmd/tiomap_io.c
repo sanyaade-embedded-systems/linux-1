@@ -419,6 +419,9 @@ int send_mbox_callback(void *arg)
 	struct cfg_hostres resources;
 	dsp_status status;
 	u32 temp;
+	struct dspbridge_platform_data *pdata =
+		omap_dspbridge_dev->dev.platform_data;
+
 	status = cfg_get_host_resources((struct cfg_devnode *)
 					drv_get_first_dev_extension(),
 					&resources);
@@ -440,16 +443,19 @@ int send_mbox_callback(void *arg)
 		 * 2:0 AUTO_IVA2_DPLL - Enabling IVA2 DPLL auto control
 		 *     in CM_AUTOIDLE_PLL_IVA2 register
 		 */
-		*(reg_uword32 *) (resources.dw_cm_base + 0x34) = 0x1;
+		(*pdata->dsp_cm_write)(1 << OMAP3430_AUTO_IVA2_DPLL_SHIFT,
+				OMAP3430_IVA2_MOD, OMAP3430_CM_AUTOIDLE_PLL);
 
 		/*
 		 * 7:4 IVA2_DPLL_FREQSEL - IVA2 internal frq set to
 		 *     0.75 MHz - 1.0 MHz
 		 * 2:0 EN_IVA2_DPLL - Enable IVA2 DPLL in lock mode
 		 */
-		temp = *(reg_uword32 *) (resources.dw_cm_base + 0x4);
-		temp = (temp & 0xFFFFFF08) | 0x37;
-		*(reg_uword32 *) (resources.dw_cm_base + 0x4) = temp;
+		(*pdata->dsp_cm_rmw_bits)(OMAP3430_IVA2_DPLL_FREQSEL_MASK |
+				OMAP3430_EN_IVA2_DPLL_MASK,
+				0x3 << OMAP3430_IVA2_DPLL_FREQSEL_SHIFT |
+				0x7 << OMAP3430_EN_IVA2_DPLL_SHIFT,
+				OMAP3430_IVA2_MOD, OMAP3430_CM_CLKEN_PLL);
 
 		/* Restore mailbox settings */
 		omap_mbox_restore_ctx(dev_context->mbox);

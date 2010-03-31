@@ -20,10 +20,6 @@
 #include <dspbridge/host_os.h>
 #include <linux/mm.h>
 #include <linux/mmzone.h>
-#include <mach-omap2/prm.h>
-#include <mach-omap2/cm.h>
-#include <mach-omap2/prm-regbits-34xx.h>
-#include <mach-omap2/cm-regbits-34xx.h>
 #include <plat/control.h>
 
 /*  ----------------------------------- DSP/BIOS Bridge */
@@ -43,7 +39,6 @@
 
 /* ------------------------------------ Hardware Abstraction Layer */
 #include <hw_defs.h>
-#include <hw_prcm.h>
 #include <hw_mmu.h>
 
 /*  ----------------------------------- Link Driver */
@@ -126,37 +121,6 @@ static dsp_status mem_map_vmalloc(struct wmd_dev_context *hDevContext,
 				  u32 ul_mpu_addr, u32 ulVirtAddr,
 				  u32 ul_num_bytes,
 				  struct hw_mmu_map_attrs_t *hw_attrs);
-
-#ifdef CONFIG_BRIDGE_DEBUG
-static void get_hw_regs(void __iomem *prm_base, void __iomem *cm_base)
-{
-	u32 temp;
-	temp = __raw_readl((cm_base) + 0x00);
-	dev_dbg(bridge, "CM_FCLKEN_IVA2 = 0x%x\n", temp);
-	temp = __raw_readl((cm_base) + 0x10);
-	dev_dbg(bridge, "CM_ICLKEN1_IVA2 = 0x%x \n", temp);
-	temp = __raw_readl((cm_base) + 0x20);
-	dev_dbg(bridge, "CM_IDLEST_IVA2 = 0x%x \n", temp);
-	temp = __raw_readl((cm_base) + 0x48);
-	dev_dbg(bridge, "CM_CLKSTCTRL_IVA2 = 0x%x \n", temp);
-	temp = __raw_readl((cm_base) + 0x4c);
-	dev_dbg(bridge, "CM_CLKSTST_IVA2 = 0x%x \n", temp);
-	temp = __raw_readl((prm_base) + 0x50);
-	dev_dbg(bridge, "RM_RSTCTRL_IVA2 = 0x%x \n", temp);
-	temp = __raw_readl((prm_base) + 0x58);
-	dev_dbg(bridge, "RM_RSTST_IVA2 = 0x%x \n", temp);
-	temp = __raw_readl((prm_base) + 0xE0);
-	dev_dbg(bridge, "PM_PWSTCTRL_IVA2 = 0x%x \n", temp);
-	temp = __raw_readl((prm_base) + 0xE4);
-	dev_dbg(bridge, "PM_PWSTST_IVA2 = 0x%x \n", temp);
-	temp = __raw_readl((cm_base) + 0xA10);
-	dev_dbg(bridge, "CM_ICLKEN1_CORE = 0x%x \n", temp);
-}
-#else
-static inline void get_hw_regs(void __iomem *prm_base, void __iomem *cm_base)
-{
-}
-#endif
 
 /*  ----------------------------------- Globals */
 
@@ -317,44 +281,37 @@ static dsp_status bridge_brd_monitor(struct wmd_dev_context *hDevContext)
 {
 	dsp_status status = DSP_SOK;
 	struct wmd_dev_context *dev_context = hDevContext;
-	struct cfg_hostres resources;
 	u32 temp;
-	enum hw_pwr_state_t pwr_state;
+	struct dspbridge_platform_data *pdata =
+				    omap_dspbridge_dev->dev.platform_data;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-	if (DSP_FAILED(status))
-		goto error_return;
-
-	get_hw_regs(resources.dw_prm_base, resources.dw_cm_base);
-	hw_pwrst_iva2_reg_get(resources.dw_prm_base, &temp);
-	if ((temp & 0x03) != 0x03 || (temp & 0x03) != 0x02) {
+	temp = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD, PM_PWSTST) &
+					OMAP_POWERSTATEST_MASK;
+	if (!(temp & 0x02)) {
 		/* IVA2 is not in ON state */
 		/* Read and set PM_PWSTCTRL_IVA2  to ON */
-		hw_pwr_iva2_power_state_set(resources.dw_prm_base,
-					    HW_PWR_DOMAIN_DSP, HW_PWR_STATE_ON);
+		(*pdata->dsp_prm_rmw_bits)(OMAP_POWERSTATEST_MASK,
+			PWRDM_POWER_ON, OMAP3430_IVA2_MOD, PM_PWSTCTRL);
 		/* Set the SW supervised state transition */
-		hw_pwr_clkctrl_iva2_reg_set(resources.dw_cm_base,
-					    HW_SW_SUP_WAKEUP);
-		/* Wait until the state has moved to ON */
-		hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
-				      &pwr_state);
-		/* Disable Automatic transition */
-		hw_pwr_clkctrl_iva2_reg_set(resources.dw_cm_base,
-					    HW_AUTOTRANS_DIS);
-	}
+		(*pdata->dsp_cm_write)(OMAP34XX_CLKSTCTRL_FORCE_WAKEUP,
+					OMAP3430_IVA2_MOD, CM_CLKSTCTRL);
 
-	get_hw_regs(resources.dw_prm_base, resources.dw_cm_base);
-	hw_rst_un_reset(resources.dw_prm_base, HW_RST2_IVA2);
+		/* Wait until the state has moved to ON */
+		while ((*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD, PM_PWSTST) &
+						OMAP_INTRANSITION)
+			;
+		/* Disable Automatic transition */
+		(*pdata->dsp_cm_write)(OMAP34XX_CLKSTCTRL_DISABLE_AUTO,
+					OMAP3430_IVA2_MOD, CM_CLKSTCTRL);
+	}
+	(*pdata->dsp_prm_rmw_bits)(OMAP3430_RST2_IVA2, 0,
+					OMAP3430_IVA2_MOD, RM_RSTCTRL);
 	services_clk_enable(SERVICESCLK_IVA2_CK);
 
 	if (DSP_SUCCEEDED(status)) {
 		/* set the device state to IDLE */
 		dev_context->dw_brd_state = BRD_IDLE;
 	}
-error_return:
-	get_hw_regs(resources.dw_prm_base, resources.dw_cm_base);
 	return status;
 }
 
@@ -439,6 +396,8 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 	u32 ext_clk_id = 0;
 	u32 tmp_index;
 	u32 clk_id_index = MBX_PM_MAX_RESOURCES;
+	struct dspbridge_platform_data *pdata =
+				omap_dspbridge_dev->dev.platform_data;
 
 	/* The device context contains all the mmu setup info from when the
 	 * last dsp base image was loaded. The first entry is always
@@ -472,9 +431,10 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 						drv_get_first_dev_extension(),
 						&resources);
 		/* Assert RST1 i.e only the RST only for DSP megacell */
-		/* hw_rst_reset(resources.dwPrcmBase, HW_RST1_IVA2); */
 		if (DSP_SUCCEEDED(status)) {
-			hw_rst_reset(resources.dw_prm_base, HW_RST1_IVA2);
+			(*pdata->dsp_prm_rmw_bits)(OMAP3430_RST1_IVA2,
+					OMAP3430_RST1_IVA2, OMAP3430_IVA2_MOD,
+					RM_RSTCTRL);
 			/* Mask address with 1K for compatibility */
 			__raw_writel(dwDSPAddr & OMAP3_IVA2_BOOTADDR_MASK,
 					OMAP343X_CTRL_REGADDR(
@@ -490,12 +450,13 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 	if (DSP_SUCCEEDED(status)) {
 		/* Reset and Unreset the RST2, so that BOOTADDR is copied to
 		 * IVA2 SYSC register */
-		hw_rst_reset(resources.dw_prm_base, HW_RST2_IVA2);
+		(*pdata->dsp_prm_rmw_bits)(OMAP3430_RST2_IVA2,
+			OMAP3430_RST1_IVA2, OMAP3430_IVA2_MOD, RM_RSTCTRL);
 		udelay(100);
-		hw_rst_un_reset(resources.dw_prm_base, HW_RST2_IVA2);
+		(*pdata->dsp_prm_rmw_bits)(OMAP3430_RST2_IVA2, 0,
+					OMAP3430_IVA2_MOD, RM_RSTCTRL);
 		udelay(100);
 
-		get_hw_regs(resources.dw_prm_base, resources.dw_cm_base);
 		/* Disbale the DSP MMU */
 		hw_mmu_disable(resources.dw_dmmu_base);
 		/* Disable TWL */
@@ -641,11 +602,9 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 		(void)dev_get_symbol(dev_context->hdev_obj,
 				     "_BRIDGEINIT_DSP_FREQ", &ul_dsp_clk_addr);
 		/*Set Autoidle Mode for IVA2 PLL */
-		temp = (u32) *((reg_uword32 *)
-				((u32) (resources.dw_cm_base) + 0x34));
-		temp = (temp & 0xFFFFFFFE) | 0x1;
-		*((reg_uword32 *) ((u32) (resources.dw_cm_base) + 0x34)) =
-		    (u32) temp;
+		(*pdata->dsp_cm_write)(1 << OMAP3430_AUTO_IVA2_DPLL_SHIFT,
+				OMAP3430_IVA2_MOD, OMAP3430_CM_AUTOIDLE_PLL);
+
 		if ((unsigned int *)ul_dsp_clk_addr != NULL) {
 			/* Get the clock rate */
 			status = services_clk_get_rate(SERVICESCLK_IVA2_CK,
@@ -697,11 +656,8 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 		    (u32) temp;
 
 /*CM_CLKSTCTRL_IVA2 = 0x00000003 -To Allow automatic transitions */
-		temp = (u32) *((reg_uword32 *)
-				((u32) (resources.dw_cm_base) + 0x48));
-		temp = (temp & 0xFFFFFFFC) | 0x03;
-		*((reg_uword32 *) ((u32) (resources.dw_cm_base) + 0x48)) =
-		    (u32) temp;
+		(*pdata->dsp_cm_write)(OMAP34XX_CLKSTCTRL_ENABLE_AUTO,
+					OMAP3430_IVA2_MOD, CM_CLKSTCTRL);
 
 		/* Let DSP go */
 		dev_dbg(bridge, "%s Unreset\n", __func__);
@@ -709,7 +665,8 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 		hw_mmu_event_enable(resources.dw_dmmu_base,
 				    HW_MMU_ALL_INTERRUPTS);
 		/* release the RST1, DSP starts executing now .. */
-		hw_rst_un_reset(resources.dw_prm_base, HW_RST1_IVA2);
+		(*pdata->dsp_prm_rmw_bits)(OMAP3430_RST1_IVA2, 0,
+					OMAP3430_IVA2_MOD, RM_RSTCTRL);
 
 		dev_dbg(bridge, "Waiting for Sync @ 0x%x\n", dw_sync_addr);
 		dev_dbg(bridge, "DSP c_int00 Address =  0x%x\n", dwDSPAddr);
@@ -757,10 +714,11 @@ static dsp_status bridge_brd_stop(struct wmd_dev_context *hDevContext)
 {
 	dsp_status status = DSP_SOK;
 	struct wmd_dev_context *dev_context = hDevContext;
-	struct cfg_hostres resources;
 	struct pg_table_attrs *pt_attrs;
 	u32 dsp_pwr_state;
 	dsp_status clk_status;
+	struct dspbridge_platform_data *pdata =
+				omap_dspbridge_dev->dev.platform_data;
 
 	if (dev_context->dw_brd_state == BRD_STOPPED)
 		return status;
@@ -768,29 +726,22 @@ static dsp_status bridge_brd_stop(struct wmd_dev_context *hDevContext)
 	/* as per TRM, it is advised to first drive the IVA2 to 'Standby' mode,
 	 * before turning off the clocks.. This is to ensure that there are no
 	 * pending L3 or other transactons from IVA2 */
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-	if (DSP_FAILED(status))
-		return DSP_EFAIL;
 
-	hw_pwrst_iva2_reg_get(resources.dw_prm_base, &dsp_pwr_state);
-	if (dsp_pwr_state != HW_PWR_STATE_OFF && hDevContext->mbox) {
+	dsp_pwr_state = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD, PM_PWSTST) &
+					OMAP_POWERSTATEST_MASK;
+	if (dsp_pwr_state != PWRDM_POWER_OFF) {
 		sm_interrupt_dsp(dev_context, MBX_PM_DSPIDLE);
 		mdelay(10);
-		get_hw_regs(resources.dw_prm_base, resources.dw_cm_base);
-		udelay(50);
 
 		clk_status = services_clk_disable(SERVICESCLK_IVA2_CK);
 
 		/* IVA2 is not in OFF state */
 		/* Set PM_PWSTCTRL_IVA2  to OFF */
-		hw_pwr_iva2_power_state_set(resources.dw_prm_base,
-					    HW_PWR_DOMAIN_DSP,
-					    HW_PWR_STATE_OFF);
+		(*pdata->dsp_prm_rmw_bits)(OMAP_POWERSTATEST_MASK,
+			PWRDM_POWER_OFF, OMAP3430_IVA2_MOD, PM_PWSTCTRL);
 		/* Set the SW supervised state transition for Sleep */
-		hw_pwr_clkctrl_iva2_reg_set(resources.dw_cm_base,
-					    HW_SW_SUP_SLEEP);
+		(*pdata->dsp_cm_write)(OMAP34XX_CLKSTCTRL_FORCE_SLEEP,
+					OMAP3430_IVA2_MOD, CM_CLKSTCTRL);
 	} else {
 		clk_status = services_clk_disable(SERVICESCLK_IVA2_CK);
 	}
@@ -820,10 +771,9 @@ static dsp_status bridge_brd_stop(struct wmd_dev_context *hDevContext)
 		omap_mbox_put(hDevContext->mbox);
 		hDevContext->mbox = NULL;
 	}
-
-	hw_rst_reset(resources.dw_prm_base, HW_RST1_IVA2);
-	hw_rst_reset(resources.dw_prm_base, HW_RST2_IVA2);
-	hw_rst_reset(resources.dw_prm_base, HW_RST3_IVA2);
+	/* Reset IVA2 clocks*/
+	(*pdata->dsp_prm_write)(OMAP3430_RST1_IVA2 | OMAP3430_RST2_IVA2 |
+			OMAP3430_RST3_IVA2, OMAP3430_IVA2_MOD, RM_RSTCTRL);
 
 	return status;
 }
@@ -843,6 +793,8 @@ static dsp_status wmd_brd_delete(struct wmd_dev_context *hDevContext)
 	struct cfg_hostres resources;
 	struct pg_table_attrs *pt_attrs;
 	dsp_status clk_status;
+	struct dspbridge_platform_data *pdata =
+				omap_dspbridge_dev->dev.platform_data;
 
 	if (dev_context->dw_brd_state == BRD_STOPPED)
 		return status;
@@ -881,10 +833,9 @@ static dsp_status wmd_brd_delete(struct wmd_dev_context *hDevContext)
 		omap_mbox_put(hDevContext->mbox);
 		hDevContext->mbox = NULL;
 	}
-
-	hw_rst_reset(resources.dw_prm_base, HW_RST1_IVA2);
-	hw_rst_reset(resources.dw_prm_base, HW_RST2_IVA2);
-	hw_rst_reset(resources.dw_prm_base, HW_RST3_IVA2);
+	/* Reset IVA2 clocks*/
+	(*pdata->dsp_prm_write)(OMAP3430_RST1_IVA2 | OMAP3430_RST2_IVA2 |
+			OMAP3430_RST3_IVA2, OMAP3430_IVA2_MOD, RM_RSTCTRL);
 
 	return status;
 }

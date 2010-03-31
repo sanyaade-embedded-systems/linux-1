@@ -33,7 +33,6 @@
 
 /* ------------------------------------ Hardware Abstraction Layer */
 #include <hw_defs.h>
-#include <hw_prcm.h>
 #include <hw_mmu.h>
 
 #include <dspbridge/pwr_sh.h>
@@ -93,32 +92,25 @@ dsp_status handle_hibernation_from_dsp(struct wmd_dev_context *dev_context)
 	dsp_status status = DSP_SOK;
 #ifdef CONFIG_PM
 	u16 timeout = PWRSTST_TIMEOUT / 10;
-	struct cfg_hostres resources;
-	enum hw_pwr_state_t pwr_state;
+	u32 pwr_state;
 #ifdef CONFIG_BRIDGE_DVFS
 	u32 opplevel;
 	struct io_mgr *hio_mgr;
+#endif
 	struct dspbridge_platform_data *pdata =
 	    omap_dspbridge_dev->dev.platform_data;
-#endif
 	DEFINE_SPINLOCK(lock);
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-	if (DSP_FAILED(status))
-		return status;
-
-	hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
-			      &pwr_state);
+	pwr_state = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD, PM_PWSTST) &
+						OMAP_POWERSTATEST_MASK;
 	/* Wait for DSP to move into OFF state */
-	while ((pwr_state != HW_PWR_STATE_OFF) && --timeout) {
+	while ((pwr_state != PWRDM_POWER_OFF) && --timeout) {
 		if (msleep_interruptible(10)) {
 			pr_err("Waiting for DSP OFF mode interrupted\n");
 			return DSP_EFAIL;
 		}
-		hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
-				      &pwr_state);
+		pwr_state = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD,
+					PM_PWSTST) & OMAP_POWERSTATEST_MASK;
 	}
 	if (timeout == 0) {
 		pr_err("%s: Timed out waiting for DSP off mode\n", __func__);
@@ -127,9 +119,9 @@ dsp_status handle_hibernation_from_dsp(struct wmd_dev_context *dev_context)
 	} else {
 		/* disable bh to void concurrency with mbox tasklet */
 		spin_lock_bh(&lock);
-		hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
-			      &pwr_state);
-		if (pwr_state != HW_PWR_STATE_OFF) {
+		pwr_state = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD,
+					PM_PWSTST) & OMAP_POWERSTATEST_MASK;
+		if (pwr_state != PWRDM_POWER_OFF) {
 			pr_info("%s: message received while DSP trying to"
 							" sleep\n", __func__);
 			status = DSP_EFAIL;
@@ -184,42 +176,37 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 {
 	dsp_status status = DSP_SOK;
 #ifdef CONFIG_PM
-	struct cfg_hostres resources;
 #ifdef CONFIG_BRIDGE_NTFY_PWRERR
 	struct deh_mgr *hdeh_mgr;
 #endif /* CONFIG_BRIDGE_NTFY_PWRERR */
 	u16 timeout = PWRSTST_TIMEOUT / 10;
-	enum hw_pwr_state_t pwr_state, target_pwr_state;
+	u32 pwr_state, target_pwr_state;
 	DEFINE_SPINLOCK(lock);
+	struct dspbridge_platform_data *pdata =
+				omap_dspbridge_dev->dev.platform_data;
 
 	/* Check if sleep code is valid */
 	if ((dw_cmd != PWR_DEEPSLEEP) && (dw_cmd != PWR_EMERGENCYDEEPSLEEP))
 		return DSP_EINVALIDARG;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-	if (DSP_FAILED(status))
-		return status;
-
 	switch (dev_context->dw_brd_state) {
 	case BRD_RUNNING:
 		omap_mbox_save_ctx(dev_context->mbox);
-		if (dsp_test_sleepstate == HW_PWR_STATE_OFF) {
+		if (dsp_test_sleepstate == PWRDM_POWER_OFF) {
 			sm_interrupt_dsp(dev_context, MBX_PM_DSPHIBERNATE);
 			dev_dbg(bridge, "PM: %s - sent hibernate cmd to DSP\n",
 				__func__);
-			target_pwr_state = HW_PWR_STATE_OFF;
+			target_pwr_state = PWRDM_POWER_OFF;
 		} else {
 			sm_interrupt_dsp(dev_context, MBX_PM_DSPRETENTION);
-			target_pwr_state = HW_PWR_STATE_RET;
+			target_pwr_state = PWRDM_POWER_RET;
 		}
 		break;
 	case BRD_RETENTION:
 		omap_mbox_save_ctx(dev_context->mbox);
-		if (dsp_test_sleepstate == HW_PWR_STATE_OFF) {
+		if (dsp_test_sleepstate == PWRDM_POWER_OFF) {
 			sm_interrupt_dsp(dev_context, MBX_PM_DSPHIBERNATE);
-			target_pwr_state = HW_PWR_STATE_OFF;
+			target_pwr_state = PWRDM_POWER_OFF;
 		} else
 			return DSP_SOK;
 		break;
@@ -238,8 +225,8 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 	}
 
 	/* Get the PRCM DSP power domain status */
-	hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
-			      &pwr_state);
+	pwr_state = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD, PM_PWSTST) &
+						OMAP_POWERSTATEST_MASK;
 
 	/* Wait for DSP to move into target power state */
 	while ((pwr_state != target_pwr_state) && --timeout) {
@@ -247,8 +234,8 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 			pr_err("Waiting for DSP to Suspend interrupted\n");
 			return DSP_EFAIL;
 		}
-		hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
-				      &pwr_state);
+		pwr_state = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD,
+					PM_PWSTST) & OMAP_POWERSTATEST_MASK;
 	}
 
 	if (!timeout) {
@@ -262,8 +249,8 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 	} else {
 		/* disable bh to void concurrency with mbox tasklet */
 		spin_lock_bh(&lock);
-		hw_pwr_iva2_state_get(resources.dw_prm_base, HW_PWR_DOMAIN_DSP,
-			      &pwr_state);
+		pwr_state = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD,
+					PM_PWSTST) & OMAP_POWERSTATEST_MASK;
 		if (pwr_state != target_pwr_state) {
 			pr_err("%s: message received while DSP trying to"
 							" sleep\n", __func__);
@@ -272,7 +259,7 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 
 		}
 		/* Update the Bridger Driver state */
-		if (dsp_test_sleepstate == HW_PWR_STATE_OFF)
+		if (dsp_test_sleepstate == PWRDM_POWER_OFF)
 			dev_context->dw_brd_state = BRD_HIBERNATION;
 		else
 			dev_context->dw_brd_state = BRD_RETENTION;
@@ -293,9 +280,7 @@ func_cont:
 			return status;
 		}
 #ifdef CONFIG_BRIDGE_DVFS
-		else if (target_pwr_state == HW_PWR_STATE_OFF) {
-			struct dspbridge_platform_data *pdata =
-			    omap_dspbridge_dev->dev.platform_data;
+		else if (target_pwr_state == PWRDM_POWER_OFF) {
 			/*
 			 * Set the OPP to low level before moving to OFF mode
 			 */

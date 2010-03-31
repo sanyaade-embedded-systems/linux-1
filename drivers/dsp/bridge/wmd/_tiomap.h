@@ -19,6 +19,10 @@
 #ifndef _TIOMAP_
 #define _TIOMAP_
 
+#include <plat/powerdomain.h>
+#include <plat/clockdomain.h>
+#include <mach-omap2/prm-regbits-34xx.h>
+#include <mach-omap2/cm-regbits-34xx.h>
 #include <dspbridge/devdefs.h>
 #include <hw_defs.h>
 #include <dspbridge/wmdioctl.h>	/* for wmdioctl_extproc defn */
