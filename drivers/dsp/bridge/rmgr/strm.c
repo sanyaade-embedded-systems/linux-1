@@ -789,8 +789,8 @@ dsp_status strm_select(IN struct strm_object **strm_tab, u32 nStrms,
 	if (DSP_SUCCEEDED(status) && utimeout > 0 && *pmask == 0) {
 		/* Non-zero timeout */
 		sync_events = (struct sync_object **)mem_alloc(nStrms *
-						sizeof(struct sync_object *),
-						MEM_PAGED);
+			      sizeof(struct sync_object *), MEM_PAGED);
+
 		if (sync_events == NULL) {
 			status = DSP_EMEMORY;
 		} else {

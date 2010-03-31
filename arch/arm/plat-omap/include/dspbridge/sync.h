@@ -19,6 +19,7 @@
 #ifndef _SYNC_H
 #define _SYNC_H
 
+#include <dspbridge/errbase.h>
 #define SIGNATURECS     0x53435953	/* "SYCS" (in reverse) */
 #define SIGNATUREDPCCS  0x53445953	/* "SYDS" (in reverse) */
 
@@ -28,8 +29,16 @@
 /* Maximum string length of a named event */
 #define SYNC_MAXNAMELENGTH 32
 
-/* Generic SYNC object: */
-struct sync_object;
+/**
+ * struct sync_object - the basic sync_object structure
+ * @comp:	use to signal events
+ * @multi_comp:	use to signal multiple events.
+ *
+ */
+struct sync_object{
+	struct completion comp;
+	struct completion *multi_comp;
+};
 
 /* Generic SYNC CS object: */
 struct sync_csobject {
@@ -44,25 +53,6 @@ struct sync_attrs {
 	u32 dw_reserved1;	/* For future expansion. */
 	u32 dw_reserved2;	/* For future expansion. */
 };
-
-/*
- *  ======== sync_close_event ========
- *  Purpose:
- *      Close this event handle, freeing resources allocated in sync_open_event
- *      if necessary.
- *  Parameters:
- *      event_obj: Handle to a synchronization event, created/opened in
- *              sync_open_event.
- *  Returns:
- *      DSP_SOK:        Success;
- *      DSP_EFAIL:      Failed to close event handle.
- *      DSP_EHANDLE:    Invalid handle.
- *  Requires:
- *      SYNC initialized.
- *  Ensures:
- *      Any subsequent usage of event_obj would be invalid.
- */
-extern dsp_status sync_close_event(IN struct sync_object *event_obj);
 
 /*
  *  ======== sync_delete_cs ========
@@ -162,39 +152,18 @@ extern dsp_status sync_initialize_dpccs(OUT struct sync_csobject
  */
 extern dsp_status sync_leave_cs(IN struct sync_csobject *hcs_obj);
 
-/*
- *  ======== sync_open_event ========
- *  Purpose:
- *      Create/open and initialize an event object for thread synchronization,
- *      which is initially in the non-signalled state.
- *  Parameters:
- *      ph_event:    Pointer to location to receive the event object handle.
- *      pattrs:     Pointer to sync_attrs object containing initial SYNC
- *                  sync_object attributes.  If this pointer is NULL, then
- *                  sync_open_event will create and manage an OS specific
- *                  syncronization object.
- *          pattrs->user_event:  Platform's User Mode synchronization object.
+/**
+ * sync_init_event() - set initial state for a sync_event element
+ * @event:	event to be initialized.
  *
- *      The behaviour of the SYNC methods depend on the value of
- *      the user_event attr:
- *
- *      1. (user_event == NULL):
- *          A user mode event is created.
- *      2. (user_event != NULL):
- *          A user mode event is supplied by the caller of sync_open_event().
- *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Unable to create user mode event.
- *      DSP_EMEMORY:    Insufficient memory.
- *      DSP_EINVALIDARG sync_attrs values are invalid.
- *  Requires:
- *      - SYNC initialized.
- *      - ph_event != NULL.
- *  Ensures:
- *      If function succeeded, event->event_obj must be a valid event handle.
+ * Set the initial state for a sync_event element.
  */
-extern dsp_status sync_open_event(OUT struct sync_object **ph_event,
-				  IN OPTIONAL struct sync_attrs *pattrs);
+
+static inline void sync_init_event(struct sync_object *event)
+{
+	init_completion(&event->comp);
+	event->multi_comp = NULL;
+}
 
 /*
  * ========= sync_post_message ========
@@ -213,91 +182,61 @@ extern dsp_status sync_open_event(OUT struct sync_object **ph_event,
  */
 extern dsp_status sync_post_message(IN bhandle hWindow, IN u32 uMsg);
 
-/*
- *  ======== sync_reset_event ========
- *  Purpose:
- *      Reset a syncronization event object state to non-signalled.
- *  Parameters:
- *      event_obj:         Handle to a sync event.
- *  Returns:
- *      DSP_SOK:        Success;
- *      DSP_EFAIL:      Failed to reset event.
- *      DSP_EHANDLE:    Invalid handle.
- *  Requires:
- *      SYNC initialized.
- *  Ensures:
+/**
+ * sync_reset_event() - reset a sync_event element
+ * @event:	event to be reset.
+ *
+ * This function reset to the initial state to @event.
  */
-extern dsp_status sync_reset_event(IN struct sync_object *event_obj);
 
-/*
- *  ======== sync_set_event ========
- *  Purpose:
- *      Signal the event.  Will unblock one waiting thread.
- *  Parameters:
- *      event_obj:         Handle to an event object.
- *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Failed to signal event.
- *      DSP_EHANDLE:    Invalid handle.
- *  Requires:
- *      SYNC initialized.
- *  Ensures:
- */
-extern dsp_status sync_set_event(IN struct sync_object *event_obj);
+static inline void sync_reset_event(struct sync_object *event)
+{
+	INIT_COMPLETION(event->comp);
+	event->multi_comp = NULL;
+}
 
-/*
- *  ======== sync_wait_on_event ========
- *  Purpose:
- *      Wait for an event to be signalled, up to the specified timeout.
- *  Parameters:
- *      event_obj:         Handle to an event object.
- *      dwTimeOut:      The time-out interval, in milliseconds.
- *                      The function returns if the interval elapses, even if
- *                      the object's state is nonsignaled.
- *                      If zero, the function tests the object's state and
- *                      returns immediately.
- *                      If SYNC_INFINITE, the function's time-out interval
- *                      never elapses.
- *  Returns:
- *      DSP_SOK:        The object was signalled.
- *      DSP_EHANDLE:    Invalid handle.
- *      SYNC_E_FAIL:    Wait failed, possibly because the process terminated.
- *      SYNC_E_TIMEOUT: Timeout expired while waiting for event to be signalled.
- *  Requires:
- *  Ensures:
+/**
+ * sync_set_event() - set or signal and specified event
+ * @event:	Event to be set..
+ *
+ * set the @event, if there is an thread waiting for the event
+ * it will be waken up, this function only wakes one thread.
  */
-extern dsp_status sync_wait_on_event(IN struct sync_object *event_obj,
-				     IN u32 dwTimeOut);
 
-/*
- *  ======== sync_wait_on_multiple_events ========
- *  Purpose:
- *      Wait for any of an array of events to be signalled, up to the
- *      specified timeout.
- *      Note: dwTimeOut must be SYNC_INFINITE to signal infinite wait.
- *  Parameters:
- *      sync_events:    Array of handles to event objects.
- *      count:         Number of event handles.
- *      dwTimeOut:      The time-out interval, in milliseconds.
- *                      The function returns if the interval elapses, even if
- *                      no event is signalled.
- *                      If zero, the function tests the object's state and
- *                      returns immediately.
- *                      If SYNC_INFINITE, the function's time-out interval
- *                      never elapses.
- *      pu_index:        Location to store index of event that was signalled.
- *  Returns:
- *      DSP_SOK:        The object was signalled.
- *      SYNC_E_FAIL:    Wait failed, possibly because the process terminated.
- *      SYNC_E_TIMEOUT: Timeout expired before event was signalled.
- *      DSP_EMEMORY:    Memory allocation failed.
- *  Requires:
- *  Ensures:
+void sync_set_event(struct sync_object *event);
+
+/**
+ * sync_wait_on_event() - waits for a event to be set.
+ * @event:	events to wait for it.
+ * @timeout	timeout on waiting for the evetn.
+ *
+ * This functios will wait until @event is set or until timeout. In case of
+ * success the function will return DSP_SOK and
+ * in case of timeout the function will return DSP_ETIMEOUT
  */
-extern dsp_status sync_wait_on_multiple_events(IN struct sync_object
-					       **sync_events,
-					       IN u32 count,
-					       IN u32 dwTimeout,
-					       OUT u32 *pu_index);
+
+static inline dsp_status sync_wait_on_event(struct sync_object *event,
+							unsigned timeout)
+{
+	return wait_for_completion_timeout(&event->comp,
+		msecs_to_jiffies(timeout)) ? DSP_SOK : DSP_ETIMEOUT;
+}
+
+/**
+ * sync_wait_on_multiple_events() - waits for multiple events to be set.
+ * @events:	Array of events to wait for them.
+ * @count:	number of elements of the array.
+ * @timeout	timeout on waiting for the evetns.
+ * @pu_index	index of the event set.
+ *
+ * This functios will wait until any of the array element is set or until
+ * timeout. In case of success the function will return DSP_SOK and
+ * @pu_index will store the index of the array element set and in case
+ * of timeout the function will return DSP_ETIMEOUT.
+ */
+
+dsp_status sync_wait_on_multiple_events(struct sync_object **events,
+				     unsigned count, unsigned timeout,
+				     unsigned *index);
 
 #endif /* _SYNC_H */

@@ -100,7 +100,12 @@ dsp_status bridge_msg_create(OUT struct msg_mgr **phMsgMgr,
 
 		/*  Create an event to be used by bridge_msg_put() in waiting
 		 *  for an available free frame from the message manager. */
-		status = sync_open_event(&msg_mgr_obj->sync_event, NULL);
+		msg_mgr_obj->sync_event =
+				kzalloc(sizeof(struct sync_object), GFP_KERNEL);
+		if (!msg_mgr_obj->sync_event)
+			status = DSP_EMEMORY;
+		else
+			sync_init_event(msg_mgr_obj->sync_event);
 
 		if (DSP_SUCCEEDED(status))
 			*phMsgMgr = msg_mgr_obj;
@@ -160,8 +165,14 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 
 	/*  Create event that will be signalled when a message from
 	 *  the DSP is available. */
-	if (DSP_SUCCEEDED(status))
-		status = sync_open_event(&msg_q->sync_event, NULL);
+	if (DSP_SUCCEEDED(status)) {
+		msg_q->sync_event = kzalloc(sizeof(struct sync_object),
+							GFP_KERNEL);
+		if (msg_q->sync_event)
+			sync_init_event(msg_q->sync_event);
+		else
+			status = DSP_EMEMORY;
+	}
 
 	/* Create a notification list for message ready notification. */
 	if (DSP_SUCCEEDED(status))
@@ -172,11 +183,23 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 	 *  unblock threads in MSG_Put() or MSG_Get(). sync_done_ack
 	 *  will be set by the unblocked thread to signal that it
 	 *  is unblocked and will no longer reference the object. */
-	if (DSP_SUCCEEDED(status))
-		status = sync_open_event(&msg_q->sync_done, NULL);
+	if (DSP_SUCCEEDED(status)) {
+		msg_q->sync_done = kzalloc(sizeof(struct sync_object),
+							GFP_KERNEL);
+		if (msg_q->sync_event)
+			sync_init_event(msg_q->sync_event);
+		else
+			status = DSP_EMEMORY;
+	}
 
-	if (DSP_SUCCEEDED(status))
-		status = sync_open_event(&msg_q->sync_done_ack, NULL);
+	if (DSP_SUCCEEDED(status)) {
+		msg_q->sync_done_ack = kzalloc(sizeof(struct sync_object),
+							GFP_KERNEL);
+		if (msg_q->sync_event)
+			sync_init_event(msg_q->sync_done_ack);
+		else
+			status = DSP_EMEMORY;
+	}
 
 	if (DSP_SUCCEEDED(status)) {
 		/* Enter critical section */
@@ -580,8 +603,7 @@ static void delete_msg_mgr(struct msg_mgr *hmsg_mgr)
 		hmsg_mgr->msg_used_list = NULL;
 	}
 
-	if (hmsg_mgr->sync_event)
-		sync_close_event(hmsg_mgr->sync_event);
+	kfree(hmsg_mgr->sync_event);
 
 	MEM_FREE_OBJECT(hmsg_mgr);
 func_end:
@@ -629,14 +651,9 @@ static void delete_msg_queue(struct msg_queue *msg_queue_obj, u32 uNumToDSP)
 	if (msg_queue_obj->ntfy_obj)
 		ntfy_delete(msg_queue_obj->ntfy_obj);
 
-	if (msg_queue_obj->sync_event)
-		sync_close_event(msg_queue_obj->sync_event);
-
-	if (msg_queue_obj->sync_done)
-		sync_close_event(msg_queue_obj->sync_done);
-
-	if (msg_queue_obj->sync_done_ack)
-		sync_close_event(msg_queue_obj->sync_done_ack);
+	kfree(msg_queue_obj->sync_event);
+	kfree(msg_queue_obj->sync_done);
+	kfree(msg_queue_obj->sync_done_ack);
 
 	MEM_FREE_OBJECT(msg_queue_obj);
 func_end:

@@ -202,7 +202,6 @@ dsp_status ntfy_register(struct ntfy_object *ntfy_obj,
 			 u32 event_mask, u32 notify_type)
 {
 	struct notifier *notifier_obj;
-	struct sync_attrs sync_attrs_obj;
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(MEM_IS_VALID_HANDLE(ntfy_obj, NTFY_SIGNATURE));
@@ -252,9 +251,14 @@ dsp_status ntfy_register(struct ntfy_object *ntfy_obj,
 			lst_init_elem((struct list_head *)notifier_obj);
 			/* If there is more than one notification type, each
 			 * type may require its own handler code. */
-			status =
-			    sync_open_event(&notifier_obj->sync_obj,
-					    &sync_attrs_obj);
+			notifier_obj->sync_obj = kzalloc(
+					sizeof(struct sync_object), GFP_KERNEL);
+
+			if (notifier_obj->sync_obj)
+				sync_init_event(notifier_obj->sync_obj);
+			else
+				status = DSP_EMEMORY;
+
 			hnotification->handle = notifier_obj->sync_obj;
 
 			if (DSP_SUCCEEDED(status)) {
@@ -289,9 +293,7 @@ dsp_status ntfy_register(struct ntfy_object *ntfy_obj,
  */
 static void delete_notify(struct notifier *notifier_obj)
 {
-	if (notifier_obj->sync_obj)
-		(void)sync_close_event(notifier_obj->sync_obj);
-
+	kfree(notifier_obj->sync_obj);
 	kfree(notifier_obj->pstr_name);
 
 	kfree(notifier_obj);

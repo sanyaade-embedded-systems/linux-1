@@ -515,7 +515,13 @@ func_cont:
 	if (DSP_SUCCEEDED(status) && (node_type != NODE_DEVICE)) {
 		/* Create an event that will be posted when RMS_EXIT is
 		 * received. */
-		status = sync_open_event(&pnode->sync_done, NULL);
+		pnode->sync_done = kzalloc(sizeof(struct sync_object),
+								GFP_KERNEL);
+		if (pnode->sync_done)
+			sync_init_event(pnode->sync_done);
+		else
+			status = DSP_EMEMORY;
+
 		if (DSP_SUCCEEDED(status)) {
 			/*Get the shared mem mgr for this nodes dev object */
 			status = cmm_get_handle(hprocessor, &hcmm_mgr);
@@ -2533,8 +2539,8 @@ static void delete_node(struct node_object *hnode,
 							    msg_queue_obj);
 			hnode->msg_queue_obj = NULL;
 		}
-		if (hnode->sync_done)
-			(void)sync_close_event(hnode->sync_done);
+
+		kfree(hnode->sync_done);
 
 		/* Free all stream info */
 		if (hnode->inputs) {

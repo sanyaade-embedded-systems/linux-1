@@ -349,7 +349,7 @@ func_cont:
 		 * context.). */
 		if (pchnl->sync_event) {
 			sync_reset_event(pchnl->sync_event);
-			sync_close_event(pchnl->sync_event);
+			kfree(pchnl->sync_event);
 			pchnl->sync_event = NULL;
 		}
 		/* Free I/O request and I/O completion queues: */
@@ -784,7 +784,6 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 	dsp_status status = DSP_SOK;
 	struct chnl_mgr *chnl_mgr_obj = hchnl_mgr;
 	struct chnl_object *pchnl = NULL;
-	struct sync_attrs *sync_attr_obj = NULL;
 	struct sync_object *sync_event = NULL;
 	/* Ensure DBC requirements: */
 	DBC_REQUIRE(phChnl != NULL);
@@ -831,7 +830,12 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 	pchnl->chnl_packets = pattrs->uio_reqs;
 	pchnl->cio_cs = 0;
 	pchnl->cio_reqs = 0;
-	status = sync_open_event(&sync_event, sync_attr_obj);
+	sync_event = kzalloc(sizeof(struct sync_object), GFP_KERNEL);
+	if (sync_event)
+		sync_init_event(sync_event);
+	else
+		status = DSP_EMEMORY;
+
 	if (DSP_SUCCEEDED(status))
 		status = ntfy_create(&pchnl->ntfy_obj);
 
@@ -870,10 +874,9 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 			free_chirp_list(pchnl->free_packets_list);
 			pchnl->free_packets_list = NULL;
 		}
-		if (sync_event) {
-			sync_close_event(sync_event);
-			sync_event = NULL;
-		}
+		kfree(sync_event);
+		sync_event = NULL;
+
 		if (pchnl->ntfy_obj) {
 			ntfy_delete(pchnl->ntfy_obj);
 			pchnl->ntfy_obj = NULL;
