@@ -1226,7 +1226,7 @@ int dsi_pll_set_clock_div(enum dsi lcd_ix, struct dsi_clock_info *cinfo)
 			f = 0x6;
 		else
 			f = 0x7;
-		}
+	}
 
 	l = dsi_read_reg(lcd_ix, DSI_PLL_CONFIGURATION2);
 	if (cpu_is_omap34xx())
@@ -1277,7 +1277,7 @@ int dsi_pll_set_clock_div(enum dsi lcd_ix, struct dsi_clock_info *cinfo)
 	if (cpu_is_omap44xx()) {
 		l = FLD_MOD(l, 0, 25, 25);	/* M7_CLOCK_EN */
 		l = FLD_MOD(l, 0, 26, 26);	/* M7_CLOCK_PWDN */
-		}
+	}
 	dsi_write_reg(lcd_ix, DSI_PLL_CONFIGURATION2, l);
 
 	DSSDBG("PLL config done\n");
@@ -1301,9 +1301,9 @@ int dsi_pll_init(enum dsi lcd_ix, struct omap_dss_device *dssdev,
 
 	if (cpu_is_omap34xx()) {
 		r = regulator_enable(p_dsi->vdds_dsi_reg);
-	if (r)
-		goto err0;
-		}
+		if (r)
+			goto err0;
+	}
 
 	/* XXX PLL does not come out of reset without this... */
 
@@ -1366,8 +1366,8 @@ void dsi_pll_uninit(enum dsi lcd_ix)
 	p_dsi->pll_locked = 0;
 	dsi_pll_power(lcd_ix, DSI_PLL_POWER_OFF);
 
-if (cpu_is_omap34xx())
-	regulator_disable(p_dsi->vdds_dsi_reg);
+	if (cpu_is_omap34xx())
+		regulator_disable(p_dsi->vdds_dsi_reg);
 
 	DSSDBG("PLL uninit done\n");
 }
@@ -1535,7 +1535,7 @@ static int dsi_complexio_power(enum dsi lcd_ix,
 			DSSERR("failed to set complexio power state to "
 				"%d\n", state);
 			return -ENODEV;
-			}
+		}
 	}
 
 	return 0;
@@ -2270,7 +2270,7 @@ static int dsi_vc_send_long(enum dsi lcd_ix,
 }
 
 static int dsi_vc_send_short(enum dsi lcd_ix, int channel, u8 data_type,
-	u16 data, u8 ecc)
+		u16 data, u8 ecc)
 {
 	u32 r;
 	u8 data_id;
@@ -3061,8 +3061,8 @@ static void dsi2_framedone_irq_callback(void *data, u32 mask)
 }
 
 static void dsi_set_update_region(enum dsi lcd_ix,
-	struct omap_dss_device *dssdev, u16 x, u16 y,
-	u16 w, u16 h)
+		struct omap_dss_device *dssdev, u16 x, u16 y,
+		u16 w, u16 h)
 {
 	struct dsi_struct *p_dsi;
 	p_dsi = (lcd_ix == dsi1) ? &dsi_1 : &dsi_2;
@@ -3100,13 +3100,14 @@ static int dsi_set_update_mode(enum dsi lcd_ix, struct omap_dss_device *dssdev,
 	if (p_dsi->update_mode != mode) {
 		p_dsi->update_mode = mode;
 
-	/*sv HS mode set the GFX threshold there properly before apply*/
-		/* Mark the overlays dirty, and do apply(), so that we get the
-		 * overlays configured properly after update mode change. */
+	/* sv HS mode set the GFX threshold there properly before apply
+	*  Mark the overlays dirty, and do apply(), so that we get the
+	* overlays configured properly after update mode change.
+	*/
 		for (i = 0; i < omap_dss_get_num_overlays(); ++i) {
 			struct omap_overlay *ovl;
 			ovl = omap_dss_get_overlay(i);
-			if (ovl->manager == dssdev->manager)
+			if (ovl != NULL && ovl->manager == dssdev->manager)
 				ovl->info_dirty = true;
 		}
 
@@ -3178,7 +3179,7 @@ static void dsi_handle_framedone(enum dsi lcd_ix)
 	if (REG_GET(lcd_ix, DSI_VC_CTRL(channel), 20, 20)) {
 		/*DSSERR("Received error during frame transfer:\n");*/
 		dsi_vc_flush_receive_data(lcd_ix, 0);
-		}
+	}
 
 #ifdef CONFIG_OMAP2_DSS_FAKE_VSYNC
 	dispc_fake_vsync_irq(lcd_ix);
@@ -3693,7 +3694,7 @@ static int dsi_core_init(enum dsi lcd_ix)
 
 static int dsi_display_enable(struct omap_dss_device *dssdev)
 {
-	int r = 0, val = 0;
+	int r = 0;
 	enum dsi lcd_ix;
 	struct dsi_struct *p_dsi;
 
@@ -3722,11 +3723,12 @@ static int dsi_display_enable(struct omap_dss_device *dssdev)
 
 	dsi_core_init(lcd_ix);
 
-if (cpu_is_omap44xx())
-	omap_writel(0x00030007  , 0x4A307100);  /*DSS_PWR_DSS_DSS_CTRL*/
-
+	if (cpu_is_omap44xx())
+		/* DSS_PWR_DSS_DSS_CTRL */
+		omap_writel(0x00030007, 0x4A307100);
 
 	r = _dsi_reset(lcd_ix);
+
 	if (r)
 		goto err2;
 
@@ -3743,13 +3745,14 @@ if (cpu_is_omap44xx())
 	p_dsi->use_ext_te = dssdev->phy.dsi.ext_te;
 
 	r = dsi_set_te(dssdev, p_dsi->te_enabled);
+
 	if (r)
 		goto err4;
 
-if (cpu_is_omap44xx()) {
+	if (cpu_is_omap44xx()) {
 		if (lcd_ix == dsi2)
 			p_dsi->update_mode = OMAP_DSS_UPDATE_AUTO;
-		}
+	}
 	p_dsi->update_mode = OMAP_DSS_UPDATE_DISABLED;
 	p_dsi->user_update_mode = OMAP_DSS_UPDATE_AUTO;
 
@@ -3906,7 +3909,7 @@ err0:
 }
 
 static int dsi_display_update(struct omap_dss_device *dssdev,
-			u16 x, u16 y, u16 w, u16 h)
+		u16 x, u16 y, u16 w, u16 h)
 {
 	int r = 0;
 	u16 dw, dh;
@@ -4203,7 +4206,7 @@ void dsi_get_overlay_fifo_thresholds(enum omap_plane plane,
 		burst_size_bytes = 2 * 128 / 8;
 		*fifo_high = 1020; /* check SV comment*/
 		*fifo_low = 956;
-			}
+	}
 }
 
 int dsi_init_display(struct omap_dss_device *dssdev)
@@ -4303,7 +4306,7 @@ int dsi_init(struct platform_device *pdev)
 			DSSERR("can't get VDDS_DSI regulator\n");
 			r = PTR_ERR(dsi_1.vdds_dsi_reg);
 			goto err2;
-			}
+		}
 	} else {
 		ret = twl_i2c_write_u8(TWL_MODULE_PWM, 0xFF, PWM2ON);
 		ret = twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, PWM2OFF);
@@ -4396,7 +4399,7 @@ int dsi2_init(struct platform_device *pdev)
 			DSSERR("can't get VDDS_DSI regulator\n");
 			r = PTR_ERR(dsi_2.vdds_dsi_reg);
 			goto err2;
-			}
+		}
 	}
 
 	enable_clocks(1);
