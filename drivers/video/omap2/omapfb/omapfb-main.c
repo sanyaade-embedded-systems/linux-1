@@ -604,6 +604,9 @@ int dss_mode_to_fb_mode(enum omap_color_mode dssmode,
 
 	for (i = 0; i < ARRAY_SIZE(omapfb_colormodes); ++i) {
 		struct omapfb_colormode *mode = &omapfb_colormodes[i];
+		if (!mode)
+			return -ENOENT;
+
 		if (dssmode == mode->dssmode) {
 			assign_colormode_to_var(var, mode);
 			return 0;
