@@ -3882,12 +3882,14 @@ static void dispc_error_worker(struct work_struct *work)
 			struct omap_overlay_manager *mgr;
 			mgr = omap_dss_get_overlay_manager(i);
 #ifdef CONFIG_ARCH_OMAP4
-			if (mgr->id == OMAP_DSS_CHANNEL_LCD2) {
-				manager = mgr;
-				enable = mgr->device->state ==
+			if (mgr) {
+				if (mgr->id == OMAP_DSS_CHANNEL_LCD2) {
+					manager = mgr;
+					enable = mgr->device->state ==
 						OMAP_DSS_DISPLAY_ACTIVE;
-				mgr->device->disable(mgr->device);
-				break;
+					mgr->device->disable(mgr->device);
+					break;
+				}
 			}
 #endif
 		}
