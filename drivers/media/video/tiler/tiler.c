@@ -424,17 +424,6 @@ s32 tiler_free(u32 sys_addr)
 	struct mem_info *mi = NULL;
 	struct page *page = NULL;
 
-	if (get_area(sys_addr, &x_area, &y_area))
-		return -EFAULT;
-
-	area_desc = search_2d_area(tilctx, x_area, y_area, 0, 0);
-	if (!area_desc)
-		return -EFAULT;
-
-	/* freeing of physical pages should *not* happen in this next API */
-	if (!(dealloc_2d_area(tilctx, area_desc)))
-		return -EFAULT;
-
 	mutex_lock(&mtx);
 	list_for_each_safe(pos, q, &mem_list.list) {
 		mi = list_entry(pos, struct mem_info, list);
