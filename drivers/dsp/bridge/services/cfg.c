@@ -82,6 +82,10 @@ dsp_status cfg_get_dev_object(struct cfg_devnode *dev_node_obj,
 {
 	dsp_status status = DSP_SOK;
 	u32 dw_buf_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
+
+	if (!drv_datap)
+		status = DSP_EFAIL;
 
 	if (!dev_node_obj)
 		status = CFG_E_INVALIDHDEVNODE;
@@ -92,14 +96,12 @@ dsp_status cfg_get_dev_object(struct cfg_devnode *dev_node_obj,
 	dw_buf_size = sizeof(pdwValue);
 	if (DSP_SUCCEEDED(status)) {
 
-		/* check the device string and then call the reg_set_value */
+		/* check the device string and then store dev object */
 		if (!
 		    (strcmp
 		     ((char *)((struct drv_ext *)dev_node_obj)->sz_string,
 		      "TIOMAP1510")))
-			status =
-			    reg_get_value("DEVICE_DSP", (u8 *) pdwValue,
-					  &dw_buf_size);
+			*pdwValue = (u32)drv_datap->dev_object;
 	}
 	if (DSP_FAILED(status))
 		pr_err("%s: Failed, status 0x%x\n", __func__, status);
@@ -144,23 +146,31 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
 dsp_status cfg_get_object(OUT u32 *pdwValue, u32 dw_type)
 {
 	dsp_status status = DSP_EINVALIDARG;
-	u32 dw_buf_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
+
 	DBC_REQUIRE(pdwValue != NULL);
 
-	dw_buf_size = sizeof(pdwValue);
+	if (!drv_datap)
+		return DSP_EFAIL;
+
 	switch (dw_type) {
 	case (REG_DRV_OBJECT):
-		status =
-		    reg_get_value(DRVOBJECT, (u8 *) pdwValue, &dw_buf_size);
-		if (DSP_FAILED(status))
+		if (drv_datap->drv_object) {
+			*pdwValue = (u32)drv_datap->drv_object;
+			status = DSP_SOK;
+		} else {
 			status = CFG_E_RESOURCENOTAVAIL;
+		}
 		break;
 	case (REG_MGR_OBJECT):
-		status =
-		    reg_get_value(MGROBJECT, (u8 *) pdwValue, &dw_buf_size);
-		if (DSP_FAILED(status))
+		if (drv_datap->mgr_object) {
+			*pdwValue = (u32)drv_datap->mgr_object;
+			status = DSP_SOK;
+		} else {
 			status = CFG_E_RESOURCENOTAVAIL;
+		}
 		break;
+
 	default:
 		break;
 	}
@@ -191,18 +201,21 @@ bool cfg_init(void)
 dsp_status cfg_set_dev_object(struct cfg_devnode *dev_node_obj, u32 dwValue)
 {
 	dsp_status status = DSP_SOK;
-	u32 dw_buff_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
+
+	if (!drv_datap) {
+		pr_err("%s: Failed, status 0x%x\n", __func__, status);
+		return DSP_EFAIL;
+	}
 
 	if (!dev_node_obj)
 		status = CFG_E_INVALIDHDEVNODE;
 
-	dw_buff_size = sizeof(dwValue);
 	if (DSP_SUCCEEDED(status)) {
 		/* Store the WCD device object in the Registry */
 
 		if (!(strcmp((char *)dev_node_obj, "TIOMAP1510"))) {
-			status = reg_set_value("DEVICE_DSP", (u8 *) &dwValue,
-					       dw_buff_size);
+			drv_datap->dev_object = (void *) dwValue;
 		}
 	}
 	if (DSP_FAILED(status))
@@ -219,17 +232,19 @@ dsp_status cfg_set_dev_object(struct cfg_devnode *dev_node_obj, u32 dwValue)
 dsp_status cfg_set_object(u32 dwValue, u32 dw_type)
 {
 	dsp_status status = DSP_EINVALIDARG;
-	u32 dw_buff_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
-	dw_buff_size = sizeof(dwValue);
+	if (!drv_datap)
+		return DSP_EFAIL;
+
 	switch (dw_type) {
 	case (REG_DRV_OBJECT):
-		status =
-		    reg_set_value(DRVOBJECT, (u8 *) &dwValue, dw_buff_size);
+		drv_datap->drv_object = (void *)dwValue;
+		status = DSP_SOK;
 		break;
 	case (REG_MGR_OBJECT):
-		status =
-		    reg_set_value(MGROBJECT, (u8 *) &dwValue, dw_buff_size);
+		drv_datap->mgr_object = (void *)dwValue;
+		status = DSP_SOK;
 		break;
 	default:
 		break;

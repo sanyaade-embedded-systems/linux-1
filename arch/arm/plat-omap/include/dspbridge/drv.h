@@ -130,6 +130,9 @@ struct drv_data {
 	char *base_img;
 	s32 shm_size;
 	int tc_wordswapon;
+	void *drv_object;
+	void *dev_object;
+	void *mgr_object;
 };
 
 /* Process Context */
