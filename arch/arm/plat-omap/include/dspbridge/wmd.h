@@ -690,8 +690,7 @@ typedef dsp_status(*fxn_dev_create) (OUT struct wmd_dev_context
 				     struct dev_object
 				     * hdev_obj,
 				     IN CONST struct cfg_hostres
-				     * pConfig,
-				     IN CONST struct cfg_dspres *pDspConfig);
+				     * pConfig);
 
 /*
  *  ======== bridge_dev_ctrl ========

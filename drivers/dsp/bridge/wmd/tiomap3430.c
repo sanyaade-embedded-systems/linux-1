@@ -106,8 +106,7 @@ static dsp_status bridge_brd_mem_un_map(struct wmd_dev_context *hDevContext,
 				     u32 ulVirtAddr, u32 ul_num_bytes);
 static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 				    struct dev_object *hdev_obj,
-				    IN CONST struct cfg_hostres *pConfig,
-				    IN CONST struct cfg_dspres *pDspConfig);
+				    IN CONST struct cfg_hostres *pConfig);
 static dsp_status bridge_dev_ctrl(struct wmd_dev_context *dev_context,
 				  u32 dw_cmd, IN OUT void *pargs);
 static dsp_status bridge_dev_destroy(struct wmd_dev_context *dev_context);
@@ -885,8 +884,7 @@ static dsp_status bridge_brd_write(struct wmd_dev_context *hDevContext,
  */
 static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 				    struct dev_object *hdev_obj,
-				    IN CONST struct cfg_hostres *pConfig,
-				    IN CONST struct cfg_dspres *pDspConfig)
+				    IN CONST struct cfg_hostres *pConfig)
 {
 	dsp_status status = DSP_SOK;
 	struct wmd_dev_context *dev_context = NULL;

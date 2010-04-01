@@ -109,36 +109,6 @@ dsp_status cfg_get_dev_object(struct cfg_devnode *dev_node_obj,
 }
 
 /*
- *  ======== cfg_get_dsp_resources ========
- *  Purpose:
- *      Get the DSP resources available to a given device.
- */
-dsp_status cfg_get_dsp_resources(struct cfg_devnode *dev_node_obj,
-				 OUT struct cfg_dspres *pDSPResTable)
-{
-	dsp_status status = DSP_SOK;	/* return value */
-	u32 dw_res_size;
-	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
-	else if (!pDSPResTable)
-		status = CFG_E_INVALIDPOINTER;
-	else
-		status = reg_get_value(DSPRESOURCES, (u8 *) pDSPResTable,
-				       &dw_res_size);
-	if (DSP_FAILED(status)) {
-		status = CFG_E_RESOURCENOTAVAIL;
-		pr_err("%s: Failed, status 0x%x\n", __func__, status);
-	}
-	/* assert that resource values are reasonable */
-	DBC_ASSERT(pDSPResTable->chip_type < 256);
-	DBC_ASSERT(pDSPResTable->word_size > 0);
-	DBC_ASSERT(pDSPResTable->word_size < 32);
-	DBC_ASSERT(pDSPResTable->chip_number > 0);
-	DBC_ASSERT(pDSPResTable->chip_number < 256);
-	return status;
-}
-
-/*
  *  ======== cfg_get_exec_file ========
  *  Purpose:
  *      Retreive the default executable, if any, for this board.
@@ -245,19 +215,6 @@ dsp_status cfg_get_object(OUT u32 *pdwValue, u32 dw_type)
  */
 bool cfg_init(void)
 {
-	struct cfg_dspres dsp_resources;
-
-	dsp_resources.chip_type = DSPTYPE64;
-	dsp_resources.chip_number = 1;
-	dsp_resources.word_size = DSPWORDSIZE;
-	dsp_resources.mem_types = 0;
-	dsp_resources.mem_desc[0].mem_type = 0;
-	dsp_resources.mem_desc[0].ul_min = 0;
-	dsp_resources.mem_desc[0].ul_max = 0;
-	if (DSP_FAILED(reg_set_value(DSPRESOURCES, (u8 *) &dsp_resources,
-				     sizeof(struct cfg_dspres))))
-		pr_err("Failed to initialize DSP resources in registry\n");
-
 	return true;
 }
 

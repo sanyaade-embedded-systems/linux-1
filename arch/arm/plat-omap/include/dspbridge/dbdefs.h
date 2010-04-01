@@ -553,6 +553,5 @@ bit 15 - Output (writeable) buffer
 #define CURRENTCONFIG	"CurrentConfig"	/* Current resources */
 #define SHMSIZE		"SHMSize"	/* Size of shm reservd on MPU */
 #define TCWORDSWAP	"TCWordSwap"	/* Traffic Controller WordSwp */
-#define DSPRESOURCES	"DspTMSResources"	/* C55 DSP resurces on OMAP */
 
 #endif /* DBDEFS_ */

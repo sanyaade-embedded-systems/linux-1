@@ -95,27 +95,6 @@ extern dsp_status cfg_get_dev_object(IN struct cfg_devnode *dev_node_obj,
 				     OUT u32 *pdwValue);
 
 /*
- *  ======== cfg_get_dsp_resources ========
- *  Purpose:
- *      Get the DSP resources available to a given device.
- *  Parameters:
- *      dev_node_obj:	Handle to the DEVNODE who's resources we are querying.
- *      pDSPResTable:   Ptr to a location to store the DSP resource table.
- *  Returns:
- *      DSP_SOK:                On success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The DSP Resource information is not
- *                              available
- *  Requires:
- *      CFG initialized.
- *  Ensures:
- *      DSP_SOK:    pDSPResTable points to a filled table of resources allocated
- *                  for the specified WMD.
- */
-extern dsp_status cfg_get_dsp_resources(IN struct cfg_devnode *dev_node_obj,
-					OUT struct cfg_dspres *pDSPResTable);
-
-/*
  *  ======== cfg_get_exec_file ========
  *  Purpose:
  *      Retreive the default executable, if any, for this board.

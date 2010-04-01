@@ -79,13 +79,4 @@ struct cfg_dspmemdesc {
 	u32 ul_max;		/* Maximum amount of memory of this type. */
 };
 
-struct cfg_dspres {
-	u32 chip_type;		/* DSP chip type. */
-	u32 word_size;		/* Number of bytes in a word */
-	u32 chip_number;	/* Number of chips. */
-	u32 mem_types;		/* Types of memory. */
-	struct cfg_dspmemdesc mem_desc[CFG_DSPMAXMEMTYPES];
-	/* DSP Memory types */
-};
-
 #endif /* CFGDEFS_ */

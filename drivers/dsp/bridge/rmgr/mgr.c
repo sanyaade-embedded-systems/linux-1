@@ -202,7 +202,6 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 	struct drv_object *hdrv_obj;
 	s32 dev_type;
 	struct cfg_devnode *dev_node;
-	struct cfg_dspres chip_resources;
 	bool proc_detect = false;
 
 	DBC_REQUIRE(processor_info != NULL);
@@ -217,15 +216,11 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 		if (DSP_SUCCEEDED(status)) {
 			status = dev_get_dev_type(hdev_obj, (u32 *) &dev_type);
 			status = dev_get_dev_node(hdev_obj, &dev_node);
-			if (dev_type == DSP_UNIT)
-				status = cfg_get_dsp_resources(dev_node,
-							       &chip_resources);
-			else
+			if (dev_type != DSP_UNIT)
 				status = DSP_EFAIL;
 
 			if (DSP_SUCCEEDED(status)) {
-				processor_info->processor_type =
-				    chip_resources.chip_type;
+				processor_info->processor_type = DSPTYPE64;
 			}
 		}
 	}
@@ -281,8 +276,7 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 			}
 			/* User applciatiuons aonly check for chip type, so
 			 * this clumsy overwrite */
-			processor_info->processor_type =
-			    chip_resources.chip_type;
+			processor_info->processor_type = DSPTYPE64;
 		} else {
 			dev_dbg(bridge, "%s: Failed to get DCD processor info "
 				"%x\n", __func__, status2);
@@ -293,7 +287,7 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 	if (proc_detect == false) {
 		dev_dbg(bridge, "%s: Failed to get proc info from DCD, so use "
 			"CFG registry\n", __func__);
-		processor_info->processor_type = chip_resources.chip_type;
+		processor_info->processor_type = DSPTYPE64;
 	}
 func_end:
 	return status;

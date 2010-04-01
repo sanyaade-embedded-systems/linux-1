@@ -100,8 +100,7 @@ extern dsp_status dev_create_device(OUT struct dev_object
 				    **phDevObject,
 				    IN CONST char *pstrWMDFileName,
 				    IN CONST struct cfg_hostres
-				    *pHostConfig, IN CONST struct cfg_dspres
-				    *pDspConfig,
+				    *pHostConfig,
 				    struct cfg_devnode *dev_node_obj);
 
 /*
@@ -146,7 +145,6 @@ extern dsp_status dev_create_iva_device(OUT struct dev_object
 					IN CONST char *pstrWMDFileName,
 					IN CONST struct cfg_hostres
 					*pHostConfig,
-					IN CONST struct cfg_dspres *pDspConfig,
 					struct cfg_devnode *dev_node_obj);
 
 /*
