@@ -59,9 +59,12 @@ module_param_named(def_disp, def_disp_name, charp, 0);
 MODULE_PARM_DESC(def_disp_name, "default display name");
 
 #ifdef DEBUG
-unsigned int dss_debug;
+unsigned int dss_debug = 1;
 module_param_named(debug, dss_debug, bool, 0644);
 #endif
+
+static int hdmi_code = 16;
+module_param_named(hdmicode, hdmi_code, int, 0644);
 
 /* CONTEXT */
 static int dss_get_ctx_id(void)
@@ -227,19 +230,33 @@ static void dss_put_clocks(void)
 
 unsigned long dss_clk_get_rate(enum dss_clock clk)
 {
-	switch (clk) {
-	case DSS_CLK_ICK:
-		return clk_get_rate(core.dss_ick);
-	case DSS_CLK_FCK1:
-		return clk_get_rate(core.dss1_fck);
-	case DSS_CLK_FCK2:
-		return clk_get_rate(core.dss2_fck);
-	case DSS_CLK_54M:
-		return clk_get_rate(core.dss_54m_fck);
-	case DSS_CLK_96M:
-		return clk_get_rate(core.dss_96m_fck);
+	if(!cpu_is_omap44xx())	{
+		switch (clk) {
+		case DSS_CLK_ICK:
+			return clk_get_rate(core.dss_ick);
+		case DSS_CLK_FCK1:
+			return clk_get_rate(core.dss1_fck);
+		case DSS_CLK_FCK2:
+			return clk_get_rate(core.dss2_fck);
+		case DSS_CLK_54M:
+			return clk_get_rate(core.dss_54m_fck);
+		case DSS_CLK_96M:
+			return clk_get_rate(core.dss_96m_fck);
+		}
+	} else {
+		switch (clk) {
+		case DSS_CLK_ICK:
+			return 166000000;
+		case DSS_CLK_FCK1:
+			return 153600000;
+		case DSS_CLK_FCK2:
+			return 0;
+		case DSS_CLK_54M:
+			return 54000000;
+		case DSS_CLK_96M:
+			return 96000000;
+		}
 	}
-
 	BUG();
 	return 0;
 }
@@ -286,6 +303,8 @@ void dss_clk_enable(enum dss_clock clks)
 
 	if (cpu_is_omap34xx() && dss_need_ctx_restore())
 		restore_all_ctx();
+	else if (cpu_is_omap44xx() && dss_need_ctx_restore())
+		restore_all_ctx();
 }
 
 static void dss_clk_disable_no_ctx(enum dss_clock clks)
@@ -325,7 +344,7 @@ static void dss_clk_enable_all_no_ctx(void)
 	enum dss_clock clks;
 
 	clks = DSS_CLK_ICK | DSS_CLK_FCK1 | DSS_CLK_FCK2 | DSS_CLK_54M;
-	if (cpu_is_omap34xx())
+	if (cpu_is_omap34xx() || cpu_is_omap44xx())
 		clks |= DSS_CLK_96M;
 	dss_clk_enable_no_ctx(clks);
 }
@@ -335,7 +354,7 @@ static void dss_clk_disable_all_no_ctx(void)
 	enum dss_clock clks;
 
 	clks = DSS_CLK_ICK | DSS_CLK_FCK1 | DSS_CLK_FCK2 | DSS_CLK_54M;
-	if (cpu_is_omap34xx())
+	if (cpu_is_omap34xx() || cpu_is_omap44xx())
 		clks |= DSS_CLK_96M;
 	dss_clk_disable_no_ctx(clks);
 }
@@ -345,7 +364,7 @@ static void dss_clk_disable_all(void)
 	enum dss_clock clks;
 
 	clks = DSS_CLK_ICK | DSS_CLK_FCK1 | DSS_CLK_FCK2 | DSS_CLK_54M;
-	if (cpu_is_omap34xx())
+	if (cpu_is_omap34xx() || cpu_is_omap44xx())
 		clks |= DSS_CLK_96M;
 	dss_clk_disable(clks);
 }
@@ -358,7 +377,8 @@ static void dss_debug_dump_clocks(struct seq_file *s)
 	dss_dump_clocks(s);
 	dispc_dump_clocks(s);
 #ifdef CONFIG_OMAP2_DSS_DSI
-	dsi_dump_clocks(s);
+	dsi_dump_clocks(dsi1, s);
+	dsi_dump_clocks(dsi2, s);
 #endif
 }
 
@@ -434,9 +454,15 @@ static int omap_dss_probe(struct platform_device *pdev)
 	dss_init_overlay_managers(pdev);
 	dss_init_overlays(pdev);
 
-	r = dss_get_clocks();
-	if (r)
-		goto fail0;
+	/*
+	 * FIX-ME: Replace with correct clk node when clk
+	 * framework is available
+	 */
+	if (!cpu_is_omap44xx()) {
+		r = dss_get_clocks();
+		if (r)
+			goto fail0;
+	}
 
 	dss_clk_enable_all_no_ctx();
 
@@ -489,15 +515,31 @@ static int omap_dss_probe(struct platform_device *pdev)
 			goto fail0;
 		}
 #endif
+	}
 #ifdef CONFIG_OMAP2_DSS_DSI
+		printk(KERN_INFO "dsi_init calling");
 		r = dsi_init(pdev);
 		if (r) {
 			DSSERR("Failed to initialize DSI\n");
 			goto fail0;
 		}
+	if (cpu_is_omap44xx()) {
+			printk(KERN_INFO "dsi2_init calling");
+		r = dsi2_init(pdev);
+		if (r) {
+			DSSERR("Failed to initialize DSI2\n");
+			goto fail0;
+			}
+		}
 #endif
-	}
 
+#ifdef CONFIG_OMAP2_DSS_HDMI
+	r = hdmi_init(pdev, hdmi_code);
+	if (r) {
+		DSSERR("Failed to initialize hdmi\n");
+		goto fail0;
+	}
+#endif
 #if defined(CONFIG_DEBUG_FS) && defined(CONFIG_OMAP2_DSS_DEBUG_SUPPORT)
 	r = dss_initialize_debugfs();
 	if (r)
@@ -536,6 +578,9 @@ static int omap_dss_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_OMAP2_DSS_VENC
 	venc_exit();
+#endif
+#ifdef CONFIG_OMAP2_DSS_HDMI
+	hdmi_exit();
 #endif
 	dispc_exit();
 	dpi_exit();

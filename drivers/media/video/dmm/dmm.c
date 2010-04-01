@@ -252,6 +252,7 @@ static s32 __init dmm_init(void)
 
 	if (dmm_init_mem())
 		return -ENOMEM;
+
 EXIT:
 	return r;
 }

@@ -36,11 +36,16 @@
 #include <plat/usb.h>
 #include <plat/syntm12xx.h>
 #include <plat/keypad.h>
+#include <plat/display.h>
 #include <asm/hardware/gic.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <linux/i2c/twl.h>
 #include <linux/regulator/machine.h>
 #include "mmc-twl4030.h"
+#include <linux/delay.h>
+
+#include <plat/omap_device.h>
+#include <plat/omap_hwmod.h>
 
 #define OMAP4_KBDOCP_BASE               0x4A31C000
 
@@ -202,14 +207,283 @@ static struct omap2_mcspi_device_config dummy2_mcspi_config = {
 	.single_channel = 0,  /* 0: slave, 1: master */
 };
 #endif
+/* Display */
+static int sdp4430_panel_enable_lcd(struct omap_dss_device *dssdev) {
+	if (dssdev->channel == OMAP_DSS_CHANNEL_LCD2) {
 
-static struct platform_device sdp4430_lcd_device = {
-	.name		= "sdp4430_lcd",
-	.id		= -1,
+		gpio_request(DSI2_GPIO_104, "dsi2_en_gpio");
+		gpio_direction_output(DSI2_GPIO_104, 0);
+		mdelay(500);
+		gpio_set_value(DSI2_GPIO_104, 1);
+		mdelay(500);
+		gpio_set_value(DSI2_GPIO_104, 0);
+		mdelay(500);
+		gpio_set_value(DSI2_GPIO_104, 1);
+
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0xFF, PWM2ON); /*0xBD = 0xFF*/
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, PWM2OFF); /*0xBE = 0x7F*/
+		twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, TOGGLE3);
+
+		gpio_request(DSI2_GPIO_59, "dsi2_bl_gpio");
+		gpio_direction_output(DSI2_GPIO_59, 1);
+		mdelay(120);
+		gpio_set_value(DSI2_GPIO_59, 0);
+		mdelay(120);
+		gpio_set_value(DSI2_GPIO_59, 1);
+
+	} else {
+		gpio_request(DSI1_GPIO_102, "dsi1_en_gpio");
+		gpio_direction_output(DSI1_GPIO_102, 0);
+		mdelay(500);
+		gpio_set_value(DSI1_GPIO_102, 1);
+		mdelay(500);
+		gpio_set_value(DSI1_GPIO_102, 0);
+		mdelay(500);
+		gpio_set_value(DSI1_GPIO_102, 1);
+
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0xFF, PWM2ON); /*0xBD = 0xFF*/
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, PWM2OFF); /*0xBE = 0x7F*/
+		twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, TOGGLE3);
+
+		gpio_request(DSI1_GPIO_27, "dsi1_bl_gpio");
+		gpio_direction_output(DSI1_GPIO_27, 1);
+		mdelay(120);
+		gpio_set_value(DSI1_GPIO_27, 0);
+		mdelay(120);
+		gpio_set_value(DSI1_GPIO_27, 1);
+
+	}
+
+	return 0;
+}
+
+static int sdp4430_panel_disable_lcd(struct omap_dss_device *dssdev) {
+
+	if (dssdev->channel == OMAP_DSS_CHANNEL_LCD2) {
+		gpio_set_value(DSI2_GPIO_104, 1);
+		gpio_set_value(DSI2_GPIO_59, 0);
+	} else {
+		gpio_set_value(DSI1_GPIO_102, 1);
+		gpio_set_value(DSI1_GPIO_27, 0);
+	}
+	return 0;
+}
+
+static struct omap_device_pm_latency omap_dss_latency[] = {
+	[0] = {
+		.deactivate_func	= omap_device_idle_hwmods,
+		.activate_func		= omap_device_enable_hwmods,
+	},
 };
 
-static struct platform_device *sdp4430_devices[] __initdata = {
+static struct omap_dss_device sdp4430_lcd_device = {
+	.name			= "lcd",
+	.driver_name		= "panel-taal",
+	.type			= OMAP_DISPLAY_TYPE_DSI,
+	.reset_gpio		= 78,
+	.phy.dsi		= {
+		.clk_lane	= 1,
+		.clk_pol	= 0,
+		.data1_lane	= 2,
+		.data1_pol	= 0,
+		.data2_lane	= 3,
+		.data2_pol	= 0,
+		.ext_te		= false,
+		.ext_te_gpio	= 101,
+		.div		= {
+			.regm		= 150,
+			.regn		= 20,
+			.regm3		= 4,
+			.regm4		= 4,
+			.lck_div	= 1,
+			.pck_div	= 6,
+			.lp_clk_div = 6,
+		},
+	},
+	.platform_enable	=	sdp4430_panel_enable_lcd,
+	.platform_disable	=	sdp4430_panel_disable_lcd,
+	.channel			=	OMAP_DSS_CHANNEL_LCD,
+};
+
+static struct omap_dss_device sdp4430_lcd2_device = {
+	.name			= "2lcd",
+	.driver_name		= "panel-taal2",
+	.type			= OMAP_DISPLAY_TYPE_DSI,
+	.reset_gpio		= 78,
+	.phy.dsi		= {
+		.clk_lane	= 1,
+		.clk_pol	= 0,
+		.data1_lane	= 2,
+		.data1_pol	= 0,
+		.data2_lane	= 3,
+		.data2_pol	= 0,
+		.ext_te		= false,
+		.ext_te_gpio	= 103,
+		.div		= {
+			.regm		= 150,
+			.regn		= 20,
+			.regm3		= 4,
+			.regm4		= 4,
+			.lck_div	= 1,
+			.pck_div	= 6,
+			.lp_clk_div = 6,
+		},
+	},
+	.platform_enable	=	sdp4430_panel_enable_lcd,
+	.platform_disable	=	sdp4430_panel_disable_lcd,
+	.channel			=	OMAP_DSS_CHANNEL_LCD2,
+};
+
+static int sdp4430_panel_enable_hdmi(struct omap_dss_device *dssdev)
+{
+	gpio_request(HDMI_GPIO_60 , "hdmi_gpio_60");
+	gpio_request(HDMI_GPIO_41 , "hdmi_gpio_41");
+	gpio_direction_output(HDMI_GPIO_60, 0);
+	gpio_direction_output(HDMI_GPIO_41, 0);
+	gpio_set_value(HDMI_GPIO_60, 1);
+	gpio_set_value(HDMI_GPIO_41, 1);
+	gpio_set_value(HDMI_GPIO_60, 0);
+
+	return 0;
+}
+
+static int sdp4430_panel_disable_hdmi(struct omap_dss_device *dssdev)
+{
+	gpio_set_value(HDMI_GPIO_60, 1);
+	gpio_set_value(HDMI_GPIO_41, 1);
+
+	return 0;
+}
+static void __init sdp4430_hdmi_init(void)
+{
+	return;
+}
+
+static struct omap_dss_device sdp4430_hdmi_device = {
+	.name = "hdmi",
+	.driver_name = "hdmi_panel",
+	.type = OMAP_DISPLAY_TYPE_HDMI,
+	.phy.dpi.data_lines = 24,
+	.platform_enable = sdp4430_panel_enable_hdmi,
+	.platform_disable = sdp4430_panel_disable_hdmi,
+};
+
+static int sdp4430_panel_enable_pico_DLP(struct omap_dss_device *dssdev)
+{
+	int i = 0;
+	gpio_request(DLP_4430_GPIO_59, "DLP DISPLAY SEL");
+	gpio_direction_output(DLP_4430_GPIO_59, 0);
+	gpio_request(DLP_4430_GPIO_45, "DLP PARK");
+	gpio_direction_output(DLP_4430_GPIO_45, 0);
+	gpio_request(DLP_4430_GPIO_40, "DLP PHY RESET");
+	gpio_direction_output(DLP_4430_GPIO_40, 0);
+	gpio_request(DLP_4430_GPIO_44, "DLP READY RESET");
+	gpio_direction_input(DLP_4430_GPIO_44);
+	mdelay(500);
+
+	gpio_set_value(DLP_4430_GPIO_59, 1);
+	gpio_set_value(DLP_4430_GPIO_45, 1);
+	mdelay(1000);
+
+	gpio_set_value(DLP_4430_GPIO_40, 1);
+	mdelay(1000);
+
+	/*FIXME with the MLO gpio changes , gpio read is not retuning correct value even though 		it is  set in hardware so the check is comment till the problem is fixed */
+	/*while(i == 0){
+	i=gpio_get_value(DLP_4430_GPIO_44);
+	printk("wait for ready bit %d\n",i);
+	}*/
+	printk("%d ready bit ", i);
+	mdelay(2000);
+	return 0;
+}
+
+static int sdp4430_panel_disable_pico_DLP(struct omap_dss_device *dssdev)
+{
+	gpio_set_value(DLP_4430_GPIO_40, 0);
+	gpio_set_value(DLP_4430_GPIO_45, 0);
+
+	return 0;
+}
+
+static struct omap_dss_device sdp4430_picoDLP_device = {
+	.name			            = "pico_DLP",
+	.driver_name		        = "picoDLP_panel",
+	.type			            = OMAP_DISPLAY_TYPE_DPI,
+	.phy.dpi.data_lines	        = 24,
+	.platform_enable	        = sdp4430_panel_enable_pico_DLP,
+	.platform_disable	        = sdp4430_panel_disable_pico_DLP,
+	.channel			= OMAP_DSS_CHANNEL_LCD2,
+};
+
+
+
+static struct omap_dss_device *sdp4430_dss_devices[] = {
 	&sdp4430_lcd_device,
+	&sdp4430_lcd2_device,
+#ifdef CONFIG_OMAP2_DSS_HDMI
+	&sdp4430_hdmi_device,
+#endif
+#ifdef CONFIG_PANEL_PICO_DLP
+	&sdp4430_picoDLP_device,
+#endif
+};
+
+static struct omap_dss_board_info sdp4430_dss_data = {
+	.num_devices	=	ARRAY_SIZE(sdp4430_dss_devices),
+	.devices	=	sdp4430_dss_devices,
+	.default_device	=	&sdp4430_lcd_device,
+};
+
+static struct platform_device sdp4430_dss_device = {
+	.name	=	"omapdss",
+	.id	=	-1,
+	.dev	= {
+		.platform_data = &sdp4430_dss_data,
+	},
+};
+
+#define MAX_OMAP_DSS_HWMOD_NAME_LEN 16
+static const char name[] = "omapdss";
+struct omap_device *od;
+
+static void __init sdp4430_display_init(void) {
+	struct omap_hwmod *oh;
+	char oh_name[MAX_OMAP_DSS_HWMOD_NAME_LEN];
+	int l, idx;
+	struct omap_dss_platform_data *pdata;
+	int bus_id = 1;
+	idx = 1;
+
+	l = snprintf(oh_name, MAX_OMAP_DSS_HWMOD_NAME_LEN,
+			"dss");
+	WARN(l >= MAX_OMAP_DSS_HWMOD_NAME_LEN,
+		"String buffer overflow in DSS device setup\n");
+
+	oh = omap_hwmod_lookup(oh_name);
+	if (!oh) {
+		pr_err("Could not look up %s\n", oh_name);
+		return -EEXIST;
+	}
+
+	od = omap_device_build(name, -1, oh, &sdp4430_dss_data,
+			sizeof(struct omap_dss_board_info),
+			omap_dss_latency,
+			ARRAY_SIZE(omap_dss_latency), 0);
+
+	WARN(IS_ERR(od), "Could not build omap_device for %s %s\n",
+			name, oh_name);
+
+	return;
+}
+
+/* end Display */
+
+static struct regulator_consumer_supply sdp4430_vdda_dac_supply = {
+	.supply		= "vdda_dac",
+	.dev		= &sdp4430_dss_device.dev,
+};
+static struct platform_device *sdp4430_devices[] __initdata = {
 	&omap_kp_device,
 };
 
@@ -462,6 +736,35 @@ static struct regulator_init_data sdp4430_vdac = {
 		.valid_ops_mask	 = REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
+	.num_consumer_supplies	= 1,
+	.consumer_supplies	= &sdp4430_vdda_dac_supply,
+};
+
+/* VPLL2 for digital video outputs */
+static struct regulator_consumer_supply sdp4430_vpll2_supplies[] = {
+	{
+		.supply		= "vdvi",
+		.dev		= &sdp4430_lcd_device.dev,
+	},
+	{
+		.supply		= "vdds_dsi",
+		.dev		= &sdp4430_dss_device.dev,
+	}
+};
+
+static struct regulator_init_data sdp4430_vpll2 = {
+	.constraints = {
+		.name			= "VDVI",
+		.min_uV			= 1800000,
+		.max_uV			= 1800000,
+		.apply_uV		= true,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL
+					| REGULATOR_MODE_STANDBY,
+		.valid_ops_mask		= REGULATOR_CHANGE_MODE
+					| REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= ARRAY_SIZE(sdp4430_vpll2_supplies),
+	.consumer_supplies	= sdp4430_vpll2_supplies,
 };
 
 static struct regulator_init_data sdp4430_vusb = {
@@ -502,6 +805,12 @@ static struct twl4030_platform_data sdp4430_twldata = {
 	.bci            = &sdp4430_bci_data,
 };
 
+static struct pico_platform_data picodlp_platform_data[] = {
+	[0] = { /* DLP Controller */
+		.gpio_intr = 40,
+	},
+};
+
 static struct i2c_board_info __initdata sdp4430_i2c_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("twl6030", 0x48),
@@ -515,6 +824,10 @@ static struct i2c_board_info __initdata sdp4430_i2c_2_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("tm12xx_ts_primary", 0x4b),
 		.platform_data = &tm12xx_platform_data[0],
+	},
+    {
+		I2C_BOARD_INFO("picoDLP_i2c_driver", 0x1b),
+		.platform_data = &picodlp_platform_data[0],
 	},
 };
 
@@ -590,7 +903,7 @@ static void __init omap_4430sdp_init(void)
 	sdp4430_spi_board_info[0].irq = gpio_to_irq(34);
 	spi_register_board_info(sdp4430_spi_board_info,
 			ARRAY_SIZE(sdp4430_spi_board_info));
-
+	sdp4430_display_init();
 }
 
 static void __init omap_4430sdp_map_io(void)

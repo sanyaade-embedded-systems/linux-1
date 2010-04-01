@@ -19,6 +19,12 @@
 #include "tiler.h"
 #include "tiler_def.h"
 
+#define ROUND_UP_2P(a, b) (((a) + (b) - 1) & ~((b) - 1))
+#define DIVIDE_UP(a, b) (((a) + (b) - 1) / (b))
+#define ROUND_UP(a, b) (DIVIDE_UP(a, b) * (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 void tiler_alloc_packed(s32 *count, enum tiler_fmt fmt, u32 width, u32 height,
 			void **sysptr, void **allocptr, s32 aligned)
 {

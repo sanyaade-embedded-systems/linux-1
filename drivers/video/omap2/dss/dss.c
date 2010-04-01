@@ -29,11 +29,24 @@
 #include <linux/interrupt.h>
 #include <linux/seq_file.h>
 #include <linux/clk.h>
+#include <linux/i2c/twl.h>
 
 #include <plat/display.h>
+#include <plat/omap_hwmod.h>
+
 #include "dss.h"
 
-#define DSS_BASE			0x48050000
+#ifndef CONFIG_ARCH_OMAP4
+/* DSS */
+#define DSS_BASE                        0x48050000
+/* DISPLAY CONTROLLER */
+#define DISPC_BASE                      0x48050400
+#else
+/* DSS */
+#define DSS_BASE                        0x58000000
+/* DISPLAY CONTROLLER */
+#define DISPC_BASE                      0x58001000
+#endif
 
 #define DSS_SZ_REGS			SZ_512
 
@@ -46,11 +59,16 @@ struct dss_reg {
 #define DSS_REVISION			DSS_REG(0x0000)
 #define DSS_SYSCONFIG			DSS_REG(0x0010)
 #define DSS_SYSSTATUS			DSS_REG(0x0014)
-#define DSS_IRQSTATUS			DSS_REG(0x0018)
-#define DSS_CONTROL			DSS_REG(0x0040)
+#define DSS_CONTROL				DSS_REG(0x0040)
 #define DSS_SDI_CONTROL			DSS_REG(0x0044)
 #define DSS_PLL_CONTROL			DSS_REG(0x0048)
 #define DSS_SDI_STATUS			DSS_REG(0x005C)
+
+#ifdef CONFIG_ARCH_OMAP4
+#define DSS_STATUS				DSS_REG(0x005C)
+#endif
+void test(void);
+
 
 #define REG_GET(idx, start, end) \
 	FLD_GET(dss_read_reg(idx), start, end)
@@ -70,6 +88,10 @@ static struct {
 
 	u32		ctx[DSS_SZ_REGS / sizeof(u32)];
 } dss;
+
+void __iomem  *dss_base;
+void __iomem  *dispc_base;
+EXPORT_SYMBOL(dispc_base);
 
 static int _omap_dss_wait_reset(void);
 
@@ -237,7 +259,6 @@ void dss_dump_regs(struct seq_file *s)
 	DUMPREG(DSS_REVISION);
 	DUMPREG(DSS_SYSCONFIG);
 	DUMPREG(DSS_SYSSTATUS);
-	DUMPREG(DSS_IRQSTATUS);
 	DUMPREG(DSS_CONTROL);
 	DUMPREG(DSS_SDI_CONTROL);
 	DUMPREG(DSS_PLL_CONTROL);
@@ -252,9 +273,28 @@ void dss_select_clk_source(bool dsi, bool dispc)
 	u32 r;
 	r = dss_read_reg(DSS_CONTROL);
 	r = FLD_MOD(r, dsi, 1, 1);	/* DSI_CLK_SWITCH */
+	if (cpu_is_omap44xx())
+		r = FLD_MOD(r, dsi, 10, 10);	/* DSI2_CLK_SWITCH */
 	r = FLD_MOD(r, dispc, 0, 0);	/* DISPC_CLK_SWITCH */
+	/* TODO: extend for LCD2 and HDMI */
 	dss_write_reg(DSS_CONTROL, r);
 }
+
+#ifdef CONFIG_ARCH_OMAP4
+void dss_select_clk_source_dsi(enum dsi lcd_ix, bool dsi, bool lcd)
+{
+	u32 r;
+	r = dss_read_reg(DSS_CONTROL);
+	if (lcd_ix == dsi1) {
+		r = FLD_MOD(r, dsi, 1, 1);	/* DSI_CLK_SWITCH */
+		r = FLD_MOD(r, lcd, 0, 0);	/* LCD1_CLK_SWITCH */
+	} else {
+		r = FLD_MOD(r, dsi, 10, 10);	/* DSI2_CLK_SWITCH */
+		r = FLD_MOD(r, lcd, 12, 12);	/* LCD2_CLK_SWITCH */
+		}
+	dss_write_reg(DSS_CONTROL, r);
+}
+#endif
 
 int dss_get_dsi_clk_source(void)
 {
@@ -408,9 +448,10 @@ retry:
 					goto found;
 			}
 		}
-	} else {
-		BUG();
-	}
+	} else if (cpu_is_omap34xx()){
+		;/*do nothing for now*/
+	} else
+			BUG();
 
 found:
 	if (!match) {
@@ -451,17 +492,10 @@ static irqreturn_t dss_irq_handler_omap2(int irq, void *arg)
 
 static irqreturn_t dss_irq_handler_omap3(int irq, void *arg)
 {
-	u32 irqstatus;
-
-	irqstatus = dss_read_reg(DSS_IRQSTATUS);
-
-	if (irqstatus & (1<<0))	/* DISPC_IRQ */
-		dispc_irq_handler();
-#ifdef CONFIG_OMAP2_DSS_DSI
-	if (irqstatus & (1<<1))	/* DSI_IRQ */
-		dsi_irq_handler();
-#endif
-
+	/* INT_24XX_DSS_IRQ is dedicated for DISPC interrupt request only */
+	/* DSI1, DSI2 and HDMI to be handled in seperate handlers */
+	dispc_irq_handler();
+	/*No irq handler specifically for DSI made yet*/
 	return IRQ_HANDLED;
 }
 
@@ -482,9 +516,7 @@ static int _omap_dss_wait_reset(void)
 
 static int _omap_dss_reset(void)
 {
-	/* Soft reset */
-	REG_FLD_MOD(DSS_SYSCONFIG, 1, 1, 1);
-	return _omap_dss_wait_reset();
+	return 0;
 }
 
 void dss_set_venc_output(enum omap_dss_venc_type type)
@@ -507,23 +539,37 @@ void dss_set_dac_pwrdn_bgz(bool enable)
 	REG_FLD_MOD(DSS_CONTROL, enable, 5, 5);	/* DAC Power-Down Control */
 }
 
+void dss_switch_tv_hdmi(int hdmi)
+{
+	REG_FLD_MOD(DSS_CONTROL, hdmi, 15, 15);	/* 0x1 for HDMI, 0x0 TV */
+	if (hdmi)
+		REG_FLD_MOD(DSS_CONTROL, 0, 9, 8);
+}
+
 int dss_init(bool skip_init)
 {
-	int r;
+	int r, ret;
 	u32 rev;
+	u32 val;
+	u32 mmcdata2;
 
-	dss.base = ioremap(DSS_BASE, DSS_SZ_REGS);
+
+	dss_base = dss.base = ioremap(DSS_BASE, DSS_SZ_REGS);
+
 	if (!dss.base) {
 		DSSERR("can't ioremap DSS\n");
 		r = -ENOMEM;
 		goto fail0;
 	}
+	test();
 
 	if (!skip_init) {
 		/* disable LCD and DIGIT output. This seems to fix the synclost
 		 * problem that we get, if the bootloader starts the DSS and
 		 * the kernel resets it */
-		omap_writel(omap_readl(0x48050440) & ~0x3, 0x48050440);
+		//omap_writel(omap_readl(0x48050440) & ~0x3, 0x48050440);
+		omap_writel(omap_readl(0x48041040) & ~0x3, 0x48041040);
+
 
 		/* We need to wait here a bit, otherwise we sometimes start to
 		 * get synclost errors, and after that only power cycle will
@@ -547,12 +593,18 @@ int dss_init(bool skip_init)
 	REG_FLD_MOD(DSS_CONTROL, 1, 3, 3);	/* venc clock 4x enable */
 	REG_FLD_MOD(DSS_CONTROL, 0, 2, 2);	/* venc clock mode = normal */
 #endif
+if (!cpu_is_omap44xx()) {
 
 	r = request_irq(INT_24XX_DSS_IRQ,
 			cpu_is_omap24xx()
 			? dss_irq_handler_omap2
 			: dss_irq_handler_omap3,
 			0, "OMAP DSS", NULL);
+	} else {
+	r = request_irq(INT_44XX_DSS_IRQ,
+			dss_irq_handler_omap3,
+			0, "OMAP DSS", (void *)1);
+		}
 
 	if (r < 0) {
 		DSSERR("omap2 dss: request_irq failed\n");
@@ -574,6 +626,7 @@ int dss_init(bool skip_init)
 	printk(KERN_INFO "OMAP DSS rev %d.%d\n",
 			FLD_GET(rev, 7, 4), FLD_GET(rev, 3, 0));
 
+
 	return 0;
 
 fail2:
@@ -588,9 +641,36 @@ void dss_exit(void)
 {
 	if (cpu_is_omap34xx())
 		clk_put(dss.dpll4_m4_ck);
-
+#ifndef CONFIG_ARCH_OMAP4
 	free_irq(INT_24XX_DSS_IRQ, NULL);
+#else
+	free_irq(INT_44XX_DSS_IRQ, NULL);
+#endif
 
 	iounmap(dss.base);
 }
+
+
+
+
+void test(void)
+{
+	u32 b, c;
+	/*a = ioremap(0x58000000, 0x60);*/
+	b = ioremap(0x4A009100, 0x30);
+	c = ioremap(0x4a307100, 0x10);
+
+	if (!b)
+		return;
+	/*printk(KERN_INFO "dss status 0x%x 0x%x\n", __raw_readl(a+0x5c), (a+0x5c));*/
+	printk(KERN_INFO "CM_DSS_CLKSTCTRL 0x%x 0x%x\n", __raw_readl(b), b);
+	printk(KERN_INFO "CM_DSS_DSS_CLKCTRL 0x%x 0x%x\n", __raw_readl(b+0x20), (b+0x20));
+	if (!c)
+		return;
+	printk(KERN_INFO "PM DSS wrst 0x%x 0x%x\n", __raw_readl(c+0x4), (c+0x4));
+
+}
+
+
+
 

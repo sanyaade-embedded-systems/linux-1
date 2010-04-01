@@ -29,6 +29,8 @@
 #include <linux/platform_device.h>
 
 #include <plat/display.h>
+#include <plat/cpu.h>
+
 #include "dss.h"
 
 static LIST_HEAD(display_list);
@@ -39,7 +41,7 @@ static ssize_t display_enabled_show(struct device *dev,
 	struct omap_dss_device *dssdev = to_dss_device(dev);
 	bool enabled = dssdev->state != OMAP_DSS_DISPLAY_DISABLED;
 
-	return snprintf(buf, PAGE_SIZE, "%d\n", enabled);
+	return snprintf(buf, PAGE_SIZE, "%s\n", enabled? "true" : "false");
 }
 
 static ssize_t display_enabled_store(struct device *dev,
@@ -316,8 +318,11 @@ void default_get_overlay_fifo_thresholds(enum omap_plane plane,
 {
 	unsigned burst_size_bytes;
 
-	*burst_size = OMAP_DSS_BURST_16x32;
-	burst_size_bytes = 16 * 32 / 8;
+	*burst_size = OMAP_DSS_BURST_16x32; /* OMAP4: same as 8x128*/
+	if (!cpu_is_omap44xx())
+		burst_size_bytes = 16 * 32 / 8;
+	else
+		burst_size_bytes = 8 * 128 / 8; /* OMAP4: highest burst size is 8x128*/
 
 	*fifo_high = fifo_size - 1;
 	*fifo_low = fifo_size - burst_size_bytes;
@@ -330,6 +335,10 @@ static int default_wait_vsync(struct omap_dss_device *dssdev)
 
 	if (dssdev->type == OMAP_DISPLAY_TYPE_VENC)
 		irq = DISPC_IRQ_EVSYNC_ODD;
+	else if (dssdev->type == OMAP_DISPLAY_TYPE_HDMI)
+		irq = DISPC_IRQ_EVSYNC_EVEN;
+	else if (dssdev->type == OMAP_DISPLAY_TYPE_DSI)
+		irq = DISPC_IRQ_FRAMEDONE;
 	else
 		irq = DISPC_IRQ_VSYNC;
 
@@ -356,7 +365,7 @@ static int default_get_recommended_bpp(struct omap_dss_device *dssdev)
 			return 16;
 	case OMAP_DISPLAY_TYPE_VENC:
 	case OMAP_DISPLAY_TYPE_SDI:
-		return 24;
+	case OMAP_DISPLAY_TYPE_HDMI:
 		return 24;
 	default:
 		BUG();
@@ -376,6 +385,9 @@ bool dss_use_replication(struct omap_dss_device *dssdev,
 
 	if (dssdev->type == OMAP_DISPLAY_TYPE_DPI &&
 			(dssdev->panel.config & OMAP_DSS_LCD_TFT) == 0)
+		return false;
+
+	if (dssdev->type == OMAP_DISPLAY_TYPE_HDMI)
 		return false;
 
 	switch (dssdev->type) {
@@ -418,6 +430,9 @@ void dss_init_device(struct platform_device *pdev,
 #ifdef CONFIG_OMAP2_DSS_VENC
 	case OMAP_DISPLAY_TYPE_VENC:
 #endif
+#ifdef CONFIG_OMAP2_DSS_HDMI
+	case OMAP_DISPLAY_TYPE_HDMI:
+#endif
 		break;
 	default:
 		DSSERR("Support for display '%s' not compiled in.\n",
@@ -451,6 +466,11 @@ void dss_init_device(struct platform_device *pdev,
 #ifdef CONFIG_OMAP2_DSS_DSI
 	case OMAP_DISPLAY_TYPE_DSI:
 		r = dsi_init_display(dssdev);
+		break;
+#endif
+#ifdef CONFIG_OMAP2_DSS_HDMI
+	case OMAP_DISPLAY_TYPE_HDMI:
+		r = hdmi_init_display(dssdev);
 		break;
 #endif
 	default:
@@ -585,7 +605,7 @@ EXPORT_SYMBOL(omap_dss_put_device);
  * of from-device is decremented. */
 struct omap_dss_device *omap_dss_get_next_device(struct omap_dss_device *from)
 {
-	struct device *dev;
+	struct device *dev = NULL;
 	struct device *dev_start = NULL;
 	struct omap_dss_device *dssdev = NULL;
 
