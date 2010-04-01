@@ -3106,6 +3106,7 @@ venc:
 			"failed to change mode\n");
 
 #ifdef CONFIG_PANEL_PICO_DLP
+	if (sysfs_streq(cur_display->name, "pico_DLP"))
 			dispc_go(OMAP_DSS_CHANNEL_LCD2);
 #endif
 

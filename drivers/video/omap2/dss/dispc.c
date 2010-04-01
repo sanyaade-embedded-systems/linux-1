@@ -730,7 +730,9 @@ void dispc_go(enum omap_channel channel)
 #else
 	if (channel == OMAP_DSS_CHANNEL_LCD2) {
 		if (REG_GET(DISPC_CONTROL2, bit, bit) == 1) {
-			DSSERR("GO bit not down for channel %d\n", channel);
+			/* FIXME PICO DLP on Channel 2 needs GO bit to be UP
+			it will come as error so changing to DSSDBG*/
+			DSSDBG("GO bit not down for channel %d\n", channel);
 			goto end;
 		}
 		DSSDBG("GO LCD2\n");
