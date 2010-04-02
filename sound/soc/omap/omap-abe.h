@@ -1,10 +1,9 @@
 /*
- * omap-pcm.h
+ * omap-abe.h
  *
- * Copyright (C) 2008 Nokia Corporation
+ * Copyright (C) 2009 Texas Instruments
  *
- * Contact: Jarkko Nikula <jhnikula@gmail.com>
- *          Peter Ujfalusi <peter.ujfalusi@nokia.com>
+ * Contact: Misael Lopez Cruz <x0052729@ti.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -22,19 +21,15 @@
  *
  */
 
-#ifndef __OMAP_PCM_H__
-#define __OMAP_PCM_H__
+#ifndef __OMAP_MCPDM_H__
+#define __OMAP_MCPDM_H__
 
-struct omap_pcm_dma_data {
-	char		*name;		/* stream identifier */
-	int		dma_req;	/* DMA request line */
-	unsigned long	port_addr;	/* transmit/receive register */
-	void (*set_threshold)(struct snd_pcm_substream *substream);
-	int		data_type;	/* data type 8,16,32 */
-	int		sync_mode;	/* DMA sync mode */
-	int		packet_size;	/* packet size only in PACKET mode */
-};
+#define OMAP_ABE_MM_DAI			0
+#define OMAP_ABE_TONES_DL_DAI		1
+#define OMAP_ABE_VOICE_DAI		2
+#define OMAP_ABE_DIG_UPLINK_DAI		3
+#define OMAP_ABE_VIB_DAI		4
 
-extern struct snd_soc_platform omap_soc_platform;
+extern struct snd_soc_dai omap_abe_dai[];
 
-#endif
+#endif	/* End of __OMAP_MCPDM_H__ */
