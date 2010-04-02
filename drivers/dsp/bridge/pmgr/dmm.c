@@ -63,9 +63,9 @@ struct dmm_object {
 /*  ----------------------------------- Globals */
 static u32 refs;		/* module reference count */
 struct map_page {
-	u32 region_size:15;
-	u32 mapped_size:15;
+	u32 region_size:31;
 	u32 reserved:1;
+	u32 mapped_size:31;
 	u32 mapped:1;
 };
 
