@@ -171,14 +171,11 @@ static void iotlb_lock_get(struct iommu *obj, struct iotlb_lock *l)
 	l->base = MMU_LOCK_BASE(val);
 	l->vict = MMU_LOCK_VICT(val);
 
-	BUG_ON(l->base != 0); /* Currently no preservation is used */
 }
 
 static void iotlb_lock_set(struct iommu *obj, struct iotlb_lock *l)
 {
 	u32 val;
-
-	BUG_ON(l->base != 0); /* Currently no preservation is used */
 
 	val = (l->base << MMU_LOCK_BASE_SHIFT);
 	val |= (l->vict << MMU_LOCK_VICT_SHIFT);
@@ -241,7 +238,7 @@ int load_iotlb_entry(struct iommu *obj, struct iotlb_entry *e)
 			break;
 	}
 
-	if (i == obj->nr_tlb_entries) {
+	if (i == obj->nr_tlb_entries || (l.base == obj->nr_tlb_entries)) {
 		dev_dbg(obj->dev, "%s: full: no entry\n", __func__);
 		err = -EBUSY;
 		goto out;
@@ -252,13 +249,18 @@ int load_iotlb_entry(struct iommu *obj, struct iotlb_entry *e)
 		clk_disable(obj->clk);
 		return PTR_ERR(cr);
 	}
-
 	iotlb_load_cr(obj, cr);
 	kfree(cr);
 
+	/* Increment base number if preservation is set */
+	if (e->prsvd)
+		l.base++;
 	/* increment victim for next tlb load */
-	if (++l.vict == obj->nr_tlb_entries)
-		l.vict = 0;
+	if (++l.vict == obj->nr_tlb_entries) {
+		l.vict = l.base;
+		goto out;
+	}
+
 	iotlb_lock_set(obj, &l);
 out:
 	clk_disable(obj->clk);
@@ -862,10 +864,12 @@ static int __devinit omap_iommu_probe(struct platform_device *pdev)
 	if (!obj)
 		return -ENOMEM;
 
-	obj->clk = clk_get(&pdev->dev, pdata->clk_name);
-	if (IS_ERR(obj->clk))
-		goto err_clk;
-
+	/* FIX ME: OMAP4 PM framework not ready */
+	if (!cpu_is_omap44xx()) {
+		obj->clk = clk_get(&pdev->dev, pdata->clk_name);
+		if (IS_ERR(obj->clk))
+			goto err_clk;
+	}
 	obj->nr_tlb_entries = pdata->nr_tlb_entries;
 	obj->name = pdata->name;
 	obj->dev = &pdev->dev;
