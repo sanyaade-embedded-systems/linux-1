@@ -47,6 +47,16 @@ omap_uart_lsr:	.word	0
 		movne	\rx, #0xfa000000	@ virtual base
 #ifdef CONFIG_ARCH_TI816X
 		orr	\rx, \rx, #0x00020000	@ uart1 on Netra !@0
+		/*
+		 * FIXME: Skip to configure UART1 due to following issues facing
+		 * presently:
+		 * 	1) Simulator has no support for scratchpad reg
+		 * 	2) Looking at the code setting scratchpad register, it
+		 * 	seems that this logic won't work when using an
+		 * 	uncompressed kernel image or directly loading vmlinux to
+		 * 	RAM.
+		 */
+		b	81f			@ TI816XUART1
 #else
 		orr	\rx, \rx, #0x0006a000	@ uart1 on omap2/3/4
 #endif
