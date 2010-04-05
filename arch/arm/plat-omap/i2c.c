@@ -35,6 +35,7 @@
 #define OMAP2_I2C_BASE1		0x48070000
 #define OMAP2_I2C_BASE2		0x48072000
 #define OMAP2_I2C_BASE3		0x48060000
+#define OMAP2_I2C_BASE4		0x48350000
 
 static const char name[] = "i2c_omap";
 
@@ -54,8 +55,15 @@ static struct resource i2c_resources[][2] = {
 #if	defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
 	{ I2C_RESOURCE_BUILDER(OMAP2_I2C_BASE2, INT_24XX_I2C2_IRQ) },
 #endif
+#if	defined(CONFIG_ARCH_OMAP4)
+	{ I2C_RESOURCE_BUILDER(OMAP2_I2C_BASE2, OMAP44XX_IRQ_I2C2) },
+#endif
 #if	defined(CONFIG_ARCH_OMAP3)
 	{ I2C_RESOURCE_BUILDER(OMAP2_I2C_BASE3, INT_34XX_I2C3_IRQ) },
+#endif
+#if	defined(CONFIG_ARCH_OMAP4)
+	{ I2C_RESOURCE_BUILDER(OMAP2_I2C_BASE3, OMAP44XX_IRQ_I2C3) },
+	{ I2C_RESOURCE_BUILDER(OMAP2_I2C_BASE4, OMAP44XX_IRQ_I2C4) },
 #endif
 };
 
@@ -73,11 +81,14 @@ static struct resource i2c_resources[][2] = {
 static u32 i2c_rate[ARRAY_SIZE(i2c_resources)];
 static struct platform_device omap_i2c_devices[] = {
 	I2C_DEV_BUILDER(1, i2c_resources[0], &i2c_rate[0]),
-#if	defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
+#if	defined(CONFIG_ARCH_OMAP2PLUS)
 	I2C_DEV_BUILDER(2, i2c_resources[1], &i2c_rate[1]),
 #endif
-#if	defined(CONFIG_ARCH_OMAP3)
+#if	defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
 	I2C_DEV_BUILDER(3, i2c_resources[2], &i2c_rate[2]),
+#endif
+#if	defined(CONFIG_ARCH_OMAP4)
+	I2C_DEV_BUILDER(4, i2c_resources[3], &i2c_rate[3]),
 #endif
 };
 
@@ -93,6 +104,8 @@ static int __init omap_i2c_nr_ports(void)
 		ports = 2;
 	else if (cpu_is_omap34xx())
 		ports = 3;
+	else if (cpu_is_omap44xx())
+		ports = 4;
 
 	return ports;
 }
@@ -112,6 +125,10 @@ static int __init omap_i2c_add_bus(int bus_id)
 		} else {
 			base = OMAP2_I2C_BASE1;
 			irq = INT_24XX_I2C1_IRQ;
+		}
+		if (cpu_is_omap44xx()) {
+			base = OMAP2_I2C_BASE1;
+			irq = OMAP44XX_IRQ_I2C1;
 		}
 		res[0].start = base;
 		res[0].end = base + OMAP_I2C_SIZE;
