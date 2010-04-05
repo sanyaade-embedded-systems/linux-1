@@ -2093,7 +2093,6 @@ static u16 dsi_vc_flush_receive_data(enum dsi lcd_ix, int channel)
 		u32 val;
 		u8 dt;
 		val = dsi_read_reg(lcd_ix, DSI_VC_SHORT_PACKET_HEADER(channel));
-		DSSDBG("\trawval %#08x\n", val);
 		dt = FLD_GET(val, 5, 0);
 		if (dt == DSI_DT_RX_ACK_WITH_ERR) {
 			u16 err = FLD_GET(val, 23, 8);
