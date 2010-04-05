@@ -1701,14 +1701,17 @@ int omap_stop_dma_chain_transfers(int chain_id)
 	channels = dma_linked_lch[chain_id].linked_dmach_q;
 
 	/*
-	 * DMA Errata:
-	 * Special programming model needed to disable DMA before end of block
+	 * DMA Errata: i88
+	 * Special programming model needed
+	 * to disable DMA before end of block
 	 */
 	sys_cf = dma_read(OCP_SYSCONFIG);
-	l = sys_cf;
-	/* Middle mode reg set no Standby */
-	l &= ~((1 << 12)|(1 << 13));
-	dma_write(l, OCP_SYSCONFIG);
+	if (cpu_is_omap2430() || (omap_rev() == OMAP3430_REV_ES1_0)) {
+		l = sys_cf;
+		/* Middle mode reg set no Standby */
+		l &= ~((1 << 12)|(1 << 13));
+		dma_write(l, OCP_SYSCONFIG);
+	}
 
 	for (i = 0; i < dma_linked_lch[chain_id].no_of_lchs_linked; i++) {
 
@@ -1727,8 +1730,9 @@ int omap_stop_dma_chain_transfers(int chain_id)
 	/* Reset the Queue pointers */
 	OMAP_DMA_CHAIN_QINIT(chain_id);
 
-	/* Errata - put in the old value */
-	dma_write(sys_cf, OCP_SYSCONFIG);
+	/* Errata: put back the old value */
+	if (cpu_is_omap2430() || (omap_rev() == OMAP3430_REV_ES1_0))
+		dma_write(sys_cf, OCP_SYSCONFIG);
 
 	return 0;
 }
