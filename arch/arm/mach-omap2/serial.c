@@ -388,11 +388,17 @@ static inline void omap_uart_enable_clocks(struct omap_uart_state *uart)
 static inline void omap_uart_disable_clocks(struct omap_uart_state *uart,
 							int power_state)
 {
-	if (!uart->clocked)
-		return;
-
-	if (power_state == PWRDM_POWER_OFF)
+	if (power_state == PWRDM_POWER_OFF) {
+		if (uart->context_valid)
+			return;
+		if (!uart->clocked) {
+			clk_enable(uart->ick);
+			clk_enable(uart->fck);
+		}
 		omap_uart_save_context(uart);
+	} else if (!uart->clocked) {
+		return;
+	}
 
 	uart->clocked = 0;
 	clk_disable(uart->ick);
@@ -450,6 +456,7 @@ static void omap_uart_smart_idle_enable(struct omap_uart_state *p,
 
 static void omap_uart_block_sleep(struct omap_uart_state *uart)
 {
+
 	omap_uart_enable_clocks(uart);
 
 	omap_uart_smart_idle_enable(uart, 0);

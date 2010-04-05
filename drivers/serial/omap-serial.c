@@ -938,6 +938,7 @@ serial_omap_console_write(struct console *co, const char *s,
 	struct uart_omap_port *up = serial_omap_console_ports[co->index];
 	unsigned int ier;
 
+	serial_omap_uart_check_clk(up->pdev->id - 1);
 	/*
 	 * First save the IER then disable the interrupts
 	 */
