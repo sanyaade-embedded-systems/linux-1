@@ -78,7 +78,13 @@ static int __mbox_msg_send(struct omap_mbox *mbox, mbox_msg_t msg)
 			return -1;
 		udelay(1);
 	}
-	mbox_fifo_write(mbox, msg);
+
+	if (mbox->txq->callback)
+		ret = mbox->txq->callback(NULL);
+
+	if (!ret)
+		mbox_fifo_write(mbox, msg);
+
 	return ret;
 }
 
