@@ -35,7 +35,6 @@
 #include "tiler_def.h"
 #include "../dmm/dmm.h"
 #include "tcm/tcm.h"
-#include "dmm_2d_alloc.h"
 
 struct tiler_dev {
 	struct cdev cdev;
@@ -79,11 +78,8 @@ static struct __buf_info buf_list;
 static struct mem_info mem_list;
 static struct mutex mtx;
 
-/* required by container manager */
-static struct dmmTILERContCtxT *tilctx;
-
-static s32 __set_area(enum tiler_fmt fmt, u32 width, u32 height, u32 *x_area,
-		u32 *y_area)
+static s32 __set_area(enum tiler_fmt fmt, u32 width, u32 height, u8 *x_area,
+		u8 *y_area)
 {
 	s32 x_pagedim = 0, y_pagedim = 0;
 	u16 tiled_pages_per_ss_page = 0;
@@ -129,12 +125,12 @@ static s32 __set_area(enum tiler_fmt fmt, u32 width, u32 height, u32 *x_area,
 		break;
 	}
 
-	*x_area = (width + x_pagedim - 1) / x_pagedim - 1;
-	*y_area = (height + y_pagedim - 1) / y_pagedim - 1;
+	*x_area = (u8)((width + x_pagedim - 1) / x_pagedim - 1);
+	*y_area = (u8)((height + y_pagedim - 1) / y_pagedim - 1);
 
 	tiled_pages_per_ss_page = 64;
-	*x_area = ((*x_area + tiled_pages_per_ss_page) &
-					~(tiled_pages_per_ss_page - 1)) - 1;
+	*x_area = (u8)(((*x_area + tiled_pages_per_ss_page) &
+					~(tiled_pages_per_ss_page - 1)) - 1);
 
 	if (*x_area > TILER_WIDTH || *y_area > TILER_HEIGHT)
 		return -1;
