@@ -14,6 +14,7 @@ void omap3_clk_lock_dpll5(void);
 
 extern struct clk *sdrc_ick_p;
 extern struct clk *arm_fck_p;
+extern struct clk *sys_ck_p;
 
 /* OMAP34xx-specific clkops */
 extern const struct clkops clkops_omap3430es2_ssi_wait;
@@ -21,5 +22,7 @@ extern const struct clkops clkops_omap3430es2_hsotgusb_wait;
 extern const struct clkops clkops_omap3430es2_dss_usbhost_wait;
 extern const struct clkops clkops_noncore_dpll_ops;
 extern const struct clkops clkops_omap3_pwrdn_with_hsdiv_wait_restore;
+
+unsigned int delay_sram_val(void);
 
 #endif

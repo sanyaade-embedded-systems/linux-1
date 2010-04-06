@@ -33,6 +33,7 @@
 #include <plat/clock.h>
 #include <plat/sram.h>
 #include <plat/sdrc.h>
+#include <plat/prcm.h>
 #include <plat/omap-pm.h>
 
 #include <asm/div64.h>
@@ -47,8 +48,16 @@
 #include "cm.h"
 #include "cm-regbits-34xx.h"
 
-#define CYCLES_PER_MHZ			1000000
+#define CYCLES_PER_MHZ	1000000
 
+#define DPLL_M_MASK     0x7ff
+#define DPLL_N_MASK     0x7f
+#define DPLL_M2_MASK    0x1f
+#define SHIFT_DPLL_M    16
+#define SHIFT_DPLL_N    8
+#define SHIFT_DPLL_M2   27
+
+#define	SCALING_FACTOR	10
 /*
  * DPLL5_FREQ_FOR_USBHOST: USBHOST and USBTLL are the only clocks
  * that are sourced by DPLL5, and both of these require this clock
@@ -57,7 +66,7 @@
 #define DPLL5_FREQ_FOR_USBHOST		120000000
 
 /* needed by omap3_core_dpll_m2_set_rate() */
-struct clk *sdrc_ick_p, *arm_fck_p;
+struct clk *sdrc_ick_p, *arm_fck_p, *sys_ck_p;
 
 /**
  * omap3430es2_clk_ssi_find_idlest - return CM_IDLEST info for SSI
@@ -223,10 +232,14 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 {
 	u32 new_div = 0;
 	u32 unlock_dll = 0;
-	u32 c;
-	unsigned long validrate, sdrcrate, _mpurate;
+	u32 c, delay_sram;
+	u32 clk_sel_regval, sys_clk;
+	u32 m, n, m2;
+	u32 sys_clk_rate, sdrc_clk_stab;
+	u32 refclk, clkoutx2, switch_latency;
 	struct omap_sdrc_params *sdrc_cs0;
 	struct omap_sdrc_params *sdrc_cs1;
+	unsigned long validrate, sdrcrate, _mpurate;
 	int ret;
 
 	if (!clk || !rate)
@@ -251,16 +264,35 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 		unlock_dll = 1;
 	}
 
-	/*
-	 * XXX This only needs to be done when the CPU frequency changes
-	 */
+	clk_sel_regval = __raw_readl(clk->clksel_reg);
+
+	/* Get the M, N and M2 values required for getting sdrc clk stab */
+	m = (clk_sel_regval >> SHIFT_DPLL_M) & DPLL_M_MASK;
+	n = (clk_sel_regval >> SHIFT_DPLL_N) & DPLL_N_MASK;
+	m2 = (clk_sel_regval >> SHIFT_DPLL_M2) & DPLL_M2_MASK;
+
+	/* sys_ck rate */
+	sys_clk_rate = (sys_ck_p->rate) / CYCLES_PER_MHZ;
+
 	_mpurate = arm_fck_p->rate / CYCLES_PER_MHZ;
-	c = (_mpurate << SDRC_MPURATE_SCALE) >> SDRC_MPURATE_BASE_SHIFT;
-	c += 1;  /* for safety */
-	c *= SDRC_MPURATE_LOOPS;
-	c >>= SDRC_MPURATE_SCALE;
-	if (c == 0)
-		c = 1;
+
+	delay_sram = delay_sram_val();
+	sys_clk = (1 << SCALING_FACTOR) / sys_clk_rate;
+	clkoutx2 = (sys_clk * (n + 1) * m2) / (2 * m);
+
+	/* wait time for L3 clk stabilization = 4*REFCLK + 8*CLKOUTX2 */
+	refclk = (n + 1) * sys_clk;
+	switch_latency =  (4 * refclk) + (8 * clkoutx2);
+
+	/* Adding 2000 ns to sdrc clk stab */
+	sdrc_clk_stab =  switch_latency + 2000;
+
+	/* Calculate the number of MPU cycles to wait for SDRC to stabilize */
+	c = ((sdrc_clk_stab * _mpurate) / (delay_sram * 2)) >> SCALING_FACTOR;
+
+	pr_debug("m = %d, n = %d, m2 =%d\n", m, n, m2);
+	pr_debug("switch_latency = %d, sys_clk_rate = %d, cycles = %d\n",
+		switch_latency, sys_clk_rate, c);
 
 	pr_debug("clock: changing CORE DPLL rate from %lu to %lu\n", clk->rate,
 		 validrate);

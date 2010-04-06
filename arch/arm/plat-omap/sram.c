@@ -29,8 +29,10 @@
 #include <plat/board.h>
 #include <plat/cpu.h>
 #include <plat/vram.h>
-
+#include <plat/dmtimer.h>
 #include <plat/control.h>
+
+#include <linux/clk.h>
 
 #if defined(CONFIG_ARCH_OMAP2) || defined(CONFIG_ARCH_OMAP3)
 # include "../mach-omap2/prm.h"
@@ -456,10 +458,57 @@ static inline int omap34xx_sram_init(void)
 }
 #endif
 
+#ifdef CONFIG_ARCH_OMAP3
+void (*_omap3_sram_delay)(unsigned int);
+unsigned int  measure_sram_delay(unsigned int loop)
+{
+	static struct omap_dm_timer *gpt;
+	unsigned long flags, diff = 0, gt_rate, mpurate;
+	unsigned int delay_sram, error_gain;
+	unsigned int start = 0, end = 0;
+
+	omap_dm_timer_init();
+	gpt = omap_dm_timer_request();
+	if (!gpt) {
+		pr_err("Could not get the gptimer\n");
+		return -1;
+	}
+
+	omap_dm_timer_set_source(gpt, OMAP_TIMER_SRC_SYS_CLK);
+
+	gt_rate = clk_get_rate(omap_dm_timer_get_fclk(gpt));
+	omap_dm_timer_set_load_start(gpt, 0, 0);
+
+	local_irq_save(flags);
+	start = omap_dm_timer_read_counter(gpt);
+	_omap3_sram_delay(loop);
+	end = omap_dm_timer_read_counter(gpt);
+	diff = end - start;
+	local_irq_restore(flags);
+
+	omap_dm_timer_stop(gpt);
+	omap_dm_timer_free(gpt);
+
+	mpurate = clk_get_rate(clk_get(NULL, "arm_fck"));
+
+	/* calculate the sram delay */
+	error_gain = mpurate / gt_rate;
+	delay_sram = ((error_gain * diff) / (loop * 2));
+	delay_sram += error_gain;
+
+	return delay_sram;
+}
+#endif
+
 int __init omap_sram_init(void)
 {
 	omap_detect_sram();
 	omap_map_sram();
+
+#ifdef CONFIG_ARCH_OMAP3
+	_omap3_sram_delay = omap_sram_push(__sram_wait_delay,
+						__sram_wait_delay_sz);
+#endif
 
 	if (!(cpu_class_is_omap2()))
 		omap1_sram_init();

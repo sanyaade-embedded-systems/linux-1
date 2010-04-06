@@ -22,6 +22,7 @@
 
 #include <plat/control.h>
 #include <plat/clkdev_omap.h>
+#include <plat/sram.h>
 
 #include "clock.h"
 #include "clock34xx.h"
@@ -51,6 +52,8 @@
 /* Forward declarations for DPLL bypass clocks */
 static struct clk dpll1_fck;
 static struct clk dpll2_fck;
+
+static unsigned int delay_sram;
 
 /* PRM CLOCKS */
 
@@ -3520,6 +3523,15 @@ int __init omap2_clk_init(void)
 	/* Avoid sleeping during omap3_core_dpll_m2_set_rate() */
 	sdrc_ick_p = clk_get(NULL, "sdrc_ick");
 	arm_fck_p = clk_get(NULL, "arm_fck");
+	sys_ck_p = clk_get(NULL, "sys_ck");
 
+	/* Measure sram delay */
+	delay_sram = measure_sram_delay(10000);
+	pr_debug("SRAM delay: %d\n", delay_sram);
 	return 0;
+}
+
+unsigned int delay_sram_val(void)
+{
+	return delay_sram;
 }
