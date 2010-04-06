@@ -27,6 +27,8 @@
 #include <linux/platform_device.h>
 #include <linux/serial_8250.h>
 
+#include <plat/omap-serial.h>
+
 #include <plat/common.h>
 #include <plat/board.h>
 #include <plat/clock.h>
@@ -550,6 +552,7 @@ static void omap_uart_block_sleep(struct omap_uart_state *uart)
 #define DEV_CREATE_FILE(dev, attr)
 #endif /* CONFIG_PM */
 
+#ifdef CONFIG_SERIAL_8250
 /*
  * Override the default 8250 read handler: mem_serial_in()
  * Empty RX fifo read causes an abort on omap3630 and omap4
@@ -567,21 +570,7 @@ static unsigned int serial_in_override(struct uart_port *up, int offset)
 
 	return __serial_read_reg(up, offset);
 }
-
-static void serial_out_override(struct uart_port *up, int offset, int value)
-{
-	unsigned int status, tmout = 10000;
-
-	/* Wait up to 10ms for the character(s) to be sent. */
-	do {
-		status = __serial_read_reg(up, UART_LSR);
-		if (--tmout == 0)
-			break;
-		udelay(1);
-	} while (!(status & UART_LSR_THRE));
-
-	__serial_write_reg(up, offset, value);
-}
+#endif
 
 void __init omap_serial_early_init(void)
 {
@@ -632,7 +621,21 @@ void __init omap_serial_early_init(void)
 void __init omap_serial_init_port(int port)
 {
 	struct omap_uart_state *uart;
+	struct omap_hwmod *oh;
+	struct omap_device *od;
+	void *pdata = NULL;
+	u32 pdata_size = 0;
 	char *name;
+#ifdef CONFIG_SERIAL_8250
+	struct plat_serial8250_port ports[2] = {
+		{},
+		{.flags = 0},
+	};
+	struct plat_serial8250_port *p = &ports[0];
+#endif
+#ifdef CONFIG_SERIAL_OMAP
+	struct omap_uart_port_info omap_up;
+#endif
 
 	BUG_ON(port < 0);
 	BUG_ON(port >= num_uarts);
@@ -641,20 +644,10 @@ void __init omap_serial_init_port(int port)
 		if (port == uart->num)
 			break;
 	{
-
-		struct omap_hwmod *oh = uart->oh;
-		struct omap_device *od;
-		void *pdata = NULL;
-		u32 pdata_size = 0;
-
-		struct plat_serial8250_port ports[2] = {
-			{},
-			{.flags = 0},
-		};
-		struct plat_serial8250_port *p = &ports[0];
-
-		name = "serial8250";
+		oh = uart->oh;
 		uart->dma_enabled = 0;
+#ifdef CONFIG_SERIAL_8250
+		name = "serial8250";
 
 		/*
 		 * !! 8250 driver does not use standard IORESOURCE* It
@@ -685,6 +678,20 @@ void __init omap_serial_init_port(int port)
 
 		pdata = &ports[0];
 		pdata_size = 2 * sizeof(struct plat_serial8250_port);
+#endif
+#ifdef CONFIG_SERIAL_OMAP
+		name = DRIVER_NAME;
+
+		omap_up.dma_enabled = uart->dma_enabled;
+		omap_up.uartclk = OMAP24XX_BASE_BAUD * 16;
+		omap_up.mapbase = oh->slaves[0]->addr->pa_start;
+		omap_up.membase = oh->_rt_va;
+		omap_up.irqflags = IRQF_SHARED;
+		omap_up.flags = UPF_BOOT_AUTOCONF | UPF_SHARE_IRQ;
+
+		pdata = &omap_up;
+		pdata_size = sizeof(struct omap_uart_port_info);
+#endif
 
 		if (WARN_ON(!oh))
 			return;
@@ -732,7 +739,6 @@ void __init omap_serial_init_port(int port)
 			device_init_wakeup(&od->pdev.dev, true);
 			DEV_CREATE_FILE(&od->pdev.dev, &dev_attr_sleep_timeout);
 		}
-
 	}
 }
 
