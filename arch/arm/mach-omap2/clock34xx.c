@@ -57,6 +57,11 @@
 #define SHIFT_DPLL_N    8
 #define SHIFT_DPLL_M2   27
 
+/*
+ * While calculating M2 stabilization delay, especially the formula
+ * used for 3630 computes to zero. So to avoid calculation truncating to
+ * zero, SCALING_FACTOR is used appropriately.
+ */
 #define	SCALING_FACTOR	10
 /*
  * DPLL5_FREQ_FOR_USBHOST: USBHOST and USBTLL are the only clocks
@@ -280,12 +285,21 @@ int omap3_core_dpll_m2_set_rate(struct clk *clk, unsigned long rate)
 	sys_clk = (1 << SCALING_FACTOR) / sys_clk_rate;
 	clkoutx2 = (sys_clk * (n + 1) * m2) / (2 * m);
 
-	/* wait time for L3 clk stabilization = 4*REFCLK + 8*CLKOUTX2 */
-	refclk = (n + 1) * sys_clk;
-	switch_latency =  (4 * refclk) + (8 * clkoutx2);
-
-	/* Adding 2000 ns to sdrc clk stab */
-	sdrc_clk_stab =  switch_latency + 2000;
+	/*
+	 * wait time for L3 clk stabilization
+	 * for OMAP3430 = 4*REFCLK + 8*CLKOUTX2
+	 * for OMAP3630 = 2*REFCLK + 8*CLKOUTX2
+	 */
+	if (cpu_is_omap3630()) {
+		switch_latency = (2 * sys_clk) + (10 * clkoutx2);
+		/* Adding 1000 nano seconds to sdrc clk stab */
+		sdrc_clk_stab = switch_latency + 1000;
+	} else {
+		refclk = (n + 1) * sys_clk;
+		switch_latency =  (4 * refclk) + (8 * clkoutx2);
+		/* Adding 2000 ns to sdrc clk stab */
+		sdrc_clk_stab =  switch_latency + 2000;
+	}
 
 	/* Calculate the number of MPU cycles to wait for SDRC to stabilize */
 	c = ((sdrc_clk_stab * _mpurate) / (delay_sram * 2)) >> SCALING_FACTOR;
