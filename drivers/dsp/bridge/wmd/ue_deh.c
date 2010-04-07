@@ -52,59 +52,69 @@
 #include "_tiomap_pwr.h"
 #include <dspbridge/io_sm.h>
 
-static struct HW_MMUMapAttrs_t  mapAttrs = { HW_LITTLE_ENDIAN,
-					HW_ELEM_SIZE_16BIT,
-					HW_MMU_CPUES} ;
-#define VirtToPhys(x)       ((x) - PAGE_OFFSET + PHYS_OFFSET)
+static struct hw_mmu_map_attrs_t map_attrs = { HW_LITTLE_ENDIAN,
+	HW_ELEM_SIZE16BIT,
+	HW_MMU_CPUES
+};
 
-static u32 dummyVaAddr;
+#define VIRT_TO_PHYS(x)       ((x) - PAGE_OFFSET + PHYS_OFFSET)
+
+static u32 dummy_va_addr;
 /*
- *  ======== WMD_DEH_Create ========
+ *  ======== bridge_deh_create ========
  *      Creates DEH manager object.
  */
-DSP_STATUS WMD_DEH_Create(OUT struct DEH_MGR **phDehMgr,
-			 struct DEV_OBJECT *hDevObject)
+dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
+			     struct dev_object *hdev_obj)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct DEH_MGR *pDehMgr = NULL;
-	struct CFG_HOSTRES cfgHostRes;
-	struct CFG_DEVNODE *hDevNode;
-	struct WMD_DEV_CONTEXT *hWmdContext = NULL;
+	dsp_status status = DSP_SOK;
+	struct deh_mgr *deh_mgr_obj = NULL;
+	struct cfg_hostres cfg_host_res;
+	struct cfg_devnode *dev_node_obj;
+	struct wmd_dev_context *hwmd_context = NULL;
 
-	 /*  Message manager will be created when a file is loaded, since
+	/*  Message manager will be created when a file is loaded, since
 	 *  size of message buffer in shared memory is configurable in
-	 *  the base image.  */
+	 *  the base image. */
 	/* Get WMD context info. */
-	DEV_GetWMDContext(hDevObject, &hWmdContext);
-	DBC_Assert(hWmdContext);
-	dummyVaAddr = 0;
+	dev_get_wmd_context(hdev_obj, &hwmd_context);
+	DBC_ASSERT(hwmd_context);
+	dummy_va_addr = 0;
 	/* Allocate IO manager object: */
-	MEM_AllocObject(pDehMgr, struct DEH_MGR, SIGNATURE);
-	if (pDehMgr == NULL) {
+	MEM_ALLOC_OBJECT(deh_mgr_obj, struct deh_mgr, SIGNATURE);
+	if (deh_mgr_obj == NULL) {
 		status = DSP_EMEMORY;
 	} else {
 		/* Create an NTFY object to manage notifications */
-		status = NTFY_Create(&pDehMgr->hNtfy);
+		deh_mgr_obj->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
+							GFP_KERNEL);
+		if (deh_mgr_obj->ntfy_obj)
+			ntfy_init(deh_mgr_obj->ntfy_obj);
+		else
+			status = DSP_EMEMORY;
 
 		/* Create a MMUfault DPC */
-		tasklet_init(&pDehMgr->dpc_tasklet, MMU_FaultDpc, (u32)pDehMgr);
+		tasklet_init(&deh_mgr_obj->dpc_tasklet, mmu_fault_dpc,
+			     (u32) deh_mgr_obj);
 
 		if (DSP_SUCCEEDED(status))
-			status = DEV_GetDevNode(hDevObject, &hDevNode);
+			status = dev_get_dev_node(hdev_obj, &dev_node_obj);
 
 		if (DSP_SUCCEEDED(status))
-			status = CFG_GetHostResources(hDevNode, &cfgHostRes);
+			status =
+			    cfg_get_host_resources(dev_node_obj, &cfg_host_res);
 
 		if (DSP_SUCCEEDED(status)) {
 			/* Fill in context structure */
-			pDehMgr->hWmdContext = hWmdContext;
-			pDehMgr->errInfo.dwErrMask = 0L;
-			pDehMgr->errInfo.dwVal1 = 0L;
-			pDehMgr->errInfo.dwVal2 = 0L;
-			pDehMgr->errInfo.dwVal3 = 0L;
+			deh_mgr_obj->hwmd_context = hwmd_context;
+			deh_mgr_obj->err_info.dw_err_mask = 0L;
+			deh_mgr_obj->err_info.dw_val1 = 0L;
+			deh_mgr_obj->err_info.dw_val2 = 0L;
+			deh_mgr_obj->err_info.dw_val3 = 0L;
 			/* Install ISR function for DSP MMU fault */
-			if ((request_irq(INT_DSP_MMU_IRQ, MMU_FaultIsr, 0,
-			   "DspBridge\tiommu fault", (void *)pDehMgr)) == 0)
+			if ((request_irq(INT_DSP_MMU_IRQ, mmu_fault_isr, 0,
+					 "DspBridge\tiommu fault",
+					 (void *)deh_mgr_obj)) == 0)
 				status = DSP_SOK;
 			else
 				status = DSP_EFAIL;
@@ -112,182 +122,194 @@ DSP_STATUS WMD_DEH_Create(OUT struct DEH_MGR **phDehMgr,
 	}
 	if (DSP_FAILED(status)) {
 		/* If create failed, cleanup */
-		WMD_DEH_Destroy((struct DEH_MGR *)pDehMgr);
+		bridge_deh_destroy((struct deh_mgr *)deh_mgr_obj);
 		*phDehMgr = NULL;
 	} else {
-		*phDehMgr = (struct DEH_MGR *)pDehMgr;
+		*phDehMgr = (struct deh_mgr *)deh_mgr_obj;
 	}
 
 	return status;
 }
 
 /*
- *  ======== WMD_DEH_Destroy ========
+ *  ======== bridge_deh_destroy ========
  *      Destroys DEH manager object.
  */
-DSP_STATUS WMD_DEH_Destroy(struct DEH_MGR *hDehMgr)
+dsp_status bridge_deh_destroy(struct deh_mgr *hdeh_mgr)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct DEH_MGR *pDehMgr = (struct DEH_MGR *)hDehMgr;
+	dsp_status status = DSP_SOK;
+	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)hdeh_mgr;
 
-	if (MEM_IsValidHandle(pDehMgr, SIGNATURE)) {
+	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
 		/* Release dummy VA buffer */
-		WMD_DEH_ReleaseDummyMem();
+		bridge_deh_release_dummy_mem();
 		/* If notification object exists, delete it */
-		if (pDehMgr->hNtfy)
-			(void)NTFY_Delete(pDehMgr->hNtfy);
+		if (deh_mgr_obj->ntfy_obj) {
+			(void)ntfy_delete(deh_mgr_obj->ntfy_obj);
+			kfree(deh_mgr_obj->ntfy_obj);
+		}
 		/* Disable DSP MMU fault */
-		free_irq(INT_DSP_MMU_IRQ, pDehMgr);
+		free_irq(INT_DSP_MMU_IRQ, deh_mgr_obj);
 
 		/* Free DPC object */
-		tasklet_kill(&pDehMgr->dpc_tasklet);
+		tasklet_kill(&deh_mgr_obj->dpc_tasklet);
 
 		/* Deallocate the DEH manager object */
-		MEM_FreeObject(pDehMgr);
+		MEM_FREE_OBJECT(deh_mgr_obj);
 	}
 
 	return status;
 }
 
 /*
- *  ======== WMD_DEH_RegisterNotify ========
+ *  ======== bridge_deh_register_notify ========
  *      Registers for DEH notifications.
  */
-DSP_STATUS WMD_DEH_RegisterNotify(struct DEH_MGR *hDehMgr, u32 uEventMask,
-				 u32 uNotifyType,
-				 struct DSP_NOTIFICATION *hNotification)
+dsp_status bridge_deh_register_notify(struct deh_mgr *hdeh_mgr, u32 event_mask,
+				   u32 notify_type,
+				   struct dsp_notification *hnotification)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct DEH_MGR *pDehMgr = (struct DEH_MGR *)hDehMgr;
+	dsp_status status = DSP_SOK;
+	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)hdeh_mgr;
 
-	if (MEM_IsValidHandle(pDehMgr, SIGNATURE)) {
-		status = NTFY_Register(pDehMgr->hNtfy, hNotification,
-			 uEventMask, uNotifyType);
+	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+		if (event_mask)
+			status = ntfy_register(deh_mgr_obj->ntfy_obj,
+				hnotification, event_mask, notify_type);
+		else
+			status = ntfy_unregister(deh_mgr_obj->ntfy_obj,
+							hnotification);
 	}
 
 	return status;
 }
 
-
 /*
- *  ======== WMD_DEH_Notify ========
+ *  ======== bridge_deh_notify ========
  *      DEH error notification function. Informs user about the error.
  */
-void WMD_DEH_Notify(struct DEH_MGR *hDehMgr, u32 ulEventMask,
-			 u32 dwErrInfo)
+void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 {
-	struct DEH_MGR *pDehMgr = (struct DEH_MGR *)hDehMgr;
-	struct WMD_DEV_CONTEXT *pDevContext;
-	DSP_STATUS status = DSP_SOK;
-	u32 memPhysical = 0;
-	u32 HW_MMU_MAX_TLB_COUNT = 31;
-	extern u32 faultAddr;
-	struct CFG_HOSTRES resources;
-	HW_STATUS hwStatus;
+	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)hdeh_mgr;
+	struct wmd_dev_context *dev_context;
+	dsp_status status = DSP_SOK;
+	u32 mem_physical = 0;
+	u32 hw_mmu_max_tlb_count = 31;
+	extern u32 fault_addr;
+	struct cfg_hostres resources;
+	hw_status hw_status_obj;
 
-	status = CFG_GetHostResources(
-			(struct CFG_DEVNODE *)DRV_GetFirstDevExtension(),
-			&resources);
+	status = cfg_get_host_resources((struct cfg_devnode *)
+					drv_get_first_dev_extension(),
+					&resources);
 
-	if (MEM_IsValidHandle(pDehMgr, SIGNATURE)) {
-		printk(KERN_INFO "WMD_DEH_Notify: ********** DEVICE EXCEPTION "
-			"**********\n");
-		pDevContext = (struct WMD_DEV_CONTEXT *)pDehMgr->hWmdContext;
+	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+		printk(KERN_INFO
+		       "bridge_deh_notify: ********** DEVICE EXCEPTION "
+		       "**********\n");
+		dev_context =
+		    (struct wmd_dev_context *)deh_mgr_obj->hwmd_context;
 
 		switch (ulEventMask) {
 		case DSP_SYSERROR:
-			/* reset errInfo structure before use */
-			pDehMgr->errInfo.dwErrMask = DSP_SYSERROR;
-			pDehMgr->errInfo.dwVal1 = 0L;
-			pDehMgr->errInfo.dwVal2 = 0L;
-			pDehMgr->errInfo.dwVal3 = 0L;
-			pDehMgr->errInfo.dwVal1 = dwErrInfo;
-			printk(KERN_ERR "WMD_DEH_Notify: DSP_SYSERROR, errInfo "
-				"= 0x%x\n", dwErrInfo);
+			/* reset err_info structure before use */
+			deh_mgr_obj->err_info.dw_err_mask = DSP_SYSERROR;
+			deh_mgr_obj->err_info.dw_val1 = 0L;
+			deh_mgr_obj->err_info.dw_val2 = 0L;
+			deh_mgr_obj->err_info.dw_val3 = 0L;
+			deh_mgr_obj->err_info.dw_val1 = dwErrInfo;
+			printk(KERN_ERR
+			       "bridge_deh_notify: DSP_SYSERROR, err_info "
+			       "= 0x%x\n", dwErrInfo);
 			break;
 		case DSP_MMUFAULT:
 			/* MMU fault routine should have set err info
 			 * structure */
-			pDehMgr->errInfo.dwErrMask = DSP_MMUFAULT;
-			printk(KERN_INFO "WMD_DEH_Notify: DSP_MMUFAULT,"
-				"errInfo = 0x%x\n", dwErrInfo);
-			printk(KERN_INFO "WMD_DEH_Notify: DSP_MMUFAULT, High "
-				"Address = 0x%x\n",
-				(unsigned int)pDehMgr->errInfo.dwVal1);
-			printk(KERN_INFO "WMD_DEH_Notify: DSP_MMUFAULT, Low "
-				"Address = 0x%x\n",
-				(unsigned int)pDehMgr->errInfo.dwVal2);
-			printk(KERN_INFO "WMD_DEH_Notify: DSP_MMUFAULT, fault "
-				"address = 0x%x\n", (unsigned int)faultAddr);
-			dummyVaAddr = (u32)MEM_Calloc(sizeof(char) * 0x1000,
-					MEM_PAGED);
-			memPhysical  = VirtToPhys(PG_ALIGN_LOW((u32)dummyVaAddr,
-								PG_SIZE_4K));
-			pDevContext = (struct WMD_DEV_CONTEXT *)
-						pDehMgr->hWmdContext;
+			deh_mgr_obj->err_info.dw_err_mask = DSP_MMUFAULT;
+			printk(KERN_INFO "bridge_deh_notify: DSP_MMUFAULT,"
+			       "err_info = 0x%x\n", dwErrInfo);
+			printk(KERN_INFO
+			       "bridge_deh_notify: DSP_MMUFAULT, High "
+			       "Address = 0x%x\n",
+			       (unsigned int)deh_mgr_obj->err_info.dw_val1);
+			printk(KERN_INFO "bridge_deh_notify: DSP_MMUFAULT, Low "
+			       "Address = 0x%x\n",
+			       (unsigned int)deh_mgr_obj->err_info.dw_val2);
+			printk(KERN_INFO
+			       "bridge_deh_notify: DSP_MMUFAULT, fault "
+			       "address = 0x%x\n", (unsigned int)fault_addr);
+			dummy_va_addr =
+			    (u32) mem_calloc(sizeof(char) * 0x1000, MEM_PAGED);
+			mem_physical =
+			    VIRT_TO_PHYS(PG_ALIGN_LOW
+					 ((u32) dummy_va_addr, PG_SIZE4K));
+			dev_context = (struct wmd_dev_context *)
+			    deh_mgr_obj->hwmd_context;
 			/* Reset the dynamic mmu index to fixed count if it
 			 * exceeds 31. So that the dynmmuindex is always
 			 * between the range of standard/fixed entries
-			 * and 31.  */
-			if (pDevContext->numTLBEntries >
-			   HW_MMU_MAX_TLB_COUNT) {
-				pDevContext->numTLBEntries = pDevContext->
-					fixedTLBEntries;
+			 * and 31. */
+			if (dev_context->num_tlb_entries >
+			    hw_mmu_max_tlb_count) {
+				dev_context->num_tlb_entries =
+				    dev_context->fixed_tlb_entries;
 			}
 			if (DSP_SUCCEEDED(status)) {
-				hwStatus = HW_MMU_TLBAdd(resources.dwDmmuBase,
-					memPhysical, faultAddr,
-					HW_PAGE_SIZE_4KB, 1, &mapAttrs,
-					HW_SET, HW_SET);
+				hw_status_obj =
+				    hw_mmu_tlb_add(resources.dw_dmmu_base,
+						   mem_physical, fault_addr,
+						   HW_PAGE_SIZE4KB, 1,
+						   &map_attrs, HW_SET, HW_SET);
 			}
 			/* send an interrupt to DSP */
-			omap_mbox_msg_send(pDevContext->mbox,
-					MBX_DEH_CLASS | MBX_DEH_EMMU);
+			omap_mbox_msg_send(dev_context->mbox,
+					   MBX_DEH_CLASS | MBX_DEH_EMMU);
 			/* Clear MMU interrupt */
-			HW_MMU_EventAck(resources.dwDmmuBase,
+			hw_mmu_event_ack(resources.dw_dmmu_base,
 					 HW_MMU_TRANSLATION_FAULT);
 			break;
 #ifdef CONFIG_BRIDGE_NTFY_PWRERR
 		case DSP_PWRERROR:
-			/* reset errInfo structure before use */
-			pDehMgr->errInfo.dwErrMask = DSP_PWRERROR;
-			pDehMgr->errInfo.dwVal1 = 0L;
-			pDehMgr->errInfo.dwVal2 = 0L;
-			pDehMgr->errInfo.dwVal3 = 0L;
-			pDehMgr->errInfo.dwVal1 = dwErrInfo;
-			printk(KERN_ERR "WMD_DEH_Notify: DSP_PWRERROR, errInfo "
-					"= 0x%x\n", dwErrInfo);
+			/* reset err_info structure before use */
+			deh_mgr_obj->err_info.dw_err_mask = DSP_PWRERROR;
+			deh_mgr_obj->err_info.dw_val1 = 0L;
+			deh_mgr_obj->err_info.dw_val2 = 0L;
+			deh_mgr_obj->err_info.dw_val3 = 0L;
+			deh_mgr_obj->err_info.dw_val1 = dwErrInfo;
+			printk(KERN_ERR
+			       "bridge_deh_notify: DSP_PWRERROR, err_info "
+			       "= 0x%x\n", dwErrInfo);
 			break;
 #endif /* CONFIG_BRIDGE_NTFY_PWRERR */
 #ifdef CONFIG_BRIDGE_WDT3
 		case DSP_WDTOVERFLOW:
-			pDehMgr->errInfo.dwErrMask = DSP_WDTOVERFLOW;
-			pDehMgr->errInfo.dwVal1 = 0L;
-			pDehMgr->errInfo.dwVal2 = 0L;
-			pDehMgr->errInfo.dwVal3 = 0L;
-			pr_err("WMD_DEH_Notify: DSP_WDTOVERFLOW \n ");
+			deh_mgr_obj->err_info.dw_err_mask = DSP_WDTOVERFLOW;
+			deh_mgr_obj->err_info.dw_val1 = 0L;
+			deh_mgr_obj->err_info.dw_val2 = 0L;
+			deh_mgr_obj->err_info.dw_val3 = 0L;
+			pr_err("bridge_deh_notify: DSP_WDTOVERFLOW \n ");
 			break;
 #endif
 		default:
-			dev_dbg(bridge, "%s: Unknown Error, errInfo = 0x%x\n",
-							__func__, dwErrInfo);
+			dev_dbg(bridge, "%s: Unknown Error, err_info = 0x%x\n",
+				__func__, dwErrInfo);
 			break;
 		}
 
 		/* Filter subsequent notifications when an error occurs */
-		if (pDevContext->dwBrdState != BRD_ERROR) {
-			NTFY_Notify(pDehMgr->hNtfy, ulEventMask);
+		if (dev_context->dw_brd_state != BRD_ERROR) {
+			ntfy_notify(deh_mgr_obj->ntfy_obj, ulEventMask);
 #ifdef CONFIG_BRIDGE_RECOVERY
 			bridge_recover_schedule();
 #endif
 		}
 
 		/* Set the Board state as ERROR */
-		pDevContext->dwBrdState = BRD_ERROR;
+		dev_context->dw_brd_state = BRD_ERROR;
 		/* Disable all the clocks that were enabled by DSP */
-		(void)DSP_PeripheralClocks_Disable(pDevContext, NULL);
+		(void)dsp_peripheral_clocks_disable(dev_context, NULL);
 		/* Call DSP Trace Buffer */
-		PrintDspTraceBuffer(hDehMgr->hWmdContext);
+		print_dsp_trace_buffer(hdeh_mgr->hwmd_context);
 #ifdef CONFIG_BRIDGE_WDT3
 		/*
 		 * Avoid the subsequent WDT if it happens once,
@@ -300,25 +322,25 @@ void WMD_DEH_Notify(struct DEH_MGR *hDehMgr, u32 ulEventMask,
 }
 
 /*
- *  ======== WMD_DEH_GetInfo ========
+ *  ======== bridge_deh_get_info ========
  *      Retrieves error information.
  */
-DSP_STATUS WMD_DEH_GetInfo(struct DEH_MGR *hDehMgr,
-			  struct DSP_ERRORINFO *pErrInfo)
+dsp_status bridge_deh_get_info(struct deh_mgr *hdeh_mgr,
+			    struct dsp_errorinfo *pErrInfo)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct DEH_MGR *pDehMgr = (struct DEH_MGR *)hDehMgr;
+	dsp_status status = DSP_SOK;
+	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)hdeh_mgr;
 
-	DBC_Require(pDehMgr);
-	DBC_Require(pErrInfo);
+	DBC_REQUIRE(deh_mgr_obj);
+	DBC_REQUIRE(pErrInfo);
 
-	if (MEM_IsValidHandle(pDehMgr, SIGNATURE)) {
+	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
 		/* Copy DEH error info structure to PROC error info
 		 * structure. */
-		pErrInfo->dwErrMask = pDehMgr->errInfo.dwErrMask;
-		pErrInfo->dwVal1 = pDehMgr->errInfo.dwVal1;
-		pErrInfo->dwVal2 = pDehMgr->errInfo.dwVal2;
-		pErrInfo->dwVal3 = pDehMgr->errInfo.dwVal3;
+		pErrInfo->dw_err_mask = deh_mgr_obj->err_info.dw_err_mask;
+		pErrInfo->dw_val1 = deh_mgr_obj->err_info.dw_val1;
+		pErrInfo->dw_val2 = deh_mgr_obj->err_info.dw_val2;
+		pErrInfo->dw_val3 = deh_mgr_obj->err_info.dw_val3;
 	} else {
 		status = DSP_EHANDLE;
 	}
@@ -326,14 +348,12 @@ DSP_STATUS WMD_DEH_GetInfo(struct DEH_MGR *hDehMgr,
 	return status;
 }
 
-
 /*
- *  ======== WMD_DEH_ReleaseDummyMem ========
+ *  ======== bridge_deh_release_dummy_mem ========
  *      Releases memory allocated for dummy page
  */
-void WMD_DEH_ReleaseDummyMem(void)
+void bridge_deh_release_dummy_mem(void)
 {
-	kfree((void *)dummyVaAddr);
-	dummyVaAddr = 0;
+	kfree((void *)dummy_va_addr);
+	dummy_va_addr = 0;
 }
-

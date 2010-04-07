@@ -21,27 +21,26 @@
 
 #define STRM_MAXEVTNAMELEN      32
 
-	struct STRM_MGR;
+struct strm_mgr;
 
-	struct STRM_OBJECT;
+struct strm_object;
 
-	struct STRM_ATTR {
-		HANDLE hUserEvent;
-		char *pstrEventName;
-		void *pVirtBase;	/* Process virtual base address of
-					 * mapped SM */
-		u32 ulVirtSize;	/* Size of virtual space in bytes */
-		struct DSP_STREAMATTRIN *pStreamAttrIn;
-	} ;
+struct strm_attr {
+	bhandle user_event;
+	char *pstr_event_name;
+	void *virt_base;	/* Process virtual base address of
+				 * mapped SM */
+	u32 ul_virt_size;	/* Size of virtual space in bytes */
+	struct dsp_streamattrin *stream_attr_in;
+};
 
-	struct STRM_INFO {
-		enum DSP_STRMMODE lMode;	/* transport mode of
+struct stream_info {
+	enum dsp_strmmode strm_mode;	/* transport mode of
 					 * stream(DMA, ZEROCOPY..) */
-		u32 uSegment;	/* Segment strm allocs from. 0 is local mem */
-		void *pVirtBase;	/* "      " Stream'process virt base */
-		struct DSP_STREAMINFO *pUser;	/* User's stream information
+	u32 segment_id;		/* Segment strm allocs from. 0 is local mem */
+	void *virt_base;	/* "      " Stream'process virt base */
+	struct dsp_streaminfo *user_strm;	/* User's stream information
 						 * returned */
-	} ;
+};
 
-#endif				/* STRMDEFS_ */
-
+#endif /* STRMDEFS_ */

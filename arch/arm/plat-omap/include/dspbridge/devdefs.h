@@ -21,6 +21,6 @@
 #define DEVDEFS_
 
 /* WCD Device Object */
-	struct DEV_OBJECT;
+struct dev_object;
 
-#endif				/* DEVDEFS_ */
+#endif /* DEVDEFS_ */

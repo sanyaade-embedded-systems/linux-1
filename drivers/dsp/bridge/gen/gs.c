@@ -30,15 +30,15 @@
 static u32 cumsize;
 
 /*
- *  ======== GS_alloc ========
+ *  ======== gs_alloc ========
  *  purpose:
  *      Allocates memory of the specified size.
  */
-void *GS_alloc(u32 size)
+void *gs_alloc(u32 size)
 {
 	void *p;
 
-	p = MEM_Calloc(size, MEM_PAGED);
+	p = mem_calloc(size, MEM_PAGED);
 	if (p == NULL)
 		return NULL;
 	cumsize += size;
@@ -46,21 +46,21 @@ void *GS_alloc(u32 size)
 }
 
 /*
- *  ======== GS_exit ========
+ *  ======== gs_exit ========
  *  purpose:
  *      Discontinue the usage of the GS module.
  */
-void GS_exit(void)
+void gs_exit(void)
 {
 	/* Do nothing */
 }
 
 /*
- *  ======== GS_free ========
+ *  ======== gs_free ========
  *  purpose:
  *      Frees the memory.
  */
-void GS_free(void *ptr)
+void gs_free(void *ptr)
 {
 	kfree(ptr);
 	/* ack! no size info */
@@ -68,22 +68,22 @@ void GS_free(void *ptr)
 }
 
 /*
- *  ======== GS_frees ========
+ *  ======== gs_frees ========
  *  purpose:
  *      Frees the memory.
  */
-void GS_frees(void *ptr, u32 size)
+void gs_frees(void *ptr, u32 size)
 {
 	kfree(ptr);
 	cumsize -= size;
 }
 
 /*
- *  ======== GS_init ========
+ *  ======== gs_init ========
  *  purpose:
  *      Initializes the GS module.
  */
-void GS_init(void)
+void gs_init(void)
 {
 	/* Do nothing */
 }

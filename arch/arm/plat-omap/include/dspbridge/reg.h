@@ -24,7 +24,7 @@
 #define REG_MAXREGPATHLENGTH    255
 
 /*
- *  ======== REG_DeleteValue ========
+ *  ======== reg_delete_value ========
  *  Purpose:
  *      Deletes a registry entry. NOTE: A registry entry is not the same as
  *      a registry key.
@@ -40,15 +40,15 @@
  *  Ensures:
  *  Details:
  */
-extern DSP_STATUS REG_DeleteValue(IN CONST char *pstrValue);
+extern dsp_status reg_delete_value(IN CONST char *pstrValue);
 
 /*
- *  ======== REG_EnumValue ========
+ *  ======== reg_enum_value ========
  *  Purpose:
  *      Enumerates values of a specified key. Retrieves each value name and
  *      the data associated with the value.
  *  Parameters:
- *      dwIndex:        Specifies the index of the value to retrieve.
+ *      dw_index:        Specifies the index of the value to retrieve.
  *      pstrKey:        The name of the registry key to be enumerated.
  *      pstrValue:      Pointer to buffer that receives the name of the value.
  *      pdwValueSize:   Specifies bytes of memory pstrValue points to on input,
@@ -68,14 +68,14 @@ extern DSP_STATUS REG_DeleteValue(IN CONST char *pstrValue);
  *      Length of pstrKey is less than REG_MAXREGPATHLENGTH.
  *  Ensures:
  */
-extern DSP_STATUS REG_EnumValue(IN u32 dwIndex, IN CONST char *pstrKey,
-				IN OUT char *pstrValue,
-				IN OUT u32 *pdwValueSize,
-				IN OUT char *pstrData,
-				IN OUT u32 *pdwDataSize);
+extern dsp_status reg_enum_value(IN u32 dw_index, IN CONST char *pstrKey,
+				 IN OUT char *pstrValue,
+				 IN OUT u32 *pdwValueSize,
+				 IN OUT char *pstrData,
+				 IN OUT u32 *pdwDataSize);
 
 /*
- *  ======== REG_Exit ========
+ *  ======== reg_exit ========
  *  Purpose:
  *      Discontinue usage of module; free resources when reference count
  *      reaches 0.
@@ -86,10 +86,10 @@ extern DSP_STATUS REG_EnumValue(IN u32 dwIndex, IN CONST char *pstrKey,
  *  Ensures:
  *      Resources used by module are freed when cRef reaches zero.
  */
-	extern void REG_Exit(void);
+extern void reg_exit(void);
 
 /*
- *  ======== REG_GetValue ========
+ *  ======== reg_get_value ========
  *  Purpose:
  *      Retrieve a value from the registry.
  *  Parameters:
@@ -109,11 +109,11 @@ extern DSP_STATUS REG_EnumValue(IN u32 dwIndex, IN CONST char *pstrKey,
  *      - length of pstrEntry < REG_MAXREGPATHLENGTH.
  *  Ensures:
  */
-extern DSP_STATUS REG_GetValue(IN CONST char *pstrEntry, OUT u8 *pbValue,
-			       IN OUT u32 *pdwValueSize);
+extern dsp_status reg_get_value(IN CONST char *pstrEntry, OUT u8 * pbValue,
+				IN OUT u32 *pdwValueSize);
 
 /*
- *  ======== REG_Init ========
+ *  ======== reg_init ========
  *  Purpose:
  *      Initializes private state of REG module.
  *  Parameters:
@@ -123,16 +123,16 @@ extern DSP_STATUS REG_GetValue(IN CONST char *pstrEntry, OUT u8 *pbValue,
  *  Ensures:
  *      REG initialized.
  */
-	extern bool REG_Init(void);
+extern bool reg_init(void);
 
 /*
- *  ======== REG_SetValue ========
+ *  ======== reg_set_value ========
  *  Purpose:
  *      Set a value in the registry.
  *  Parameters:
  *      pstrEntry:      Name of entry to set.
  *      pbValue:        Points to buffer containing new data.
- *      dwValueSize:    Specifies bytes of memory bValue points to.
+ *      dw_value_size:    Specifies bytes of memory bValue points to.
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EFAIL:      General failure.
@@ -144,7 +144,7 @@ extern DSP_STATUS REG_GetValue(IN CONST char *pstrEntry, OUT u8 *pbValue,
  *      - length of pstrEntry < REG_MAXREGPATHLENGTH.
  *  Ensures:
  */
-extern DSP_STATUS REG_SetValue(IN CONST char *pstrEntry, IN u8 *pbValue,
-			       IN u32 dwValueSize);
+extern dsp_status reg_set_value(IN CONST char *pstrEntry, IN u8 * pbValue,
+				IN u32 dw_value_size);
 
-#endif				/* _REG_H */
+#endif /* _REG_H */

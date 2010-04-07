@@ -23,21 +23,21 @@
 #include <dspbridge/gs.h>
 #include <dspbridge/gb.h>
 
-typedef GB_BitNum GB_WordNum;
+typedef gb_bit_num gb_word_num;
 
-struct GB_TMap {
-	GB_BitNum len;
-	GB_WordNum wcnt;
+struct gb_t_map {
+	gb_bit_num len;
+	gb_word_num wcnt;
 	u32 *words;
 };
 
 /*
- *  ======== GB_clear ========
+ *  ======== gb_clear ========
  *  purpose:
  *      Clears a bit in the bit map.
  */
 
-void GB_clear(struct GB_TMap *map, GB_BitNum bitn)
+void gb_clear(struct gb_t_map *map, gb_bit_num bitn)
 {
 	u32 mask;
 
@@ -46,26 +46,26 @@ void GB_clear(struct GB_TMap *map, GB_BitNum bitn)
 }
 
 /*
- *  ======== GB_create ========
+ *  ======== gb_create ========
  *  purpose:
  *      Creates a bit map.
  */
 
-struct GB_TMap *GB_create(GB_BitNum len)
+struct gb_t_map *gb_create(gb_bit_num len)
 {
-	struct GB_TMap *map;
-	GB_WordNum i;
-	map = (struct GB_TMap *)GS_alloc(sizeof(struct GB_TMap));
+	struct gb_t_map *map;
+	gb_word_num i;
+	map = (struct gb_t_map *)gs_alloc(sizeof(struct gb_t_map));
 	if (map != NULL) {
 		map->len = len;
 		map->wcnt = len / BITS_PER_LONG + 1;
-		map->words = (u32 *)GS_alloc(map->wcnt * sizeof(u32));
+		map->words = (u32 *) gs_alloc(map->wcnt * sizeof(u32));
 		if (map->words != NULL) {
 			for (i = 0; i < map->wcnt; i++)
 				map->words[i] = 0L;
 
 		} else {
-			GS_frees(map, sizeof(struct GB_TMap));
+			gs_frees(map, sizeof(struct gb_t_map));
 			map = NULL;
 		}
 	}
@@ -74,51 +74,51 @@ struct GB_TMap *GB_create(GB_BitNum len)
 }
 
 /*
- *  ======== GB_delete ========
+ *  ======== gb_delete ========
  *  purpose:
  *      Frees a bit map.
  */
 
-void GB_delete(struct GB_TMap *map)
+void gb_delete(struct gb_t_map *map)
 {
-	GS_frees(map->words, map->wcnt * sizeof(u32));
-	GS_frees(map, sizeof(struct GB_TMap));
+	gs_frees(map->words, map->wcnt * sizeof(u32));
+	gs_frees(map, sizeof(struct gb_t_map));
 }
 
 /*
- *  ======== GB_findandset ========
+ *  ======== gb_findandset ========
  *  purpose:
  *      Finds a free bit and sets it.
  */
-GB_BitNum GB_findandset(struct GB_TMap *map)
+gb_bit_num gb_findandset(struct gb_t_map *map)
 {
-	GB_BitNum bitn;
+	gb_bit_num bitn;
 
-	bitn = GB_minclear(map);
+	bitn = gb_minclear(map);
 
 	if (bitn != GB_NOBITS)
-		GB_set(map, bitn);
+		gb_set(map, bitn);
 
 	return bitn;
 }
 
 /*
- *  ======== GB_minclear ========
+ *  ======== gb_minclear ========
  *  purpose:
  *      returns the location of the first unset bit in the bit map.
  */
-GB_BitNum GB_minclear(struct GB_TMap *map)
+gb_bit_num gb_minclear(struct gb_t_map *map)
 {
-	GB_BitNum bit_location = 0;
-	GB_BitNum bitAcc = 0;
-	GB_WordNum i;
-	GB_BitNum bit;
+	gb_bit_num bit_location = 0;
+	gb_bit_num bit_acc = 0;
+	gb_word_num i;
+	gb_bit_num bit;
 	u32 *word;
 
 	for (word = map->words, i = 0; i < map->wcnt; word++, i++) {
 		if (~*word) {
-			for (bit = 0; bit < BITS_PER_LONG; bit++, bitAcc++) {
-				if (bitAcc == map->len)
+			for (bit = 0; bit < BITS_PER_LONG; bit++, bit_acc++) {
+				if (bit_acc == map->len)
 					return GB_NOBITS;
 
 				if (~*word & (1L << bit)) {
@@ -128,7 +128,7 @@ GB_BitNum GB_minclear(struct GB_TMap *map)
 
 			}
 		} else {
-			bitAcc += BITS_PER_LONG;
+			bit_acc += BITS_PER_LONG;
 		}
 	}
 
@@ -136,12 +136,12 @@ GB_BitNum GB_minclear(struct GB_TMap *map)
 }
 
 /*
- *  ======== GB_set ========
+ *  ======== gb_set ========
  *  purpose:
  *      Sets a bit in the bit map.
  */
 
-void GB_set(struct GB_TMap *map, GB_BitNum bitn)
+void gb_set(struct gb_t_map *map, gb_bit_num bitn)
 {
 	u32 mask;
 
@@ -150,12 +150,12 @@ void GB_set(struct GB_TMap *map, GB_BitNum bitn)
 }
 
 /*
- *  ======== GB_test ========
+ *  ======== gb_test ========
  *  purpose:
  *      Returns true if the bit is set in the specified location.
  */
 
-bool GB_test(struct GB_TMap *map, GB_BitNum bitn)
+bool gb_test(struct gb_t_map *map, gb_bit_num bitn)
 {
 	bool state;
 	u32 mask;

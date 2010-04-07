@@ -75,7 +75,7 @@
 #define BRIDGE_NAME "C6410"
 /*  ----------------------------------- Globals */
 #define DRIVER_NAME  "DspBridge"
-#define DSPBRIDGE_VERSION	"0.1"
+#define DSPBRIDGE_VERSION	"0.2"
 s32 dsp_debug;
 
 struct platform_device *omap_dspbridge_dev;
@@ -88,7 +88,7 @@ static struct cdev bridge_cdev;
 
 static struct class *bridge_class;
 
-static u32 driverContext;
+static u32 driver_context;
 static s32 driver_major;
 static char *base_img;
 char *iva_img;
@@ -106,18 +106,18 @@ static bool recover;
 #endif
 
 #ifdef CONFIG_PM
-struct omap34xx_bridge_suspend_data {
+struct omap34_xx_bridge_suspend_data {
 	int suspended;
 	wait_queue_head_t suspend_wq;
 };
 
-static struct omap34xx_bridge_suspend_data bridge_suspend_data;
+static struct omap34_xx_bridge_suspend_data bridge_suspend_data;
 
 static void bridge_create_sysfs(void);
 static void bridge_destroy_sysfs(void);
 
-static int omap34xxbridge_suspend_lockout(
-		struct omap34xx_bridge_suspend_data *s, struct file *f)
+static int omap34_xxbridge_suspend_lockout(struct omap34_xx_bridge_suspend_data
+					   *s, struct file *f)
 {
 	if ((s)->suspended) {
 		if ((f)->f_flags & O_NONBLOCK)
@@ -138,15 +138,15 @@ module_param(base_img, charp, 0);
 MODULE_PARM_DESC(base_img, "DSP base image, default = NULL");
 
 module_param(shm_size, int, 0);
-MODULE_PARM_DESC(shm_size, "SHM size, default = 4 MB, minimum = 64 KB");
+MODULE_PARM_DESC(shm_size, "shm size, default = 4 MB, minimum = 64 KB");
 
 module_param(phys_mempool_base, uint, 0);
 MODULE_PARM_DESC(phys_mempool_base,
-		"Physical memory pool base passed to driver");
+		 "Physical memory pool base passed to driver");
 
 module_param(phys_mempool_size, uint, 0);
 MODULE_PARM_DESC(phys_mempool_size,
-		"Physical memory pool size passed to driver");
+		 "Physical memory pool size passed to driver");
 module_param(tc_wordswapon, int, 0);
 MODULE_PARM_DESC(tc_wordswapon, "TC Word Swap Option. default = 0");
 
@@ -157,18 +157,17 @@ MODULE_VERSION(DSPBRIDGE_VERSION);
 static char *driver_name = DRIVER_NAME;
 
 static const struct file_operations bridge_fops = {
-	.open		= bridge_open,
-	.release	= bridge_release,
-	.unlocked_ioctl	= bridge_ioctl,
-	.mmap		= bridge_mmap,
+	.open = bridge_open,
+	.release = bridge_release,
+	.unlocked_ioctl = bridge_ioctl,
+	.mmap = bridge_mmap,
 };
 
 #ifdef CONFIG_PM
-static u32 timeOut = 1000;
+static u32 time_out = 1000;
 #ifdef CONFIG_BRIDGE_DVFS
 static struct clk *clk_handle;
 #endif
-
 #endif
 
 struct dspbridge_platform_data *omap_dspbridge_pdata;
@@ -176,15 +175,15 @@ struct dspbridge_platform_data *omap_dspbridge_pdata;
 #ifdef CONFIG_BRIDGE_RECOVERY
 static void bridge_recover(struct work_struct *work)
 {
-	struct DEV_OBJECT *dev;
-	struct CFG_DEVNODE *dev_node;
+	struct dev_object *dev;
+	struct cfg_devnode *dev_node;
 	if (atomic_read(&bridge_cref)) {
 		INIT_COMPLETION(bridge_comp);
 		wait_for_completion(&bridge_comp);
 	}
-	dev = DEV_GetFirst();
-	DEV_GetDevNode(dev, &dev_node);
-	if (!dev_node || DSP_FAILED(PROC_AutoStart(dev_node, dev)))
+	dev = dev_get_first();
+	dev_get_dev_node(dev, &dev_node);
+	if (!dev_node || DSP_FAILED(proc_auto_start(dev_node, dev)))
 		pr_err("DSP could not be restarted\n");
 	recover = false;
 	complete_all(&bridge_open_comp);
@@ -200,12 +199,12 @@ void bridge_recover_schedule(void)
 
 #ifdef CONFIG_BRIDGE_DVFS
 static int dspbridge_scale_notification(struct notifier_block *op,
-		unsigned long val, void *ptr)
+					unsigned long val, void *ptr)
 {
 	struct dspbridge_platform_data *pdata =
-					omap_dspbridge_dev->dev.platform_data;
+	    omap_dspbridge_dev->dev.platform_data;
 	if (CPUFREQ_POSTCHANGE == val && pdata->dsp_get_opp)
-		PWR_PM_PostScale(PRCM_VDD1, pdata->dsp_get_opp());
+		pwr_pm_post_scale(PRCM_VDD1, pdata->dsp_get_opp());
 	return 0;
 }
 
@@ -215,13 +214,13 @@ static struct notifier_block iva_clk_notifier = {
 };
 #endif
 
-static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
+static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 {
 	int status;
-	u32 initStatus;
+	u32 init_status;
 	u32 temp;
-	dev_t   dev = 0 ;
-	int     result;
+	dev_t dev = 0;
+	int result;
 	struct dspbridge_platform_data *pdata = pdev->dev.platform_data;
 
 	omap_dspbridge_dev = pdev;
@@ -254,7 +253,7 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 		pr_err("%s: Error creating bridge class\n", __func__);
 
 	device_create(bridge_class, NULL, MKDEV(driver_major, 0),
-			NULL, "DspBridge");
+		      NULL, "DspBridge");
 
 	bridge_create_sysfs();
 #ifdef CONFIG_PM
@@ -265,28 +264,28 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 	}
 #endif
 
-	SERVICES_Init();
+	services_init();
 
 	/*  Autostart flag.  This should be set to true if the DSP image should
-	 *  be loaded and run during bridge module initialization  */
+	 *  be loaded and run during bridge module initialization */
 
 	if (base_img) {
 		temp = true;
-		REG_SetValue(AUTOSTART, (u8 *)&temp, sizeof(temp));
-		REG_SetValue(DEFEXEC, (u8 *)base_img, strlen(base_img) + 1);
+		reg_set_value(AUTOSTART, (u8 *) &temp, sizeof(temp));
+		reg_set_value(DEFEXEC, (u8 *) base_img, strlen(base_img) + 1);
 	} else {
 		temp = false;
-		REG_SetValue(AUTOSTART, (u8 *)&temp, sizeof(temp));
-		REG_SetValue(DEFEXEC, (u8 *) "\0", (u32)2);
+		reg_set_value(AUTOSTART, (u8 *) &temp, sizeof(temp));
+		reg_set_value(DEFEXEC, (u8 *) "\0", (u32) 2);
 	}
 
 	if (shm_size >= 0x10000) {	/* 64 KB */
-		initStatus = REG_SetValue(SHMSIZE, (u8 *)&shm_size,
-					  sizeof(shm_size));
+		init_status = reg_set_value(SHMSIZE, (u8 *) &shm_size,
+					    sizeof(shm_size));
 	} else {
-		initStatus = DSP_EINVALIDARG;
+		init_status = DSP_EINVALIDARG;
 		status = -1;
-		pr_err("%s: SHM size must be at least 64 KB\n", __func__);
+		pr_err("%s: shm size must be at least 64 KB\n", __func__);
 	}
 	dev_dbg(bridge, "%s: requested shm_size = 0x%x\n", __func__, shm_size);
 
@@ -296,49 +295,48 @@ static int __devinit omap34xx_bridge_probe(struct platform_device *pdev)
 	}
 
 	dev_dbg(bridge, "%s: phys_mempool_base = 0x%x \n", __func__,
-							phys_mempool_base);
+		phys_mempool_base);
 
 	dev_dbg(bridge, "%s: phys_mempool_size = 0x%x\n", __func__,
-							phys_mempool_base);
+		phys_mempool_base);
 	if ((phys_mempool_base > 0x0) && (phys_mempool_size > 0x0))
-		MEM_ExtPhysPoolInit(phys_mempool_base, phys_mempool_size);
+		mem_ext_phys_pool_init(phys_mempool_base, phys_mempool_size);
 	if (tc_wordswapon) {
 		dev_dbg(bridge, "%s: TC Word Swap is enabled\n", __func__);
-		REG_SetValue(TCWORDSWAP, (u8 *)&tc_wordswapon,
-			    sizeof(tc_wordswapon));
+		reg_set_value(TCWORDSWAP, (u8 *) &tc_wordswapon,
+			      sizeof(tc_wordswapon));
 	} else {
 		dev_dbg(bridge, "%s: TC Word Swap is disabled\n", __func__);
-		REG_SetValue(TCWORDSWAP, (u8 *)&tc_wordswapon,
-			    sizeof(tc_wordswapon));
+		reg_set_value(TCWORDSWAP, (u8 *) &tc_wordswapon,
+			      sizeof(tc_wordswapon));
 	}
-	if (DSP_SUCCEEDED(initStatus)) {
+	if (DSP_SUCCEEDED(init_status)) {
 #ifdef CONFIG_BRIDGE_DVFS
 		clk_handle = clk_get(NULL, "iva2_ck");
 		if (!clk_handle)
 			pr_err("%s: clk_get failed to get iva2_ck\n", __func__);
 
 		if (cpufreq_register_notifier(&iva_clk_notifier,
-						CPUFREQ_TRANSITION_NOTIFIER))
+					      CPUFREQ_TRANSITION_NOTIFIER))
 			pr_err("%s: cpufreq_register_notifier failed for "
-							"iva2_ck\n", __func__);
+			       "iva2_ck\n", __func__);
 #endif
-		driverContext = DSP_Init(&initStatus);
-		if (DSP_FAILED(initStatus)) {
+		driver_context = dsp_init(&init_status);
+		if (DSP_FAILED(init_status)) {
 			status = -1;
 			pr_err("DSP Bridge driver initialization failed\n");
 		} else {
 			pr_info("DSP Bridge driver loaded\n");
 		}
 	}
-
 #ifdef CONFIG_BRIDGE_RECOVERY
 	bridge_rec_queue = create_workqueue("bridge_rec_queue");
 	INIT_WORK(&bridge_recovery_work, bridge_recover);
 	INIT_COMPLETION(bridge_comp);
 #endif
 
-	DBC_Assert(status == 0);
-	DBC_Assert(DSP_SUCCEEDED(initStatus));
+	DBC_ASSERT(status == 0);
+	DBC_ASSERT(DSP_SUCCEEDED(init_status));
 
 	return 0;
 
@@ -348,40 +346,39 @@ err1:
 	return result;
 }
 
-static int __devexit omap34xx_bridge_remove(struct platform_device *pdev)
+static int __devexit omap34_xx_bridge_remove(struct platform_device *pdev)
 {
 	dev_t devno;
 	bool ret;
-	DSP_STATUS dsp_status = DSP_SOK;
-	HANDLE hDrvObject = NULL;
+	dsp_status status = DSP_SOK;
+	bhandle hdrv_obj = NULL;
 
-	dsp_status = CFG_GetObject((u32 *)&hDrvObject, REG_DRV_OBJECT);
-	if (DSP_FAILED(dsp_status))
+	status = cfg_get_object((u32 *) &hdrv_obj, REG_DRV_OBJECT);
+	if (DSP_FAILED(status))
 		goto func_cont;
 
 #ifdef CONFIG_BRIDGE_DVFS
 	if (cpufreq_unregister_notifier(&iva_clk_notifier,
-						CPUFREQ_TRANSITION_NOTIFIER))
+					CPUFREQ_TRANSITION_NOTIFIER))
 		pr_err("%s: clk_notifier_unregister failed for iva2_ck\n",
-								__func__);
+		       __func__);
 #endif /* #ifdef CONFIG_BRIDGE_DVFS */
 
-	if (driverContext) {
+	if (driver_context) {
 		/* Put the DSP in reset state */
-		ret = DSP_Deinit(driverContext);
-		driverContext = 0;
-		DBC_Assert(ret == true);
+		ret = dsp_deinit(driver_context);
+		driver_context = 0;
+		DBC_ASSERT(ret == true);
 	}
-
 #ifdef CONFIG_BRIDGE_DVFS
 	clk_put(clk_handle);
 	clk_handle = NULL;
 #endif /* #ifdef CONFIG_BRIDGE_DVFS */
 
 func_cont:
-	MEM_ExtPhysPoolRelease();
+	mem_ext_phys_pool_release();
 
-	SERVICES_Exit();
+	services_exit();
 
 	bridge_destroy_sysfs();
 
@@ -397,14 +394,13 @@ func_cont:
 	return 0;
 }
 
-
 #ifdef CONFIG_PM
-static int bridge_suspend(struct platform_device *pdev, pm_message_t state)
+static int BRIDGE_SUSPEND(struct platform_device *pdev, pm_message_t state)
 {
 	u32 status;
 	u32 command = PWR_EMERGENCYDEEPSLEEP;
 
-	status = PWR_SleepDSP(command, timeOut);
+	status = pwr_sleep_dsp(command, time_out);
 	if (DSP_FAILED(status))
 		return -1;
 
@@ -412,11 +408,11 @@ static int bridge_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static int bridge_resume(struct platform_device *pdev)
+static int BRIDGE_RESUME(struct platform_device *pdev)
 {
 	u32 status;
 
-	status = PWR_WakeDSP(timeOut);
+	status = pwr_wake_dsp(time_out);
 	if (DSP_FAILED(status))
 		return -1;
 
@@ -425,18 +421,18 @@ static int bridge_resume(struct platform_device *pdev)
 	return 0;
 }
 #else
-#define bridge_suspend NULL
-#define bridge_resume NULL
+#define BRIDGE_SUSPEND NULL
+#define BRIDGE_RESUME NULL
 #endif
 
 static struct platform_driver bridge_driver = {
 	.driver = {
-		.name = BRIDGE_NAME,
-	},
-	.probe	 = omap34xx_bridge_probe,
-	.remove	 = __devexit_p(omap34xx_bridge_remove),
-	.suspend = bridge_suspend,
-	.resume	 = bridge_resume,
+		   .name = BRIDGE_NAME,
+		   },
+	.probe = omap34_xx_bridge_probe,
+	.remove = __devexit_p(omap34_xx_bridge_remove),
+	.suspend = BRIDGE_SUSPEND,
+	.resume = BRIDGE_RESUME,
 };
 
 static int __init bridge_init(void)
@@ -456,7 +452,7 @@ static void __exit bridge_exit(void)
 static int bridge_open(struct inode *ip, struct file *filp)
 {
 	int status = 0;
-	struct PROCESS_CONTEXT *pr_ctxt = NULL;
+	struct process_context *pr_ctxt = NULL;
 
 	/*
 	 * Allocate a new process context and insert it into global
@@ -468,9 +464,9 @@ static int bridge_open(struct inode *ip, struct file *filp)
 		wait_for_completion(&bridge_open_comp);
 #endif
 
-	pr_ctxt = MEM_Calloc(sizeof(struct PROCESS_CONTEXT), MEM_PAGED);
+	pr_ctxt = mem_calloc(sizeof(struct process_context), MEM_PAGED);
 	if (pr_ctxt) {
-		pr_ctxt->resState = PROC_RES_ALLOCATED;
+		pr_ctxt->res_state = PROC_RES_ALLOCATED;
 		spin_lock_init(&pr_ctxt->dmm_map_lock);
 		INIT_LIST_HEAD(&pr_ctxt->dmm_map_list);
 		spin_lock_init(&pr_ctxt->dmm_rsv_lock);
@@ -498,7 +494,7 @@ static int bridge_open(struct inode *ip, struct file *filp)
 static int bridge_release(struct inode *ip, struct file *filp)
 {
 	int status = 0;
-	struct PROCESS_CONTEXT *pr_ctxt;
+	struct process_context *pr_ctxt;
 
 	if (!filp->private_data) {
 		status = -EIO;
@@ -507,8 +503,8 @@ static int bridge_release(struct inode *ip, struct file *filp)
 
 	pr_ctxt = filp->private_data;
 	flush_signals(current);
-	DRV_RemoveAllResources(pr_ctxt);
-	PROC_Detach(pr_ctxt);
+	drv_remove_all_resources(pr_ctxt);
+	proc_detach(pr_ctxt);
 	kfree(pr_ctxt);
 
 	filp->private_data = NULL;
@@ -523,13 +519,13 @@ err:
 
 /* This function provides IO interface to the bridge driver. */
 static long bridge_ioctl(struct file *filp, unsigned int code,
-		unsigned long args)
+			 unsigned long args)
 {
 	int status;
 	u32 retval = DSP_SOK;
-	union Trapped_Args pBufIn;
+	union Trapped_Args buf_in;
 
-	DBC_Require(filp != NULL);
+	DBC_REQUIRE(filp != NULL);
 #ifdef CONFIG_BRIDGE_RECOVERY
 	if (recover) {
 		status = -EIO;
@@ -538,7 +534,7 @@ static long bridge_ioctl(struct file *filp, unsigned int code,
 #endif
 
 #ifdef CONFIG_PM
-	status = omap34xxbridge_suspend_lockout(&bridge_suspend_data, filp);
+	status = omap34_xxbridge_suspend_lockout(&bridge_suspend_data, filp);
 	if (status != 0)
 		return status;
 #endif
@@ -548,12 +544,12 @@ static long bridge_ioctl(struct file *filp, unsigned int code,
 		goto err;
 	}
 
-	status = copy_from_user(&pBufIn, (union Trapped_Args *)args,
+	status = copy_from_user(&buf_in, (union Trapped_Args *)args,
 				sizeof(union Trapped_Args));
 
 	if (!status) {
-		status = WCD_CallDevIOCtl(code, &pBufIn, &retval,
-				filp->private_data);
+		status = wcd_call_dev_io_ctl(code, &buf_in, &retval,
+					     filp->private_data);
 
 		if (DSP_SUCCEEDED(status)) {
 			status = retval;
@@ -575,18 +571,18 @@ static int bridge_mmap(struct file *filp, struct vm_area_struct *vma)
 	u32 offset = vma->vm_pgoff << PAGE_SHIFT;
 	u32 status;
 
-	DBC_Assert(vma->vm_start < vma->vm_end);
+	DBC_ASSERT(vma->vm_start < vma->vm_end);
 
 	vma->vm_flags |= VM_RESERVED | VM_IO;
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 
 	dev_dbg(bridge, "%s: vm filp %p offset %x start %lx end %lx page_prot "
-				"%lx flags %lx\n", __func__, filp, offset,
-				vma->vm_start, vma->vm_end, vma->vm_page_prot,
-				vma->vm_flags);
+		"%lx flags %lx\n", __func__, filp, offset,
+		vma->vm_start, vma->vm_end, vma->vm_page_prot, vma->vm_flags);
 
 	status = remap_pfn_range(vma, vma->vm_start, vma->vm_pgoff,
-				vma->vm_end - vma->vm_start, vma->vm_page_prot);
+				 vma->vm_end - vma->vm_start,
+				 vma->vm_page_prot);
 	if (status != 0)
 		status = -EAGAIN;
 
@@ -594,40 +590,39 @@ static int bridge_mmap(struct file *filp, struct vm_area_struct *vma)
 }
 
 /* To remove all process resources before removing the process from the
- * process context list*/
-DSP_STATUS DRV_RemoveAllResources(HANDLE hPCtxt)
+ * process context list */
+dsp_status drv_remove_all_resources(bhandle hPCtxt)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	DRV_RemoveAllSTRMResElements(pCtxt);
-	DRV_RemoveAllNodeResElements(pCtxt);
-	DRV_RemoveAllDMMResElements(pCtxt);
-	pCtxt->resState = PROC_RES_FREED;
+	dsp_status status = DSP_SOK;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	drv_remove_all_strm_res_elements(ctxt);
+	drv_remove_all_node_res_elements(ctxt);
+	drv_remove_all_dmm_res_elements(ctxt);
+	ctxt->res_state = PROC_RES_FREED;
 	return status;
 }
 
-
 #ifdef CONFIG_BRIDGE_WDT3
 static ssize_t wdt3_show(struct device *dev, struct device_attribute *attr,
-							char *buf)
+			 char *buf)
 {
-	return sprintf(buf, "%d\n", (dsp_wdt_get_enable()) ? 1 : 0);
+	return sprintf(buf, "%d\n", (dsp_wdt_get_enable())? 1 : 0);
 }
 
 static ssize_t wdt3_store(struct device *dev, struct device_attribute *attr,
-						const char *buf, size_t n)
+			  const char *buf, size_t n)
 {
 	u32 wdt3;
-	struct DEV_OBJECT *dev_object;
-	struct WMD_DEV_CONTEXT *dev_ctxt;
+	struct dev_object *dev_object;
+	struct wmd_dev_context *dev_ctxt;
 
 	if (sscanf(buf, "%d", &wdt3) != 1)
 		return -EINVAL;
 
-	dev_object = DEV_GetFirst();
+	dev_object = dev_get_first();
 	if (dev_object == NULL)
 		goto func_end;
-	DEV_GetWMDContext(dev_object, &dev_ctxt);
+	dev_get_wmd_context(dev_object, &dev_ctxt);
 	if (dev_ctxt == NULL)
 		goto func_end;
 
@@ -636,13 +631,13 @@ static ssize_t wdt3_store(struct device *dev, struct device_attribute *attr,
 		if (dsp_wdt_get_enable())
 			goto func_end;
 		dsp_wdt_set_enable(true);
-		if (!CLK_Get_UseCnt(SERVICESCLK_wdt3_fck) &&
-				dev_ctxt->dwBrdState != BRD_DSP_HIBERNATION)
+		if (!clk_get_use_cnt(SERVICESCLK_WDT3_FCK) &&
+		    dev_ctxt->dw_brd_state != BRD_DSP_HIBERNATION)
 			dsp_wdt_enable(true);
 	} else if (wdt3 == 0) {
 		if (!dsp_wdt_get_enable())
 			goto func_end;
-		if (CLK_Get_UseCnt(SERVICESCLK_wdt3_fck))
+		if (clk_get_use_cnt(SERVICESCLK_WDT3_FCK))
 			dsp_wdt_enable(false);
 		dsp_wdt_set_enable(false);
 	}
@@ -653,13 +648,14 @@ func_end:
 static DEVICE_ATTR(dsp_wdt, S_IWUSR | S_IRUGO, wdt3_show, wdt3_store);
 
 static ssize_t wdt3_timeout_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
+				 struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d\n", dsp_wdt_get_timeout());
 }
 
 static ssize_t wdt3_timeout_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t n)
+				  struct device_attribute *attr,
+				  const char *buf, size_t n)
 {
 	u32 wdt3_to;
 
@@ -671,7 +667,7 @@ static ssize_t wdt3_timeout_store(struct device *dev,
 }
 
 static DEVICE_ATTR(dsp_wdt_timeout, S_IWUSR | S_IRUGO, wdt3_timeout_show,
-			wdt3_timeout_store);
+		   wdt3_timeout_store);
 
 #endif
 
@@ -683,19 +679,19 @@ static DEVICE_ATTR(dsp_wdt_timeout, S_IWUSR | S_IRUGO, wdt3_timeout_show,
 static ssize_t mpu_address_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
-    struct WMD_DEV_CONTEXT *dwContext = NULL;
-	struct DEV_OBJECT *hDevObject = NULL;
+	struct wmd_dev_context *dw_context = NULL;
+	struct dev_object *hdev_obj = NULL;
 	u32 mem_poolsize = 0;
 	u32 GppPa = 0, DspVa = 0;
 	u32 armPhyMemOffUncached = 0;
-	hDevObject = (struct DEV_OBJECT *)DRV_GetFirstDevObject();
-	DEV_GetWMDContext(hDevObject, &dwContext);
-	if (!dwContext) {
+	hdev_obj = (struct dev_object *)drv_get_first_dev_object();
+	dev_get_wmd_context(hdev_obj, &dw_context);
+	if (!dw_context) {
 		pr_err("%s: failed to get the dev context handle\n", __func__);
 		return 0;
 	}
-	GppPa = dwContext->aTLBEntry[0].ulGppPa;
-	DspVa = dwContext->aTLBEntry[0].ulDspVa;
+	GppPa = dw_context->atlb_entry[0].ul_gpp_pa;
+	DspVa = dw_context->atlb_entry[0].ul_dsp_va;
 
 	/*
 	 * the physical address offset, this offset is a
@@ -711,19 +707,19 @@ static ssize_t mpu_address_show(struct device *dev,
 
 	/* Retrive the above calculated addresses */
 	return sprintf(buf, "mempoolsizeOffset 0x%x GppPaOffset 0x%x\n",
-					mem_poolsize, armPhyMemOffUncached);
+		       mem_poolsize, armPhyMemOffUncached);
 }
 
 static DEVICE_ATTR(mpu_address, S_IRUGO, mpu_address_show, NULL);
 
- static struct attribute *attrs[] = {
+static struct attribute *attrs[] = {
 #ifdef CONFIG_BRIDGE_WDT3
 	&dev_attr_dsp_wdt.attr,
 	&dev_attr_dsp_wdt_timeout.attr,
 #endif
 	&dev_attr_mpu_address.attr,
 	NULL,
- };
+};
 
 static struct attribute_group attr_group = {
 	.attrs = attrs,
@@ -747,4 +743,3 @@ static void bridge_destroy_sysfs(void)
 /* Bridge driver initialization and de-initialization functions */
 module_init(bridge_init);
 module_exit(bridge_exit);
-

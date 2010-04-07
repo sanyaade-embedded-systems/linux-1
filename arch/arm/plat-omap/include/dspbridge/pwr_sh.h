@@ -30,4 +30,4 @@
 #define PWR_AUTODISABLE         MBX_PM_PWRDISABLE
 #define PWR_RETENTION             MBX_PM_DSPRETN
 
-#endif				/* PWR_SH_ */
+#endif /* PWR_SH_ */

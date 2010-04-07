@@ -19,14 +19,14 @@
 #ifndef DEHDEFS_
 #define DEHDEFS_
 
-#include <dspbridge/mbx_sh.h>		/* shared mailbox codes */
+#include <dspbridge/mbx_sh.h>	/* shared mailbox codes */
 
 /* DEH object manager */
-	struct DEH_MGR;
+struct deh_mgr;
 
 /* Magic code used to determine if DSP signaled exception. */
 #define DEH_BASE        MBX_DEH_BASE
 #define DEH_USERS_BASE  MBX_DEH_USERS_BASE
 #define DEH_LIMIT       MBX_DEH_LIMIT
 
-#endif				/* _DEHDEFS_H */
+#endif /* _DEHDEFS_H */

@@ -23,39 +23,33 @@
 #include <dspbridge/dbdefs.h>
 #include <dspbridge/dblldefs.h>
 
-	extern void DBLL_close(struct DBLL_LibraryObj *lib);
-	extern DSP_STATUS DBLL_create(struct DBLL_TarObj **pTarget,
-				      struct DBLL_Attrs *pAttrs);
-	extern void DBLL_delete(struct DBLL_TarObj *target);
-	extern void DBLL_exit(void);
-	extern bool DBLL_getAddr(struct DBLL_LibraryObj *lib, char *name,
-				 struct DBLL_Symbol **ppSym);
-	extern void DBLL_getAttrs(struct DBLL_TarObj *target,
-				  struct DBLL_Attrs *pAttrs);
-	extern bool DBLL_getCAddr(struct DBLL_LibraryObj *lib, char *name,
-				  struct DBLL_Symbol **ppSym);
-	extern DSP_STATUS DBLL_getSect(struct DBLL_LibraryObj *lib, char *name,
-				       u32 *pAddr, u32 *pSize);
-	extern bool DBLL_init(void);
-	extern DSP_STATUS DBLL_load(struct DBLL_LibraryObj *lib,
-				    DBLL_Flags flags,
-				    struct DBLL_Attrs *attrs, u32 *pEntry);
-	extern DSP_STATUS DBLL_loadSect(struct DBLL_LibraryObj *lib,
-					char *sectName,
-					struct DBLL_Attrs *attrs);
-	extern DSP_STATUS DBLL_open(struct DBLL_TarObj *target, char *file,
-				    DBLL_Flags flags,
-				    struct DBLL_LibraryObj **pLib);
-	extern DSP_STATUS DBLL_readSect(struct DBLL_LibraryObj *lib,
-					char *name,
-					char *pBuf, u32 size);
-	extern void DBLL_setAttrs(struct DBLL_TarObj *target,
-				  struct DBLL_Attrs *pAttrs);
-	extern void DBLL_unload(struct DBLL_LibraryObj *lib,
-				struct DBLL_Attrs *attrs);
-	extern DSP_STATUS DBLL_unloadSect(struct DBLL_LibraryObj *lib,
-					  char *sectName,
-					  struct DBLL_Attrs *attrs);
+extern void dbll_close(struct dbll_library_obj *lib);
+extern dsp_status dbll_create(struct dbll_tar_obj **target_obj,
+			      struct dbll_attrs *pattrs);
+extern void dbll_delete(struct dbll_tar_obj *target);
+extern void dbll_exit(void);
+extern bool dbll_get_addr(struct dbll_library_obj *lib, char *name,
+			  struct dbll_sym_val **ppSym);
+extern void dbll_get_attrs(struct dbll_tar_obj *target,
+			   struct dbll_attrs *pattrs);
+extern bool dbll_get_c_addr(struct dbll_library_obj *lib, char *name,
+			    struct dbll_sym_val **ppSym);
+extern dsp_status dbll_get_sect(struct dbll_library_obj *lib, char *name,
+				u32 *paddr, u32 *psize);
+extern bool dbll_init(void);
+extern dsp_status dbll_load(struct dbll_library_obj *lib,
+			    dbll_flags flags,
+			    struct dbll_attrs *attrs, u32 * pEntry);
+extern dsp_status dbll_load_sect(struct dbll_library_obj *lib,
+				 char *sectName, struct dbll_attrs *attrs);
+extern dsp_status dbll_open(struct dbll_tar_obj *target, char *file,
+			    dbll_flags flags, struct dbll_library_obj **pLib);
+extern dsp_status dbll_read_sect(struct dbll_library_obj *lib,
+				 char *name, char *pbuf, u32 size);
+extern void dbll_set_attrs(struct dbll_tar_obj *target,
+			   struct dbll_attrs *pattrs);
+extern void dbll_unload(struct dbll_library_obj *lib, struct dbll_attrs *attrs);
+extern dsp_status dbll_unload_sect(struct dbll_library_obj *lib,
+				   char *sectName, struct dbll_attrs *attrs);
 
-#endif				/* DBLL_ */
-
+#endif /* DBLL_ */

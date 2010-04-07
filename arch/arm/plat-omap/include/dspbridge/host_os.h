@@ -61,10 +61,10 @@ struct dsp_shm_freq_table {
 	unsigned long thresh_max_freq;
 };
 struct dspbridge_platform_data {
-	void 	(*dsp_set_min_opp)(u8 opp_id);
-	u8 	(*dsp_get_opp)(void);
-	void 	(*cpu_set_freq)(unsigned long f);
-	unsigned long (*cpu_get_freq)(void);
+	void (*dsp_set_min_opp) (u8 opp_id);
+	 u8(*dsp_get_opp) (void);
+	void (*cpu_set_freq) (unsigned long f);
+	unsigned long (*cpu_get_freq) (void);
 	unsigned long *mpu_speeds;
 	u8 mpu_num_speeds;
 	unsigned long mpu_min_speed;
@@ -84,9 +84,10 @@ extern struct device *bridge;
 #if defined(CONFIG_MPU_BRIDGE) || defined(CONFIG_MPU_BRIDGE_MODULE)
 extern void dspbridge_reserve_sdram(void);
 #else
-static inline void dspbridge_reserve_sdram(void) {}
+static inline void dspbridge_reserve_sdram(void)
+{
+}
 #endif
 
 extern unsigned long dspbridge_get_mempool_base(void);
 #endif
-

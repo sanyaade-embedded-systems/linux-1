@@ -19,7 +19,7 @@
 #ifndef _TIOMAP_UTIL_
 #define _TIOMAP_UTIL_
 
-/* Time out Values in uSeconds*/
+/* Time out Values in uSeconds */
 #define TIHELEN_ACKTIMEOUT  10000
 
 /*
@@ -32,12 +32,12 @@
 #define  WAIT_SAM   1000000	/* in usec (1000 millisec) */
 
 /*
- *  ======== WaitForStart ========
+ *  ======== wait_for_start ========
  *  Wait for the singal from DSP that it has started, or time out.
- *  The argument dwSyncAddr is set to 1 before releasing the DSP.
+ *  The argument dw_sync_addr is set to 1 before releasing the DSP.
  *  If the DSP starts running, it will clear this location.
  */
-extern bool WaitForStart(struct WMD_DEV_CONTEXT *pDevContext, u32 dwSyncAddr);
+extern bool wait_for_start(struct wmd_dev_context *dev_context,
+			   u32 dw_sync_addr);
 
-#endif				/* _TIOMAP_UTIL_ */
-
+#endif /* _TIOMAP_UTIL_ */

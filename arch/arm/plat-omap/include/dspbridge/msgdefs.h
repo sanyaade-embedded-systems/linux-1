@@ -3,7 +3,7 @@
  *
  * DSP-BIOS Bridge driver support functions for TI OMAP processors.
  *
- * Global MSG constants and types.
+ * Global msg_ctrl constants and types.
  *
  * Copyright (C) 2005-2006 Texas Instruments, Inc.
  *
@@ -21,12 +21,11 @@
 
 #define MSGMGR_SIGNATURE    0x4d47534d	/* "MGSM" */
 
-/* MSG Objects: */
-	struct MSG_MGR;
-	struct MSG_QUEUE;
+/* msg_ctrl Objects: */
+struct msg_mgr;
+struct msg_queue;
 
 /* Function prototype for callback to be called on RMS_EXIT message received */
-       typedef void(*MSG_ONEXIT) (HANDLE h, s32 nStatus);
+typedef void (*msg_onexit) (bhandle h, s32 nStatus);
 
-#endif				/* MSGDEFS_ */
-
+#endif /* MSGDEFS_ */

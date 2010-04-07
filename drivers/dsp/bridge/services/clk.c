@@ -35,7 +35,7 @@
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
 
-typedef volatile unsigned long  REG_UWORD32;
+typedef volatile unsigned long reg_uword32;
 
 #define OMAP_SSI_OFFSET			0x58000
 #define OMAP_SSI_SIZE			0x1000
@@ -45,16 +45,16 @@ typedef volatile unsigned long  REG_UWORD32;
 #define SSI_SIDLE_SMARTIDLE		(2 << 3)
 #define SSI_MIDLE_NOIDLE		(1 << 12)
 
-struct SERVICES_Clk_t {
+struct services_clk_t {
 	struct clk *clk_handle;
 	const char *clk_name;
 	const char *dev;
 };
 
 /* The row order of the below array needs to match with the clock enumerations
- * 'SERVICES_ClkId' provided in the header file.. any changes in the
+ * 'services_clk_id' provided in the header file.. any changes in the
  * enumerations needs to be fixed in the array as well */
-static struct SERVICES_Clk_t SERVICES_Clks[] = {
+static struct services_clk_t services_clks[] = {
 	{NULL, "iva2_ck", NULL},
 	{NULL, "gpt5_fck", NULL},
 	{NULL, "gpt5_ick", NULL},
@@ -84,36 +84,36 @@ static struct SERVICES_Clk_t SERVICES_Clks[] = {
 };
 
 /* Generic TIMER object: */
-struct TIMER_OBJECT {
+struct timer_object {
 	struct timer_list timer;
 };
 
 /*
- *  ======== CLK_Exit ========
+ *  ======== clk_exit ========
  *  Purpose:
  *      Cleanup CLK module.
  */
-void CLK_Exit(void)
+void clk_exit(void)
 {
 	int i = 0;
 
 	/* Relinquish the clock handles */
 	while (i < SERVICESCLK_NOT_DEFINED) {
-		if (SERVICES_Clks[i].clk_handle)
-			clk_put(SERVICES_Clks[i].clk_handle);
+		if (services_clks[i].clk_handle)
+			clk_put(services_clks[i].clk_handle);
 
-		SERVICES_Clks[i].clk_handle = NULL;
+		services_clks[i].clk_handle = NULL;
 		i++;
 	}
 
 }
 
 /*
- *  ======== CLK_Init ========
+ *  ======== services_clk_init ========
  *  Purpose:
  *      Initialize CLK module.
  */
-bool CLK_Init(void)
+bool services_clk_init(void)
 {
 	static struct platform_device dspbridge_device;
 	struct clk *clk_handle;
@@ -124,16 +124,16 @@ bool CLK_Init(void)
 	/* Get the clock handles from base port and store locally */
 	while (i < SERVICESCLK_NOT_DEFINED) {
 		/* get the handle from BP */
-		clk_handle = clk_get_sys(SERVICES_Clks[i].dev,
-			     SERVICES_Clks[i].clk_name);
+		clk_handle = clk_get_sys(services_clks[i].dev,
+					 services_clks[i].clk_name);
 
 		if (!clk_handle) {
 			pr_err("%s: failed to get clk handle %s, dev id = %s\n",
-				  __func__, SERVICES_Clks[i].clk_name,
-				  SERVICES_Clks[i].dev);
+			       __func__, services_clks[i].clk_name,
+			       services_clks[i].dev);
 			/* should we fail here?? */
 		}
-		SERVICES_Clks[i].clk_handle = clk_handle;
+		services_clks[i].clk_handle = clk_handle;
 		i++;
 	}
 
@@ -141,31 +141,30 @@ bool CLK_Init(void)
 }
 
 /*
- *  ======== CLK_Enable ========
+ *  ======== services_clk_enable ========
  *  Purpose:
  *      Enable Clock .
  *
-*/
-DSP_STATUS CLK_Enable(IN enum SERVICES_ClkId clk_id)
+ */
+dsp_status services_clk_enable(IN enum services_clk_id clk_id)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct clk *pClk;
+	dsp_status status = DSP_SOK;
+	struct clk *clk_handle;
 
-	DBC_Require(clk_id < SERVICESCLK_NOT_DEFINED);
+	DBC_REQUIRE(clk_id < SERVICESCLK_NOT_DEFINED);
 
-	pClk = SERVICES_Clks[clk_id].clk_handle;
-	if (pClk) {
-		if (clk_enable(pClk)) {
-			pr_err("CLK_Enable: failed to Enable CLK %s, "
-					"CLK dev id = %s\n",
-					SERVICES_Clks[clk_id].clk_name,
-					SERVICES_Clks[clk_id].dev);
+	clk_handle = services_clks[clk_id].clk_handle;
+	if (clk_handle) {
+		if (clk_enable(clk_handle)) {
+			pr_err("services_clk_enable: failed to Enable CLK %s, "
+			       "CLK dev id = %s\n",
+			       services_clks[clk_id].clk_name,
+			       services_clks[clk_id].dev);
 			status = DSP_EFAIL;
 		}
 	} else {
-		pr_err("CLK_Enable: failed to get CLK %s, CLK dev id = %s\n",
-					SERVICES_Clks[clk_id].clk_name,
-					SERVICES_Clks[clk_id].dev);
+		pr_err("%s: failed to get CLK %s, CLK dev id = %s\n", __func__,
+		     services_clks[clk_id].clk_name, services_clks[clk_id].dev);
 		status = DSP_EFAIL;
 	}
 	/* The SSI module need to configured not to have the Forced idle for
@@ -173,32 +172,33 @@ DSP_STATUS CLK_Enable(IN enum SERVICES_ClkId clk_id)
 	 * transitioning to standby thereby causing the client in the DSP hang
 	 * waiting for the SSI module to be active after enabling the clocks
 	 */
-	if (clk_id == SERVICESCLK_ssi_fck)
-		SSI_Clk_Prepare(true);
+	if (clk_id == SERVICESCLK_SSI_FCK)
+		ssi_clk_prepare(true);
 
 	return status;
 }
+
 /*
- *  ======== CLK_Set_32KHz ========
+ *  ======== clk_set32k_hz ========
  *  Purpose:
  *      To Set parent of a clock to 32KHz.
  */
 
-DSP_STATUS CLK_Set_32KHz(IN enum SERVICES_ClkId clk_id)
+dsp_status clk_set32k_hz(IN enum services_clk_id clk_id)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct clk *pClk;
-	struct clk *pClkParent;
-	pClkParent =  SERVICES_Clks[SERVICESCLK_sys_32k_ck].clk_handle;
+	dsp_status status = DSP_SOK;
+	struct clk *clk_handle;
+	struct clk *clk_parent;
+	clk_parent = services_clks[SERVICESCLK_SYS32K_CK].clk_handle;
 
-	DBC_Require(clk_id < SERVICESCLK_NOT_DEFINED);
+	DBC_REQUIRE(clk_id < SERVICESCLK_NOT_DEFINED);
 
-	pClk = SERVICES_Clks[clk_id].clk_handle;
-	if (pClk) {
-		if (!(clk_set_parent(pClk, pClkParent) == 0x0)) {
+	clk_handle = services_clks[clk_id].clk_handle;
+	if (clk_handle) {
+		if (!(clk_set_parent(clk_handle, clk_parent) == 0x0)) {
 			pr_err("%s: failed for %s, dev id = %s\n", __func__,
-				SERVICES_Clks[clk_id].clk_name,
-				SERVICES_Clks[clk_id].dev);
+			       services_clks[clk_id].clk_name,
+			       services_clks[clk_id].dev);
 			status = DSP_EFAIL;
 		}
 	}
@@ -206,98 +206,97 @@ DSP_STATUS CLK_Set_32KHz(IN enum SERVICES_ClkId clk_id)
 }
 
 /*
- *  ======== CLK_Disable ========
+ *  ======== services_clk_disable ========
  *  Purpose:
  *      Disable the clock.
  *
-*/
-DSP_STATUS CLK_Disable(IN enum SERVICES_ClkId clk_id)
+ */
+dsp_status services_clk_disable(IN enum services_clk_id clk_id)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct clk *pClk;
-	s32 clkUseCnt;
+	dsp_status status = DSP_SOK;
+	struct clk *clk_handle;
+	s32 clk_use_cnt;
 
-	DBC_Require(clk_id < SERVICESCLK_NOT_DEFINED);
+	DBC_REQUIRE(clk_id < SERVICESCLK_NOT_DEFINED);
 
-	pClk = SERVICES_Clks[clk_id].clk_handle;
+	clk_handle = services_clks[clk_id].clk_handle;
 
-	clkUseCnt = CLK_Get_UseCnt(clk_id);
-	if (clkUseCnt == -1) {
-		pr_err("CLK_Disable: failed to get CLK Use count for CLK %s,"
-				"CLK dev id = %s\n",
-				SERVICES_Clks[clk_id].clk_name,
-				SERVICES_Clks[clk_id].dev);
-	} else if (clkUseCnt == 0) {
+	clk_use_cnt = clk_get_use_cnt(clk_id);
+	if (clk_use_cnt == -1) {
+		pr_err("%s: failed to get CLK Use count for CLK %s, CLK dev id"
+		       " = %s\n", __func__, services_clks[clk_id].clk_name,
+		       services_clks[clk_id].dev);
+	} else if (clk_use_cnt == 0) {
 		return status;
 	}
-	if (clk_id == SERVICESCLK_ssi_ick)
-		SSI_Clk_Prepare(false);
+	if (clk_id == SERVICESCLK_SSI_ICK)
+		ssi_clk_prepare(false);
 
-		if (pClk) {
-			clk_disable(pClk);
-		} else {
-			pr_err("CLK_Disable: failed to get CLK %s,"
-					"CLK dev id = %s\n",
-					SERVICES_Clks[clk_id].clk_name,
-					SERVICES_Clks[clk_id].dev);
-			status = DSP_EFAIL;
-		}
+	if (clk_handle) {
+		clk_disable(clk_handle);
+	} else {
+		pr_err("services_clk_disable: failed to get CLK %s,"
+		       "CLK dev id = %s\n",
+		       services_clks[clk_id].clk_name,
+		       services_clks[clk_id].dev);
+		status = DSP_EFAIL;
+	}
 	return status;
 }
 
 /*
- *  ======== CLK_GetRate ========
+ *  ======== services_clk_get_rate ========
  *  Purpose:
  *      GetClock Speed.
  *
  */
 
-DSP_STATUS CLK_GetRate(IN enum SERVICES_ClkId clk_id, u32 *speedKhz)
+dsp_status services_clk_get_rate(IN enum services_clk_id clk_id, u32 *speedKhz)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct clk *pClk;
-	u32 clkSpeedHz;
+	dsp_status status = DSP_SOK;
+	struct clk *clk_handle;
+	u32 clk_speed_hz;
 
-	DBC_Require(clk_id < SERVICESCLK_NOT_DEFINED);
+	DBC_REQUIRE(clk_id < SERVICESCLK_NOT_DEFINED);
 	*speedKhz = 0x0;
 
-	pClk = SERVICES_Clks[clk_id].clk_handle;
-	if (pClk) {
-		clkSpeedHz = clk_get_rate(pClk);
-		*speedKhz = clkSpeedHz / 1000;
-		dev_dbg(bridge, "%s: clkSpeedHz = %d, speedinKhz = %d\n",
-					__func__, clkSpeedHz, *speedKhz);
+	clk_handle = services_clks[clk_id].clk_handle;
+	if (clk_handle) {
+		clk_speed_hz = clk_get_rate(clk_handle);
+		*speedKhz = clk_speed_hz / 1000;
+		dev_dbg(bridge, "%s: clk_speed_hz = %d, speedinKhz = %d\n",
+			__func__, clk_speed_hz, *speedKhz);
 	} else {
 		pr_err("%s: failed to get %s, dev Id = %s\n", __func__,
-						SERVICES_Clks[clk_id].clk_name,
-						SERVICES_Clks[clk_id].dev);
+		       services_clks[clk_id].clk_name,
+		       services_clks[clk_id].dev);
 		status = DSP_EFAIL;
 	}
 	return status;
 }
 
-s32 CLK_Get_UseCnt(IN enum SERVICES_ClkId clk_id)
+s32 clk_get_use_cnt(IN enum services_clk_id clk_id)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct clk *pClk;
-	s32 useCount = -1;
-	DBC_Require(clk_id < SERVICESCLK_NOT_DEFINED);
+	dsp_status status = DSP_SOK;
+	struct clk *clk_handle;
+	s32 use_count = -1;
+	DBC_REQUIRE(clk_id < SERVICESCLK_NOT_DEFINED);
 
-	pClk = SERVICES_Clks[clk_id].clk_handle;
+	clk_handle = services_clks[clk_id].clk_handle;
 
-	if (pClk) {
+	if (clk_handle) {
 		/* FIXME: usecount shouldn't be used */
-		useCount = pClk->usecount;
+		use_count = clk_handle->usecount;
 	} else {
 		pr_err("%s: failed to get %s, dev Id = %s\n", __func__,
-						SERVICES_Clks[clk_id].clk_name,
-						SERVICES_Clks[clk_id].dev);
+		       services_clks[clk_id].clk_name,
+		       services_clks[clk_id].dev);
 		status = DSP_EFAIL;
 	}
-	return useCount;
+	return use_count;
 }
 
-void SSI_Clk_Prepare(bool FLAG)
+void ssi_clk_prepare(bool FLAG)
 {
 	void __iomem *ssi_base;
 	unsigned int value;

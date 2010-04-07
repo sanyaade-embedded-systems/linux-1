@@ -16,7 +16,7 @@
  * to/from the DSP address space.
  *
  * Notes:
- *   CMM_XlatorAllocBuf - Used by Node and Stream modules for SM address
+ *   cmm_xlator_alloc_buf - Used by Node and Stream modules for SM address
  *			  translation.
  *
  * Copyright (C) 2008 Texas Instruments, Inc.
@@ -39,38 +39,39 @@
 #include <dspbridge/host_os.h>
 
 /*
- *  ======== CMM_CallocBuf ========
+ *  ======== cmm_calloc_buf ========
  *  Purpose:
  *      Allocate memory buffers that can be used for data streaming or
  *      messaging.
  *  Parameters:
- *      hCmmMgr:   Cmm Mgr handle.
- *      uSize:     Number of bytes to allocate.
- *      pAttr:     Attributes of memory to allocate.
- *      ppBufVA:   Address of where to place VA.
+ *      hcmm_mgr:   Cmm Mgr handle.
+ *      usize:     Number of bytes to allocate.
+ *      pattr:     Attributes of memory to allocate.
+ *      pp_buf_va:   Address of where to place VA.
  *  Returns:
  *      Pointer to a zero'd block of SM memory;
  *      NULL if memory couldn't be allocated,
- *      or if cBytes == 0,
+ *      or if byte_size == 0,
  *  Requires:
- *      Valid hCmmMgr.
+ *      Valid hcmm_mgr.
  *      CMM initialized.
  *  Ensures:
  *      The returned pointer, if not NULL, points to a valid memory block of
  *      the size requested.
  *
  */
-	extern void *CMM_CallocBuf(struct CMM_OBJECT *hCmmMgr,
-				   u32 uSize, struct CMM_ATTRS *pAttrs,
-				   OUT void **ppBufVA);
+extern void *cmm_calloc_buf(struct cmm_object *hcmm_mgr,
+			    u32 usize, struct cmm_attrs *pattrs,
+			    OUT void **pp_buf_va);
 
 /*
- *  ======== CMM_Create ========
+ *  ======== cmm_create ========
  *  Purpose:
  *      Create a communication memory manager object.
  *  Parameters:
- *      phCmmMgr:   Location to store a communication manager handle on output.
- *      hDevObject: Handle to a device object.
+ *      ph_cmm_mgr:	Location to store a communication manager handle on
+ *      		output.
+ *      hdev_obj: Handle to a device object.
  *      pMgrAttrs:  Comm mem manager attributes.
  *  Returns:
  *      DSP_SOK:        Success;
@@ -78,22 +79,22 @@
  *      DSP_EFAIL:      Failed to initialize critical sect sync object.
  *
  *  Requires:
- *      CMM_Init(void) called.
- *      phCmmMgr != NULL.
- *      pMgrAttrs->ulMinBlockSize >= 4 bytes.
+ *      cmm_init(void) called.
+ *      ph_cmm_mgr != NULL.
+ *      pMgrAttrs->ul_min_block_size >= 4 bytes.
  *  Ensures:
  *
  */
-	extern DSP_STATUS CMM_Create(OUT struct CMM_OBJECT **phCmmMgr,
-				     struct DEV_OBJECT *hDevObject,
-				     IN CONST struct CMM_MGRATTRS *pMgrAttrs);
+extern dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
+			     struct dev_object *hdev_obj,
+			     IN CONST struct cmm_mgrattrs *pMgrAttrs);
 
 /*
- *  ======== CMM_Destroy ========
+ *  ======== cmm_destroy ========
  *  Purpose:
  *      Destroy the communication memory manager object.
  *  Parameters:
- *      hCmmMgr:   Cmm Mgr handle.
+ *      hcmm_mgr:   Cmm Mgr handle.
  *      bForce:    Force deallocation of all cmm memory immediately if set TRUE.
  *                 If FALSE, and outstanding allocations will return DSP_EFAIL
  *                 status.
@@ -103,14 +104,14 @@
  *      DSP_EHANDLE:    Unable to free CMM due to bad handle.
  *  Requires:
  *      CMM is initialized.
- *      hCmmMgr != NULL.
+ *      hcmm_mgr != NULL.
  *  Ensures:
  *      Memory resources used by Cmm Mgr are freed.
  */
-	extern DSP_STATUS CMM_Destroy(struct CMM_OBJECT *hCmmMgr, bool bForce);
+extern dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce);
 
 /*
- *  ======== CMM_Exit ========
+ *  ======== cmm_exit ========
  *  Purpose:
  *     Discontinue usage of module. Cleanup CMM module if CMM cRef reaches zero.
  *  Parameters:
@@ -121,55 +122,56 @@
  *     CMM is initialized.
  *  Ensures:
  */
-	extern void CMM_Exit(void);
+extern void cmm_exit(void);
 
 /*
- *  ======== CMM_FreeBuf ========
+ *  ======== cmm_free_buf ========
  *  Purpose:
  *      Free the given buffer.
  *  Parameters:
- *      hCmmMgr:    Cmm Mgr handle.
- *      pBuf:       Pointer to memory allocated by CMM_CallocBuf().
- *      ulSegId:    SM segment Id used in CMM_Calloc() attrs.
+ *      hcmm_mgr:    Cmm Mgr handle.
+ *      pbuf:       Pointer to memory allocated by cmm_calloc_buf().
+ *      ul_seg_id:    SM segment Id used in CMM_Calloc() attrs.
  *                  Set to 0 to use default segment.
  *  Returns:
  *      DSP_SOK
  *      DSP_EFAIL
  *  Requires:
  *      CMM initialized.
- *      pBufPA != NULL
+ *      buf_pa != NULL
  *  Ensures:
  *
  */
-	extern DSP_STATUS CMM_FreeBuf(struct CMM_OBJECT *hCmmMgr,
-				      void *pBufPA, u32 ulSegId);
+extern dsp_status cmm_free_buf(struct cmm_object *hcmm_mgr,
+			       void *buf_pa, u32 ul_seg_id);
 
 /*
- *  ======== CMM_GetHandle ========
+ *  ======== cmm_get_handle ========
  *  Purpose:
  *      Return the handle to the cmm mgr for the given device obj.
  *  Parameters:
- *      hProcessor:   Handle to a Processor.
- *      phCmmMgr:     Location to store the shared memory mgr handle on output.
+ *      hprocessor:   Handle to a Processor.
+ *      ph_cmm_mgr:	Location to store the shared memory mgr handle on
+ *      		output.
  *
  *  Returns:
  *      DSP_SOK:        Cmm Mgr opaque handle returned.
  *      DSP_EHANDLE:    Invalid handle.
  *  Requires:
- *      phCmmMgr != NULL
- *      hDevObject != NULL
+ *      ph_cmm_mgr != NULL
+ *      hdev_obj != NULL
  *  Ensures:
  */
-	extern DSP_STATUS CMM_GetHandle(void *hProcessor,
-					OUT struct CMM_OBJECT **phCmmMgr);
+extern dsp_status cmm_get_handle(void *hprocessor,
+				 OUT struct cmm_object **ph_cmm_mgr);
 
 /*
- *  ======== CMM_GetInfo ========
+ *  ======== cmm_get_info ========
  *  Purpose:
  *      Return the current SM and VM utilization information.
  *  Parameters:
- *      hCmmMgr:     Handle to a Cmm Mgr.
- *      pCmmInfo:    Location to store the Cmm information on output.
+ *      hcmm_mgr:     Handle to a Cmm Mgr.
+ *      cmm_info_obj:    Location to store the Cmm information on output.
  *
  *  Returns:
  *      DSP_SOK:        Success.
@@ -179,11 +181,11 @@
  *  Ensures:
  *
  */
-	extern DSP_STATUS CMM_GetInfo(struct CMM_OBJECT *hCmmMgr,
-				      OUT struct CMM_INFO *pCmmInfo);
+extern dsp_status cmm_get_info(struct cmm_object *hcmm_mgr,
+			       OUT struct cmm_info *cmm_info_obj);
 
 /*
- *  ======== CMM_Init ========
+ *  ======== cmm_init ========
  *  Purpose:
  *      Initializes private state of CMM module.
  *  Parameters:
@@ -193,73 +195,72 @@
  *  Ensures:
  *      CMM initialized.
  */
-	extern bool CMM_Init(void);
+extern bool cmm_init(void);
 
 /*
- *  ======== CMM_RegisterGPPSMSeg ========
+ *  ======== cmm_register_gppsm_seg ========
  *  Purpose:
  *      Register a block of SM with the CMM.
  *  Parameters:
- *      hCmmMgr:         Handle to a Cmm Mgr.
+ *      hcmm_mgr:         Handle to a Cmm Mgr.
  *      lpGPPBasePA:     GPP Base Physical address.
- *      ulSize:          Size in GPP bytes.
+ *      ul_size:          Size in GPP bytes.
  *      dwDSPAddrOffset  GPP PA to DSP PA Offset.
- *      cFactor:         Add offset if CMM_ADDTODSPPA, sub if CMM_SUBFROMDSPPA.
- *      dwDSPBase:       DSP virtual base byte address.
- *      ulDSPSize:       Size of DSP segment in bytes.
+ *      c_factor:         Add offset if CMM_ADDTODSPPA, sub if CMM_SUBFROMDSPPA.
+ *      dw_dsp_base:       DSP virtual base byte address.
+ *      ul_dsp_size:       Size of DSP segment in bytes.
  *      pulSegId:        Address to store segment Id.
  *
  *  Returns:
  *      DSP_SOK:         Success.
- *      DSP_EHANDLE:     Invalid hCmmMgr handle.
+ *      DSP_EHANDLE:     Invalid hcmm_mgr handle.
  *      DSP_EINVALIDARG: Invalid input argument.
  *      DSP_EFAIL:       Unable to register.
  *      - On success *pulSegId is a valid SM segment ID.
  *  Requires:
- *      ulSize > 0
+ *      ul_size > 0
  *      pulSegId != NULL
- *      dwGPPBasePA != 0
- *      cFactor = CMM_ADDTODSPPA || cFactor = CMM_SUBFROMDSPPA
+ *      dw_gpp_base_pa != 0
+ *      c_factor = CMM_ADDTODSPPA || c_factor = CMM_SUBFROMDSPPA
  *  Ensures:
  *
  */
-	extern DSP_STATUS CMM_RegisterGPPSMSeg(struct CMM_OBJECT *hCmmMgr,
-					       unsigned int dwGPPBasePA,
-					       u32 ulSize,
-					       u32 dwDSPAddrOffset,
-					       s8  cFactor,
-					       unsigned int dwDSPBase,
-					       u32 ulDSPSize,
-					       u32 *pulSegId,
-					       u32 dwGPPBaseBA);
+extern dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
+					 unsigned int dw_gpp_base_pa,
+					 u32 ul_size,
+					 u32 dwDSPAddrOffset,
+					 s8 c_factor,
+					 unsigned int dw_dsp_base,
+					 u32 ul_dsp_size,
+					 u32 *pulSegId, u32 dwGPPBaseBA);
 
 /*
- *  ======== CMM_UnRegisterGPPSMSeg ========
+ *  ======== cmm_un_register_gppsm_seg ========
  *  Purpose:
  *      Unregister the given memory segment that was previously registered
- *      by CMM_RegisterGPPSMSeg.
+ *      by cmm_register_gppsm_seg.
  *  Parameters:
- *      hCmmMgr:    Handle to a Cmm Mgr.
- *      ulSegId     Segment identifier returned by CMM_RegisterGPPSMSeg.
+ *      hcmm_mgr:    Handle to a Cmm Mgr.
+ *      ul_seg_id     Segment identifier returned by cmm_register_gppsm_seg.
  *  Returns:
  *       DSP_SOK:         Success.
  *       DSP_EHANDLE:     Invalid handle.
- *       DSP_EINVALIDARG: Invalid ulSegId.
+ *       DSP_EINVALIDARG: Invalid ul_seg_id.
  *       DSP_EFAIL:       Unable to unregister for unknown reason.
  *  Requires:
  *  Ensures:
  *
  */
-	extern DSP_STATUS CMM_UnRegisterGPPSMSeg(struct CMM_OBJECT *hCmmMgr,
-						 u32 ulSegId);
+extern dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
+					    u32 ul_seg_id);
 
 /*
- *  ======== CMM_XlatorAllocBuf ========
+ *  ======== cmm_xlator_alloc_buf ========
  *  Purpose:
  *      Allocate the specified SM buffer and create a local memory descriptor.
  *      Place on the descriptor on the translator's HaQ (Host Alloc'd Queue).
  *  Parameters:
- *      hXlator:    Handle to a Xlator object.
+ *      xlator:    Handle to a Xlator object.
  *      pVaBuf:     Virtual address ptr(client context)
  *      uPaSize:    Size of SM memory to allocate.
  *  Returns:
@@ -270,18 +271,18 @@
  *  Ensures:
  *
  */
-	extern void *CMM_XlatorAllocBuf(struct CMM_XLATOROBJECT *hXlator,
-					void *pVaBuf, u32 uPaSize);
+extern void *cmm_xlator_alloc_buf(struct cmm_xlatorobject *xlator,
+				  void *pVaBuf, u32 uPaSize);
 
 /*
- *  ======== CMM_XlatorCreate ========
+ *  ======== cmm_xlator_create ========
  *  Purpose:
  *     Create a translator(xlator) object used for process specific Va<->Pa
  *     address translation. Node messaging and streams use this to perform
  *     inter-processor(GPP<->DSP) zero-copy data transfer.
  *  Parameters:
  *     phXlator:       Address to place handle to a new Xlator handle.
- *     hCmmMgr:        Handle to Cmm Mgr associated with this translator.
+ *     hcmm_mgr:        Handle to Cmm Mgr associated with this translator.
  *     pXlatorAttrs:   Translator attributes used for the client NODE or STREAM.
  *  Returns:
  *     DSP_SOK:            Success.
@@ -289,41 +290,41 @@
  *     DSP_EMEMORY:   Insufficient memory(local) for requested resources.
  *  Requires:
  *     phXlator != NULL
- *     hCmmMgr != NULL
+ *     hcmm_mgr != NULL
  *     pXlatorAttrs != NULL
  *  Ensures:
  *
  */
-      extern DSP_STATUS CMM_XlatorCreate(OUT struct CMM_XLATOROBJECT **phXlator,
-					 struct CMM_OBJECT *hCmmMgr,
-					 struct CMM_XLATORATTRS *pXlatorAttrs);
+extern dsp_status cmm_xlator_create(OUT struct cmm_xlatorobject **phXlator,
+				    struct cmm_object *hcmm_mgr,
+				    struct cmm_xlatorattrs *pXlatorAttrs);
 
 /*
- *  ======== CMM_XlatorDelete ========
+ *  ======== cmm_xlator_delete ========
  *  Purpose:
  *      Delete translator resources
  *  Parameters:
- *      hXlator:    handle to translator.
+ *      xlator:    handle to translator.
  *      bForce:     bForce = TRUE will free XLators SM buffers/dscriptrs.
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Bad translator handle.
  *      DSP_EFAIL:      Unable to free translator resources.
  *  Requires:
- *      cRefs > 0
+ *      refs > 0
  *  Ensures:
  *
  */
-	extern DSP_STATUS CMM_XlatorDelete(struct CMM_XLATOROBJECT *hXlator,
-					   bool bForce);
+extern dsp_status cmm_xlator_delete(struct cmm_xlatorobject *xlator,
+				    bool bForce);
 
 /*
- *  ======== CMM_XlatorFreeBuf ========
+ *  ======== cmm_xlator_free_buf ========
  *  Purpose:
  *      Free SM buffer and descriptor.
  *      Does not free client process VM.
  *  Parameters:
- *      hXlator:    handle to translator.
+ *      xlator:    handle to translator.
  *      pBufVa      Virtual address of PA to free.
  *  Returns:
  *      DSP_SOK:        Success.
@@ -332,55 +333,54 @@
  *  Ensures:
  *
  */
-	extern DSP_STATUS CMM_XlatorFreeBuf(struct CMM_XLATOROBJECT *hXlator,
-					    void *pBufVa);
+extern dsp_status cmm_xlator_free_buf(struct cmm_xlatorobject *xlator,
+				      void *pBufVa);
 
 /*
- *  ======== CMM_XlatorInfo ========
+ *  ======== cmm_xlator_info ========
  *  Purpose:
  *      Set/Get process specific "translator" address info.
  *      This is used to perform fast virtaul address translation
  *      for shared memory buffers between the GPP and DSP.
  *  Parameters:
- *     hXlator:     handle to translator.
- *     pAddr:       Virtual base address of segment.
- *     ulSize:      Size in bytes.
+ *     xlator:     handle to translator.
+ *     paddr:       Virtual base address of segment.
+ *     ul_size:      Size in bytes.
  *     uSegId:      Segment identifier of SM segment(s)
- *     bSetInfo     Set xlator fields if TRUE, else return base addr
+ *     set_info     Set xlator fields if TRUE, else return base addr
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Bad translator handle.
  *  Requires:
- *      (cRefs > 0)
- *      (pAddr != NULL)
- *      (ulSize > 0)
+ *      (refs > 0)
+ *      (paddr != NULL)
+ *      (ul_size > 0)
  *  Ensures:
  *
  */
-	extern DSP_STATUS CMM_XlatorInfo(struct CMM_XLATOROBJECT *hXlator,
-					 IN OUT u8 **pAddr,
-					 u32 ulSize, u32 uSegId,
-					 bool bSetInfo);
+extern dsp_status cmm_xlator_info(struct cmm_xlatorobject *xlator,
+				  IN OUT u8 **paddr,
+				  u32 ul_size, u32 uSegId, bool set_info);
 
 /*
- *  ======== CMM_XlatorTranslate ========
+ *  ======== cmm_xlator_translate ========
  *  Purpose:
  *      Perform address translation VA<->PA for the specified stream or
  *      message shared memory buffer.
  *  Parameters:
- *     hXlator: handle to translator.
- *     pAddr    address of buffer to translate.
+ *     xlator: handle to translator.
+ *     paddr    address of buffer to translate.
  *     xType    Type of address xlation. CMM_PA2VA or CMM_VA2PA.
  *  Returns:
  *     Valid address on success, else NULL.
  *  Requires:
- *      cRefs > 0
- *      pAddr != NULL
+ *      refs > 0
+ *      paddr != NULL
  *      xType >= CMM_VA2PA) && (xType <= CMM_DSPPA2PA)
  *  Ensures:
  *
  */
-	extern void *CMM_XlatorTranslate(struct CMM_XLATOROBJECT *hXlator,
-					 void *pAddr, enum CMM_XLATETYPE xType);
+extern void *cmm_xlator_translate(struct cmm_xlatorobject *xlator,
+				  void *paddr, enum cmm_xlatetype xType);
 
-#endif				/* CMM_ */
+#endif /* CMM_ */

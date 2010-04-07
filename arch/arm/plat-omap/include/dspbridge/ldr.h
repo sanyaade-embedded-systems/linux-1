@@ -24,6 +24,6 @@
 #define LDR_
 
 /* Loader objects: */
-	struct LDR_MODULE;
+struct ldr_module;
 
-#endif				/* LDR_ */
+#endif /* LDR_ */

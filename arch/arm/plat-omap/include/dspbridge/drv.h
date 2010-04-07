@@ -39,7 +39,6 @@
 #define OMAP_DSP_MEM1_SIZE 0x18000
 #define OMAP_DSP_GEM1_BASE 0x107F8000
 
-
 /* MEM2 is L1P RAM/CACHE space */
 #define OMAP_DSP_MEM2_BASE 0x5CE00000
 #define OMAP_DSP_MEM2_SIZE 0x8000
@@ -49,7 +48,6 @@
 #define OMAP_DSP_MEM3_BASE 0x5CF04000
 #define OMAP_DSP_MEM3_SIZE 0x14000
 #define OMAP_DSP_GEM3_BASE 0x10F04000
-
 
 #define OMAP_IVA2_PRM_BASE 0x48306000
 #define OMAP_IVA2_PRM_SIZE 0x1000
@@ -78,66 +76,65 @@
 #define OMAP_PRCM_VDD1_DOMAIN 1
 #define OMAP_PRCM_VDD2_DOMAIN 2
 
-
 /* GPP PROCESS CLEANUP Data structures */
 
 /* New structure (member of process context) abstracts NODE resource info */
-struct NODE_RES_OBJECT {
-	void *hNode;
-	s32            nodeAllocated; /* Node status */
-	s32            heapAllocated; /* Heap status */
-	s32            streamsAllocated; /* Streams status */
-	struct NODE_RES_OBJECT         *next;
-} ;
+struct node_res_object {
+	void *hnode;
+	s32 node_allocated;	/* Node status */
+	s32 heap_allocated;	/* Heap status */
+	s32 streams_allocated;	/* Streams status */
+	struct node_res_object *next;
+};
 
 /* Used for DMM mapped memory accounting */
-struct DMM_MAP_OBJECT {
-	struct	list_head	link;
-	u32	dsp_addr;
+struct dmm_map_object {
+	struct list_head link;
+	u32 dsp_addr;
 };
 
 /* Used for DMM reserved memory accounting */
-struct DMM_RSV_OBJECT {
-	struct	list_head	link;
-	u32	dsp_reserved_addr;
+struct dmm_rsv_object {
+	struct list_head link;
+	u32 dsp_reserved_addr;
 };
 
 /* New structure (member of process context) abstracts DMM resource info */
-struct DSPHEAP_RES_OBJECT {
-	s32            heapAllocated; /* DMM status */
-	u32           ulMpuAddr;
-	u32           ulDSPAddr;
-	u32           ulDSPResAddr;
-	u32           heapSize;
-	HANDLE          hProcessor;
-	struct DSPHEAP_RES_OBJECT  *next;
-} ;
+struct dspheap_res_object {
+	s32 heap_allocated;	/* DMM status */
+	u32 ul_mpu_addr;
+	u32 ul_dsp_addr;
+	u32 ul_dsp_res_addr;
+	u32 heap_size;
+	bhandle hprocessor;
+	struct dspheap_res_object *next;
+};
 
 /* New structure (member of process context) abstracts stream resource info */
-struct STRM_RES_OBJECT {
-	s32                    streamAllocated; /* Stream status */
-	void *hStream;
-	u32                    uNumBufs;
-	u32                    uDir;
-	struct STRM_RES_OBJECT         *next;
-} ;
+struct strm_res_object {
+	s32 stream_allocated;	/* Stream status */
+	void *hstream;
+	u32 num_bufs;
+	u32 dir;
+	struct strm_res_object *next;
+};
 
 /* Overall Bridge process resource usage state */
-enum GPP_PROC_RES_STATE {
+enum gpp_proc_res_state {
 	PROC_RES_ALLOCATED,
 	PROC_RES_FREED
-} ;
+};
 
 /* Process Context */
-struct PROCESS_CONTEXT{
+struct process_context {
 	/* Process State */
-	enum GPP_PROC_RES_STATE resState;
+	enum gpp_proc_res_state res_state;
 
 	/* Handle to Processor */
-	void *hProcessor;
+	void *hprocessor;
 
 	/* DSP Node resources */
-	struct NODE_RES_OBJECT *pNodeList;
+	struct node_res_object *node_list;
 	struct mutex node_mutex;
 
 	/* DMM mapped memory resources */
@@ -149,16 +146,15 @@ struct PROCESS_CONTEXT{
 	spinlock_t dmm_rsv_lock;
 
 	/* DSP Heap resources */
-	struct DSPHEAP_RES_OBJECT *pDSPHEAPList;
+	struct dspheap_res_object *pdspheap_list;
 
 	/* Stream resources */
-	struct STRM_RES_OBJECT *pSTRMList;
+	struct strm_res_object *pstrm_list;
 	struct mutex strm_mutex;
-} ;
-
+};
 
 /*
- *  ======== DRV_Create ========
+ *  ======== drv_create ========
  *  Purpose:
  *      Creates the Driver Object. This is done during the driver loading.
  *      There is only one Driver Object in the DSP/BIOS Bridge.
@@ -169,12 +165,12 @@ struct PROCESS_CONTEXT{
  *      DSP_EMEMORY:    Failed in Memory allocation
  *      DSP_EFAIL:      General Failure
  *  Requires:
- *      DRV Initialized (cRefs > 0 )
+ *      DRV Initialized (refs > 0 )
  *      phDrvObject != NULL.
  *  Ensures:
  *      DSP_SOK:        - *phDrvObject is a valid DRV interface to the device.
  *                      - List of DevObject Created and Initialized.
- *                      - List of DevNode String created and intialized.
+ *                      - List of dev_node String created and intialized.
  *                      - Registry is updated with the DRV Object.
  *      !DSP_SOK:       DRV Object not created
  *  Details:
@@ -184,81 +180,81 @@ struct PROCESS_CONTEXT{
  *      Also it can hold other neccessary
  *      information in its storage area.
  */
-	extern DSP_STATUS DRV_Create(struct DRV_OBJECT **phDrvObject);
+extern dsp_status drv_create(struct drv_object **phDrvObject);
 
 /*
- *  ======== DRV_Destroy ========
+ *  ======== drv_destroy ========
  *  Purpose:
  *      destroys the Dev Object list, DrvExt list
  *      and destroy the DRV object
  *      Called upon driver unLoading.or unsuccesful loading of the driver.
  *  Parameters:
- *      hDrvObject:     Handle to Driver object .
+ *      hdrv_obj:     Handle to Driver object .
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EFAIL:      Failed to destroy DRV Object
  *  Requires:
  *      DRV Initialized (cRegs > 0 )
- *      hDrvObject is not NULL and a valid DRV handle .
+ *      hdrv_obj is not NULL and a valid DRV handle .
  *      List of DevObject is Empty.
  *      List of DrvExt is Empty
  *  Ensures:
- *      DSP_SOK:        - DRV Object destroyed and hDrvObject is not a valid
+ *      DSP_SOK:        - DRV Object destroyed and hdrv_obj is not a valid
  *                        DRV handle.
  *                      - Registry is updated with "0" as the DRV Object.
  */
-	extern DSP_STATUS DRV_Destroy(struct DRV_OBJECT *hDrvObject);
+extern dsp_status drv_destroy(struct drv_object *hdrv_obj);
 
 /*
- *  ======== DRV_Exit ========
+ *  ======== drv_exit ========
  *  Purpose:
- *      Exit the DRV module, freeing any modules initialized in DRV_Init.
+ *      Exit the DRV module, freeing any modules initialized in drv_init.
  *  Parameters:
  *  Returns:
  *  Requires:
  *  Ensures:
  */
-	extern void DRV_Exit(void);
+extern void drv_exit(void);
 
 /*
- *  ======== DRV_GetFirstDevObject ========
+ *  ======== drv_get_first_dev_object ========
  *  Purpose:
  *      Returns the Ptr to the FirstDev Object in the List
  *  Parameters:
  *  Requires:
  *      DRV Initialized
  *  Returns:
- *      dwDevObject:  Ptr to the First Dev Object as a u32
+ *      dw_dev_object:  Ptr to the First Dev Object as a u32
  *      0 if it fails to retrieve the First Dev Object
  *  Ensures:
  */
-	extern u32 DRV_GetFirstDevObject(void);
+extern u32 drv_get_first_dev_object(void);
 
 /*
- *  ======== DRV_GetFirstDevExtension ========
+ *  ======== drv_get_first_dev_extension ========
  *  Purpose:
  *      Returns the Ptr to the First Device Extension in the List
  *  Parameters:
  *  Requires:
  *      DRV Initialized
  *  Returns:
- *      dwDevExtension:     Ptr to the First Device Extension as a u32
+ *      dw_dev_extension:     Ptr to the First Device Extension as a u32
  *      0:                  Failed to Get the Device Extension
  *  Ensures:
  */
-	extern u32 DRV_GetFirstDevExtension(void);
+extern u32 drv_get_first_dev_extension(void);
 
 /*
- *  ======== DRV_GetDevObject ========
+ *  ======== drv_get_dev_object ========
  *  Purpose:
  *      Given a index, returns a handle to DevObject from the list
  *  Parameters:
- *      hDrvObject:     Handle to the Manager
+ *      hdrv_obj:     Handle to the Manager
  *      phDevObject:    Location to store the Dev Handle
  *  Requires:
  *      DRV Initialized
- *      uIndex >= 0
- *      hDrvObject is not NULL and Valid DRV Object
+ *      index >= 0
+ *      hdrv_obj is not NULL and Valid DRV Object
  *      phDevObject is not NULL
  *      Device Object List not Empty
  *  Returns:
@@ -268,28 +264,28 @@ struct PROCESS_CONTEXT{
  *      DSP_SOK:        *phDevObject != NULL
  *      DSP_EFAIL:      *phDevObject = NULL
  */
-	extern DSP_STATUS DRV_GetDevObject(u32 uIndex,
-					   struct DRV_OBJECT *hDrvObject,
-					   struct DEV_OBJECT **phDevObject);
+extern dsp_status drv_get_dev_object(u32 index,
+				     struct drv_object *hdrv_obj,
+				     struct dev_object **phDevObject);
 
 /*
- *  ======== DRV_GetNextDevObject ========
+ *  ======== drv_get_next_dev_object ========
  *  Purpose:
  *      Returns the Ptr to the Next Device Object from the the List
  *  Parameters:
- *      hDevObject:     Handle to the Device Object
+ *      hdev_obj:     Handle to the Device Object
  *  Requires:
  *      DRV Initialized
- *      hDevObject != 0
+ *      hdev_obj != 0
  *  Returns:
- *      dwDevObject:    Ptr to the Next Dev Object as a u32
+ *      dw_dev_object:    Ptr to the Next Dev Object as a u32
  *      0:              If it fail to get the next Dev Object.
  *  Ensures:
  */
-	extern u32 DRV_GetNextDevObject(u32 hDevObject);
+extern u32 drv_get_next_dev_object(u32 hdev_obj);
 
 /*
- *  ======== DRV_GetNextDevExtension ========
+ *  ======== drv_get_next_dev_extension ========
  *  Purpose:
  *      Returns the Ptr to the Next Device Extension from the the List
  *  Parameters:
@@ -298,14 +294,14 @@ struct PROCESS_CONTEXT{
  *      DRV Initialized
  *      hDevExtension != 0.
  *  Returns:
- *      dwDevExtension:     Ptr to the Next Dev Extension
+ *      dw_dev_extension:     Ptr to the Next Dev Extension
  *      0:                  If it fail to Get the next Dev Extension
  *  Ensures:
  */
-	extern u32 DRV_GetNextDevExtension(u32 hDevExtension);
+extern u32 drv_get_next_dev_extension(u32 hDevExtension);
 
 /*
- *  ======== DRV_Init ========
+ *  ======== drv_init ========
  *  Purpose:
  *      Initialize the DRV module.
  *  Parameters:
@@ -314,55 +310,55 @@ struct PROCESS_CONTEXT{
  *  Requires:
  *  Ensures:
  */
-	extern DSP_STATUS DRV_Init(void);
+extern dsp_status drv_init(void);
 
 /*
- *  ======== DRV_InsertDevObject ========
+ *  ======== drv_insert_dev_object ========
  *  Purpose:
  *      Insert a DeviceObject into the list of Driver object.
  *  Parameters:
- *      hDrvObject:     Handle to DrvObject
- *      hDevObject:     Handle to DeviceObject to insert.
+ *      hdrv_obj:     Handle to DrvObject
+ *      hdev_obj:     Handle to DeviceObject to insert.
  *  Returns:
  *      DSP_SOK:        If successful.
  *      DSP_EFAIL:      General Failure:
  *  Requires:
- *      hDrvObject != NULL and Valid DRV Handle.
- *      hDevObject != NULL.
+ *      hdrv_obj != NULL and Valid DRV Handle.
+ *      hdev_obj != NULL.
  *  Ensures:
  *      DSP_SOK:        Device Object is inserted and the List is not empty.
  */
-	extern DSP_STATUS DRV_InsertDevObject(struct DRV_OBJECT *hDrvObject,
-					      struct DEV_OBJECT *hDevObject);
+extern dsp_status drv_insert_dev_object(struct drv_object *hdrv_obj,
+					struct dev_object *hdev_obj);
 
 /*
- *  ======== DRV_RemoveDevObject ========
+ *  ======== drv_remove_dev_object ========
  *  Purpose:
  *      Search for and remove a Device object from the given list of Device Obj
  *      objects.
  *  Parameters:
- *      hDrvObject:     Handle to DrvObject
- *      hDevObject:     Handle to DevObject to Remove
+ *      hdrv_obj:     Handle to DrvObject
+ *      hdev_obj:     Handle to DevObject to Remove
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Unable to find pDevObject.
+ *      DSP_EFAIL:      Unable to find dev_obj.
  *  Requires:
- *      hDrvObject != NULL and a Valid DRV Handle.
- *      hDevObject != NULL.
+ *      hdrv_obj != NULL and a Valid DRV Handle.
+ *      hdev_obj != NULL.
  *      List exists and is not empty.
  *  Ensures:
  *      List either does not exist (NULL), or is not empty if it does exist.
-*/
-	extern DSP_STATUS DRV_RemoveDevObject(struct DRV_OBJECT *hDrvObject,
-					      struct DEV_OBJECT *hDevObject);
+ */
+extern dsp_status drv_remove_dev_object(struct drv_object *hdrv_obj,
+					struct dev_object *hdev_obj);
 
 /*
- *  ======== DRV_RequestResources ========
+ *  ======== drv_request_resources ========
  *  Purpose:
  *      Assigns the Resources or Releases them.
  *  Parameters:
- *      dwContext:          Path to the driver Registry Key.
- *      pDevNodeString:     Ptr to DevNode String stored in the Device Ext.
+ *      dw_context:          Path to the driver Registry Key.
+ *      pDevNodeString:     Ptr to dev_node String stored in the Device Ext.
  *  Returns:
  *      TRUE if success; FALSE otherwise.
  *  Requires:
@@ -373,16 +369,16 @@ struct PROCESS_CONTEXT{
  *      Resource structure is stored in the registry which will be
  *      later used by the CFG module.
  */
-	extern DSP_STATUS DRV_RequestResources(IN u32 dwContext,
-					       OUT u32 *pDevNodeString);
+extern dsp_status drv_request_resources(IN u32 dw_context,
+					OUT u32 *pDevNodeString);
 
 /*
- *  ======== DRV_ReleaseResources ========
+ *  ======== drv_release_resources ========
  *  Purpose:
  *      Assigns the Resources or Releases them.
  *  Parameters:
- *      dwContext:      Path to the driver Registry Key.
- *      hDrvObject:     Handle to the Driver Object.
+ *      dw_context:      Path to the driver Registry Key.
+ *      hdrv_obj:     Handle to the Driver Object.
  *  Returns:
  *      TRUE if success; FALSE otherwise.
  *  Requires:
@@ -390,10 +386,10 @@ struct PROCESS_CONTEXT{
  *      The Resources are released based on Bus type.
  *      Resource structure is deleted from the registry
  */
-	extern DSP_STATUS DRV_ReleaseResources(IN u32 dwContext,
-					       struct DRV_OBJECT *hDrvObject);
+extern dsp_status drv_release_resources(IN u32 dw_context,
+					struct drv_object *hdrv_obj);
 
 #ifdef CONFIG_BRIDGE_RECOVERY
-	void bridge_recover_schedule(void);
+void bridge_recover_schedule(void);
 #endif
-#endif				/* DRV_ */
+#endif /* DRV_ */

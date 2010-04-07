@@ -5,7 +5,7 @@
  *
  * Private header file defining CMM manager objects and defines needed
  * by IO manager to register shared memory regions when DSP base image
- * is loaded(WMD_IO_OnLoaded).
+ * is loaded(bridge_io_on_loaded).
  *
  * Copyright (C) 2005-2006 Texas Instruments, Inc.
  *
@@ -42,4 +42,4 @@
  *
  */
 
-#endif				/* _CMM_ */
+#endif /* _CMM_ */

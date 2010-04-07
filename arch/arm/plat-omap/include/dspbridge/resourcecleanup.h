@@ -14,51 +14,50 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-
 #include <dspbridge/nodepriv.h>
 #include <dspbridge/drv.h>
 
+extern dsp_status drv_get_proc_ctxt_list(struct process_context **pPctxt,
+					 struct drv_object *hdrv_obj);
 
-extern DSP_STATUS DRV_GetProcCtxtList(struct PROCESS_CONTEXT **pPctxt,
-				struct DRV_OBJECT *hDrvObject);
+extern dsp_status drv_insert_proc_context(struct drv_object *hDrVObject,
+					  bhandle hPCtxt);
 
-extern DSP_STATUS DRV_InsertProcContext(struct DRV_OBJECT *hDrVObject,
-					HANDLE hPCtxt);
+extern dsp_status drv_remove_all_dmm_res_elements(bhandle ctxt);
 
-extern DSP_STATUS DRV_RemoveAllDMMResElements(HANDLE pCtxt);
+extern dsp_status drv_remove_all_node_res_elements(bhandle ctxt);
 
-extern DSP_STATUS DRV_RemoveAllNodeResElements(HANDLE pCtxt);
+extern dsp_status drv_proc_set_pid(bhandle ctxt, s32 process);
 
-extern DSP_STATUS DRV_ProcSetPID(HANDLE pCtxt, s32 hProcess);
+extern dsp_status drv_remove_all_resources(bhandle pPctxt);
 
-extern DSP_STATUS DRV_RemoveAllResources(HANDLE pPctxt);
+extern dsp_status drv_remove_proc_context(struct drv_object *hDRVObject,
+					  bhandle pr_ctxt);
 
-extern DSP_STATUS DRV_RemoveProcContext(struct DRV_OBJECT *hDRVObject,
-				     HANDLE pr_ctxt);
+extern dsp_status drv_get_node_res_element(bhandle hnode, bhandle node_res,
+					   bhandle ctxt);
 
-extern DSP_STATUS DRV_GetNodeResElement(HANDLE hNode, HANDLE nodeRes,
-					HANDLE pCtxt);
+extern dsp_status drv_insert_node_res_element(bhandle hnode, bhandle node_res,
+					      bhandle ctxt);
 
-extern DSP_STATUS DRV_InsertNodeResElement(HANDLE hNode, HANDLE nodeRes,
-					    HANDLE pCtxt);
+extern void drv_proc_node_update_heap_status(bhandle hNodeRes, s32 status);
 
-extern void DRV_ProcNodeUpdateHeapStatus(HANDLE hNodeRes, s32 status);
+extern dsp_status drv_remove_node_res_element(bhandle node_res, bhandle status);
 
-extern DSP_STATUS DRV_RemoveNodeResElement(HANDLE nodeRes, HANDLE status);
+extern void drv_proc_node_update_status(bhandle hNodeRes, s32 status);
 
-extern void DRV_ProcNodeUpdateStatus(HANDLE hNodeRes, s32 status);
+extern dsp_status drv_proc_update_strm_res(u32 num_bufs, bhandle strm_res);
 
-extern DSP_STATUS DRV_ProcUpdateSTRMRes(u32 uNumBufs, HANDLE STRMRes);
+extern dsp_status drv_proc_insert_strm_res_element(bhandle hStrm,
+						   bhandle strm_res,
+						   bhandle pPctxt);
 
-extern DSP_STATUS DRV_ProcInsertSTRMResElement(HANDLE hStrm, HANDLE STRMRes,
-						HANDLE pPctxt);
+extern dsp_status drv_get_strm_res_element(bhandle hStrm, bhandle strm_res,
+					   bhandle ctxt);
 
-extern DSP_STATUS DRV_GetSTRMResElement(HANDLE hStrm, HANDLE STRMRes,
-					HANDLE pCtxt);
+extern dsp_status drv_proc_remove_strm_res_element(bhandle strm_res,
+						   bhandle ctxt);
 
-extern DSP_STATUS DRV_ProcRemoveSTRMResElement(HANDLE STRMRes, HANDLE pCtxt);
+extern dsp_status drv_remove_all_strm_res_elements(bhandle ctxt);
 
-extern DSP_STATUS DRV_RemoveAllSTRMResElements(HANDLE pCtxt);
-
-extern enum NODE_STATE NODE_GetState(HANDLE hNode);
-
+extern enum node_state node_get_state(bhandle hnode);

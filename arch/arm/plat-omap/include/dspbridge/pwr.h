@@ -22,7 +22,7 @@
 #include <dspbridge/pwr_sh.h>
 
 /*
- *  ======== PWR_SleepDSP ========
+ *  ======== pwr_sleep_dsp ========
  *      Signal the DSP to go to sleep.
  *
  *  Parameters:
@@ -46,11 +46,10 @@
  *      DSP_EFAIL:          General failure, unable to send sleep command to
  *                          the DSP.
  */
-	extern DSP_STATUS PWR_SleepDSP(IN CONST u32 sleepCode,
-				       IN CONST u32 timeout);
+extern dsp_status pwr_sleep_dsp(IN CONST u32 sleepCode, IN CONST u32 timeout);
 
 /*
- *  ======== PWR_WakeDSP ========
+ *  ======== pwr_wake_dsp ========
  *    Signal the DSP to wake from sleep.
  *
  *  Parameters:
@@ -68,10 +67,10 @@
  *      DSP_EFAIL:          General failure, unable to send wake command to
  *                          the DSP.
  */
-	extern DSP_STATUS PWR_WakeDSP(IN CONST u32 timeout);
+extern dsp_status pwr_wake_dsp(IN CONST u32 timeout);
 
 /*
- *  ======== PWR_PM_PreScale ========
+ *  ======== pwr_pm_pre_scale ========
  *    Prescale notification to DSP.
  *
  *  Parameters:
@@ -86,10 +85,10 @@
  *      DSP_EFAIL:          General failure, unable to send wake command to
  *                          the DSP.
  */
-	extern DSP_STATUS PWR_PM_PreScale(IN u16 voltage_domain, u32 level);
+extern dsp_status pwr_pm_pre_scale(IN u16 voltage_domain, u32 level);
 
 /*
- *  ======== PWR_PM_PostScale ========
+ *  ======== pwr_pm_post_scale ========
  *    PostScale notification to DSP.
  *
  *  Parameters:
@@ -104,7 +103,6 @@
  *      DSP_EFAIL:          General failure, unable to send wake command to
  *                          the DSP.
  */
-	extern DSP_STATUS PWR_PM_PostScale(IN u16 voltage_domain,
-					   u32 level);
+extern dsp_status pwr_pm_post_scale(IN u16 voltage_domain, u32 level);
 
-#endif				/* PWR_ */
+#endif /* PWR_ */

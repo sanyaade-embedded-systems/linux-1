@@ -29,364 +29,363 @@ union Trapped_Args {
 
 	/* MGR Module */
 	struct {
-		u32 uNode;
-		struct DSP_NDBPROPS __user *pNDBProps;
-		u32 uNDBPropsSize;
-		u32 __user *puNumNodes;
-	} ARGS_MGR_ENUMNODE_INFO;
+		u32 node_id;
+		struct dsp_ndbprops __user *pndb_props;
+		u32 undb_props_size;
+		u32 __user *pu_num_nodes;
+	} args_mgr_enumnode_info;
 
 	struct {
-		u32 uProcessor;
-		struct DSP_PROCESSORINFO __user *pProcessorInfo;
-		u32 uProcessorInfoSize;
-		u32 __user *puNumProcs;
-	} ARGS_MGR_ENUMPROC_INFO;
+		u32 processor_id;
+		struct dsp_processorinfo __user *processor_info;
+		u32 processor_info_size;
+		u32 __user *pu_num_procs;
+	} args_mgr_enumproc_info;
 
 	struct {
-		struct DSP_UUID *pUuid;
-		enum DSP_DCDOBJTYPE objType;
-		char *pszPathName;
-	} ARGS_MGR_REGISTEROBJECT;
+		struct dsp_uuid *uuid_obj;
+		enum dsp_dcdobjtype obj_type;
+		char *psz_path_name;
+	} args_mgr_registerobject;
 
 	struct {
-		struct DSP_UUID *pUuid;
-		enum DSP_DCDOBJTYPE objType;
-	} ARGS_MGR_UNREGISTEROBJECT;
+		struct dsp_uuid *uuid_obj;
+		enum dsp_dcdobjtype obj_type;
+	} args_mgr_unregisterobject;
 
 	struct {
-		struct DSP_NOTIFICATION  __user *__user *aNotifications;
-		u32 uCount;
-		u32 __user *puIndex;
-		u32 uTimeout;
-	} ARGS_MGR_WAIT;
+		struct dsp_notification __user *__user *anotifications;
+		u32 count;
+		u32 __user *pu_index;
+		u32 utimeout;
+	} args_mgr_wait;
 
 	/* PROC Module */
 	struct {
-		u32 uProcessor;
-		struct DSP_PROCESSORATTRIN __user *pAttrIn;
-		void *__user *phProcessor;
-	} ARGS_PROC_ATTACH;
+		u32 processor_id;
+		struct dsp_processorattrin __user *attr_in;
+		void *__user *ph_processor;
+	} args_proc_attach;
 
 	struct {
-		void *hProcessor;
-		u32 dwCmd;
-		struct DSP_CBDATA __user *pArgs;
-	} ARGS_PROC_CTRL;
+		void *hprocessor;
+		u32 dw_cmd;
+		struct dsp_cbdata __user *pargs;
+	} args_proc_ctrl;
 
 	struct {
-		void *hProcessor;
-	} ARGS_PROC_DETACH;
+		void *hprocessor;
+	} args_proc_detach;
 
 	struct {
-		void *hProcessor;
-		void *__user *aNodeTab;
-		u32 uNodeTabSize;
-		u32 __user *puNumNodes;
-		u32 __user *puAllocated;
-	} ARGS_PROC_ENUMNODE_INFO;
+		void *hprocessor;
+		void *__user *node_tab;
+		u32 node_tab_size;
+		u32 __user *pu_num_nodes;
+		u32 __user *pu_allocated;
+	} args_proc_enumnode_info;
 
 	struct {
-		void *hProcessor;
-		u32 uResourceType;
-		struct DSP_RESOURCEINFO *pResourceInfo;
-		u32 uResourceInfoSize;
-	} ARGS_PROC_ENUMRESOURCES;
+		void *hprocessor;
+		u32 resource_type;
+		struct dsp_resourceinfo *resource_info;
+		u32 resource_info_size;
+	} args_proc_enumresources;
 
 	struct {
-		void *hProcessor;
-		struct DSP_PROCESSORSTATE __user *pProcStatus;
-		u32 uStateInfoSize;
-	} ARGS_PROC_GETSTATE;
+		void *hprocessor;
+		struct dsp_processorstate __user *proc_state_obj;
+		u32 state_info_size;
+	} args_proc_getstate;
 
 	struct {
-		void *hProcessor;
-		u8 __user *pBuf;
-		u8 __user *pSize;
-		u32 uMaxSize;
-	} ARGS_PROC_GETTRACE;
+		void *hprocessor;
+		u8 __user *pbuf;
+		u8 __user *psize;
+		u32 max_size;
+	} args_proc_gettrace;
 
 	struct {
-		void *hProcessor;
-		s32 iArgc;
-		char __user *__user *aArgv;
-		char *__user *aEnvp;
-	} ARGS_PROC_LOAD;
+		void *hprocessor;
+		s32 argc_index;
+		char __user *__user *user_args;
+		char *__user *user_envp;
+	} args_proc_load;
 
 	struct {
-		void *hProcessor;
-		u32 uEventMask;
-		u32 uNotifyType;
-		struct DSP_NOTIFICATION __user *hNotification;
-	} ARGS_PROC_REGISTER_NOTIFY;
+		void *hprocessor;
+		u32 event_mask;
+		u32 notify_type;
+		struct dsp_notification __user *hnotification;
+	} args_proc_register_notify;
 
 	struct {
-		void *hProcessor;
-	} ARGS_PROC_START;
+		void *hprocessor;
+	} args_proc_start;
 
 	struct {
-		void *hProcessor;
-		u32 ulSize;
-		void *__user *ppRsvAddr;
-	} ARGS_PROC_RSVMEM;
+		void *hprocessor;
+		u32 ul_size;
+		void *__user *pp_rsv_addr;
+	} args_proc_rsvmem;
 
 	struct {
-		void *hProcessor;
-		u32 ulSize;
-		void *pRsvAddr;
-	} ARGS_PROC_UNRSVMEM;
+		void *hprocessor;
+		u32 ul_size;
+		void *prsv_addr;
+	} args_proc_unrsvmem;
 
 	struct {
-		void *hProcessor;
-		void *pMpuAddr;
-		u32 ulSize;
-		void *pReqAddr;
-		void *__user *ppMapAddr;
-		u32 ulMapAttr;
-	} ARGS_PROC_MAPMEM;
+		void *hprocessor;
+		void *pmpu_addr;
+		u32 ul_size;
+		void *req_addr;
+		void *__user *pp_map_addr;
+		u32 ul_map_attr;
+	} args_proc_mapmem;
 
 	struct {
-		void *hProcessor;
-		u32 ulSize;
-		void *pMapAddr;
-	} ARGS_PROC_UNMAPMEM;
+		void *hprocessor;
+		u32 ul_size;
+		void *map_addr;
+	} args_proc_unmapmem;
 
 	struct {
-		void *hProcessor;
-		void *pMpuAddr;
-		u32 ulSize;
-		u32 ulFlags;
-	} ARGS_PROC_FLUSHMEMORY;
+		void *hprocessor;
+		void *pmpu_addr;
+		u32 ul_size;
+		u32 ul_flags;
+	} args_proc_flushmemory;
 
 	struct {
-		void *hProcessor;
-	} ARGS_PROC_STOP;
+		void *hprocessor;
+	} args_proc_stop;
 
 	struct {
-		void *hProcessor;
-		void *pMpuAddr;
-		u32 ulSize;
-	} ARGS_PROC_INVALIDATEMEMORY;
-
+		void *hprocessor;
+		void *pmpu_addr;
+		u32 ul_size;
+	} args_proc_invalidatememory;
 
 	/* NODE Module */
 	struct {
-		void *hProcessor;
-		struct DSP_UUID __user *pNodeID;
-		struct DSP_CBDATA __user *pArgs;
-		struct DSP_NODEATTRIN __user *pAttrIn;
-		void *__user *phNode;
-	} ARGS_NODE_ALLOCATE;
+		void *hprocessor;
+		struct dsp_uuid __user *node_id_ptr;
+		struct dsp_cbdata __user *pargs;
+		struct dsp_nodeattrin __user *attr_in;
+		void *__user *ph_node;
+	} args_node_allocate;
 
 	struct {
-		void *hNode;
-		u32 uSize;
-		struct DSP_BUFFERATTR __user *pAttr;
-		u8 *__user *pBuffer;
-	} ARGS_NODE_ALLOCMSGBUF;
+		void *hnode;
+		u32 usize;
+		struct dsp_bufferattr __user *pattr;
+		u8 *__user *pbuffer;
+	} args_node_allocmsgbuf;
 
 	struct {
-		void *hNode;
-		s32 iPriority;
-	} ARGS_NODE_CHANGEPRIORITY;
+		void *hnode;
+		s32 prio;
+	} args_node_changepriority;
 
 	struct {
-		void *hNode;
-		u32 uStream;
-		void *hOtherNode;
-		u32 uOtherStream;
-		struct DSP_STRMATTR __user *pAttrs;
-		struct DSP_CBDATA __user *pConnParam;
-	} ARGS_NODE_CONNECT;
+		void *hnode;
+		u32 stream_id;
+		void *other_node;
+		u32 other_stream;
+		struct dsp_strmattr __user *pattrs;
+		struct dsp_cbdata __user *conn_param;
+	} args_node_connect;
 
 	struct {
-		void *hNode;
-	} ARGS_NODE_CREATE;
+		void *hnode;
+	} args_node_create;
 
 	struct {
-		void *hNode;
-	} ARGS_NODE_DELETE;
+		void *hnode;
+	} args_node_delete;
 
 	struct {
-		void *hNode;
-		struct DSP_BUFFERATTR __user *pAttr;
-		u8 *pBuffer;
-	} ARGS_NODE_FREEMSGBUF;
+		void *hnode;
+		struct dsp_bufferattr __user *pattr;
+		u8 *pbuffer;
+	} args_node_freemsgbuf;
 
 	struct {
-		void *hNode;
-		struct DSP_NODEATTR __user *pAttr;
-		u32 uAttrSize;
-	} ARGS_NODE_GETATTR;
+		void *hnode;
+		struct dsp_nodeattr __user *pattr;
+		u32 attr_size;
+	} args_node_getattr;
 
 	struct {
-		void *hNode;
-		struct DSP_MSG __user *pMessage;
-		u32 uTimeout;
-	} ARGS_NODE_GETMESSAGE;
+		void *hnode;
+		struct dsp_msg __user *message;
+		u32 utimeout;
+	} args_node_getmessage;
 
 	struct {
-		void *hNode;
-	} ARGS_NODE_PAUSE;
+		void *hnode;
+	} args_node_pause;
 
 	struct {
-		void *hNode;
-		struct DSP_MSG __user *pMessage;
-		u32 uTimeout;
-	} ARGS_NODE_PUTMESSAGE;
+		void *hnode;
+		struct dsp_msg __user *message;
+		u32 utimeout;
+	} args_node_putmessage;
 
 	struct {
-		void *hNode;
-		u32 uEventMask;
-		u32 uNotifyType;
-		struct DSP_NOTIFICATION __user *hNotification;
-	} ARGS_NODE_REGISTERNOTIFY;
+		void *hnode;
+		u32 event_mask;
+		u32 notify_type;
+		struct dsp_notification __user *hnotification;
+	} args_node_registernotify;
 
 	struct {
-		void *hNode;
-	} ARGS_NODE_RUN;
+		void *hnode;
+	} args_node_run;
 
 	struct {
-		void *hNode;
-		DSP_STATUS __user *pStatus;
-	} ARGS_NODE_TERMINATE;
+		void *hnode;
+		dsp_status __user *pstatus;
+	} args_node_terminate;
 
 	struct {
-		void *hProcessor;
-		struct DSP_UUID __user *pNodeID;
-		struct DSP_NDBPROPS __user *pNodeProps;
-	} ARGS_NODE_GETUUIDPROPS;
+		void *hprocessor;
+		struct dsp_uuid __user *node_id_ptr;
+		struct dsp_ndbprops __user *node_props;
+	} args_node_getuuidprops;
 
 	/* STRM module */
 
 	struct {
-		void *hStream;
-		u32 uSize;
-		u8 *__user *apBuffer;
-		u32 uNumBufs;
-	} ARGS_STRM_ALLOCATEBUFFER;
+		void *hstream;
+		u32 usize;
+		u8 *__user *ap_buffer;
+		u32 num_bufs;
+	} args_strm_allocatebuffer;
 
 	struct {
-		void *hStream;
-	} ARGS_STRM_CLOSE;
+		void *hstream;
+	} args_strm_close;
 
 	struct {
-		void *hStream;
-		u8 *__user *apBuffer;
-		u32 uNumBufs;
-	} ARGS_STRM_FREEBUFFER;
+		void *hstream;
+		u8 *__user *ap_buffer;
+		u32 num_bufs;
+	} args_strm_freebuffer;
 
 	struct {
-		void *hStream;
-		HANDLE *phEvent;
-	} ARGS_STRM_GETEVENTHANDLE;
+		void *hstream;
+		bhandle *ph_event;
+	} args_strm_geteventhandle;
 
 	struct {
-		void *hStream;
-		struct STRM_INFO __user *pStreamInfo;
-		u32 uStreamInfoSize;
-	} ARGS_STRM_GETINFO;
+		void *hstream;
+		struct stream_info __user *stream_info;
+		u32 stream_info_size;
+	} args_strm_getinfo;
 
 	struct {
-		void *hStream;
-		bool bFlush;
-	} ARGS_STRM_IDLE;
+		void *hstream;
+		bool flush_flag;
+	} args_strm_idle;
 
 	struct {
-		void *hStream;
-		u8 *pBuffer;
-		u32 dwBytes;
-		u32 dwBufSize;
-		u32 dwArg;
-	} ARGS_STRM_ISSUE;
+		void *hstream;
+		u8 *pbuffer;
+		u32 dw_bytes;
+		u32 dw_buf_size;
+		u32 dw_arg;
+	} args_strm_issue;
 
 	struct {
-		void *hNode;
-		u32 uDirection;
-		u32 uIndex;
-		struct STRM_ATTR __user *pAttrIn;
-		void *__user *phStream;
-	} ARGS_STRM_OPEN;
+		void *hnode;
+		u32 direction;
+		u32 index;
+		struct strm_attr __user *attr_in;
+		void *__user *ph_stream;
+	} args_strm_open;
 
 	struct {
-		void *hStream;
-		u8 *__user *pBufPtr;
-		u32 __user *pBytes;
-		u32 __user *pBufSize;
-		u32 __user *pdwArg;
-	} ARGS_STRM_RECLAIM;
+		void *hstream;
+		u8 *__user *buf_ptr;
+		u32 __user *bytes;
+		u32 __user *buf_size_ptr;
+		u32 __user *pdw_arg;
+	} args_strm_reclaim;
 
 	struct {
-		void *hStream;
-		u32 uEventMask;
-		u32 uNotifyType;
-		struct DSP_NOTIFICATION __user *hNotification;
-	} ARGS_STRM_REGISTERNOTIFY;
+		void *hstream;
+		u32 event_mask;
+		u32 notify_type;
+		struct dsp_notification __user *hnotification;
+	} args_strm_registernotify;
 
 	struct {
-		void *__user *aStreamTab;
-		u32 nStreams;
-		u32 __user *pMask;
-		u32 uTimeout;
-	} ARGS_STRM_SELECT;
+		void *__user *stream_tab;
+		u32 strm_num;
+		u32 __user *pmask;
+		u32 utimeout;
+	} args_strm_select;
 
 	/* CMM Module */
 	struct {
-		struct CMM_OBJECT *hCmmMgr;
-		u32 uSize;
-		struct CMM_ATTRS *pAttrs;
-		OUT void **ppBufVA;
-	} ARGS_CMM_ALLOCBUF;
+		struct cmm_object *hcmm_mgr;
+		u32 usize;
+		struct cmm_attrs *pattrs;
+		OUT void **pp_buf_va;
+	} args_cmm_allocbuf;
 
 	struct {
-		struct CMM_OBJECT *hCmmMgr;
-		void *pBufPA;
-		u32 ulSegId;
-	} ARGS_CMM_FREEBUF;
+		struct cmm_object *hcmm_mgr;
+		void *buf_pa;
+		u32 ul_seg_id;
+	} args_cmm_freebuf;
 
 	struct {
-		void *hProcessor;
-		struct CMM_OBJECT *__user *phCmmMgr;
-	} ARGS_CMM_GETHANDLE;
+		void *hprocessor;
+		struct cmm_object *__user *ph_cmm_mgr;
+	} args_cmm_gethandle;
 
 	struct {
-		struct CMM_OBJECT *hCmmMgr;
-		struct CMM_INFO __user *pCmmInfo;
-	} ARGS_CMM_GETINFO;
+		struct cmm_object *hcmm_mgr;
+		struct cmm_info __user *cmm_info_obj;
+	} args_cmm_getinfo;
 
 	/* MEM Module */
 	struct {
-		u32 cBytes;
-		enum MEM_POOLATTRS type;
-		void *pMem;
-	} ARGS_MEM_ALLOC;
+		u32 byte_size;
+		enum mem_poolattrs type;
+		void *mem;
+	} args_mem_alloc;
 
 	struct {
-		u32 cBytes;
-		enum MEM_POOLATTRS type;
-		void *pMem;
-	} ARGS_MEM_CALLOC;
+		u32 byte_size;
+		enum mem_poolattrs type;
+		void *mem;
+	} args_mem_calloc;
 
 	struct {
-		void *pMem;
-	} ARGS_MEM_FREE;
+		void *mem;
+	} args_mem_free;
 
 	struct {
-		void *pBuffer;
-		u32 cSize;
-		void *pLockedBuffer;
-	} ARGS_MEM_PAGELOCK;
+		void *pbuffer;
+		u32 size;
+		void *locked_buffer;
+	} args_mem_pagelock;
 
 	struct {
-		void *pBuffer;
-		u32 cSize;
-	} ARGS_MEM_PAGEUNLOCK;
+		void *pbuffer;
+		u32 size;
+	} args_mem_pageunlock;
 
 	/* UTIL module */
 	struct {
-		s32 cArgc;
-		char **ppArgv;
-	} ARGS_UTIL_TESTDLL;
-} ;
+		s32 util_argc;
+		char **pp_argv;
+	} args_util_testdll;
+};
 
 /*
  * Dspbridge Ioctl numbering scheme
@@ -493,4 +492,4 @@ union Trapped_Args {
 #define CMM_GETHANDLE		_IOR(DB, DB_IOC(DB_CMM, 2), unsigned long)
 #define CMM_GETINFO		_IOR(DB, DB_IOC(DB_CMM, 3), unsigned long)
 
-#endif				/* WCDIOCTL_ */
+#endif /* WCDIOCTL_ */

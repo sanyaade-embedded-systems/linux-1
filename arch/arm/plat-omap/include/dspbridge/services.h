@@ -21,7 +21,7 @@
 
 #include <dspbridge/host_os.h>
 /*
- *  ======== SERVICES_Exit ========
+ *  ======== services_exit ========
  *  Purpose:
  *      Discontinue usage of module; free resources when reference count
  *      reaches 0.
@@ -32,10 +32,10 @@
  *  Ensures:
  *      Resources used by module are freed when cRef reaches zero.
  */
-	extern void SERVICES_Exit(void);
+extern void services_exit(void);
 
 /*
- *  ======== SERVICES_Init ========
+ *  ======== services_init ========
  *  Purpose:
  *      Initializes SERVICES modules.
  *  Parameters:
@@ -45,6 +45,6 @@
  *  Ensures:
  *      SERVICES modules initialized.
  */
-	extern bool SERVICES_Init(void);
+extern bool services_init(void);
 
-#endif				/* SERVICES_ */
+#endif /* SERVICES_ */

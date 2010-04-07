@@ -72,12 +72,11 @@
  *  Aliases for standard C types
  */
 
-typedef s32(*Fxn) (void);		/* generic function type */
+typedef s32(*fxn) (void);	/* generic function type */
 
 #ifndef NULL
 #define NULL 0
 #endif
-
 
 /*
  * These macros are used to cast 'Arg' types to 's32' or 'Ptr'.
@@ -85,11 +84,11 @@ typedef s32(*Fxn) (void);		/* generic function type */
  * size as s32 and Ptr in 55x large model.
  */
 #if defined(_28l_) || defined(_55l_)
-#define ArgToInt(A)	((s32)((long)(A) & 0xffff))
-#define ArgToPtr(A)	((Ptr)(A))
+#define ARG_TO_INT(A)	((s32)((long)(A) & 0xffff))
+#define ARG_TO_PTR(A)	((Ptr)(A))
 #else
-#define ArgToInt(A)	((s32)(A))
-#define ArgToPtr(A)	((Ptr)(A))
+#define ARG_TO_INT(A)	((s32)(A))
+#define ARG_TO_PTR(A)	((Ptr)(A))
 #endif
 
-#endif				/* STD_ */
+#endif /* STD_ */

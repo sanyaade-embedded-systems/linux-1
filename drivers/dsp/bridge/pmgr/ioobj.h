@@ -24,16 +24,16 @@
 #include <dspbridge/wmd.h>
 
 /*
- *  This struct is the first field in a IO_MGR struct, as implemented in
+ *  This struct is the first field in a io_mgr struct, as implemented in
  *  a WMD channel class library.  Other, implementation specific fields
  *  follow this structure in memory.
  */
-struct IO_MGR_ {
-	/* These must be the first fields in a IO_MGR struct: */
-	u32 dwSignature;	/* Used for object validation.   */
-	struct WMD_DEV_CONTEXT *hWmdContext;	/* WMD device context.  */
-	struct WMD_DRV_INTERFACE *pIntfFxns;	/* Function interface to WMD. */
-	struct DEV_OBJECT *hDevObject;	/* Device this board represents. */
-} ;
+struct io_mgr_ {
+	/* These must be the first fields in a io_mgr struct: */
+	u32 dw_signature;	/* Used for object validation. */
+	struct wmd_dev_context *hwmd_context;	/* WMD device context. */
+	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD. */
+	struct dev_object *hdev_obj;	/* Device this board represents. */
+};
 
-#endif				/* IOOBJ_ */
+#endif /* IOOBJ_ */

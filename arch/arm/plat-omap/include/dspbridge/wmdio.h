@@ -26,16 +26,16 @@
 #include <dspbridge/devdefs.h>
 #include <dspbridge/iodefs.h>
 
-	extern DSP_STATUS WMD_IO_Create(OUT struct IO_MGR **phIOMgr,
-					struct DEV_OBJECT *hDevObject,
-					IN CONST struct IO_ATTRS *pMgrAttrs);
+extern dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
+				   struct dev_object *hdev_obj,
+				   IN CONST struct io_attrs *pMgrAttrs);
 
-	extern DSP_STATUS WMD_IO_Destroy(struct IO_MGR *hIOMgr);
+extern dsp_status bridge_io_destroy(struct io_mgr *hio_mgr);
 
-	extern DSP_STATUS WMD_IO_OnLoaded(struct IO_MGR *hIOMgr);
+extern dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr);
 
-	extern DSP_STATUS IVA_IO_OnLoaded(struct IO_MGR *hIOMgr);
-	extern DSP_STATUS WMD_IO_GetProcLoad(IN struct IO_MGR *hIOMgr,
-				OUT struct DSP_PROCLOADSTAT *pProcStat);
+extern dsp_status iva_io_on_loaded(struct io_mgr *hio_mgr);
+extern dsp_status bridge_io_get_proc_load(IN struct io_mgr *hio_mgr,
+				       OUT struct dsp_procloadstat *pProcStat);
 
-#endif				/* WMDIO_ */
+#endif /* WMDIO_ */

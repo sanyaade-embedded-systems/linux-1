@@ -20,11 +20,11 @@
 #define MEMDEFS_
 
 /* Memory Pool Attributes: */
-	enum MEM_POOLATTRS {
-		MEM_PAGED = 0,
-		MEM_NONPAGED = 1,
-		MEM_LARGEVIRTMEM = 2
-	} ;
+enum mem_poolattrs {
+	MEM_PAGED = 0,
+	MEM_NONPAGED = 1,
+	MEM_LARGEVIRTMEM = 2
+};
 
 /*
  *  MEM_VIRTUALSEGID is used by Node & Strm to access virtual address space in
@@ -34,4 +34,4 @@
 #define MEM_GETVIRTUALSEGID     0x20000000
 #define MEM_MASKVIRTUALSEGID    (MEM_SETVIRTUALSEGID | MEM_GETVIRTUALSEGID)
 
-#endif				/* MEMDEFS_ */
+#endif /* MEMDEFS_ */

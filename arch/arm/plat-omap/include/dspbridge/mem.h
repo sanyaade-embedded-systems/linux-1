@@ -24,17 +24,17 @@
 #include <dspbridge/memdefs.h>
 
 /*
- *  ======== MEM_Alloc ========
+ *  ======== mem_alloc ========
  *  Purpose:
  *      Allocate memory from the paged or non-paged pools.
  *  Parameters:
- *      cBytes: Number of bytes to allocate.
+ *      byte_size: Number of bytes to allocate.
  *      type:   Type of memory to allocate; one of:
  *              MEM_PAGED: Allocate from pageable memory.
  *              MEM_NONPAGED: Allocate from page locked memory.
  *  Returns:
  *      Pointer to a block of memory;
- *      NULL if memory couldn't be allocated, if cBytes == 0, or if type is
+ *      NULL if memory couldn't be allocated, if byte_size == 0, or if type is
  *      not one of MEM_PAGED or MEM_NONPAGED.
  *  Requires:
  *      MEM initialized.
@@ -42,10 +42,10 @@
  *      The returned pointer, if not NULL, points to a valid memory block of
  *      the size requested.
  */
-	extern void *MEM_Alloc(IN u32 cBytes, IN enum MEM_POOLATTRS type);
+extern void *mem_alloc(IN u32 byte_size, IN enum mem_poolattrs type);
 
 /*
- *  ======== MEM_AllocObject ========
+ *  ======== MEM_ALLOC_OBJECT ========
  *  Purpose:
  *      Allocate an object, and set it's signature.
  *  Parameters:
@@ -54,30 +54,30 @@
  *      Signature:  Magic field value.  Must be non-zero.
  *  Returns:
  *  Requires:
- *      Same requirements as MEM_Calloc(); and
- *      The object structure has a dwSignature field.  The compiler ensures
+ *      Same requirements as mem_calloc(); and
+ *      The object structure has a dw_signature field.  The compiler ensures
  *      this requirement.
  *  Ensures:
- *      A subsequent call to MEM_IsValidHandle() will succeed for this object.
+ *      A subsequent call to MEM_IS_VALID_HANDLE() will succeed for this object.
  */
-#define MEM_AllocObject(pObj, Obj, Signature)		\
+#define MEM_ALLOC_OBJECT(pObj, Obj, Signature)		\
 do {							\
-	pObj = MEM_Calloc(sizeof(Obj), MEM_NONPAGED);	\
+	pObj = mem_calloc(sizeof(Obj), MEM_NONPAGED);	\
 	if (pObj) {					\
-		pObj->dwSignature = Signature;		\
+		pObj->dw_signature = Signature;		\
 	}						\
 } while (0)
 
-/*  ======== MEM_AllocPhysMem ========
+/*  ======== mem_alloc_phys_mem ========
  *  Purpose:
  *      Allocate physically contiguous, uncached memory
  *  Parameters:
- *      cBytes:     Number of bytes to allocate.
+ *      byte_size:     Number of bytes to allocate.
  *      ulAlign:    Alignment Mask.
  *      pPhysicalAddress: Physical address of allocated memory.
  *  Returns:
  *      Pointer to a block of memory;
- *      NULL if memory couldn't be allocated, or if cBytes == 0.
+ *      NULL if memory couldn't be allocated, or if byte_size == 0.
  *  Requires:
  *      MEM initialized.
  *  Ensures:
@@ -85,22 +85,21 @@ do {							\
  *      the size requested.  Returned physical address refers to physical
  *      location of memory.
  */
-	extern void *MEM_AllocPhysMem(IN u32 cBytes,
-				      IN u32 ulAlign,
-				      OUT u32 *pPhysicalAddress);
+extern void *mem_alloc_phys_mem(IN u32 byte_size,
+				IN u32 ulAlign, OUT u32 *pPhysicalAddress);
 
 /*
- *  ======== MEM_Calloc ========
+ *  ======== mem_calloc ========
  *  Purpose:
  *      Allocate zero-initialized memory from the paged or non-paged pools.
  *  Parameters:
- *      cBytes: Number of bytes to allocate.
+ *      byte_size: Number of bytes to allocate.
  *      type:   Type of memory to allocate; one of:
  *              MEM_PAGED:   Allocate from pageable memory.
  *              MEM_NONPAGED: Allocate from page locked memory.
  *  Returns:
  *      Pointer to a block of zeroed memory;
- *      NULL if memory couldn't be allocated, if cBytes == 0, or if type is
+ *      NULL if memory couldn't be allocated, if byte_size == 0, or if type is
  *      not one of MEM_PAGED or MEM_NONPAGED.
  *  Requires:
  *      MEM initialized.
@@ -108,10 +107,10 @@ do {							\
  *      The returned pointer, if not NULL, points to a valid memory block
  *      of the size requested.
  */
-	extern void *MEM_Calloc(IN u32 cBytes, IN enum MEM_POOLATTRS type);
+extern void *mem_calloc(IN u32 byte_size, IN enum mem_poolattrs type);
 
 /*
- *  ======== MEM_Exit ========
+ *  ======== mem_exit ========
  *  Purpose:
  *      Discontinue usage of module; free resources when reference count
  *      reaches 0.
@@ -122,10 +121,10 @@ do {							\
  *  Ensures:
  *      Resources used by module are freed when cRef reaches zero.
  */
-	extern void MEM_Exit(void);
+extern void mem_exit(void);
 
 /*
- *  ======== MEM_FlushCache ========
+ *  ======== mem_flush_cache ========
  *  Purpose:
  *      Performs system cache sync with discard
  *  Parameters:
@@ -137,31 +136,31 @@ do {							\
  *  Ensures:
  *      Cache is synchronized
  */
-	extern void MEM_FlushCache(void *pMemBuf, u32 cBytes, u32 FlushType);
+extern void mem_flush_cache(void *pMemBuf, u32 byte_size, u32 FlushType);
 
 /*
- *  ======== MEM_FreePhysMem ========
+ *  ======== mem_free_phys_mem ========
  *  Purpose:
  *      Free the given block of physically contiguous memory.
  *  Parameters:
  *      pVirtualAddress:  Pointer to virtual memory region allocated
- *      by MEM_AllocPhysMem().
+ *      by mem_alloc_phys_mem().
  *      pPhysicalAddress:  Pointer to physical memory region  allocated
- *      by MEM_AllocPhysMem().
- *      cBytes:  Size of the memory region allocated by MEM_AllocPhysMem().
+ *      by mem_alloc_phys_mem().
+ *      byte_size:  Size of the memory region allocated by mem_alloc_phys_mem().
  *  Returns:
  *  Requires:
  *      MEM initialized.
  *      pVirtualAddress is a valid memory address returned by
- *          MEM_AllocPhysMem()
+ *          mem_alloc_phys_mem()
  *  Ensures:
  *      pVirtualAddress is no longer a valid pointer to memory.
  */
-	extern void MEM_FreePhysMem(void *pVirtualAddress,
-				    u32 pPhysicalAddress, u32 cBytes);
+extern void mem_free_phys_mem(void *pVirtualAddress,
+			      u32 pPhysicalAddress, u32 byte_size);
 
 /*
- *  ======== MEM_FreeObject ========
+ *  ======== MEM_FREE_OBJECT ========
  *  Purpose:
  *      Utility macro to invalidate an object's signature, and deallocate it.
  *  Parameters:
@@ -170,32 +169,32 @@ do {							\
  *  Requires:
  *      Same requirements as kfree().
  *  Ensures:
- *      A subsequent call to MEM_IsValidHandle() will fail for this object.
+ *      A subsequent call to MEM_IS_VALID_HANDLE() will fail for this object.
  */
-#define MEM_FreeObject(pObj)		\
+#define MEM_FREE_OBJECT(pObj)		\
 do {					\
-	pObj->dwSignature = 0x00;	\
+	pObj->dw_signature = 0x00;	\
 	kfree(pObj);			\
 } while (0)
 
 /*
- *  ======== MEM_GetNumPages ========
+ *  ======== mem_get_num_pages ========
  *  Purpose:
  *      Calculate the number of pages corresponding to the supplied buffer.
  *  Parameters:
- *      pAddr:  Linear (virtual) address of the buffer.
- *      cBytes: Number of bytes in the buffer.
+ *      paddr:  Linear (virtual) address of the buffer.
+ *      byte_size: Number of bytes in the buffer.
  *  Returns:
  *      Number of pages.
  *  Requires:
  *      MEM initialized.
  *  Ensures:
- *      If cBytes > 0, number of pages returned > 0.
+ *      If byte_size > 0, number of pages returned > 0.
  */
-	extern s32 MEM_GetNumPages(IN void *pAddr, IN u32 cBytes);
+extern s32 mem_get_num_pages(IN void *paddr, IN u32 byte_size);
 
 /*
- *  ======== MEM_Init ========
+ *  ======== services_mem_init ========
  *  Purpose:
  *      Initializes private state of MEM module.
  *  Parameters:
@@ -205,31 +204,31 @@ do {					\
  *  Ensures:
  *      MEM initialized.
  */
-	extern bool MEM_Init(void);
+extern bool services_mem_init(void);
 
 /*
- *  ======== MEM_IsValidHandle ========
+ *  ======== MEM_IS_VALID_HANDLE ========
  *  Purpose:
  *      Validate the object handle.
  *  Parameters:
- *      hObj:   Handle to object created with MEM_AllocObject().
+ *      hObj:   Handle to object created with MEM_ALLOC_OBJECT().
  *      Sig:    Expected signature u32.
  *  Returns:
  *      TRUE if handle is valid; FALSE otherwise.
  *  Requires:
- *      The object structure has a dwSignature field. Ensured by compiler.
+ *      The object structure has a dw_signature field. Ensured by compiler.
  *  Ensures:
  */
-#define MEM_IsValidHandle(hObj, Sig)                \
-     ((hObj != NULL) && (hObj->dwSignature == Sig))
+#define MEM_IS_VALID_HANDLE(hObj, Sig)                \
+     ((hObj != NULL) && (hObj->dw_signature == Sig))
 
 /*
- *  ======== MEM_LinearAddress ========
+ *  ======== MEM_LINEAR_ADDRESS ========
  *  Purpose:
  *      Get the linear address corresponding to the given physical address.
  *  Parameters:
  *      pPhysAddr:  Physical address to be mapped.
- *      cBytes:     Number of bytes in physical range to map.
+ *      byte_size:     Number of bytes in physical range to map.
  *  Returns:
  *      The corresponding linear address, or NULL if unsuccessful.
  *  Requires:
@@ -237,27 +236,27 @@ do {					\
  *  Ensures:
  *  Notes:
  *      If valid linear address is returned, be sure to call
- *      MEM_UnmapLinearAddress().
+ *      MEM_UNMAP_LINEAR_ADDRESS().
  */
-#define MEM_LinearAddress(pPhyAddr, cBytes) pPhyAddr
+#define MEM_LINEAR_ADDRESS(pPhyAddr, byte_size) pPhyAddr
 
 /*
- *  ======== MEM_UnmapLinearAddress ========
+ *  ======== MEM_UNMAP_LINEAR_ADDRESS ========
  *  Purpose:
- *      Unmap the linear address mapped in MEM_LinearAddress.
+ *      Unmap the linear address mapped in MEM_LINEAR_ADDRESS.
  *  Parameters:
- *      pBaseAddr: Ptr to mapped memory (as returned by MEM_LinearAddress()).
+ *      pBaseAddr: Ptr to mapped memory (as returned by MEM_LINEAR_ADDRESS()).
  *  Returns:
  *  Requires:
  *      - MEM initialized.
- *      - pBaseAddr is a valid linear address mapped in MEM_LinearAddress.
+ *      - pBaseAddr is a valid linear address mapped in MEM_LINEAR_ADDRESS.
  *  Ensures:
  *      - pBaseAddr no longer points to a valid linear address.
  */
-#define MEM_UnmapLinearAddress(pBaseAddr) {}
+#define MEM_UNMAP_LINEAR_ADDRESS(pBaseAddr) {}
 
 /*
- *  ======== MEM_ExtPhysPoolInit ========
+ *  ======== mem_ext_phys_pool_init ========
  *  Purpose:
  *      Uses the physical memory chunk passed for internal consitent memory
  *      allocations.
@@ -271,12 +270,11 @@ do {					\
  *      - MEM initialized.
  *      - valid physical address for the base and size > 0
  */
-	extern void MEM_ExtPhysPoolInit(IN u32 poolPhysBase,
-					IN u32 poolSize);
+extern void mem_ext_phys_pool_init(IN u32 poolPhysBase, IN u32 poolSize);
 
 /*
- *  ======== MEM_ExtPhysPoolRelease ========
+ *  ======== mem_ext_phys_pool_release ========
  */
-	extern void MEM_ExtPhysPoolRelease(void);
+extern void mem_ext_phys_pool_release(void);
 
-#endif				/* MEM_ */
+#endif /* MEM_ */

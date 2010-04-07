@@ -44,101 +44,102 @@
 #include <dspbridge/dspdrv.h>
 
 /*
- *  ======== DSP_Init ========
+ *  ======== dsp_init ========
  *  	Allocates bridge resources. Loads a base image onto DSP, if specified.
  */
-u32 DSP_Init(OUT u32 *initStatus)
+u32 dsp_init(OUT u32 *init_status)
 {
-	char devNode[MAXREGPATHLENGTH] = "TIOMAP1510";
-	DSP_STATUS status = DSP_EFAIL;
-	struct DRV_OBJECT *drvObject = NULL;
-	u32 deviceNode;
-	u32 deviceNodeString;
+	char dev_node[MAXREGPATHLENGTH] = "TIOMAP1510";
+	dsp_status status = DSP_EFAIL;
+	struct drv_object *drv_obj = NULL;
+	u32 device_node;
+	u32 device_node_string;
 
-	if (!WCD_Init())
+	if (!wcd_init())
 		goto func_cont;
 
-	status = DRV_Create(&drvObject);
+	status = drv_create(&drv_obj);
 	if (DSP_FAILED(status)) {
-		WCD_Exit();
+		wcd_exit();
 		goto func_cont;
-	}		/* End DRV_Create */
+	}
 
+	/* End drv_create */
 	/* Request Resources */
-	status = DRV_RequestResources((u32)&devNode, &deviceNodeString);
+	status = drv_request_resources((u32) &dev_node, &device_node_string);
 	if (DSP_SUCCEEDED(status)) {
 		/* Attempt to Start the Device */
-		status = DEV_StartDevice((struct CFG_DEVNODE *)
-							deviceNodeString);
+		status = dev_start_device((struct cfg_devnode *)
+					  device_node_string);
 		if (DSP_FAILED(status))
-			(void)DRV_ReleaseResources
-				((u32) deviceNodeString, drvObject);
+			(void)drv_release_resources
+			    ((u32) device_node_string, drv_obj);
 	} else {
-		dev_dbg(bridge, "%s: DRV_RequestResources Failed\n", __func__);
+		dev_dbg(bridge, "%s: drv_request_resources Failed\n", __func__);
 		status = DSP_EFAIL;
 	}
 
 	/* Unwind whatever was loaded */
 	if (DSP_FAILED(status)) {
-		/* irrespective of the status of DEV_RemoveDevice we conitinue
+		/* irrespective of the status of dev_remove_device we conitinue
 		 * unloading. Get the Driver Object iterate through and remove.
 		 * Reset the status to E_FAIL to avoid going through
-		 * WCD_InitComplete2. */
-		for (deviceNode = DRV_GetFirstDevExtension(); deviceNode != 0;
-		    deviceNode = DRV_GetNextDevExtension(deviceNode)) {
-			(void)DEV_RemoveDevice
-				((struct CFG_DEVNODE *)deviceNode);
-			(void)DRV_ReleaseResources((u32)deviceNode,
-				drvObject);
+		 * wcd_init_complete2. */
+		for (device_node = drv_get_first_dev_extension();
+		     device_node != 0;
+		     device_node = drv_get_next_dev_extension(device_node)) {
+			(void)dev_remove_device((struct cfg_devnode *)
+						device_node);
+			(void)drv_release_resources((u32) device_node, drv_obj);
 		}
 		/* Remove the Driver Object */
-		(void)DRV_Destroy(drvObject);
-		drvObject = NULL;
-		WCD_Exit();
+		(void)drv_destroy(drv_obj);
+		drv_obj = NULL;
+		wcd_exit();
 		dev_dbg(bridge, "%s: Logical device failed init\n", __func__);
-	}	/* Unwinding the loaded drivers */
+	}			/* Unwinding the loaded drivers */
 func_cont:
 	/* Attempt to Start the Board */
 	if (DSP_SUCCEEDED(status)) {
 		/* BRD_AutoStart could fail if the dsp execuetable is not the
 		 * correct one. We should not propagate that error
 		 * into the device loader. */
-		(void)WCD_InitComplete2();
+		(void)wcd_init_complete2();
 	} else {
 		dev_dbg(bridge, "%s: Failed\n", __func__);
-	}			/* End WCD_InitComplete2 */
-	DBC_Ensure((DSP_SUCCEEDED(status) && drvObject != NULL) ||
-		  (DSP_FAILED(status) && drvObject == NULL));
-	*initStatus = status;
+	}			/* End wcd_init_complete2 */
+	DBC_ENSURE((DSP_SUCCEEDED(status) && drv_obj != NULL) ||
+		   (DSP_FAILED(status) && drv_obj == NULL));
+	*init_status = status;
 	/* Return the Driver Object */
-	return (u32)drvObject;
+	return (u32) drv_obj;
 }
 
 /*
- *  ======== DSP_Deinit ========
+ *  ======== dsp_deinit ========
  *  	Frees the resources allocated for bridge.
  */
-bool DSP_Deinit(u32 deviceContext)
+bool dsp_deinit(u32 deviceContext)
 {
-	bool retVal = true;
-	u32 deviceNode;
-	struct MGR_OBJECT *mgrObject = NULL;
+	bool ret = true;
+	u32 device_node;
+	struct mgr_object *mgr_obj = NULL;
 
-	while ((deviceNode = DRV_GetFirstDevExtension()) != 0) {
-		(void)DEV_RemoveDevice((struct CFG_DEVNODE *)deviceNode);
+	while ((device_node = drv_get_first_dev_extension()) != 0) {
+		(void)dev_remove_device((struct cfg_devnode *)device_node);
 
-		(void)DRV_ReleaseResources((u32)deviceNode,
-			 (struct DRV_OBJECT *)deviceContext);
+		(void)drv_release_resources((u32) device_node,
+					    (struct drv_object *)deviceContext);
 	}
 
-	(void) DRV_Destroy((struct DRV_OBJECT *) deviceContext);
+	(void)drv_destroy((struct drv_object *)deviceContext);
 
 	/* Get the Manager Object from Registry
 	 * MGR Destroy will unload the DCD dll */
-	if (DSP_SUCCEEDED(CFG_GetObject((u32 *)&mgrObject, REG_MGR_OBJECT)))
-		(void)MGR_Destroy(mgrObject);
+	if (DSP_SUCCEEDED(cfg_get_object((u32 *) &mgr_obj, REG_MGR_OBJECT)))
+		(void)mgr_destroy(mgr_obj);
 
-	WCD_Exit();
+	wcd_exit();
 
-	return retVal;
+	return ret;
 }

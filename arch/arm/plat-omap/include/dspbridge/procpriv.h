@@ -20,7 +20,6 @@
 #define PROCPRIV_
 
 /* RM PROC Object */
-	struct PROC_OBJECT;
+struct proc_object;
 
-#endif				/* PROCPRIV_ */
-
+#endif /* PROCPRIV_ */

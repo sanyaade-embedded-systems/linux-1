@@ -22,20 +22,20 @@
 #include "_tiomap.h"
 
 /*
- *  ======== configureDspMmu ========
+ *  ======== configure_dsp_mmu ========
  *
  *  Make DSP MMu page table entries.
  *  Note: Not utilizing Coarse / Fine page tables.
  *  SECTION = 1MB, LARGE_PAGE = 64KB, SMALL_PAGE = 4KB, TINY_PAGE = 1KB.
  *  DSP Byte address 0x40_0000 is word addr 0x20_0000.
  */
-extern void configureDspMmu(struct WMD_DEV_CONTEXT *pDevContext,
-			    u32 dataBasePhys,
-			    u32 dspBaseVirt,
-			    u32 sizeInBytes,
-			    s32 nEntryStart,
-			    enum HW_Endianism_t endianism,
-			    enum HW_ElementSize_t elemSize,
-			    enum HW_MMUMixedSize_t mixedSize);
+extern void configure_dsp_mmu(struct wmd_dev_context *dev_context,
+			      u32 dataBasePhys,
+			      u32 dspBaseVirt,
+			      u32 sizeInBytes,
+			      s32 nEntryStart,
+			      enum hw_endianism_t endianism,
+			      enum hw_element_size_t elem_size,
+			      enum hw_mmu_mixed_size_t mixed_size);
 
-#endif				/* _TIOMAP_MMU_ */
+#endif /* _TIOMAP_MMU_ */

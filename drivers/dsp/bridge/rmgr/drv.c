@@ -47,123 +47,127 @@
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
 #define SIGNATURE   0x5f52474d	/* "DRV_" (in reverse) */
 
-struct DRV_OBJECT {
-	u32 dwSignature;
-	struct LST_LIST *devList;
-	struct LST_LIST *devNodeString;
+struct drv_object {
+	u32 dw_signature;
+	struct lst_list *dev_list;
+	struct lst_list *dev_node_string;
 };
 
 /*
  *  This is the Device Extension. Named with the Prefix
  *  DRV_ since it is living in this module
  */
-struct DRV_EXT {
+struct drv_ext {
 	struct list_head link;
-	char szString[MAXREGPATHLENGTH];
+	char sz_string[MAXREGPATHLENGTH];
 };
 
 /*  ----------------------------------- Globals */
-static s32 cRefs;
+static s32 refs;
 
 /*  ----------------------------------- Function Prototypes */
-static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 fRequest);
-static DSP_STATUS RequestBridgeResourcesDSP(u32 dwContext, s32 fRequest);
+static dsp_status request_bridge_resources(u32 dw_context, s32 fRequest);
+static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 fRequest);
 
 /* GPP PROCESS CLEANUP CODE */
 
-static DSP_STATUS DRV_ProcFreeNodeRes(HANDLE hPCtxt);
-extern enum NODE_STATE NODE_GetState(HANDLE hNode);
+static dsp_status drv_proc_free_node_res(bhandle hPCtxt);
+extern enum node_state node_get_state(bhandle hnode);
 
 /* Allocate and add a node resource element
-* This function is called from .Node_Allocate.  */
-DSP_STATUS DRV_InsertNodeResElement(HANDLE hNode, HANDLE hNodeRes,
-					HANDLE hPCtxt)
+* This function is called from .Node_Allocate. */
+dsp_status drv_insert_node_res_element(bhandle hnode, bhandle hNodeRes,
+				       bhandle hPCtxt)
 {
-	struct NODE_RES_OBJECT **pNodeRes = (struct NODE_RES_OBJECT **)hNodeRes;
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	DSP_STATUS status = DSP_SOK;
-	struct NODE_RES_OBJECT   *pTempNodeRes = NULL;
+	struct node_res_object **node_res_obj =
+	    (struct node_res_object **)hNodeRes;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	dsp_status status = DSP_SOK;
+	struct node_res_object *temp_node_res = NULL;
 
-	*pNodeRes = (struct NODE_RES_OBJECT *)MEM_Calloc
-		    (1 * sizeof(struct NODE_RES_OBJECT), MEM_PAGED);
-	if (*pNodeRes == NULL)
+	*node_res_obj = (struct node_res_object *)mem_calloc
+	    (1 * sizeof(struct node_res_object), MEM_PAGED);
+	if (*node_res_obj == NULL)
 		status = DSP_EHANDLE;
 
 	if (DSP_SUCCEEDED(status)) {
-		if (mutex_lock_interruptible(&pCtxt->node_mutex)) {
-			kfree(*pNodeRes);
+		if (mutex_lock_interruptible(&ctxt->node_mutex)) {
+			kfree(*node_res_obj);
 			return DSP_EFAIL;
 		}
-		(*pNodeRes)->hNode = hNode;
-		if (pCtxt->pNodeList != NULL) {
-			pTempNodeRes = pCtxt->pNodeList;
-			while (pTempNodeRes->next != NULL)
-				pTempNodeRes = pTempNodeRes->next;
+		(*node_res_obj)->hnode = hnode;
+		if (ctxt->node_list != NULL) {
+			temp_node_res = ctxt->node_list;
+			while (temp_node_res->next != NULL)
+				temp_node_res = temp_node_res->next;
 
-			pTempNodeRes->next = *pNodeRes;
+			temp_node_res->next = *node_res_obj;
 		} else {
-			pCtxt->pNodeList = *pNodeRes;
+			ctxt->node_list = *node_res_obj;
 		}
-		mutex_unlock(&pCtxt->node_mutex);
+		mutex_unlock(&ctxt->node_mutex);
 	}
 
 	return status;
 }
 
 /* Release all Node resources and its context
-* This is called from .Node_Delete.  */
-DSP_STATUS DRV_RemoveNodeResElement(HANDLE hNodeRes, HANDLE hPCtxt)
+* This is called from .Node_Delete. */
+dsp_status drv_remove_node_res_element(bhandle hNodeRes, bhandle hPCtxt)
 {
-	struct NODE_RES_OBJECT *pNodeRes = (struct NODE_RES_OBJECT *)hNodeRes;
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	struct NODE_RES_OBJECT *pTempNode;
-	DSP_STATUS status = DSP_SOK;
+	struct node_res_object *node_res_obj =
+	    (struct node_res_object *)hNodeRes;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	struct node_res_object *temp_node;
+	dsp_status status = DSP_SOK;
 
-	if (mutex_lock_interruptible(&pCtxt->node_mutex))
+	if (mutex_lock_interruptible(&ctxt->node_mutex))
 		return DSP_EFAIL;
-	pTempNode = pCtxt->pNodeList;
-	if (pTempNode == pNodeRes) {
-		pCtxt->pNodeList = pNodeRes->next;
+	temp_node = ctxt->node_list;
+	if (temp_node == node_res_obj) {
+		ctxt->node_list = node_res_obj->next;
 	} else {
-		while (pTempNode && pTempNode->next != pNodeRes)
-			pTempNode = pTempNode->next;
-		if (!pTempNode)
+		while (temp_node && temp_node->next != node_res_obj)
+			temp_node = temp_node->next;
+		if (!temp_node)
 			status = DSP_ENOTFOUND;
 		else
-			pTempNode->next = pNodeRes->next;
+			temp_node->next = node_res_obj->next;
 	}
-	mutex_unlock(&pCtxt->node_mutex);
-	kfree(pNodeRes);
+	mutex_unlock(&ctxt->node_mutex);
+	kfree(node_res_obj);
 	return status;
 }
 
 /* Actual Node De-Allocation */
-static DSP_STATUS DRV_ProcFreeNodeRes(HANDLE hPCtxt)
+static dsp_status drv_proc_free_node_res(bhandle hPCtxt)
 {
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	DSP_STATUS status = DSP_SOK;
-	struct NODE_RES_OBJECT *pNodeList = NULL;
-	struct NODE_RES_OBJECT *pNodeRes = NULL;
-	u32  nState;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	dsp_status status = DSP_SOK;
+	struct node_res_object *node_list = NULL;
+	struct node_res_object *node_res_obj = NULL;
+	u32 node_state;
 
-	pNodeList = pCtxt->pNodeList;
-	while (pNodeList != NULL) {
-		pNodeRes = pNodeList;
-		pNodeList = pNodeList->next;
-		if (pNodeRes->nodeAllocated) {
-			nState = NODE_GetState(pNodeRes->hNode) ;
-			if (nState <= NODE_DELETING) {
-				if ((nState == NODE_RUNNING) ||
-					(nState == NODE_PAUSED) ||
-					(nState == NODE_TERMINATING)) {
-					status = NODE_Terminate
-						(pNodeRes->hNode, &status);
-					status = NODE_Delete(pNodeRes->hNode,
-							pCtxt);
-				} else if ((nState == NODE_ALLOCATED)
-					|| (nState == NODE_CREATED))
-					status = NODE_Delete(pNodeRes->hNode,
-							pCtxt);
+	node_list = ctxt->node_list;
+	while (node_list != NULL) {
+		node_res_obj = node_list;
+		node_list = node_list->next;
+		if (node_res_obj->node_allocated) {
+			node_state = node_get_state(node_res_obj->hnode);
+			if (node_state <= NODE_DELETING) {
+				if ((node_state == NODE_RUNNING) ||
+				    (node_state == NODE_PAUSED) ||
+				    (node_state == NODE_TERMINATING)) {
+					status = node_terminate
+					    (node_res_obj->hnode, &status);
+					status =
+					    node_delete(node_res_obj->hnode,
+							ctxt);
+				} else if ((node_state == NODE_ALLOCATED)
+					   || (node_state == NODE_CREATED))
+					status =
+					    node_delete(node_res_obj->hnode,
+							ctxt);
 			}
 		}
 	}
@@ -171,94 +175,96 @@ static DSP_STATUS DRV_ProcFreeNodeRes(HANDLE hPCtxt)
 }
 
 /* Release all Mapped and Reserved DMM resources */
-DSP_STATUS DRV_RemoveAllDMMResElements(HANDLE hPCtxt)
+dsp_status drv_remove_all_dmm_res_elements(bhandle hPCtxt)
 {
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	DSP_STATUS status = DSP_SOK;
-	struct DMM_MAP_OBJECT *temp_map, *map_obj;
-	struct DMM_RSV_OBJECT *temp_rsv, *rsv_obj;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	dsp_status status = DSP_SOK;
+	struct dmm_map_object *temp_map, *map_obj;
+	struct dmm_rsv_object *temp_rsv, *rsv_obj;
 
 	/* Free DMM mapped memory resources */
-	list_for_each_entry_safe(map_obj, temp_map, &pCtxt->dmm_map_list,
-			link) {
-		status = PROC_UnMap(pCtxt->hProcessor,
-				(void *)map_obj->dsp_addr, pCtxt);
+	list_for_each_entry_safe(map_obj, temp_map, &ctxt->dmm_map_list, link) {
+		status = proc_un_map(ctxt->hprocessor,
+				     (void *)map_obj->dsp_addr, ctxt);
 		if (DSP_FAILED(status))
-			pr_err("%s: PROC_UnMap failed!"
-					" status = 0x%xn", __func__, status);
+			pr_err("%s: proc_un_map failed!"
+			       " status = 0x%xn", __func__, status);
 	}
 
 	/* Free DMM reserved memory resources */
-	list_for_each_entry_safe(rsv_obj, temp_rsv, &pCtxt->dmm_rsv_list,
-			link) {
-		status = PROC_UnReserveMemory(pCtxt->hProcessor,
-				(void *)rsv_obj->dsp_reserved_addr, pCtxt);
+	list_for_each_entry_safe(rsv_obj, temp_rsv, &ctxt->dmm_rsv_list, link) {
+		status = proc_un_reserve_memory(ctxt->hprocessor, (void *)
+						rsv_obj->dsp_reserved_addr,
+						ctxt);
 		if (DSP_FAILED(status))
-			pr_err("%s: PROC_UnReserveMemory failed!"
-					" status = 0x%xn", __func__, status);
+			pr_err("%s: proc_un_reserve_memory failed!"
+			       " status = 0x%xn", __func__, status);
 	}
 	return status;
 }
 
 /* Update Node allocation status */
-void DRV_ProcNodeUpdateStatus(HANDLE hNodeRes, s32 status)
+void drv_proc_node_update_status(bhandle hNodeRes, s32 status)
 {
-	struct NODE_RES_OBJECT *pNodeRes = (struct NODE_RES_OBJECT *)hNodeRes;
-	DBC_Assert(hNodeRes != NULL);
-	pNodeRes->nodeAllocated = status;
+	struct node_res_object *node_res_obj =
+	    (struct node_res_object *)hNodeRes;
+	DBC_ASSERT(hNodeRes != NULL);
+	node_res_obj->node_allocated = status;
 }
 
 /* Update Node Heap status */
-void DRV_ProcNodeUpdateHeapStatus(HANDLE hNodeRes, s32 status)
+void drv_proc_node_update_heap_status(bhandle hNodeRes, s32 status)
 {
-	struct NODE_RES_OBJECT *pNodeRes = (struct NODE_RES_OBJECT *)hNodeRes;
-	DBC_Assert(hNodeRes != NULL);
-	pNodeRes->heapAllocated = status;
+	struct node_res_object *node_res_obj =
+	    (struct node_res_object *)hNodeRes;
+	DBC_ASSERT(hNodeRes != NULL);
+	node_res_obj->heap_allocated = status;
 }
 
 /* Release all Node resources and its context
 * This is called from .bridge_release.
-*/
-DSP_STATUS 	DRV_RemoveAllNodeResElements(HANDLE hPCtxt)
+ */
+dsp_status drv_remove_all_node_res_elements(bhandle hPCtxt)
 {
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	DSP_STATUS status = DSP_SOK;
-	struct NODE_RES_OBJECT *pTempNode2 = NULL;
-	struct NODE_RES_OBJECT *pTempNode = NULL;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	dsp_status status = DSP_SOK;
+	struct node_res_object *temp_node2 = NULL;
+	struct node_res_object *temp_node = NULL;
 
-	DRV_ProcFreeNodeRes(pCtxt);
-	pTempNode = pCtxt->pNodeList;
-	while (pTempNode != NULL) {
-		pTempNode2 = pTempNode;
-		pTempNode = pTempNode->next;
-		kfree(pTempNode2);
+	drv_proc_free_node_res(ctxt);
+	temp_node = ctxt->node_list;
+	while (temp_node != NULL) {
+		temp_node2 = temp_node;
+		temp_node = temp_node->next;
+		kfree(temp_node2);
 	}
-	pCtxt->pNodeList = NULL;
+	ctxt->node_list = NULL;
 	return status;
 }
 
 /* Getting the node resource element */
-DSP_STATUS DRV_GetNodeResElement(HANDLE hNode, HANDLE hNodeRes, HANDLE hPCtxt)
+dsp_status drv_get_node_res_element(bhandle hnode, bhandle hNodeRes,
+				    bhandle hPCtxt)
 {
-	struct NODE_RES_OBJECT **nodeRes = (struct NODE_RES_OBJECT **)hNodeRes;
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	DSP_STATUS status = DSP_SOK;
-	struct NODE_RES_OBJECT *pTempNode2 = NULL;
-	struct NODE_RES_OBJECT *pTempNode = NULL;
+	struct node_res_object **node_res = (struct node_res_object **)hNodeRes;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	dsp_status status = DSP_SOK;
+	struct node_res_object *temp_node2 = NULL;
+	struct node_res_object *temp_node = NULL;
 
-	if (mutex_lock_interruptible(&pCtxt->node_mutex))
+	if (mutex_lock_interruptible(&ctxt->node_mutex))
 		return DSP_EFAIL;
 
-	pTempNode = pCtxt->pNodeList;
-	while ((pTempNode != NULL) && (pTempNode->hNode != hNode)) {
-		pTempNode2 = pTempNode;
-		pTempNode = pTempNode->next;
+	temp_node = ctxt->node_list;
+	while ((temp_node != NULL) && (temp_node->hnode != hnode)) {
+		temp_node2 = temp_node;
+		temp_node = temp_node->next;
 	}
 
-	mutex_unlock(&pCtxt->node_mutex);
+	mutex_unlock(&ctxt->node_mutex);
 
-	if (pTempNode != NULL)
-		*nodeRes = pTempNode;
+	if (temp_node != NULL)
+		*node_res = temp_node;
 	else
 		status = DSP_ENOTFOUND;
 
@@ -267,132 +273,137 @@ DSP_STATUS DRV_GetNodeResElement(HANDLE hNode, HANDLE hNodeRes, HANDLE hPCtxt)
 
 /* Allocate the STRM resource element
 * This is called after the actual resource is allocated
-*/
-DSP_STATUS DRV_ProcInsertSTRMResElement(HANDLE hStreamHandle, HANDLE hSTRMRes,
-					HANDLE hPCtxt)
+ */
+dsp_status drv_proc_insert_strm_res_element(bhandle hStreamHandle,
+					    bhandle hstrm_res, bhandle hPCtxt)
 {
-	struct STRM_RES_OBJECT **pSTRMRes = (struct STRM_RES_OBJECT **)hSTRMRes;
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	DSP_STATUS status = DSP_SOK;
-	struct STRM_RES_OBJECT *pTempSTRMRes = NULL;
+	struct strm_res_object **pstrm_res =
+	    (struct strm_res_object **)hstrm_res;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	dsp_status status = DSP_SOK;
+	struct strm_res_object *temp_strm_res = NULL;
 
-	*pSTRMRes = (struct STRM_RES_OBJECT *)
-		    MEM_Calloc(1 * sizeof(struct STRM_RES_OBJECT), MEM_PAGED);
-	if (*pSTRMRes == NULL)
+	*pstrm_res = (struct strm_res_object *)
+	    mem_calloc(1 * sizeof(struct strm_res_object), MEM_PAGED);
+	if (*pstrm_res == NULL)
 		status = DSP_EHANDLE;
 
 	if (DSP_SUCCEEDED(status)) {
-		if (mutex_lock_interruptible(&pCtxt->strm_mutex)) {
-			kfree(*pSTRMRes);
+		if (mutex_lock_interruptible(&ctxt->strm_mutex)) {
+			kfree(*pstrm_res);
 			return DSP_EFAIL;
 		}
-		(*pSTRMRes)->hStream = hStreamHandle;
-		if (pCtxt->pSTRMList != NULL) {
-			pTempSTRMRes = pCtxt->pSTRMList;
-			while (pTempSTRMRes->next != NULL)
-				pTempSTRMRes = pTempSTRMRes->next;
+		(*pstrm_res)->hstream = hStreamHandle;
+		if (ctxt->pstrm_list != NULL) {
+			temp_strm_res = ctxt->pstrm_list;
+			while (temp_strm_res->next != NULL)
+				temp_strm_res = temp_strm_res->next;
 
-			pTempSTRMRes->next = *pSTRMRes;
+			temp_strm_res->next = *pstrm_res;
 		} else {
-			pCtxt->pSTRMList = *pSTRMRes;
+			ctxt->pstrm_list = *pstrm_res;
 		}
-		mutex_unlock(&pCtxt->strm_mutex);
+		mutex_unlock(&ctxt->strm_mutex);
 	}
 	return status;
 }
 
 /* Release Stream resource element context
 * This function called after the actual resource is freed
-*/
-DSP_STATUS 	DRV_ProcRemoveSTRMResElement(HANDLE hSTRMRes, HANDLE hPCtxt)
+ */
+dsp_status drv_proc_remove_strm_res_element(bhandle hstrm_res, bhandle hPCtxt)
 {
-	struct STRM_RES_OBJECT *pSTRMRes = (struct STRM_RES_OBJECT *)hSTRMRes;
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	struct STRM_RES_OBJECT *pTempSTRMRes;
-	DSP_STATUS status = DSP_SOK;
+	struct strm_res_object *pstrm_res = (struct strm_res_object *)hstrm_res;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	struct strm_res_object *temp_strm_res;
+	dsp_status status = DSP_SOK;
 
-	if (mutex_lock_interruptible(&pCtxt->strm_mutex))
+	if (mutex_lock_interruptible(&ctxt->strm_mutex))
 		return DSP_EFAIL;
-	pTempSTRMRes = pCtxt->pSTRMList;
+	temp_strm_res = ctxt->pstrm_list;
 
-	if (pCtxt->pSTRMList == pSTRMRes) {
-		pCtxt->pSTRMList = pSTRMRes->next;
+	if (ctxt->pstrm_list == pstrm_res) {
+		ctxt->pstrm_list = pstrm_res->next;
 	} else {
-		while (pTempSTRMRes && pTempSTRMRes->next != pSTRMRes)
-			pTempSTRMRes = pTempSTRMRes->next;
-		if (pTempSTRMRes == NULL)
+		while (temp_strm_res && temp_strm_res->next != pstrm_res)
+			temp_strm_res = temp_strm_res->next;
+		if (temp_strm_res == NULL)
 			status = DSP_ENOTFOUND;
 		else
-			pTempSTRMRes->next = pSTRMRes->next;
+			temp_strm_res->next = pstrm_res->next;
 	}
-	mutex_unlock(&pCtxt->strm_mutex);
-	kfree(pSTRMRes);
+	mutex_unlock(&ctxt->strm_mutex);
+	kfree(pstrm_res);
 	return status;
 }
 
 /* Release all Stream resources and its context
 * This is called from .bridge_release.
-*/
-DSP_STATUS DRV_RemoveAllSTRMResElements(HANDLE hPCtxt)
+ */
+dsp_status drv_remove_all_strm_res_elements(bhandle hPCtxt)
 {
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	DSP_STATUS status = DSP_SOK;
-	struct STRM_RES_OBJECT *strm_res = NULL;
-	struct STRM_RES_OBJECT *strm_tmp = NULL;
-	struct STRM_INFO strm_info;
-	struct DSP_STREAMINFO user;
-	u8 **apBuffer = NULL;
-	u8 *pBufPtr;
-	u32 ulBytes;
-	u32 dwArg;
-	s32 ulBufSize;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	dsp_status status = DSP_SOK;
+	struct strm_res_object *strm_res = NULL;
+	struct strm_res_object *strm_tmp = NULL;
+	struct stream_info strm_info;
+	struct dsp_streaminfo user;
+	u8 **ap_buffer = NULL;
+	u8 *buf_ptr;
+	u32 ul_bytes;
+	u32 dw_arg;
+	s32 ul_buf_size;
 
-	strm_tmp = pCtxt->pSTRMList;
+	strm_tmp = ctxt->pstrm_list;
 	while (strm_tmp) {
 		strm_res = strm_tmp;
 		strm_tmp = strm_tmp->next;
-		if (strm_res->uNumBufs) {
-			apBuffer = MEM_Alloc((strm_res->uNumBufs *
-					    sizeof(u8 *)), MEM_NONPAGED);
-			if (apBuffer) {
-				status = STRM_FreeBuffer(strm_res->hStream,
-					apBuffer, strm_res->uNumBufs, pCtxt);
-				kfree(apBuffer);
+		if (strm_res->num_bufs) {
+			ap_buffer = mem_alloc((strm_res->num_bufs *
+					       sizeof(u8 *)), MEM_NONPAGED);
+			if (ap_buffer) {
+				status = strm_free_buffer(strm_res->hstream,
+							  ap_buffer,
+							  strm_res->num_bufs,
+							  ctxt);
+				kfree(ap_buffer);
 			}
 		}
-		strm_info.pUser = &user;
-		user.uNumberBufsInStream = 0;
-		STRM_GetInfo(strm_res->hStream, &strm_info, sizeof(strm_info));
-		while (user.uNumberBufsInStream--)
-			STRM_Reclaim(strm_res->hStream, &pBufPtr, &ulBytes,
-					     (u32 *)&ulBufSize, &dwArg);
-		status = STRM_Close(strm_res->hStream, pCtxt);
+		strm_info.user_strm = &user;
+		user.number_bufs_in_stream = 0;
+		strm_get_info(strm_res->hstream, &strm_info, sizeof(strm_info));
+		while (user.number_bufs_in_stream--)
+			strm_reclaim(strm_res->hstream, &buf_ptr, &ul_bytes,
+				     (u32 *) &ul_buf_size, &dw_arg);
+		status = strm_close(strm_res->hstream, ctxt);
 	}
 	return status;
 }
 
 /* Getting the stream resource element */
-DSP_STATUS DRV_GetSTRMResElement(HANDLE hStrm, HANDLE hSTRMRes, HANDLE hPCtxt)
+dsp_status drv_get_strm_res_element(bhandle hStrm, bhandle hstrm_res,
+				    bhandle hPCtxt)
 {
-	struct STRM_RES_OBJECT **STRMRes = (struct STRM_RES_OBJECT **)hSTRMRes;
-	struct PROCESS_CONTEXT *pCtxt = (struct PROCESS_CONTEXT *)hPCtxt;
-	DSP_STATUS status = DSP_SOK;
-	struct STRM_RES_OBJECT *pTempSTRM2 = NULL;
-	struct STRM_RES_OBJECT *pTempSTRM;
+	struct strm_res_object **strm_res =
+	    (struct strm_res_object **)hstrm_res;
+	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	dsp_status status = DSP_SOK;
+	struct strm_res_object *temp_strm2 = NULL;
+	struct strm_res_object *temp_strm;
 
-	if (mutex_lock_interruptible(&pCtxt->strm_mutex))
+	if (mutex_lock_interruptible(&ctxt->strm_mutex))
 		return DSP_EFAIL;
 
-	pTempSTRM = pCtxt->pSTRMList;
-	while ((pTempSTRM != NULL) && (pTempSTRM->hStream != hStrm)) {
-		pTempSTRM2 = pTempSTRM;
-		pTempSTRM = pTempSTRM->next;
+	temp_strm = ctxt->pstrm_list;
+	while ((temp_strm != NULL) && (temp_strm->hstream != hStrm)) {
+		temp_strm2 = temp_strm;
+		temp_strm = temp_strm->next;
 	}
 
-	mutex_unlock(&pCtxt->strm_mutex);
+	mutex_unlock(&ctxt->strm_mutex);
 
-	if (pTempSTRM != NULL)
-		*STRMRes = pTempSTRM;
+	if (temp_strm != NULL)
+		*strm_res = temp_strm;
 	else
 		status = DSP_ENOTFOUND;
 
@@ -400,45 +411,47 @@ DSP_STATUS DRV_GetSTRMResElement(HANDLE hStrm, HANDLE hSTRMRes, HANDLE hPCtxt)
 }
 
 /* Updating the stream resource element */
-DSP_STATUS DRV_ProcUpdateSTRMRes(u32 uNumBufs, HANDLE hSTRMRes)
+dsp_status drv_proc_update_strm_res(u32 num_bufs, bhandle hstrm_res)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct STRM_RES_OBJECT **STRMRes = (struct STRM_RES_OBJECT **)hSTRMRes;
+	dsp_status status = DSP_SOK;
+	struct strm_res_object **strm_res =
+	    (struct strm_res_object **)hstrm_res;
 
-	(*STRMRes)->uNumBufs = uNumBufs;
+	(*strm_res)->num_bufs = num_bufs;
 	return status;
 }
 
 /* GPP PROCESS CLEANUP CODE END */
 
 /*
- *  ======== = DRV_Create ======== =
+ *  ======== = drv_create ======== =
  *  Purpose:
  *      DRV Object gets created only once during Driver Loading.
  */
-DSP_STATUS DRV_Create(OUT struct DRV_OBJECT **phDRVObject)
+dsp_status drv_create(OUT struct drv_object **phDRVObject)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct DRV_OBJECT *pDRVObject = NULL;
+	dsp_status status = DSP_SOK;
+	struct drv_object *pdrv_object = NULL;
 
-	DBC_Require(phDRVObject != NULL);
-	DBC_Require(cRefs > 0);
+	DBC_REQUIRE(phDRVObject != NULL);
+	DBC_REQUIRE(refs > 0);
 
-	MEM_AllocObject(pDRVObject, struct DRV_OBJECT, SIGNATURE);
-	if (pDRVObject) {
+	MEM_ALLOC_OBJECT(pdrv_object, struct drv_object, SIGNATURE);
+	if (pdrv_object) {
 		/* Create and Initialize List of device objects */
-		pDRVObject->devList = MEM_Calloc(sizeof(struct LST_LIST),
-			MEM_NONPAGED);
-		if (pDRVObject->devList) {
+		pdrv_object->dev_list = mem_calloc(sizeof(struct lst_list),
+						   MEM_NONPAGED);
+		if (pdrv_object->dev_list) {
 			/* Create and Initialize List of device Extension */
-			pDRVObject->devNodeString = MEM_Calloc(sizeof(struct
-				LST_LIST), MEM_NONPAGED);
-			if (!(pDRVObject->devNodeString)) {
+			pdrv_object->dev_node_string =
+					mem_calloc(sizeof(struct lst_list),
+						   MEM_NONPAGED);
+			if (!(pdrv_object->dev_node_string)) {
 				status = DSP_EFAIL;
 			} else {
-				INIT_LIST_HEAD(&pDRVObject->devNodeString->
-					head);
-				INIT_LIST_HEAD(&pDRVObject->devList->head);
+				INIT_LIST_HEAD(&pdrv_object->
+					       dev_node_string->head);
+				INIT_LIST_HEAD(&pdrv_object->dev_list->head);
 			}
 		} else {
 			status = DSP_EMEMORY;
@@ -448,89 +461,90 @@ DSP_STATUS DRV_Create(OUT struct DRV_OBJECT **phDRVObject)
 	}
 	/* Store the DRV Object in the Registry */
 	if (DSP_SUCCEEDED(status))
-		status = CFG_SetObject((u32) pDRVObject, REG_DRV_OBJECT);
+		status = cfg_set_object((u32) pdrv_object, REG_DRV_OBJECT);
 	if (DSP_SUCCEEDED(status)) {
-		*phDRVObject = pDRVObject;
+		*phDRVObject = pdrv_object;
 	} else {
-		kfree(pDRVObject->devList);
-		kfree(pDRVObject->devNodeString);
+		kfree(pdrv_object->dev_list);
+		kfree(pdrv_object->dev_node_string);
 		/* Free the DRV Object */
-		kfree(pDRVObject);
+		kfree(pdrv_object);
 	}
 
-	DBC_Ensure(DSP_FAILED(status) ||
-		  MEM_IsValidHandle(pDRVObject, SIGNATURE));
+	DBC_ENSURE(DSP_FAILED(status) ||
+		   MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
 	return status;
 }
 
 /*
- *  ======== DRV_Exit ========
+ *  ======== drv_exit ========
  *  Purpose:
  *      Discontinue usage of the DRV module.
  */
-void DRV_Exit(void)
+void drv_exit(void)
 {
-	DBC_Require(cRefs > 0);
+	DBC_REQUIRE(refs > 0);
 
-	cRefs--;
+	refs--;
 
-	DBC_Ensure(cRefs >= 0);
+	DBC_ENSURE(refs >= 0);
 }
 
 /*
- *  ======== = DRV_Destroy ======== =
+ *  ======== = drv_destroy ======== =
  *  purpose:
  *      Invoked during bridge de-initialization
  */
-DSP_STATUS DRV_Destroy(struct DRV_OBJECT *hDRVObject)
+dsp_status drv_destroy(struct drv_object *hDRVObject)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct DRV_OBJECT *pDRVObject = (struct DRV_OBJECT *)hDRVObject;
+	dsp_status status = DSP_SOK;
+	struct drv_object *pdrv_object = (struct drv_object *)hDRVObject;
 
-	DBC_Require(cRefs > 0);
-	DBC_Require(MEM_IsValidHandle(pDRVObject, SIGNATURE));
+	DBC_REQUIRE(refs > 0);
+	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
 
 	/*
 	 *  Delete the List if it exists.Should not come here
-	 *  as the DRV_RemoveDevObject and the Last DRV_RequestResources
+	 *  as the drv_remove_dev_object and the Last drv_request_resources
 	 *  removes the list if the lists are empty.
 	 */
-	kfree(pDRVObject->devList);
-	kfree(pDRVObject->devNodeString);
-	MEM_FreeObject(pDRVObject);
+	kfree(pdrv_object->dev_list);
+	kfree(pdrv_object->dev_node_string);
+	MEM_FREE_OBJECT(pdrv_object);
 	/* Update the DRV Object in Registry to be 0 */
-	(void)CFG_SetObject(0, REG_DRV_OBJECT);
-	DBC_Ensure(!MEM_IsValidHandle(pDRVObject, SIGNATURE));
+	(void)cfg_set_object(0, REG_DRV_OBJECT);
+	DBC_ENSURE(!MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
 	return status;
 }
 
 /*
- *  ======== DRV_GetDevObject ========
+ *  ======== drv_get_dev_object ========
  *  Purpose:
  *      Given a index, returns a handle to DevObject from the list.
  */
-DSP_STATUS DRV_GetDevObject(u32 uIndex, struct DRV_OBJECT *hDrvObject,
-			   struct DEV_OBJECT **phDevObject)
+dsp_status drv_get_dev_object(u32 index, struct drv_object *hdrv_obj,
+			      struct dev_object **phDevObject)
 {
-	DSP_STATUS status = DSP_SOK;
-#ifdef CONFIG_BRIDGE_DEBUG    /* used only for Assertions and debug messages.*/
-	struct DRV_OBJECT *pDrvObject = (struct DRV_OBJECT *)hDrvObject;
+	dsp_status status = DSP_SOK;
+#ifdef CONFIG_BRIDGE_DEBUG
+	/* used only for Assertions and debug messages */
+	struct drv_object *pdrv_obj = (struct drv_object *)hdrv_obj;
 #endif
-	struct DEV_OBJECT *pDevObject;
+	struct dev_object *dev_obj;
 	u32 i;
-	DBC_Require(MEM_IsValidHandle(pDrvObject, SIGNATURE));
-	DBC_Require(phDevObject != NULL);
-	DBC_Require(uIndex >= 0);
-	DBC_Require(cRefs > 0);
-	DBC_Assert(!(LST_IsEmpty(pDrvObject->devList)));
+	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_obj, SIGNATURE));
+	DBC_REQUIRE(phDevObject != NULL);
+	DBC_REQUIRE(index >= 0);
+	DBC_REQUIRE(refs > 0);
+	DBC_ASSERT(!(LST_IS_EMPTY(pdrv_obj->dev_list)));
 
-	pDevObject = (struct DEV_OBJECT *)DRV_GetFirstDevObject();
-	for (i = 0; i < uIndex; i++) {
-		pDevObject =
-		   (struct DEV_OBJECT *)DRV_GetNextDevObject((u32)pDevObject);
+	dev_obj = (struct dev_object *)drv_get_first_dev_object();
+	for (i = 0; i < index; i++) {
+		dev_obj =
+		    (struct dev_object *)drv_get_next_dev_object((u32) dev_obj);
 	}
-	if (pDevObject) {
-		*phDevObject = (struct DEV_OBJECT *) pDevObject;
+	if (dev_obj) {
+		*phDevObject = (struct dev_object *)dev_obj;
 	} else {
 		*phDevObject = NULL;
 		status = DSP_EFAIL;
@@ -540,200 +554,198 @@ DSP_STATUS DRV_GetDevObject(u32 uIndex, struct DRV_OBJECT *hDrvObject,
 }
 
 /*
- *  ======== DRV_GetFirstDevObject ========
+ *  ======== drv_get_first_dev_object ========
  *  Purpose:
  *      Retrieve the first Device Object handle from an internal linked list of
  *      of DEV_OBJECTs maintained by DRV.
  */
-u32 DRV_GetFirstDevObject(void)
+u32 drv_get_first_dev_object(void)
 {
-	u32 dwDevObject = 0;
-	struct DRV_OBJECT *pDrvObject;
+	u32 dw_dev_object = 0;
+	struct drv_object *pdrv_obj;
 
-	if (DSP_SUCCEEDED
-	    (CFG_GetObject((u32 *)&pDrvObject, REG_DRV_OBJECT))) {
-		if ((pDrvObject->devList != NULL) &&
-		   !LST_IsEmpty(pDrvObject->devList))
-			dwDevObject = (u32) LST_First(pDrvObject->devList);
+	if (DSP_SUCCEEDED(cfg_get_object((u32 *) &pdrv_obj, REG_DRV_OBJECT))) {
+		if ((pdrv_obj->dev_list != NULL) &&
+		    !LST_IS_EMPTY(pdrv_obj->dev_list))
+			dw_dev_object = (u32) lst_first(pdrv_obj->dev_list);
 	}
 
-	return dwDevObject;
+	return dw_dev_object;
 }
 
 /*
  *  ======== DRV_GetFirstDevNodeString ========
  *  Purpose:
  *      Retrieve the first Device Extension from an internal linked list of
- *      of Pointer to DevNode Strings maintained by DRV.
+ *      of Pointer to dev_node Strings maintained by DRV.
  */
-u32 DRV_GetFirstDevExtension(void)
+u32 drv_get_first_dev_extension(void)
 {
-	u32 dwDevExtension = 0;
-	struct DRV_OBJECT *pDrvObject;
+	u32 dw_dev_extension = 0;
+	struct drv_object *pdrv_obj;
 
-	if (DSP_SUCCEEDED
-	    (CFG_GetObject((u32 *)&pDrvObject, REG_DRV_OBJECT))) {
+	if (DSP_SUCCEEDED(cfg_get_object((u32 *) &pdrv_obj, REG_DRV_OBJECT))) {
 
-		if ((pDrvObject->devNodeString != NULL) &&
-		   !LST_IsEmpty(pDrvObject->devNodeString)) {
-			dwDevExtension = (u32)LST_First(pDrvObject->
-							devNodeString);
+		if ((pdrv_obj->dev_node_string != NULL) &&
+		    !LST_IS_EMPTY(pdrv_obj->dev_node_string)) {
+			dw_dev_extension =
+			    (u32) lst_first(pdrv_obj->dev_node_string);
 		}
 	}
 
-	return dwDevExtension;
+	return dw_dev_extension;
 }
 
 /*
- *  ======== DRV_GetNextDevObject ========
+ *  ======== drv_get_next_dev_object ========
  *  Purpose:
  *      Retrieve the next Device Object handle from an internal linked list of
  *      of DEV_OBJECTs maintained by DRV, after having previously called
- *      DRV_GetFirstDevObject() and zero or more DRV_GetNext.
+ *      drv_get_first_dev_object() and zero or more DRV_GetNext.
  */
-u32 DRV_GetNextDevObject(u32 hDevObject)
+u32 drv_get_next_dev_object(u32 hdev_obj)
 {
-	u32 dwNextDevObject = 0;
-	struct DRV_OBJECT *pDrvObject;
+	u32 dw_next_dev_object = 0;
+	struct drv_object *pdrv_obj;
 
-	DBC_Require(hDevObject != 0);
+	DBC_REQUIRE(hdev_obj != 0);
 
-	if (DSP_SUCCEEDED
-	    (CFG_GetObject((u32 *)&pDrvObject, REG_DRV_OBJECT))) {
+	if (DSP_SUCCEEDED(cfg_get_object((u32 *) &pdrv_obj, REG_DRV_OBJECT))) {
 
-		if ((pDrvObject->devList != NULL) &&
-		   !LST_IsEmpty(pDrvObject->devList)) {
-			dwNextDevObject = (u32)LST_Next(pDrvObject->devList,
-					  (struct list_head *)hDevObject);
+		if ((pdrv_obj->dev_list != NULL) &&
+		    !LST_IS_EMPTY(pdrv_obj->dev_list)) {
+			dw_next_dev_object = (u32) lst_next(pdrv_obj->dev_list,
+							    (struct list_head *)
+							    hdev_obj);
 		}
 	}
-	return dwNextDevObject;
+	return dw_next_dev_object;
 }
 
 /*
- *  ======== DRV_GetNextDevExtension ========
+ *  ======== drv_get_next_dev_extension ========
  *  Purpose:
  *      Retrieve the next Device Extension from an internal linked list of
  *      of pointer to DevNodeString maintained by DRV, after having previously
- *      called DRV_GetFirstDevExtension() and zero or more
- *      DRV_GetNextDevExtension().
+ *      called drv_get_first_dev_extension() and zero or more
+ *      drv_get_next_dev_extension().
  */
-u32 DRV_GetNextDevExtension(u32 hDevExtension)
+u32 drv_get_next_dev_extension(u32 hDevExtension)
 {
-	u32 dwDevExtension = 0;
-	struct DRV_OBJECT *pDrvObject;
+	u32 dw_dev_extension = 0;
+	struct drv_object *pdrv_obj;
 
-	DBC_Require(hDevExtension != 0);
+	DBC_REQUIRE(hDevExtension != 0);
 
-	if (DSP_SUCCEEDED(CFG_GetObject((u32 *)&pDrvObject,
-	   REG_DRV_OBJECT))) {
-		if ((pDrvObject->devNodeString != NULL) &&
-		   !LST_IsEmpty(pDrvObject->devNodeString)) {
-			dwDevExtension = (u32)LST_Next(pDrvObject->
-				devNodeString,
-				(struct list_head *)hDevExtension);
+	if (DSP_SUCCEEDED(cfg_get_object((u32 *) &pdrv_obj, REG_DRV_OBJECT))) {
+		if ((pdrv_obj->dev_node_string != NULL) &&
+		    !LST_IS_EMPTY(pdrv_obj->dev_node_string)) {
+			dw_dev_extension =
+			    (u32) lst_next(pdrv_obj->dev_node_string,
+					   (struct list_head *)hDevExtension);
 		}
 	}
 
-	return dwDevExtension;
+	return dw_dev_extension;
 }
 
 /*
- *  ======== DRV_Init ========
+ *  ======== drv_init ========
  *  Purpose:
  *      Initialize DRV module private state.
  */
-DSP_STATUS DRV_Init(void)
+dsp_status drv_init(void)
 {
-	s32 fRetval = 1;	/* function return value */
+	s32 ret = 1;		/* function return value */
 
-	DBC_Require(cRefs >= 0);
+	DBC_REQUIRE(refs >= 0);
 
-	if (fRetval)
-		cRefs++;
+	if (ret)
+		refs++;
 
-	DBC_Ensure((fRetval && (cRefs > 0)) || (!fRetval && (cRefs >= 0)));
+	DBC_ENSURE((ret && (refs > 0)) || (!ret && (refs >= 0)));
 
-	return fRetval;
+	return ret;
 }
 
 /*
- *  ======== DRV_InsertDevObject ========
+ *  ======== drv_insert_dev_object ========
  *  Purpose:
  *      Insert a DevObject into the list of Manager object.
  */
-DSP_STATUS DRV_InsertDevObject(struct DRV_OBJECT *hDRVObject,
-				struct DEV_OBJECT *hDevObject)
+dsp_status drv_insert_dev_object(struct drv_object *hDRVObject,
+				 struct dev_object *hdev_obj)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct DRV_OBJECT *pDRVObject = (struct DRV_OBJECT *)hDRVObject;
+	dsp_status status = DSP_SOK;
+	struct drv_object *pdrv_object = (struct drv_object *)hDRVObject;
 
-	DBC_Require(cRefs > 0);
-	DBC_Require(hDevObject != NULL);
-	DBC_Require(MEM_IsValidHandle(pDRVObject, SIGNATURE));
-	DBC_Assert(pDRVObject->devList);
+	DBC_REQUIRE(refs > 0);
+	DBC_REQUIRE(hdev_obj != NULL);
+	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_ASSERT(pdrv_object->dev_list);
 
-	LST_PutTail(pDRVObject->devList, (struct list_head *)hDevObject);
+	lst_put_tail(pdrv_object->dev_list, (struct list_head *)hdev_obj);
 
-	DBC_Ensure(DSP_SUCCEEDED(status) && !LST_IsEmpty(pDRVObject->devList));
+	DBC_ENSURE(DSP_SUCCEEDED(status)
+		   && !LST_IS_EMPTY(pdrv_object->dev_list));
 
 	return status;
 }
 
 /*
- *  ======== DRV_RemoveDevObject ========
+ *  ======== drv_remove_dev_object ========
  *  Purpose:
  *      Search for and remove a DeviceObject from the given list of DRV
  *      objects.
  */
-DSP_STATUS DRV_RemoveDevObject(struct DRV_OBJECT *hDRVObject,
-				struct DEV_OBJECT *hDevObject)
+dsp_status drv_remove_dev_object(struct drv_object *hDRVObject,
+				 struct dev_object *hdev_obj)
 {
-	DSP_STATUS status = DSP_EFAIL;
-	struct DRV_OBJECT *pDRVObject = (struct DRV_OBJECT *)hDRVObject;
-	struct list_head *pCurElem;
+	dsp_status status = DSP_EFAIL;
+	struct drv_object *pdrv_object = (struct drv_object *)hDRVObject;
+	struct list_head *cur_elem;
 
-	DBC_Require(cRefs > 0);
-	DBC_Require(MEM_IsValidHandle(pDRVObject, SIGNATURE));
-	DBC_Require(hDevObject != NULL);
+	DBC_REQUIRE(refs > 0);
+	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_REQUIRE(hdev_obj != NULL);
 
-	DBC_Require(pDRVObject->devList != NULL);
-	DBC_Require(!LST_IsEmpty(pDRVObject->devList));
+	DBC_REQUIRE(pdrv_object->dev_list != NULL);
+	DBC_REQUIRE(!LST_IS_EMPTY(pdrv_object->dev_list));
 
-	/* Search list for pProcObject: */
-	for (pCurElem = LST_First(pDRVObject->devList); pCurElem != NULL;
-	    pCurElem = LST_Next(pDRVObject->devList, pCurElem)) {
+	/* Search list for p_proc_object: */
+	for (cur_elem = lst_first(pdrv_object->dev_list); cur_elem != NULL;
+	     cur_elem = lst_next(pdrv_object->dev_list, cur_elem)) {
 		/* If found, remove it. */
-		if ((struct DEV_OBJECT *) pCurElem == hDevObject) {
-			LST_RemoveElem(pDRVObject->devList, pCurElem);
+		if ((struct dev_object *)cur_elem == hdev_obj) {
+			lst_remove_elem(pdrv_object->dev_list, cur_elem);
 			status = DSP_SOK;
 			break;
 		}
 	}
 	/* Remove list if empty. */
-	if (LST_IsEmpty(pDRVObject->devList)) {
-		kfree(pDRVObject->devList);
-		pDRVObject->devList = NULL;
+	if (LST_IS_EMPTY(pdrv_object->dev_list)) {
+		kfree(pdrv_object->dev_list);
+		pdrv_object->dev_list = NULL;
 	}
-	DBC_Ensure((pDRVObject->devList == NULL) ||
-		  !LST_IsEmpty(pDRVObject->devList));
+	DBC_ENSURE((pdrv_object->dev_list == NULL) ||
+		   !LST_IS_EMPTY(pdrv_object->dev_list));
 
 	return status;
 }
 
 /*
- *  ======== DRV_RequestResources ========
+ *  ======== drv_request_resources ========
  *  Purpose:
  *      Requests  resources from the OS.
  */
-DSP_STATUS DRV_RequestResources(u32 dwContext, u32 *pDevNodeString)
+dsp_status drv_request_resources(u32 dw_context, u32 *pDevNodeString)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct DRV_OBJECT *pDRVObject;
-	struct DRV_EXT *pszdevNode;
+	dsp_status status = DSP_SOK;
+	struct drv_object *pdrv_object;
+	struct drv_ext *pszdev_node;
 
-	DBC_Require(dwContext != 0);
-	DBC_Require(pDevNodeString != NULL);
+	DBC_REQUIRE(dw_context != 0);
+	DBC_REQUIRE(pDevNodeString != NULL);
 
 	/*
 	 *  Allocate memory to hold the string. This will live untill
@@ -741,31 +753,31 @@ DSP_STATUS DRV_RequestResources(u32 dwContext, u32 *pDevNodeString)
 	 *  list.
 	 */
 
-	status = CFG_GetObject((u32 *)&pDRVObject, REG_DRV_OBJECT);
+	status = cfg_get_object((u32 *) &pdrv_object, REG_DRV_OBJECT);
 	if (DSP_SUCCEEDED(status)) {
-		pszdevNode = MEM_Calloc(sizeof(struct DRV_EXT), MEM_NONPAGED);
-		if (pszdevNode) {
-			LST_InitElem(&pszdevNode->link);
-			strncpy(pszdevNode->szString,
-				 (char *)dwContext, MAXREGPATHLENGTH - 1);
-			pszdevNode->szString[MAXREGPATHLENGTH - 1] = '\0';
+		pszdev_node = mem_calloc(sizeof(struct drv_ext), MEM_NONPAGED);
+		if (pszdev_node) {
+			lst_init_elem(&pszdev_node->link);
+			strncpy(pszdev_node->sz_string,
+				(char *)dw_context, MAXREGPATHLENGTH - 1);
+			pszdev_node->sz_string[MAXREGPATHLENGTH - 1] = '\0';
 			/* Update the Driver Object List */
-			*pDevNodeString = (u32)pszdevNode->szString;
-			LST_PutTail(pDRVObject->devNodeString,
-					(struct list_head *)pszdevNode);
+			*pDevNodeString = (u32) pszdev_node->sz_string;
+			lst_put_tail(pdrv_object->dev_node_string,
+				     (struct list_head *)pszdev_node);
 		} else {
 			status = DSP_EMEMORY;
 			*pDevNodeString = 0;
 		}
 	} else {
 		dev_dbg(bridge, "%s: Failed to get Driver Object from Registry",
-								__func__);
+			__func__);
 		*pDevNodeString = 0;
 	}
 
-	if (!(strcmp((char *) dwContext, "TIOMAP1510"))) {
+	if (!(strcmp((char *)dw_context, "TIOMAP1510"))) {
 		dev_dbg(bridge, "%s: Allocating resources for UMA\n", __func__);
-		status = RequestBridgeResourcesDSP(dwContext, DRV_ASSIGN);
+		status = request_bridge_resources_dsp(dw_context, DRV_ASSIGN);
 	} else {
 		status = DSP_EFAIL;
 		dev_dbg(bridge, "%s: Unknown Device\n", __func__);
@@ -773,307 +785,311 @@ DSP_STATUS DRV_RequestResources(u32 dwContext, u32 *pDevNodeString)
 
 	if (DSP_FAILED(status))
 		dev_dbg(bridge, "%s: Failed to reserve bridge resources\n",
-								__func__);
+			__func__);
 
-	DBC_Ensure((DSP_SUCCEEDED(status) && pDevNodeString != NULL &&
-		  !LST_IsEmpty(pDRVObject->devNodeString)) ||
-		  (DSP_FAILED(status) && *pDevNodeString == 0));
+	DBC_ENSURE((DSP_SUCCEEDED(status) && pDevNodeString != NULL &&
+		    !LST_IS_EMPTY(pdrv_object->dev_node_string)) ||
+		   (DSP_FAILED(status) && *pDevNodeString == 0));
 
 	return status;
 }
 
 /*
- *  ======== DRV_ReleaseResources ========
+ *  ======== drv_release_resources ========
  *  Purpose:
  *      Releases  resources from the OS.
  */
-DSP_STATUS DRV_ReleaseResources(u32 dwContext, struct DRV_OBJECT *hDrvObject)
+dsp_status drv_release_resources(u32 dw_context, struct drv_object *hdrv_obj)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct DRV_OBJECT *pDRVObject = (struct DRV_OBJECT *)hDrvObject;
-	struct DRV_EXT *pszdevNode;
+	dsp_status status = DSP_SOK;
+	struct drv_object *pdrv_object = (struct drv_object *)hdrv_obj;
+	struct drv_ext *pszdev_node;
 
-	if (!(strcmp((char *)((struct DRV_EXT *)dwContext)->szString,
-	   "TIOMAP1510")))
-		status = RequestBridgeResources(dwContext, DRV_RELEASE);
+	if (!(strcmp((char *)((struct drv_ext *)dw_context)->sz_string,
+		     "TIOMAP1510")))
+		status = request_bridge_resources(dw_context, DRV_RELEASE);
 	else
 		dev_dbg(bridge, "%s: Unknown device\n", __func__);
 
 	if (DSP_FAILED(status))
 		dev_dbg(bridge, "%s: Failed to relese bridge resources\n",
-								__func__);
+			__func__);
 
 	/*
 	 *  Irrespective of the status go ahead and clean it
 	 *  The following will over write the status.
 	 */
-	for (pszdevNode = (struct DRV_EXT *)DRV_GetFirstDevExtension();
-	    pszdevNode != NULL; pszdevNode = (struct DRV_EXT *)
-	    DRV_GetNextDevExtension((u32)pszdevNode)) {
-		if (!pDRVObject->devNodeString) {
+	for (pszdev_node = (struct drv_ext *)drv_get_first_dev_extension();
+	     pszdev_node != NULL; pszdev_node = (struct drv_ext *)
+	     drv_get_next_dev_extension((u32) pszdev_node)) {
+		if (!pdrv_object->dev_node_string) {
 			/* When this could happen? */
 			continue;
 		}
-		if ((u32)pszdevNode == dwContext) {
+		if ((u32) pszdev_node == dw_context) {
 			/* Found it */
 			/* Delete from the Driver object list */
-			LST_RemoveElem(pDRVObject->devNodeString,
-				      (struct list_head *)pszdevNode);
-			kfree((void *) pszdevNode);
+			lst_remove_elem(pdrv_object->dev_node_string,
+					(struct list_head *)pszdev_node);
+			kfree((void *)pszdev_node);
 			break;
 		}
 		/* Delete the List if it is empty */
-		if (LST_IsEmpty(pDRVObject->devNodeString)) {
-			kfree(pDRVObject->devNodeString);
-			pDRVObject->devNodeString = NULL;
+		if (LST_IS_EMPTY(pdrv_object->dev_node_string)) {
+			kfree(pdrv_object->dev_node_string);
+			pdrv_object->dev_node_string = NULL;
 		}
 	}
 	return status;
 }
 
 /*
- *  ======== RequestBridgeResources ========
+ *  ======== request_bridge_resources ========
  *  Purpose:
  *      Reserves shared memory for bridge.
  */
-static DSP_STATUS RequestBridgeResources(u32 dwContext, s32 bRequest)
+static dsp_status request_bridge_resources(u32 dw_context, s32 bRequest)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct CFG_HOSTRES *pResources;
-	u32 dwBuffSize;
+	dsp_status status = DSP_SOK;
+	struct cfg_hostres *host_res;
+	u32 dw_buff_size;
 
-	struct DRV_EXT *driverExt;
+	struct drv_ext *driver_ext;
 	u32 shm_size;
 
-	DBC_Require(dwContext != 0);
+	DBC_REQUIRE(dw_context != 0);
 
 	if (!bRequest) {
-		driverExt = (struct DRV_EXT *)dwContext;
-		/* Releasing resources by deleting the registry key  */
-		dwBuffSize = sizeof(struct CFG_HOSTRES);
-		pResources = MEM_Calloc(dwBuffSize, MEM_NONPAGED);
-		if (pResources != NULL) {
-			if (DSP_FAILED(REG_GetValue(CURRENTCONFIG,
-					(u8 *)pResources, &dwBuffSize))) {
+		driver_ext = (struct drv_ext *)dw_context;
+		/* Releasing resources by deleting the registry key */
+		dw_buff_size = sizeof(struct cfg_hostres);
+		host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
+		if (host_res != NULL) {
+			if (DSP_FAILED(reg_get_value(CURRENTCONFIG,
+						     (u8 *) host_res,
+						     &dw_buff_size))) {
 				status = CFG_E_RESOURCENOTAVAIL;
 			}
 
-			dwBuffSize = sizeof(shm_size);
-			status = REG_GetValue(SHMSIZE, (u8 *)&shm_size,
-					      &dwBuffSize);
+			dw_buff_size = sizeof(shm_size);
+			status = reg_get_value(SHMSIZE, (u8 *) &shm_size,
+					       &dw_buff_size);
 			if (DSP_SUCCEEDED(status)) {
-				if ((pResources->dwMemBase[1]) &&
-				   (pResources->dwMemPhys[1])) {
-					MEM_FreePhysMem((void *)pResources->
-					dwMemBase[1], pResources->dwMemPhys[1],
-					shm_size);
+				if ((host_res->dw_mem_base[1]) &&
+				    (host_res->dw_mem_phys[1])) {
+					mem_free_phys_mem((void *)
+							  host_res->dw_mem_base
+							  [1],
+							  host_res->dw_mem_phys
+							  [1], shm_size);
 				}
 			} else {
-				dev_dbg(bridge, "%s: Error getting SHM size "
+				dev_dbg(bridge, "%s: Error getting shm size "
 					"from registry: %x. Not calling "
-					"MEM_FreePhysMem\n", __func__, status);
+					"mem_free_phys_mem\n", __func__,
+					status);
 			}
-			pResources->dwMemBase[1] = 0;
-			pResources->dwMemPhys[1] = 0;
+			host_res->dw_mem_base[1] = 0;
+			host_res->dw_mem_phys[1] = 0;
 
-			if (pResources->dwPrmBase)
-				iounmap(pResources->dwPrmBase);
-			if (pResources->dwCmBase)
-				iounmap(pResources->dwCmBase);
-			if (pResources->dwMemBase[0])
-				iounmap((void *)pResources->dwMemBase[0]);
-			if (pResources->dwMemBase[2])
-				iounmap((void *)pResources->dwMemBase[2]);
-			if (pResources->dwMemBase[3])
-				iounmap((void *)pResources->dwMemBase[3]);
-			if (pResources->dwMemBase[4])
-				iounmap((void *)pResources->dwMemBase[4]);
-			if (pResources->dwWdTimerDspBase)
-				iounmap(pResources->dwWdTimerDspBase);
-			if (pResources->dwDmmuBase)
-				iounmap(pResources->dwDmmuBase);
-			if (pResources->dwPerBase)
-				iounmap(pResources->dwPerBase);
-			if (pResources->dwPerPmBase)
-				iounmap((void *)pResources->dwPerPmBase);
-			if (pResources->dwCorePmBase)
-				iounmap((void *)pResources->dwCorePmBase);
-			if (pResources->dwSysCtrlBase)
-				iounmap(pResources->dwSysCtrlBase);
+			if (host_res->dw_prm_base)
+				iounmap(host_res->dw_prm_base);
+			if (host_res->dw_cm_base)
+				iounmap(host_res->dw_cm_base);
+			if (host_res->dw_mem_base[0])
+				iounmap((void *)host_res->dw_mem_base[0]);
+			if (host_res->dw_mem_base[2])
+				iounmap((void *)host_res->dw_mem_base[2]);
+			if (host_res->dw_mem_base[3])
+				iounmap((void *)host_res->dw_mem_base[3]);
+			if (host_res->dw_mem_base[4])
+				iounmap((void *)host_res->dw_mem_base[4]);
+			if (host_res->dw_wd_timer_dsp_base)
+				iounmap(host_res->dw_wd_timer_dsp_base);
+			if (host_res->dw_dmmu_base)
+				iounmap(host_res->dw_dmmu_base);
+			if (host_res->dw_per_base)
+				iounmap(host_res->dw_per_base);
+			if (host_res->dw_per_pm_base)
+				iounmap((void *)host_res->dw_per_pm_base);
+			if (host_res->dw_core_pm_base)
+				iounmap((void *)host_res->dw_core_pm_base);
+			if (host_res->dw_sys_ctrl_base)
+				iounmap(host_res->dw_sys_ctrl_base);
 
-			pResources->dwPrmBase = NULL;
-			pResources->dwCmBase = NULL;
-			pResources->dwMemBase[0] = (u32) NULL;
-			pResources->dwMemBase[2] = (u32) NULL;
-			pResources->dwMemBase[3] = (u32) NULL;
-			pResources->dwMemBase[4] = (u32) NULL;
-			pResources->dwWdTimerDspBase = NULL;
-			pResources->dwDmmuBase = NULL;
-			pResources->dwSysCtrlBase = NULL;
+			host_res->dw_prm_base = NULL;
+			host_res->dw_cm_base = NULL;
+			host_res->dw_mem_base[0] = (u32) NULL;
+			host_res->dw_mem_base[2] = (u32) NULL;
+			host_res->dw_mem_base[3] = (u32) NULL;
+			host_res->dw_mem_base[4] = (u32) NULL;
+			host_res->dw_wd_timer_dsp_base = NULL;
+			host_res->dw_dmmu_base = NULL;
+			host_res->dw_sys_ctrl_base = NULL;
 
-			dwBuffSize = sizeof(struct CFG_HOSTRES);
-			status = REG_SetValue(CURRENTCONFIG, (u8 *)pResources,
-				 (u32)dwBuffSize);
+			dw_buff_size = sizeof(struct cfg_hostres);
+			status = reg_set_value(CURRENTCONFIG, (u8 *) host_res,
+					       (u32) dw_buff_size);
 			/*  Set all the other entries to NULL */
-			kfree(pResources);
+			kfree(host_res);
 		} else {
 			status = DSP_EMEMORY;
 		}
 		return status;
 	}
-	dwBuffSize = sizeof(struct CFG_HOSTRES);
-	pResources = MEM_Calloc(dwBuffSize, MEM_NONPAGED);
-	if (pResources != NULL) {
-		/* wNumMemWindows must not be more than CFG_MAXMEMREGISTERS */
-		pResources->wNumMemWindows = 2;
+	dw_buff_size = sizeof(struct cfg_hostres);
+	host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
+	if (host_res != NULL) {
+		/* num_mem_windows must not be more than CFG_MAXMEMREGISTERS */
+		host_res->num_mem_windows = 2;
 		/* First window is for DSP internal memory */
 
-		pResources->dwPrmBase = ioremap(OMAP_IVA2_PRM_BASE,
-							OMAP_IVA2_PRM_SIZE);
-		pResources->dwCmBase = ioremap(OMAP_IVA2_CM_BASE,
-							OMAP_IVA2_CM_SIZE);
-		pResources->dwSysCtrlBase = ioremap(OMAP_SYSC_BASE,
-							OMAP_SYSC_SIZE);
-		dev_dbg(bridge, "dwMemBase[0] 0x%x\n",
-						pResources->dwMemBase[0]);
-		dev_dbg(bridge, "dwMemBase[3] 0x%x\n",
-						pResources->dwMemBase[3]);
-		dev_dbg(bridge, "dwPrmBase %p\n", pResources->dwPrmBase);
-		dev_dbg(bridge, "dwCmBase %p\n", pResources->dwCmBase);
-		dev_dbg(bridge, "dwWdTimerDspBase %p\n",
-						pResources->dwWdTimerDspBase);
-		dev_dbg(bridge, "dwDmmuBase %p\n", pResources->dwDmmuBase);
+		host_res->dw_prm_base = ioremap(OMAP_IVA2_PRM_BASE,
+						OMAP_IVA2_PRM_SIZE);
+		host_res->dw_cm_base = ioremap(OMAP_IVA2_CM_BASE,
+					       OMAP_IVA2_CM_SIZE);
+		host_res->dw_sys_ctrl_base = ioremap(OMAP_SYSC_BASE,
+						     OMAP_SYSC_SIZE);
+		dev_dbg(bridge, "dw_mem_base[0] 0x%x\n",
+			host_res->dw_mem_base[0]);
+		dev_dbg(bridge, "dw_mem_base[3] 0x%x\n",
+			host_res->dw_mem_base[3]);
+		dev_dbg(bridge, "dw_prm_base %p\n", host_res->dw_prm_base);
+		dev_dbg(bridge, "dw_cm_base %p\n", host_res->dw_cm_base);
+		dev_dbg(bridge, "dw_wd_timer_dsp_base %p\n",
+			host_res->dw_wd_timer_dsp_base);
+		dev_dbg(bridge, "dw_dmmu_base %p\n", host_res->dw_dmmu_base);
 
 		/* for 24xx base port is not mapping the mamory for DSP
 		 * internal memory TODO Do a ioremap here */
 		/* Second window is for DSP external memory shared with MPU */
 
 		/* for Linux, these are hard-coded values */
-		pResources->bIRQRegisters = 0;
-		pResources->bIRQAttrib = 0;
-		pResources->dwOffsetForMonitor = 0;
-		pResources->dwChnlOffset = 0;
+		host_res->birq_registers = 0;
+		host_res->birq_attrib = 0;
+		host_res->dw_offset_for_monitor = 0;
+		host_res->dw_chnl_offset = 0;
 		/* CHNL_MAXCHANNELS */
-		pResources->dwNumChnls = CHNL_MAXCHANNELS;
-		pResources->dwChnlBufSize = 0x400;
-		dwBuffSize = sizeof(struct CFG_HOSTRES);
-		status = REG_SetValue(CURRENTCONFIG, (u8 *)pResources,
-						sizeof(struct CFG_HOSTRES));
+		host_res->dw_num_chnls = CHNL_MAXCHANNELS;
+		host_res->dw_chnl_buf_size = 0x400;
+		dw_buff_size = sizeof(struct cfg_hostres);
+		status = reg_set_value(CURRENTCONFIG, (u8 *) host_res,
+				       sizeof(struct cfg_hostres));
 		if (DSP_FAILED(status)) {
 			dev_dbg(bridge, "%s: Failed to set the registry value "
-					"for CURRENTCONFIG\n", __func__);
+				"for CURRENTCONFIG\n", __func__);
 		}
-		kfree(pResources);
+		kfree(host_res);
 	}
 	/* End Mem alloc */
 	return status;
 }
 
 /*
- *  ======== RequestBridgeResourcesDSP ========
+ *  ======== request_bridge_resources_dsp ========
  *  Purpose:
  *      Reserves shared memory for bridge.
  */
-static DSP_STATUS RequestBridgeResourcesDSP(u32 dwContext, s32 bRequest)
+static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 bRequest)
 {
-	DSP_STATUS status = DSP_SOK;
-	struct CFG_HOSTRES *pResources;
-	u32 dwBuffSize;
-	u32 dmaAddr;
+	dsp_status status = DSP_SOK;
+	struct cfg_hostres *host_res;
+	u32 dw_buff_size;
+	u32 dma_addr;
 	u32 shm_size;
 
-	DBC_Require(dwContext != 0);
+	DBC_REQUIRE(dw_context != 0);
 
-	dwBuffSize = sizeof(struct CFG_HOSTRES);
+	dw_buff_size = sizeof(struct cfg_hostres);
 
-	pResources = MEM_Calloc(dwBuffSize, MEM_NONPAGED);
+	host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
 
-	if (pResources != NULL) {
-		if (DSP_FAILED(CFG_GetHostResources((struct CFG_DEVNODE *)
-		   dwContext, pResources))) {
-			/* Call CFG_GetHostResources to get reserve resouces */
-			status = RequestBridgeResources(dwContext, bRequest);
+	if (host_res != NULL) {
+		if (DSP_FAILED(cfg_get_host_resources((struct cfg_devnode *)
+						      dw_context, host_res))) {
+			status = request_bridge_resources(dw_context, bRequest);
 			if (DSP_SUCCEEDED(status)) {
-				status = CFG_GetHostResources
-					((struct CFG_DEVNODE *) dwContext,
-					pResources);
+				status = cfg_get_host_resources
+				    ((struct cfg_devnode *)dw_context,
+				     host_res);
 			}
 		}
-		/* wNumMemWindows must not be more than CFG_MAXMEMREGISTERS */
-		pResources->wNumMemWindows = 4;
+		/* num_mem_windows must not be more than CFG_MAXMEMREGISTERS */
+		host_res->num_mem_windows = 4;
 
-		pResources->dwMemBase[0] = 0;
-		pResources->dwMemBase[2] = (u32)ioremap(OMAP_DSP_MEM1_BASE,
-							OMAP_DSP_MEM1_SIZE);
-		pResources->dwMemBase[3] = (u32)ioremap(OMAP_DSP_MEM2_BASE,
-							OMAP_DSP_MEM2_SIZE);
-		pResources->dwMemBase[4] = (u32)ioremap(OMAP_DSP_MEM3_BASE,
-							OMAP_DSP_MEM3_SIZE);
-		pResources->dwPerBase = ioremap(OMAP_PER_CM_BASE,
-							OMAP_PER_CM_SIZE);
-		pResources->dwPerPmBase = (u32)ioremap(OMAP_PER_PRM_BASE,
-							OMAP_PER_PRM_SIZE);
-		pResources->dwCorePmBase = (u32)ioremap(OMAP_CORE_PRM_BASE,
-							OMAP_CORE_PRM_SIZE);
-		pResources->dwDmmuBase = ioremap(OMAP_DMMU_BASE,
-							OMAP_DMMU_SIZE);
-		pResources->dwWdTimerDspBase = ioremap(OMAP_WDT3_BASE,
-							OMAP_WDT3_BASE);
+		host_res->dw_mem_base[0] = 0;
+		host_res->dw_mem_base[2] = (u32) ioremap(OMAP_DSP_MEM1_BASE,
+							 OMAP_DSP_MEM1_SIZE);
+		host_res->dw_mem_base[3] = (u32) ioremap(OMAP_DSP_MEM2_BASE,
+							 OMAP_DSP_MEM2_SIZE);
+		host_res->dw_mem_base[4] = (u32) ioremap(OMAP_DSP_MEM3_BASE,
+							 OMAP_DSP_MEM3_SIZE);
+		host_res->dw_per_base = ioremap(OMAP_PER_CM_BASE,
+						OMAP_PER_CM_SIZE);
+		host_res->dw_per_pm_base = (u32) ioremap(OMAP_PER_PRM_BASE,
+							 OMAP_PER_PRM_SIZE);
+		host_res->dw_core_pm_base = (u32) ioremap(OMAP_CORE_PRM_BASE,
+							  OMAP_CORE_PRM_SIZE);
+		host_res->dw_dmmu_base = ioremap(OMAP_DMMU_BASE,
+						 OMAP_DMMU_SIZE);
+		host_res->dw_wd_timer_dsp_base = ioremap(OMAP_WDT3_BASE,
+							 OMAP_WDT3_BASE);
 
-		dev_dbg(bridge, "dwMemBase[0] 0x%x\n",
-						pResources->dwMemBase[0]);
-		dev_dbg(bridge, "dwMemBase[1] 0x%x\n",
-						pResources->dwMemBase[1]);
-		dev_dbg(bridge, "dwMemBase[2] 0x%x\n",
-						pResources->dwMemBase[2]);
-		dev_dbg(bridge, "dwMemBase[3] 0x%x\n",
-						pResources->dwMemBase[3]);
-		dev_dbg(bridge, "dwMemBase[4] 0x%x\n",
-						pResources->dwMemBase[4]);
-		dev_dbg(bridge, "dwPrmBase %p\n", pResources->dwPrmBase);
-		dev_dbg(bridge, "dwCmBase %p\n", pResources->dwCmBase);
-		dev_dbg(bridge, "dwWdTimerDspBase %p\n",
-						pResources->dwWdTimerDspBase);
-		dev_dbg(bridge, "dwDmmuBase %p\n", pResources->dwDmmuBase);
-		dwBuffSize = sizeof(shm_size);
-		status = REG_GetValue(SHMSIZE, (u8 *)&shm_size, &dwBuffSize);
+		dev_dbg(bridge, "dw_mem_base[0] 0x%x\n",
+			host_res->dw_mem_base[0]);
+		dev_dbg(bridge, "dw_mem_base[1] 0x%x\n",
+			host_res->dw_mem_base[1]);
+		dev_dbg(bridge, "dw_mem_base[2] 0x%x\n",
+			host_res->dw_mem_base[2]);
+		dev_dbg(bridge, "dw_mem_base[3] 0x%x\n",
+			host_res->dw_mem_base[3]);
+		dev_dbg(bridge, "dw_mem_base[4] 0x%x\n",
+			host_res->dw_mem_base[4]);
+		dev_dbg(bridge, "dw_prm_base %p\n", host_res->dw_prm_base);
+		dev_dbg(bridge, "dw_cm_base %p\n", host_res->dw_cm_base);
+		dev_dbg(bridge, "dw_wd_timer_dsp_base %p\n",
+			host_res->dw_wd_timer_dsp_base);
+		dev_dbg(bridge, "dw_dmmu_base %p\n", host_res->dw_dmmu_base);
+		dw_buff_size = sizeof(shm_size);
+		status =
+		    reg_get_value(SHMSIZE, (u8 *) &shm_size, &dw_buff_size);
 		if (DSP_SUCCEEDED(status)) {
 			/* Allocate Physically contiguous,
 			 * non-cacheable  memory */
-			pResources->dwMemBase[1] =
-				(u32)MEM_AllocPhysMem(shm_size, 0x100000,
-							&dmaAddr);
-			if (pResources->dwMemBase[1] == 0) {
+			host_res->dw_mem_base[1] =
+			    (u32) mem_alloc_phys_mem(shm_size, 0x100000,
+						     &dma_addr);
+			if (host_res->dw_mem_base[1] == 0) {
 				status = DSP_EMEMORY;
-				pr_err("SHM reservation Failed\n");
+				pr_err("shm reservation Failed\n");
 			} else {
-				pResources->dwMemLength[1] = shm_size;
-				pResources->dwMemPhys[1] = dmaAddr;
+				host_res->dw_mem_length[1] = shm_size;
+				host_res->dw_mem_phys[1] = dma_addr;
 
-				dev_dbg(bridge, "%s: Bridge SHM address 0x%x "
-					"dmaAddr %x size %x\n", __func__,
-					 pResources->dwMemBase[1],
-					 dmaAddr, shm_size);
+				dev_dbg(bridge, "%s: Bridge shm address 0x%x "
+					"dma_addr %x size %x\n", __func__,
+					host_res->dw_mem_base[1],
+					dma_addr, shm_size);
 			}
 		}
 		if (DSP_SUCCEEDED(status)) {
 			/* for Linux, these are hard-coded values */
-			pResources->bIRQRegisters = 0;
-			pResources->bIRQAttrib = 0;
-			pResources->dwOffsetForMonitor = 0;
-			pResources->dwChnlOffset = 0;
+			host_res->birq_registers = 0;
+			host_res->birq_attrib = 0;
+			host_res->dw_offset_for_monitor = 0;
+			host_res->dw_chnl_offset = 0;
 			/* CHNL_MAXCHANNELS */
-			pResources->dwNumChnls = CHNL_MAXCHANNELS;
-			pResources->dwChnlBufSize = 0x400;
-			dwBuffSize = sizeof(struct CFG_HOSTRES);
-			status = REG_SetValue(CURRENTCONFIG, (u8 *)pResources,
-					     sizeof(struct CFG_HOSTRES));
+			host_res->dw_num_chnls = CHNL_MAXCHANNELS;
+			host_res->dw_chnl_buf_size = 0x400;
+			dw_buff_size = sizeof(struct cfg_hostres);
+			status = reg_set_value(CURRENTCONFIG, (u8 *) host_res,
+					       sizeof(struct cfg_hostres));
 			if (DSP_FAILED(status)) {
 				dev_dbg(bridge, "%s: Failed to set the registry"
 					" value for CURRENTCONFIG\n", __func__);
 			}
 		}
-		kfree(pResources);
+		kfree(host_res);
 	}
 	/* End Mem alloc */
 	return status;

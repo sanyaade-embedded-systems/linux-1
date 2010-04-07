@@ -23,37 +23,37 @@
 #define GS_
 
 /*
- *  ======== GS_alloc ========
+ *  ======== gs_alloc ========
  *  Alloc size bytes of space.  Returns pointer to space
  *  allocated, otherwise NULL.
  */
-extern void *GS_alloc(u32 size);
+extern void *gs_alloc(u32 size);
 
 /*
- *  ======== GS_exit ========
- *  Module exit.  Do not change to "#define GS_init()"; in
+ *  ======== gs_exit ========
+ *  Module exit.  Do not change to "#define gs_init()"; in
  *  some environments this operation must actually do some work!
  */
-extern void GS_exit(void);
+extern void gs_exit(void);
 
 /*
- *  ======== GS_free ========
- *  Free space allocated by GS_alloc() or GS_calloc().
+ *  ======== gs_free ========
+ *  Free space allocated by gs_alloc() or GS_calloc().
  */
-extern void GS_free(void *ptr);
+extern void gs_free(void *ptr);
 
 /*
- *  ======== GS_frees ========
- *  Free space allocated by GS_alloc() or GS_calloc() and assert that
+ *  ======== gs_frees ========
+ *  Free space allocated by gs_alloc() or GS_calloc() and assert that
  *  the size of the allocation is size bytes.
  */
-extern void GS_frees(void *ptr, u32 size);
+extern void gs_frees(void *ptr, u32 size);
 
 /*
- *  ======== GS_init ========
- *  Module initialization.  Do not change to "#define GS_init()"; in
+ *  ======== gs_init ========
+ *  Module initialization.  Do not change to "#define gs_init()"; in
  *  some environments this operation must actually do some work!
  */
-extern void GS_init(void);
+extern void gs_init(void);
 
-#endif				/*GS_ */
+#endif /*GS_ */
