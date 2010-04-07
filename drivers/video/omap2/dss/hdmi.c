@@ -854,8 +854,6 @@ static int hdmi_read_edid(struct omap_video_timings *dp)
 
 	if (HDMI_CORE_DDC_READEDID(HDMI_CORE_SYS, edid) != 0) {
 		printk(KERN_WARNING "HDMI failed to read E-EDID\n");
-		r = -EIO;
-		goto err;
 	} else {
 		edid_timings.pixel_clock = dp->pixel_clock;
 		edid_timings.x_res = dp->x_res;
