@@ -397,18 +397,35 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 
 dsp_status sm_interrupt_dsp(struct wmd_dev_context * dev_context, u16 mb_val)
 {
-	struct cfg_hostres resources;
 	dsp_status status = DSP_SOK;
-	u32 temp;
 
 	if (!dev_context->mbox)
-		return DSP_SOK;
+		return status;
 
+	status = omap_mbox_msg_send(dev_context->mbox, mb_val);
+
+	if (status) {
+		pr_err("omap_mbox_msg_send Fail and status = %d\n", status);
+		status = DSP_EFAIL;
+	}
+
+	dev_dbg(bridge, "MBX: writing %x to Mailbox\n", mb_val);
+	return status;
+}
+
+int send_mbox_callback(void *arg)
+{
+	struct wmd_dev_context *dev_context;
+	struct cfg_hostres resources;
+	dsp_status status;
+	u32 temp;
 	status = cfg_get_host_resources((struct cfg_devnode *)
 					drv_get_first_dev_extension(),
 					&resources);
-	if (DSP_FAILED(status))
-		return DSP_EFAIL;
+	dev_get_wmd_context(dev_get_first(), &dev_context);
+
+	if (DSP_FAILED(status) || !dev_context)
+		return -EFAULT;
 
 	if (dev_context->dw_brd_state == BRD_DSP_HIBERNATION ||
 	    dev_context->dw_brd_state == BRD_HIBERNATION) {
@@ -446,13 +463,6 @@ dsp_status sm_interrupt_dsp(struct wmd_dev_context * dev_context, u16 mb_val)
 		dsp_peripheral_clocks_enable(dev_context, NULL);
 	}
 
-	status = omap_mbox_msg_send(dev_context->mbox, mb_val);
-
-	if (status) {
-		pr_err("omap_mbox_msg_send Fail and status = %d\n", status);
-		status = DSP_EFAIL;
-	}
-
-	dev_dbg(bridge, "MBX: writing %x to Mailbox\n", mb_val);
-	return DSP_SOK;
+	dev_context->dw_brd_state = BRD_RUNNING;
+	return 0;
 }

@@ -301,9 +301,6 @@ dsp_status wake_dsp(struct wmd_dev_context *dev_context, IN void *pargs)
 
 	/* Send a wakeup message to DSP */
 	sm_interrupt_dsp(dev_context, MBX_PM_DSPWAKEUP);
-
-	/* Set the device state to RUNNIG */
-	dev_context->dw_brd_state = BRD_RUNNING;
 #endif /* CONFIG_PM */
 	return status;
 }
