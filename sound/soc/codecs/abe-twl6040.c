@@ -280,6 +280,20 @@ static void abe_init_chip(struct snd_soc_codec *codec)
 	abe_set_opp_processing(OPP);
 	/* "tick" of the audio engine */
 	abe_write_event_generator(EVENT_TIMER);
+
+	abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_MM_DL);
+	abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_MM_UL2);
+	abe_write_mixer(MIXDL1, GAIN_M6dB, RAMP_0MS, MIX_DL1_INPUT_VX_DL);
+	abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_TONES);
+
+	abe_write_mixer(MIXDL2, GAIN_M6dB, RAMP_0MS, MIX_DL2_INPUT_TONES);
+	abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_0MS, MIX_DL2_INPUT_VX_DL);
+	abe_write_mixer(MIXDL2, GAIN_M6dB, RAMP_0MS, MIX_DL2_INPUT_MM_DL);
+	abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_0MS, MIX_DL2_INPUT_MM_UL2);
+
+	/* Vx in HS, MM in HF and Tones in HF */
+	twl6040_write(codec, TWL6040_REG_SHADOW, 0x92);
+
 	clk_disable(priv->clk);
 }
 
