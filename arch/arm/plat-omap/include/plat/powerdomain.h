@@ -135,56 +135,56 @@ struct powerdomain {
 };
 
 
-extern void pwrdm_init(struct powerdomain **pwrdm_list);
+void pwrdm_init(struct powerdomain **pwrdm_list);
 
-extern int pwrdm_register(struct powerdomain *pwrdm);
-extern int pwrdm_unregister(struct powerdomain *pwrdm);
-extern struct powerdomain *pwrdm_lookup(const char *name);
+int pwrdm_register(struct powerdomain *pwrdm);
+int pwrdm_unregister(struct powerdomain *pwrdm);
+struct powerdomain *pwrdm_lookup(const char *name);
 
-extern int pwrdm_for_each(int (*fn)(struct powerdomain *pwrdm, void *user),
+int pwrdm_for_each(int (*fn)(struct powerdomain *pwrdm, void *user),
 			void *user);
-extern int pwrdm_for_each_nolock(int (*fn)(struct powerdomain *pwrdm, void *user),
+int pwrdm_for_each_nolock(int (*fn)(struct powerdomain *pwrdm, void *user),
 			void *user);
 
-extern int pwrdm_add_clkdm(struct powerdomain *pwrdm, struct clockdomain *clkdm);
-extern int pwrdm_del_clkdm(struct powerdomain *pwrdm, struct clockdomain *clkdm);
-extern int pwrdm_for_each_clkdm(struct powerdomain *pwrdm,
+int pwrdm_add_clkdm(struct powerdomain *pwrdm, struct clockdomain *clkdm);
+int pwrdm_del_clkdm(struct powerdomain *pwrdm, struct clockdomain *clkdm);
+int pwrdm_for_each_clkdm(struct powerdomain *pwrdm,
 			 int (*fn)(struct powerdomain *pwrdm,
 				   struct clockdomain *clkdm));
 
-extern int pwrdm_add_wkdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
-extern int pwrdm_del_wkdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
-extern int pwrdm_read_wkdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
-extern int pwrdm_add_sleepdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
-extern int pwrdm_del_sleepdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
-extern int pwrdm_read_sleepdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
+int pwrdm_add_wkdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
+int pwrdm_del_wkdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
+int pwrdm_read_wkdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
+int pwrdm_add_sleepdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
+int pwrdm_del_sleepdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
+int pwrdm_read_sleepdep(struct powerdomain *pwrdm1, struct powerdomain *pwrdm2);
 
-extern int pwrdm_get_mem_bank_count(struct powerdomain *pwrdm);
+int pwrdm_get_mem_bank_count(struct powerdomain *pwrdm);
 
-extern int pwrdm_set_next_pwrst(struct powerdomain *pwrdm, u8 pwrst);
-extern int pwrdm_read_next_pwrst(struct powerdomain *pwrdm);
-extern int pwrdm_read_pwrst(struct powerdomain *pwrdm);
-extern int pwrdm_read_prev_pwrst(struct powerdomain *pwrdm);
-extern int pwrdm_clear_all_prev_pwrst(struct powerdomain *pwrdm);
+int pwrdm_set_next_pwrst(struct powerdomain *pwrdm, u8 pwrst);
+int pwrdm_read_next_pwrst(struct powerdomain *pwrdm);
+int pwrdm_read_pwrst(struct powerdomain *pwrdm);
+int pwrdm_read_prev_pwrst(struct powerdomain *pwrdm);
+int pwrdm_clear_all_prev_pwrst(struct powerdomain *pwrdm);
 
-extern int pwrdm_set_logic_retst(struct powerdomain *pwrdm, u8 pwrst);
-extern int pwrdm_set_mem_onst(struct powerdomain *pwrdm, u8 bank, u8 pwrst);
-extern int pwrdm_set_mem_retst(struct powerdomain *pwrdm, u8 bank, u8 pwrst);
+int pwrdm_set_logic_retst(struct powerdomain *pwrdm, u8 pwrst);
+int pwrdm_set_mem_onst(struct powerdomain *pwrdm, u8 bank, u8 pwrst);
+int pwrdm_set_mem_retst(struct powerdomain *pwrdm, u8 bank, u8 pwrst);
 
-extern int pwrdm_read_logic_pwrst(struct powerdomain *pwrdm);
-extern int pwrdm_read_prev_logic_pwrst(struct powerdomain *pwrdm);
-extern int pwrdm_read_mem_pwrst(struct powerdomain *pwrdm, u8 bank);
-extern int pwrdm_read_prev_mem_pwrst(struct powerdomain *pwrdm, u8 bank);
+int pwrdm_read_logic_pwrst(struct powerdomain *pwrdm);
+int pwrdm_read_prev_logic_pwrst(struct powerdomain *pwrdm);
+int pwrdm_read_mem_pwrst(struct powerdomain *pwrdm, u8 bank);
+int pwrdm_read_prev_mem_pwrst(struct powerdomain *pwrdm, u8 bank);
 
-extern int pwrdm_enable_hdwr_sar(struct powerdomain *pwrdm);
-extern int pwrdm_disable_hdwr_sar(struct powerdomain *pwrdm);
-extern bool pwrdm_has_hdwr_sar(struct powerdomain *pwrdm);
+int pwrdm_enable_hdwr_sar(struct powerdomain *pwrdm);
+int pwrdm_disable_hdwr_sar(struct powerdomain *pwrdm);
+bool pwrdm_has_hdwr_sar(struct powerdomain *pwrdm);
 
-extern int pwrdm_wait_transition(struct powerdomain *pwrdm);
+int pwrdm_wait_transition(struct powerdomain *pwrdm);
 
-extern int pwrdm_state_switch(struct powerdomain *pwrdm);
-extern int pwrdm_clkdm_state_switch(struct clockdomain *clkdm);
-extern int pwrdm_pre_transition(void);
-extern int pwrdm_post_transition(void);
+int pwrdm_state_switch(struct powerdomain *pwrdm);
+int pwrdm_clkdm_state_switch(struct clockdomain *clkdm);
+int pwrdm_pre_transition(void);
+int pwrdm_post_transition(void);
 
 #endif
