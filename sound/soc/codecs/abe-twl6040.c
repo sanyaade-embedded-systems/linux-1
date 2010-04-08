@@ -1179,12 +1179,14 @@ static int abe_mm_trigger(struct snd_pcm_substream *substream,
 				priv->sysclk);
 			return -EPERM;
 		}
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		if (!substream->stream)
 			abe_enable_data_transfer(MM_DL_PORT);
 		else
 			abe_enable_data_transfer(MM_UL_PORT);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		if (!substream->stream)
 			abe_disable_data_transfer(MM_DL_PORT);
 		else
