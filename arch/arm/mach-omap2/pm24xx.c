@@ -437,7 +437,7 @@ static void __init prcm_setup_regs(void)
 	cm_write_mod_reg(OMAP2420_AUTO_DSP_IPI, OMAP24XX_DSP_MOD, CM_AUTOIDLE);
 
 	/* Put DPLL and both APLLs into autoidle mode */
-	cm_write_mod_reg((0x03 << OMAP24XX_AUTO_DPLL_SHIFT) |
+	cm_write_mod_reg((0x03 << OMAP24XX_AUTO_DPLL_SHIFT),
 			 (0x03 << OMAP24XX_AUTO_96M_SHIFT) |
 			 (0x03 << OMAP24XX_AUTO_54M_SHIFT),
 			 PLL_MOD, CM_AUTOIDLE);
