@@ -221,7 +221,6 @@ void clkdm_init(struct clockdomain **clkdms,
 				_autodep_lookup(autodep);
 	}
 }
-EXPORT_SYMBOL(clkdm_init);
 
 /**
  * clkdm_register - register a clockdomain
@@ -269,7 +268,6 @@ cr_unlock:
 
 	return ret;
 }
-EXPORT_SYMBOL(clkdm_register);
 
 /**
  * clkdm_unregister - unregister a clockdomain
@@ -293,7 +291,6 @@ int clkdm_unregister(struct clockdomain *clkdm)
 
 	return 0;
 }
-EXPORT_SYMBOL(clkdm_unregister);
 
 /**
  * clkdm_lookup - look up a clockdomain by name, return a pointer
@@ -322,7 +319,6 @@ struct clockdomain *clkdm_lookup(const char *name)
 
 	return clkdm;
 }
-EXPORT_SYMBOL(clkdm_lookup);
 
 /**
  * clkdm_for_each - call function on each registered clockdomain
@@ -357,7 +353,6 @@ int clkdm_for_each(int (*fn)(struct clockdomain *clkdm, void *user),
 
 	return ret;
 }
-EXPORT_SYMBOL(clkdm_for_each);
 
 
 /**
@@ -374,7 +369,6 @@ struct powerdomain *clkdm_get_pwrdm(struct clockdomain *clkdm)
 
 	return clkdm->pwrdm.ptr;
 }
-EXPORT_SYMBOL(clkdm_get_pwrdm);
 
 
 /* Hardware clockdomain control */
@@ -444,7 +438,6 @@ int omap2_clkdm_sleep(struct clockdomain *clkdm)
 
 	return 0;
 }
-EXPORT_SYMBOL(omap2_clkdm_sleep);
 
 /**
  * omap2_clkdm_wakeup - force clockdomain wakeup transition
@@ -489,7 +482,7 @@ int omap2_clkdm_wakeup(struct clockdomain *clkdm)
 
 	return 0;
 }
-EXPORT_SYMBOL(omap2_clkdm_wakeup);
+
 /**
  * omap2_clkdm_allow_idle - enable hwsup idle transitions for clkdm
  * @clkdm: struct clockdomain *
@@ -522,7 +515,6 @@ void omap2_clkdm_allow_idle(struct clockdomain *clkdm)
 
 	pwrdm_clkdm_state_switch(clkdm);
 }
-EXPORT_SYMBOL(omap2_clkdm_allow_idle);
 
 /**
  * omap2_clkdm_deny_idle - disable hwsup idle transitions for clkdm
@@ -553,7 +545,6 @@ void omap2_clkdm_deny_idle(struct clockdomain *clkdm)
 		if (atomic_read(&clkdm->usecount) > 0)
 			_clkdm_del_autodeps(clkdm);
 }
-EXPORT_SYMBOL(omap2_clkdm_deny_idle);
 
 
 /* Clockdomain-to-clock framework interface code */
@@ -612,7 +603,6 @@ int omap2_clkdm_clk_enable(struct clockdomain *clkdm, struct clk *clk)
 
 	return 0;
 }
-EXPORT_SYMBOL(omap2_clkdm_clk_enable);
 
 /**
  * omap2_clkdm_clk_disable - remove an enabled downstream clock from this clkdm
@@ -673,5 +663,4 @@ int omap2_clkdm_clk_disable(struct clockdomain *clkdm, struct clk *clk)
 
 	return 0;
 }
-EXPORT_SYMBOL(omap2_clkdm_clk_disable);
 

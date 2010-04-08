@@ -93,22 +93,22 @@ struct clockdomain {
 
 };
 
-extern void clkdm_init(struct clockdomain **clkdms, struct clkdm_pwrdm_autodep *autodeps);
-extern int clkdm_register(struct clockdomain *clkdm);
-extern int clkdm_unregister(struct clockdomain *clkdm);
-extern struct clockdomain *clkdm_lookup(const char *name);
+void clkdm_init(struct clockdomain **clkdms, struct clkdm_pwrdm_autodep *autodeps);
+int clkdm_register(struct clockdomain *clkdm);
+int clkdm_unregister(struct clockdomain *clkdm);
+struct clockdomain *clkdm_lookup(const char *name);
 
-extern int clkdm_for_each(int (*fn)(struct clockdomain *clkdm, void *user),
+int clkdm_for_each(int (*fn)(struct clockdomain *clkdm, void *user),
 			void *user);
-extern struct powerdomain *clkdm_get_pwrdm(struct clockdomain *clkdm);
+struct powerdomain *clkdm_get_pwrdm(struct clockdomain *clkdm);
 
-extern void omap2_clkdm_allow_idle(struct clockdomain *clkdm);
-extern void omap2_clkdm_deny_idle(struct clockdomain *clkdm);
+void omap2_clkdm_allow_idle(struct clockdomain *clkdm);
+void omap2_clkdm_deny_idle(struct clockdomain *clkdm);
 
-extern int omap2_clkdm_wakeup(struct clockdomain *clkdm);
-extern int omap2_clkdm_sleep(struct clockdomain *clkdm);
+int omap2_clkdm_wakeup(struct clockdomain *clkdm);
+int omap2_clkdm_sleep(struct clockdomain *clkdm);
 
-extern int omap2_clkdm_clk_enable(struct clockdomain *clkdm, struct clk *clk);
-extern int omap2_clkdm_clk_disable(struct clockdomain *clkdm, struct clk *clk);
+int omap2_clkdm_clk_enable(struct clockdomain *clkdm, struct clk *clk);
+int omap2_clkdm_clk_disable(struct clockdomain *clkdm, struct clk *clk);
 
 #endif
