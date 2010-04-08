@@ -25,7 +25,6 @@
 #include <dspbridge/dbc.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/reg.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/cfg.h>

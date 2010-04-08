@@ -2,8 +2,8 @@ obj-$(CONFIG_MPU_BRIDGE)	+= bridgedriver.o
 
 libgen = gen/gb.o gen/gs.o gen/gh.o gen/uuidutil.o
 libservices = services/mem.o services/sync.o \
-		services/clk.o services/cfg.o services/reg.o \
-               services/regsup.o services/ntfy.o \
+		services/clk.o services/cfg.o \
+               services/ntfy.o \
 		services/services.o
 libwmd = wmd/chnl_sm.o wmd/msg_sm.o wmd/io_sm.o wmd/tiomap3430.o \
 		wmd/tiomap3430_pwr.o wmd/tiomap_io.o \

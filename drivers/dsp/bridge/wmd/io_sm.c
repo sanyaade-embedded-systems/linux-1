@@ -41,7 +41,6 @@
 #include <dspbridge/mem.h>
 #include <dspbridge/ntfy.h>
 #include <dspbridge/sync.h>
-#include <dspbridge/reg.h>
 
 /* Hardware Abstraction Layer */
 #include <hw_defs.h>

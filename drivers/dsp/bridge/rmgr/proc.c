@@ -53,7 +53,6 @@
 #include <dspbridge/msg.h>
 #include <dspbridge/wmdioctl.h>
 #include <dspbridge/drv.h>
-#include <dspbridge/reg.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/proc.h>

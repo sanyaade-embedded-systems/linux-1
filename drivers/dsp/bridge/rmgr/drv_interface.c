@@ -42,7 +42,6 @@
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/services.h>
 #include <dspbridge/sync.h>
-#include <dspbridge/reg.h>
 
 /*  ----------------------------------- Platform Manager */
 #include <dspbridge/wcdioctl.h>

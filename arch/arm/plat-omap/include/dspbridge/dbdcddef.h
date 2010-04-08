@@ -32,8 +32,16 @@
 #define DCD_REGKEY              "Software\\TexasInstruments\\DspBridge\\DCD"
 #define DCD_REGISTER_SECTION    ".dcd_register"
 
+#define DCD_MAXPATHLENGTH    255
+
 /* DCD Manager Object */
 struct dcd_manager;
+
+struct dcd_key_elem {
+	struct list_head link;	/* Make it linked to a list */
+	char name[DCD_MAXPATHLENGTH];	/*  Name of a given value entry */
+	char *path;		/*  Pointer to the actual data */
+};
 
 /* DCD Node Properties */
 struct dcd_nodeprops {
