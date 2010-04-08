@@ -872,6 +872,7 @@ dsp_status drv_request_bridge_res_dsp(void **phost_resources)
 	u32 dw_buff_size;
 	u32 dma_addr;
 	u32 shm_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	dw_buff_size = sizeof(struct cfg_hostres);
 
@@ -913,10 +914,9 @@ dsp_status drv_request_bridge_res_dsp(void **phost_resources)
 		dev_dbg(bridge, "dw_wd_timer_dsp_base %p\n",
 			host_res->dw_wd_timer_dsp_base);
 		dev_dbg(bridge, "dw_dmmu_base %p\n", host_res->dw_dmmu_base);
-		dw_buff_size = sizeof(shm_size);
-		status =
-		    reg_get_value(SHMSIZE, (u8 *) &shm_size, &dw_buff_size);
-		if (DSP_SUCCEEDED(status)) {
+
+		shm_size = drv_datap->shm_size;
+		if (shm_size >= 0x10000) {
 			/* Allocate Physically contiguous,
 			 * non-cacheable  memory */
 			host_res->dw_mem_base[1] =

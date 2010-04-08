@@ -212,11 +212,11 @@ static struct notifier_block iva_clk_notifier = {
 static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 {
 	int status;
-	u32 init_status;
-	u32 temp;
+	u32 init_status = DSP_SOK;
 	dev_t dev = 0;
 	int result;
 	struct dspbridge_platform_data *pdata = pdev->dev.platform_data;
+	struct drv_data *drv_datap = NULL;
 
 	omap_dspbridge_dev = pdev;
 
@@ -263,21 +263,23 @@ static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 
 	/*  Autostart flag.  This should be set to true if the DSP image should
 	 *  be loaded and run during bridge module initialization */
-
-	if (base_img) {
-		temp = true;
-		reg_set_value(AUTOSTART, (u8 *) &temp, sizeof(temp));
-		reg_set_value(DEFEXEC, (u8 *) base_img, strlen(base_img) + 1);
+	drv_datap = mem_calloc(sizeof(struct drv_data), MEM_PAGED);
+	if (drv_datap) {
+		drv_datap->shm_size = shm_size;
+		drv_datap->tc_wordswapon = tc_wordswapon;
+		if (base_img) {
+			drv_datap->base_img = kmalloc(strlen(base_img) + 1,
+								GFP_KERNEL);
+			if (drv_datap->base_img)
+				strncpy(drv_datap->base_img, base_img,
+							strlen(base_img) + 1);
+			else
+				status = DSP_EMEMORY;
+		}
 	} else {
-		temp = false;
-		reg_set_value(AUTOSTART, (u8 *) &temp, sizeof(temp));
-		reg_set_value(DEFEXEC, (u8 *) "\0", (u32) 2);
+		init_status = DSP_EMEMORY;
 	}
-
-	if (shm_size >= 0x10000) {	/* 64 KB */
-		init_status = reg_set_value(SHMSIZE, (u8 *) &shm_size,
-					    sizeof(shm_size));
-	} else {
+	if (shm_size < 0x10000) {	/* 64 KB */
 		init_status = DSP_EINVALIDARG;
 		status = -1;
 		pr_err("%s: shm size must be at least 64 KB\n", __func__);
@@ -287,15 +289,9 @@ static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 	if ((pdata->phys_mempool_base > 0) && (pdata->phys_mempool_size > 0))
 		mem_ext_phys_pool_init(pdata->phys_mempool_base,
 						pdata->phys_mempool_size);
-	if (tc_wordswapon) {
+	if (tc_wordswapon)
 		dev_dbg(bridge, "%s: TC Word Swap is enabled\n", __func__);
-		reg_set_value(TCWORDSWAP, (u8 *) &tc_wordswapon,
-			      sizeof(tc_wordswapon));
-	} else {
-		dev_dbg(bridge, "%s: TC Word Swap is disabled\n", __func__);
-		reg_set_value(TCWORDSWAP, (u8 *) &tc_wordswapon,
-			      sizeof(tc_wordswapon));
-	}
+
 	if (DSP_SUCCEEDED(init_status)) {
 #ifdef CONFIG_BRIDGE_DVFS
 		clk_handle = clk_get(NULL, "iva2_ck");
@@ -307,6 +303,7 @@ static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 			pr_err("%s: cpufreq_register_notifier failed for "
 			       "iva2_ck\n", __func__);
 #endif
+		dev_set_drvdata(bridge, drv_datap);
 		driver_context = dsp_init(&init_status);
 		if (DSP_FAILED(init_status)) {
 			status = -1;

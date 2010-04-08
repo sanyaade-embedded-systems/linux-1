@@ -820,6 +820,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 	u32 dw_ext_end;
 	u32 proc_id;
 	int brd_state;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 #ifdef OPT_LOAD_TIME_INSTRUMENTATION
 	struct timeval tv1;
@@ -1032,13 +1033,15 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 		if (DSP_SUCCEEDED((*p_proc_object->intf_fxns->pfn_brd_status)
 				  (p_proc_object->hwmd_context, &brd_state))) {
 			pr_info("%s: Processor Loaded %s\n", __func__, pargv0);
+			kfree(drv_datap->base_img);
+			drv_datap->base_img = kmalloc(strlen(pargv0) + 1,
+								GFP_KERNEL);
+			if (drv_datap->base_img)
+				strncpy(drv_datap->base_img, pargv0,
+							strlen(pargv0) + 1);
+			else
+				status = DSP_EMEMORY;
 			DBC_ASSERT(brd_state == BRD_LOADED);
-			/*
-			 * Save absolute path for base image so that recovery
-			 * can load it.
-			 */
-			reg_set_value(DEFEXEC, (u8 *) pargv0,
-				      strlen(pargv0) + 1);
 		}
 	}
 

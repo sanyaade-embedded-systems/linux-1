@@ -29,6 +29,7 @@
 
 /*  ----------------------------------- This */
 #include <dspbridge/cfg.h>
+#include <dspbridge/drv.h>
 
 struct drv_ext {
 	struct list_head link;
@@ -55,18 +56,15 @@ dsp_status cfg_get_auto_start(struct cfg_devnode *dev_node_obj,
 {
 	dsp_status status = DSP_SOK;
 	u32 dw_buf_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	dw_buf_size = sizeof(*pdwAutoStart);
 	if (!dev_node_obj)
 		status = CFG_E_INVALIDHDEVNODE;
-	if (!pdwAutoStart)
+	if (!pdwAutoStart || !drv_datap)
 		status = CFG_E_INVALIDPOINTER;
-	if (DSP_SUCCEEDED(status)) {
-		status = reg_get_value(AUTOSTART, (u8 *) pdwAutoStart,
-				       &dw_buf_size);
-		if (DSP_FAILED(status))
-			status = CFG_E_RESOURCENOTAVAIL;
-	}
+	if (DSP_SUCCEEDED(status))
+		*pdwAutoStart = (drv_datap->base_img) ? 1 : 0;
 
 	DBC_ENSURE((status == DSP_SOK &&
 		    (*pdwAutoStart == 0 || *pdwAutoStart == 1))
@@ -117,22 +115,19 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
 			     OUT char *pstrExecFile)
 {
 	dsp_status status = DSP_SOK;
-	u32 exec_size = ul_buf_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	if (!dev_node_obj)
 		status = CFG_E_INVALIDHDEVNODE;
-	else if (!pstrExecFile)
+	else if (!pstrExecFile || !drv_datap)
 		status = CFG_E_INVALIDPOINTER;
 
-	if (DSP_SUCCEEDED(status)) {
-		status =
-		    reg_get_value(DEFEXEC, (u8 *) pstrExecFile, &exec_size);
-		if (DSP_FAILED(status))
-			status = CFG_E_RESOURCENOTAVAIL;
-		else if (exec_size > ul_buf_size)
-			status = DSP_ESIZE;
+	if (strlen(drv_datap->base_img) > ul_buf_size)
+		status = DSP_ESIZE;
 
-	}
+	if (DSP_SUCCEEDED(status) && drv_datap->base_img)
+		strcpy(pstrExecFile, drv_datap->base_img);
+
 	if (DSP_FAILED(status))
 		pr_err("%s: Failed, status 0x%x\n", __func__, status);
 	DBC_ENSURE(((status == DSP_SOK) &&

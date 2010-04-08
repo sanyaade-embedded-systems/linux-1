@@ -125,6 +125,13 @@ enum gpp_proc_res_state {
 	PROC_RES_FREED
 };
 
+/* Bridge Data */
+struct drv_data {
+	char *base_img;
+	s32 shm_size;
+	int tc_wordswapon;
+};
+
 /* Process Context */
 struct process_context {
 	/* Process State */

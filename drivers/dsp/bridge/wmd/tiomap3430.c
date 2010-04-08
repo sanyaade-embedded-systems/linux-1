@@ -884,13 +884,12 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 	dsp_status status = DSP_SOK;
 	struct wmd_dev_context *dev_context = NULL;
 	s32 entry_ndx;
-	s32 tc_word_swap;
-	u32 tc_word_swap_size = sizeof(tc_word_swap);
 	struct cfg_hostres *resources = pConfig;
 	struct pg_table_attrs *pt_attrs;
 	u32 pg_tbl_pa;
 	u32 pg_tbl_va;
 	u32 align_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	/* Allocate and initialize a data structure to contain the mini driver
 	 *  state, which becomes the context for later calls into this WMD. */
@@ -1004,14 +1003,8 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 
 	if (DSP_SUCCEEDED(status)) {
 		spin_lock_init(&pt_attrs->pg_lock);
-		/* Set the Endianism Register *//* Need to set this */
-		/* Retrieve the TC u16 SWAP Option */
-		status = reg_get_value(TCWORDSWAP, (u8 *) &tc_word_swap,
-				       &tc_word_swap_size);
-		/* Save the value */
-		dev_context->tc_word_swap_on = tc_word_swap;
-	}
-	if (DSP_SUCCEEDED(status)) {
+		dev_context->tc_word_swap_on = drv_datap->tc_wordswapon;
+
 		/* Set the Clock Divisor for the DSP module */
 		udelay(5);
 		/* 24xx-Linux MMU address is obtained from the host
@@ -1118,8 +1111,8 @@ static dsp_status bridge_dev_destroy(struct wmd_dev_context *hDevContext)
 	struct wmd_dev_context *dev_context = (struct wmd_dev_context *)
 	    hDevContext;
 	struct cfg_hostres *host_res;
-	u32 dw_buff_size;
 	u32 shm_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	/* It should never happen */
 	if (!hDevContext)
@@ -1147,10 +1140,8 @@ static dsp_status bridge_dev_destroy(struct wmd_dev_context *hDevContext)
 
 	if (dev_context->resources) {
 		host_res = dev_context->resources;
-		dw_buff_size = sizeof(shm_size);
-		status = reg_get_value(SHMSIZE, (u8 *) &shm_size,
-					       &dw_buff_size);
-		if (DSP_SUCCEEDED(status)) {
+		shm_size = drv_datap->shm_size;
+		if (shm_size >= 0x10000) {
 			if ((host_res->dw_mem_base[1]) &&
 			    (host_res->dw_mem_phys[1])) {
 				mem_free_phys_mem((void *)
@@ -1198,6 +1189,9 @@ static dsp_status bridge_dev_destroy(struct wmd_dev_context *hDevContext)
 	}
 
 	/* Free the driver's device context: */
+	kfree(drv_datap->base_img);
+	kfree(drv_datap);
+	dev_set_drvdata(bridge, NULL);
 	kfree((void *)hDevContext);
 	return status;
 }
