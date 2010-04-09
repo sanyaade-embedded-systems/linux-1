@@ -248,6 +248,12 @@ void __init omap2_dm_timer_early_init(void)
 			pdata = kzalloc(sizeof(struct omap_dm_timer_plat_info),
 					GFP_KERNEL);
 
+			if (!pdata) {
+				WARN("gptimer%d :Memory allocation failed\n"
+						, i+1);
+				return;
+			}
+
 			pdata->omap_dm_clk_enable = omap2_dm_timer_enable;
 			pdata->omap_dm_clk_disable = omap2_dm_timer_disable;
 			pdata->omap_dm_set_source_clk = omap2_dm_timer_set_clk;
@@ -396,6 +402,12 @@ fail:
 				break;
 			pdata = kzalloc(sizeof(struct omap_dm_timer_plat_info),
 					GFP_KERNEL);
+
+			if (!pdata) {
+				WARN("gptimer%d :Memory allocation failed\n"
+						, i+1);
+				return;
+			}
 
 			pdata->omap_dm_clk_enable = omap2_dm_timer_enable;
 			pdata->omap_dm_clk_disable = omap2_dm_timer_disable;
