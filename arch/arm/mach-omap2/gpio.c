@@ -1099,12 +1099,14 @@ void omap_gpio_restore_context(void)
 
 static int __devexit omap_gpio_remove(struct platform_device *pdev)
 {
-	struct omap_gpio_platform_data *pdata = pdev->dev.platform_data;
+	struct omap_gpio_platform_data *pdata;
 	struct gpio_bank *bank;
 	int id;
 
-	if (!pdev || !pdata)
-		return 0;
+	if (!pdev || !pdev->dev.platform_data)
+		return -EINVAL;
+
+	pdata = pdev->dev.platform_data;
 
 	id = pdev->id;
 	if (id > gpio_bank_count)
@@ -1120,16 +1122,17 @@ static int __devexit omap_gpio_remove(struct platform_device *pdev)
 static int __devinit omap_gpio_probe(struct platform_device *pdev)
 {
 	static int show_rev_once;
-	struct omap_gpio_platform_data *pdata = pdev->dev.platform_data;
+	struct omap_gpio_platform_data *pdata;
 	struct gpio_bank *bank;
 	int id, i;
 
-	if (!pdev || !pdata) {
+	if (!pdev || !pdev->dev.platform_data) {
 		pr_err("GPIO device initialize without"
 					"platform data\n");
 		return -EINVAL;
 	}
 
+	pdata = pdev->dev.platform_data;
 	gpio_bank_count = OMAP_NR_GPIOS;
 #ifdef CONFIG_ARCH_OMAP2
 	if (cpu_is_omap242x())
@@ -1137,7 +1140,7 @@ static int __devinit omap_gpio_probe(struct platform_device *pdev)
 #endif
 
 	id = pdev->id;
-	if (id > gpio_bank_count) {
+	if (id >= gpio_bank_count) {
 		pr_err("Invalid GPIO device id (%d)\n", id);
 		return -EINVAL;
 	}
@@ -1266,6 +1269,11 @@ void __init omap_gpio_early_init(void)
 
 		pdata = kzalloc(sizeof(struct omap_gpio_platform_data),
 					GFP_KERNEL);
+		if (!pdata) {
+			WARN("Memory allocation failed gpio%d \n", i + 1);
+			return;
+		}
+
 		pdata->base = oh->_rt_va;
 		pdata->irq = oh->mpu_irqs[0].irq;
 		pdata->virtual_irq_start = IH_GPIO_BASE + 32 * i;
@@ -1306,11 +1314,16 @@ int __init omap_init_gpio(void)
 		oh = omap_hwmod_lookup(oh_name);
 		if (!oh) {
 			pr_err("Could not look up %s\n", oh_name);
+			i++;
 			continue;
 		}
 
 		pdata = kzalloc(sizeof(struct omap_gpio_platform_data),
 					GFP_KERNEL);
+		if (!pdata) {
+			WARN("Memory allocation failed gpio%d \n", i + 1);
+			return;
+		}
 		pdata->base = oh->_rt_va;
 		pdata->irq = oh->mpu_irqs[0].irq;
 		pdata->virtual_irq_start = IH_GPIO_BASE + 32 * i;
