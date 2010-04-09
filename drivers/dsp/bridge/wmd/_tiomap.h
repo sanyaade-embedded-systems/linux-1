@@ -337,6 +337,7 @@ struct wmd_dev_context {
 	u32 dw_internal_size;	/* Internal memory size */
 
 	struct omap_mbox *mbox;	/* Mail box handle */
+	struct cfg_hostres *resources;	/* Host Resources */
 
 	/*
 	 * Processor specific info is set when prog loaded and read from DCD.

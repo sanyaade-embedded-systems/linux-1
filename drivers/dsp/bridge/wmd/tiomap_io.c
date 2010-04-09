@@ -186,32 +186,28 @@ dsp_status write_dsp_data(struct wmd_dev_context *hDevContext,
 {
 	u32 offset;
 	u32 dw_base_addr = hDevContext->dw_dsp_base_addr;
-	struct cfg_hostres resources;
-	dsp_status status;
+	struct cfg_hostres *resources = hDevContext->resources;
+	dsp_status status = DSP_SOK;
 	u32 base1, base2, base3;
 	base1 = OMAP_DSP_MEM1_SIZE;
 	base2 = OMAP_DSP_MEM2_BASE - OMAP_DSP_MEM1_BASE;
 	base3 = OMAP_DSP_MEM3_BASE - OMAP_DSP_MEM1_BASE;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-
-	if (DSP_FAILED(status))
-		return status;
+	if (!resources)
+		return DSP_EFAIL;
 
 	offset = dwDSPAddr - hDevContext->dw_dsp_start_add;
 	if (offset < base1) {
-		dw_base_addr = MEM_LINEAR_ADDRESS(resources.dw_mem_base[2],
-						  resources.dw_mem_length[2]);
+		dw_base_addr = MEM_LINEAR_ADDRESS(resources->dw_mem_base[2],
+						  resources->dw_mem_length[2]);
 	} else if (offset > base1 && offset < base2 + OMAP_DSP_MEM2_SIZE) {
-		dw_base_addr = MEM_LINEAR_ADDRESS(resources.dw_mem_base[3],
-						  resources.dw_mem_length[3]);
+		dw_base_addr = MEM_LINEAR_ADDRESS(resources->dw_mem_base[3],
+						  resources->dw_mem_length[3]);
 		offset = offset - base2;
 	} else if (offset >= base2 + OMAP_DSP_MEM2_SIZE &&
 		   offset < base3 + OMAP_DSP_MEM3_SIZE) {
-		dw_base_addr = MEM_LINEAR_ADDRESS(resources.dw_mem_base[4],
-						  resources.dw_mem_length[4]);
+		dw_base_addr = MEM_LINEAR_ADDRESS(resources->dw_mem_base[4],
+						  resources->dw_mem_length[4]);
 		offset = offset - base3;
 	} else {
 		return DSP_EFAIL;
@@ -244,7 +240,7 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 	u32 dw_ext_prog_virt_mem;
 	u32 ul_tlb_base_virt = 0;
 	u32 ul_shm_offset_virt = 0;
-	struct cfg_hostres host_res;
+	struct cfg_hostres *host_res = dev_context->resources;
 	bool trace_load = false;
 	temp_byte1 = 0x0;
 	temp_byte2 = 0x0;
@@ -347,10 +343,7 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 				dw_ext_prog_virt_mem =
 				    dev_context->atlb_entry[0].ul_gpp_va;
 			} else {
-				cfg_get_host_resources((struct cfg_devnode *)
-						drv_get_first_dev_extension(),
-						&host_res);
-				dw_ext_prog_virt_mem = host_res.dw_mem_base[1];
+				dw_ext_prog_virt_mem = host_res->dw_mem_base[1];
 				dw_ext_prog_virt_mem +=
 				    (ul_ext_base - ul_dyn_ext_base);
 			}
@@ -416,20 +409,17 @@ dsp_status sm_interrupt_dsp(struct wmd_dev_context * dev_context, u16 mb_val)
 int send_mbox_callback(void *arg)
 {
 	struct wmd_dev_context *dev_context;
-	struct cfg_hostres resources;
-	dsp_status status;
+	struct cfg_hostres *resources;
 	u32 temp;
 	struct dspbridge_platform_data *pdata =
 		omap_dspbridge_dev->dev.platform_data;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
 	dev_get_wmd_context(dev_get_first(), &dev_context);
 
-	if (DSP_FAILED(status) || !dev_context)
+	if (!dev_context || !dev_context->resources)
 		return -EFAULT;
 
+	resources = dev_context->resources;
 	if (dev_context->dw_brd_state == BRD_DSP_HIBERNATION ||
 	    dev_context->dw_brd_state == BRD_HIBERNATION) {
 		/* Restart the peripheral clocks */
@@ -461,7 +451,7 @@ int send_mbox_callback(void *arg)
 		omap_mbox_restore_ctx(dev_context->mbox);
 
 		/* Access MMU SYS CONFIG register to generate a short wakeup */
-		temp = *(reg_uword32 *) (resources.dw_dmmu_base + 0x10);
+		temp = *(reg_uword32 *) (resources->dw_dmmu_base + 0x10);
 
 		dev_context->dw_brd_state = BRD_RUNNING;
 	} else if (dev_context->dw_brd_state == BRD_RETENTION) {

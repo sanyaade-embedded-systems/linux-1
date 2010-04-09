@@ -142,36 +142,6 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
 }
 
 /*
- *  ======== cfg_get_host_resources ========
- *  Purpose:
- *      Get the Host allocated resources assigned to a given device.
- */
-dsp_status cfg_get_host_resources(struct cfg_devnode *dev_node_obj,
-				  OUT struct cfg_hostres *pHostResTable)
-{
-	dsp_status status = DSP_SOK;
-	u32 dw_buf_size;
-
-	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
-
-	if (!pHostResTable)
-		status = CFG_E_INVALIDPOINTER;
-
-	if (DSP_SUCCEEDED(status)) {
-		dw_buf_size = sizeof(struct cfg_hostres);
-		if (DSP_FAILED
-		    (reg_get_value
-		     (CURRENTCONFIG, (u8 *) pHostResTable, &dw_buf_size))) {
-			status = CFG_E_RESOURCENOTAVAIL;
-		}
-	}
-	if (DSP_FAILED(status))
-		dev_dbg(bridge, "%s Failed, status 0x%x\n", __func__, status);
-	return status;
-}
-
-/*
  *  ======== cfg_get_object ========
  *  Purpose:
  *      Retrieve the Object handle from the Registry

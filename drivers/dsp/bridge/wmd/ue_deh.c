@@ -81,8 +81,6 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 {
 	dsp_status status = DSP_SOK;
 	struct deh_mgr *deh_mgr_obj = NULL;
-	struct cfg_hostres cfg_host_res;
-	struct cfg_devnode *dev_node_obj;
 	struct wmd_dev_context *hwmd_context = NULL;
 
 	/*  Message manager will be created when a file is loaded, since
@@ -108,13 +106,6 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 		/* Create a MMUfault DPC */
 		tasklet_init(&deh_mgr_obj->dpc_tasklet, mmu_fault_dpc,
 			     (u32) deh_mgr_obj);
-
-		if (DSP_SUCCEEDED(status))
-			status = dev_get_dev_node(hdev_obj, &dev_node_obj);
-
-		if (DSP_SUCCEEDED(status))
-			status =
-			    cfg_get_host_resources(dev_node_obj, &cfg_host_res);
 
 		if (DSP_SUCCEEDED(status)) {
 			/* Fill in context structure */
@@ -219,13 +210,10 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 	u32 mem_physical = 0;
 	u32 hw_mmu_max_tlb_count = 31;
 	extern u32 fault_addr;
-	struct cfg_hostres resources;
+	struct cfg_hostres *resources;
 	hw_status hw_status_obj;
 	u32 cnt = 0;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
 
 	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
 		printk(KERN_INFO
@@ -233,6 +221,7 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 		       "**********\n");
 		dev_context =
 		    (struct wmd_dev_context *)deh_mgr_obj->hwmd_context;
+		resources = dev_context->resources;
 
 		switch (ulEventMask) {
 		case DSP_SYSERROR:
@@ -287,7 +276,7 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 			}
 			if (DSP_SUCCEEDED(status)) {
 				hw_status_obj =
-				    hw_mmu_tlb_add(resources.dw_dmmu_base,
+				    hw_mmu_tlb_add(resources->dw_dmmu_base,
 						   mem_physical, fault_addr,
 						   HW_PAGE_SIZE4KB, 1,
 						   &map_attrs, HW_SET, HW_SET);
@@ -329,7 +318,7 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 			}
 
 			/* Clear MMU interrupt */
-			hw_mmu_event_ack(resources.dw_dmmu_base,
+			hw_mmu_event_ack(resources->dw_dmmu_base,
 					 HW_MMU_TRANSLATION_FAULT);
 			dump_dsp_stack(deh_mgr_obj->hwmd_context);
 			omap_dm_timer_disable(timer);

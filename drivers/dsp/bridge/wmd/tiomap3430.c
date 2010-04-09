@@ -106,7 +106,7 @@ static dsp_status bridge_brd_mem_un_map(struct wmd_dev_context *hDevContext,
 				     u32 ulVirtAddr, u32 ul_num_bytes);
 static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 				    struct dev_object *hdev_obj,
-				    IN CONST struct cfg_hostres *pConfig);
+				    IN struct cfg_hostres *pConfig);
 static dsp_status bridge_dev_ctrl(struct wmd_dev_context *dev_context,
 				  u32 dw_cmd, IN OUT void *pargs);
 static dsp_status bridge_dev_destroy(struct wmd_dev_context *dev_context);
@@ -384,7 +384,7 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 	u32 ul_shm_offset_virt;
 	s32 entry_ndx;
 	s32 itmp_entry_ndx = 0;	/* DSP-MMU TLB entry base address */
-	struct cfg_hostres resources;
+	struct cfg_hostres *resources = NULL;
 	u32 temp;
 	u32 ul_dsp_clk_rate;
 	u32 ul_dsp_clk_addr;
@@ -426,9 +426,10 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 		*((volatile u32 *)dw_sync_addr) = 0xffffffff;
 
 	if (DSP_SUCCEEDED(status)) {
-		status = cfg_get_host_resources((struct cfg_devnode *)
-						drv_get_first_dev_extension(),
-						&resources);
+		resources = dev_context->resources;
+		if (!resources)
+			status = DSP_EFAIL;
+
 		/* Assert RST1 i.e only the RST only for DSP megacell */
 		if (DSP_SUCCEEDED(status)) {
 			(*pdata->dsp_prm_rmw_bits)(OMAP3430_RST1_IVA2,
@@ -457,9 +458,9 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 		udelay(100);
 
 		/* Disbale the DSP MMU */
-		hw_mmu_disable(resources.dw_dmmu_base);
+		hw_mmu_disable(resources->dw_dmmu_base);
 		/* Disable TWL */
-		hw_mmu_twl_disable(resources.dw_dmmu_base);
+		hw_mmu_twl_disable(resources->dw_dmmu_base);
 
 		/* Only make TLB entry if both addresses are non-zero */
 		for (entry_ndx = 0; entry_ndx < WMDIOCTL_NUMOFMMUTLB;
@@ -504,19 +505,19 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 	/* Lock the above TLB entries and get the BIOS and load monitor timer
 	 * information */
 	if (DSP_SUCCEEDED(status)) {
-		hw_mmu_num_locked_set(resources.dw_dmmu_base, itmp_entry_ndx);
-		hw_mmu_victim_num_set(resources.dw_dmmu_base, itmp_entry_ndx);
-		hw_mmu_ttb_set(resources.dw_dmmu_base,
+		hw_mmu_num_locked_set(resources->dw_dmmu_base, itmp_entry_ndx);
+		hw_mmu_victim_num_set(resources->dw_dmmu_base, itmp_entry_ndx);
+		hw_mmu_ttb_set(resources->dw_dmmu_base,
 			       dev_context->pt_attrs->l1_base_pa);
-		hw_mmu_twl_enable(resources.dw_dmmu_base);
+		hw_mmu_twl_enable(resources->dw_dmmu_base);
 		/* Enable the SmartIdle and AutoIdle bit for MMU_SYSCONFIG */
 
-		temp = __raw_readl((resources.dw_dmmu_base) + 0x10);
+		temp = __raw_readl((resources->dw_dmmu_base) + 0x10);
 		temp = (temp & 0xFFFFFFEF) | 0x11;
-		__raw_writel(temp, (resources.dw_dmmu_base) + 0x10);
+		__raw_writel(temp, (resources->dw_dmmu_base) + 0x10);
 
 		/* Let the DSP MMU run */
-		hw_mmu_enable(resources.dw_dmmu_base);
+		hw_mmu_enable(resources->dw_dmmu_base);
 
 		/* Enable the BIOS clock */
 		(void)dev_get_symbol(dev_context->hdev_obj,
@@ -636,22 +637,22 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 
 /*PM_IVA2GRPSEL_PER = 0xC0; */
 		temp = (u32) *((reg_uword32 *)
-				((u32) (resources.dw_per_pm_base) + 0xA8));
+				((u32) (resources->dw_per_pm_base) + 0xA8));
 		temp = (temp & 0xFFFFFF30) | 0xC0;
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8)) =
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA8)) =
 		    (u32) temp;
 
 /*PM_MPUGRPSEL_PER &= 0xFFFFFF3F; */
 		temp = (u32) *((reg_uword32 *)
-				((u32) (resources.dw_per_pm_base) + 0xA4));
+				((u32) (resources->dw_per_pm_base) + 0xA4));
 		temp = (temp & 0xFFFFFF3F);
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4)) =
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA4)) =
 		    (u32) temp;
 /*CM_SLEEPDEP_PER |= 0x04; */
 		temp = (u32) *((reg_uword32 *)
-				((u32) (resources.dw_per_base) + 0x44));
+				((u32) (resources->dw_per_base) + 0x44));
 		temp = (temp & 0xFFFFFFFB) | 0x04;
-		*((reg_uword32 *) ((u32) (resources.dw_per_base) + 0x44)) =
+		*((reg_uword32 *) ((u32) (resources->dw_per_base) + 0x44)) =
 		    (u32) temp;
 
 /*CM_CLKSTCTRL_IVA2 = 0x00000003 -To Allow automatic transitions */
@@ -661,7 +662,7 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 		/* Let DSP go */
 		dev_dbg(bridge, "%s Unreset\n", __func__);
 		/* Enable DSP MMU Interrupts */
-		hw_mmu_event_enable(resources.dw_dmmu_base,
+		hw_mmu_event_enable(resources->dw_dmmu_base,
 				    HW_MMU_ALL_INTERRUPTS);
 		/* release the RST1, DSP starts executing now .. */
 		(*pdata->dsp_prm_rmw_bits)(OMAP3430_RST1_IVA2, 0,
@@ -789,7 +790,6 @@ static dsp_status wmd_brd_delete(struct wmd_dev_context *hDevContext)
 {
 	dsp_status status = DSP_SOK;
 	struct wmd_dev_context *dev_context = hDevContext;
-	struct cfg_hostres resources;
 	struct pg_table_attrs *pt_attrs;
 	dsp_status clk_status;
 	struct dspbridge_platform_data *pdata =
@@ -802,11 +802,6 @@ static dsp_status wmd_brd_delete(struct wmd_dev_context *hDevContext)
 	 * the IVA2 to 'Standby' mode, before turning off the clocks.. This is
 	 * to ensure that there are no pending L3 or other transactons from
 	 * IVA2 */
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-	if (DSP_FAILED(status))
-		return DSP_EFAIL;
 
 	status = sleep_dsp(dev_context, PWR_EMERGENCYDEEPSLEEP, NULL);
 	clk_status = services_clk_disable(SERVICESCLK_IVA2_CK);
@@ -884,14 +879,14 @@ static dsp_status bridge_brd_write(struct wmd_dev_context *hDevContext,
  */
 static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 				    struct dev_object *hdev_obj,
-				    IN CONST struct cfg_hostres *pConfig)
+				    IN struct cfg_hostres *pConfig)
 {
 	dsp_status status = DSP_SOK;
 	struct wmd_dev_context *dev_context = NULL;
 	s32 entry_ndx;
 	s32 tc_word_swap;
 	u32 tc_word_swap_size = sizeof(tc_word_swap);
-	struct cfg_hostres resources;
+	struct cfg_hostres *resources = pConfig;
 	struct pg_table_attrs *pt_attrs;
 	u32 pg_tbl_pa;
 	u32 pg_tbl_va;
@@ -901,13 +896,6 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 	 *  state, which becomes the context for later calls into this WMD. */
 	dev_context = mem_calloc(sizeof(struct wmd_dev_context), MEM_NONPAGED);
 	if (!dev_context) {
-		status = DSP_EMEMORY;
-		goto func_end;
-	}
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-	if (DSP_FAILED(status)) {
 		status = DSP_EMEMORY;
 		goto func_end;
 	}
@@ -1028,9 +1016,9 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 		udelay(5);
 		/* 24xx-Linux MMU address is obtained from the host
 		 * resources struct */
-		dev_context->dw_dsp_mmu_base = resources.dw_dmmu_base;
+		dev_context->dw_dsp_mmu_base = resources->dw_dmmu_base;
 #ifdef CONFIG_BRIDGE_WDT3
-		dev_context->wdt3_base = resources.dw_wd_timer_dsp_base;
+		dev_context->wdt3_base = resources->dw_wd_timer_dsp_base;
 #endif
 	}
 	if (DSP_SUCCEEDED(status)) {
@@ -1038,6 +1026,7 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 		dev_context->ul_int_mask = 0;
 		/* Store current board state. */
 		dev_context->dw_brd_state = BRD_STOPPED;
+		dev_context->resources = resources;
 		/* Return ptr to our device state to the WCD for storage */
 		*ppDevContext = dev_context;
 	} else {
@@ -1128,6 +1117,9 @@ static dsp_status bridge_dev_destroy(struct wmd_dev_context *hDevContext)
 	dsp_status status = DSP_SOK;
 	struct wmd_dev_context *dev_context = (struct wmd_dev_context *)
 	    hDevContext;
+	struct cfg_hostres *host_res;
+	u32 dw_buff_size;
+	u32 shm_size;
 
 	/* It should never happen */
 	if (!hDevContext)
@@ -1152,6 +1144,59 @@ static dsp_status bridge_dev_destroy(struct wmd_dev_context *hDevContext)
 		kfree(pt_attrs);
 
 	}
+
+	if (dev_context->resources) {
+		host_res = dev_context->resources;
+		dw_buff_size = sizeof(shm_size);
+		status = reg_get_value(SHMSIZE, (u8 *) &shm_size,
+					       &dw_buff_size);
+		if (DSP_SUCCEEDED(status)) {
+			if ((host_res->dw_mem_base[1]) &&
+			    (host_res->dw_mem_phys[1])) {
+				mem_free_phys_mem((void *)
+						  host_res->dw_mem_base
+						  [1],
+						  host_res->dw_mem_phys
+						  [1], shm_size);
+			}
+		} else {
+			dev_dbg(bridge, "%s: Error getting shm size "
+				"from registry: %x. Not calling "
+				"mem_free_phys_mem\n", __func__,
+				status);
+		}
+		host_res->dw_mem_base[1] = 0;
+		host_res->dw_mem_phys[1] = 0;
+
+		if (host_res->dw_mem_base[0])
+			iounmap((void *)host_res->dw_mem_base[0]);
+		if (host_res->dw_mem_base[2])
+			iounmap((void *)host_res->dw_mem_base[2]);
+		if (host_res->dw_mem_base[3])
+			iounmap((void *)host_res->dw_mem_base[3]);
+		if (host_res->dw_mem_base[4])
+			iounmap((void *)host_res->dw_mem_base[4]);
+		if (host_res->dw_dmmu_base)
+			iounmap(host_res->dw_dmmu_base);
+		if (host_res->dw_per_base)
+			iounmap(host_res->dw_per_base);
+		if (host_res->dw_per_pm_base)
+			iounmap((void *)host_res->dw_per_pm_base);
+		if (host_res->dw_core_pm_base)
+			iounmap((void *)host_res->dw_core_pm_base);
+		if (host_res->dw_sys_ctrl_base)
+			iounmap(host_res->dw_sys_ctrl_base);
+
+		host_res->dw_mem_base[0] = (u32) NULL;
+		host_res->dw_mem_base[2] = (u32) NULL;
+		host_res->dw_mem_base[3] = (u32) NULL;
+		host_res->dw_mem_base[4] = (u32) NULL;
+		host_res->dw_dmmu_base = NULL;
+		host_res->dw_sys_ctrl_base = NULL;
+
+		kfree(host_res);
+	}
+
 	/* Free the driver's device context: */
 	kfree((void *)hDevContext);
 	return status;

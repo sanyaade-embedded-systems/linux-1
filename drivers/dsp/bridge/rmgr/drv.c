@@ -66,8 +66,8 @@ struct drv_ext {
 static s32 refs;
 
 /*  ----------------------------------- Function Prototypes */
-static dsp_status request_bridge_resources(u32 dw_context, s32 fRequest);
-static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 fRequest);
+static dsp_status request_bridge_resources(struct cfg_hostres *res);
+
 
 /* GPP PROCESS CLEANUP CODE */
 
@@ -775,18 +775,6 @@ dsp_status drv_request_resources(u32 dw_context, u32 *pDevNodeString)
 		*pDevNodeString = 0;
 	}
 
-	if (!(strcmp((char *)dw_context, "TIOMAP1510"))) {
-		dev_dbg(bridge, "%s: Allocating resources for UMA\n", __func__);
-		status = request_bridge_resources_dsp(dw_context, DRV_ASSIGN);
-	} else {
-		status = DSP_EFAIL;
-		dev_dbg(bridge, "%s: Unknown Device\n", __func__);
-	}
-
-	if (DSP_FAILED(status))
-		dev_dbg(bridge, "%s: Failed to reserve bridge resources\n",
-			__func__);
-
 	DBC_ENSURE((DSP_SUCCEEDED(status) && pDevNodeString != NULL &&
 		    !LST_IS_EMPTY(pdrv_object->dev_node_string)) ||
 		   (DSP_FAILED(status) && *pDevNodeString == 0));
@@ -804,16 +792,6 @@ dsp_status drv_release_resources(u32 dw_context, struct drv_object *hdrv_obj)
 	dsp_status status = DSP_SOK;
 	struct drv_object *pdrv_object = (struct drv_object *)hdrv_obj;
 	struct drv_ext *pszdev_node;
-
-	if (!(strcmp((char *)((struct drv_ext *)dw_context)->sz_string,
-		     "TIOMAP1510")))
-		status = request_bridge_resources(dw_context, DRV_RELEASE);
-	else
-		dev_dbg(bridge, "%s: Unknown device\n", __func__);
-
-	if (DSP_FAILED(status))
-		dev_dbg(bridge, "%s: Failed to relese bridge resources\n",
-			__func__);
 
 	/*
 	 *  Irrespective of the status go ahead and clean it
@@ -848,92 +826,11 @@ dsp_status drv_release_resources(u32 dw_context, struct drv_object *hdrv_obj)
  *  Purpose:
  *      Reserves shared memory for bridge.
  */
-static dsp_status request_bridge_resources(u32 dw_context, s32 bRequest)
+static dsp_status request_bridge_resources(struct cfg_hostres *res)
 {
 	dsp_status status = DSP_SOK;
-	struct cfg_hostres *host_res;
-	u32 dw_buff_size;
+	struct cfg_hostres *host_res = res;
 
-	struct drv_ext *driver_ext;
-	u32 shm_size;
-
-	DBC_REQUIRE(dw_context != 0);
-
-	if (!bRequest) {
-		driver_ext = (struct drv_ext *)dw_context;
-		/* Releasing resources by deleting the registry key */
-		dw_buff_size = sizeof(struct cfg_hostres);
-		host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
-		if (host_res != NULL) {
-			if (DSP_FAILED(reg_get_value(CURRENTCONFIG,
-						     (u8 *) host_res,
-						     &dw_buff_size))) {
-				status = CFG_E_RESOURCENOTAVAIL;
-			}
-
-			dw_buff_size = sizeof(shm_size);
-			status = reg_get_value(SHMSIZE, (u8 *) &shm_size,
-					       &dw_buff_size);
-			if (DSP_SUCCEEDED(status)) {
-				if ((host_res->dw_mem_base[1]) &&
-				    (host_res->dw_mem_phys[1])) {
-					mem_free_phys_mem((void *)
-							  host_res->dw_mem_base
-							  [1],
-							  host_res->dw_mem_phys
-							  [1], shm_size);
-				}
-			} else {
-				dev_dbg(bridge, "%s: Error getting shm size "
-					"from registry: %x. Not calling "
-					"mem_free_phys_mem\n", __func__,
-					status);
-			}
-			host_res->dw_mem_base[1] = 0;
-			host_res->dw_mem_phys[1] = 0;
-
-			if (host_res->dw_mem_base[0])
-				iounmap((void *)host_res->dw_mem_base[0]);
-			if (host_res->dw_mem_base[2])
-				iounmap((void *)host_res->dw_mem_base[2]);
-			if (host_res->dw_mem_base[3])
-				iounmap((void *)host_res->dw_mem_base[3]);
-			if (host_res->dw_mem_base[4])
-				iounmap((void *)host_res->dw_mem_base[4]);
-			if (host_res->dw_wd_timer_dsp_base)
-				iounmap(host_res->dw_wd_timer_dsp_base);
-			if (host_res->dw_dmmu_base)
-				iounmap(host_res->dw_dmmu_base);
-			if (host_res->dw_per_base)
-				iounmap(host_res->dw_per_base);
-			if (host_res->dw_per_pm_base)
-				iounmap((void *)host_res->dw_per_pm_base);
-			if (host_res->dw_core_pm_base)
-				iounmap((void *)host_res->dw_core_pm_base);
-			if (host_res->dw_sys_ctrl_base)
-				iounmap(host_res->dw_sys_ctrl_base);
-
-			host_res->dw_mem_base[0] = (u32) NULL;
-			host_res->dw_mem_base[2] = (u32) NULL;
-			host_res->dw_mem_base[3] = (u32) NULL;
-			host_res->dw_mem_base[4] = (u32) NULL;
-			host_res->dw_wd_timer_dsp_base = NULL;
-			host_res->dw_dmmu_base = NULL;
-			host_res->dw_sys_ctrl_base = NULL;
-
-			dw_buff_size = sizeof(struct cfg_hostres);
-			status = reg_set_value(CURRENTCONFIG, (u8 *) host_res,
-					       (u32) dw_buff_size);
-			/*  Set all the other entries to NULL */
-			kfree(host_res);
-		} else {
-			status = DSP_EMEMORY;
-		}
-		return status;
-	}
-	dw_buff_size = sizeof(struct cfg_hostres);
-	host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
-	if (host_res != NULL) {
 		/* num_mem_windows must not be more than CFG_MAXMEMREGISTERS */
 		host_res->num_mem_windows = 2;
 		/* First window is for DSP internal memory */
@@ -960,25 +857,15 @@ static dsp_status request_bridge_resources(u32 dw_context, s32 bRequest)
 		/* CHNL_MAXCHANNELS */
 		host_res->dw_num_chnls = CHNL_MAXCHANNELS;
 		host_res->dw_chnl_buf_size = 0x400;
-		dw_buff_size = sizeof(struct cfg_hostres);
-		status = reg_set_value(CURRENTCONFIG, (u8 *) host_res,
-				       sizeof(struct cfg_hostres));
-		if (DSP_FAILED(status)) {
-			dev_dbg(bridge, "%s: Failed to set the registry value "
-				"for CURRENTCONFIG\n", __func__);
-		}
-		kfree(host_res);
-	}
-	/* End Mem alloc */
 	return status;
 }
 
 /*
- *  ======== request_bridge_resources_dsp ========
+ *  ======== drv_request_bridge_res_dsp ========
  *  Purpose:
  *      Reserves shared memory for bridge.
  */
-static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 bRequest)
+dsp_status drv_request_bridge_res_dsp(void **phost_resources)
 {
 	dsp_status status = DSP_SOK;
 	struct cfg_hostres *host_res;
@@ -986,22 +873,12 @@ static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 bRequest)
 	u32 dma_addr;
 	u32 shm_size;
 
-	DBC_REQUIRE(dw_context != 0);
-
 	dw_buff_size = sizeof(struct cfg_hostres);
 
 	host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
 
 	if (host_res != NULL) {
-		if (DSP_FAILED(cfg_get_host_resources((struct cfg_devnode *)
-						      dw_context, host_res))) {
-			status = request_bridge_resources(dw_context, bRequest);
-			if (DSP_SUCCEEDED(status)) {
-				status = cfg_get_host_resources
-				    ((struct cfg_devnode *)dw_context,
-				     host_res);
-			}
-		}
+		request_bridge_resources(host_res);
 		/* num_mem_windows must not be more than CFG_MAXMEMREGISTERS */
 		host_res->num_mem_windows = 4;
 
@@ -1068,14 +945,8 @@ static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 bRequest)
 			host_res->dw_num_chnls = CHNL_MAXCHANNELS;
 			host_res->dw_chnl_buf_size = 0x400;
 			dw_buff_size = sizeof(struct cfg_hostres);
-			status = reg_set_value(CURRENTCONFIG, (u8 *) host_res,
-					       sizeof(struct cfg_hostres));
-			if (DSP_FAILED(status)) {
-				dev_dbg(bridge, "%s: Failed to set the registry"
-					" value for CURRENTCONFIG\n", __func__);
-			}
 		}
-		kfree(host_res);
+		*phost_resources = host_res;
 	}
 	/* End Mem alloc */
 	return status;

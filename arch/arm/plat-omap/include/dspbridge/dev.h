@@ -99,8 +99,6 @@ extern u32 dev_brd_write_fxn(void *pArb,
 extern dsp_status dev_create_device(OUT struct dev_object
 				    **phDevObject,
 				    IN CONST char *pstrWMDFileName,
-				    IN CONST struct cfg_hostres
-				    *pHostConfig,
 				    struct cfg_devnode *dev_node_obj);
 
 /*

@@ -182,7 +182,6 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	struct io_mgr *pio_mgr = NULL;
 	struct shm *shared_mem = NULL;
 	struct wmd_dev_context *hwmd_context = NULL;
-	struct cfg_hostres host_res;
 	struct cfg_devnode *dev_node_obj;
 	struct chnl_mgr *hchnl_mgr;
 	u32 dev_type;
@@ -247,11 +246,7 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 			status = dev_get_dev_node(hdev_obj, &dev_node_obj);
 
 	}
-	if (DSP_SUCCEEDED(status)) {
-		status = cfg_get_host_resources((struct cfg_devnode *)
-						drv_get_first_dev_extension(),
-						&host_res);
-	}
+
 	if (DSP_SUCCEEDED(status)) {
 		pio_mgr->hwmd_context = hwmd_context;
 		pio_mgr->shared_irq = pMgrAttrs->irq_shared;
@@ -294,10 +289,7 @@ func_end:
 dsp_status bridge_io_destroy(struct io_mgr *hio_mgr)
 {
 	dsp_status status = DSP_SOK;
-	struct wmd_dev_context *hwmd_context;
 	if (MEM_IS_VALID_HANDLE(hio_mgr, IO_MGRSIGNATURE)) {
-		/* Disable interrupts from the board */
-		status = dev_get_wmd_context(hio_mgr->hdev_obj, &hwmd_context);
 
 #ifdef CONFIG_BRIDGE_WDT3
 		free_irq(INT_34XX_WDT3_IRQ, (void *)hio_mgr);
@@ -351,7 +343,8 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	s32 ndx = 0;
 	/* DSP MMU setup table */
 	struct wmdioctl_extproc ae_proc[WMDIOCTL_NUMOFMMUTLB];
-	struct cfg_hostres host_res;
+	struct cfg_hostres *host_res;
+	struct wmd_dev_context *pwmd_context;
 	u32 map_attrs;
 	u32 shm0_end;
 	u32 ul_dyn_ext_base;
@@ -365,6 +358,18 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 		HW_PAGE_SIZE64KB, HW_PAGE_SIZE4KB
 	};
 
+
+	status = dev_get_wmd_context(hio_mgr->hdev_obj, &pwmd_context);
+	if (!pwmd_context) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
+
+	host_res = pwmd_context->resources;
+	if (!host_res) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
 	dev_get_cod_mgr(hio_mgr->hdev_obj, &cod_man);
 	if (!cod_man) {
 		status = DSP_EHANDLE;
@@ -465,13 +470,11 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 					      sizeof(struct
 						     mgr_processorextinfo),
 					      &num_procs);
-		cfg_get_host_resources((struct cfg_devnode *)
-				       drv_get_first_dev_extension(),
-				       &host_res);
+
 		/* The first MMU TLB entry(TLB_0) in DCD is ShmBase. */
 		ndx = 0;
-		ul_gpp_pa = host_res.dw_mem_phys[1];
-		ul_gpp_va = host_res.dw_mem_base[1];
+		ul_gpp_pa = host_res->dw_mem_phys[1];
+		ul_gpp_va = host_res->dw_mem_base[1];
 		/* This is the virtual uncached ioremapped address!!! */
 		/* Why can't we directly take the DSPVA from the symbols? */
 		ul_dsp_va = hio_mgr->ext_proc_info.ty_tlb[0].ul_dsp_virt;
@@ -494,9 +497,9 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 			ul_dyn_ext_base, ul_ext_end, ul_seg_size, ul_seg1_size);
 
 		if ((ul_seg_size + ul_seg1_size + ul_pad_size) >
-		    host_res.dw_mem_length[1]) {
+		    host_res->dw_mem_length[1]) {
 			pr_err("%s: shm Error, reserved 0x%x required 0x%x\n",
-			       __func__, host_res.dw_mem_length[1],
+			       __func__, host_res->dw_mem_length[1],
 			       ul_seg_size + ul_seg1_size + ul_pad_size);
 			status = DSP_EMEMORY;
 		}

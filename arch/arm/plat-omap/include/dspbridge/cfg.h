@@ -118,28 +118,6 @@ extern dsp_status cfg_get_exec_file(IN struct cfg_devnode *dev_node_obj,
 				    IN u32 buf_size, OUT char *pstrExecFile);
 
 /*
- *  ======== cfg_get_host_resources ========
- *  Purpose:
- *      Get the Host PC allocated resources assigned to a given device.
- *  Parameters:
- *      dev_node_obj:	Handle to the DEVNODE who's resources we are querying.
- *      pHostResTable:  Ptr to a location to store the host resource table.
- *  Returns:
- *      DSP_SOK:                On success.
- *      CFG_E_INVALIDPOINTER:   pHostResTable is invalid.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The resource is not available.
- *  Requires:
- *      CFG initialized.
- *  Ensures:
- *      DSP_SOK:    pHostResTable points to a filled table of resources
- *                  allocated for the specified WMD.
- *
- */
-extern dsp_status cfg_get_host_resources(IN struct cfg_devnode *dev_node_obj,
-					 OUT struct cfg_hostres *pHostResTable);
-
-/*
  *  ======== cfg_get_object ========
  *  Purpose:
  *      Retrieve the Driver Object handle From the Registry

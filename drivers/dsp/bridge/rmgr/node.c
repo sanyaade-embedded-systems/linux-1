@@ -66,6 +66,7 @@
 #include <dspbridge/drv.h>
 #include <dspbridge/drvdefs.h>
 #include <dspbridge/resourcecleanup.h>
+#include <_tiomap.h>
 
 #define NODE_SIGNATURE      0x45444f4e	/* "EDON" */
 #define NODEMGR_SIGNATURE   0x52474d4e	/* "RGMN" */
@@ -318,7 +319,8 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 	u32 off_set = 0;
 	u32 ul_stack_seg_addr, ul_stack_seg_val;
 	u32 ul_gpp_mem_base;
-	struct cfg_hostres host_res;
+	struct cfg_hostres *host_res;
+	struct wmd_dev_context *pwmd_context;
 	u32 mapped_addr = 0;
 	u32 map_attrs = 0x0;
 	struct dsp_processorstate proc_state;
@@ -351,6 +353,12 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 
 	if (DSP_FAILED(status))
 		goto func_end;
+
+	status = dev_get_wmd_context(hdev_obj, &pwmd_context);
+	if (!pwmd_context) {
+		status = DSP_EHANDLE;
+		goto func_end;
+	}
 
 	status = proc_get_state(hprocessor, &proc_state,
 				sizeof(struct dsp_processorstate));
@@ -608,9 +616,9 @@ func_cont:
 				pr_err("%s: Failed to get addr for L1DSRAM_HEAP"
 				       " status = 0x%x\n", __func__, status);
 
-			status = cfg_get_host_resources((struct cfg_devnode *)
-						drv_get_first_dev_extension(),
-						&host_res);
+			host_res = pwmd_context->resources;
+			if (!host_res)
+				status = DSP_EFAIL;
 
 			if (DSP_FAILED(status)) {
 				pr_err("%s: Failed to get host resource, status"
@@ -618,7 +626,7 @@ func_cont:
 				goto func_end;
 			}
 
-			ul_gpp_mem_base = (u32) host_res.dw_mem_base[1];
+			ul_gpp_mem_base = (u32) host_res->dw_mem_base[1];
 			off_set = pul_value - dynext_base;
 			ul_stack_seg_addr = ul_gpp_mem_base + off_set;
 			ul_stack_seg_val = (u32) *((reg_uword32 *)
@@ -2979,18 +2987,21 @@ static dsp_status get_node_props(struct dcd_manager *hdcd_mgr,
 static dsp_status get_proc_props(struct node_mgr *hnode_mgr,
 				 struct dev_object *hdev_obj)
 {
-	struct cfg_devnode *dev_node_obj;
-	struct cfg_hostres host_res;
+	struct cfg_hostres *host_res;
+	struct wmd_dev_context *pwmd_context;
 	dsp_status status = DSP_SOK;
 
-	status = dev_get_dev_node(hdev_obj, &dev_node_obj);
-	if (DSP_SUCCEEDED(status))
-		status = cfg_get_host_resources(dev_node_obj, &host_res);
+	status = dev_get_wmd_context(hdev_obj, &pwmd_context);
+	if (!pwmd_context)
+		status = DSP_EHANDLE;
 
 	if (DSP_SUCCEEDED(status)) {
-		hnode_mgr->ul_chnl_offset = host_res.dw_chnl_offset;
-		hnode_mgr->ul_chnl_buf_size = host_res.dw_chnl_buf_size;
-		hnode_mgr->ul_num_chnls = host_res.dw_num_chnls;
+		host_res = pwmd_context->resources;
+		if (!host_res)
+			return DSP_EFAIL;
+		hnode_mgr->ul_chnl_offset = host_res->dw_chnl_offset;
+		hnode_mgr->ul_chnl_buf_size = host_res->dw_chnl_buf_size;
+		hnode_mgr->ul_num_chnls = host_res->dw_num_chnls;
 
 		/*
 		 *  PROC will add an API to get dsp_processorinfo.

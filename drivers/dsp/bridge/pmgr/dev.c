@@ -135,9 +135,9 @@ u32 dev_brd_write_fxn(void *pArb, u32 ulDspAddr, void *pHostBuf,
  */
 dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 			     IN CONST char *pstrWMDFileName,
-			     IN CONST struct cfg_hostres *pHostConfig,
 			     struct cfg_devnode *dev_node_obj)
 {
+	struct cfg_hostres *host_res;
 	struct ldr_module *module_obj = NULL;
 	struct bridge_drv_interface *drv_fxns = NULL;
 	struct dev_object *dev_obj = NULL;
@@ -149,7 +149,12 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDevObject != NULL);
 	DBC_REQUIRE(pstrWMDFileName != NULL);
-	DBC_REQUIRE(pHostConfig != NULL);
+
+	status = drv_request_bridge_res_dsp((void *)&host_res);
+
+	if (DSP_FAILED(status))
+		dev_dbg(bridge, "%s: Failed to reserve bridge resources\n",
+			__func__);
 
 	/*  Get the WMD interface functions */
 	bridge_drv_entry(&drv_fxns, pstrWMDFileName);
@@ -176,11 +181,12 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 			/* Store this WMD's interface functions, based on its
 			 * version. */
 			store_interface_fxns(drv_fxns, &dev_obj->wmd_interface);
+
 			/* Call fxn_dev_create() to get the WMD's device
 			 * context handle. */
 			status = (dev_obj->wmd_interface.pfn_dev_create)
 			    (&dev_obj->hwmd_context, dev_obj,
-			     pHostConfig);
+			     host_res);
 			/* Assert bridge_dev_create()'s ensure clause: */
 			DBC_ASSERT(DSP_FAILED(status)
 				   || (dev_obj->hwmd_context != NULL));
@@ -195,19 +201,19 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 	/* Attempt to create the channel manager for this device: */
 	if (DSP_SUCCEEDED(status)) {
 		mgr_attrs.max_channels = CHNL_MAXCHANNELS;
-		io_mgr_attrs.birq = pHostConfig->birq_registers;
+		io_mgr_attrs.birq = host_res->birq_registers;
 		io_mgr_attrs.irq_shared =
-		    (pHostConfig->birq_attrib & CFG_IRQSHARED);
+		    (host_res->birq_attrib & CFG_IRQSHARED);
 		io_mgr_attrs.word_size = DSPWORDSIZE;
 		mgr_attrs.word_size = DSPWORDSIZE;
-		num_windows = pHostConfig->num_mem_windows;
+		num_windows = host_res->num_mem_windows;
 		if (num_windows) {
 			/* Assume last memory window is for CHNL */
-			io_mgr_attrs.shm_base = pHostConfig->dw_mem_base[1] +
-			    pHostConfig->dw_offset_for_monitor;
+			io_mgr_attrs.shm_base = host_res->dw_mem_base[1] +
+			    host_res->dw_offset_for_monitor;
 			io_mgr_attrs.usm_length =
-			    pHostConfig->dw_mem_length[1] -
-			    pHostConfig->dw_offset_for_monitor;
+			    host_res->dw_mem_length[1] -
+			    host_res->dw_offset_for_monitor;
 		} else {
 			io_mgr_attrs.shm_base = 0;
 			io_mgr_attrs.usm_length = 0;
@@ -879,7 +885,6 @@ void dev_set_msg_mgr(struct dev_object *hdev_obj, struct msg_mgr *hmgr)
 dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
 {
 	struct dev_object *hdev_obj = NULL;	/* handle to 'Bridge Device */
-	struct cfg_hostres host_res;	/* resources struct. */
 	/* wmd filename */
 	char sz_wmd_file_name[CFG_MAXSEARCHPATHLEN] = "UMA";
 	dsp_status status;
@@ -887,12 +892,9 @@ dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
 
 	DBC_REQUIRE(refs > 0);
 
-	status = cfg_get_host_resources(dev_node_obj, &host_res);
-
-	if (DSP_SUCCEEDED(status)) {
 		/* Given all resources, create a device object. */
 		status =
-		    dev_create_device(&hdev_obj, sz_wmd_file_name, &host_res,
+	    dev_create_device(&hdev_obj, sz_wmd_file_name,
 				      dev_node_obj);
 		if (DSP_SUCCEEDED(status)) {
 			/* Store away the hdev_obj with the DEVNODE */
@@ -904,7 +906,6 @@ dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
 				hdev_obj = NULL;
 			}
 		}
-	}
 	if (DSP_SUCCEEDED(status)) {
 		/* Create the Manager Object */
 		status = mgr_create(&hmgr_obj, dev_node_obj);

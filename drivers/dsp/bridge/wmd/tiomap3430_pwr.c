@@ -331,18 +331,14 @@ dsp_status dsp_peripheral_clk_ctrl(struct wmd_dev_context *dev_context,
 	u32 dsp_per_clks_before;
 	dsp_status status = DSP_SOK;
 	dsp_status status1 = DSP_SOK;
-	struct cfg_hostres resources;
+	struct cfg_hostres *resources = dev_context->resources;
 	u32 value;
 
 	dsp_per_clks_before = dev_context->dsp_per_clks;
 
 	ext_clk = (u32) *((u32 *) pargs);
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-
-	if (DSP_FAILED(status))
+	if (!resources)
 		return DSP_EFAIL;
 
 	ext_clk_id = ext_clk & MBX_PM_CLK_IDMASK;
@@ -369,14 +365,18 @@ dsp_status dsp_peripheral_clk_ctrl(struct wmd_dev_context *dev_context,
 		status = services_clk_disable(bpwr_clks[clk_id_index].fun_clk);
 		if (bpwr_clkid[clk_id_index] == BPWR_MCBSP1) {
 			/* clear MCBSP1_CLKS, on McBSP1 OFF */
-			value = __raw_readl(resources.dw_sys_ctrl_base + 0x274);
+			value = __raw_readl(
+				resources->dw_sys_ctrl_base + 0x274);
 			value &= ~(1 << 2);
-			__raw_writel(value, resources.dw_sys_ctrl_base + 0x274);
+			__raw_writel(value,
+				resources->dw_sys_ctrl_base + 0x274);
 		} else if (bpwr_clkid[clk_id_index] == BPWR_MCBSP2) {
 			/* clear MCBSP2_CLKS, on McBSP2 OFF */
-			value = __raw_readl(resources.dw_sys_ctrl_base + 0x274);
+			value = __raw_readl(
+				resources->dw_sys_ctrl_base + 0x274);
 			value &= ~(1 << 6);
-			__raw_writel(value, resources.dw_sys_ctrl_base + 0x274);
+			__raw_writel(value,
+				resources->dw_sys_ctrl_base + 0x274);
 		}
 		dsp_clk_wakeup_event_ctrl(bpwr_clks[clk_id_index].clk_id,
 					  false);
@@ -390,14 +390,18 @@ dsp_status dsp_peripheral_clk_ctrl(struct wmd_dev_context *dev_context,
 		status = services_clk_enable(bpwr_clks[clk_id_index].fun_clk);
 		if (bpwr_clkid[clk_id_index] == BPWR_MCBSP1) {
 			/* set MCBSP1_CLKS, on McBSP1 ON */
-			value = __raw_readl(resources.dw_sys_ctrl_base + 0x274);
+			value = __raw_readl(
+				resources->dw_sys_ctrl_base + 0x274);
 			value |= 1 << 2;
-			__raw_writel(value, resources.dw_sys_ctrl_base + 0x274);
+			__raw_writel(value,
+				resources->dw_sys_ctrl_base + 0x274);
 		} else if (bpwr_clkid[clk_id_index] == BPWR_MCBSP2) {
 			/* set MCBSP2_CLKS, on McBSP2 ON */
-			value = __raw_readl(resources.dw_sys_ctrl_base + 0x274);
+			value = __raw_readl(
+				resources->dw_sys_ctrl_base + 0x274);
 			value |= 1 << 6;
-			__raw_writel(value, resources.dw_sys_ctrl_base + 0x274);
+			__raw_writel(value,
+				resources->dw_sys_ctrl_base + 0x274);
 		}
 		dsp_clk_wakeup_event_ctrl(bpwr_clks[clk_id_index].clk_id, true);
 		if ((DSP_SUCCEEDED(status)) && (DSP_SUCCEEDED(status1))) {
@@ -498,12 +502,11 @@ dsp_status dsp_peripheral_clocks_disable(struct wmd_dev_context *dev_context,
 {
 	u32 clk_idx;
 	dsp_status status = DSP_SOK;
-	struct cfg_hostres resources;
+	struct cfg_hostres *resources = dev_context->resources;
 	u32 value;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
+	if (!resources)
+		return DSP_EFAIL;
 
 	for (clk_idx = 0; clk_idx < MBX_PM_MAX_RESOURCES; clk_idx++) {
 		if (((dev_context->dsp_per_clks) >> clk_idx) & 0x01) {
@@ -512,17 +515,17 @@ dsp_status dsp_peripheral_clocks_disable(struct wmd_dev_context *dev_context,
 			    services_clk_disable(bpwr_clks[clk_idx].int_clk);
 			if (bpwr_clkid[clk_idx] == BPWR_MCBSP1) {
 				/* clear MCBSP1_CLKS, on McBSP1 OFF */
-				value = __raw_readl(resources.dw_sys_ctrl_base
+				value = __raw_readl(resources->dw_sys_ctrl_base
 						    + 0x274);
 				value &= ~(1 << 2);
-				__raw_writel(value, resources.dw_sys_ctrl_base
+				__raw_writel(value, resources->dw_sys_ctrl_base
 					     + 0x274);
 			} else if (bpwr_clkid[clk_idx] == BPWR_MCBSP2) {
 				/* clear MCBSP2_CLKS, on McBSP2 OFF */
-				value = __raw_readl(resources.dw_sys_ctrl_base
+				value = __raw_readl(resources->dw_sys_ctrl_base
 						    + 0x274);
 				value &= ~(1 << 6);
-				__raw_writel(value, resources.dw_sys_ctrl_base
+				__raw_writel(value, resources->dw_sys_ctrl_base
 					     + 0x274);
 			}
 
@@ -543,11 +546,11 @@ dsp_status dsp_peripheral_clocks_enable(struct wmd_dev_context *dev_context,
 {
 	u32 clk_idx;
 	dsp_status int_clk_status = DSP_EFAIL, fun_clk_status = DSP_EFAIL;
-	struct cfg_hostres resources;
+	struct cfg_hostres *resources = dev_context->resources;
 	u32 value;
 
-	cfg_get_host_resources((struct cfg_devnode *)
-			       drv_get_first_dev_extension(), &resources);
+	if (!resources)
+		return DSP_EFAIL;
 
 	for (clk_idx = 0; clk_idx < MBX_PM_MAX_RESOURCES; clk_idx++) {
 		if (((dev_context->dsp_per_clks) >> clk_idx) & 0x01) {
@@ -556,17 +559,17 @@ dsp_status dsp_peripheral_clocks_enable(struct wmd_dev_context *dev_context,
 			    services_clk_enable(bpwr_clks[clk_idx].int_clk);
 			if (bpwr_clkid[clk_idx] == BPWR_MCBSP1) {
 				/* set MCBSP1_CLKS, on McBSP1 ON */
-				value = __raw_readl(resources.dw_sys_ctrl_base
+				value = __raw_readl(resources->dw_sys_ctrl_base
 						    + 0x274);
 				value |= 1 << 2;
-				__raw_writel(value, resources.dw_sys_ctrl_base
+				__raw_writel(value, resources->dw_sys_ctrl_base
 					     + 0x274);
 			} else if (bpwr_clkid[clk_idx] == BPWR_MCBSP2) {
 				/* set MCBSP2_CLKS, on McBSP2 ON */
-				value = __raw_readl(resources.dw_sys_ctrl_base
+				value = __raw_readl(resources->dw_sys_ctrl_base
 						    + 0x274);
 				value |= 1 << 6;
-				__raw_writel(value, resources.dw_sys_ctrl_base
+				__raw_writel(value, resources->dw_sys_ctrl_base
 					     + 0x274);
 			}
 			/* Enable the functional clock of the periphearl */
@@ -581,24 +584,33 @@ dsp_status dsp_peripheral_clocks_enable(struct wmd_dev_context *dev_context,
 
 void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 {
-	struct cfg_hostres resources;
+	struct cfg_hostres *resources;
 	dsp_status status = DSP_SOK;
 	u32 iva2_grpsel;
 	u32 mpu_grpsel;
+	struct dev_object *hdev_object = NULL;
+	struct wmd_dev_context *wmd_context = NULL;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-	if (DSP_FAILED(status))
+	hdev_object = (struct dev_object *)drv_get_first_dev_object();
+	if (!hdev_object)
+		return;
+
+	status = dev_get_wmd_context(hdev_object, &wmd_context);
+
+	if (!wmd_context)
+		return;
+
+	resources = wmd_context->resources;
+	if (!resources)
 		return;
 
 	switch (ClkId) {
 	case BPWR_GP_TIMER5:
 		iva2_grpsel = (u32) *((reg_uword32 *)
-				       ((u32) (resources.dw_per_pm_base) +
+				       ((u32) (resources->dw_per_pm_base) +
 					0xA8));
 		mpu_grpsel = (u32) *((reg_uword32 *)
-				      ((u32) (resources.dw_per_pm_base) +
+				      ((u32) (resources->dw_per_pm_base) +
 				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_GPT5;
@@ -607,17 +619,17 @@ void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_GPT5;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_GPT5;
 		}
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA8))
 		    = iva2_grpsel;
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA4))
 		    = mpu_grpsel;
 		break;
 	case BPWR_GP_TIMER6:
 		iva2_grpsel = (u32) *((reg_uword32 *)
-				       ((u32) (resources.dw_per_pm_base) +
+				       ((u32) (resources->dw_per_pm_base) +
 					0xA8));
 		mpu_grpsel = (u32) *((reg_uword32 *)
-				      ((u32) (resources.dw_per_pm_base) +
+				      ((u32) (resources->dw_per_pm_base) +
 				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_GPT6;
@@ -626,17 +638,17 @@ void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_GPT6;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_GPT6;
 		}
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA8))
 		    = iva2_grpsel;
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA4))
 		    = mpu_grpsel;
 		break;
 	case BPWR_GP_TIMER7:
 		iva2_grpsel = (u32) *((reg_uword32 *)
-				       ((u32) (resources.dw_per_pm_base) +
+				       ((u32) (resources->dw_per_pm_base) +
 					0xA8));
 		mpu_grpsel = (u32) *((reg_uword32 *)
-				      ((u32) (resources.dw_per_pm_base) +
+				      ((u32) (resources->dw_per_pm_base) +
 				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_GPT7;
@@ -645,17 +657,17 @@ void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_GPT7;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_GPT7;
 		}
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA8))
 		    = iva2_grpsel;
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA4))
 		    = mpu_grpsel;
 		break;
 	case BPWR_GP_TIMER8:
 		iva2_grpsel = (u32) *((reg_uword32 *)
-				       ((u32) (resources.dw_per_pm_base) +
+				       ((u32) (resources->dw_per_pm_base) +
 					0xA8));
 		mpu_grpsel = (u32) *((reg_uword32 *)
-				      ((u32) (resources.dw_per_pm_base) +
+				      ((u32) (resources->dw_per_pm_base) +
 				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_GPT8;
@@ -664,17 +676,17 @@ void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_GPT8;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_GPT8;
 		}
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA8))
 		    = iva2_grpsel;
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA4))
 		    = mpu_grpsel;
 		break;
 	case BPWR_MCBSP1:
 		iva2_grpsel = (u32) *((reg_uword32 *)
-				       ((u32) (resources.dw_core_pm_base) +
+				       ((u32) (resources->dw_core_pm_base) +
 					0xA8));
 		mpu_grpsel = (u32) *((reg_uword32 *)
-				      ((u32) (resources.dw_core_pm_base) +
+				      ((u32) (resources->dw_core_pm_base) +
 				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP1;
@@ -683,17 +695,17 @@ void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP1;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP1;
 		}
-		*((reg_uword32 *) ((u32) (resources.dw_core_pm_base) + 0xA8))
+		*((reg_uword32 *) ((u32) (resources->dw_core_pm_base) + 0xA8))
 		    = iva2_grpsel;
-		*((reg_uword32 *) ((u32) (resources.dw_core_pm_base) + 0xA4))
+		*((reg_uword32 *) ((u32) (resources->dw_core_pm_base) + 0xA4))
 		    = mpu_grpsel;
 		break;
 	case BPWR_MCBSP2:
 		iva2_grpsel = (u32) *((reg_uword32 *)
-				       ((u32) (resources.dw_per_pm_base) +
+				       ((u32) (resources->dw_per_pm_base) +
 					0xA8));
 		mpu_grpsel = (u32) *((reg_uword32 *)
-				      ((u32) (resources.dw_per_pm_base) +
+				      ((u32) (resources->dw_per_pm_base) +
 				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP2;
@@ -702,17 +714,17 @@ void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP2;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP2;
 		}
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA8))
 		    = iva2_grpsel;
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA4))
 		    = mpu_grpsel;
 		break;
 	case BPWR_MCBSP3:
 		iva2_grpsel = (u32) *((reg_uword32 *)
-				       ((u32) (resources.dw_per_pm_base) +
+				       ((u32) (resources->dw_per_pm_base) +
 					0xA8));
 		mpu_grpsel = (u32) *((reg_uword32 *)
-				      ((u32) (resources.dw_per_pm_base) +
+				      ((u32) (resources->dw_per_pm_base) +
 				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP3;
@@ -721,17 +733,17 @@ void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP3;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP3;
 		}
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA8))
 		    = iva2_grpsel;
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA4))
 		    = mpu_grpsel;
 		break;
 	case BPWR_MCBSP4:
 		iva2_grpsel = (u32) *((reg_uword32 *)
-				       ((u32) (resources.dw_per_pm_base) +
+				       ((u32) (resources->dw_per_pm_base) +
 					0xA8));
 		mpu_grpsel = (u32) *((reg_uword32 *)
-				      ((u32) (resources.dw_per_pm_base) +
+				      ((u32) (resources->dw_per_pm_base) +
 				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP4;
@@ -740,17 +752,17 @@ void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP4;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP4;
 		}
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA8))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA8))
 		    = iva2_grpsel;
-		*((reg_uword32 *) ((u32) (resources.dw_per_pm_base) + 0xA4))
+		*((reg_uword32 *) ((u32) (resources->dw_per_pm_base) + 0xA4))
 		    = mpu_grpsel;
 		break;
 	case BPWR_MCBSP5:
 		iva2_grpsel = (u32) *((reg_uword32 *)
-				       ((u32) (resources.dw_core_pm_base) +
+				       ((u32) (resources->dw_core_pm_base) +
 					0xA8));
 		mpu_grpsel = (u32) *((reg_uword32 *)
-				      ((u32) (resources.dw_core_pm_base) +
+				      ((u32) (resources->dw_core_pm_base) +
 				       0xA4));
 		if (enable) {
 			iva2_grpsel |= OMAP3430_GRPSEL_MCBSP5;
@@ -759,9 +771,9 @@ void dsp_clk_wakeup_event_ctrl(u32 ClkId, bool enable)
 			mpu_grpsel |= OMAP3430_GRPSEL_MCBSP5;
 			iva2_grpsel &= ~OMAP3430_GRPSEL_MCBSP5;
 		}
-		*((reg_uword32 *) ((u32) (resources.dw_core_pm_base) + 0xA8))
+		*((reg_uword32 *) ((u32) (resources->dw_core_pm_base) + 0xA8))
 		    = iva2_grpsel;
-		*((reg_uword32 *) ((u32) (resources.dw_core_pm_base) + 0xA4))
+		*((reg_uword32 *) ((u32) (resources->dw_core_pm_base) + 0xA4))
 		    = mpu_grpsel;
 		break;
 	}

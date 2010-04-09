@@ -389,6 +389,8 @@ extern dsp_status drv_request_resources(IN u32 dw_context,
 extern dsp_status drv_release_resources(IN u32 dw_context,
 					struct drv_object *hdrv_obj);
 
+dsp_status drv_request_bridge_res_dsp(void **phost_resources);
+
 #ifdef CONFIG_BRIDGE_RECOVERY
 void bridge_recover_schedule(void);
 #endif
