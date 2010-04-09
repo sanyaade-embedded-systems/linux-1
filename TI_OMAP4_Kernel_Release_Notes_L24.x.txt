@@ -1,0 +1,480 @@
+8 April 2010
+
+
+1.  Introduction
+----------------
+This document accompanies OMAP(TM) Software Release L24.5 for Linux 2.6.33-rc2
+on OMAP4430 SDP. The document specifies:
+	- Instructions for unpacking the release
+	- New features and features the release supports
+	- Planned future features
+	- Postponed features
+
+
+2. Release Summary
+------------------
+This is a release of the Linux Baseport for OMAP4430. It supports the
+OMAP4 Wakeup SDP board. The kernel is based on Linux-omap version 2.6.33-rc2
+from open source. U-boot is based on open-source version 1.1.4.
+
+The u-boot source can be obtained via GIT from:
+  http://dev.omapzoom.org/?p=bootloader/u-boot.git;a=shortlog;h=refs/heads/omap4_dev
+
+The x-loader source can be obtained via GIT from:
+  http://dev.omapzoom.org/?p=bootloader/x-loader.git;a=shortlog;h=refs/heads/omap4_dev
+
+The kernel source can be obtained via GIT from:
+  http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=shortlog;h=refs/heads/L24.5
+
+Components that are supported in the release:
+   X-loader, U-Boot, OS Kernel (SMP), Phoenix power IC, UART, GP Timer, GPIO, Watchdog,
+   Neon, I2C, MMC/SD/eMMC (with ADMA support), Ethernet, RTC,
+   SDMA (including descriptor loading), Keypad, Touch screen, McSPI, McBSP, Mentor USB,
+   Phoenix General Purpose ADC, Battery Charging, Power Management Frameworks,
+   Audio (Phoenix Audio IC, ABE, AESS),
+   Display driver (TAAL based), Basic display (DSS2 migration, FB dev), Tiler memory manager.
+   WLAN support
+
+
+3.  Instructions
+----------------
+
+3.1 Board setup
+
+Please refer to the OMAP4430 SDP guide for instructions on setting up the OMAP4
+board.
+
+3.2 Compiling Images
+
+3.2.1 Compiling U-boot
+
+Set the environment variable PATH such that cross compile binaries point to the
+needed tool chain. Refer to section 5 for tool chain information.
+
+To select the default configuration for U-Boot type:
+	# make CROSS_COMPILE=arm-none-linux-gnueabi- omap4430sdp_config
+
+To build the U-Boot image type:
+	# make CROSS_COMPILE=arm-none-linux-gnueabi-
+
+
+3.2.2 Compiling X-loader (for booting from external/removable MMC)
+
+Set the environment variable PATH such that cross compile binaries point to the
+needed tool chain. Refer to section 5 for tool chain information.
+
+U-boot needs to be placed in a directory parallel to x-loader and compiled first.
+E.g.:
+	[DIR] omap4
+		+-- u-boot
+		+-- x-loader
+
+To select the default configuration for X-loader type:
+	# make CROSS_COMPILE=arm-none-linux-gnueabi- omap4430sdp_config
+
+To build the X-loader image type:
+	# make CROSS_COMPILE=arm-none-linux-gnueabi-
+	# make ift CROSS_COMPILE=arm-none-linux-gnueabi-
+
+The above step will create a MLO image, which can be copied into the
+MMC card for booting via MMC.
+
+3.2.3 Compiling X-loader (for booting from eMMC)
+
+Follow same steps as above to create an MLO image. A configuration header needs
+to be added at the begining of this MLO to create an image 'x-load.ch.bin' that
+can be written to the eMMC for eMMC-booting. Please contact your TI
+representative for obtaining the configuration header.
+
+3.2.4 Compiling the Kernel
+
+Set the environment variable PATH such that cross-compile binaries point to the
+needed tool chain. Refer to section 5 for tool chain information.
+
+The default configuration file for OMAP 4430 is present at
+arch/arm/configs/omap_4430sdp_defconfig.
+
+To work with the default configuration file, run following commands:
+	# make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi-
+					omap_4430sdp_defconfig
+
+Build kernel with:
+	# make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi- uImage
+
+NOTE:	The above steps will create arch/arm/boot/uImage in the kernel directory
+	which is the binary used for booting.
+
+3.3 Flashing and Booting
+
+3.3.1 Booting from removable MMC
+
+Use the MLO (ref: section 3.2.2) and u-boot.bin (ref: section 3.2.1) binaries
+and follow the instructions at http://elinux.org/BeagleBoard#MMC.2FSD_boot
+to boot the board from removable MMC.
+
+Set the board switch settings as follows to boot the board from removable MMC:
+	S9 - 1-off, 2-on, 3-on, 4-on
+	S8 - 1-off, 2-on, 3-off, 4-on, 5-on, 6-on, 7-on, 8-on
+
+3.3.2 Flashing and booting from eMMC
+
+Follow the instructions below to save x-loader and u-boot binaries to eMMC and
+subsequently boot from eMMC.
+
+Get the x-loader and u-boot binaries (that you want to flash to eMMC) into RAM
+using one of the following options.
+
+Option 1:
+Use a debugger or OMAPFlasher tool to download x-loader (with configuration
+header, e.g. x-load.ch.bin) as well as u-boot.bin into
+SDRAM and run u-boot from SDRAM.
+
+Option 2:
+Boot via a removable MMC card following the instructions in section 3.3.1, but
+additionally keep the x-load.ch.bin that you want to flash to eMMC in the same
+removable MMC card. After booting from removable MMC, copy the x-load.ch.bin
+and u-boot.bin from the MMC to RAM using the following commands:
+OMAP44XX SDP # mmcinit 0
+OMAP44XX SDP # fatload mmc 0 [Ram Address X] x-load.ch.bin
+OMAP44XX SDP # fatload mmc 0 [Ram Address Y] u-boot.bin
+
+Once the x-loader and u-boot binaries are in RAM, use the following commands
+to copy them to eMMC.
+
+1) Erase all EMMC contents
+OMAP44XX SDP # mmcinit 1
+OMAP44XX SDP # mmc 1 erase 0x0 0x800000
+2) Flash x-loader
+OMAP44XX SDP # mmc 1 erase  0x100  [size of x-loader in hex]
+OMAP44XX SDP # mmc 1 write [Ram Address X]  0x100  [size of x-loader in hex]
+Note: Ram address X is address where x-loader is downloaded in RAM using either the
+debugger, OMAPFlasher or removable MMC.
+3) Flash u-boot.bin
+OMAP44XX SDP # mmc 1 erase  0x400  [size]
+OMAP44XX SDP # mmc  1 write  [Ram Address Y]  0x400  [size]
+Note: Ram address Y is address where u-boot is downloaded in RAM using either the
+debugger, OMAPFlasher or removable MMC.
+
+Set the board switch settings as follows to boot the board from eMMC:
+	S9 - 1-off, 2-on, 3-on, 4-on
+	S8 - 1-on, 2-on, 3-on, 4-on, 5-on, 6-off, 7-on, 8-on
+
+3.3.3 Using Filesystem from eMMC
+
+Use fdisk to create an ext2 partition (/dev/mmcblk0p2) in eMMC leaving 2MB of space
+at the top.
+
+Use the following commands to flash the filesystem to eMMC partition
+1) Bootup with a known good kernel and filesystem from RAM
+2) Use a filesystem which has USB Gadget filestorage module g_filestorage.ko
+3) Connect the usb cable from the board to the PC
+4) Load the USB filestorage gadget module as:
+insmod g_filestorage.ko file=/dev/mmcblk0p2 stall=0 removable=1
+5) When the USB drive enumerates on the Linux PC, mount the drive
+6) Add ext2 filesystem to the mounted drive
+7) sync and then mount the drive.
+8) Add the following in bootargs "root=/dev/mmcblk0p2 rw rootdelay=1" to be able
+to use the eMMC based FS as rootfs.
+
+3.3.4 Bootargs
+
+Since UART3 is used as the console on OMAP4 Wakeup board, you need to set
+'console=ttyS2,115200n8' in the bootargs
+
+While using a filesystem from MMC or eMMC, you may use params such as:
+'root=/dev/mmcblk0p2 rw rootdelay=1'. The rootdelay is required because
+removable cards may take a few seconds to be detected.
+
+While using a filesystem via NFS, you may use params such as:
+'root=/dev/nfs rw nfsroot=&lt;serverip&gt;:&lt;mount-partition&gt;,nolock'
+
+Refer to section 3.4.2 for display related bootargs options
+
+For detailed list and explaination of the various boot parameters, please refer
+http://www.kernel.org/pub/linux/kernel/people/gregkh/lkn/lkn_pdf/ch09.pdf
+
+
+3.4 Using FB and V4L2 Display driver
+
+3.4.1 To enable secondary display
+
+Please use following set of commands after kernel bootup for setting
+secondary display ON.
+
+1) Enable secondary display (display1)
+	echo "1" > /sys/devices/platform/omapdss/display1/enabled
+2) Disable overlay1
+	echo "0" > /sys/devices/platform/omapdss/overlay1/enabled
+3) Attach secondary display as a manager for overlay1
+	echo "2lcd" > /sys/devices/platform/omapdss/overlay1/manager
+4) Enable overlay1
+	echo "1" > /sys/devices/platform/omapdss/overlay1/enabled
+
+3.4.2 Display specific bootargs options
+
+3.4.2.1 Using 1 FB and 3 V4L2 devices
+Add the following in bootargs "omapfb.numfb=1"
+
+3.4.2.2 Using 2 FB and 2 V4L2 devices (default option in L24.2 onwards)
+Add the following in bootargs "omapfb.numfb=2"
+
+3.4.2.3 Enabling DSS DEBUG prints
+Add the following in bootargs "omapdss.debug=1"
+
+3.4.3 Pico DLP support
+
+OMAP4 device supports a pico DLP and secondary LCD output on the secondary
+LCD manager (with the name of '2lcd').  The configuration of the display
+happens in a non-conventional way.
+
+3.4.3.1 For building kernel image with Pico DLP support:
+	In menuconfig following "pico DLP" option needs to be set
+	Device drivers ->
+		Graphics support ->
+			OMAP 2/3 Diaplay subsystem support ->
+					omap 2/3 display drivers ->
+					<*> pico DLP 
+3.4.3.2 After bootup:
+
+To configure output to either pico DLP or secondary LCD, set the overlay's
+manager to the secondary LCD manager:
+
+echo "0" > /sys/devices/platform/omapdss/overlay0/enabled
+echo "2lcd" > /sys/devices/platform/omapdss/overlay0/manager
+echo "1" > /sys/devices/platform/omapdss/overlay0/enabled
+
+3.4.3.3	Then enable the correct display to chose pico DLP or secondary LCD (default
+is secondary LCD).  Assuming display1 is secondary LCD, and display3 is
+pico DLP:
+
+echo "0" > /sys/devices/platform/omapdss/display1/enabled
+# set the secondary manager to pico DLP
+echo "pico_DLP" > /sys/devices/platform/omapdss/manager2/display -- This will set secondary manager to pico.
+echo "1" > /sys/devices/platform/omapdss/display3/enabled
+
+3.4.3.4	Now to switch back to secondary 
+echo "0" > /sys/devices/platform/omapdss/display3/enabled
+echo "2lcd" > /sys/devices/platform/omapdss/manager2/display
+echo "1" > /sys/devices/platform/omapdss/display1/enabled
+
+3.5 Enabling Power Management Features
+
+All PM features are disabled in the default OMAP4 kernel configuration
+(omap_4430sdp_defconfig).
+All clocks are still kept enabled on bootloader.
+
+To test PM features please use omap4_pm_defconfig. Note that PM features
+on OMAP4430 ES1.0 can only be verified on a EMU device. The EMU device needs
+the x-loader signed with the right PPA release.
+
+omap4_pm_defconfig does not enable Tick suppression. To do so enable these
+options manually.
+
+Enable the following options in menuconfig
+	Kernel Features ---> Use local timer interrupts
+	Kernel Features ---> Tickless System
+	Kernel Features ---> High Resolution Timer support
+
+omap4_pm_defconfig has VFP support disabled due to a know issue with enabling
+FPU on ES1. Please do not enable VFP support.
+
+3.5.1 CPU Hotplug
+
+To hotplug out CPU1 use the following command
+
+echo 0 > /sys/devices/system/cpu/cpu1/online
+
+To bring back CPU1 online use the following command
+
+echo 1 > /sys/devices/system/cpu/cpu1/online
+
+Note that CPU0 cannot be offlined due to hardware limitation.
+Currenlty CPU1 transitions to CSWR state when offlined. This can
+only be verified using OBS signals.
+
+3.5.2 CPUIdle
+
+To test cpuidle, it's necessary that CPU1 is hotplugged out.
+Use the below command to hotplug out CPU1
+echo 0 >  /sys/devices/system/cpu/cpu1/online
+
+Once CPU1 is hotplugged out, OBS signals can be used to
+verify MPU/CPU0/CPU1 transtitions.
+
+Currently only sleep state of MPU CSWR is supported.
+
+3.5.3 System Suspend
+
+To test system suspend, use the following command
+
+echo mem > /sys/power/state
+
+Use OBS signals to verify MPU/CPU0/CPU1 transitions.
+
+Currently only sleep state of MPU CSWR is supported.
+
+Please use a ramdisk inorder to test system suspend feature
+
+3.6 Using Audio Driver
+
+Include the asound.conf file in /etc directory in your FS. It maps the different
+audio devices 
+
+Usage:
+aplay -D mm file.wav
+aplay -D tones file.wav
+aplay -D vx file.wav
+aplay -D hd_audio file.wav
+
+
+
+4. Features
+-----------
+
+4.1 New Features
+
+- Power Management Frameworks
+	- Clock framework
+	- Clockdomain framework
+	- Powerdomain framework
+	- Regulator framework
+	- CPUidle with support upto MPU CSWR
+	- System wide suspend with support upto MPU CSWR
+	- CPU1 hotplug with support upto CPU1 CSWR
+NOTE:
+	- All PM features are disabled in the default OMAP4 kernel configuration.
+	- All clocks are still kept enabled on bootloader.
+	- These features can only be validated on EMU devices with omap4_pm_defconfig
+
+- Audio
+	- Audio Playback to Phoenix Earphone
+	- Audio Playback using Tones port
+	- ALSA controls for ABE mixers
+	- Add McPDM power management support
+
+4.2 Supported Features
+
+- Boot-loader:
+	X-loader with MMC/eMMC/SD support
+	U-boot with USB, MMC/eMMC/SD and Ethernet support
+
+- OS Kernel
+	OS Kernel (SMP)
+	Phoenix power IC,
+	UART,
+	GP Timer,
+	GPIO,
+	Watchdog,
+	NEON,
+	I2C,
+	MMC/SD/eMMC (with ADMA support),
+	Ethernet,
+	RTC,
+	SDMA (including descriptor loading),
+	Keypad,
+	Touch screen,
+	McSPI,
+	McBSP,
+	Mentor USB,
+	Phoenix General Purpose ADC,
+	Battery Charging.
+
+- Audio
+	Audio playback to Phoenix Hand-free, Head set output devices.
+	HDMI audio playback
+	Audio record through Phoenix analog MIC input.
+	Simultaneous audio playback and capture.
+
+- Video
+	Display driver
+		- FBdev and V4L2 API support
+		- Primary and Secondary DSI and HDMI displays
+		- Simultaneous rendering on all 3 displays
+	Tiler memory manager.
+
+- WLAN
+
+4.3 Postponed Features
+
+None
+
+4.4 Future Planned Features
+
+Refer to Program schedule.
+
+4.5 Defects Fixed in This Release
+
+OMAPS00214290	MUSB Tx throughput degrades with Poky FS accessed over NFS.
+OMAPS00216452	Fastboot devices are not detected if USB cable is connected after boot up
+OMAPS00214706	Adapt DPI to support CHANNEL LCD2 along with CHANNEL LCD in OMAP4
+OMAPS00216009	Call to display->update call is missing in function pan display
+OMAPS00215432	CONFIG_PANEL_4430SDP_TAAL lacks config dependency
+OMAPS00215230	1680 *1050 resolution DVI monitor gives SYNC LOST
+OMAPS00213860	DQUE ioctl() takes ~40-50ms although buffer is available.
+OMAPS00213905	Dsi framedone timeout seen when switching from HDMI to primary display
+OMAPS00213910	tearing effect seen with alternate frames being colored
+OMAPS00213912	DSI lcd display does refresh at 40fps instead of 60fps
+OMAPS00214176	Remove the mux configuration for dsi1, dsi2, hdmi
+OMAPS00214175	Move GPIO and twl config to board file for dsi1, dsi2, hdmi
+OMAPS00216009	Call to display->update call is missing in function omapfb_pan_display
+OMAPS00212907	ALSA Record
+
+Known Issues:
+OMAPS00216391	With tearing effect patch , frame drops from 60fps to 30fps
+OMAPS00216592	There is no way available for dynamically setting/resetting dithering bit
+OMAPS00213907	With omapfb.numfb=1 in bootargs , the rest of pipelines are not given to v4l2
+OMAPS00214116	Visible tearing during the execution of a 3D app with flipping enabled.
+OMAPS00215432	CONFIG_PANEL_4430SDP_TAAL lacks config dependency on DSS_DSI
+OMAPS00216002	DSS function default_wait_vsync doesn't distinguish between primary and secondary LCD panels
+OMAPS00216444	Provide KConfig options for DSI2, Sec Taal panel, and all DSI specific knobs
+OMAPS00216589	VGA Rotation on LCD does not work
+OMAPS00216585	V4L2 Rotation ioctls rotate 90 degrees when set to 270 degress and vice versa
+OMAPS00216582	streaming test case gives issue when multiple buffers are used in the videobuf queu
+
+4.6 Open Defects
+
+OMAPS00214020  ethernet doesn't get configured with L24.4 kernel
+OMAPS00214519  After boot SATO image and Calibrate Touchscreen, if the screen is touched X-server crashes.
+OMAPS00215651  MUSB driver in host mode has problems with unaligned DMA
+OMAPS00215668  MUSB driver in device mode has problems with unaligned DMA.
+OMAPS00216393  DMA testcases should declare set_test_passed(1) only during rmmod
+
+
+4.7 Open Change Requests
+
+None
+
+4.8 Rejected Defects
+
+None
+
+4.9 Postponed Defects
+
+None
+
+4.10 Limitations
+
+1) At u-boot level saveenv command doesn't work.
+2) MAC address reading from ethernet EEPROM is not supported.
+
+
+5. Tool Chain
+-------------
+The toolchain used to build the code can be obtained from CodeSourcery at the
+following URL:
+	http://www.codesourcery.com/sgpp/lite/arm/portal/release858
+
+The tool chain version is Sourcery G++ Lite 2009q1-203 for ARM GNU/Linux.
+
+The tool chain requires glibc 2.3.0 or higher to compile the source code on
+the host machine.
+
+
+--------------------------------------------------------------------------------
+
+OMAP(TM) is a Trademark of Texas Instruments Incorporated
+Innovator(TM) is a Trademark of Texas Instruments Incorporated
+Code Composer Studio(TM) is a Trademark of Texas Instruments Incorporated
+DSP/BIOS(TM) is a Trademark of Texas Instruments Incorporated
+
+All other trademarks are the property of the respective owner.
