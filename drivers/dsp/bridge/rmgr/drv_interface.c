@@ -97,6 +97,7 @@ static u32 phys_mempool_base;
 static u32 phys_mempool_size;
 static int tc_wordswapon;	/* Default value is always false */
 #ifdef CONFIG_BRIDGE_RECOVERY
+#define REC_TIMEOUT 5000       /* recovery timeout in msecs */
 static atomic_t bridge_cref;	/* number of bridge open handles */
 static struct workqueue_struct *bridge_rec_queue;
 static struct work_struct bridge_recovery_work;
@@ -179,7 +180,10 @@ static void bridge_recover(struct work_struct *work)
 	struct cfg_devnode *dev_node;
 	if (atomic_read(&bridge_cref)) {
 		INIT_COMPLETION(bridge_comp);
-		wait_for_completion(&bridge_comp);
+		while (!wait_for_completion_timeout(&bridge_comp,
+						msecs_to_jiffies(REC_TIMEOUT)))
+			pr_info("%s:%d handle(s) still opened\n",
+					__func__, atomic_read(&bridge_cref));
 	}
 	dev = dev_get_first();
 	dev_get_dev_node(dev, &dev_node);
@@ -460,8 +464,11 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	 */
 
 #ifdef CONFIG_BRIDGE_RECOVERY
-	if (recover)
-		wait_for_completion(&bridge_open_comp);
+	if (recover) {
+		if (filp->f_flags & O_NONBLOCK ||
+			wait_for_completion_killable(&bridge_open_comp))
+			return -EBUSY;
+	}
 #endif
 
 	pr_ctxt = mem_calloc(sizeof(struct process_context), MEM_PAGED);
