@@ -115,8 +115,13 @@ static int sr_clk_enable(struct omap_sr *sr)
 {
 	struct omap_smartreflex_data *pdata = sr->pdev->dev.platform_data;
 
+	if (!sr->is_sr_reset)
+		return 0;
+
 	if (pdata->device_enable)
 		pdata->device_enable(sr->pdev);
+
+	sr->is_sr_reset = 0;
 
 	return 0;
 }
@@ -124,6 +129,9 @@ static int sr_clk_enable(struct omap_sr *sr)
 static void sr_clk_disable(struct omap_sr *sr)
 {
 	struct omap_smartreflex_data *pdata = sr->pdev->dev.platform_data;
+
+	if (sr->is_sr_reset)
+		return;
 
 	sr->is_sr_reset = 1;
 	if (pdata->device_idle)
@@ -322,8 +330,6 @@ static void sr_configure(struct omap_sr *sr)
 			ERRCONFIG_MCUBOUNDINTEN | ERRCONFIG_MCUBOUNDINTST));
 		}
 	}
-
-	sr->is_sr_reset = 0;
 }
 
 static void sr_start_vddautocomap(int srid)
@@ -346,8 +352,7 @@ static void sr_start_vddautocomap(int srid)
 	sr->is_autocomp_active = 1;
 	if (!sr_class->enable(srid)) {
 		sr->is_autocomp_active = 0;
-		if (sr->is_sr_reset == 1)
-			sr_clk_disable(sr);
+		sr_clk_disable(sr);
 	}
 }
 
@@ -367,8 +372,10 @@ static int sr_stop_vddautocomap(int srid)
 	}
 
 	if (sr->is_autocomp_active == 1) {
-		sr_class->disable(srid);
-		sr_clk_disable(sr);
+		if (!sr->is_sr_reset) {
+			sr_class->disable(srid);
+			sr_clk_disable(sr);
+		}
 		sr->is_autocomp_active = 0;
 		return true;
 	} else
@@ -557,10 +564,8 @@ void omap_smartreflex_enable(int srid)
 		return;
 	}
 	if (sr->is_autocomp_active == 1) {
-		if (sr->is_sr_reset == 1) {
-			if (!sr_class->enable(srid))
-				sr_clk_disable(sr);
-		}
+		if (!sr_class->enable(srid))
+			sr_clk_disable(sr);
 	}
 }
 
@@ -589,7 +594,7 @@ void omap_smartreflex_disable(int srid)
 	}
 
 	if (sr->is_autocomp_active == 1) {
-		if (sr->is_sr_reset == 0) {
+		if (!sr->is_sr_reset) {
 			sr_class->disable(srid);
 			/* Disable SR clk */
 			sr_clk_disable(sr);
