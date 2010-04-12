@@ -496,7 +496,7 @@ static void omap_vout_free_vrfb_buffers(struct omap_vout_device *vout)
 static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 			  unsigned int *count, unsigned int startindex)
 {
-	int i;
+	int i, t;
 	bool yuv_mode;
 	u32 width, height;
 
@@ -517,6 +517,18 @@ static int omap_vout_vrfb_buffer_setup(struct omap_vout_device *vout,
 		if (flg_720 == VIDEO_720_ENABLE) {
 			width = vout->win.w.width;
 			height = vout->win.w.height;
+			for (t = 0; vout->linked && t < NUM_OF_VIDEO_CHANNELS;
+				 t++) {
+				struct omap_overlay *ovl =
+					omap_dss_get_overlay(t+1);
+				if (ovl->manager && ovl->manager->device) {
+					struct omap_overlay_info info;
+					ovl->get_overlay_info(ovl, &info);
+					width = max(width, (u32)info.out_width);
+					height = max(height,
+						(u32)info.out_height);
+				}
+			}
 		} else {
 			width = vout->pix.width;
 			height = vout->pix.height;
@@ -1911,7 +1923,8 @@ static int vidioc_qbuf(struct file *file, void *fh,
 {
 	struct omap_vout_device *vout = fh;
 	struct videobuf_queue *q = &vout->vbq;
-	int ret, k;
+	int ret, k, t;
+	struct omapvideo_info *ovid = &vout->vid_info;
 
 	if ((V4L2_BUF_TYPE_VIDEO_OUTPUT != buffer->type) ||
 			(buffer->index >= vout->buffer_allocated) ||
@@ -1939,7 +1952,21 @@ static int vidioc_qbuf(struct file *file, void *fh,
 			isp_rsz_params.in_vsize = vout->pix.height;
 			isp_rsz_params.out_hsize = vout->win.w.width;
 			isp_rsz_params.out_vsize = vout->win.w.height;
-
+			for (t = 0; vout->linked && t < NUM_OF_VIDEO_CHANNELS;
+				t++) {
+				struct omap_overlay *ovl =
+					omap_dss_get_overlay(t+1);
+				if (ovl->manager && ovl->manager->device) {
+					struct omap_overlay_info info;
+					ovl->get_overlay_info(ovl, &info);
+					isp_rsz_params.out_hsize =
+						max(isp_rsz_params.out_hsize,
+						(u32)info.out_width);
+					isp_rsz_params.out_vsize =
+						max(isp_rsz_params.out_vsize,
+						(u32)info.out_height);
+				}
+			}
 			isp_rsz_params.in_pitch = isp_rsz_params.in_hsize * 2;
 			isp_rsz_params.inptyp = RSZ_INTYPE_YCBCR422_16BIT;
 			isp_rsz_params.vert_starting_pixel = 0;
@@ -1947,8 +1974,8 @@ static int vidioc_qbuf(struct file *file, void *fh,
 
 			/* We are going to do downsampling, 0.75x*/
 			isp_rsz_params.cbilin = 0;
-			isp_rsz_params.out_pitch = ALIGN(vout->win.w.width * 2,
-							 0x10);
+			isp_rsz_params.out_pitch =
+				ALIGN(isp_rsz_params.out_hsize * 2, 0x10);
 			isp_rsz_params.hstph = 0;
 			isp_rsz_params.vstph = 0;
 			isp_rsz_params.yenh_params.type = 0;
