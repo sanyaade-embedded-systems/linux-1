@@ -1516,3 +1516,87 @@ static int execute(struct dynamic_loader_initialize *this, ldr_addr start)
 static void release(struct dynamic_loader_initialize *this)
 {
 }
+
+/**
+ *  find_symbol_context - Basic symbol context structure
+ * @address:		Symbol Adress
+ * @offset_range:		Offset range where the search for the DSP symbol
+ *			started.
+ * @cur_best_offset:	Best offset to start looking for the DSP symbol
+ * @sym_addr:		Address of the DSP symbol
+ * @name:		Symbol name
+ *
+ */
+struct find_symbol_context {
+	/* input */
+	u32 address;
+	u32 offset_range;
+	/* state */
+	u32 cur_best_offset;
+	/* output */
+	u32 sym_addr;
+	char name[120];
+};
+
+/**
+ * find_symbol_callback() - Validates symbol address and copies the symbol name
+ *			to the user data.
+ * @elem:		dsp library context
+ * @user_data:		Find symbol context
+ *
+ */
+void find_symbol_callback(void *elem, void *user_data)
+{
+	struct dbll_symbol *symbol = elem;
+	struct find_symbol_context *context = user_data;
+	u32 symbol_addr = symbol->value.value;
+	u32 offset = context->address - symbol_addr;
+
+	/*
+	 * Address given should be greater than symbol address,
+	 * symbol address should be  within specified range
+	 * and the offset should be better than previous one
+	 */
+	if (context->address >= symbol_addr && symbol_addr < (u32)-1 &&
+		offset < context->cur_best_offset) {
+		context->cur_best_offset = offset;
+		context->sym_addr = symbol_addr;
+		strncpy(context->name, symbol->name, sizeof(context->name));
+	}
+
+	return;
+}
+
+/**
+ * dbll_find_dsp_symbol() - This function retrieves the dsp symbol from the dsp binary.
+ * @zl_lib:		DSP binary obj library pointer
+ * @address:		Given address to find the dsp symbol
+ * @offset_range:		offset range to look for dsp symbol
+ * @sym_addr_output:	Symbol Output address
+ * @name_output:		String with the dsp symbol
+ *
+ * 	This function retrieves the dsp symbol from the dsp binary.
+ */
+bool dbll_find_dsp_symbol(struct dbll_library_obj *zl_lib, u32 address,
+				u32 offset_range, u32 *sym_addr_output,
+				char *name_output)
+{
+	bool status = false;
+	struct find_symbol_context context;
+
+	context.address = address;
+	context.offset_range = offset_range;
+	context.cur_best_offset = offset_range;
+	context.sym_addr = 0;
+	context.name[0] = '\0';
+
+	gh_iterate(zl_lib->sym_tab, find_symbol_callback, &context);
+
+	if (context.name[0]) {
+		status = true;
+		strcpy(name_output, context.name);
+		*sym_addr_output = context.sym_addr;
+	}
+
+	return status;
+}

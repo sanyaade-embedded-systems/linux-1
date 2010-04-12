@@ -307,4 +307,9 @@ extern void io_sm_init(void);
 extern dsp_status print_dsp_trace_buffer(struct wmd_dev_context
 					 *hwmd_context);
 
+dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context);
+
+void dump_dl_modules(struct wmd_dev_context *wmd_context);
+
+
 #endif /* IOSM_ */

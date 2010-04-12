@@ -187,3 +187,27 @@ static void myfree(void *ptr, s32 size)
 {
 	gs_free(ptr);
 }
+
+/**
+ * gh_iterate() - This function goes through all the elements in the hash table
+ *		looking for the dsp symbols.
+ * @hash_tab:	Hash table
+ * @callback:	pointer to callback function
+ * @user_data:	User data, contains the find_symbol_context pointer
+ *
+ */
+void gh_iterate(struct gh_t_hash_tab *hash_tab,
+		void (*callback)(void *, void *), void *user_data)
+{
+	struct element *elem;
+	u32 i;
+
+	if (hash_tab && hash_tab->buckets)
+		for (i = 0; i < hash_tab->max_bucket; i++) {
+			elem = hash_tab->buckets[i];
+			while (elem) {
+				callback(&elem->data, user_data);
+				elem = elem->next;
+			}
+		}
+}

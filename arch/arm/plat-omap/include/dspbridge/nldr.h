@@ -49,5 +49,7 @@ extern dsp_status nldr_load(struct nldr_nodeobject *nldr_node_obj,
 			    enum nldr_phase phase);
 extern dsp_status nldr_unload(struct nldr_nodeobject *nldr_node_obj,
 			      enum nldr_phase phase);
+dsp_status nldr_find_addr(struct nldr_nodeobject *nldr_node, u32 sym_addr,
+	u32 offset_range, void *offset_output, char *sym_name);
 
 #endif /* NLDR_ */

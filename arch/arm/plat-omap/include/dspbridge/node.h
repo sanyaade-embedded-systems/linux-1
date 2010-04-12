@@ -566,4 +566,19 @@ extern dsp_status node_get_uuid_props(void *hprocessor,
 				      OUT struct dsp_ndbprops
 				      *node_props);
 
+/**
+ * node_find_addr() - Find the closest symbol to the given address.
+ *
+ * @node_mgr:		Node manager handle
+ * @sym_addr:		Given address to find the closest symbol
+ * @offset_range:		offset range to look fo the closest symbol
+ * @sym_addr_output:	Symbol Output address
+ * @sym_name:		String with the symbol name of the closest symbol
+ *
+ * 	This function finds the closest symbol to the address where a MMU
+ *	Fault occurred on the DSP side.
+ */
+dsp_status node_find_addr(struct node_mgr *node_mgr, u32 sym_addr,
+				u32 offset_range, void *sym_addr_output,
+				char *sym_name);
 #endif /* NODE_ */

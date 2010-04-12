@@ -1926,3 +1926,83 @@ static u32 find_gcf(u32 a, u32 b)
 	}
 	return b;
 }
+
+/**
+ * nldr_find_addr() - Find the closest symbol to the given address based on
+ *		dynamic node object.
+ *
+ * @nldr_node:		Dynamic node object
+ * @sym_addr:		Given address to find the dsp symbol
+ * @offset_range:		offset range to look for dsp symbol
+ * @offset_output:		Symbol Output address
+ * @sym_name:		String with the dsp symbol
+ *
+ * 	This function finds the node library for a given address and
+ *	retrieves the dsp symbol by calling dbll_find_dsp_symbol.
+ */
+dsp_status nldr_find_addr(struct nldr_nodeobject *nldr_node, u32 sym_addr,
+			u32 offset_range, void *offset_output, char *sym_name)
+{
+	dsp_status status = DSP_SOK;
+	bool status1 = false;
+	s32 i = 0;
+	struct lib_node root = { NULL, 0, NULL };
+	DBC_REQUIRE(refs > 0);
+	DBC_REQUIRE(MEM_IS_VALID_HANDLE(nldr_node, NLDR_NODESIGNATURE));
+	DBC_REQUIRE(offset_output != NULL);
+	DBC_REQUIRE(sym_name != NULL);
+	pr_debug("%s(0x%x, 0x%x, 0x%x, 0x%x,  %s)\n", __func__, (u32) nldr_node,
+			sym_addr, offset_range, (u32) offset_output, sym_name);
+
+	if (nldr_node->dynamic && *nldr_node->pf_phase_split) {
+		switch (nldr_node->phase) {
+		case NLDR_CREATE:
+			root = nldr_node->create_lib;
+			break;
+		case NLDR_EXECUTE:
+			root = nldr_node->execute_lib;
+			break;
+		case NLDR_DELETE:
+			root = nldr_node->delete_lib;
+			break;
+		default:
+			DBC_ASSERT(false);
+			break;
+		}
+	} else {
+		/* for Overlay nodes or non-split Dynamic nodes */
+		root = nldr_node->root;
+	}
+
+	status1 = dbll_find_dsp_symbol(root.lib, sym_addr,
+			offset_range, offset_output, sym_name);
+
+	/* If symbol not found, check dependent libraries */
+	if (!status1)
+		for (i = 0; i < root.dep_libs; i++) {
+			status1 = dbll_find_dsp_symbol(
+				root.dep_libs_tree[i].lib, sym_addr,
+				offset_range, offset_output, sym_name);
+			if (status1)
+				/* Symbol found */
+				break;
+		}
+	/* Check persistent libraries */
+	if (!status1)
+		for (i = 0; i < nldr_node->pers_libs; i++) {
+			status1 = dbll_find_dsp_symbol(
+				nldr_node->pers_lib_table[i].lib, sym_addr,
+				offset_range, offset_output, sym_name);
+			if (status1)
+				/* Symbol found */
+				break;
+		}
+
+	if (!status1) {
+		pr_debug("%s: Address 0x%x not found in range %d.\n",
+					__func__, sym_addr, offset_range);
+		status = DSP_ESYMBOL;
+	}
+
+	return status;
+}

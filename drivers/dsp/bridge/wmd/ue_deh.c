@@ -52,6 +52,15 @@
 #include "_tiomap_pwr.h"
 #include <dspbridge/io_sm.h>
 
+#include <plat/dmtimer.h>
+
+/* GP Timer number to trigger interrupt for MMU-fault ISR on DSP */
+#define GPTIMER_FOR_DSP_MMU_FAULT      8
+/* Bit mask to enable overflow interrupt */
+#define GPTIMER_IRQ_OVERFLOW           2
+/* Max time to check for GP Timer IRQ */
+#define GPTIMER_IRQ_WAIT_MAX_CNT       1000
+
 static struct hw_mmu_map_attrs_t map_attrs = { HW_LITTLE_ENDIAN,
 	HW_ELEM_SIZE16BIT,
 	HW_MMU_CPUES
@@ -60,6 +69,9 @@ static struct hw_mmu_map_attrs_t map_attrs = { HW_LITTLE_ENDIAN,
 #define VIRT_TO_PHYS(x)       ((x) - PAGE_OFFSET + PHYS_OFFSET)
 
 static u32 dummy_va_addr;
+
+static struct omap_dm_timer *timer;
+
 /*
  *  ======== bridge_deh_create ========
  *      Creates DEH manager object.
@@ -125,6 +137,14 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 		bridge_deh_destroy((struct deh_mgr *)deh_mgr_obj);
 		*phDehMgr = NULL;
 	} else {
+		timer = omap_dm_timer_request_specific(
+					GPTIMER_FOR_DSP_MMU_FAULT);
+		if (timer)
+			omap_dm_timer_disable(timer);
+		else {
+			pr_err("%s:GPTimer not available\n", __func__);
+			return -ENODEV;
+		}
 		*phDehMgr = (struct deh_mgr *)deh_mgr_obj;
 	}
 
@@ -156,6 +176,9 @@ dsp_status bridge_deh_destroy(struct deh_mgr *hdeh_mgr)
 
 		/* Deallocate the DEH manager object */
 		MEM_FREE_OBJECT(deh_mgr_obj);
+		/* The GPTimer is no longer needed */
+		omap_dm_timer_free(timer);
+		timer = NULL;
 	}
 
 	return status;
@@ -198,6 +221,7 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 	extern u32 fault_addr;
 	struct cfg_hostres resources;
 	hw_status hw_status_obj;
+	u32 cnt = 0;
 
 	status = cfg_get_host_resources((struct cfg_devnode *)
 					drv_get_first_dev_extension(),
@@ -221,6 +245,9 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 			printk(KERN_ERR
 			       "bridge_deh_notify: DSP_SYSERROR, err_info "
 			       "= 0x%x\n", dwErrInfo);
+			dump_dl_modules(dev_context);
+			dump_dsp_stack(dev_context);
+
 			break;
 		case DSP_MMUFAULT:
 			/* MMU fault routine should have set err info
@@ -245,6 +272,10 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 					 ((u32) dummy_va_addr, PG_SIZE4K));
 			dev_context = (struct wmd_dev_context *)
 			    deh_mgr_obj->hwmd_context;
+
+			print_dsp_trace_buffer(dev_context);
+			dump_dl_modules(dev_context);
+
 			/* Reset the dynamic mmu index to fixed count if it
 			 * exceeds 31. So that the dynmmuindex is always
 			 * between the range of standard/fixed entries
@@ -261,12 +292,47 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 						   HW_PAGE_SIZE4KB, 1,
 						   &map_attrs, HW_SET, HW_SET);
 			}
-			/* send an interrupt to DSP */
-			omap_mbox_msg_send(dev_context->mbox,
-					   MBX_DEH_CLASS | MBX_DEH_EMMU);
+			/*
+			 * Send a GP Timer interrupt to DSP
+			 * The DSP expects a GP timer interrupt after an
+			 * MMU-Fault Request GPTimer
+			 */
+			if (timer) {
+				omap_dm_timer_enable(timer);
+				/* Enable overflow interrupt */
+				omap_dm_timer_set_int_enable(timer,
+						GPTIMER_IRQ_OVERFLOW);
+				/*
+				 * Set counter value to overflow counter after
+				 * one tick and start timer
+				 */
+				omap_dm_timer_set_load_start(timer, 0,
+								0xfffffffe);
+
+				/* Wait 80us for timer to overflow */
+				udelay(80);
+
+				/*
+				 * Check interrupt status and
+				 * wait for interrupt
+				 */
+				cnt = 0;
+				while (!(omap_dm_timer_read_status(timer) &
+					GPTIMER_IRQ_OVERFLOW)) {
+					if (cnt++ >=
+						GPTIMER_IRQ_WAIT_MAX_CNT) {
+						pr_err("%s: GPTimer interrupt"
+							" failed\n", __func__);
+						break;
+					}
+				}
+			}
+
 			/* Clear MMU interrupt */
 			hw_mmu_event_ack(resources.dw_dmmu_base,
 					 HW_MMU_TRANSLATION_FAULT);
+			dump_dsp_stack(deh_mgr_obj->hwmd_context);
+			omap_dm_timer_disable(timer);
 			break;
 #ifdef CONFIG_BRIDGE_NTFY_PWRERR
 		case DSP_PWRERROR:
@@ -308,8 +374,6 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 		dev_context->dw_brd_state = BRD_ERROR;
 		/* Disable all the clocks that were enabled by DSP */
 		(void)dsp_peripheral_clocks_disable(dev_context, NULL);
-		/* Call DSP Trace Buffer */
-		print_dsp_trace_buffer(hdeh_mgr->hwmd_context);
 #ifdef CONFIG_BRIDGE_WDT3
 		/*
 		 * Avoid the subsequent WDT if it happens once,
