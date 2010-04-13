@@ -30,10 +30,6 @@
 #define TV_PANEL_ENABLE_GPIO		95
 #define SIL9022_RESET_GPIO		97
 
-struct zoom_dss_board_info {
-	int gpio_flag;
-};
-
 static void zoom_lcd_tv_panel_init(void)
 {
 	int ret;
@@ -111,23 +107,8 @@ static int zoom_panel_power_enable(int enable)
 static int zoom_panel_enable_lcd(struct omap_dss_device *dssdev)
 {
 	int ret;
-	struct zoom_dss_board_info *pdata;
 
 	ret = zoom_panel_power_enable(1);
-	if (ret < 0)
-		return ret;
-	pdata = dssdev->dev.platform_data;
-	if (pdata->gpio_flag == 0) {
-		ret = gpio_request(LCD_PANEL_ENABLE_GPIO, "lcd enable");
-		if (ret) {
-			pr_err("Failed to get LCD_PANEL_ENABLE_GPIO.\n");
-			return ret;
-		}
-		gpio_direction_output(LCD_PANEL_ENABLE_GPIO, 1);
-		pdata->gpio_flag = 1;
-	} else {
-		gpio_set_value(LCD_PANEL_ENABLE_GPIO, 1);
-	}
 
 	return 0;
 }
@@ -137,7 +118,51 @@ static void zoom_panel_disable_lcd(struct omap_dss_device *dssdev)
 #ifndef CONFIG_OMAP2_DSS_USE_DSI_PLL_FOR_HDMI
 	zoom_panel_power_enable(0);
 #endif
-	gpio_set_value(LCD_PANEL_ENABLE_GPIO, 0);
+}
+
+/*
+ * PWMA/B register offsets (TWL4030_MODULE_PWMA)
+ */
+#define TWL_INTBR_PMBR1	0xD
+#define TWL_INTBR_GPBR1	0xC
+#define TWL_LED_PWMON	0x0
+#define TWL_LED_PWMOFF	0x1
+
+static int zoom_set_bl_intensity(struct omap_dss_device *dssdev, int level)
+{
+	unsigned char c;
+	u8 mux_pwm, enb_pwm;
+
+	if (level > 100)
+		return -1;
+
+	twl_i2c_read_u8(TWL4030_MODULE_INTBR, &mux_pwm, TWL_INTBR_PMBR1);
+	twl_i2c_read_u8(TWL4030_MODULE_INTBR, &enb_pwm, TWL_INTBR_GPBR1);
+
+	if (level == 0) {
+		/* disable pwm1 output and clock */
+		enb_pwm = enb_pwm & 0xF5;
+		/* change pwm1 pin to gpio pin */
+		mux_pwm = mux_pwm & 0xCF;
+		twl_i2c_write_u8(TWL4030_MODULE_INTBR,
+					enb_pwm, TWL_INTBR_GPBR1);
+		twl_i2c_write_u8(TWL4030_MODULE_INTBR,
+					mux_pwm, TWL_INTBR_PMBR1);
+		return 0;
+	}
+
+	/* change gpio pin to pwm1 pin */
+	mux_pwm = mux_pwm | 0x30;
+	/* enable pwm1 output and clock*/
+	enb_pwm = enb_pwm | 0x0A;
+	twl_i2c_write_u8(TWL4030_MODULE_INTBR, mux_pwm, TWL_INTBR_PMBR1);
+	twl_i2c_write_u8(TWL4030_MODULE_INTBR, enb_pwm, TWL_INTBR_GPBR1);
+
+	c = ((50 * (100 - level)) / 100) + 1;
+	twl_i2c_write_u8(TWL4030_MODULE_PWM1, 0x7F, TWL_LED_PWMOFF);
+	twl_i2c_write_u8(TWL4030_MODULE_PWM1, c, TWL_LED_PWMON);
+
+	return 0;
 }
 
 static int zoom_panel_enable_tv(struct omap_dss_device *dssdev)
@@ -213,10 +238,6 @@ static struct omap_dss_device zoom_hdmi_device = {
 #endif
 };
 
-static struct zoom_dss_board_info zoom_dss_lcd_data = {
-	.gpio_flag = 0,
-};
-
 static struct omap_dss_device zoom_lcd_device = {
 	.name = "lcd",
 	.driver_name = "NEC_8048_panel",
@@ -224,9 +245,8 @@ static struct omap_dss_device zoom_lcd_device = {
 	.phy.dpi.data_lines = 24,
 	.platform_enable = zoom_panel_enable_lcd,
 	.platform_disable = zoom_panel_disable_lcd,
-	.dev = {
-		.platform_data = &zoom_dss_lcd_data,
-	},
+	.max_backlight_level	= 100,
+	.set_backlight		= zoom_set_bl_intensity,
 };
 
 static struct omap_dss_device zoom_tv_device = {
