@@ -686,8 +686,7 @@ u32 procwrap_flush_memory(union Trapped_Args *args, void *pr_ctxt)
 	dsp_status status;
 	void *hprocessor = ((struct process_context *)pr_ctxt)->hprocessor;
 
-	if (args->args_proc_flushmemory.ul_flags >
-	    PROC_WRITEBACK_INVALIDATE_MEM)
+	if (args->args_proc_flushmemory.ul_flags > PROC_WRBK_INV_ALL)
 		return DSP_EINVALIDARG;
 
 	status = proc_flush_memory(hprocessor,
