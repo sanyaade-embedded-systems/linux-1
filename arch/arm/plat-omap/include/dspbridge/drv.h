@@ -404,4 +404,82 @@ dsp_status drv_request_bridge_res_dsp(void **phost_resources);
 #ifdef CONFIG_BRIDGE_RECOVERY
 void bridge_recover_schedule(void);
 #endif
+/*
+ *  ======== mem_ext_phys_pool_init ========
+ *  Purpose:
+ *      Uses the physical memory chunk passed for internal consitent memory
+ *      allocations.
+ *      physical address based on the page frame address.
+ *  Parameters:
+ *      poolPhysBase  starting address of the physical memory pool.
+ *      poolSize      size of the physical memory pool.
+ *  Returns:
+ *      none.
+ *  Requires:
+ *      - MEM initialized.
+ *      - valid physical address for the base and size > 0
+ */
+extern void mem_ext_phys_pool_init(IN u32 poolPhysBase, IN u32 poolSize);
+
+/*
+ *  ======== mem_ext_phys_pool_release ========
+ */
+extern void mem_ext_phys_pool_release(void);
+
+/*  ======== mem_alloc_phys_mem ========
+ *  Purpose:
+ *      Allocate physically contiguous, uncached memory
+ *  Parameters:
+ *      byte_size:     Number of bytes to allocate.
+ *      ulAlign:    Alignment Mask.
+ *      pPhysicalAddress: Physical address of allocated memory.
+ *  Returns:
+ *      Pointer to a block of memory;
+ *      NULL if memory couldn't be allocated, or if byte_size == 0.
+ *  Requires:
+ *      MEM initialized.
+ *  Ensures:
+ *      The returned pointer, if not NULL, points to a valid memory block of
+ *      the size requested.  Returned physical address refers to physical
+ *      location of memory.
+ */
+extern void *mem_alloc_phys_mem(IN u32 byte_size,
+				IN u32 ulAlign, OUT u32 *pPhysicalAddress);
+
+/*
+ *  ======== mem_flush_cache ========
+ *  Purpose:
+ *      Performs system cache sync with discard
+ *  Parameters:
+ *      pMemBuf:    Pointer to memory region to be flushed.
+ *      pMemBuf:    Size of the memory region to be flushed.
+ *  Returns:
+ *  Requires:
+ *      MEM is initialized.
+ *  Ensures:
+ *      Cache is synchronized
+ */
+extern void mem_flush_cache(void *pMemBuf, u32 byte_size, s32 FlushType);
+
+/*
+ *  ======== mem_free_phys_mem ========
+ *  Purpose:
+ *      Free the given block of physically contiguous memory.
+ *  Parameters:
+ *      pVirtualAddress:  Pointer to virtual memory region allocated
+ *      by mem_alloc_phys_mem().
+ *      pPhysicalAddress:  Pointer to physical memory region  allocated
+ *      by mem_alloc_phys_mem().
+ *      byte_size:  Size of the memory region allocated by mem_alloc_phys_mem().
+ *  Returns:
+ *  Requires:
+ *      MEM initialized.
+ *      pVirtualAddress is a valid memory address returned by
+ *          mem_alloc_phys_mem()
+ *  Ensures:
+ *      pVirtualAddress is no longer a valid pointer to memory.
+ */
+extern void mem_free_phys_mem(void *pVirtualAddress,
+			      u32 pPhysicalAddress, u32 byte_size);
+
 #endif /* DRV_ */
