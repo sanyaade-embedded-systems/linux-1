@@ -377,7 +377,7 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 			/* Check if attr_in->prio is within range */
 			if (attr_in->prio < hnode_mgr->min_pri ||
 			    attr_in->prio > hnode_mgr->max_pri)
-				status = DSP_ERANGE;
+				status = -EDOM;
 		}
 	}
 	/* Allocate node object and fill in */
@@ -794,7 +794,7 @@ dsp_status node_change_priority(struct node_object *hnode, s32 prio)
 		if (node_type != NODE_TASK && node_type != NODE_DAISSOCKET)
 			status = DSP_ENODETYPE;
 		else if (prio < hnode_mgr->min_pri || prio > hnode_mgr->max_pri)
-			status = DSP_ERANGE;
+			status = -EDOM;
 	}
 	if (DSP_FAILED(status))
 		goto func_end;

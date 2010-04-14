@@ -363,7 +363,7 @@ extern dsp_status strm_register_notify(struct strm_object *hStrm,
  *      utimeout:       Timeout value (milliseconds).
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_ERANGE:     nStrms out of range.
+ *      -EDOM:     nStrms out of range.
 
  *      DSP_EHANDLE:    Invalid stream handle in array.
  *      -ETIME:   A timeout occurred before a stream became ready.

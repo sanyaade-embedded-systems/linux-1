@@ -42,7 +42,7 @@
  *      DSP_EMEMORY:        Insufficient memory on GPP.
  *      -ENOKEY:          Node UUID has not been registered.
  *      DSP_ESYMBOL:        iAlg functions not found for a DAIS node.
- *      DSP_ERANGE:         attr_in != NULL and attr_in->prio out of
+ *      -EDOM:         attr_in != NULL and attr_in->prio out of
  *                          range.
  *      -EPERM:          A failure occured, unable to allocate node.
  *      DSP_EWRONGSTATE:    Proccessor is not in the running state.
@@ -99,7 +99,7 @@ extern dsp_status node_alloc_msg_buf(struct node_object *hnode,
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ERANGE:         prio is out of range.
+ *      -EDOM:         prio is out of range.
  *      DSP_ENODETYPE:      The specified node is not a task node.
  *      DSP_EWRONGSTATE:    Node is not in the NODE_ALLOCATED, NODE_PAUSED,
  *                          or NODE_RUNNING state.
