@@ -487,6 +487,11 @@ int omapfb_ioctl(struct fb_info *fbi, unsigned int cmd, unsigned long arg)
 
 	int r = 0;
 
+	if (display == NULL) {
+		DBG("display pointer may be NULL");
+		return -EINVAL;
+	}
+
 	switch (cmd) {
 	case OMAPFB_SYNC_GFX:
 		DBG("ioctl SYNC_GFX\n");
