@@ -102,7 +102,7 @@ static s32 cod_f_close(struct file *filp)
 {
 	/* Check for valid handle */
 	if (!filp)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	filp_close(filp, NULL);
 
@@ -134,7 +134,7 @@ static s32 cod_f_read(void __user *pbuffer, s32 size, s32 cCount,
 {
 	/* check for valid file handle */
 	if (!filp)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	if ((size > 0) && (cCount > 0) && pbuffer) {
 		u32 dw_bytes_read;
@@ -162,7 +162,7 @@ static s32 cod_f_seek(struct file *filp, s32 lOffset, s32 cOrigin)
 
 	/* check for valid file handle */
 	if (!filp)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	/* based on the origin flag, move the internal pointer */
 	dw_cur_pos = filp->f_op->llseek(filp, lOffset, cOrigin);
@@ -179,7 +179,7 @@ static s32 cod_f_tell(struct file *filp)
 	loff_t dw_cur_pos;
 
 	if (!filp)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	/* Get current position */
 	dw_cur_pos = filp->f_op->llseek(filp, 0, SEEK_CUR);

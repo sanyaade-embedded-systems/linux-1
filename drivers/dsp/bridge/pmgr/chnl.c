@@ -126,7 +126,7 @@ dsp_status chnl_destroy(struct chnl_mgr *hchnl_mgr)
 		/* Let WMD channel module destroy the chnl_mgr: */
 		status = (*intf_fxns->pfn_chnl_destroy) (hchnl_mgr);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_FAILED(status) || !chnl_mgr_obj);

@@ -317,7 +317,7 @@ dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce)
 
 	DBC_REQUIRE(refs > 0);
 	if (!hcmm_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		return status;
 	}
 	mutex_lock(&cmm_mgr_obj->cmm_lock);
@@ -397,7 +397,7 @@ dsp_status cmm_free_buf(struct cmm_object *hcmm_mgr, void *buf_pa,
 		ul_seg_id = pattrs->ul_seg_id;
 	}
 	if (!hcmm_mgr || !(ul_seg_id > 0)) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		return status;
 	}
 	/* get the allocator for this segment id */
@@ -467,7 +467,7 @@ dsp_status cmm_get_info(struct cmm_object *hcmm_mgr,
 	DBC_REQUIRE(cmm_info_obj != NULL);
 
 	if (!hcmm_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		return status;
 	}
 	mutex_lock(&cmm_mgr_obj->cmm_lock);
@@ -562,7 +562,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 		dw_gpp_base_pa, ul_size, dwDSPAddrOffset, dw_dsp_base,
 		ul_dsp_size, dw_gpp_base_va);
 	if (!hcmm_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		return status;
 	}
 	/* make sure we have room for another allocator */
@@ -691,7 +691,7 @@ dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 			status = -EINVAL;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -1002,7 +1002,7 @@ dsp_status cmm_xlator_delete(struct cmm_xlatorobject *xlator, bool bForce)
 	if (xlator_obj) {
 		kfree(xlator_obj);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -1098,7 +1098,7 @@ dsp_status cmm_xlator_info(struct cmm_xlatorobject *xlator, IN OUT u8 ** paddr,
 			*paddr = (u8 *) xlator_obj->dw_virt_base;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }

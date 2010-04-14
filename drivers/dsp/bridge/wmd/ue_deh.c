@@ -394,7 +394,7 @@ dsp_status bridge_deh_get_info(struct deh_mgr *hdeh_mgr,
 		pErrInfo->dw_val2 = deh_mgr_obj->err_info.dw_val2;
 		pErrInfo->dw_val3 = deh_mgr_obj->err_info.dw_val3;
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;

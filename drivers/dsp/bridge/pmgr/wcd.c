@@ -1119,7 +1119,7 @@ u32 nodewrap_alloc_msg_buf(union Trapped_Args *args, void *pr_ctxt)
 				args->args_node_allocmsgbuf.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	if (!args->args_node_allocmsgbuf.usize)
 		return -EINVAL;
@@ -1153,7 +1153,7 @@ u32 nodewrap_change_priority(union Trapped_Args *args, void *pr_ctxt)
 				args->args_node_changepriority.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	ret = node_change_priority(node_res->hnode,
 				   args->args_node_changepriority.prio);
@@ -1194,7 +1194,7 @@ u32 nodewrap_connect(union Trapped_Args *args, void *pr_ctxt)
 	}
 
 	if (!node1 || !node2)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	/* Optional argument */
 	if (psize) {
@@ -1245,7 +1245,7 @@ u32 nodewrap_create(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_node_create.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	ret = node_create(node_res->hnode);
 
@@ -1263,7 +1263,7 @@ u32 nodewrap_delete(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_node_delete.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	ret = node_delete(node_res, pr_ctxt);
 
@@ -1283,7 +1283,7 @@ u32 nodewrap_free_msg_buf(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_node_freemsgbuf.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	if (args->args_node_freemsgbuf.pattr) {	/* Optional argument */
 		CP_FM_USR(&attr, args->args_node_freemsgbuf.pattr, status, 1);
@@ -1316,7 +1316,7 @@ u32 nodewrap_get_attr(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_node_getattr.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	status = node_get_attr(node_res->hnode, &attr,
 			       args->args_node_getattr.attr_size);
@@ -1337,7 +1337,7 @@ u32 nodewrap_get_message(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_node_getmessage.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	status = node_get_message(node_res->hnode, &msg,
 				  args->args_node_getmessage.utimeout);
@@ -1358,7 +1358,7 @@ u32 nodewrap_pause(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_node_pause.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	ret = node_pause(node_res->hnode);
 
@@ -1377,7 +1377,7 @@ u32 nodewrap_put_message(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_node_putmessage.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	CP_FM_USR(&msg, args->args_node_putmessage.message, status, 1);
 
@@ -1403,7 +1403,7 @@ u32 nodewrap_register_notify(union Trapped_Args *args, void *pr_ctxt)
 			args->args_node_registernotify.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	/* Initialize the notification data structure */
 	notification.ps_name = NULL;
@@ -1434,7 +1434,7 @@ u32 nodewrap_run(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_node_run.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	ret = node_run(node_res->hnode);
 
@@ -1453,7 +1453,7 @@ u32 nodewrap_terminate(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_node_terminate.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	status = node_terminate(node_res->hnode, &tempstatus);
 
@@ -1516,7 +1516,7 @@ u32 strmwrap_allocate_buffer(union Trapped_Args *args, void *pr_ctxt)
 		args->args_strm_allocatebuffer.hstream);
 
 	if (!strm_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	if (num_bufs > MAX_BUFS)
 		return -EINVAL;
@@ -1550,7 +1550,7 @@ u32 strmwrap_close(union Trapped_Args *args, void *pr_ctxt)
 	find_strm_handle(&strm_res, pr_ctxt, args->args_strm_close.hstream);
 
 	if (!strm_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	return strm_close(strm_res, pr_ctxt);
 }
@@ -1569,7 +1569,7 @@ u32 strmwrap_free_buffer(union Trapped_Args *args, void *pr_ctxt)
 			args->args_strm_freebuffer.hstream);
 
 	if (!strm_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	if (num_bufs > MAX_BUFS)
 		return -EINVAL;
@@ -1615,7 +1615,7 @@ u32 strmwrap_get_info(union Trapped_Args *args, void *pr_ctxt)
 			args->args_strm_getinfo.hstream);
 
 	if (!strm_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	CP_FM_USR(&strm_info, args->args_strm_getinfo.stream_info, status, 1);
 	temp = strm_info.user_strm;
@@ -1645,7 +1645,7 @@ u32 strmwrap_idle(union Trapped_Args *args, void *pr_ctxt)
 	find_strm_handle(&strm_res, pr_ctxt, args->args_strm_idle.hstream);
 
 	if (!strm_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	ret = strm_idle(strm_res->hstream, args->args_strm_idle.flush_flag);
 
@@ -1663,7 +1663,7 @@ u32 strmwrap_issue(union Trapped_Args *args, void *pr_ctxt)
 	find_strm_handle(&strm_res, pr_ctxt, args->args_strm_issue.hstream);
 
 	if (!strm_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	if (!args->args_strm_issue.pbuffer)
 		return -EFAULT;
@@ -1694,7 +1694,7 @@ u32 strmwrap_open(union Trapped_Args *args, void *pr_ctxt)
 	find_node_handle(&node_res, pr_ctxt, args->args_strm_open.hnode);
 
 	if (!node_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	CP_FM_USR(&attr, args->args_strm_open.attr_in, status, 1);
 
@@ -1732,7 +1732,7 @@ u32 strmwrap_reclaim(union Trapped_Args *args, void *pr_ctxt)
 	find_strm_handle(&strm_res, pr_ctxt, args->args_strm_reclaim.hstream);
 
 	if (!strm_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	status = strm_reclaim(strm_res->hstream, &buf_ptr,
 			      &ul_bytes, &ul_buf_size, &dw_arg);
@@ -1761,7 +1761,7 @@ u32 strmwrap_register_notify(union Trapped_Args *args, void *pr_ctxt)
 			args->args_strm_registernotify.hstream);
 
 	if (!strm_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	/* Initialize the notification data structure */
 	notification.ps_name = NULL;
@@ -1790,7 +1790,7 @@ u32 strmwrap_select(union Trapped_Args *args, void *pr_ctxt)
 	find_strm_handle(&strm_res, pr_ctxt, args->args_strm_select.stream_tab);
 
 	if (!strm_res)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	if (args->args_strm_select.strm_num > MAX_STREAMS)
 		return -EINVAL;

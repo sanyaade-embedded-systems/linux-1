@@ -37,7 +37,7 @@
  *  Returns:
  *      DSP_SOK     :	   Success.
  *      -EPERM   :	   General failure.
- *      DSP_EHANDLE :	   Invalid processor handle.
+ *      -EFAULT :	   Invalid processor handle.
  *      DSP_SALREADYATTACHED:   Success; Processor already attached.
  *  Requires:
  *      ph_processor != NULL.
@@ -86,7 +86,7 @@ extern dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
  *      pargs       :       Ptr to an driver defined argument structure.
  *  Returns:
  *      DSP_SOK     :       SUCCESS
- *      DSP_EHANDLE :       Invalid processor handle.
+ *      -EFAULT :       Invalid processor handle.
  *      -ETIME:       A Timeout Occured before the Control information
  *			  could be sent.
  *      DSP_EACCESSDENIED:  Client does not have the access rights required
@@ -112,7 +112,7 @@ extern dsp_status proc_ctrl(void *hprocessor,
  *      pr_ctxt     :   The processor handle.
  *  Returns:
  *      DSP_SOK     :   Success.
- *      DSP_EHANDLE :   InValid Handle.
+ *      -EFAULT :   InValid Handle.
  *      -EPERM   :   General failure.
  *  Requires:
  *      PROC Initialized.
@@ -137,7 +137,7 @@ extern dsp_status proc_detach(struct process_context *pr_ctxt);
  *		      the number of nodes that are allocated on the DSP.
  *  Returns:
  *      DSP_SOK     :   Success.
- *      DSP_EHANDLE :   Invalid processor handle.
+ *      -EFAULT :   Invalid processor handle.
  *      -EINVAL   :   The amount of memory allocated for node_tab is
  *		      insufficent. That is the number of nodes actually
  *		      allocated on the DSP is greater than the value
@@ -169,7 +169,7 @@ extern dsp_status proc_enum_nodes(void *hprocessor,
  *      resource_info_size:  Size of the structure.
  *  Returns:
  *      DSP_SOK     :       Success.
- *      DSP_EHANDLE :       Invalid processor handle.
+ *      -EFAULT :       Invalid processor handle.
  *      DSP_EWRONGSTATE:    The processor is not in the PROC_RUNNING state.
  *      -ETIME:       A timeout occured before the DSP responded to the
  *			  querry.
@@ -251,7 +251,7 @@ extern bool proc_init(void);
  *      state_info_size: Size of dsp_processorstate.
  *  Returns:
  *      DSP_SOK     :   Success.
- *      DSP_EHANDLE :   Invalid processor handle.
+ *      -EFAULT :   Invalid processor handle.
  *      -EPERM   :   General failure while querying processor state.
  *  Requires:
  *      proc_state_obj is not NULL
@@ -273,7 +273,7 @@ extern dsp_status proc_get_state(void *hprocessor, OUT struct dsp_processorstate
  *
  *  Returns:
  *      DSP_SOK     :   Success.
- *      DSP_EHANDLE :   Invalid processor handle.
+ *      -EFAULT :   Invalid processor handle.
  *      -EPERM   :   General failure while querying processor state.
  *  Requires:
  *      proc_state_obj is not NULL
@@ -294,7 +294,7 @@ extern dsp_status proc_get_processor_id(void *hprocessor, u32 * procID);
  *      max_size    :   Maximum size of the output buffer.
  *  Returns:
  *      DSP_SOK     :   Success.
- *      DSP_EHANDLE :   Invalid processor handle.
+ *      -EFAULT :   Invalid processor handle.
  *      -EPERM   :   General failure while retireving processor trace
  *		      Buffer.
  *  Requires:
@@ -319,7 +319,7 @@ extern dsp_status proc_get_trace(void *hprocessor, u8 * pbuf, u32 max_size);
  *  Returns:
  *      DSP_SOK:       Success.
  *      DSP_EFILE:       The DSP Execuetable was not found.
- *      DSP_EHANDLE:       Invalid processor handle.
+ *      -EFAULT:       Invalid processor handle.
  *      DSP_ECORRUTFILE:    Unable to Parse the DSP Execuetable
  *      DSP_EATTACHED:      Abort because a GPP Client is attached to the
  *			  specified Processor
@@ -352,7 +352,7 @@ extern dsp_status proc_load(void *hprocessor,
  *      hnotification:  Handle to be used for notification.
  *  Returns:
  *      DSP_SOK     :   Success.
- *      DSP_EHANDLE :   Invalid processor handle or hnotification.
+ *      -EFAULT :   Invalid processor handle or hnotification.
  *      -EINVAL  :   Parameter event_mask is Invalid
  *      DSP_ENOTIMP :   The notification type specified in uNotifyMask
  *		      is not supported.
@@ -377,7 +377,7 @@ extern dsp_status proc_register_notify(void *hprocessor,
  *      uEvents     :   Event to be notified about.
  *  Returns:
  *      DSP_SOK     :   Success.
- *      DSP_EHANDLE :   Invalid processor handle.
+ *      -EFAULT :   Invalid processor handle.
  *      -EPERM   :   Failure to Set or Reset the Event
  *  Requires:
  *      uEvents is Supported or Valid type of Event
@@ -396,7 +396,7 @@ extern dsp_status proc_notify_clients(void *hProc, u32 uEvents);
  *      uEvents     :   Event to be notified about.
  *  Returns:
  *      DSP_SOK     :   Success.
- *      DSP_EHANDLE :   Invalid processor handle.
+ *      -EFAULT :   Invalid processor handle.
  *      -EPERM   :   Failure to Set or Reset the Event
  *  Requires:
  *      uEvents is Supported or Valid type of Event
@@ -420,7 +420,7 @@ extern dsp_status proc_notify_all_clients(void *hProc, u32 uEvents);
  *      hprocessor  :       The processor handle.
  *  Returns:
  *      DSP_SOK     :       Success.
- *      DSP_EHANDLE :       Invalid processor handle.
+ *      -EFAULT :       Invalid processor handle.
  *      DSP_EWRONGSTATE:    Processor is not in PROC_LOADED state.
  *      -EPERM   :       Unable to start the processor.
  *  Requires:
@@ -442,7 +442,7 @@ extern dsp_status proc_start(void *hprocessor);
  *      hprocessor  :       The processor handle.
  *  Returns:
  *      DSP_SOK     :       Success.
- *      DSP_EHANDLE :       Invalid processor handle.
+ *      -EFAULT :       Invalid processor handle.
  *      DSP_EWRONGSTATE:    Processor is not in PROC_LOADED state.
  *      -EPERM   :       Unable to start the processor.
  *  Requires:
@@ -464,7 +464,7 @@ extern dsp_status proc_stop(void *hprocessor);
  *      ul_flags	 :   Reserved.
  *  Returns:
  *      DSP_SOK	 :   Success.
- *      DSP_EHANDLE     :   Invalid processor handle.
+ *      -EFAULT     :   Invalid processor handle.
  *      -EPERM       :   General failure.
  *  Requires:
  *      PROC Initialized.
@@ -485,7 +485,7 @@ extern dsp_status proc_flush_memory(void *hprocessor,
  *      ul_size	  :   Buffer size
  *  Returns:
  *      DSP_SOK	 :   Success.
- *      DSP_EHANDLE     :   Invalid processor handle.
+ *      -EFAULT     :   Invalid processor handle.
  *      -EPERM       :   General failure.
  *  Requires:
  *      PROC Initialized.
@@ -510,7 +510,7 @@ extern dsp_status proc_invalidate_memory(void *hprocessor,
  *      ul_map_attr       :   Optional endianness attributes, virt to phys flag.
  *  Returns:
  *      DSP_SOK	 :   Success.
- *      DSP_EHANDLE     :   Invalid processor handle.
+ *      -EFAULT     :   Invalid processor handle.
  *      -EPERM       :   General failure.
  *      -ENOMEM     :   MPU side memory allocation error.
  *      DSP_ENOTFOUND   :   Cannot find a reserved region starting with this
@@ -540,7 +540,7 @@ extern dsp_status proc_map(void *hprocessor,
  *      pp_rsv_addr       :   Ptr to DSP side reserved u8 address.
  *  Returns:
  *      DSP_SOK	 :   Success.
- *      DSP_EHANDLE     :   Invalid processor handle.
+ *      -EFAULT     :   Invalid processor handle.
  *      -EPERM       :   General failure.
  *      -ENOMEM     :   Cannot reserve chunk of this size.
  *  Requires:
@@ -562,7 +562,7 @@ extern dsp_status proc_reserve_memory(void *hprocessor,
  *      map_addr	:   Starting address of the mapped memory region.
  *  Returns:
  *      DSP_SOK	 :   Success.
- *      DSP_EHANDLE     :   Invalid processor handle.
+ *      -EFAULT     :   Invalid processor handle.
  *      -EPERM       :   General failure.
  *      DSP_ENOTFOUND   :   Cannot find a mapped region starting with this
  *		      :   address.
@@ -584,7 +584,7 @@ extern dsp_status proc_un_map(void *hprocessor, void *map_addr,
  *      prsv_addr	:   Ptr to DSP side reservedBYTE address.
  *  Returns:
  *      DSP_SOK	 :   Success.
- *      DSP_EHANDLE     :   Invalid processor handle.
+ *      -EFAULT     :   Invalid processor handle.
  *      -EPERM       :   General failure.
  *      DSP_ENOTFOUND   :   Cannot find a reserved region starting with this
  *		      :   address.

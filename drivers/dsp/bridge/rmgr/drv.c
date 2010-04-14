@@ -219,7 +219,7 @@ dsp_status drv_proc_insert_strm_res_element(bhandle hStreamHandle,
 
 	*pstrm_res = kzalloc(sizeof(struct strm_res_object), GFP_KERNEL);
 	if (*pstrm_res == NULL) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 

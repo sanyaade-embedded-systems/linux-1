@@ -37,7 +37,7 @@
  *      DSP_EDCDNOAUTOREGISTER: Unable to find auto-registration section.
  *      DSP_EDCDREADSECT:       Unable to read object code section.
  *      DSP_EDCDLOADBASE:       Unable to load code base.
- *      DSP_EHANDLE:            Invalid DCD_HMANAGER handle..
+ *      -EFAULT:            Invalid DCD_HMANAGER handle..
  *  Requires:
  *      DCD initialized.
  *  Ensures:
@@ -63,7 +63,7 @@ extern dsp_status dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
  *      DSP_EDCDNOAUTOREGISTER: Unable to find auto-registration section.
  *      DSP_EDCDREADSECT:       Unable to read object code section.
  *      DSP_EDCDLOADBASE:       Unable to load code base.
- *      DSP_EHANDLE:            Invalid DCD_HMANAGER handle..
+ *      -EFAULT:            Invalid DCD_HMANAGER handle..
  *  Requires:
  *      DCD initialized.
  *  Ensures:
@@ -104,7 +104,7 @@ extern dsp_status dcd_create_manager(IN char *pszZlDllName,
  *      hdcd_mgr:        A DCD manager handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid DCD manager handle.
+ *      -EFAULT:    Invalid DCD manager handle.
  *  Requires:
  *      DCD initialized.
  *  Ensures:
@@ -260,7 +260,7 @@ extern dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
  *      DSP_EDCDGETSECT:    Unable to access object code section.
  *      DSP_EDCDLOADBASE:   Unable to load code base.
  *      -EPERM:          General failure.
- *      DSP_EHANDLE:        Invalid DCD_HMANAGER handle.
+ *      -EFAULT:        Invalid DCD_HMANAGER handle.
  *  Requires:
  *      DCD initialized.
  *      pObjUuid is non-NULL.
@@ -292,7 +292,7 @@ extern dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
  *      DSP_EDCDNOAUTOREGISTER: Unable to find .dcd_register section.
  *      DSP_EDCDREADSECT:       Unable to read object code section.
  *      DSP_EDCDLOADBASE:       Unable to load code base.
- *      DSP_EHANDLE:            Invalid DCD_HMANAGER handle..
+ *      -EFAULT:            Invalid DCD_HMANAGER handle..
  *  Requires:
  *      DCD initialized.
  *  Ensures:

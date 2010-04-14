@@ -62,7 +62,7 @@ extern dsp_status io_create(OUT struct io_mgr **phIOMgr,
  *      hio_mgr:         IOmanager object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    hio_mgr was invalid.
+ *      -EFAULT:    hio_mgr was invalid.
  *  Requires:
  *      io_init(void) called.
  *  Ensures:
@@ -105,7 +105,7 @@ extern bool io_init(void);
  *      hio_mgr:         IOmanager object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    hio_mgr was invalid.
+ *      -EFAULT:    hio_mgr was invalid.
  *  Requires:
  *      io_init(void) called.
  *  Ensures:

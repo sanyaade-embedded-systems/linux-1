@@ -693,7 +693,7 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 			dev_context->dw_brd_state = BRD_RUNNING;
 			/* (void)chnlsm_enable_interrupt(dev_context); */
 		} else {
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 			dev_context->dw_brd_state = BRD_UNKNOWN;
 		}
 	}
@@ -1113,7 +1113,7 @@ static dsp_status bridge_dev_destroy(struct wmd_dev_context *hDevContext)
 
 	/* It should never happen */
 	if (!hDevContext)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	/* first put the device to stop state */
 	wmd_brd_delete(dev_context);

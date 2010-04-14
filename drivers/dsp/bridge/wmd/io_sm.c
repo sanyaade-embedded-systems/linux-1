@@ -185,12 +185,12 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 
 	/* Check requirements */
 	if (!phIOMgr || !pMgrAttrs || pMgrAttrs->word_size == 0) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	dev_get_chnl_mgr(hdev_obj, &hchnl_mgr);
 	if (!hchnl_mgr || hchnl_mgr->hio_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	/*
@@ -200,7 +200,7 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	 */
 	dev_get_wmd_context(hdev_obj, &hwmd_context);
 	if (!hwmd_context) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	dev_get_dev_type(hdev_obj, &dev_type);
@@ -303,7 +303,7 @@ dsp_status bridge_io_destroy(struct io_mgr *hio_mgr)
 		/* Free this IO manager object */
 		kfree(hio_mgr);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -359,18 +359,18 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 
 	status = dev_get_wmd_context(hio_mgr->hdev_obj, &pwmd_context);
 	if (!pwmd_context) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
 	host_res = pwmd_context->resources;
 	if (!host_res) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	dev_get_cod_mgr(hio_mgr->hdev_obj, &cod_man);
 	if (!cod_man) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	hchnl_mgr = hio_mgr->hchnl_mgr;
@@ -378,7 +378,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	dev_get_msg_mgr(hio_mgr->hdev_obj, &hio_mgr->hmsg_mgr);
 	hmsg_mgr = hio_mgr->hmsg_mgr;
 	if (!hchnl_mgr || !hmsg_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	if (hio_mgr->shared_mem)
@@ -1943,7 +1943,7 @@ dsp_status print_dsp_trace_buffer(struct wmd_dev_context *hwmd_context)
 		status =
 		    cod_get_sym_value(cod_mgr, COD_TRACEBEG, &ul_trace_begin);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	if (DSP_SUCCEEDED(status))
 		status =
@@ -2114,7 +2114,7 @@ dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
 	status = dev_get_cod_mgr(dev_object, &code_mgr);
 	if (!code_mgr) {
 		pr_debug("%s: Failed on dev_get_cod_mgr.\n", __func__);
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	if (DSP_SUCCEEDED(status)) {
@@ -2122,7 +2122,7 @@ dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
 		if (!node_mgr) {
 			pr_debug("%s: Failed on dev_get_node_manager.\n",
 								__func__);
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 		}
 	}
 
@@ -2301,7 +2301,7 @@ void dump_dl_modules(struct wmd_dev_context *wmd_context)
 	status = dev_get_cod_mgr(dev_object, &code_mgr);
 	if (!code_mgr) {
 		pr_debug("%s: Failed on dev_get_cod_mgr.\n", __func__);
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 

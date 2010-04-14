@@ -780,7 +780,7 @@ dsp_status nldr_get_rmm_manager(struct nldr_object *hNldrObject,
 		*phRmmMgr = nldr_obj->rmm;
 	} else {
 		*phRmmMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phRmmMgr != NULL) &&

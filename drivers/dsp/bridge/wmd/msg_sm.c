@@ -130,7 +130,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 	dsp_status status = DSP_SOK;
 
 	if (!hmsg_mgr || phMsgQueue == NULL || !hmsg_mgr->msg_free_list) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -303,7 +303,7 @@ dsp_status bridge_msg_get(struct msg_queue *msg_queue_obj,
 
 	hmsg_mgr = msg_queue_obj->hmsg_mgr;
 	if (!msg_queue_obj->msg_used_list) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -406,7 +406,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 	}
 	hmsg_mgr = msg_queue_obj->hmsg_mgr;
 	if (!hmsg_mgr->msg_free_list) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 

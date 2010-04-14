@@ -147,7 +147,7 @@ func_cont:
 		if (DSP_SUCCEEDED(status)) {
 			dev_get_io_mgr(dev_context->hdev_obj, &hio_mgr);
 			if (!hio_mgr)
-				return DSP_EHANDLE;
+				return -EFAULT;
 			io_sh_msetting(hio_mgr, SHM_GETOPP, &opplevel);
 
 			/*
@@ -463,7 +463,7 @@ dsp_status post_scale_dsp(struct wmd_dev_context *dev_context, IN void *pargs)
 
 	status = dev_get_io_mgr(dev_context->hdev_obj, &hio_mgr);
 	if (!hio_mgr)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	voltage_domain = *((u32 *) pargs);
 	level = *((u32 *) pargs + 1);

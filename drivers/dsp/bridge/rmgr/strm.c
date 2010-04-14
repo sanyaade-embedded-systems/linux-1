@@ -116,7 +116,7 @@ dsp_status strm_allocate_buffer(struct strm_res_object *strmres, u32 usize,
 			status = -EINVAL;
 
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	if (DSP_FAILED(status))
@@ -159,7 +159,7 @@ dsp_status strm_close(struct strm_res_object *strmres,
 	DBC_REQUIRE(refs > 0);
 
 	if (!hstrm) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else {
 		/* Have all buffers been reclaimed? If not, return
 		 * DSP_EPENDING */
@@ -182,7 +182,7 @@ dsp_status strm_close(struct strm_res_object *strmres,
 	idr_remove(pr_ctxt->strm_idp, strmres->id);
 	spin_unlock(&pr_ctxt->strm_idp->lock);
 func_end:
-	DBC_ENSURE(status == DSP_SOK || status == DSP_EHANDLE ||
+	DBC_ENSURE(status == DSP_SOK || status == -EFAULT ||
 		   status == DSP_EPENDING || status == -EPERM);
 
 	dev_dbg(bridge, "%s: hstrm: %p, status 0x%x\n", __func__,
@@ -279,7 +279,7 @@ dsp_status strm_free_buffer(struct strm_res_object *strmres, u8 ** ap_buffer,
 	DBC_REQUIRE(ap_buffer != NULL);
 
 	if (!hstrm)
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	if (DSP_SUCCEEDED(status)) {
 		for (i = 0; i < num_bufs; i++) {
@@ -315,7 +315,7 @@ dsp_status strm_get_info(struct strm_object *hStrm,
 	DBC_REQUIRE(stream_info_size >= sizeof(struct stream_info));
 
 	if (!hStrm) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else {
 		if (stream_info_size < sizeof(struct stream_info)) {
 			/* size of users info */
@@ -376,7 +376,7 @@ dsp_status strm_idle(struct strm_object *hStrm, bool fFlush)
 	DBC_REQUIRE(refs > 0);
 
 	if (!hStrm) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else {
 		intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
 
@@ -424,7 +424,7 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
 	DBC_REQUIRE(pbuf != NULL);
 
 	if (!hStrm) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else {
 		intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
 
@@ -573,7 +573,7 @@ func_cont:
 				/*
 				 * We got a status that's not return-able.
 				 * Assert that we got something we were
-				 * expecting (DSP_EHANDLE isn't acceptable,
+				 * expecting (-EFAULT isn't acceptable,
 				 * strm_mgr_obj->hchnl_mgr better be valid or we
 				 * assert here), and then return -EPERM.
 				 */
@@ -598,7 +598,7 @@ func_cont:
 
 	/* ensure we return a documented error code */
 	DBC_ENSURE((DSP_SUCCEEDED(status) && strm_obj) ||
-		   (*strmres == NULL && (status == DSP_EHANDLE ||
+		   (*strmres == NULL && (status == -EFAULT ||
 					status == -EPERM
 					|| status == -EINVAL
 					|| status == -EPERM)));
@@ -628,7 +628,7 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 	DBC_REQUIRE(pdw_arg != NULL);
 
 	if (!hStrm) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
@@ -681,7 +681,7 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 	}
 func_end:
 	/* ensure we return a documented return code */
-	DBC_ENSURE(DSP_SUCCEEDED(status) || status == DSP_EHANDLE ||
+	DBC_ENSURE(DSP_SUCCEEDED(status) || status == -EFAULT ||
 		   status == -ETIME || status == DSP_ETRANSLATE ||
 		   status == -EPERM);
 
@@ -707,7 +707,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 	DBC_REQUIRE(hnotification != NULL);
 
 	if (!hStrm) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else if ((event_mask & ~((DSP_STREAMIOCOMPLETION) |
 				   DSP_STREAMDONE)) != 0) {
 		status = -EINVAL;
@@ -726,7 +726,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 							    hnotification);
 	}
 	/* ensure we return a documented return code */
-	DBC_ENSURE(DSP_SUCCEEDED(status) || status == DSP_EHANDLE ||
+	DBC_ENSURE(DSP_SUCCEEDED(status) || status == -EFAULT ||
 		   status == -ETIME || status == DSP_ETRANSLATE ||
 		   status == -ENOSYS || status == -EPERM);
 	return status;
@@ -755,7 +755,7 @@ dsp_status strm_select(IN struct strm_object **strm_tab, u32 nStrms,
 	*pmask = 0;
 	for (i = 0; i < nStrms; i++) {
 		if (!strm_tab[i]) {
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 			break;
 		}
 	}
@@ -844,7 +844,7 @@ static dsp_status delete_strm(struct strm_object *hStrm)
 		}
 		kfree(hStrm);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }

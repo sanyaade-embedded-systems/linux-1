@@ -111,7 +111,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 	if (pHostBuf == NULL) {
 		status = -EFAULT;
 	} else if (!pchnl) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else if (is_eos && CHNL_IS_INPUT(pchnl->chnl_mode)) {
 		status = CHNL_E_NOEOS;
 	} else {
@@ -133,7 +133,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 	dev_obj = dev_get_first();
 	dev_get_wmd_context(dev_obj, &dev_ctxt);
 	if (!dev_ctxt)
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -262,7 +262,7 @@ dsp_status bridge_chnl_cancel_io(struct chnl_object *chnl_obj)
 		chnl_mode = pchnl->chnl_mode;
 		chnl_mgr_obj = pchnl->chnl_mgr_obj;
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -319,7 +319,7 @@ dsp_status bridge_chnl_close(struct chnl_object *chnl_obj)
 
 	/* Check args: */
 	if (!pchnl) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_cont;
 	}
 	{
@@ -467,7 +467,7 @@ dsp_status bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr)
 		/* Free this Chnl Mgr object: */
 		kfree(hchnl_mgr);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -494,7 +494,7 @@ dsp_status bridge_chnl_flush_io(struct chnl_object *chnl_obj, u32 dwTimeOut)
 			chnl_mgr_obj = pchnl->chnl_mgr_obj;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/* Note: Currently, if another thread continues to add IO
@@ -549,7 +549,7 @@ dsp_status bridge_chnl_get_info(struct chnl_object *chnl_obj,
 			pInfo->cio_reqs = pchnl->cio_reqs;
 			pInfo->dw_state = pchnl->dw_state;
 		} else {
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 		}
 	} else {
 		status = -EFAULT;
@@ -581,7 +581,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 	if (pIOC == NULL) {
 		status = -EFAULT;
 	} else if (!pchnl) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else if (dwTimeOut == CHNL_IOCNOWAIT) {
 		if (LST_IS_EMPTY(pchnl->pio_completions))
 			status = CHNL_E_NOIOC;
@@ -591,7 +591,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 	dev_obj = dev_get_first();
 	dev_get_wmd_context(dev_obj, &dev_ctxt);
 	if (!dev_ctxt)
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -728,7 +728,7 @@ dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
 				pMgrInfo->max_channels =
 				    chnl_mgr_obj->max_channels;
 			} else {
-				status = DSP_EHANDLE;
+				status = -EFAULT;
 			}
 		} else {
 			status = CHNL_E_BADCHANID;
@@ -793,7 +793,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 		status = -EINVAL;
 	} else {
 		if (!hchnl_mgr) {
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 		} else {
 			if (uChnlId != CHNL_PICKFREE) {
 				if (uChnlId >= chnl_mgr_obj->max_channels)

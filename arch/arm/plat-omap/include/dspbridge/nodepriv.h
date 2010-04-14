@@ -91,7 +91,7 @@ struct node_createargs {
  *      pulId:          Location to store channel index.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hnode.
+ *      -EFAULT:    Invalid hnode.
  *      -EPERM:  Not a task or DAIS socket node.
  *      -EINVAL:     The node's stream corresponding to index and dir
  *                      is not a stream to or from the host.
@@ -113,7 +113,7 @@ extern dsp_status node_get_channel_id(struct node_object *hnode,
  *      phStrmMgr:      Location to store STRM manager on output.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hnode.
+ *      -EFAULT:    Invalid hnode.
  *  Requires:
  *      phStrmMgr != NULL.
  *  Ensures:

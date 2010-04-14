@@ -351,7 +351,7 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 
 	status = dev_get_wmd_context(hdev_obj, &pwmd_context);
 	if (!pwmd_context) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -704,7 +704,7 @@ DBAPI node_alloc_msg_buf(struct node_object *hnode, u32 usize,
 	DBC_REQUIRE(usize > 0);
 
 	if (!pnode)
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	else if (node_get_type(pnode) == NODE_DEVICE)
 		status = -EPERM;
 
@@ -787,7 +787,7 @@ dsp_status node_change_priority(struct node_object *hnode, s32 prio)
 	DBC_REQUIRE(refs > 0);
 
 	if (!hnode || !hnode->hnode_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else {
 		hnode_mgr = hnode->hnode_mgr;
 		node_type = node_get_type(hnode);
@@ -859,7 +859,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 
 	if ((hNode1 != (struct node_object *)DSP_HGPPNODE && !hNode1) ||
 		(hNode2 != (struct node_object *)DSP_HGPPNODE && !hNode2))
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	if (DSP_SUCCEEDED(status)) {
 		/* The two nodes must be on the same processor */
@@ -1165,7 +1165,7 @@ dsp_status node_create(struct node_object *hnode)
 
 	DBC_REQUIRE(refs > 0);
 	if (!pnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	hprocessor = hnode->hprocessor;
@@ -1460,7 +1460,7 @@ dsp_status node_delete(struct node_res_object *hnoderes,
 	DBC_REQUIRE(refs > 0);
 
 	if (!pnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	/* create struct dsp_cbdata struct for PWR call */
@@ -1611,7 +1611,7 @@ dsp_status node_delete_mgr(struct node_mgr *hnode_mgr)
 	if (hnode_mgr)
 		delete_node_mgr(hnode_mgr);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	return status;
 }
@@ -1634,7 +1634,7 @@ dsp_status node_enum_nodes(struct node_mgr *hnode_mgr, void **node_tab,
 	DBC_REQUIRE(pu_allocated != NULL);
 
 	if (!hnode_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	/* Enter critical section */
@@ -1694,7 +1694,7 @@ dsp_status node_free_msg_buf(struct node_object *hnode, IN u8 * pbuffer,
 	DBC_REQUIRE(pnode->xlator != NULL);
 
 	if (!hnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	status = proc_get_processor_id(pnode->hprocessor, &proc_id);
@@ -1734,7 +1734,7 @@ dsp_status node_get_attr(struct node_object *hnode,
 	DBC_REQUIRE(attr_size >= sizeof(struct dsp_nodeattr));
 
 	if (!hnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else {
 		hnode_mgr = hnode->hnode_mgr;
 		/* Enter hnode_mgr critical section (since we're accessing
@@ -1778,7 +1778,7 @@ dsp_status node_get_channel_id(struct node_object *hnode, u32 dir, u32 index,
 	DBC_REQUIRE(pulId != NULL);
 
 	if (!hnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		return status;
 	}
 	node_type = node_get_type(hnode);
@@ -1825,7 +1825,7 @@ dsp_status node_get_message(struct node_object *hnode,
 	DBC_REQUIRE(pmsg != NULL);
 
 	if (!hnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	hprocessor = hnode->hprocessor;
@@ -1894,7 +1894,7 @@ dsp_status node_get_nldr_obj(struct node_mgr *hnode_mgr,
 	DBC_REQUIRE(phNldrObj != NULL);
 
 	if (!hnode_mgr)
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	else
 		*phNldrObj = node_mgr_obj->nldr_obj;
 
@@ -1916,7 +1916,7 @@ dsp_status node_get_strm_mgr(struct node_object *hnode,
 	DBC_REQUIRE(refs > 0);
 
 	if (!hnode)
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	else
 		*phStrmMgr = hnode->hnode_mgr->strm_mgr_obj;
 
@@ -2034,7 +2034,7 @@ dsp_status node_pause(struct node_object *hnode)
 	DBC_REQUIRE(refs > 0);
 
 	if (!hnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else {
 		node_type = node_get_type(hnode);
 		if (node_type != NODE_TASK && node_type != NODE_DAISSOCKET)
@@ -2119,7 +2119,7 @@ dsp_status node_put_message(struct node_object *hnode,
 	DBC_REQUIRE(pmsg != NULL);
 
 	if (!hnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	hprocessor = hnode->hprocessor;
@@ -2211,7 +2211,7 @@ dsp_status node_register_notify(struct node_object *hnode, u32 event_mask,
 	DBC_REQUIRE(hnotification != NULL);
 
 	if (!hnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	} else {
 		/* Check if event mask is a valid node related event */
 		if (event_mask & ~(DSP_NODESTATECHANGE | DSP_NODEMESSAGEREADY))
@@ -2271,7 +2271,7 @@ dsp_status node_run(struct node_object *hnode)
 	DBC_REQUIRE(refs > 0);
 
 	if (!hnode) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	hprocessor = hnode->hprocessor;
@@ -2292,7 +2292,7 @@ dsp_status node_run(struct node_object *hnode)
 
 	hnode_mgr = hnode->hnode_mgr;
 	if (!hnode_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	intf_fxns = hnode_mgr->intf_fxns;
@@ -2391,11 +2391,11 @@ dsp_status node_terminate(struct node_object *hnode, OUT dsp_status *pstatus)
 	DBC_REQUIRE(pstatus != NULL);
 
 	if (!hnode || !hnode->hnode_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	if (pnode->hprocessor == NULL) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	status = proc_get_processor_id(pnode->hprocessor, &proc_id);
@@ -2988,7 +2988,7 @@ static dsp_status get_proc_props(struct node_mgr *hnode_mgr,
 
 	status = dev_get_wmd_context(hdev_obj, &pwmd_context);
 	if (!pwmd_context)
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	if (DSP_SUCCEEDED(status)) {
 		host_res = pwmd_context->resources;
@@ -3035,7 +3035,7 @@ dsp_status node_get_uuid_props(void *hprocessor,
 	DBC_REQUIRE(pNodeId != NULL);
 
 	if (hprocessor == NULL || pNodeId == NULL) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	status = proc_get_state(hprocessor, &proc_state,
@@ -3054,7 +3054,7 @@ dsp_status node_get_uuid_props(void *hprocessor,
  		status = dev_get_node_manager(hdev_obj, &hnode_mgr);
 
 	if (hnode_mgr == NULL) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 

@@ -159,7 +159,7 @@ dsp_status dmm_destroy(struct dmm_object *dmm_mgr)
 		if (DSP_SUCCEEDED(status))
 			kfree(dmm_obj);
 	} else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	return status;
 }
@@ -178,7 +178,7 @@ dsp_status dmm_delete_tables(struct dmm_object *dmm_mgr)
 	if (dmm_mgr)
 		vfree(virtual_mapping_table);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	return status;
 }
 

@@ -375,7 +375,7 @@ dsp_status proc_ctrl(void *hprocessor, u32 dw_cmd, IN struct dsp_cbdata * arg)
 			status = -EPERM;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -414,7 +414,7 @@ dsp_status proc_detach(struct process_context *pr_ctxt)
 		kfree(p_proc_object);
 		pr_ctxt->hprocessor = NULL;
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -450,7 +450,7 @@ dsp_status proc_enum_nodes(void *hprocessor, void **node_tab,
 			}
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -538,7 +538,7 @@ static dsp_status proc_memory_sync(void *hprocessor, void *pmpu_addr,
 	DBC_REQUIRE(refs > 0);
 
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto err_out;
 	}
 
@@ -549,7 +549,7 @@ static dsp_status proc_memory_sync(void *hprocessor, void *pmpu_addr,
 		if (memory_sync_vma((u32) pmpu_addr, ul_size, ul_flags)) {
 			pr_err("%s: InValid address parameters %p %x\n",
 			       __func__, pmpu_addr, ul_size);
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 		}
 		up_read(&current->mm->mmap_sem);
 	}
@@ -601,7 +601,7 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 	DBC_REQUIRE(resource_info_size >= sizeof(struct dsp_resourceinfo));
 
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	switch (resource_type) {
@@ -625,7 +625,7 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 						mem_stat)))
 					status = -EINVAL;
 			} else {
-				status = DSP_EHANDLE;
+				status = -EFAULT;
 			}
 		}
 		break;
@@ -682,7 +682,7 @@ dsp_status proc_get_dev_object(void *hprocessor,
 		status = DSP_SOK;
 	} else {
 		*phDevObject = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE((DSP_SUCCEEDED(status) && *phDevObject != NULL) ||
@@ -742,7 +742,7 @@ dsp_status proc_get_state(void *hprocessor,
 			status = (*p_proc_object->intf_fxns->pfn_deh_get_info)
 			    (hdeh_mgr, &(proc_state_obj->err_info));
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	dev_dbg(bridge, "%s, results: status: 0x%x proc_state_obj: 0x%x\n",
 		__func__, status, proc_state_obj->proc_state);
@@ -834,7 +834,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 #endif
 	/* Call the WMD_BRD_Load fxn */
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	dev_get_cod_mgr(p_proc_object->hdev_obj, &cod_mgr);
@@ -1014,7 +1014,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 								   dw_ext_end,
 								   DMMPOOLSIZE);
 				} else {
-					status = DSP_EHANDLE;
+					status = -EFAULT;
 				}
 			}
 		}
@@ -1091,7 +1091,7 @@ dsp_status proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
 				   PG_SIZE4K);
 
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	/* Critical section */
@@ -1100,7 +1100,7 @@ dsp_status proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
 	if (dmm_mgr)
 		status = dmm_map_memory(dmm_mgr, va_align, size_align);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	/* Add mapping to the page tables. */
 	if (DSP_SUCCEEDED(status)) {
@@ -1162,7 +1162,7 @@ dsp_status proc_register_notify(void *hprocessor, u32 event_mask,
 
 	/* Check processor handle */
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	/* Check if event mask is a valid processor related event */
@@ -1236,13 +1236,13 @@ dsp_status proc_reserve_memory(void *hprocessor, u32 ul_size,
 	struct dmm_rsv_object *rsv_obj;
 
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
 	dmm_get_handle(p_proc_object, &dmm_mgr);
 	if (!dmm_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1285,7 +1285,7 @@ dsp_status proc_start(void *hprocessor)
 
 	DBC_REQUIRE(refs > 0);
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	/* Call the bridge_brd_start */
@@ -1295,7 +1295,7 @@ dsp_status proc_start(void *hprocessor)
 	}
 	dev_get_cod_mgr(p_proc_object->hdev_obj, &cod_mgr);
 	if (!cod_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_cont;
 	}
 
@@ -1363,7 +1363,7 @@ dsp_status proc_stop(void *hprocessor)
 
 	DBC_REQUIRE(refs > 0);
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	if (DSP_SUCCEEDED((*p_proc_object->intf_fxns->pfn_brd_status)
@@ -1430,13 +1430,13 @@ dsp_status proc_un_map(void *hprocessor, void *map_addr,
 
 	va_align = PG_ALIGN_LOW((u32) map_addr, PG_SIZE4K);
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
 	dmm_get_handle(hprocessor, &dmm_mgr);
 	if (!dmm_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1491,13 +1491,13 @@ dsp_status proc_un_reserve_memory(void *hprocessor, void *prsv_addr,
 	struct dmm_rsv_object *rsv_obj;
 
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
 	dmm_get_handle(p_proc_object, &dmm_mgr);
 	if (!dmm_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1637,7 +1637,7 @@ dsp_status proc_notify_clients(void *hProc, u32 uEvents)
 	DBC_REQUIRE(IS_VALID_PROC_EVENT(uEvents));
 	DBC_REQUIRE(refs > 0);
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1661,7 +1661,7 @@ dsp_status proc_notify_all_clients(void *hProc, u32 uEvents)
 	DBC_REQUIRE(refs > 0);
 
 	if (!p_proc_object) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1684,7 +1684,7 @@ dsp_status proc_get_processor_id(void *hProc, u32 * procID)
 	if (p_proc_object)
 		*procID = p_proc_object->processor_id;
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	return status;
 }

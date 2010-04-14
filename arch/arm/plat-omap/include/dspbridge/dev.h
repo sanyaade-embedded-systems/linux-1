@@ -193,7 +193,7 @@ extern dsp_status dev_destroy2(IN struct dev_object *hdev_obj);
  *                      dev_create_device().
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *      -EPERM:      The WMD failed it's bridge_dev_destroy() function.
  *  Requires:
  *      DEV Initialized.
@@ -212,7 +212,7 @@ extern dsp_status dev_destroy_device(struct dev_object
  *      *phMgr:         Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phMgr != NULL.
  *      DEV Initialized.
@@ -235,7 +235,7 @@ extern dsp_status dev_get_chnl_mgr(struct dev_object *hdev_obj,
  *      *phMgr:         Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phMgr != NULL.
  *      DEV Initialized.
@@ -258,7 +258,7 @@ extern dsp_status dev_get_cmm_mgr(struct dev_object *hdev_obj,
  *      *phMgr:         Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phMgr != NULL.
  *      DEV Initialized.
@@ -280,7 +280,7 @@ extern dsp_status dev_get_dmm_mgr(struct dev_object *hdev_obj,
  *      *phCodMgr:      Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phCodMgr != NULL.
  *      DEV Initialized.
@@ -300,7 +300,7 @@ extern dsp_status dev_get_cod_mgr(struct dev_object *hdev_obj,
  *      *phDehMgr:  Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:    Success.
- *      DSP_EHANDLE:   Invalid hdev_obj.
+ *      -EFAULT:   Invalid hdev_obj.
  *  Requires:
  *      phDehMgr != NULL.
  *      DEH Initialized.
@@ -321,7 +321,7 @@ extern dsp_status dev_get_deh_mgr(struct dev_object *hdev_obj,
  *      phDevNode:      Ptr to location to get the device node handle.
  *  Returns:
  *      DSP_SOK:        In Win95, returns a DEVNODE in *dev_node_obj; In NT, ???
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phDevNode != NULL.
  *      DEV Initialized.
@@ -342,7 +342,7 @@ extern dsp_status dev_get_dev_node(struct dev_object *hdev_obj,
  *      phDevNode:      Ptr to location to get the device node handle.
  *  Returns:
  *      DSP_SOK:        Success
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phDevNode != NULL.
  *      DEV Initialized.
@@ -383,7 +383,7 @@ extern struct dev_object *dev_get_first(void);
  *      *ppIntfFxns:    Ptr to location to store fxn interface.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      ppIntfFxns != NULL.
  *      DEV Initialized.
@@ -404,7 +404,7 @@ extern dsp_status dev_get_intf_fxns(struct dev_object *hdev_obj,
  *      *phMgr:         Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phMgr != NULL.
  *      DEV Initialized.
@@ -468,7 +468,7 @@ extern void dev_get_msg_mgr(struct dev_object *hdev_obj,
  *                      returned..
  *  Returns:
  *      DSP_SOK:        Success
- *      DSP_EHANDLE:    Invalid Dev Object handle.
+ *      -EFAULT:    Invalid Dev Object handle.
  *  Requires:
  *      DEV Initialized.
  *      phNodeMgr is not null
@@ -491,7 +491,7 @@ extern dsp_status dev_get_node_manager(struct dev_object
  *      pul_value:       Ptr to symbol value.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *      COD_E_NOSYMBOLSLOADED:  Symbols have not been loaded onto the board.
  *      COD_E_SYMBOLNOTFOUND:   The symbol could not be found.
  *  Requires:
@@ -513,7 +513,7 @@ extern dsp_status dev_get_symbol(struct dev_object *hdev_obj,
  *      *phWmdContext:  Ptr to location to store context handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phWmdContext != NULL.
  *      DEV Initialized.
@@ -563,7 +563,7 @@ extern bool dev_init(void);
  *  Returns:
  *      DSP_SOK:        TRUE: device has been locked.
  *      DSP_SFALSE:     FALSE: device not locked.
- *      DSP_EHANDLE:    hdev_obj was invalid.
+ *      -EFAULT:    hdev_obj was invalid.
  *  Requires:
  *      DEV Initialized.
  *  Ensures:
@@ -670,7 +670,7 @@ extern dsp_status dev_remove_device(struct cfg_devnode *dev_node_obj);
  *      hmgr:           Handle to a channel manager, or NULL.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      DEV Initialized.
  *  Ensures:

@@ -93,7 +93,7 @@ dsp_status dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
 					 (dcd_registerfxn) dcd_register_object,
 					 (void *)pszCoffPath);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	return status;
 }
@@ -115,7 +115,7 @@ dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
 					 (dcd_registerfxn) dcd_register_object,
 					 NULL);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	return status;
 }
@@ -173,7 +173,7 @@ func_end:
 dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr)
 {
 	struct dcd_manager *dcd_mgr_obj = hdcd_mgr;
-	dsp_status status = DSP_EHANDLE;
+	dsp_status status = -EFAULT;
 
 	DBC_REQUIRE(refs >= 0);
 
@@ -402,7 +402,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 	}
 
 	if (!hdcd_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -549,7 +549,7 @@ dsp_status dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
 
 	DBC_REQUIRE(refs > 0);
 	if (!hdcd_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 

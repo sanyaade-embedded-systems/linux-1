@@ -406,7 +406,7 @@ dsp_status dbll_get_sect(struct dbll_library_obj *lib, char *name, u32 *paddr,
 							      SEEK_SET);
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		byte_size = 1;
@@ -758,7 +758,7 @@ dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
 							      SEEK_SET);
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	if (DSP_FAILED(status))
 		goto func_cont;

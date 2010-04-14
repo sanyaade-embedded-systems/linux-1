@@ -404,7 +404,7 @@ dsp_status dev_destroy_device(struct dev_object *hdev_obj)
 			dev_obj = NULL;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -429,7 +429,7 @@ dsp_status dev_get_chnl_mgr(struct dev_object *hdev_obj,
 		*phMgr = dev_obj->hchnl_mgr;
 	} else {
 		*phMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phMgr != NULL) &&
@@ -456,7 +456,7 @@ dsp_status dev_get_cmm_mgr(struct dev_object *hdev_obj,
 		*phMgr = dev_obj->hcmm_mgr;
 	} else {
 		*phMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phMgr != NULL) &&
@@ -483,7 +483,7 @@ dsp_status dev_get_dmm_mgr(struct dev_object *hdev_obj,
 		*phMgr = dev_obj->dmm_mgr;
 	} else {
 		*phMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phMgr != NULL) &&
@@ -509,7 +509,7 @@ dsp_status dev_get_cod_mgr(struct dev_object *hdev_obj,
 		*phCodMgr = dev_obj->cod_mgr;
 	} else {
 		*phCodMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phCodMgr != NULL) &&
@@ -532,7 +532,7 @@ dsp_status dev_get_deh_mgr(struct dev_object *hdev_obj,
 		*phDehMgr = hdev_obj->hdeh_mgr;
 	} else {
 		*phDehMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -555,7 +555,7 @@ dsp_status dev_get_dev_node(struct dev_object *hdev_obj,
 		*phDevNode = dev_obj->dev_node_obj;
 	} else {
 		*phDevNode = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phDevNode != NULL) &&
@@ -599,7 +599,7 @@ dsp_status dev_get_intf_fxns(struct dev_object *hdev_obj,
 		*ppIntfFxns = &dev_obj->wmd_interface;
 	} else {
 		*ppIntfFxns = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((ppIntfFxns != NULL) &&
@@ -623,7 +623,7 @@ dsp_status dev_get_io_mgr(struct dev_object *hdev_obj,
 		*phIOMgr = hdev_obj->hio_mgr;
 	} else {
 		*phIOMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -679,7 +679,7 @@ dsp_status dev_get_node_manager(struct dev_object *hdev_obj,
 		*phNodeMgr = dev_obj->hnode_mgr;
 	} else {
 		*phNodeMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phNodeMgr != NULL) &&
@@ -705,9 +705,9 @@ dsp_status dev_get_symbol(struct dev_object *hdev_obj,
 			status = cod_get_sym_value(cod_mgr, (char *)pstrSym,
 							pul_value);
 		else
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -731,7 +731,7 @@ dsp_status dev_get_wmd_context(struct dev_object *hdev_obj,
 		*phWmdContext = dev_obj->hwmd_context;
 	} else {
 		*phWmdContext = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phWmdContext != NULL) &&
@@ -853,7 +853,7 @@ dsp_status dev_set_chnl_mgr(struct dev_object *hdev_obj,
 	if (hdev_obj)
 		dev_obj->hchnl_mgr = hmgr;
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	DBC_ENSURE(DSP_FAILED(status) || (dev_obj->hchnl_mgr == hmgr));
 	return status;
@@ -939,7 +939,7 @@ static dsp_status fxn_not_implemented(int arg, ...)
  *                              dev_create_device()
  *  Returns:
  *      DSP_SOK:                Success.
- *      DSP_EHANDLE:            Invalid hdev_obj.
+ *      -EFAULT:            Invalid hdev_obj.
  *  Requires:
  *      Should only be called once by dev_create_device() for a given DevObject.
  *  Ensures:

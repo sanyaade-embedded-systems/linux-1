@@ -337,7 +337,7 @@ typedef dsp_status(*fxn_chnl_create) (OUT struct chnl_mgr
  *      hchnl_mgr:       Channel manager object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    hchnl_mgr was invalid.
+ *      -EFAULT:    hchnl_mgr was invalid.
  *  Requires:
  *  Ensures:
  *      DSP_SOK: Cancels I/O on each open channel. Closes each open channel.
@@ -389,7 +389,7 @@ typedef void (*fxn_deh_notify) (struct deh_mgr *hdeh_mgr,
  *
  *  Returns:
  *      DSP_SOK:                Success.
- *      DSP_EHANDLE:            hchnl_mgr is invalid.
+ *      -EFAULT:            hchnl_mgr is invalid.
  *      -ENOMEM:            Insufficient memory for requested resources.
  *      -EINVAL:        Invalid number of IOReqs.
  *      CHNL_E_OUTOFSTREAMS:    No free channels available.
@@ -425,7 +425,7 @@ typedef dsp_status(*fxn_chnl_open) (OUT struct chnl_object
  *      chnl_obj:          Handle to a channel object.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EHANDLE:    Invalid chnl_obj.
+ *      -EFAULT:    Invalid chnl_obj.
  *  Requires:
  *      No thread must be blocked on this channel's I/O completion event.
  *  Ensures:
@@ -450,7 +450,7 @@ typedef dsp_status(*fxn_chnl_close) (struct chnl_object *chnl_obj);
  *      dw_arg:          A user argument that travels with the buffer.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EHANDLE:    Invalid chnl_obj.
+ *      -EFAULT:    Invalid chnl_obj.
  *      -EFAULT:   pHostBuf is invalid.
  *      CHNL_E_NOEOS:   User cannot mark EOS on an input channel.
  *      -ECANCELED: I/O has been cancelled on this channel.  No further
@@ -491,7 +491,7 @@ typedef dsp_status(*fxn_chnl_addioreq) (struct chnl_object
  *      pIOC->status:   See chnldefs.h.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid chnl_obj.
+ *      -EFAULT:    Invalid chnl_obj.
  *      -EFAULT:   pIOC is invalid.
  *      CHNL_E_NOIOC:   CHNL_IOCNOWAIT was specified as the dwTimeOut parameter
  *                      yet no I/O completions were queued.
@@ -519,7 +519,7 @@ typedef dsp_status(*fxn_chnl_getioc) (struct chnl_object *chnl_obj,
  *      chnl_obj:          Channel object handle.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EHANDLE:    Invalid chnl_obj.
+ *      -EFAULT:    Invalid chnl_obj.
  *  Requires:
  *  Ensures:
  *      Subsequent I/O requests to this channel will not be accepted.
@@ -538,7 +538,7 @@ typedef dsp_status(*fxn_chnl_cancelio) (struct chnl_object *chnl_obj);
  *  Returns:
  *      DSP_SOK:            Success;
  *      S_CHNLIOREQUEST:    Returned if any IORequests are in the output queue.
- *      DSP_EHANDLE:        Invalid chnl_obj.
+ *      -EFAULT:        Invalid chnl_obj.
  *  Requires:
  *  Ensures:
  *      DSP_SOK:            No I/O requests will be pending on this channel.
@@ -555,7 +555,7 @@ typedef dsp_status(*fxn_chnl_flushio) (struct chnl_object *chnl_obj,
  *      pInfo:          Location to store channel info.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EHANDLE:    Invalid chnl_obj.
+ *      -EFAULT:    Invalid chnl_obj.
  *      -EFAULT:   pInfo == NULL.
  *  Requires:
  *  Ensures:
@@ -575,7 +575,7 @@ typedef dsp_status(*fxn_chnl_getinfo) (struct chnl_object *chnl_obj,
  *      pMgrInfo:           Location to store channel manager info.
  *  Returns:
  *      DSP_SOK:            Success;
- *      DSP_EHANDLE:        Invalid hchnl_mgr.
+ *      -EFAULT:        Invalid hchnl_mgr.
  *      -EFAULT:       pMgrInfo == NULL.
  *      CHNL_E_BADCHANID:   Invalid channel ID.
  *  Requires:
@@ -609,7 +609,7 @@ typedef dsp_status(*fxn_chnl_getmgrinfo) (struct chnl_mgr
  *                      occurs first. fFlush is ignored for input channel.
  *  Returns:
  *      DSP_SOK:            Success;
- *      DSP_EHANDLE:        Invalid chnl_obj.
+ *      -EFAULT:        Invalid chnl_obj.
  *      CHNL_E_WAITTIMEOUT: Timeout occured before channel could be idled.
  *  Requires:
  *  Ensures:
@@ -633,7 +633,7 @@ typedef dsp_status(*fxn_chnl_idle) (struct chnl_object *chnl_obj,
  *      -ENOMEM:    Insufficient memory.
  *      -EINVAL:     event_mask is 0 and hnotification was not
  *                      previously registered.
- *      DSP_EHANDLE:    NULL hnotification, hnotification event name
+ *      -EFAULT:    NULL hnotification, hnotification event name
  *                      too long, or hnotification event name NULL.
  *  Requires:
  *      Valid chnl_obj.
