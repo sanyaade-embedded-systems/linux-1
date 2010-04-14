@@ -903,10 +903,10 @@ static dsp_status dof_open(struct dbll_library_obj *zl_lib)
 		if (zl_lib->desc == NULL) {
 			(zl_lib->target_obj->attrs.fclose) (zl_lib->fp);
 			zl_lib->fp = NULL;
-			status = DSP_EFOPEN;
+			status = -EBADF;
 		}
 	} else {
-		status = DSP_EFOPEN;
+		status = -EBADF;
 	}
 
 	return status;
