@@ -353,7 +353,7 @@ extern dsp_status proc_load(void *hprocessor,
  *  Returns:
  *      DSP_SOK     :   Success.
  *      DSP_EHANDLE :   Invalid processor handle or hnotification.
- *      DSP_EVALUE  :   Parameter event_mask is Invalid
+ *      -EINVAL  :   Parameter event_mask is Invalid
  *      DSP_ENOTIMP :   The notification type specified in uNotifyMask
  *		      is not supported.
  *      -EPERM   :   Unable to register for notification.

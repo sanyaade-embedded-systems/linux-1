@@ -93,7 +93,7 @@ struct node_createargs {
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hnode.
  *      DSP_ENODETYPE:  Not a task or DAIS socket node.
- *      DSP_EVALUE:     The node's stream corresponding to index and dir
+ *      -EINVAL:     The node's stream corresponding to index and dir
  *                      is not a stream to or from the host.
  *  Requires:
  *      node_init(void) called.

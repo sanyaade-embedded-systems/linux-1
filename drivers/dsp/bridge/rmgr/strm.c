@@ -600,7 +600,7 @@ func_cont:
 	DBC_ENSURE((DSP_SUCCEEDED(status) && strm_obj) ||
 		   (*strmres == NULL && (status == DSP_EHANDLE ||
 					status == -EPERM
-					|| status == DSP_EVALUE
+					|| status == -EINVAL
 					|| status == -EPERM)));
 
 	dev_dbg(bridge, "%s: hnode: %p dir: 0x%x index: 0x%x pattr: %p "
@@ -710,7 +710,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 		status = DSP_EHANDLE;
 	} else if ((event_mask & ~((DSP_STREAMIOCOMPLETION) |
 				   DSP_STREAMDONE)) != 0) {
-		status = DSP_EVALUE;
+		status = -EINVAL;
 	} else {
 		if (notify_type != DSP_SIGNALEVENT)
 			status = DSP_ENOTIMPL;

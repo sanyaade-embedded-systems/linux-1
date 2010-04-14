@@ -260,7 +260,7 @@ extern dsp_status strm_issue(struct strm_object *hStrm, IN u8 * pbuf,
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hnode.
  *      -EPERM: Invalid dir.
- *      DSP_EVALUE:     Invalid index.
+ *      -EINVAL:     Invalid index.
  *      DSP_ENODETYPE:  hnode is not a task or DAIS socket node.
  *      -EPERM:      Unable to open stream.
  *  Requires:
@@ -339,7 +339,7 @@ extern dsp_status strm_reclaim(struct strm_object *hStrm,
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hStrm.
  *      DSP_EMEMORY:    Insufficient memory on GPP.
- *      DSP_EVALUE:     event_mask is invalid.
+ *      -EINVAL:     event_mask is invalid.
  *      DSP_ENOTIMPL:   Notification type specified by notify_type is not
  *                      supported.
  *  Requires:

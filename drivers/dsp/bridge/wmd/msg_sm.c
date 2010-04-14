@@ -529,7 +529,7 @@ dsp_status bridge_msg_register_notify(struct msg_queue *msg_queue_obj,
 		status = ntfy_unregister(msg_queue_obj->ntfy_obj,
 							hnotification);
 
-	if (status == DSP_EVALUE) {
+	if (status == -EINVAL) {
 		/*  Not registered. Ok, since we couldn't have known. Node
 		 *  notifications are split between node state change handled
 		 *  by NODE, and message ready handled by msg_ctrl. */

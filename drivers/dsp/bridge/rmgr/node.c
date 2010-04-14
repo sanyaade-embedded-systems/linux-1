@@ -884,7 +884,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 							  NODE_DEVICE
 							  && uStream2 >=
 							  MAX_INPUTS(hNode2)))
-			status = DSP_EVALUE;
+			status = -EINVAL;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/*
@@ -1772,7 +1772,7 @@ dsp_status node_get_channel_id(struct node_object *hnode, u32 dir, u32 index,
 			       OUT u32 *pulId)
 {
 	enum node_type node_type;
-	dsp_status status = DSP_EVALUE;
+	dsp_status status = -EINVAL;
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(dir == DSP_TONODE || dir == DSP_FROMNODE);
 	DBC_REQUIRE(pulId != NULL);
@@ -2215,16 +2215,16 @@ dsp_status node_register_notify(struct node_object *hnode, u32 event_mask,
 	} else {
 		/* Check if event mask is a valid node related event */
 		if (event_mask & ~(DSP_NODESTATECHANGE | DSP_NODEMESSAGEREADY))
-			status = DSP_EVALUE;
+			status = -EINVAL;
 
 		/* Check if notify type is valid */
 		if (notify_type != DSP_SIGNALEVENT)
-			status = DSP_EVALUE;
+			status = -EINVAL;
 
 		/* Only one Notification can be registered at a
 		 * time - Limitation */
 		if (event_mask == (DSP_NODESTATECHANGE | DSP_NODEMESSAGEREADY))
-			status = DSP_EVALUE;
+			status = -EINVAL;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		if (event_mask == DSP_NODESTATECHANGE) {

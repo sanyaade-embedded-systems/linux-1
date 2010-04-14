@@ -631,7 +631,7 @@ typedef dsp_status(*fxn_chnl_idle) (struct chnl_object *chnl_obj,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EMEMORY:    Insufficient memory.
- *      DSP_EVALUE:     event_mask is 0 and hnotification was not
+ *      -EINVAL:     event_mask is 0 and hnotification was not
  *                      previously registered.
  *      DSP_EHANDLE:    NULL hnotification, hnotification event name
  *                      too long, or hnotification event name NULL.

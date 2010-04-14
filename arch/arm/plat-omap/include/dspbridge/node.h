@@ -167,7 +167,7 @@ extern dsp_status node_close_orphans(struct node_mgr *hnode_mgr,
  *      DSP_SOK:                Success.
  *      DSP_EHANDLE:            Invalid hNode1 or hNode2.
  *      DSP_EMEMORY:            Insufficient host memory.
- *      DSP_EVALUE:             A stream index parameter is invalid.
+ *      -EINVAL:             A stream index parameter is invalid.
  *      DSP_EALREADYCONNECTED:  A connection already exists for one of the
  *                              indices uStream1 or uStream2.
  *      DSP_EWRONGSTATE:        Either hNode1 or hNode2 is not in the
@@ -492,7 +492,7 @@ extern dsp_status node_put_message(struct node_object *hnode,
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hnode.
  *      DSP_EMEMORY:    Insufficient memory on GPP.
- *      DSP_EVALUE:     event_mask is invalid.
+ *      -EINVAL:     event_mask is invalid.
  *      DSP_ENOTIMPL:   Notification type specified by notify_type is not
  *                      supported.
  *  Requires:

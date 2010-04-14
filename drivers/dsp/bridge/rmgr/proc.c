@@ -623,7 +623,7 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 					      (struct dsp_memstat *)
 					      &(resource_info->result.
 						mem_stat)))
-					status = DSP_EVALUE;
+					status = -EINVAL;
 			} else {
 				status = DSP_EHANDLE;
 			}
@@ -1170,11 +1170,11 @@ dsp_status proc_register_notify(void *hprocessor, u32 event_mask,
 			   DSP_PROCESSORDETACH | DSP_PROCESSORRESTART |
 			   DSP_MMUFAULT | DSP_SYSERROR | DSP_PWRERROR |
 			   DSP_WDTOVERFLOW))
-		status = DSP_EVALUE;
+		status = -EINVAL;
 
 	/* Check if notify type is valid */
 	if (notify_type != DSP_SIGNALEVENT)
-		status = DSP_EVALUE;
+		status = -EINVAL;
 
 	if (DSP_SUCCEEDED(status)) {
 		/* If event mask is not DSP_SYSERROR, DSP_MMUFAULT,
