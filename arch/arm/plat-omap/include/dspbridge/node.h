@@ -103,7 +103,7 @@ extern dsp_status node_alloc_msg_buf(struct node_object *hnode,
  *      DSP_ENODETYPE:      The specified node is not a task node.
  *      DSP_EWRONGSTATE:    Node is not in the NODE_ALLOCATED, NODE_PAUSED,
  *                          or NODE_RUNNING state.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_ERESTART:       A critical error has occurred and the DSP is
  *                          being restarted.
  *      -EPERM:          Unable to change node's runtime priority level.
@@ -204,7 +204,7 @@ extern dsp_status node_connect(struct node_object *hNode1,
  *      DSP_EMEMORY:        Memory allocation failure on the DSP.
  *      DSP_ETASK:          Unable to create node's task or process on the DSP.
  *      DSP_ESTREAM:        Stream creation failure on the DSP.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EUSER1-16:      A user-defined failure occurred on the DSP.
  *      -EPERM:          A failure occurred, unable to create node.
  *  Requires:
@@ -251,7 +251,7 @@ extern dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EDELETE:        A deletion failure occurred.
  *      DSP_EUSER1-16:      Node specific failure occurred on the DSP.
  *      -EPERM:          A failure occurred in deleting the node.
@@ -383,7 +383,7 @@ extern dsp_status node_get_attr(struct node_object *hnode,
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hnode.
  *      DSP_ENODETYPE:  Cannot retrieve messages from this type of node.
- *      DSP_ETIMEOUT:   Timeout occurred and no message is available.
+ *      -ETIME:   Timeout occurred and no message is available.
  *      -EPERM:      Error occurred while trying to retrieve a message.
  *  Requires:
  *      node_init(void) called.
@@ -444,7 +444,7 @@ void node_on_exit(struct node_object *hnode, s32 nStatus);
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
  *      DSP_ENODETYPE:      Node is not a task or socket node.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EWRONGSTSATE:   Node is not in NODE_RUNNING state.
  *      -EPERM:          Failed to pause node.
  *  Requires:
@@ -468,7 +468,7 @@ extern dsp_status node_pause(struct node_object *hnode);
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
  *      DSP_ENODETYPE:      Messages can't be sent to this type of node.
- *      DSP_ETIMEOUT:       Timeout occurred before message could be set.
+ *      -ETIME:       Timeout occurred before message could be set.
  *      DSP_EWRONGSTATE:    Node is in invalid state for sending messages.
  *      -EPERM:          Unable to send message.
  *  Requires:
@@ -519,7 +519,7 @@ extern dsp_status node_register_notify(struct node_object *hnode,
  *      DSP_EHANDLE:        Invalid hnode.
  *      DSP_ENODETYPE:      hnode doesn't represent a message, task or dais
  *                          socket node.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EWRONGSTSATE:   Node is not in NODE_PAUSED or NODE_CREATED state.
  *      -EPERM:          Unable to start or resume execution.
  *      DSP_ESYMBOL:        Execute function not found in the COFF file.
@@ -542,7 +542,7 @@ extern dsp_status node_run(struct node_object *hnode);
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_ENODETYPE:      Type of node specified cannot be terminated.
  *      DSP_EWRONGSTATE:    Operation not valid for the current node state.
  *      -EPERM:          Unable to terminate the node.

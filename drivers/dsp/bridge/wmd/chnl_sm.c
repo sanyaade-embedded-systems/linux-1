@@ -603,7 +603,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 			dwTimeOut = SYNC_INFINITE;
 
 		stat_sync = sync_wait_on_event(pchnl->sync_event, dwTimeOut);
-		if (stat_sync == DSP_ETIMEOUT) {
+		if (stat_sync == -ETIME) {
 			/* No response from DSP */
 			ioc.status |= CHNL_IOCSTATTIMEOUT;
 			dequeue_ioc = false;

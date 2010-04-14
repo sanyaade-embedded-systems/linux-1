@@ -200,7 +200,7 @@ extern dsp_status strm_get_info(struct strm_object *hStrm,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hStrm.
- *      DSP_ETIMEOUT:   A timeout occurred before the stream could be idled.
+ *      -ETIME:   A timeout occurred before the stream could be idled.
  *      DSP_ERESTART:   A critical error occurred, DSP is being restarted.
  *      -EPERM:      Unable to idle stream.
  *  Requires:
@@ -312,7 +312,7 @@ extern dsp_status strm_prepare_buffer(struct strm_object *hStrm,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hStrm.
- *      DSP_ETIMEOUT:   A timeout occurred before a buffer could be
+ *      -ETIME:   A timeout occurred before a buffer could be
  *                      retrieved.
  *      -EPERM:      Failure occurred, unable to reclaim buffer.
  *  Requires:
@@ -366,7 +366,7 @@ extern dsp_status strm_register_notify(struct strm_object *hStrm,
  *      DSP_ERANGE:     nStrms out of range.
 
  *      DSP_EHANDLE:    Invalid stream handle in array.
- *      DSP_ETIMEOUT:   A timeout occurred before a stream became ready.
+ *      -ETIME:   A timeout occurred before a stream became ready.
  *      -EPERM:      Failure occurred, unable to select a stream.
  *  Requires:
  *      strm_init(void) called.

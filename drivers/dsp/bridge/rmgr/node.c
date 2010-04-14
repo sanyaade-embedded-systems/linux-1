@@ -2461,7 +2461,7 @@ dsp_status node_terminate(struct node_object *hnode, OUT dsp_status *pstatus)
 			status = sync_wait_on_event(hnode->sync_done,
 						    kill_time_out / 2);
 			if (DSP_FAILED(status)) {
-				if (status == DSP_ETIMEOUT) {
+				if (status == -ETIME) {
 					status = (*intf_fxns->pfn_msg_put)
 					    (hnode->msg_queue_obj, &killmsg,
 					     hnode->utimeout);

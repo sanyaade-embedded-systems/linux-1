@@ -644,7 +644,7 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 		*pdw_arg = chnl_ioc_obj.dw_arg;
 		if (!CHNL_IS_IO_COMPLETE(chnl_ioc_obj)) {
 			if (CHNL_IS_TIMED_OUT(chnl_ioc_obj)) {
-				status = DSP_ETIMEOUT;
+				status = -ETIME;
 			} else {
 				/* Allow reclaims after idle to succeed */
 				if (!CHNL_IS_IO_CANCELLED(chnl_ioc_obj))
@@ -682,7 +682,7 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 func_end:
 	/* ensure we return a documented return code */
 	DBC_ENSURE(DSP_SUCCEEDED(status) || status == DSP_EHANDLE ||
-		   status == DSP_ETIMEOUT || status == DSP_ETRANSLATE ||
+		   status == -ETIME || status == DSP_ETRANSLATE ||
 		   status == -EPERM);
 
 	dev_dbg(bridge, "%s: hStrm: %p buf_ptr: %p pulBytes: %p pdw_arg: %p "
@@ -727,7 +727,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 	}
 	/* ensure we return a documented return code */
 	DBC_ENSURE(DSP_SUCCEEDED(status) || status == DSP_EHANDLE ||
-		   status == DSP_ETIMEOUT || status == DSP_ETRANSLATE ||
+		   status == -ETIME || status == DSP_ETRANSLATE ||
 		   status == DSP_ENOTIMPL || status == -EPERM);
 	return status;
 }

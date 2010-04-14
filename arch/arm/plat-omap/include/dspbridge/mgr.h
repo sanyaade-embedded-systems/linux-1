@@ -34,7 +34,7 @@
  *      utimeout        : timeout interval in milliseocnds
  *  Returns:
  *      DSP_SOK         : Success.
- *      DSP_ETIMEOUT    : Wait timed out. *pu_index is undetermined.
+ *      -ETIME    : Wait timed out. *pu_index is undetermined.
  *  Details:
  */
 

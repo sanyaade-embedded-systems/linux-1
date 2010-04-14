@@ -960,7 +960,7 @@ typedef void (*fxn_msg_deletequeue) (struct msg_queue *msg_queue_obj);
  *      utimeout:      Timeout to wait for a message.
  *  Returns:
  *      DSP_SOK:       Success.
- *      DSP_ETIMEOUT:  Timeout occurred.
+ *      -ETIME:  Timeout occurred.
  *      -EPERM:     No frames available for message (max_msgs too
  *                     small).
  *  Requires:
@@ -982,7 +982,7 @@ typedef dsp_status(*fxn_msg_get) (struct msg_queue *msg_queue_obj,
  *      utimeout:       Timeout to wait for a message.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_ETIMEOUT:   Timeout occurred.
+ *      -ETIME:   Timeout occurred.
  *      -EPERM:      No frames available for message (max_msgs too
  *                      small).
  *  Requires:

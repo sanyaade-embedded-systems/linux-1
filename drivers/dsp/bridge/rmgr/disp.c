@@ -716,7 +716,7 @@ static dsp_status send_message(struct disp_object *disp_obj, u32 dwTimeout,
 	if (DSP_SUCCEEDED(status)) {
 		if (!CHNL_IS_IO_COMPLETE(chnl_ioc_obj)) {
 			if (CHNL_IS_TIMED_OUT(chnl_ioc_obj))
-				status = DSP_ETIMEOUT;
+				status = -ETIME;
 			else
 				status = -EPERM;
 		}
@@ -736,7 +736,7 @@ static dsp_status send_message(struct disp_object *disp_obj, u32 dwTimeout,
 	    (*intf_fxns->pfn_chnl_get_ioc) (chnl_obj, dwTimeout, &chnl_ioc_obj);
 	if (DSP_SUCCEEDED(status)) {
 		if (CHNL_IS_TIMED_OUT(chnl_ioc_obj)) {
-			status = DSP_ETIMEOUT;
+			status = -ETIME;
 		} else if (chnl_ioc_obj.byte_size < ul_bytes) {
 			/* Did not get all of the reply from the RMS */
 			status = -EPERM;

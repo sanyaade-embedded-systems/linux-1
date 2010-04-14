@@ -87,7 +87,7 @@ extern dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
  *  Returns:
  *      DSP_SOK     :       SUCCESS
  *      DSP_EHANDLE :       Invalid processor handle.
- *      DSP_ETIMEOUT:       A Timeout Occured before the Control information
+ *      -ETIME:       A Timeout Occured before the Control information
  *			  could be sent.
  *      DSP_EACCESSDENIED:  Client does not have the access rights required
  *			  to call this function.
@@ -171,7 +171,7 @@ extern dsp_status proc_enum_nodes(void *hprocessor,
  *      DSP_SOK     :       Success.
  *      DSP_EHANDLE :       Invalid processor handle.
  *      DSP_EWRONGSTATE:    The processor is not in the PROC_RUNNING state.
- *      DSP_ETIMEOUT:       A timeout occured before the DSP responded to the
+ *      -ETIME:       A timeout occured before the DSP responded to the
  *			  querry.
  *      DSP_ERESTART:       A Critical error has occured and the DSP is being
  *			  restarted.

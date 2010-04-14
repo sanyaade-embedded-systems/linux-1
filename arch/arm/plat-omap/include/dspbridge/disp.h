@@ -105,7 +105,7 @@ extern bool disp_init(void);
  *      prio:              New priority level to set node's priority to.
  *  Returns:
  *      DSP_SOK:                Success.
- *      DSP_ETIMEOUT:           A timeout occurred before the DSP responded.
+ *      -ETIME:           A timeout occurred before the DSP responded.
  *  Requires:
  *      disp_init(void) called.
  *      Valid hDispObject.
@@ -134,7 +134,7 @@ extern dsp_status disp_node_change_priority(struct disp_object
  *      DSP_SOK:        Success.
  *      DSP_ETASK:      Unable to create the node's task or process on the DSP.
  *      DSP_ESTREAM:    Stream creation failure on the DSP.
- *      DSP_ETIMEOUT:   A timeout occurred before the DSP responded.
+ *      -ETIME:   A timeout occurred before the DSP responded.
  *      DSP_EUSER:      A user-defined failure occurred.
  *      -EPERM:      A failure occurred, unable to create node.
  *  Requires:
@@ -166,7 +166,7 @@ extern dsp_status disp_node_create(struct disp_object *hDispObject,
  *      node_env:        Address of node's environment structure.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_ETIMEOUT:   A timeout occurred before the DSP responded.
+ *      -ETIME:   A timeout occurred before the DSP responded.
  *  Requires:
  *      disp_init(void) called.
  *      Valid hDispObject.
@@ -192,7 +192,7 @@ extern dsp_status disp_node_delete(struct disp_object *hDispObject,
  *      node_env:        Address of node's environment structure.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_ETIMEOUT:   A timeout occurred before the DSP responded.
+ *      -ETIME:   A timeout occurred before the DSP responded.
  *  Requires:
  *      disp_init(void) called.
  *      Valid hDispObject.

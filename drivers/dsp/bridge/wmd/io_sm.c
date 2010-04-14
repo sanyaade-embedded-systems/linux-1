@@ -2164,7 +2164,7 @@ dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
 
 		if (mmu_fault_dbg_info.head[0] != MMU_FAULT_HEAD1 &&
 			mmu_fault_dbg_info.head[1] != MMU_FAULT_HEAD2) {
-			status = DSP_ETIMEOUT;
+			status = -ETIME;
 			pr_err("%s:No DSP MMU-Fault information available.\n",
 							__func__);
 		}
