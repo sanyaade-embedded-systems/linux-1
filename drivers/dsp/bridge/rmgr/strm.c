@@ -579,7 +579,7 @@ func_cont:
 				 */
 				DBC_ASSERT(status == CHNL_E_OUTOFSTREAMS ||
 					   status == CHNL_E_BADCHANID ||
-					   status == CHNL_E_CHANBUSY ||
+					   status == -EALREADY ||
 					   status == CHNL_E_NOIORPS);
 				status = -EPERM;
 			}

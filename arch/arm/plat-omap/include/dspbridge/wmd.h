@@ -394,7 +394,7 @@ typedef void (*fxn_deh_notify) (struct deh_mgr *hdeh_mgr,
  *      DSP_EINVALIDARG:        Invalid number of IOReqs.
  *      CHNL_E_OUTOFSTREAMS:    No free channels available.
  *      CHNL_E_BADCHANID:       Channel ID is out of range.
- *      CHNL_E_CHANBUSY:        Channel is in use.
+ *      -EALREADY:        Channel is in use.
  *      CHNL_E_NOIORPS:         No free IO request packets available for
  *                              queuing.
  *  Requires:

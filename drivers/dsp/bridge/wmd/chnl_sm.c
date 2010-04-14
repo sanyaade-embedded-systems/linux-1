@@ -800,7 +800,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 					status = CHNL_E_BADCHANID;
 				else if (chnl_mgr_obj->ap_channel[uChnlId] !=
 					 NULL)
-					status = CHNL_E_CHANBUSY;
+					status = -EALREADY;
 			} else {
 				/* Check for free channel */
 				status =
