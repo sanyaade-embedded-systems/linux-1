@@ -172,7 +172,7 @@ extern dsp_status node_close_orphans(struct node_mgr *hnode_mgr,
  *                              indices uStream1 or uStream2.
  *      DSP_EWRONGSTATE:        Either hNode1 or hNode2 is not in the
  *                              NODE_ALLOCATED state.
- *      DSP_ENOMORECONNECTIONS: No more connections available.
+ *      -ECONNREFUSED: No more connections available.
  *      -EPERM:              Attempt to make an illegal connection (eg,
  *                              Device node to device node, or device node to
  *                              GPP), the two nodes are on different DSPs.

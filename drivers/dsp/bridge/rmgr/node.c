@@ -956,7 +956,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 		/* Find available pipe */
 		pipe_id = gb_findandset(hnode_mgr->pipe_map);
 		if (pipe_id == GB_NOBITS) {
-			status = DSP_ENOMORECONNECTIONS;
+			status = -ECONNREFUSED;
 		} else {
 			hNode1->outputs[uStream1].type = NODECONNECT;
 			hNode2->inputs[uStream2].type = NODECONNECT;
@@ -1027,7 +1027,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 			chnl_id = gb_findandset(hnode_mgr->chnl_map);
 		}
 		if (chnl_id == GB_NOBITS) {
-			status = DSP_ENOMORECONNECTIONS;
+			status = -ECONNREFUSED;
 			goto func_cont2;
 		}
 		pstr_dev_name = kzalloc(HOSTNAMELEN + 1, GFP_KERNEL);
