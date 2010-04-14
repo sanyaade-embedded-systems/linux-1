@@ -40,7 +40,7 @@
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_EMEMORY:        Insufficient memory on GPP.
- *      DSP_EUUID:          Node UUID has not been registered.
+ *      -ENOKEY:          Node UUID has not been registered.
  *      DSP_ESYMBOL:        iAlg functions not found for a DAIS node.
  *      DSP_ERANGE:         attr_in != NULL and attr_in->prio out of
  *                          range.

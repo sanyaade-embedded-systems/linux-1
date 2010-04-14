@@ -453,7 +453,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 		}
 		spin_unlock(&dbdcd_lock);
 		if (&dcd_key->link == &reg_key_list) {
-			status = DSP_EUUID;
+			status = -ENOKEY;
 			goto func_end;
 		}
 	}
@@ -722,7 +722,7 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 	}
 
 	if (&dcd_key->link == &reg_key_list)
-		status = DSP_EUUID;
+		status = -ENOKEY;
 
 	/* If can't find, phases might be registered as generic LIBRARYTYPE */
 	if (DSP_FAILED(status) && phase != NLDR_NOPHASE) {
@@ -760,7 +760,7 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 		spin_unlock(&dbdcd_lock);
 
 		status = (&dcd_key->link != &reg_key_list) ?
-						DSP_SOK : DSP_EUUID;
+						DSP_SOK : -ENOKEY;
 	}
 
 	if (DSP_SUCCEEDED(status))
