@@ -75,7 +75,7 @@ extern void *cmm_calloc_buf(struct cmm_object *hcmm_mgr,
  *      pMgrAttrs:  Comm mem manager attributes.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EMEMORY:    Insufficient memory for requested resources.
+ *      -ENOMEM:    Insufficient memory for requested resources.
  *      -EPERM:      Failed to initialize critical sect sync object.
  *
  *  Requires:
@@ -287,7 +287,7 @@ extern void *cmm_xlator_alloc_buf(struct cmm_xlatorobject *xlator,
  *  Returns:
  *     DSP_SOK:            Success.
  *     DSP_EINVALIDARG:    Bad input Attrs.
- *     DSP_EMEMORY:   Insufficient memory(local) for requested resources.
+ *     -ENOMEM:   Insufficient memory(local) for requested resources.
  *  Requires:
  *     phXlator != NULL
  *     hcmm_mgr != NULL

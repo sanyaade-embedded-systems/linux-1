@@ -36,7 +36,7 @@
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hStrm.
- *      DSP_EMEMORY:    Insufficient memory.
+ *      -ENOMEM:    Insufficient memory.
  *      -EPERM:      Failure occurred, unable to allocate buffers.
  *      -EINVAL:      usize must be > 0 bytes.
  *  Requires:
@@ -80,7 +80,7 @@ extern dsp_status strm_close(struct strm_res_object *strmres,
  *      dev_obj:           Device for this processor.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EMEMORY:    Insufficient memory for requested resources.
+ *      -ENOMEM:    Insufficient memory for requested resources.
  *      -EPERM:      General failure.
  *  Requires:
  *      strm_init(void) called.
@@ -338,7 +338,7 @@ extern dsp_status strm_reclaim(struct strm_object *hStrm,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hStrm.
- *      DSP_EMEMORY:    Insufficient memory on GPP.
+ *      -ENOMEM:    Insufficient memory on GPP.
  *      -EINVAL:     event_mask is invalid.
  *      -ENOSYS:   Notification type specified by notify_type is not
  *                      supported.

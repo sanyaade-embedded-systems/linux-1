@@ -187,7 +187,7 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 			DBC_ASSERT(DSP_FAILED(status)
 				   || (dev_obj->hwmd_context != NULL));
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	}
 	/* Attempt to create the COD manager for this device: */

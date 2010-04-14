@@ -170,7 +170,7 @@ static  inline dsp_status ntfy_register(struct ntfy_object *ntfy_obj,
 	}
 	ne = ntfy_event_create(event, type);
 	if (!ne) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	noti->handle = &ne->sync_obj;

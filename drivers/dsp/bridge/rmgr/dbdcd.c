@@ -148,7 +148,7 @@ dsp_status dcd_create_manager(IN char *pszZlDllName,
 		/* Return handle to this DCD interface. */
 		*phDcdMgr = dcd_mgr_obj;
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 		/*
 		 * If allocation of DcdManager object failed, delete the
@@ -159,7 +159,7 @@ dsp_status dcd_create_manager(IN char *pszZlDllName,
 
 	DBC_ENSURE((DSP_SUCCEEDED(status)) || ((cod_mgr == NULL) &&
 					       (status == -EPERM))
-		   || ((dcd_mgr_obj == NULL) && (status == DSP_EMEMORY)));
+		   || ((dcd_mgr_obj == NULL) && (status == -ENOMEM)));
 
 func_end:
 	return status;
@@ -397,7 +397,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 
 	sz_uuid = kzalloc(MAXUUIDLEN, GFP_KERNEL);
 	if (!sz_uuid) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 
@@ -895,7 +895,7 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 			dcd_key = kmalloc(sizeof(struct dcd_key_elem),
 								GFP_KERNEL);
 			if (!dcd_key) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_end;
 			}
 
@@ -904,7 +904,7 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 
 			if (!dcd_key->path) {
 				kfree(dcd_key);
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_end;
 			}
 
@@ -924,7 +924,7 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 				dcd_key->path = kmalloc(dw_path_size,
 								GFP_KERNEL);
 				if (dcd_key->path == NULL) {
-					status = DSP_EMEMORY;
+					status = -ENOMEM;
 					goto func_end;
 				}
 			}
@@ -1160,7 +1160,7 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		pGenObj->obj_data.node_obj.pstr_create_phase_fxn =
 					kzalloc(token_len + 1, GFP_KERNEL);
 		if (!pGenObj->obj_data.node_obj.pstr_create_phase_fxn) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			break;
 		}
 		strncpy(pGenObj->obj_data.node_obj.pstr_create_phase_fxn,
@@ -1175,7 +1175,7 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		pGenObj->obj_data.node_obj.pstr_execute_phase_fxn =
 					kzalloc(token_len + 1, GFP_KERNEL);
 		if (!pGenObj->obj_data.node_obj.pstr_execute_phase_fxn) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			break;
 		}
 		strncpy(pGenObj->obj_data.node_obj.pstr_execute_phase_fxn,
@@ -1190,7 +1190,7 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		pGenObj->obj_data.node_obj.pstr_delete_phase_fxn =
 					kzalloc(token_len + 1, GFP_KERNEL);
 		if (!pGenObj->obj_data.node_obj.pstr_delete_phase_fxn) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			break;
 		}
 		strncpy(pGenObj->obj_data.node_obj.pstr_delete_phase_fxn,
@@ -1213,7 +1213,7 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 			pGenObj->obj_data.node_obj.pstr_i_alg_name =
 					kzalloc(token_len + 1, GFP_KERNEL);
 			if (!pGenObj->obj_data.node_obj.pstr_i_alg_name) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				break;
 			}
 			strncpy(pGenObj->obj_data.node_obj.pstr_i_alg_name,
@@ -1328,7 +1328,7 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 	}
 
 	/* Check for Memory leak */
-	if (status == DSP_EMEMORY) {
+	if (status == -ENOMEM) {
 		kfree(pGenObj->obj_data.node_obj.pstr_create_phase_fxn);
 		kfree(pGenObj->obj_data.node_obj.pstr_execute_phase_fxn);
 		kfree(pGenObj->obj_data.node_obj.pstr_delete_phase_fxn);
@@ -1448,7 +1448,7 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 	/* Allocate a buffer for file name */
 	psz_file_name = kzalloc(dw_data_size, GFP_KERNEL);
 	if (psz_file_name == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	} else {
 		/* Get the name of the library */
 		status = dcd_get_library_name(hdcd_mgr, uuid_obj, psz_file_name,
@@ -1477,7 +1477,7 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 	/* Allocate zeroed buffer. */
 	psz_coff_buf = kzalloc(ul_len + 4, GFP_KERNEL);
 	if (psz_coff_buf == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	/* Read section contents. */
 	status = cod_read_section(lib, DEPLIBSECT, psz_coff_buf, ul_len);

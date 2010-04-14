@@ -37,7 +37,7 @@
  *      pDispAttrs:     Node dispatcher attributes.
  *  Returns:
  *      DSP_SOK:                Success;
- *      DSP_EMEMORY:            Insufficient memory for requested resources.
+ *      -ENOMEM:            Insufficient memory for requested resources.
  *      -EPERM:              Unable to create dispatcher.
  *  Requires:
  *      disp_init(void) called.

@@ -893,7 +893,7 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 	 *  state, which becomes the context for later calls into this WMD. */
 	dev_context = kzalloc(sizeof(struct wmd_dev_context), GFP_KERNEL);
 	if (!dev_context) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 
@@ -996,7 +996,7 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 	    (pt_attrs->l2_base_va != 0) && (pt_attrs->pg_info != NULL))
 		dev_context->pt_attrs = pt_attrs;
 	else
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		spin_lock_init(&pt_attrs->pg_lock);
@@ -1820,7 +1820,7 @@ static dsp_status pte_set(struct pg_table_attrs *pt, u32 pa, u32 va,
 						   HW_MMU_COARSE_PAGE_SIZE,
 						   attrs);
 			} else {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			}
 		} else {
 			/* Found valid L1 PTE of another size.
@@ -1904,7 +1904,7 @@ static dsp_status mem_map_vmalloc(struct wmd_dev_context *dev_context,
 
 		}
 		if (pa_next == 0) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			break;
 		}
 		pa = pa_curr;

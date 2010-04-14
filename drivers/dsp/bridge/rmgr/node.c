@@ -386,7 +386,7 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 
 	pnode = kzalloc(sizeof(struct node_object), GFP_KERNEL);
 	if (pnode == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	pnode->hnode_mgr = hnode_mgr;
@@ -480,7 +480,7 @@ func_cont:
 		if (pnode->ntfy_obj)
 			ntfy_init(pnode->ntfy_obj);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 	}
 
 	if (DSP_SUCCEEDED(status)) {
@@ -493,7 +493,7 @@ func_cont:
 					sizeof(struct dsp_streamconnect),
 					GFP_KERNEL);
 			if (num_streams > 0 && pnode->stream_connect == NULL)
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 
 		}
 		if (DSP_SUCCEEDED(status) && (node_type == NODE_TASK ||
@@ -516,7 +516,7 @@ func_cont:
 			    || (MAX_OUTPUTS(pnode) > 0
 				&& (pnode->outputs == NULL
 				    || ptask_args->strm_out_def == NULL)))
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 		}
 	}
 	if (DSP_SUCCEEDED(status) && (node_type != NODE_DEVICE)) {
@@ -527,7 +527,7 @@ func_cont:
 		if (pnode->sync_done)
 			sync_init_event(pnode->sync_done);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 
 		if (DSP_SUCCEEDED(status)) {
 			/*Get the shared mem mgr for this nodes dev object */
@@ -547,7 +547,7 @@ func_cont:
 				pmsg_args->pdata = kzalloc(pargs->cb_data,
 								GFP_KERNEL);
 				if (pmsg_args->pdata == NULL) {
-					status = DSP_EMEMORY;
+					status = -ENOMEM;
 				} else {
 					pmsg_args->arg_length = pargs->cb_data;
 					memcpy(pmsg_args->pdata,
@@ -761,7 +761,7 @@ DBAPI node_alloc_msg_buf(struct node_object *hnode, u32 usize,
 			if (*pbuffer == NULL) {
 				pr_err("%s: error - Out of shared memory\n",
 				       __func__);
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			}
 		}
 	}
@@ -975,7 +975,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 				output->sz_device = NULL;
 				input->sz_device = NULL;
 				gb_clear(hnode_mgr->pipe_map, pipe_id);
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			} else {
 				/* Copy "/dbpipe<pipId>" name to device names */
 				sprintf(output->sz_device, "%s%d",
@@ -1049,7 +1049,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 		} else {
 			gb_clear(hnode_mgr->chnl_map, chnl_id);
 		}
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 func_cont2:
 		if (DSP_SUCCEEDED(status)) {
 			if (hNode1 == (struct node_object *)DSP_HGPPNODE) {
@@ -1092,7 +1092,7 @@ func_cont2:
 							GFP_KERNEL);
 		}
 		if (pstrm_def->sz_device == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			/* Copy device name */
 			strncpy(pstrm_def->sz_device,
@@ -1330,7 +1330,7 @@ dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
 		if (node_mgr_obj->node_list == NULL
 		    || node_mgr_obj->pipe_map == NULL
 		    || node_mgr_obj->pipe_done_map == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			INIT_LIST_HEAD(&node_mgr_obj->node_list->head);
 			node_mgr_obj->ntfy_obj = kmalloc(
@@ -1338,11 +1338,11 @@ dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
 			if (node_mgr_obj->ntfy_obj)
 				ntfy_init(node_mgr_obj->ntfy_obj);
 			else
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 		}
 		node_mgr_obj->num_created = 0;
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	/* get devNodeType */
 	if (DSP_SUCCEEDED(status))
@@ -1384,7 +1384,7 @@ dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
 		if ((node_mgr_obj->chnl_map == NULL)
 		    || (node_mgr_obj->dma_chnl_map == NULL)
 		    || (node_mgr_obj->zc_chnl_map == NULL)) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			/* Block out reserved channels */
 			for (i = 0; i < node_mgr_obj->ul_chnl_offset; i++)
@@ -2945,7 +2945,7 @@ static dsp_status get_node_props(struct dcd_manager *hdcd_mgr,
 			DBC_ASSERT(len < MAXDEVNAMELEN);
 			hnode->pstr_dev_name = kzalloc(len + 1, GFP_KERNEL);
 			if (hnode->pstr_dev_name == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			} else {
 				strncpy(hnode->pstr_dev_name,
 					pndb_props->ac_name, len);

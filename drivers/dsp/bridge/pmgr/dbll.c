@@ -254,7 +254,7 @@ dsp_status dbll_create(struct dbll_tar_obj **target_obj,
 	if (target_obj != NULL) {
 		if (pzl_target == NULL) {
 			*target_obj = NULL;
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			pzl_target->attrs = *pattrs;
 			*target_obj = (struct dbll_tar_obj *)pzl_target;
@@ -480,7 +480,7 @@ dsp_status dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
 						    name_hash,
 						    name_match, sym_delete);
 			if (zl_lib->sym_tab == NULL)
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 
 		}
 		/*
@@ -613,7 +613,7 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 		/* Allocate DBL library object */
 		zl_lib = kzalloc(sizeof(struct dbll_library_obj), GFP_KERNEL);
 		if (zl_lib == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			zl_lib->ul_pos = 0;
 			/* Increment ref count to allow close on failure
@@ -624,7 +624,7 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 			zl_lib->file_name = kzalloc(strlen(file) + 1,
 							GFP_KERNEL);
 			if (zl_lib->file_name == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			} else {
 				strncpy(zl_lib->file_name, file,
 					strlen(file) + 1);
@@ -675,7 +675,7 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 	    gh_create(MAXBUCKETS, sizeof(struct dbll_symbol), name_hash,
 		      name_match, sym_delete);
 	if (zl_lib->sym_tab == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	} else {
 		/* Do a fake load to get symbols - set write func to no_op */
 		zl_lib->init.dl_init.writemem = no_op;
@@ -1263,7 +1263,7 @@ static int dbll_rmm_alloc(struct dynamic_loader_allocate *this,
 
 	if (sz_sect_name == NULL || sz_sec_last_token == NULL ||
 	    sz_last_token == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_cont;
 	}
 	strncpy(sz_sect_name, (char *)(info->name), token_len);

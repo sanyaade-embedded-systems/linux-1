@@ -308,7 +308,7 @@ typedef dsp_status(*fxn_brd_write) (struct wmd_dev_context *hDevContext,
  *      pMgrAttrs->usm_length: Bytes of shared memory block.
  *  Returns:
  *      DSP_SOK:            Success;
- *      DSP_EMEMORY:        Insufficient memory for requested resources.
+ *      -ENOMEM:        Insufficient memory for requested resources.
  *      CHNL_E_ISR:         Unable to plug ISR for given IRQ.
  *      CHNL_E_NOMEMMAP:    Couldn't map physical address to a virtual one.
  *  Requires:
@@ -390,7 +390,7 @@ typedef void (*fxn_deh_notify) (struct deh_mgr *hdeh_mgr,
  *  Returns:
  *      DSP_SOK:                Success.
  *      DSP_EHANDLE:            hchnl_mgr is invalid.
- *      DSP_EMEMORY:            Insufficient memory for requested resources.
+ *      -ENOMEM:            Insufficient memory for requested resources.
  *      DSP_EINVALIDARG:        Invalid number of IOReqs.
  *      CHNL_E_OUTOFSTREAMS:    No free channels available.
  *      CHNL_E_BADCHANID:       Channel ID is out of range.
@@ -630,7 +630,7 @@ typedef dsp_status(*fxn_chnl_idle) (struct chnl_object *chnl_obj,
  *      hnotification:  Handle of a dsp_notification object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Insufficient memory.
+ *      -ENOMEM:    Insufficient memory.
  *      -EINVAL:     event_mask is 0 and hnotification was not
  *                      previously registered.
  *      DSP_EHANDLE:    NULL hnotification, hnotification event name
@@ -659,7 +659,7 @@ typedef dsp_status(*fxn_chnl_registernotify)
  *                      device.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EMEMORY:        Unable to allocate memory for device context.
+ *      -ENOMEM:        Unable to allocate memory for device context.
  *      WMD_E_BADCONFIG:    One or more of the host or DSP configuration
  *                          parameters did not satisfy hardware assumptions
  *                          made by this WMD.
@@ -672,7 +672,7 @@ typedef dsp_status(*fxn_chnl_registernotify)
  *  Ensures:
  *      DSP_SOK:        All mini-driver specific DSP resource and other
  *                      board context has been allocated.
- *      DSP_EMEMORY:    WMD failed to allocate resources.
+ *      -ENOMEM:    WMD failed to allocate resources.
  *                      Any acquired resources have been freed.  The WCD will
  *                      not call bridge_dev_destroy() if bridge_dev_create()
  *                      fails.
@@ -739,7 +739,7 @@ typedef dsp_status(*fxn_dev_destroy) (struct wmd_dev_context *hDevContext);
  *      hdev_obj:     Handle to DEV object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Memory allocation failure.
+ *      -ENOMEM:    Memory allocation failure.
  *      -EPERM:      Creation failed.
  *  Requires:
  *      hdev_obj != NULL;
@@ -809,7 +809,7 @@ typedef dsp_status(*fxn_deh_getinfo) (struct deh_mgr *phDehMgr,
  *      hmsg_mgr:        Handle to message manager.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Memory allocation failure.
+ *      -ENOMEM:    Memory allocation failure.
  *      -EPERM:      Creation failed.
  *  Requires:
  *      hdev_obj != NULL;
@@ -831,7 +831,7 @@ typedef dsp_status(*fxn_io_create) (OUT struct io_mgr **phIOMgr,
  *      hio_mgr:         IO Manager.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Memory allocation failure.
+ *      -ENOMEM:    Memory allocation failure.
  *      -EPERM:      Creation failed.
  *  Requires:
  *      Valid hio_mgr;
@@ -885,7 +885,7 @@ typedef dsp_status(*fxn_io_getprocload) (struct io_mgr *hio_mgr,
  *      msgCallback:        Called whenever an RMS_EXIT message is received.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EMEMORY:        Insufficient memory.
+ *      -ENOMEM:        Insufficient memory.
  *  Requires:
  *      phMsgMgr != NULL.
  *      msgCallback != NULL.
@@ -910,7 +910,7 @@ typedef dsp_status(*fxn_msg_create)
  *      h:                  Handle passed to hmsg_mgr->msgCallback().
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EMEMORY:        Insufficient memory.
+ *      -ENOMEM:        Insufficient memory.
  *  Requires:
  *      phMsgQueue != NULL.
  *      h != NULL.
@@ -1006,7 +1006,7 @@ typedef dsp_status(*fxn_msg_put) (struct msg_queue *msg_queue_obj,
  *      hnotification:  Handle of notification object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Insufficient memory.
+ *      -ENOMEM:    Insufficient memory.
  *  Requires:
  *      Valid msg_queue_obj.
  *      hnotification != NULL.

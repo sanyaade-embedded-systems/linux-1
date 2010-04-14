@@ -75,7 +75,7 @@ extern u32 dev_brd_write_fxn(void *pArb,
  *      dev_node_obj:       Platform (Windows) specific device node.
  *  Returns:
  *      DSP_SOK:            Module is loaded, device object has been created
- *      DSP_EMEMORY:        Insufficient memory to create needed resources.
+ *      -ENOMEM:        Insufficient memory to create needed resources.
  *      DEV_E_NEWWMD:       The WMD was compiled for a newer version of WCD.
  *      DEV_E_NULLWMDINTF:  WMD passed back a NULL fxn Interface Struct Ptr
  *      DEV_E_NOCODMODULE:  No ZL file name was specified in the registry
@@ -117,7 +117,7 @@ extern dsp_status dev_create_device(OUT struct dev_object
  *      dev_node_obj:       Platform (Windows) specific device node.
  *  Returns:
  *      DSP_SOK:            Module is loaded, device object has been created
- *      DSP_EMEMORY:        Insufficient memory to create needed resources.
+ *      -ENOMEM:        Insufficient memory to create needed resources.
  *      DEV_E_NEWWMD:       The WMD was compiled for a newer version of WCD.
  *      DEV_E_NULLWMDINTF:  WMD passed back a NULL fxn Interface Struct Ptr
  *      DEV_E_NOCODMODULE:  No ZL file name was specified in the registry

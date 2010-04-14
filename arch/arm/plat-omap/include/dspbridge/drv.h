@@ -171,7 +171,7 @@ struct process_context {
  *      phDrvObject:    Location to store created DRV Object handle.
  *  Returns:
  *      DSP_SOK:        Sucess
- *      DSP_EMEMORY:    Failed in Memory allocation
+ *      -ENOMEM:    Failed in Memory allocation
  *      -EPERM:      General Failure
  *  Requires:
  *      DRV Initialized (refs > 0 )

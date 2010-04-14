@@ -84,7 +84,7 @@ extern dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
  *      phDcdMgr:       A pointer to a DCD manager handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Unable to allocate memory for DCD manager handle.
+ *      -ENOMEM:    Unable to allocate memory for DCD manager handle.
  *      -EPERM:      General failure.
  *  Requires:
  *      DCD initialized.
@@ -163,7 +163,7 @@ extern void dcd_exit(void);
  *      phase: phase to obtain correct input library
  *  Returns:
  *      DSP_SOK: Success.
- *      DSP_EMEMORY: Memory allocation failure.
+ *      -ENOMEM: Memory allocation failure.
  *      DSP_EDCDREADSECT: Failure to read section containing library info.
  *      -EPERM: General failure.
  *  Requires:
@@ -193,7 +193,7 @@ extern dsp_status dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
  *      phase:          Phase to obtain correct input library
  *  Returns:
  *      DSP_SOK: Success.
- *      DSP_EMEMORY: Memory allocation failure.
+ *      -ENOMEM: Memory allocation failure.
  *      DSP_EDCDREADSECT: Failure to read section containing library info.
  *      -EPERM: General failure.
  *  Requires:

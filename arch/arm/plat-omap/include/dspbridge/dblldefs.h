@@ -196,7 +196,7 @@ typedef void (*dbll_close_fxn) (struct dbll_library_obj *library);
  *      pattrs          - Attributes.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Memory allocation failed.
+ *      -ENOMEM:    Memory allocation failed.
  *  Requires:
  *      DBL initialized.
  *      pattrs != NULL.
@@ -384,7 +384,7 @@ typedef dsp_status(*dbll_load_sect_fxn) (struct dbll_library_obj *lib,
  *      pLib            - Location to store library handle on output.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EMEMORY:        Memory allocation failure.
+ *      -ENOMEM:        Memory allocation failure.
  *      -EBADF:         File open failure.
  *      -EBADF:         File read failure.
  *      DSP_ECORRUPTFILE:   Unable to determine target type.

@@ -90,7 +90,7 @@ dsp_status drv_insert_node_res_element(bhandle hnode, bhandle hNodeRes,
 
 	*node_res_obj = kzalloc(sizeof(struct node_res_object), GFP_KERNEL);
 	if (!*node_res_obj) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 
@@ -102,7 +102,7 @@ dsp_status drv_insert_node_res_element(bhandle hnode, bhandle hNodeRes,
 	if (retval == -EAGAIN) {
 		if (!idr_pre_get(ctxt->node_idp, GFP_KERNEL)) {
 			pr_err("%s: OUT OF MEMORY\n", __func__);
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			goto func_end;
 		}
 
@@ -231,7 +231,7 @@ dsp_status drv_proc_insert_strm_res_element(bhandle hStreamHandle,
 	if (retval == -EAGAIN) {
 		if (!idr_pre_get(ctxt->strm_idp, GFP_KERNEL)) {
 			pr_err("%s: OUT OF MEMORY\n", __func__);
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			goto func_end;
 		}
 
@@ -336,10 +336,10 @@ dsp_status drv_create(OUT struct drv_object **phDRVObject)
 				INIT_LIST_HEAD(&pdrv_object->dev_list->head);
 			}
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	/* Store the DRV Object in the Registry */
 	if (DSP_SUCCEEDED(status))
@@ -647,7 +647,7 @@ dsp_status drv_request_resources(u32 dw_context, u32 *pDevNodeString)
 			lst_put_tail(pdrv_object->dev_node_string,
 				     (struct list_head *)pszdev_node);
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			*pDevNodeString = 0;
 		}
 	} else {
@@ -804,7 +804,7 @@ dsp_status drv_request_bridge_res_dsp(void **phost_resources)
 			    (u32) mem_alloc_phys_mem(shm_size, 0x100000,
 						     &dma_addr);
 			if (host_res->dw_mem_base[1] == 0) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				pr_err("shm reservation Failed\n");
 			} else {
 				host_res->dw_mem_length[1] = shm_size;

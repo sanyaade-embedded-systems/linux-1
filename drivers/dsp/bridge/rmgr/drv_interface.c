@@ -273,10 +273,10 @@ static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 				strncpy(drv_datap->base_img, base_img,
 							strlen(base_img) + 1);
 			else
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 		}
 	} else {
-		init_status = DSP_EMEMORY;
+		init_status = -ENOMEM;
 	}
 	if (shm_size < 0x10000) {	/* 64 KB */
 		init_status = DSP_EINVALIDARG;

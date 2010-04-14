@@ -79,7 +79,7 @@ dsp_status mgr_create(OUT struct mgr_object **phMgrObject,
 			kfree(pmgr_obj);
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 
 	DBC_ENSURE(DSP_FAILED(status) || pmgr_obj);

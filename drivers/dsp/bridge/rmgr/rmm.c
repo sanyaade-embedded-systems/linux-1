@@ -109,7 +109,7 @@ dsp_status rmm_alloc(struct rmm_target_obj *target, u32 segid, u32 size,
 
 	if (!reserve) {
 		if (!alloc_block(target, segid, size, align, dspAddr)) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			/* Increment the number of allocated blocks in this
 			 * segment */
@@ -143,7 +143,7 @@ dsp_status rmm_alloc(struct rmm_target_obj *target, u32 segid, u32 size,
 		/* No overlap - allocate list element for new section. */
 		new_sect = kzalloc(sizeof(struct rmm_ovly_sect), GFP_KERNEL);
 		if (new_sect == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			lst_init_elem((struct list_head *)new_sect);
 			new_sect->addr = addr;
@@ -184,7 +184,7 @@ dsp_status rmm_create(struct rmm_target_obj **target_obj,
 	target = kzalloc(sizeof(struct rmm_target_obj), GFP_KERNEL);
 
 	if (target == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_FAILED(status))
 		goto func_cont;
@@ -197,14 +197,14 @@ dsp_status rmm_create(struct rmm_target_obj **target_obj,
 	target->free_list = kzalloc(num_segs * sizeof(struct rmm_header *),
 							GFP_KERNEL);
 	if (target->free_list == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	} else {
 		/* Allocate headers for each element on the free list */
 		for (i = 0; i < (s32) num_segs; i++) {
 			target->free_list[i] =
 				kzalloc(sizeof(struct rmm_header), GFP_KERNEL);
 			if (target->free_list[i] == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				break;
 			}
 		}
@@ -212,7 +212,7 @@ dsp_status rmm_create(struct rmm_target_obj **target_obj,
 		target->seg_tab = kzalloc(num_segs * sizeof(struct rmm_segment),
 								GFP_KERNEL);
 		if (target->seg_tab == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			/* Initialize segment table and free list */
 			sptr = target->seg_tab;
@@ -234,7 +234,7 @@ func_cont:
 		target->ovly_list = kzalloc(sizeof(struct lst_list),
 							GFP_KERNEL);
 		if (target->ovly_list == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			INIT_LIST_HEAD(&target->ovly_list->head);
 		}

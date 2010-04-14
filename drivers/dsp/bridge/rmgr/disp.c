@@ -108,7 +108,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 	/* Allocate Node Dispatcher object */
 	disp_obj = kzalloc(sizeof(struct disp_object), GFP_KERNEL);
 	if (disp_obj == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	else
 		disp_obj->hdev_obj = hdev_obj;
 
@@ -162,7 +162,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 		disp_obj->ul_bufsize_rms = RMS_COMMANDBUFSIZE;
 		disp_obj->pbuf = kzalloc(disp_obj->ul_bufsize, GFP_KERNEL);
 		if (disp_obj->pbuf == NULL)
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 	}
 func_cont:
 	if (DSP_SUCCEEDED(status))

@@ -422,7 +422,7 @@ u32 mgrwrap_enum_node_info(union Trapped_Args *args, void *pr_ctxt)
 
 	pndb_props = kmalloc(size, GFP_KERNEL);
 	if (pndb_props == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		status =
@@ -454,7 +454,7 @@ u32 mgrwrap_enum_proc_info(union Trapped_Args *args, void *pr_ctxt)
 
 	processor_info = kmalloc(size, GFP_KERNEL);
 	if (processor_info == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		status =
@@ -623,7 +623,7 @@ u32 procwrap_ctrl(union Trapped_Args *args, void *pr_ctxt)
 		cb_data_size += sizeof(u32);
 		pargs = kmalloc(cb_data_size, GFP_KERNEL);
 		if (pargs == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			goto func_end;
 		}
 
@@ -777,7 +777,7 @@ u32 procwrap_get_trace(union Trapped_Args *args, void *pr_ctxt)
 		status = proc_get_trace(hprocessor, pbuf,
 					args->args_proc_gettrace.max_size);
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	CP_TO_USR(args->args_proc_gettrace.pbuf, pbuf, status,
 		  args->args_proc_gettrace.max_size);
@@ -805,7 +805,7 @@ u32 procwrap_load(union Trapped_Args *args, void *pr_ctxt)
 
 	argv = kmalloc(count * sizeof(u8 *), GFP_KERNEL);
 	if (!argv) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_cont;
 	}
 
@@ -832,7 +832,7 @@ u32 procwrap_load(union Trapped_Args *args, void *pr_ctxt)
 					goto func_cont;
 				}
 			} else {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_cont;
 			}
 		}
@@ -847,7 +847,7 @@ u32 procwrap_load(union Trapped_Args *args, void *pr_ctxt)
 		} while (temp);
 		envp = kmalloc(count * sizeof(u8 *), GFP_KERNEL);
 		if (!envp) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			goto func_cont;
 		}
 
@@ -872,7 +872,7 @@ u32 procwrap_load(union Trapped_Args *args, void *pr_ctxt)
 					goto func_cont;
 				}
 			} else {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_cont;
 			}
 		}
@@ -1064,7 +1064,7 @@ u32 nodewrap_allocate(union Trapped_Args *args, void *pr_ctxt)
 		if (DSP_SUCCEEDED(status)) {
 			pargs = kmalloc(cb_data_size, GFP_KERNEL);
 			if (pargs == NULL)
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 
 		}
 		CP_FM_USR(pargs, args->args_node_allocate.pargs, status,
@@ -1080,7 +1080,7 @@ u32 nodewrap_allocate(union Trapped_Args *args, void *pr_ctxt)
 		if (DSP_SUCCEEDED(status))
 			attr_in = &proc_attr_in;
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 
 	}
 	if (DSP_SUCCEEDED(status)) {
@@ -1205,7 +1205,7 @@ u32 nodewrap_connect(union Trapped_Args *args, void *pr_ctxt)
 		if (DSP_SUCCEEDED(status)) {
 			pargs = kmalloc(cb_data_size, GFP_KERNEL);
 			if (pargs == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_cont;
 			}
 
@@ -1483,7 +1483,7 @@ u32 nodewrap_get_uuid_props(union Trapped_Args *args, void *pr_ctxt)
 		CP_TO_USR(args->args_node_getuuidprops.node_props, pnode_props,
 			  status, 1);
 	} else
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 func_cont:
 	kfree(pnode_props);
 	return status;

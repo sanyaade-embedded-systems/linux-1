@@ -146,7 +146,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 		/* if addr in user mode, then copy to kernel space */
 		host_sys_buf = kmalloc(buf_size, GFP_KERNEL);
 		if (host_sys_buf == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			goto func_end;
 		}
 		if (CHNL_IS_OUTPUT(pchnl->chnl_mode)) {
@@ -420,10 +420,10 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 			if (DSP_SUCCEEDED(status))
 				spin_lock_init(&chnl_mgr_obj->chnl_mgr_lock);
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 
 	if (DSP_FAILED(status)) {
@@ -815,7 +815,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 	/* Create channel object: */
 	pchnl = kzalloc(sizeof(struct chnl_object), GFP_KERNEL);
 	if (!pchnl) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	/* Protect queues from io_dpc: */
@@ -831,7 +831,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 	if (sync_event)
 		sync_init_event(sync_event);
 	else
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		pchnl->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
@@ -839,7 +839,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 		if (pchnl->ntfy_obj)
 			ntfy_init(pchnl->ntfy_obj);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 	}
 
 	if (DSP_SUCCEEDED(status)) {
@@ -858,7 +858,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 			/* Default to proc-copy */
 			pchnl->chnl_type = CHNL_PCPY;
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	}
 

@@ -126,7 +126,7 @@ dsp_status strm_allocate_buffer(struct strm_res_object *strmres, u32 usize,
 		DBC_ASSERT(hstrm->xlator != NULL);
 		(void)cmm_xlator_alloc_buf(hstrm->xlator, &ap_buffer[i], usize);
 		if (ap_buffer[i] == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			alloc_cnt = i;
 			break;
 		}
@@ -209,7 +209,7 @@ dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
 	/* Allocate STRM manager object */
 	strm_mgr_obj = kzalloc(sizeof(struct strm_mgr), GFP_KERNEL);
 	if (strm_mgr_obj == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	else
 		strm_mgr_obj->dev_obj = dev_obj;
 
@@ -489,7 +489,7 @@ dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 	if (DSP_SUCCEEDED(status)) {
 		strm_obj = kzalloc(sizeof(struct strm_object), GFP_KERNEL);
 		if (strm_obj == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			strm_obj->strm_mgr_obj = strm_mgr_obj;
 			strm_obj->dir = dir;
@@ -568,7 +568,7 @@ func_cont:
 			 * over-ride non-returnable status codes so we return
 			 * something documented
 			 */
-			if (status != DSP_EMEMORY && status !=
+			if (status != -ENOMEM && status !=
 			    DSP_EINVALIDARG && status != -EPERM) {
 				/*
 				 * We got a status that's not return-able.
@@ -781,7 +781,7 @@ dsp_status strm_select(IN struct strm_object **strm_tab, u32 nStrms,
 								GFP_KERNEL);
 
 		if (sync_events == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			for (i = 0; i < nStrms; i++) {
 				intf_fxns =

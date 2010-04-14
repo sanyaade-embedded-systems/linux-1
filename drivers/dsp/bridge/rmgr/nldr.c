@@ -342,7 +342,7 @@ dsp_status nldr_allocate(struct nldr_object *nldr_obj, void *priv_ref,
 	nldr_node_obj = kzalloc(sizeof(struct nldr_nodeobject), GFP_KERNEL);
 
 	if (nldr_node_obj == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	} else {
 		nldr_node_obj->pf_phase_split = pf_phase_split;
 		nldr_node_obj->pers_libs = 0;
@@ -465,10 +465,10 @@ dsp_status nldr_create(OUT struct nldr_object **phNldr,
 		nldr_obj->us_dsp_word_size = pattrs->us_dsp_word_size;
 		nldr_obj->ldr_fxns = ldr_fxns;
 		if (!(nldr_obj->ldr_fxns.init_fxn()))
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	/* Create the DCD Manager */
 	if (DSP_SUCCEEDED(status))
@@ -485,7 +485,7 @@ dsp_status nldr_create(OUT struct nldr_object **phNldr,
 				kzalloc(ul_len * nldr_obj->us_dsp_mau_size,
 								GFP_KERNEL);
 			if (!psz_coff_buf) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			}
 		} else {
 			/* Ok to not have dynamic loading memory */
@@ -515,7 +515,7 @@ dsp_status nldr_create(OUT struct nldr_object **phNldr,
 		nldr_obj->seg_table =
 				kzalloc(sizeof(u32) * dload_segs, GFP_KERNEL);
 		if (rmm_segs == NULL || nldr_obj->seg_table == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			nldr_obj->dload_segs = dload_segs;
 			mem_info_obj = (struct mem_seg_info *)(psz_coff_buf +
@@ -1039,7 +1039,7 @@ static dsp_status add_ovly_node(struct dsp_uuid *uuid_obj,
 			node_name = obj_def.obj_data.node_obj.ndb_props.ac_name;
 			pbuf = kzalloc(len + 1, GFP_KERNEL);
 			if (pbuf == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			} else {
 				strncpy(pbuf, node_name, len);
 				nldr_obj->ovly_table[nldr_obj->ovly_nid].
@@ -1094,7 +1094,7 @@ static dsp_status add_ovly_sect(struct nldr_object *nldr_obj,
 		/* New section */
 		new_sect = kzalloc(sizeof(struct ovly_sect), GFP_KERNEL);
 		if (new_sect == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			new_sect->sect_load_addr = addr;
 			new_sect->sect_run_addr = pSectInfo->sect_run_addr +
@@ -1265,7 +1265,7 @@ static dsp_status load_lib(struct nldr_nodeobject *nldr_node_obj,
 	/* Allocate a buffer for library file name of size DBL_MAXPATHLENGTH */
 	psz_file_name = kzalloc(DBLL_MAXPATHLENGTH, GFP_KERNEL);
 	if (psz_file_name == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		/* Get the name of the library */
@@ -1335,7 +1335,7 @@ static dsp_status load_lib(struct nldr_nodeobject *nldr_node_obj,
 			persistent_dep_libs =
 				kzalloc(sizeof(bool) * nd_libs, GFP_KERNEL);
 			if (!dep_lib_uui_ds || !persistent_dep_libs)
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 
 			if (root->dep_libs > 0) {
 				/* Allocate arrays for dependent lib UUIDs,
@@ -1344,7 +1344,7 @@ static dsp_status load_lib(struct nldr_nodeobject *nldr_node_obj,
 						(sizeof(struct lib_node) *
 						(root->dep_libs), GFP_KERNEL);
 				if (!(root->dep_libs_tree))
-					status = DSP_EMEMORY;
+					status = -ENOMEM;
 
 			}
 
@@ -1632,7 +1632,7 @@ static dsp_status remote_alloc(void **pRef, u16 space, u32 size,
 	u32 word_size;
 	struct rmm_addr *rmm_addr_obj = (struct rmm_addr *)dspAddr;
 	bool mem_load_req = false;
-	dsp_status status = DSP_EMEMORY;	/* Set to fail */
+	dsp_status status = -ENOMEM;	/* Set to fail */
 	DBC_REQUIRE(hnode);
 	DBC_REQUIRE(space == DBLL_CODE || space == DBLL_DATA ||
 		    space == DBLL_BSS);
@@ -1716,7 +1716,7 @@ static dsp_status remote_alloc(void **pRef, u16 space, u32 size,
 	}
 func_cont:
 	/* Haven't found memory yet, attempt to find any segment that works */
-	if (status == DSP_EMEMORY && !mem_load_req) {
+	if (status == -ENOMEM && !mem_load_req) {
 		dev_dbg(bridge, "%s: Preferred segment unavailable, trying "
 			"another\n", __func__);
 		for (i = 0; i < nldr_obj->dload_segs; i++) {
@@ -1744,7 +1744,7 @@ static dsp_status remote_free(void **pRef, u16 space, u32 dspAddr,
 	struct nldr_object *nldr_obj = (struct nldr_object *)pRef;
 	struct rmm_target_obj *rmm;
 	u32 word_size;
-	dsp_status status = DSP_EMEMORY;	/* Set to fail */
+	dsp_status status = -ENOMEM;	/* Set to fail */
 
 	DBC_REQUIRE(nldr_obj);
 

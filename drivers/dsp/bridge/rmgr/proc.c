@@ -155,7 +155,7 @@ proc_attach(u32 processor_id,
 	p_proc_object = kzalloc(sizeof(struct proc_object), GFP_KERNEL);
 	/* Fill out the Processor Object: */
 	if (p_proc_object == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	p_proc_object->hdev_obj = hdev_obj;
@@ -192,7 +192,7 @@ proc_attach(u32 processor_id,
 	if (p_proc_object->ntfy_obj)
 		ntfy_init(p_proc_object->ntfy_obj);
 	else
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		/* Insert the Processor Object into the DEV List.
@@ -287,7 +287,7 @@ dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 
 	p_proc_object = kzalloc(sizeof(struct proc_object), GFP_KERNEL);
 	if (p_proc_object == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	p_proc_object->hdev_obj = hdev_obj;
@@ -895,7 +895,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 					       COD_SYMB);
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/* Auto-register data base */
@@ -1033,7 +1033,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 				strncpy(drv_datap->base_img, pargv0,
 							strlen(pargv0) + 1);
 			else
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			DBC_ASSERT(brd_state == BRD_LOADED);
 		}
 	}

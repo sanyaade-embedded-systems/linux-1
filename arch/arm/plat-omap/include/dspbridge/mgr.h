@@ -53,7 +53,7 @@ dsp_status mgr_wait_for_bridge_events(struct dsp_notification
  *      dev_node_obj:       Device object as known to Windows system.
  *  Returns:
  *      DSP_SOK:        Success
- *      DSP_EMEMORY:    Failed to Create the Object
+ *      -ENOMEM:    Failed to Create the Object
  *      -EPERM:      General Failure
  *  Requires:
  *      MGR Initialized (refs > 0 )

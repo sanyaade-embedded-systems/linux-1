@@ -92,7 +92,7 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 	/* Allocate IO manager object: */
 	deh_mgr_obj = kzalloc(sizeof(struct deh_mgr), GFP_KERNEL);
 	if (deh_mgr_obj == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	} else {
 		/* Create an NTFY object to manage notifications */
 		deh_mgr_obj->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
@@ -100,7 +100,7 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 		if (deh_mgr_obj->ntfy_obj)
 			ntfy_init(deh_mgr_obj->ntfy_obj);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 
 		/* Create a MMUfault DPC */
 		tasklet_init(&deh_mgr_obj->dpc_tasklet, mmu_fault_dpc,

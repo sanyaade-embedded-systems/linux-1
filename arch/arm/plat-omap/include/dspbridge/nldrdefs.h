@@ -117,7 +117,7 @@ enum nldr_phase {
  *      pf_phase_split:   pointer to boolean variable referenced in node.c
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Insufficient memory on GPP.
+ *      -ENOMEM:    Insufficient memory on GPP.
  *  Requires:
  *      nldr_init(void) called.
  *      Valid nldr_obj.
@@ -146,7 +146,7 @@ typedef dsp_status(*nldr_allocatefxn) (struct nldr_object *nldr_obj,
  *      pattrs:         Loader attributes.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EMEMORY:    Insufficient memory for requested resources.
+ *      -ENOMEM:    Insufficient memory for requested resources.
  *  Requires:
  *      nldr_init(void) called.
  *      phNldr != NULL.
@@ -246,7 +246,7 @@ typedef bool(*nldr_initfxn) (void);
  *      phase:          Type of function to load (create, delete, or execute).
  *  Returns:
  *      DSP_SOK:                Success.
- *      DSP_EMEMORY:            Insufficient memory on GPP.
+ *      -ENOMEM:            Insufficient memory on GPP.
  *      DSP_EOVERLAYMEMORY:     Can't overlay phase because overlay memory
  *                              is already in use.
  *      DSP_EDYNLOAD:           Failure in dynamic loader library.
@@ -268,7 +268,7 @@ typedef dsp_status(*nldr_loadfxn) (struct nldr_nodeobject *nldr_node_obj,
  *      phase:          Node function to unload (create, delete, or execute).
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Insufficient memory on GPP.
+ *      -ENOMEM:    Insufficient memory on GPP.
  *  Requires:
  *      nldr_init(void) called.
  *      Valid nldr_node_obj.

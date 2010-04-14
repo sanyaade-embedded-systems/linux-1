@@ -283,7 +283,7 @@ dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
 					kzalloc(sizeof(struct lst_list),
 							GFP_KERNEL);
 			if (cmm_obj->node_free_list_head == NULL)
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			else
 				INIT_LIST_HEAD(&cmm_obj->
 					       node_free_list_head->head);
@@ -297,7 +297,7 @@ dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
 			cmm_destroy(cmm_obj, true);
 
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	return status;
 }
@@ -604,7 +604,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 			psma->free_list_head = kzalloc(sizeof(struct lst_list),
 								GFP_KERNEL);
 			if (psma->free_list_head == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_end;
 			}
 			INIT_LIST_HEAD(&psma->free_list_head->head);
@@ -614,7 +614,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 			psma->in_use_list_head = kzalloc(sizeof(struct
 							lst_list), GFP_KERNEL);
 			if (psma->in_use_list_head == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_end;
 			}
 			INIT_LIST_HEAD(&psma->in_use_list_head->head);
@@ -628,7 +628,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 				lst_put_tail(psma->free_list_head,
 					     (struct list_head *)new_node);
 			} else {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_end;
 			}
 		}
@@ -637,7 +637,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 			un_register_gppsm_seg(psma);
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	/* make entry */
@@ -978,7 +978,7 @@ dsp_status cmm_xlator_create(OUT struct cmm_xlatorobject **phXlator,
 		/* SM seg_id */
 		xlator_object->ul_seg_id = pXlatorAttrs->ul_seg_id;
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	if (DSP_SUCCEEDED(status))
 		*phXlator = (struct cmm_xlatorobject *)xlator_object;

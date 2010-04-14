@@ -39,7 +39,7 @@
  *      pMgrAttrs->word_size:   DSP Word size in equivalent PC bytes..
  *  Returns:
  *      DSP_SOK:                Success;
- *      DSP_EMEMORY:            Insufficient memory for requested resources.
+ *      -ENOMEM:            Insufficient memory for requested resources.
  *      CHNL_E_ISR:             Unable to plug channel ISR for configured IRQ.
  *      CHNL_E_INVALIDIRQ:      Invalid IRQ number. Must be 0 <= birq <= 15.
  *      CHNL_E_INVALIDWORDSIZE: Invalid DSP word size.  Must be > 0.

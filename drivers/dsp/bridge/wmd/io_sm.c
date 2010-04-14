@@ -215,7 +215,7 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	/* Allocate IO manager object */
 	pio_mgr = kzalloc(sizeof(struct io_mgr), GFP_KERNEL);
 	if (pio_mgr == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 
@@ -498,7 +498,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 			pr_err("%s: shm Error, reserved 0x%x required 0x%x\n",
 			       __func__, host_res->dw_mem_length[1],
 			       ul_seg_size + ul_seg1_size + ul_pad_size);
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	}
 	if (DSP_FAILED(status))
@@ -820,7 +820,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 				hio_mgr->ul_trace_buffer_begin) *
 				hio_mgr->word_size) + 2, GFP_KERNEL);
 	if (!hio_mgr->pmsg)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	hio_mgr->ul_dsp_va = ul_dsp_va;
 	hio_mgr->ul_gpp_va = (ul_gpp_va + ul_seg1_size + ul_pad_size);
@@ -1911,7 +1911,7 @@ void print_dsp_debug_trace(struct io_mgr *hio_mgr)
  *                      number of extra carriage returns to generate.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Unable to allocate memory.
+ *      -ENOMEM:    Unable to allocate memory.
  *  Requires:
  *      hdeh_mgr muse be valid. Checked in bridge_deh_notify.
  */
@@ -2070,7 +2070,7 @@ dsp_status print_dsp_trace_buffer(struct wmd_dev_context *hwmd_context)
 			"DSP Trace Buffer End:\n");
 		kfree(psz_buf);
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 func_end:
 	if (DSP_FAILED(status))
@@ -2180,7 +2180,7 @@ dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
 		buffer_end =  buffer + total_size / 4;
 
 		if (!buffer) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			pr_debug("%s: Failed to "
 				"allocate stack dump buffer.\n", __func__);
 			goto func_end;

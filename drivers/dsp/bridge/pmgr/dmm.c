@@ -100,7 +100,7 @@ dsp_status dmm_create_tables(struct dmm_object *dmm_mgr, u32 addr, u32 size)
 				sizeof(struct map_page), GFP_KERNEL |
 				__GFP_HIGHMEM | __GFP_ZERO, PAGE_KERNEL);
 		if (virtual_mapping_table == NULL)
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		else {
 			/* On successful allocation,
 			 * all entries are zero ('free') */
@@ -137,7 +137,7 @@ dsp_status dmm_create(OUT struct dmm_object **phDmmMgr,
 		spin_lock_init(&dmm_obj->dmm_lock);
 		*phDmmMgr = dmm_obj;
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 
 	return status;
@@ -316,7 +316,7 @@ dsp_status dmm_reserve_memory(struct dmm_object *dmm_mgr, u32 size,
 		*prsv_addr = rsv_addr;
 	} else
 		/*dSP chunk of given size is not available */
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	spin_unlock(&dmm_obj->dmm_lock);
 

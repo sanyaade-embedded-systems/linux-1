@@ -235,7 +235,7 @@ dsp_status cod_create(OUT struct cod_manager **phMgr, char *pstrDummyFile,
 
 	mgr_new = kzalloc(sizeof(struct cod_manager), GFP_KERNEL);
 	if (mgr_new == NULL)
-		return DSP_EMEMORY;
+		return -ENOMEM;
 
 	mgr_new->ul_magic = MAGIC;
 
@@ -567,7 +567,7 @@ dsp_status cod_open(struct cod_manager *hmgr, IN char *pszCoffPath,
 
 	lib = kzalloc(sizeof(struct cod_libraryobj), GFP_KERNEL);
 	if (lib == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		lib->cod_mgr = hmgr;

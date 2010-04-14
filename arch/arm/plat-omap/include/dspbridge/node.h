@@ -39,7 +39,7 @@
  *      ph_node:             Location to store node handle on output.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EMEMORY:        Insufficient memory on GPP.
+ *      -ENOMEM:        Insufficient memory on GPP.
  *      -ENOKEY:          Node UUID has not been registered.
  *      DSP_ESYMBOL:        iAlg functions not found for a DAIS node.
  *      -EDOM:         attr_in != NULL and attr_in->prio out of
@@ -77,7 +77,7 @@ extern dsp_status node_allocate(struct proc_object *hprocessor,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid node handle.
- *      DSP_EMEMORY:    Insufficent memory.
+ *      -ENOMEM:    Insufficent memory.
  *      -EPERM:      General Failure.
  *      -EINVAL:      Invalid Size.
  *  Requires:
@@ -166,7 +166,7 @@ extern dsp_status node_close_orphans(struct node_mgr *hnode_mgr,
  *  Returns:
  *      DSP_SOK:                Success.
  *      DSP_EHANDLE:            Invalid hNode1 or hNode2.
- *      DSP_EMEMORY:            Insufficient host memory.
+ *      -ENOMEM:            Insufficient host memory.
  *      -EINVAL:             A stream index parameter is invalid.
  *      DSP_EALREADYCONNECTED:  A connection already exists for one of the
  *                              indices uStream1 or uStream2.
@@ -201,7 +201,7 @@ extern dsp_status node_connect(struct node_object *hNode1,
  *      DSP_EHANDLE:        Invalid hnode.
  *      DSP_ESYMBOL:        Create function not found in the COFF file.
  *      DSP_EWRONGSTATE:    Node is not in the NODE_ALLOCATED state.
- *      DSP_EMEMORY:        Memory allocation failure on the DSP.
+ *      -ENOMEM:        Memory allocation failure on the DSP.
  *      DSP_ETASK:          Unable to create node's task or process on the DSP.
  *      DSP_ESTREAM:        Stream creation failure on the DSP.
  *      -ETIME:       A timeout occurred before the DSP responded.
@@ -226,7 +226,7 @@ extern dsp_status node_create(struct node_object *hnode);
  *      hdev_obj:     Device for this processor.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EMEMORY:    Insufficient memory for requested resources.
+ *      -ENOMEM:    Insufficient memory for requested resources.
  *      -EPERM:      General failure.
  *  Requires:
  *      node_init(void) called.
@@ -491,7 +491,7 @@ extern dsp_status node_put_message(struct node_object *hnode,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hnode.
- *      DSP_EMEMORY:    Insufficient memory on GPP.
+ *      -ENOMEM:    Insufficient memory on GPP.
  *      -EINVAL:     event_mask is invalid.
  *      -ENOSYS:   Notification type specified by notify_type is not
  *                      supported.

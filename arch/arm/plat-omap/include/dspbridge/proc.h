@@ -512,7 +512,7 @@ extern dsp_status proc_invalidate_memory(void *hprocessor,
  *      DSP_SOK	 :   Success.
  *      DSP_EHANDLE     :   Invalid processor handle.
  *      -EPERM       :   General failure.
- *      DSP_EMEMORY     :   MPU side memory allocation error.
+ *      -ENOMEM     :   MPU side memory allocation error.
  *      DSP_ENOTFOUND   :   Cannot find a reserved region starting with this
  *		      :   address.
  *  Requires:
@@ -542,7 +542,7 @@ extern dsp_status proc_map(void *hprocessor,
  *      DSP_SOK	 :   Success.
  *      DSP_EHANDLE     :   Invalid processor handle.
  *      -EPERM       :   General failure.
- *      DSP_EMEMORY     :   Cannot reserve chunk of this size.
+ *      -ENOMEM     :   Cannot reserve chunk of this size.
  *  Requires:
  *      pp_rsv_addr is not NULL
  *      PROC Initialized.

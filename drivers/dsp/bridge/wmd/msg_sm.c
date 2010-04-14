@@ -86,7 +86,7 @@ dsp_status bridge_msg_create(OUT struct msg_mgr **phMsgMgr,
 		if (msg_mgr_obj->queue_list == NULL ||
 		    msg_mgr_obj->msg_free_list == NULL ||
 		    msg_mgr_obj->msg_used_list == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			INIT_LIST_HEAD(&msg_mgr_obj->queue_list->head);
 			INIT_LIST_HEAD(&msg_mgr_obj->msg_free_list->head);
@@ -99,7 +99,7 @@ dsp_status bridge_msg_create(OUT struct msg_mgr **phMsgMgr,
 		msg_mgr_obj->sync_event =
 				kzalloc(sizeof(struct sync_object), GFP_KERNEL);
 		if (!msg_mgr_obj->sync_event)
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		else
 			sync_init_event(msg_mgr_obj->sync_event);
 
@@ -109,7 +109,7 @@ dsp_status bridge_msg_create(OUT struct msg_mgr **phMsgMgr,
 			delete_msg_mgr(msg_mgr_obj);
 
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 func_end:
 	return status;
@@ -138,7 +138,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 	/* Allocate msg_queue object */
 	msg_q = kzalloc(sizeof(struct msg_queue), GFP_KERNEL);
 	if (!msg_q) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	lst_init_elem((struct list_head *)msg_q);
@@ -150,7 +150,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 	msg_q->msg_free_list = kzalloc(sizeof(struct lst_list), GFP_KERNEL);
 	msg_q->msg_used_list = kzalloc(sizeof(struct lst_list), GFP_KERNEL);
 	if (msg_q->msg_free_list == NULL || msg_q->msg_used_list == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	else {
 		INIT_LIST_HEAD(&msg_q->msg_free_list->head);
 		INIT_LIST_HEAD(&msg_q->msg_used_list->head);
@@ -164,7 +164,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 		if (msg_q->sync_event)
 			sync_init_event(msg_q->sync_event);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 	}
 
 	/* Create a notification list for message ready notification. */
@@ -174,7 +174,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 		if (msg_q->ntfy_obj)
 			ntfy_init(msg_q->ntfy_obj);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 	}
 
 	/*  Create events that will be used to synchronize cleanup
@@ -188,7 +188,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 		if (msg_q->sync_event)
 			sync_init_event(msg_q->sync_event);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 	}
 
 	if (DSP_SUCCEEDED(status)) {
@@ -197,7 +197,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 		if (msg_q->sync_event)
 			sync_init_event(msg_q->sync_done_ack);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 	}
 
 	if (DSP_SUCCEEDED(status)) {
@@ -297,7 +297,7 @@ dsp_status bridge_msg_get(struct msg_queue *msg_queue_obj,
 	dsp_status status = DSP_SOK;
 
 	if (!msg_queue_obj || pmsg == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 
@@ -401,7 +401,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 	dsp_status status = DSP_SOK;
 
 	if (!msg_queue_obj || !pmsg || !msg_queue_obj->hmsg_mgr) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	hmsg_mgr = msg_queue_obj->hmsg_mgr;
@@ -508,7 +508,7 @@ dsp_status bridge_msg_register_notify(struct msg_queue *msg_queue_obj,
 	dsp_status status = DSP_SOK;
 
 	if (!msg_queue_obj || !hnotification) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 
@@ -569,7 +569,7 @@ static dsp_status add_new_msg(struct lst_list *msgList)
 		lst_init_elem((struct list_head *)pmsg);
 		lst_put_tail(msgList, (struct list_head *)pmsg);
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 
 	return status;
