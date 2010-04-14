@@ -268,7 +268,7 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 			spin_unlock(&dbdcd_lock);
 
 			if (&dcd_key->link == &reg_key_list)
-				status = REG_E_NOMOREITEMS;
+				status = -ENODATA;
 		}
 
 		if (DSP_SUCCEEDED(status)) {
@@ -282,7 +282,7 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 			enum_refs++;
 
 			status = DSP_SOK;
-		} else if (status == REG_E_NOMOREITEMS) {
+		} else if (status == -ENODATA) {
 			/* At the end of enumeration. Reset enum_refs. */
 			enum_refs = 0;
 
