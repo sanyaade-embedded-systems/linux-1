@@ -100,7 +100,7 @@ extern dsp_status node_alloc_msg_buf(struct node_object *hnode,
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
  *      -EDOM:         prio is out of range.
- *      DSP_ENODETYPE:      The specified node is not a task node.
+ *      -EPERM:      The specified node is not a task node.
  *      DSP_EWRONGSTATE:    Node is not in the NODE_ALLOCATED, NODE_PAUSED,
  *                          or NODE_RUNNING state.
  *      -ETIME:       A timeout occurred before the DSP responded.
@@ -382,7 +382,7 @@ extern dsp_status node_get_attr(struct node_object *hnode,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hnode.
- *      DSP_ENODETYPE:  Cannot retrieve messages from this type of node.
+ *      -EPERM:  Cannot retrieve messages from this type of node.
  *      -ETIME:   Timeout occurred and no message is available.
  *      -EPERM:      Error occurred while trying to retrieve a message.
  *  Requires:
@@ -443,7 +443,7 @@ void node_on_exit(struct node_object *hnode, s32 nStatus);
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ENODETYPE:      Node is not a task or socket node.
+ *      -EPERM:      Node is not a task or socket node.
  *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EWRONGSTSATE:   Node is not in NODE_RUNNING state.
  *      -EPERM:          Failed to pause node.
@@ -467,7 +467,7 @@ extern dsp_status node_pause(struct node_object *hnode);
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ENODETYPE:      Messages can't be sent to this type of node.
+ *      -EPERM:      Messages can't be sent to this type of node.
  *      -ETIME:       Timeout occurred before message could be set.
  *      DSP_EWRONGSTATE:    Node is in invalid state for sending messages.
  *      -EPERM:          Unable to send message.
@@ -517,7 +517,7 @@ extern dsp_status node_register_notify(struct node_object *hnode,
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ENODETYPE:      hnode doesn't represent a message, task or dais
+ *      -EPERM:      hnode doesn't represent a message, task or dais
  *                          socket node.
  *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EWRONGSTSATE:   Node is not in NODE_PAUSED or NODE_CREATED state.
@@ -543,7 +543,7 @@ extern dsp_status node_run(struct node_object *hnode);
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hnode.
  *      -ETIME:       A timeout occurred before the DSP responded.
- *      DSP_ENODETYPE:      Type of node specified cannot be terminated.
+ *      -EPERM:      Type of node specified cannot be terminated.
  *      DSP_EWRONGSTATE:    Operation not valid for the current node state.
  *      -EPERM:          Unable to terminate the node.
  *  Requires:

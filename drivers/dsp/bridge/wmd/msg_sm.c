@@ -513,7 +513,7 @@ dsp_status bridge_msg_register_notify(struct msg_queue *msg_queue_obj,
 	}
 
 	if (!(event_mask == DSP_NODEMESSAGEREADY || event_mask == 0)) {
-		status = DSP_ENODETYPE;
+		status = -EPERM;
 		goto func_end;
 	}
 

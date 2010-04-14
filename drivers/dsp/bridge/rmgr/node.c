@@ -706,7 +706,7 @@ DBAPI node_alloc_msg_buf(struct node_object *hnode, u32 usize,
 	if (!pnode)
 		status = DSP_EHANDLE;
 	else if (node_get_type(pnode) == NODE_DEVICE)
-		status = DSP_ENODETYPE;
+		status = -EPERM;
 
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -792,7 +792,7 @@ dsp_status node_change_priority(struct node_object *hnode, s32 prio)
 		hnode_mgr = hnode->hnode_mgr;
 		node_type = node_get_type(hnode);
 		if (node_type != NODE_TASK && node_type != NODE_DAISSOCKET)
-			status = DSP_ENODETYPE;
+			status = -EPERM;
 		else if (prio < hnode_mgr->min_pri || prio > hnode_mgr->max_pri)
 			status = -EDOM;
 	}
@@ -1783,7 +1783,7 @@ dsp_status node_get_channel_id(struct node_object *hnode, u32 dir, u32 index,
 	}
 	node_type = node_get_type(hnode);
 	if (node_type != NODE_TASK && node_type != NODE_DAISSOCKET) {
-		status = DSP_ENODETYPE;
+		status = -EPERM;
 		return status;
 	}
 	if (dir == DSP_TONODE) {
@@ -1843,7 +1843,7 @@ dsp_status node_get_message(struct node_object *hnode,
 	node_type = node_get_type(hnode);
 	if (node_type != NODE_MESSAGE && node_type != NODE_TASK &&
 	    node_type != NODE_DAISSOCKET) {
-		status = DSP_ENODETYPE;
+		status = -EPERM;
 		goto func_end;
 	}
 	/*  This function will block unless a message is available. Since
@@ -2038,7 +2038,7 @@ dsp_status node_pause(struct node_object *hnode)
 	} else {
 		node_type = node_get_type(hnode);
 		if (node_type != NODE_TASK && node_type != NODE_DAISSOCKET)
-			status = DSP_ENODETYPE;
+			status = -EPERM;
 	}
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -2137,7 +2137,7 @@ dsp_status node_put_message(struct node_object *hnode,
 	node_type = node_get_type(hnode);
 	if (node_type != NODE_MESSAGE && node_type != NODE_TASK &&
 	    node_type != NODE_DAISSOCKET)
-		status = DSP_ENODETYPE;
+		status = -EPERM;
 
 	if (DSP_SUCCEEDED(status)) {
 		/*  Check node state. Can't send messages to a node after
@@ -2286,7 +2286,7 @@ dsp_status node_run(struct node_object *hnode)
 	}
 	node_type = node_get_type(hnode);
 	if (node_type == NODE_DEVICE)
-		status = DSP_ENODETYPE;
+		status = -EPERM;
 	if (DSP_FAILED(status))
 		goto func_end;
 
@@ -2404,7 +2404,7 @@ dsp_status node_terminate(struct node_object *hnode, OUT dsp_status *pstatus)
 		hnode_mgr = hnode->hnode_mgr;
 		node_type = node_get_type(hnode);
 		if (node_type != NODE_TASK && node_type != NODE_DAISSOCKET)
-			status = DSP_ENODETYPE;
+			status = -EPERM;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/* Check node state */
