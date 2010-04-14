@@ -828,6 +828,8 @@ dsp_status drv_request_bridge_res_dsp(void **phost_resources)
 			dw_buff_size = sizeof(struct cfg_hostres);
 		}
 		*phost_resources = host_res;
+	} else {
+		status = -ENOMEM;
 	}
 	/* End Mem alloc */
 	return status;
