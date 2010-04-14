@@ -478,7 +478,7 @@ dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 	DBC_REQUIRE(pattr != NULL);
 	*strmres = NULL;
 	if (dir != DSP_TONODE && dir != DSP_FROMNODE) {
-		status = DSP_EDIRECTION;
+		status = -EPERM;
 	} else {
 		/* Get the channel id from the node (set in node_connect()) */
 		status = node_get_channel_id(hnode, dir, index, &ul_chnl_id);
@@ -599,7 +599,7 @@ func_cont:
 	/* ensure we return a documented error code */
 	DBC_ENSURE((DSP_SUCCEEDED(status) && strm_obj) ||
 		   (*strmres == NULL && (status == DSP_EHANDLE ||
-					status == DSP_EDIRECTION
+					status == -EPERM
 					|| status == DSP_EVALUE
 					|| status == -EPERM)));
 

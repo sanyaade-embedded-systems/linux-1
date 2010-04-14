@@ -259,7 +259,7 @@ extern dsp_status strm_issue(struct strm_object *hStrm, IN u8 * pbuf,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid hnode.
- *      DSP_EDIRECTION: Invalid dir.
+ *      -EPERM: Invalid dir.
  *      DSP_EVALUE:     Invalid index.
  *      DSP_ENODETYPE:  hnode is not a task or DAIS socket node.
  *      -EPERM:      Unable to open stream.
