@@ -506,7 +506,7 @@ dsp_status nldr_create(OUT struct nldr_object **phNldr,
 		/* Parse memory segment data */
 		dload_segs = (u16) (*((u32 *) psz_coff_buf));
 		if (dload_segs > MAXMEMSEGS)
-			status = DSP_ECORRUPTFILE;
+			status = -EBADF;
 	}
 	/* Parse dynamic load memory segments */
 	if (DSP_SUCCEEDED(status) && dload_segs > 0) {
