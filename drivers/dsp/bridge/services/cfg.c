@@ -158,7 +158,7 @@ dsp_status cfg_get_object(OUT u32 *pdwValue, u8 dw_type)
 			*pdwValue = (u32)drv_datap->drv_object;
 			status = DSP_SOK;
 		} else {
-			status = CFG_E_RESOURCENOTAVAIL;
+			status = -ENODATA;
 		}
 		break;
 	case (REG_MGR_OBJECT):
@@ -166,7 +166,7 @@ dsp_status cfg_get_object(OUT u32 *pdwValue, u8 dw_type)
 			*pdwValue = (u32)drv_datap->mgr_object;
 			status = DSP_SOK;
 		} else {
-			status = CFG_E_RESOURCENOTAVAIL;
+			status = -ENODATA;
 		}
 		break;
 

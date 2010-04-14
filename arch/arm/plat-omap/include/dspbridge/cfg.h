@@ -44,7 +44,7 @@ extern void cfg_exit(void);
  *  Returns:
  *      DSP_SOK:                Success.
  *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: Unable to retreive resource.
+ *      -ENODATA: Unable to retreive resource.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -84,7 +84,7 @@ extern dsp_status cfg_get_cd_version(OUT u32 *pdwVersion);
  *      DSP_SOK:                Success.
  *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
  *      CFG_E_INVALIDPOINTER:   phDevObject is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The resource is not available.
+ *      -ENODATA: The resource is not available.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -106,7 +106,7 @@ extern dsp_status cfg_get_dev_object(IN struct cfg_devnode *dev_node_obj,
  *      DSP_SOK:                Success.
  *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
  *      CFG_E_INVALIDPOINTER:   pstrExecFile is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The resource is not available.
+ *      -ENODATA: The resource is not available.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -161,7 +161,7 @@ extern void cfg_get_perf_value(OUT bool *pfEnablePerf);
  *  Returns:
  *      DSP_SOK:                On success.
  *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The filename is not available.
+ *      -ENODATA: The filename is not available.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -185,7 +185,7 @@ extern dsp_status cfg_get_wmd_file_name(IN struct cfg_devnode *dev_node_obj,
  *      DSP_SOK:                Success.
  *      CFG_E_INVALIDPOINTER:   pstrZLFileName is invalid.
  *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: couldn't find the ZLFileName.
+ *      -ENODATA: couldn't find the ZLFileName.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
