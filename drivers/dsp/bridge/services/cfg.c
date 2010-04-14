@@ -59,7 +59,7 @@ dsp_status cfg_get_auto_start(struct cfg_devnode *dev_node_obj,
 
 	dw_buf_size = sizeof(*pdwAutoStart);
 	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
+		status = -EFAULT;
 	if (!pdwAutoStart || !drv_datap)
 		status = CFG_E_INVALIDPOINTER;
 	if (DSP_SUCCEEDED(status))
@@ -87,10 +87,10 @@ dsp_status cfg_get_dev_object(struct cfg_devnode *dev_node_obj,
 		status = -EPERM;
 
 	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
+		status = -EFAULT;
 
 	if (!pdwValue)
-		status = CFG_E_INVALIDHDEVNODE;
+		status = -EFAULT;
 
 	dw_buf_size = sizeof(pdwValue);
 	if (DSP_SUCCEEDED(status)) {
@@ -119,7 +119,7 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
 	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
+		status = -EFAULT;
 	else if (!pstrExecFile || !drv_datap)
 		status = CFG_E_INVALIDPOINTER;
 
@@ -208,7 +208,7 @@ dsp_status cfg_set_dev_object(struct cfg_devnode *dev_node_obj, u32 dwValue)
 	}
 
 	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
+		status = -EFAULT;
 
 	if (DSP_SUCCEEDED(status)) {
 		/* Store the WCD device object in the Registry */

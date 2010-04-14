@@ -43,7 +43,7 @@ extern void cfg_exit(void);
  *      pdwAutoStart:   Ptr to location for 32 bit autostart mask.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
+ *      -EFAULT:  dev_node_obj is invalid.
  *      -ENODATA: Unable to retreive resource.
  *  Requires:
  *      CFG initialized.
@@ -82,7 +82,7 @@ extern dsp_status cfg_get_cd_version(OUT u32 *pdwVersion);
  *      pdwValue:       Ptr to location to store the value.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
+ *      -EFAULT:  dev_node_obj is invalid.
  *      CFG_E_INVALIDPOINTER:   phDevObject is invalid.
  *      -ENODATA: The resource is not available.
  *  Requires:
@@ -104,7 +104,7 @@ extern dsp_status cfg_get_dev_object(IN struct cfg_devnode *dev_node_obj,
  *      pstrExecFile:   Ptr to character buf to hold ExecFile.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
+ *      -EFAULT:  dev_node_obj is invalid.
  *      CFG_E_INVALIDPOINTER:   pstrExecFile is invalid.
  *      -ENODATA: The resource is not available.
  *  Requires:
@@ -160,7 +160,7 @@ extern void cfg_get_perf_value(OUT bool *pfEnablePerf);
  *      pWMDFileName:   Ptr to a character buffer to hold the WMD filename.
  *  Returns:
  *      DSP_SOK:                On success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
+ *      -EFAULT:  dev_node_obj is invalid.
  *      -ENODATA: The filename is not available.
  *  Requires:
  *      CFG initialized.
@@ -184,7 +184,7 @@ extern dsp_status cfg_get_wmd_file_name(IN struct cfg_devnode *dev_node_obj,
  *  Returns:
  *      DSP_SOK:                Success.
  *      CFG_E_INVALIDPOINTER:   pstrZLFileName is invalid.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
+ *      -EFAULT:  dev_node_obj is invalid.
  *      -ENODATA: couldn't find the ZLFileName.
  *  Requires:
  *      CFG initialized.
@@ -218,7 +218,7 @@ extern bool cfg_init(void);
  *      dwValue:    Arbitrary value to store.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
+ *      -EFAULT:  dev_node_obj is invalid.
  *      -EPERM:              Internal Error.
  *  Requires:
  *      CFG initialized.
