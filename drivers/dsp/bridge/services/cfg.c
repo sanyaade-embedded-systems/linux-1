@@ -126,7 +126,7 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	if (drv_datap->base_img && strlen(drv_datap->base_img) > ul_buf_size)
+	if (!drv_datap->base_img || strlen(drv_datap->base_img) > ul_buf_size)
 		status = -EINVAL;
 
 	if (DSP_SUCCEEDED(status))

@@ -130,6 +130,9 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 		}
 	}
 
+	if (DSP_FAILED(status))
+		goto func_end;
+
 	chnl_mgr_obj = pchnl->chnl_mgr_obj;
 
 	dev_obj = dev_get_first();
