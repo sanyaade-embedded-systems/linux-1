@@ -148,7 +148,7 @@ static s32 cod_f_read(void __user *pbuffer, s32 size, s32 cCount,
 		set_fs(fs);
 
 		if (!dw_bytes_read)
-			return DSP_EFREAD;
+			return -EBADF;
 
 		return dw_bytes_read / size;
 	}

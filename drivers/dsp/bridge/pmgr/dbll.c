@@ -783,7 +783,7 @@ dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
 		status = -EPERM;
 	} else {
 		if (!dload_get_section(zl_lib->desc, sect, pContent))
-			status = DSP_EFREAD;
+			status = -EBADF;
 
 	}
 func_cont:

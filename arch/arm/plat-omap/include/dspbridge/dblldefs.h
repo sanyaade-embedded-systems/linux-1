@@ -337,7 +337,7 @@ typedef bool(*dbll_init_fxn) (void);
  *      pulEntry        - Location to store program entry on output.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFREAD:     File read failed.
+ *      -EBADF:     File read failed.
  *      DSP_EFWRITE:    Write to target failed.
  *      DSP_EDYNLOAD:   Failure in dynamic loader library.
  *  Requires:
@@ -386,7 +386,7 @@ typedef dsp_status(*dbll_load_sect_fxn) (struct dbll_library_obj *lib,
  *      DSP_SOK:            Success.
  *      DSP_EMEMORY:        Memory allocation failure.
  *      DSP_EFOPEN:         File open failure.
- *      DSP_EFREAD:         File read failure.
+ *      -EBADF:         File read failure.
  *      DSP_ECORRUPTFILE:   Unable to determine target type.
  *  Requires:
  *      DBL initialized.
