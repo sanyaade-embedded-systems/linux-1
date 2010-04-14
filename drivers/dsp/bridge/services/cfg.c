@@ -61,7 +61,7 @@ dsp_status cfg_get_auto_start(struct cfg_devnode *dev_node_obj,
 	if (!dev_node_obj)
 		status = -EFAULT;
 	if (!pdwAutoStart || !drv_datap)
-		status = CFG_E_INVALIDPOINTER;
+		status = -EFAULT;
 	if (DSP_SUCCEEDED(status))
 		*pdwAutoStart = (drv_datap->base_img) ? 1 : 0;
 
@@ -121,7 +121,7 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
 	if (!dev_node_obj)
 		status = -EFAULT;
 	else if (!pstrExecFile || !drv_datap)
-		status = CFG_E_INVALIDPOINTER;
+		status = -EFAULT;
 
 	if (strlen(drv_datap->base_img) > ul_buf_size)
 		status = DSP_ESIZE;

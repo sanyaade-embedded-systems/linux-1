@@ -83,7 +83,7 @@ extern dsp_status cfg_get_cd_version(OUT u32 *pdwVersion);
  *  Returns:
  *      DSP_SOK:                Success.
  *      -EFAULT:  dev_node_obj is invalid.
- *      CFG_E_INVALIDPOINTER:   phDevObject is invalid.
+ *      -EFAULT:   phDevObject is invalid.
  *      -ENODATA: The resource is not available.
  *  Requires:
  *      CFG initialized.
@@ -105,7 +105,7 @@ extern dsp_status cfg_get_dev_object(IN struct cfg_devnode *dev_node_obj,
  *  Returns:
  *      DSP_SOK:                Success.
  *      -EFAULT:  dev_node_obj is invalid.
- *      CFG_E_INVALIDPOINTER:   pstrExecFile is invalid.
+ *      -EFAULT:   pstrExecFile is invalid.
  *      -ENODATA: The resource is not available.
  *  Requires:
  *      CFG initialized.
@@ -183,7 +183,7 @@ extern dsp_status cfg_get_wmd_file_name(IN struct cfg_devnode *dev_node_obj,
  *      pstrZLFileName: Ptr to character buf to hold ZLFileName.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDPOINTER:   pstrZLFileName is invalid.
+ *      -EFAULT:   pstrZLFileName is invalid.
  *      -EFAULT:  dev_node_obj is invalid.
  *      -ENODATA: couldn't find the ZLFileName.
  *  Requires:
