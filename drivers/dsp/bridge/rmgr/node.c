@@ -936,7 +936,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 			    &(hNode1->create_args.asa.
 			      task_arg_obj.strm_out_def[uStream1]);
 			if (output->sz_device != NULL)
-				status = DSP_EALREADYCONNECTED;
+				status = -EISCONN;
 
 		}
 		if (node2_type == NODE_TASK || node2_type == NODE_DAISSOCKET) {
@@ -944,7 +944,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 			    &(hNode2->create_args.asa.
 			      task_arg_obj.strm_in_def[uStream2]);
 			if (input->sz_device != NULL)
-				status = DSP_EALREADYCONNECTED;
+				status = -EISCONN;
 
 		}
 	}

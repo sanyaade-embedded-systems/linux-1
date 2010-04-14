@@ -168,7 +168,7 @@ extern dsp_status node_close_orphans(struct node_mgr *hnode_mgr,
  *      -EFAULT:            Invalid hNode1 or hNode2.
  *      -ENOMEM:            Insufficient host memory.
  *      -EINVAL:             A stream index parameter is invalid.
- *      DSP_EALREADYCONNECTED:  A connection already exists for one of the
+ *      -EISCONN:  A connection already exists for one of the
  *                              indices uStream1 or uStream2.
  *      DSP_EWRONGSTATE:        Either hNode1 or hNode2 is not in the
  *                              NODE_ALLOCATED state.
