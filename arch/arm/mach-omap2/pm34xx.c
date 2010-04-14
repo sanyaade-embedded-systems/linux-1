@@ -491,6 +491,39 @@ void omap_sram_idle(void)
 		omap2_clkdm_deny_idle(mpu_pwrdm->pwrdm_clkdms[0]);
 
 	/* CORE */
+	/*
+	 * Disable smartreflex before entering WFI.
+	 * Only needed if we are going to enter retention or off.
+	 */
+	if ((mpu_next_state <= PWRDM_POWER_RET) || (core_next_state <= PWRDM_POWER_RET)) {
+		fclk_status = cm_read_mod_reg(OMAP3430_PER_MOD, CM_FCLKEN) |
+				cm_read_mod_reg(CORE_MOD, CM_FCLKEN1) |
+				cm_read_mod_reg(CORE_MOD, OMAP3430ES2_CM_FCLKEN3) |
+				cm_read_mod_reg(OMAP3430_DSS_MOD, CM_FCLKEN) |
+				cm_read_mod_reg(OMAP3430_CAM_MOD, CM_FCLKEN) |
+				cm_read_mod_reg(OMAP3430ES2_SGX_MOD, CM_FCLKEN) |
+				cm_read_mod_reg(OMAP3430ES2_USBHOST_MOD, CM_FCLKEN);
+		if (!fclk_status) {
+			if ((mpu_next_state <= PWRDM_POWER_RET) && (iva_next_state <= PWRDM_POWER_RET))
+				omap_smartreflex_disable(SR1);
+			if (core_next_state <= PWRDM_POWER_RET) {
+				omap_smartreflex_disable(SR2);
+				if (cpu_is_omap3630())
+					program_vdd2_opp_3630();
+				else if (cpu_is_omap3430())
+					program_vdd2_opp_3430();
+				cm_rmw_mod_reg_bits(OMAP3430_AUTO_CORE_DPLL_MASK,
+							0x1, PLL_MOD, CM_AUTOIDLE);
+			}
+		} else if ((core_next_state == PWRDM_POWER_RET) &&
+				(core_logic_state == PWRDM_POWER_OFF)) {
+		pwrdm_set_logic_retst(core_pwrdm, PWRDM_POWER_RET);
+		pwrdm_set_mem_retst(core_pwrdm, 0, PWRDM_POWER_RET);
+		pwrdm_set_mem_retst(core_pwrdm, 1, PWRDM_POWER_RET);
+		core_logic_state = PWRDM_POWER_RET;
+		}
+	}
+
 	if (core_next_state < PWRDM_POWER_ON) {
 		omap_uart_prepare_idle(0, core_next_state & core_logic_state);
 		omap_uart_prepare_idle(1, core_next_state & core_logic_state);
@@ -530,25 +563,6 @@ void omap_sram_idle(void)
 		omap3_enable_io_chain();
 	}
 	omap3_intc_prepare_idle();
-
-	/*
-	 * Disable smartreflex before entering WFI.
-	 * Only needed if we are going to enter retention or off.
-	 */
-	if ((mpu_next_state <= PWRDM_POWER_RET) || (core_next_state <= PWRDM_POWER_RET))
-	fclk_status = cm_read_mod_reg(OMAP3430_PER_MOD, CM_FCLKEN) |
-			cm_read_mod_reg(CORE_MOD, CM_FCLKEN1) |
-			cm_read_mod_reg(CORE_MOD, OMAP3430ES2_CM_FCLKEN3) |
-			cm_read_mod_reg(OMAP3430_DSS_MOD, CM_FCLKEN) |
-			cm_read_mod_reg(OMAP3430_CAM_MOD, CM_FCLKEN) |
-			cm_read_mod_reg(OMAP3430ES2_SGX_MOD, CM_FCLKEN) |
-			cm_read_mod_reg(OMAP3430ES2_USBHOST_MOD, CM_FCLKEN);
-	if (!fclk_status) {
-		if ((mpu_next_state <= PWRDM_POWER_RET) && (iva_next_state <=PWRDM_POWER_RET))
-			omap_smartreflex_disable(SR1);
-		if (core_next_state <= PWRDM_POWER_RET)
-			omap_smartreflex_disable(SR2);
-	}
 
 	/*
 	* On EMU/HS devices ROM code restores a SRDC value
@@ -646,9 +660,17 @@ void omap_sram_idle(void)
 	if (!fclk_status) {
 		if (mpu_next_state <= PWRDM_POWER_RET)
 			omap_smartreflex_enable(SR1);
-		if (core_next_state <= PWRDM_POWER_RET)
+		if (core_next_state <= PWRDM_POWER_RET) {
+			cm_rmw_mod_reg_bits(OMAP3430_AUTO_CORE_DPLL_MASK,
+						0x0, PLL_MOD, CM_AUTOIDLE);
+			if (cpu_is_omap3630())
+				reprogram_vdd2_opp_3630();
+			else if (cpu_is_omap3430())
+				reprogram_vdd2_opp_3430();
 			omap_smartreflex_enable(SR2);
+		}
 	}
+
 	/* PER */
 	if (per_next_state < PWRDM_POWER_ON) {
 		omap3_per_gpio_wait_ready();
@@ -687,6 +709,7 @@ void omap_sram_idle(void)
 
 	omap2_clkdm_allow_idle(mpu_pwrdm->pwrdm_clkdms[0]);
 }
+
 
 int omap3_can_sleep(void)
 {
