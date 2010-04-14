@@ -249,7 +249,7 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
 			return DSP_SOK;
 		}
 	}
-	return DSP_EFILE;
+	return -ENOENT;
 }
 
 /*

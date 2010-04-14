@@ -63,7 +63,7 @@ extern dsp_status proc_attach(u32 processor_id,
  *      hdev_obj  :   Handle to the Device
  *  Returns:
  *      DSP_SOK     :   On Successful Loading
- *      DSP_EFILE   :   No DSP exec file found.
+ *      -ENOENT   :   No DSP exec file found.
  *      -EPERM   :   General Failure
  *  Requires:
  *      hdev_obj != NULL.
@@ -318,7 +318,7 @@ extern dsp_status proc_get_trace(void *hprocessor, u8 * pbuf, u32 max_size);
  *      user_envp:       An Array of Environment settings(Unicode Strings)
  *  Returns:
  *      DSP_SOK:       Success.
- *      DSP_EFILE:       The DSP Execuetable was not found.
+ *      -ENOENT:       The DSP Execuetable was not found.
  *      -EFAULT:       Invalid processor handle.
  *      DSP_ECORRUTFILE:    Unable to Parse the DSP Execuetable
  *      DSP_EATTACHED:      Abort because a GPP Client is attached to the
