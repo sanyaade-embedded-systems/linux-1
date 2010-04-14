@@ -54,7 +54,6 @@
 #include <dspbridge/dbc.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 #include <dspbridge/cfg.h>
 #include <dspbridge/sync.h>
 
@@ -99,9 +98,9 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 	struct chnl_irp *chnl_packet_obj = NULL;
 	struct wmd_dev_context *dev_ctxt;
 	struct dev_object *dev_obj;
-	u32 dw_state;
+	u8 dw_state;
 	bool is_eos;
-	struct chnl_mgr *chnl_mgr_obj = pchnl->chnl_mgr_obj;
+	struct chnl_mgr *chnl_mgr_obj;
 	u8 *host_sys_buf = NULL;
 	bool sched_dpc = false;
 	u16 mb_val = 0;
@@ -110,9 +109,9 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 
 	/* Validate args:  */
 	if (pHostBuf == NULL) {
-		status = DSP_EPOINTER;
-	} else if (!MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
+	} else if (!pchnl) {
+		status = -EFAULT;
 	} else if (is_eos && CHNL_IS_INPUT(pchnl->chnl_mode)) {
 		status = CHNL_E_NOEOS;
 	} else {
@@ -121,7 +120,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 		dw_state = pchnl->dw_state;
 		if (dw_state != CHNL_STATEREADY) {
 			if (dw_state & CHNL_STATECANCEL)
-				status = CHNL_E_CANCELLED;
+				status = -ECANCELED;
 			else if ((dw_state & CHNL_STATEEOS)
 				 && CHNL_IS_OUTPUT(pchnl->chnl_mode))
 				status = CHNL_E_EOS;
@@ -131,10 +130,12 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 		}
 	}
 
+	chnl_mgr_obj = pchnl->chnl_mgr_obj;
+
 	dev_obj = dev_get_first();
 	dev_get_wmd_context(dev_obj, &dev_ctxt);
-	if (!dev_ctxt)
-		status = DSP_EHANDLE;
+	if (!dev_ctxt || !chnl_mgr_obj)
+		status = -EFAULT;
 
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -145,9 +146,9 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 			goto func_cont;
 		}
 		/* if addr in user mode, then copy to kernel space */
-		host_sys_buf = mem_alloc(buf_size, MEM_NONPAGED);
+		host_sys_buf = kmalloc(buf_size, GFP_KERNEL);
 		if (host_sys_buf == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			goto func_end;
 		}
 		if (CHNL_IS_OUTPUT(pchnl->chnl_mode)) {
@@ -156,7 +157,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 			if (status) {
 				kfree(host_sys_buf);
 				host_sys_buf = NULL;
-				status = DSP_EPOINTER;
+				status = -EFAULT;
 				goto func_end;
 			}
 		}
@@ -253,17 +254,17 @@ dsp_status bridge_chnl_cancel_io(struct chnl_object *chnl_obj)
 	dsp_status status = DSP_SOK;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 	u32 chnl_id = -1;
-	short int chnl_mode;
+	s8 chnl_mode;
 	struct chnl_irp *chnl_packet_obj;
 	struct chnl_mgr *chnl_mgr_obj = NULL;
 
 	/* Check args: */
-	if (MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE) && pchnl->chnl_mgr_obj) {
+	if (pchnl && pchnl->chnl_mgr_obj) {
 		chnl_id = pchnl->chnl_id;
 		chnl_mode = pchnl->chnl_mode;
 		chnl_mgr_obj = pchnl->chnl_mgr_obj;
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -319,8 +320,8 @@ dsp_status bridge_chnl_close(struct chnl_object *chnl_obj)
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 
 	/* Check args: */
-	if (!MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!pchnl) {
+		status = -EFAULT;
 		goto func_cont;
 	}
 	{
@@ -335,7 +336,6 @@ func_cont:
 		DBC_ASSERT((pchnl->dw_state & CHNL_STATECANCEL));
 		/* Invalidate channel object: Protects from
 		 * CHNL_GetIOCompletion(). */
-		pchnl->dw_signature = 0x0000;
 		/* Free the slot in the channel manager: */
 		pchnl->chnl_mgr_obj->ap_channel[pchnl->chnl_id] = NULL;
 		spin_lock_bh(&pchnl->chnl_mgr_obj->chnl_mgr_lock);
@@ -369,11 +369,10 @@ func_cont:
 			pchnl->free_packets_list = NULL;
 		}
 		/* Release channel object. */
-		MEM_FREE_OBJECT(pchnl);
+		kfree(pchnl);
 		pchnl = NULL;
 	}
-	DBC_ENSURE(DSP_FAILED(status) ||
-		   !MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE));
+	DBC_ENSURE(DSP_FAILED(status) || !pchnl);
 	return status;
 }
 
@@ -388,7 +387,7 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 {
 	dsp_status status = DSP_SOK;
 	struct chnl_mgr *chnl_mgr_obj = NULL;
-	s32 max_channels;
+	u8 max_channels;
 
 	/* Check DBC requirements: */
 	DBC_REQUIRE(phChnlMgr != NULL);
@@ -397,8 +396,8 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 	DBC_REQUIRE(pMgrAttrs->max_channels <= CHNL_MAXCHANNELS);
 	DBC_REQUIRE(pMgrAttrs->word_size != 0);
 
-	/* Allocate channel manager object: */
-	MEM_ALLOC_OBJECT(chnl_mgr_obj, struct chnl_mgr, CHNL_MGRSIGNATURE);
+	/* Allocate channel manager object */
+	chnl_mgr_obj = kzalloc(sizeof(struct chnl_mgr), GFP_KERNEL);
 	if (chnl_mgr_obj) {
 		/* The max_channels attr must equal the # of supported
 		 * chnls for each transport(# chnls for PCPY = DDMA =
@@ -407,9 +406,8 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 		DBC_ASSERT(pMgrAttrs->max_channels == CHNL_MAXCHANNELS);
 		max_channels = CHNL_MAXCHANNELS + CHNL_MAXCHANNELS * CHNL_PCPY;
 		/* Create array of channels: */
-		chnl_mgr_obj->ap_channel =
-		    mem_calloc(sizeof(struct chnl_object *) * max_channels,
-			       MEM_NONPAGED);
+		chnl_mgr_obj->ap_channel = kzalloc(sizeof(struct chnl_object *)
+						* max_channels, GFP_KERNEL);
 		if (chnl_mgr_obj->ap_channel) {
 			/* Initialize chnl_mgr object: */
 			/* Shared memory driver. */
@@ -424,10 +422,10 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 			if (DSP_SUCCEEDED(status))
 				spin_lock_init(&chnl_mgr_obj->chnl_mgr_lock);
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 
 	if (DSP_FAILED(status)) {
@@ -451,7 +449,7 @@ dsp_status bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr)
 	struct chnl_mgr *chnl_mgr_obj = hchnl_mgr;
 	u32 chnl_id;
 
-	if (MEM_IS_VALID_HANDLE(hchnl_mgr, CHNL_MGRSIGNATURE)) {
+	if (hchnl_mgr) {
 		/* Close all open channels: */
 		for (chnl_id = 0; chnl_id < chnl_mgr_obj->max_channels;
 		     chnl_id++) {
@@ -469,9 +467,9 @@ dsp_status bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr)
 		/* Set hchnl_mgr to NULL in device object. */
 		dev_set_chnl_mgr(chnl_mgr_obj->hdev_obj, NULL);
 		/* Free this Chnl Mgr object: */
-		MEM_FREE_OBJECT(hchnl_mgr);
+		kfree(hchnl_mgr);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -485,20 +483,20 @@ dsp_status bridge_chnl_flush_io(struct chnl_object *chnl_obj, u32 dwTimeOut)
 {
 	dsp_status status = DSP_SOK;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
-	short int chnl_mode = -1;
+	s8 chnl_mode = -1;
 	struct chnl_mgr *chnl_mgr_obj;
 	struct chnl_ioc chnl_ioc_obj;
 	/* Check args: */
-	if (MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
+	if (pchnl) {
 		if ((dwTimeOut == CHNL_IOCNOWAIT)
 		    && CHNL_IS_OUTPUT(pchnl->chnl_mode)) {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 		} else {
 			chnl_mode = pchnl->chnl_mode;
 			chnl_mgr_obj = pchnl->chnl_mgr_obj;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/* Note: Currently, if another thread continues to add IO
@@ -540,7 +538,7 @@ dsp_status bridge_chnl_get_info(struct chnl_object *chnl_obj,
 	dsp_status status = DSP_SOK;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 	if (pInfo != NULL) {
-		if (MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
+		if (pchnl) {
 			/* Return the requested information: */
 			pInfo->hchnl_mgr = pchnl->chnl_mgr_obj;
 			pInfo->event_obj = pchnl->user_event;
@@ -553,10 +551,10 @@ dsp_status bridge_chnl_get_info(struct chnl_object *chnl_obj,
 			pInfo->cio_reqs = pchnl->cio_reqs;
 			pInfo->dw_state = pchnl->dw_state;
 		} else {
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 		}
 	} else {
-		status = DSP_EPOINTER;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -583,9 +581,9 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 
 	/* Check args: */
 	if (pIOC == NULL) {
-		status = DSP_EPOINTER;
-	} else if (!MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
+	} else if (!pchnl) {
+		status = -EFAULT;
 	} else if (dwTimeOut == CHNL_IOCNOWAIT) {
 		if (LST_IS_EMPTY(pchnl->pio_completions))
 			status = CHNL_E_NOIOC;
@@ -595,7 +593,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 	dev_obj = dev_get_first();
 	dev_get_wmd_context(dev_obj, &dev_ctxt);
 	if (!dev_ctxt)
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -607,11 +605,11 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 			dwTimeOut = SYNC_INFINITE;
 
 		stat_sync = sync_wait_on_event(pchnl->sync_event, dwTimeOut);
-		if (stat_sync == DSP_ETIMEOUT) {
+		if (stat_sync == -ETIME) {
 			/* No response from DSP */
 			ioc.status |= CHNL_IOCSTATTIMEOUT;
 			dequeue_ioc = false;
-		} else if (stat_sync == DSP_EFAIL) {
+		} else if (stat_sync == -EPERM) {
 			/* This can occur when the user mode thread is
 			 * aborted (^C), or when _VWIN32_WaitSingleObject()
 			 * fails due to unkown causes. */
@@ -685,7 +683,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 
 		/* If the addr is in user mode, then copy it */
 		if (!host_sys_buf || !ioc.pbuf) {
-			status = DSP_EPOINTER;
+			status = -EFAULT;
 			goto func_cont;
 		}
 		if (!CHNL_IS_INPUT(pchnl->chnl_mode))
@@ -698,7 +696,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 				status = 0;
 		}
 		if (status)
-			status = DSP_EPOINTER;
+			status = -EFAULT;
 func_cont1:
 		kfree(host_sys_buf);
 	}
@@ -721,7 +719,7 @@ dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
 
 	if (pMgrInfo != NULL) {
 		if (uChnlID <= CHNL_MAXCHANNELS) {
-			if (MEM_IS_VALID_HANDLE(hchnl_mgr, CHNL_MGRSIGNATURE)) {
+			if (hchnl_mgr) {
 				/* Return the requested information: */
 				pMgrInfo->chnl_obj =
 				    chnl_mgr_obj->ap_channel[uChnlID];
@@ -732,13 +730,13 @@ dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
 				pMgrInfo->max_channels =
 				    chnl_mgr_obj->max_channels;
 			} else {
-				status = DSP_EHANDLE;
+				status = -EFAULT;
 			}
 		} else {
 			status = CHNL_E_BADCHANID;
 		}
 	} else {
-		status = DSP_EPOINTER;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -751,11 +749,11 @@ dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
 dsp_status bridge_chnl_idle(struct chnl_object *chnl_obj, u32 dwTimeOut,
 			    bool fFlush)
 {
-	short int chnl_mode;
+	s8 chnl_mode;
 	struct chnl_mgr *chnl_mgr_obj;
 	dsp_status status = DSP_SOK;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(chnl_obj, CHNL_SIGNATURE));
+	DBC_REQUIRE(chnl_obj);
 
 	chnl_mode = chnl_obj->chnl_mode;
 	chnl_mgr_obj = chnl_obj->chnl_mgr_obj;
@@ -779,7 +777,7 @@ dsp_status bridge_chnl_idle(struct chnl_object *chnl_obj, u32 dwTimeOut,
  *      Open a new half-duplex channel to the DSP board.
  */
 dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
-			    struct chnl_mgr *hchnl_mgr, short int chnl_mode,
+			    struct chnl_mgr *hchnl_mgr, s8 chnl_mode,
 			    u32 uChnlId, CONST IN struct chnl_attr *pattrs)
 {
 	dsp_status status = DSP_SOK;
@@ -794,17 +792,17 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 
 	/* Validate Args: */
 	if (pattrs->uio_reqs == 0) {
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 	} else {
-		if (!MEM_IS_VALID_HANDLE(hchnl_mgr, CHNL_MGRSIGNATURE)) {
-			status = DSP_EHANDLE;
+		if (!hchnl_mgr) {
+			status = -EFAULT;
 		} else {
 			if (uChnlId != CHNL_PICKFREE) {
 				if (uChnlId >= chnl_mgr_obj->max_channels)
 					status = CHNL_E_BADCHANID;
 				else if (chnl_mgr_obj->ap_channel[uChnlId] !=
 					 NULL)
-					status = CHNL_E_CHANBUSY;
+					status = -EALREADY;
 			} else {
 				/* Check for free channel */
 				status =
@@ -817,9 +815,9 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 
 	DBC_ASSERT(uChnlId < chnl_mgr_obj->max_channels);
 	/* Create channel object: */
-	MEM_ALLOC_OBJECT(pchnl, struct chnl_object, 0x0000);
+	pchnl = kzalloc(sizeof(struct chnl_object), GFP_KERNEL);
 	if (!pchnl) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	/* Protect queues from io_dpc: */
@@ -835,7 +833,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 	if (sync_event)
 		sync_init_event(sync_event);
 	else
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		pchnl->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
@@ -843,7 +841,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 		if (pchnl->ntfy_obj)
 			ntfy_init(pchnl->ntfy_obj);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 	}
 
 	if (DSP_SUCCEEDED(status)) {
@@ -862,7 +860,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 			/* Default to proc-copy */
 			pchnl->chnl_type = CHNL_PCPY;
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	}
 
@@ -889,7 +887,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 			kfree(pchnl->ntfy_obj);
 			pchnl->ntfy_obj = NULL;
 		}
-		MEM_FREE_OBJECT(pchnl);
+		kfree(pchnl);
 	} else {
 		/* Insert channel object in channel manager: */
 		chnl_mgr_obj->ap_channel[pchnl->chnl_id] = pchnl;
@@ -897,14 +895,11 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 		chnl_mgr_obj->open_channels++;
 		spin_unlock_bh(&chnl_mgr_obj->chnl_mgr_lock);
 		/* Return result... */
-		pchnl->dw_signature = CHNL_SIGNATURE;
 		pchnl->dw_state = CHNL_STATEREADY;
 		*phChnl = pchnl;
 	}
 func_end:
-	DBC_ENSURE((DSP_SUCCEEDED(status) &&
-		    MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE)) ||
-		   (*phChnl == NULL));
+	DBC_ENSURE((DSP_SUCCEEDED(status) && pchnl) || (*phChnl == NULL));
 	return status;
 }
 
@@ -946,7 +941,7 @@ static struct lst_list *create_chirp_list(u32 uChirps)
 	struct chnl_irp *chnl_packet_obj;
 	u32 i;
 
-	chirp_list = mem_calloc(sizeof(struct lst_list), MEM_NONPAGED);
+	chirp_list = kzalloc(sizeof(struct lst_list), GFP_KERNEL);
 
 	if (chirp_list) {
 		INIT_LIST_HEAD(&chirp_list->head);
@@ -990,9 +985,7 @@ static struct chnl_irp *make_new_chirp(void)
 {
 	struct chnl_irp *chnl_packet_obj;
 
-	chnl_packet_obj =
-	    (struct chnl_irp *)mem_calloc(sizeof(struct chnl_irp),
-					  MEM_NONPAGED);
+	chnl_packet_obj = kzalloc(sizeof(struct chnl_irp), GFP_KERNEL);
 	if (chnl_packet_obj != NULL) {
 		/* lst_init_elem only resets the list's member values. */
 		lst_init_elem(&chnl_packet_obj->link);
@@ -1011,7 +1004,7 @@ static dsp_status search_free_channel(struct chnl_mgr *chnl_mgr_obj,
 	dsp_status status = CHNL_E_OUTOFSTREAMS;
 	u32 i;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(chnl_mgr_obj, CHNL_MGRSIGNATURE));
+	DBC_REQUIRE(chnl_mgr_obj);
 
 	for (i = 0; i < chnl_mgr_obj->max_channels; i++) {
 		if (chnl_mgr_obj->ap_channel[i] == NULL) {

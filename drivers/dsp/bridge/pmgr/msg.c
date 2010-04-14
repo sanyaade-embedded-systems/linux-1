@@ -27,9 +27,6 @@
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
 
-/*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
-
 /*  ----------------------------------- Mini Driver */
 #include <dspbridge/wmd.h>
 
@@ -81,7 +78,7 @@ dsp_status msg_create(OUT struct msg_mgr **phMsgMgr,
 		/* Finally, return the new message manager handle: */
 		*phMsgMgr = hmsg_mgr;
 	} else {
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 	return status;
 }
@@ -98,7 +95,7 @@ void msg_delete(struct msg_mgr *hmsg_mgr)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (MEM_IS_VALID_HANDLE(msg_mgr_obj, MSGMGR_SIGNATURE)) {
+	if (msg_mgr_obj) {
 		intf_fxns = msg_mgr_obj->intf_fxns;
 
 		/* Let WMD message module destroy the msg_mgr: */

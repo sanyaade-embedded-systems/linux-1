@@ -75,8 +75,8 @@ extern void *cmm_calloc_buf(struct cmm_object *hcmm_mgr,
  *      pMgrAttrs:  Comm mem manager attributes.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EMEMORY:    Insufficient memory for requested resources.
- *      DSP_EFAIL:      Failed to initialize critical sect sync object.
+ *      -ENOMEM:    Insufficient memory for requested resources.
+ *      -EPERM:      Failed to initialize critical sect sync object.
  *
  *  Requires:
  *      cmm_init(void) called.
@@ -96,12 +96,12 @@ extern dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
  *  Parameters:
  *      hcmm_mgr:   Cmm Mgr handle.
  *      bForce:    Force deallocation of all cmm memory immediately if set TRUE.
- *                 If FALSE, and outstanding allocations will return DSP_EFAIL
+ *                 If FALSE, and outstanding allocations will return -EPERM
  *                 status.
  *  Returns:
  *      DSP_SOK:        CMM object & resources deleted.
- *      DSP_EFAIL:      Unable to free CMM object due to outstanding allocation.
- *      DSP_EHANDLE:    Unable to free CMM due to bad handle.
+ *      -EPERM:      Unable to free CMM object due to outstanding allocation.
+ *      -EFAULT:    Unable to free CMM due to bad handle.
  *  Requires:
  *      CMM is initialized.
  *      hcmm_mgr != NULL.
@@ -135,7 +135,7 @@ extern void cmm_exit(void);
  *                  Set to 0 to use default segment.
  *  Returns:
  *      DSP_SOK
- *      DSP_EFAIL
+ *      -EPERM
  *  Requires:
  *      CMM initialized.
  *      buf_pa != NULL
@@ -156,7 +156,7 @@ extern dsp_status cmm_free_buf(struct cmm_object *hcmm_mgr,
  *
  *  Returns:
  *      DSP_SOK:        Cmm Mgr opaque handle returned.
- *      DSP_EHANDLE:    Invalid handle.
+ *      -EFAULT:    Invalid handle.
  *  Requires:
  *      ph_cmm_mgr != NULL
  *      hdev_obj != NULL
@@ -175,8 +175,8 @@ extern dsp_status cmm_get_handle(void *hprocessor,
  *
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid handle.
- *      DSP_EINVALIDARG Invalid input argument.
+ *      -EFAULT:    Invalid handle.
+ *      -EINVAL Invalid input argument.
  *  Requires:
  *  Ensures:
  *
@@ -213,9 +213,9 @@ extern bool cmm_init(void);
  *
  *  Returns:
  *      DSP_SOK:         Success.
- *      DSP_EHANDLE:     Invalid hcmm_mgr handle.
- *      DSP_EINVALIDARG: Invalid input argument.
- *      DSP_EFAIL:       Unable to register.
+ *      -EFAULT:     Invalid hcmm_mgr handle.
+ *      -EINVAL: Invalid input argument.
+ *      -EPERM:       Unable to register.
  *      - On success *pulSegId is a valid SM segment ID.
  *  Requires:
  *      ul_size > 0
@@ -244,9 +244,9 @@ extern dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
  *      ul_seg_id     Segment identifier returned by cmm_register_gppsm_seg.
  *  Returns:
  *       DSP_SOK:         Success.
- *       DSP_EHANDLE:     Invalid handle.
- *       DSP_EINVALIDARG: Invalid ul_seg_id.
- *       DSP_EFAIL:       Unable to unregister for unknown reason.
+ *       -EFAULT:     Invalid handle.
+ *       -EINVAL: Invalid ul_seg_id.
+ *       -EPERM:       Unable to unregister for unknown reason.
  *  Requires:
  *  Ensures:
  *
@@ -286,8 +286,8 @@ extern void *cmm_xlator_alloc_buf(struct cmm_xlatorobject *xlator,
  *     pXlatorAttrs:   Translator attributes used for the client NODE or STREAM.
  *  Returns:
  *     DSP_SOK:            Success.
- *     DSP_EINVALIDARG:    Bad input Attrs.
- *     DSP_EMEMORY:   Insufficient memory(local) for requested resources.
+ *     -EINVAL:    Bad input Attrs.
+ *     -ENOMEM:   Insufficient memory(local) for requested resources.
  *  Requires:
  *     phXlator != NULL
  *     hcmm_mgr != NULL
@@ -308,8 +308,8 @@ extern dsp_status cmm_xlator_create(OUT struct cmm_xlatorobject **phXlator,
  *      bForce:     bForce = TRUE will free XLators SM buffers/dscriptrs.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Bad translator handle.
- *      DSP_EFAIL:      Unable to free translator resources.
+ *      -EFAULT:    Bad translator handle.
+ *      -EPERM:      Unable to free translator resources.
  *  Requires:
  *      refs > 0
  *  Ensures:
@@ -328,7 +328,7 @@ extern dsp_status cmm_xlator_delete(struct cmm_xlatorobject *xlator,
  *      pBufVa      Virtual address of PA to free.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Bad translator handle.
+ *      -EFAULT:    Bad translator handle.
  *  Requires:
  *  Ensures:
  *
@@ -350,7 +350,7 @@ extern dsp_status cmm_xlator_free_buf(struct cmm_xlatorobject *xlator,
  *     set_info     Set xlator fields if TRUE, else return base addr
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Bad translator handle.
+ *      -EFAULT:    Bad translator handle.
  *  Requires:
  *      (refs > 0)
  *      (paddr != NULL)

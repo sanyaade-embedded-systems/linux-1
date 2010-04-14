@@ -20,11 +20,11 @@
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
 #include <linux/types.h>
-/*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/gs.h>
+
+#include <linux/slab.h>
 
 /*  ----------------------------------- Globals */
 static u32 cumsize;
@@ -38,7 +38,7 @@ void *gs_alloc(u32 size)
 {
 	void *p;
 
-	p = mem_calloc(size, MEM_PAGED);
+	p = kzalloc(size, GFP_KERNEL);
 	if (p == NULL)
 		return NULL;
 	cumsize += size;

@@ -30,8 +30,7 @@
  *  follow this structure in memory.
  */
 struct msg_mgr_ {
-	/* The first two fields must match those in msgobj.h */
-	u32 dw_signature;
+	/* The first field must match that in _msg_sm.h */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD. */
 };
 

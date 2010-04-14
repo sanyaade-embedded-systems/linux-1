@@ -35,7 +35,6 @@
 
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/ldr.h>
-#include <dspbridge/mem.h>
 
 /*  ----------------------------------- Platform Manager */
 /* Include appropriate loader header file */
@@ -103,7 +102,7 @@ static s32 cod_f_close(struct file *filp)
 {
 	/* Check for valid handle */
 	if (!filp)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	filp_close(filp, NULL);
 
@@ -135,7 +134,7 @@ static s32 cod_f_read(void __user *pbuffer, s32 size, s32 cCount,
 {
 	/* check for valid file handle */
 	if (!filp)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	if ((size > 0) && (cCount > 0) && pbuffer) {
 		u32 dw_bytes_read;
@@ -149,12 +148,12 @@ static s32 cod_f_read(void __user *pbuffer, s32 size, s32 cCount,
 		set_fs(fs);
 
 		if (!dw_bytes_read)
-			return DSP_EFREAD;
+			return -EBADF;
 
 		return dw_bytes_read / size;
 	}
 
-	return DSP_EINVALIDARG;
+	return -EINVAL;
 }
 
 static s32 cod_f_seek(struct file *filp, s32 lOffset, s32 cOrigin)
@@ -163,13 +162,13 @@ static s32 cod_f_seek(struct file *filp, s32 lOffset, s32 cOrigin)
 
 	/* check for valid file handle */
 	if (!filp)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	/* based on the origin flag, move the internal pointer */
 	dw_cur_pos = filp->f_op->llseek(filp, lOffset, cOrigin);
 
 	if ((s32) dw_cur_pos < 0)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	/* we can't use DSP_SOK here */
 	return 0;
@@ -180,13 +179,13 @@ static s32 cod_f_tell(struct file *filp)
 	loff_t dw_cur_pos;
 
 	if (!filp)
-		return DSP_EHANDLE;
+		return -EFAULT;
 
 	/* Get current position */
 	dw_cur_pos = filp->f_op->llseek(filp, 0, SEEK_CUR);
 
 	if ((s32) dw_cur_pos < 0)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	return dw_cur_pos;
 }
@@ -232,11 +231,11 @@ dsp_status cod_create(OUT struct cod_manager **phMgr, char *pstrDummyFile,
 
 	/* we don't support non-default attrs yet */
 	if (attrs != NULL)
-		return DSP_ENOTIMPL;
+		return -ENOSYS;
 
-	mgr_new = mem_calloc(sizeof(struct cod_manager), MEM_NONPAGED);
+	mgr_new = kzalloc(sizeof(struct cod_manager), GFP_KERNEL);
 	if (mgr_new == NULL)
-		return DSP_EMEMORY;
+		return -ENOMEM;
 
 	mgr_new->ul_magic = MAGIC;
 
@@ -351,7 +350,7 @@ dsp_status cod_get_base_name(struct cod_manager *cod_mgr_obj, char *pszName,
 	if (usize <= COD_MAXPATHLENGTH)
 		strncpy(pszName, cod_mgr_obj->sz_zl_file, usize);
 	else
-		status = DSP_EFAIL;
+		status = -EPERM;
 
 	return status;
 }
@@ -566,9 +565,9 @@ dsp_status cod_open(struct cod_manager *hmgr, IN char *pszCoffPath,
 
 	*pLib = NULL;
 
-	lib = mem_calloc(sizeof(struct cod_libraryobj), MEM_NONPAGED);
+	lib = kzalloc(sizeof(struct cod_libraryobj), GFP_KERNEL);
 	if (lib == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		lib->cod_mgr = hmgr;

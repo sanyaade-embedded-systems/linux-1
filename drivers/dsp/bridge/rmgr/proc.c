@@ -30,7 +30,6 @@
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/cfg.h>
 #include <dspbridge/list.h>
-#include <dspbridge/mem.h>
 #include <dspbridge/ntfy.h>
 #include <dspbridge/sync.h>
 /*  ----------------------------------- Mini Driver */
@@ -53,7 +52,6 @@
 #include <dspbridge/msg.h>
 #include <dspbridge/wmdioctl.h>
 #include <dspbridge/drv.h>
-#include <dspbridge/reg.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/proc.h>
@@ -61,7 +59,6 @@
 
 #include <dspbridge/resourcecleanup.h>
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-#define PROC_SIGNATURE	   0x434F5250	/* "PROC" (in reverse). */
 #define MAXCMDLINELEN       255
 #define PROC_ENVPROCID      "PROC_ID=%d"
 #define MAXPROCIDLEN	(8 + 5)
@@ -84,7 +81,6 @@ extern char *iva_img;
 /* The proc_object structure. */
 struct proc_object {
 	struct list_head link;	/* Link to next proc_object */
-	u32 dw_signature;	/* Used for object validation */
 	struct dev_object *hdev_obj;	/* Device this PROC represents */
 	u32 process;		/* Process owning this Processor */
 	struct mgr_object *hmgr_obj;	/* Manager Object Handle */
@@ -130,7 +126,7 @@ proc_attach(u32 processor_id,
 	struct proc_object *p_proc_object = NULL;
 	struct mgr_object *hmgr_obj = NULL;
 	struct drv_object *hdrv_obj = NULL;
-	u32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(ph_processor != NULL);
@@ -156,10 +152,10 @@ proc_attach(u32 processor_id,
 		goto func_end;
 
 	/* If we made it this far, create the Proceesor object: */
-	MEM_ALLOC_OBJECT(p_proc_object, struct proc_object, PROC_SIGNATURE);
+	p_proc_object = kzalloc(sizeof(struct proc_object), GFP_KERNEL);
 	/* Fill out the Processor Object: */
 	if (p_proc_object == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	p_proc_object->hdev_obj = hdev_obj;
@@ -180,9 +176,9 @@ proc_attach(u32 processor_id,
 		status = dev_get_wmd_context(hdev_obj,
 					     &p_proc_object->hwmd_context);
 		if (DSP_FAILED(status))
-			MEM_FREE_OBJECT(p_proc_object);
+			kfree(p_proc_object);
 	} else
-		MEM_FREE_OBJECT(p_proc_object);
+		kfree(p_proc_object);
 
 	if (DSP_FAILED(status))
 		goto func_end;
@@ -196,7 +192,7 @@ proc_attach(u32 processor_id,
 	if (p_proc_object->ntfy_obj)
 		ntfy_init(p_proc_object->ntfy_obj);
 	else
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_SUCCEEDED(status)) {
 		/* Insert the Processor Object into the DEV List.
@@ -217,7 +213,7 @@ proc_attach(u32 processor_id,
 				kfree(p_proc_object->ntfy_obj);
 			}
 
-			MEM_FREE_OBJECT(p_proc_object);
+			kfree(p_proc_object);
 		}
 		if (DSP_SUCCEEDED(status)) {
 			*ph_processor = (void *)p_proc_object;
@@ -227,14 +223,11 @@ proc_attach(u32 processor_id,
 		}
 	} else {
 		/* Don't leak memory if DSP_FAILED */
-		MEM_FREE_OBJECT(p_proc_object);
+		kfree(p_proc_object);
 	}
 func_end:
-	DBC_ENSURE((status == DSP_EFAIL && *ph_processor == NULL) ||
-		   (DSP_SUCCEEDED(status) &&
-		    MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) ||
-		   (status == DSP_SALREADYATTACHED &&
-		    MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)));
+	DBC_ENSURE((status == -EPERM && *ph_processor == NULL) ||
+			(DSP_SUCCEEDED(status) && p_proc_object));
 
 	return status;
 }
@@ -243,10 +236,10 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
 				struct dev_object *hdev_obj,
 				u32 size, char *execFile)
 {
-	s32 dev_type;
+	u8 dev_type;
 	s32 len;
 
-	dev_get_dev_type(hdev_obj, (u32 *) &dev_type);
+	dev_get_dev_type(hdev_obj, (u8 *) &dev_type);
 	if (dev_type == DSP_UNIT) {
 		return cfg_get_exec_file(dev_node_obj, size, execFile);
 	} else if (dev_type == IVA_UNIT) {
@@ -256,7 +249,7 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
 			return DSP_SOK;
 		}
 	}
-	return DSP_EFILE;
+	return -ENOENT;
 }
 
 /*
@@ -268,7 +261,7 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
  *      hdev_obj:     Handle to the Device
  *  Returns:
  *      DSP_SOK:   On Successful Loading
- *      DSP_EFAIL  General Failure
+ *      -EPERM  General Failure
  *  Requires:
  *      hdev_obj != NULL
  *  Ensures:
@@ -276,12 +269,12 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
 dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 			   struct dev_object *hdev_obj)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct proc_object *p_proc_object;
 	char sz_exec_file[MAXCMDLINELEN];
 	char *argv[2];
 	struct mgr_object *hmgr_obj = NULL;
-	s32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(dev_node_obj != NULL);
@@ -292,9 +285,9 @@ dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	MEM_ALLOC_OBJECT(p_proc_object, struct proc_object, PROC_SIGNATURE);
+	p_proc_object = kzalloc(sizeof(struct proc_object), GFP_KERNEL);
 	if (p_proc_object == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	p_proc_object->hdev_obj = hdev_obj;
@@ -313,7 +306,7 @@ dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 		goto func_cont;
 
 	/* Get the default executable for this board... */
-	dev_get_dev_type(hdev_obj, (u32 *) &dev_type);
+	dev_get_dev_type(hdev_obj, (u8 *) &dev_type);
 	p_proc_object->processor_id = dev_type;
 	status = get_exec_file(dev_node_obj, hdev_obj, sizeof(sz_exec_file),
 			       sz_exec_file);
@@ -328,7 +321,7 @@ dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 	kfree(p_proc_object->psz_last_coff);
 	p_proc_object->psz_last_coff = NULL;
 func_cont:
-	MEM_FREE_OBJECT(p_proc_object);
+	kfree(p_proc_object);
 func_end:
 	return status;
 }
@@ -352,7 +345,7 @@ dsp_status proc_ctrl(void *hprocessor, u32 dw_cmd, IN struct dsp_cbdata * arg)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		/* intercept PWR deep sleep command */
 		if (dw_cmd == WMDIOCTL_DEEPSLEEP) {
 			timeout = arg->cb_data;
@@ -379,10 +372,10 @@ dsp_status proc_ctrl(void *hprocessor, u32 dw_cmd, IN struct dsp_cbdata * arg)
 				       arg))) {
 			status = DSP_SOK;
 		} else {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -403,7 +396,7 @@ dsp_status proc_detach(struct process_context *pr_ctxt)
 
 	p_proc_object = (struct proc_object *)pr_ctxt->hprocessor;
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		if (p_proc_object->ntfy_obj) {
 			/* Notify the Client */
 			ntfy_notify(p_proc_object->ntfy_obj,
@@ -418,10 +411,10 @@ dsp_status proc_detach(struct process_context *pr_ctxt)
 		(void)dev_remove_proc_object(p_proc_object->hdev_obj,
 					     (u32) p_proc_object);
 		/* Free the Processor Object */
-		MEM_FREE_OBJECT(p_proc_object);
+		kfree(p_proc_object);
 		pr_ctxt->hprocessor = NULL;
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -437,7 +430,7 @@ dsp_status proc_enum_nodes(void *hprocessor, void **node_tab,
 			   IN u32 node_tab_size, OUT u32 *pu_num_nodes,
 			   OUT u32 *pu_allocated)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct node_mgr *hnode_mgr = NULL;
 
@@ -446,7 +439,7 @@ dsp_status proc_enum_nodes(void *hprocessor, void **node_tab,
 	DBC_REQUIRE(pu_num_nodes != NULL);
 	DBC_REQUIRE(pu_allocated != NULL);
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		if (DSP_SUCCEEDED(dev_get_node_manager(p_proc_object->hdev_obj,
 						       &hnode_mgr))) {
 			if (hnode_mgr) {
@@ -457,7 +450,7 @@ dsp_status proc_enum_nodes(void *hprocessor, void **node_tab,
 			}
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -544,8 +537,8 @@ static dsp_status proc_memory_sync(void *hprocessor, void *pmpu_addr,
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto err_out;
 	}
 
@@ -556,7 +549,7 @@ static dsp_status proc_memory_sync(void *hprocessor, void *pmpu_addr,
 		if (memory_sync_vma((u32) pmpu_addr, ul_size, ul_flags)) {
 			pr_err("%s: InValid address parameters %p %x\n",
 			       __func__, pmpu_addr, ul_size);
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 		}
 		up_read(&current->mm->mmap_sem);
 	}
@@ -596,7 +589,7 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 				  OUT struct dsp_resourceinfo *resource_info,
 				  u32 resource_info_size)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct node_mgr *hnode_mgr = NULL;
 	struct nldr_object *nldr_obj = NULL;
@@ -607,8 +600,8 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 	DBC_REQUIRE(resource_info != NULL);
 	DBC_REQUIRE(resource_info_size >= sizeof(struct dsp_resourceinfo));
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 	switch (resource_type) {
@@ -630,9 +623,9 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 					      (struct dsp_memstat *)
 					      &(resource_info->result.
 						mem_stat)))
-					status = DSP_EVALUE;
+					status = -EINVAL;
 			} else {
-				status = DSP_EHANDLE;
+				status = -EFAULT;
 			}
 		}
 		break;
@@ -647,7 +640,7 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 						   proc_load_stat));
 		break;
 	default:
-		status = DSP_EFAIL;
+		status = -EPERM;
 		break;
 	}
 func_end:
@@ -678,18 +671,18 @@ void proc_exit(void)
 dsp_status proc_get_dev_object(void *hprocessor,
 			       struct dev_object **phDevObject)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDevObject != NULL);
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		*phDevObject = p_proc_object->hdev_obj;
 		status = DSP_SOK;
 	} else {
 		*phDevObject = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE((DSP_SUCCEEDED(status) && *phDevObject != NULL) ||
@@ -716,7 +709,7 @@ dsp_status proc_get_state(void *hprocessor,
 	DBC_REQUIRE(proc_state_obj != NULL);
 	DBC_REQUIRE(state_info_size >= sizeof(struct dsp_processorstate));
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
+	if (p_proc_object) {
 		/* First, retrieve BRD state information */
 		status = (*p_proc_object->intf_fxns->pfn_brd_status)
 		    (p_proc_object->hwmd_context, &brd_status);
@@ -739,7 +732,7 @@ dsp_status proc_get_state(void *hprocessor,
 				break;
 			default:
 				proc_state_obj->proc_state = 0xFF;
-				status = DSP_EFAIL;
+				status = -EPERM;
 				break;
 			}
 		}
@@ -749,7 +742,7 @@ dsp_status proc_get_state(void *hprocessor,
 			status = (*p_proc_object->intf_fxns->pfn_deh_get_info)
 			    (hdeh_mgr, &(proc_state_obj->err_info));
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	dev_dbg(bridge, "%s, results: status: 0x%x proc_state_obj: 0x%x\n",
 		__func__, status, proc_state_obj->proc_state);
@@ -771,7 +764,7 @@ dsp_status proc_get_state(void *hprocessor,
 dsp_status proc_get_trace(void *hprocessor, u8 * pbuf, u32 max_size)
 {
 	dsp_status status;
-	status = DSP_ENOTIMPL;
+	status = -ENOSYS;
 	return status;
 }
 
@@ -820,6 +813,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 	u32 dw_ext_end;
 	u32 proc_id;
 	int brd_state;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 #ifdef OPT_LOAD_TIME_INSTRUMENTATION
 	struct timeval tv1;
@@ -839,13 +833,13 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 	do_gettimeofday(&tv1);
 #endif
 	/* Call the WMD_BRD_Load fxn */
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 	dev_get_cod_mgr(p_proc_object->hdev_obj, &cod_mgr);
 	if (!cod_mgr) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	status = proc_stop(hprocessor);
@@ -862,14 +856,14 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 	/*Prepend "PROC_ID=<nproc_id>"to envp array for target. */
 	envp_elems = get_envp_count((char **)user_envp);
 	cnew_envp = (envp_elems ? (envp_elems + 1) : (envp_elems + 2));
-	new_envp = mem_calloc(cnew_envp * sizeof(char **), MEM_PAGED);
+	new_envp = kzalloc(cnew_envp * sizeof(char **), GFP_KERNEL);
 	if (new_envp) {
 		status = snprintf(sz_proc_id, MAXPROCIDLEN, PROC_ENVPROCID,
 				  nproc_id);
 		if (status == -1) {
 			dev_dbg(bridge, "%s: Proc ID string overflow\n",
 				__func__);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			new_envp =
 			    prepend_envp(new_envp, (char **)user_envp,
@@ -901,7 +895,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 					       COD_SYMB);
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/* Auto-register data base */
@@ -921,14 +915,14 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 				status = DSP_SOK;
 
 			if (DSP_FAILED(status)) {
-				status = DSP_EFAIL;
+				status = -EPERM;
 			} else {
 				DBC_ASSERT(p_proc_object->psz_last_coff ==
 					   NULL);
 				/* Allocate memory for pszLastCoff */
 				p_proc_object->psz_last_coff =
-				    mem_calloc((strlen((char *)user_args[0]) +
-						1), MEM_PAGED);
+						kzalloc((strlen(user_args[0]) +
+						1), GFP_KERNEL);
 				/* If memory allocated, save COFF file name */
 				if (p_proc_object->psz_last_coff) {
 					strncpy(p_proc_object->psz_last_coff,
@@ -970,7 +964,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 				       dev_brd_write_fxn,
 				       p_proc_object->hdev_obj, NULL);
 		if (DSP_FAILED(status)) {
-			if (status == COD_E_OPENFAILED) {
+			if (status == -EBADF) {
 				dev_dbg(bridge, "%s: Failure to Load the EXE\n",
 					__func__);
 			}
@@ -1020,7 +1014,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 								   dw_ext_end,
 								   DMMPOOLSIZE);
 				} else {
-					status = DSP_EHANDLE;
+					status = -EFAULT;
 				}
 			}
 		}
@@ -1032,13 +1026,15 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 		if (DSP_SUCCEEDED((*p_proc_object->intf_fxns->pfn_brd_status)
 				  (p_proc_object->hwmd_context, &brd_state))) {
 			pr_info("%s: Processor Loaded %s\n", __func__, pargv0);
+			kfree(drv_datap->base_img);
+			drv_datap->base_img = kmalloc(strlen(pargv0) + 1,
+								GFP_KERNEL);
+			if (drv_datap->base_img)
+				strncpy(drv_datap->base_img, pargv0,
+							strlen(pargv0) + 1);
+			else
+				status = -ENOMEM;
 			DBC_ASSERT(brd_state == BRD_LOADED);
-			/*
-			 * Save absolute path for base image so that recovery
-			 * can load it.
-			 */
-			reg_set_value(DEFEXEC, (u8 *) pargv0,
-				      strlen(pargv0) + 1);
 		}
 	}
 
@@ -1094,8 +1090,8 @@ dsp_status proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
 	size_align = PG_ALIGN_HIGH(ul_size + (u32) pmpu_addr - pa_align,
 				   PG_SIZE4K);
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 	/* Critical section */
@@ -1104,7 +1100,7 @@ dsp_status proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
 	if (dmm_mgr)
 		status = dmm_map_memory(dmm_mgr, va_align, size_align);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	/* Add mapping to the page tables. */
 	if (DSP_SUCCEEDED(status)) {
@@ -1165,8 +1161,8 @@ dsp_status proc_register_notify(void *hprocessor, u32 event_mask,
 	DBC_REQUIRE(refs > 0);
 
 	/* Check processor handle */
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 	/* Check if event mask is a valid processor related event */
@@ -1174,11 +1170,11 @@ dsp_status proc_register_notify(void *hprocessor, u32 event_mask,
 			   DSP_PROCESSORDETACH | DSP_PROCESSORRESTART |
 			   DSP_MMUFAULT | DSP_SYSERROR | DSP_PWRERROR |
 			   DSP_WDTOVERFLOW))
-		status = DSP_EVALUE;
+		status = -EINVAL;
 
 	/* Check if notify type is valid */
 	if (notify_type != DSP_SIGNALEVENT)
-		status = DSP_EVALUE;
+		status = -EINVAL;
 
 	if (DSP_SUCCEEDED(status)) {
 		/* If event mask is not DSP_SYSERROR, DSP_MMUFAULT,
@@ -1239,14 +1235,14 @@ dsp_status proc_reserve_memory(void *hprocessor, u32 ul_size,
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct dmm_rsv_object *rsv_obj;
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 
 	dmm_get_handle(p_proc_object, &dmm_mgr);
 	if (!dmm_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1288,8 +1284,8 @@ dsp_status proc_start(void *hprocessor)
 	int brd_state;
 
 	DBC_REQUIRE(refs > 0);
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 	/* Call the bridge_brd_start */
@@ -1299,7 +1295,7 @@ dsp_status proc_start(void *hprocessor)
 	}
 	dev_get_cod_mgr(p_proc_object->hdev_obj, &cod_mgr);
 	if (!cod_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_cont;
 	}
 
@@ -1366,8 +1362,8 @@ dsp_status proc_stop(void *hprocessor)
 	int brd_state;
 
 	DBC_REQUIRE(refs > 0);
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 	if (DSP_SUCCEEDED((*p_proc_object->intf_fxns->pfn_brd_status)
@@ -1380,7 +1376,7 @@ dsp_status proc_stop(void *hprocessor)
 	if (DSP_SUCCEEDED(status) && hnode_mgr) {
 		status = node_enum_nodes(hnode_mgr, &hnode, node_tab_size,
 					 &num_nodes, &nodes_allocated);
-		if ((status == DSP_ESIZE) || (nodes_allocated > 0)) {
+		if ((status == -EINVAL) || (nodes_allocated > 0)) {
 			pr_err("%s: Can't stop device, active nodes = %d \n",
 			       __func__, nodes_allocated);
 			return DSP_EWRONGSTATE;
@@ -1433,14 +1429,14 @@ dsp_status proc_un_map(void *hprocessor, void *map_addr,
 	struct dmm_map_object *map_obj;
 
 	va_align = PG_ALIGN_LOW((u32) map_addr, PG_SIZE4K);
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 
 	dmm_get_handle(hprocessor, &dmm_mgr);
 	if (!dmm_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1494,14 +1490,14 @@ dsp_status proc_un_reserve_memory(void *hprocessor, void *prsv_addr,
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct dmm_rsv_object *rsv_obj;
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 
 	dmm_get_handle(p_proc_object, &dmm_mgr);
 	if (!dmm_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1549,12 +1545,12 @@ func_end:
  */
 static dsp_status proc_monitor(struct proc_object *p_proc_object)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct msg_mgr *hmsg_mgr;
 	int brd_state;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE));
+	DBC_REQUIRE(p_proc_object);
 
 	/* This is needed only when Device is loaded when it is
 	 * already 'ACTIVE' */
@@ -1637,11 +1633,11 @@ dsp_status proc_notify_clients(void *hProc, u32 uEvents)
 	dsp_status status = DSP_SOK;
 	struct proc_object *p_proc_object = (struct proc_object *)hProc;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE));
+	DBC_REQUIRE(p_proc_object);
 	DBC_REQUIRE(IS_VALID_PROC_EVENT(uEvents));
 	DBC_REQUIRE(refs > 0);
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1664,8 +1660,8 @@ dsp_status proc_notify_all_clients(void *hProc, u32 uEvents)
 	DBC_REQUIRE(IS_VALID_PROC_EVENT(uEvents));
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!p_proc_object) {
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1685,10 +1681,10 @@ dsp_status proc_get_processor_id(void *hProc, u32 * procID)
 	dsp_status status = DSP_SOK;
 	struct proc_object *p_proc_object = (struct proc_object *)hProc;
 
-	if (MEM_IS_VALID_HANDLE(p_proc_object, PROC_SIGNATURE))
+	if (p_proc_object)
 		*procID = p_proc_object->processor_id;
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	return status;
 }

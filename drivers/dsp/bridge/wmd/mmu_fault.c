@@ -26,7 +26,6 @@
 #include <dspbridge/dbc.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 #include <dspbridge/drv.h>
 
 /*  ----------------------------------- Link Driver */
@@ -69,22 +68,23 @@ irqreturn_t mmu_fault_isr(int irq, IN void *pRefData)
 {
 	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)pRefData;
 	struct wmd_dev_context *dev_context;
-	struct cfg_hostres resources;
-	dsp_status status = DSP_SOK;
+	struct cfg_hostres *resources;
 
 	DBC_REQUIRE(irq == INT_DSP_MMU_IRQ);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE));
+	DBC_REQUIRE(deh_mgr_obj);
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 
 		dev_context =
 		    (struct wmd_dev_context *)deh_mgr_obj->hwmd_context;
-		status = cfg_get_host_resources((struct cfg_devnode *)
-						drv_get_first_dev_extension(),
-						&resources);
-		if (DSP_FAILED(status))
+
+		resources = dev_context->resources;
+
+		if (!resources) {
 			dev_dbg(bridge, "%s: Failed to get Host Resources\n",
 				__func__);
+			return IRQ_HANDLED;
+		}
 		if (mmu_check_if_fault(dev_context)) {
 			printk(KERN_INFO "***** DSPMMU FAULT ***** IRQStatus "
 			       "0x%x\n", dmmu_event_mask);
@@ -104,10 +104,10 @@ irqreturn_t mmu_fault_isr(int irq, IN void *pRefData)
 			deh_mgr_obj->err_info.dw_val3 = 0L;
 			/* Disable the MMU events, else once we clear it will
 			 * start to raise INTs again */
-			hw_mmu_event_disable(resources.dw_dmmu_base,
+			hw_mmu_event_disable(resources->dw_dmmu_base,
 					     HW_MMU_TRANSLATION_FAULT);
 		} else {
-			hw_mmu_event_disable(resources.dw_dmmu_base,
+			hw_mmu_event_disable(resources->dw_dmmu_base,
 					     HW_MMU_ALL_INTERRUPTS);
 		}
 	}
@@ -123,20 +123,18 @@ static bool mmu_check_if_fault(struct wmd_dev_context *dev_context)
 {
 
 	bool ret = false;
-	dsp_status status = DSP_SOK;
 	hw_status hw_status_obj;
-	struct cfg_hostres resources;
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-	if (DSP_FAILED(status))
+	struct cfg_hostres *resources = dev_context->resources;
+
+	if (!resources) {
 		dev_dbg(bridge, "%s: Failed to get Host Resources in\n",
 			__func__);
-
+		return ret;
+	}
 	hw_status_obj =
-	    hw_mmu_event_status(resources.dw_dmmu_base, &dmmu_event_mask);
+	    hw_mmu_event_status(resources->dw_dmmu_base, &dmmu_event_mask);
 	if (dmmu_event_mask == HW_MMU_TRANSLATION_FAULT) {
-		hw_mmu_fault_addr_read(resources.dw_dmmu_base, &fault_addr);
+		hw_mmu_fault_addr_read(resources->dw_dmmu_base, &fault_addr);
 		ret = true;
 	}
 	return ret;

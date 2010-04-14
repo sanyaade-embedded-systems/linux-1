@@ -28,7 +28,6 @@
 #include <dspbridge/dbc.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 #include <dspbridge/sync.h>
 
 /*  ----------------------------------- Mini Driver */
@@ -47,9 +46,6 @@
 #include <dspbridge/resourcecleanup.h>
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-#define STRM_SIGNATURE      0x4d525453	/* "MRTS" */
-#define STRMMGR_SIGNATURE   0x5254534d	/* "RTSM" */
-
 #define DEFAULTTIMEOUT      10000
 #define DEFAULTNUMBUFS      2
 
@@ -59,7 +55,6 @@
  *  channels of a stream.
  */
 struct strm_mgr {
-	u32 dw_signature;
 	struct dev_object *dev_obj;	/* Device for this processor */
 	struct chnl_mgr *hchnl_mgr;	/* Channel manager */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
@@ -70,7 +65,6 @@ struct strm_mgr {
  *  This object is allocated in strm_open().
  */
 struct strm_object {
-	u32 dw_signature;
 	struct strm_mgr *strm_mgr_obj;
 	struct chnl_object *chnl_obj;
 	u32 dir;		/* DSP_TONODE or DSP_FROMNODE */
@@ -102,51 +96,48 @@ static void delete_strm_mgr(struct strm_mgr *strm_mgr_obj);
  *  Purpose:
  *      Allocates buffers for a stream.
  */
-dsp_status strm_allocate_buffer(struct strm_object *hStrm, u32 usize,
+dsp_status strm_allocate_buffer(struct strm_res_object *strmres, u32 usize,
 				OUT u8 **ap_buffer, u32 num_bufs,
 				struct process_context *pr_ctxt)
 {
 	dsp_status status = DSP_SOK;
 	u32 alloc_cnt = 0;
 	u32 i;
-
-	bhandle hstrm_res;
+	struct strm_object *hstrm = strmres->hstream;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(ap_buffer != NULL);
 
-	if (MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (hstrm) {
 		/*
 		 * Allocate from segment specified at time of stream open.
 		 */
 		if (usize == 0)
-			status = DSP_ESIZE;
+			status = -EINVAL;
 
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	if (DSP_FAILED(status))
 		goto func_end;
 
 	for (i = 0; i < num_bufs; i++) {
-		DBC_ASSERT(hStrm->xlator != NULL);
-		(void)cmm_xlator_alloc_buf(hStrm->xlator, &ap_buffer[i], usize);
+		DBC_ASSERT(hstrm->xlator != NULL);
+		(void)cmm_xlator_alloc_buf(hstrm->xlator, &ap_buffer[i], usize);
 		if (ap_buffer[i] == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			alloc_cnt = i;
 			break;
 		}
 	}
 	if (DSP_FAILED(status))
-		strm_free_buffer(hStrm, ap_buffer, alloc_cnt, pr_ctxt);
+		strm_free_buffer(strmres, ap_buffer, alloc_cnt, pr_ctxt);
 
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	if (drv_get_strm_res_element(hStrm, &hstrm_res, pr_ctxt) !=
-	    DSP_ENOTFOUND)
-		drv_proc_update_strm_res(num_bufs, hstrm_res);
+	drv_proc_update_strm_res(num_bufs, strmres);
 
 func_end:
 	return status;
@@ -157,46 +148,45 @@ func_end:
  *  Purpose:
  *      Close a stream opened with strm_open().
  */
-dsp_status strm_close(struct strm_object *hStrm,
+dsp_status strm_close(struct strm_res_object *strmres,
 		      struct process_context *pr_ctxt)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct chnl_info chnl_info_obj;
 	dsp_status status = DSP_SOK;
-
-	bhandle hstrm_res;
+	struct strm_object *hstrm = strmres->hstream;
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hstrm) {
+		status = -EFAULT;
 	} else {
 		/* Have all buffers been reclaimed? If not, return
 		 * DSP_EPENDING */
-		intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
+		intf_fxns = hstrm->strm_mgr_obj->intf_fxns;
 		status =
-		    (*intf_fxns->pfn_chnl_get_info) (hStrm->chnl_obj,
+		    (*intf_fxns->pfn_chnl_get_info) (hstrm->chnl_obj,
 						     &chnl_info_obj);
 		DBC_ASSERT(DSP_SUCCEEDED(status));
 
 		if (chnl_info_obj.cio_cs > 0 || chnl_info_obj.cio_reqs > 0)
 			status = DSP_EPENDING;
 		else
-			status = delete_strm(hStrm);
+			status = delete_strm(hstrm);
 	}
 
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	if (drv_get_strm_res_element(hStrm, &hstrm_res, pr_ctxt) !=
-	    DSP_ENOTFOUND)
-		drv_proc_remove_strm_res_element(hstrm_res, pr_ctxt);
+	spin_lock(&pr_ctxt->strm_idp->lock);
+	idr_remove(pr_ctxt->strm_idp, strmres->id);
+	spin_unlock(&pr_ctxt->strm_idp->lock);
 func_end:
-	DBC_ENSURE(status == DSP_SOK || status == DSP_EHANDLE ||
-		   status == DSP_EPENDING || status == DSP_EFAIL);
+	DBC_ENSURE(status == DSP_SOK || status == -EFAULT ||
+		   status == DSP_EPENDING || status == -EPERM);
 
-	dev_dbg(bridge, "%s: hStrm: %p, status 0x%x\n", __func__,
-		hStrm, status);
+	dev_dbg(bridge, "%s: hstrm: %p, status 0x%x\n", __func__,
+		hstrm, status);
 	return status;
 }
 
@@ -217,9 +207,9 @@ dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
 
 	*phStrmMgr = NULL;
 	/* Allocate STRM manager object */
-	MEM_ALLOC_OBJECT(strm_mgr_obj, struct strm_mgr, STRMMGR_SIGNATURE);
+	strm_mgr_obj = kzalloc(sizeof(struct strm_mgr), GFP_KERNEL);
 	if (strm_mgr_obj == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	else
 		strm_mgr_obj->dev_obj = dev_obj;
 
@@ -239,8 +229,7 @@ dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
 		delete_strm_mgr(strm_mgr_obj);
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) &&
-		   (MEM_IS_VALID_HANDLE((*phStrmMgr), STRMMGR_SIGNATURE) ||
-		    (DSP_FAILED(status) && *phStrmMgr == NULL)));
+		(*phStrmMgr || (DSP_FAILED(status) && *phStrmMgr == NULL)));
 
 	return status;
 }
@@ -253,11 +242,11 @@ dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
 void strm_delete(struct strm_mgr *strm_mgr_obj)
 {
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(strm_mgr_obj, STRMMGR_SIGNATURE));
+	DBC_REQUIRE(strm_mgr_obj);
 
 	delete_strm_mgr(strm_mgr_obj);
 
-	DBC_ENSURE(!MEM_IS_VALID_HANDLE(strm_mgr_obj, STRMMGR_SIGNATURE));
+	DBC_ENSURE(!strm_mgr_obj);
 }
 
 /*
@@ -279,33 +268,30 @@ void strm_exit(void)
  *  Purpose:
  *      Frees the buffers allocated for a stream.
  */
-dsp_status strm_free_buffer(struct strm_object *hStrm, u8 ** ap_buffer,
+dsp_status strm_free_buffer(struct strm_res_object *strmres, u8 ** ap_buffer,
 			    u32 num_bufs, struct process_context *pr_ctxt)
 {
 	dsp_status status = DSP_SOK;
 	u32 i = 0;
-
-	bhandle hstrm_res = NULL;
+	struct strm_object *hstrm = strmres->hstream;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(ap_buffer != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE))
-		status = DSP_EHANDLE;
+	if (!hstrm)
+		status = -EFAULT;
 
 	if (DSP_SUCCEEDED(status)) {
 		for (i = 0; i < num_bufs; i++) {
-			DBC_ASSERT(hStrm->xlator != NULL);
+			DBC_ASSERT(hstrm->xlator != NULL);
 			status =
-			    cmm_xlator_free_buf(hStrm->xlator, ap_buffer[i]);
+			    cmm_xlator_free_buf(hstrm->xlator, ap_buffer[i]);
 			if (DSP_FAILED(status))
 				break;
 			ap_buffer[i] = NULL;
 		}
 	}
-	if (drv_get_strm_res_element(hStrm, hstrm_res, pr_ctxt) !=
-	    DSP_ENOTFOUND)
-		drv_proc_update_strm_res(num_bufs - i, hstrm_res);
+	drv_proc_update_strm_res(num_bufs - i, strmres);
 
 	return status;
 }
@@ -328,12 +314,12 @@ dsp_status strm_get_info(struct strm_object *hStrm,
 	DBC_REQUIRE(stream_info != NULL);
 	DBC_REQUIRE(stream_info_size >= sizeof(struct stream_info));
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hStrm) {
+		status = -EFAULT;
 	} else {
 		if (stream_info_size < sizeof(struct stream_info)) {
 			/* size of users info */
-			status = DSP_ESIZE;
+			status = -EINVAL;
 		}
 	}
 	if (DSP_FAILED(status))
@@ -389,8 +375,8 @@ dsp_status strm_idle(struct strm_object *hStrm, bool fFlush)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hStrm) {
+		status = -EFAULT;
 	} else {
 		intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
 
@@ -437,8 +423,8 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pbuf != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hStrm) {
+		status = -EFAULT;
 	} else {
 		intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
 
@@ -456,7 +442,7 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
 			     (u32) tmp_buf, dw_arg);
 		}
 		if (status == CHNL_E_NOIORPS)
-			status = DSP_ESTREAMFULL;
+			status = -ENOSR;
 	}
 
 	dev_dbg(bridge, "%s: hStrm: %p pbuf: %p ul_bytes: 0x%x dw_arg: 0x%x "
@@ -473,14 +459,14 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
  */
 dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 		     IN struct strm_attr *pattr,
-		     OUT struct strm_object **phStrm,
+		     OUT struct strm_res_object **strmres,
 		     struct process_context *pr_ctxt)
 {
 	struct strm_mgr *strm_mgr_obj;
 	struct bridge_drv_interface *intf_fxns;
 	u32 ul_chnl_id;
 	struct strm_object *strm_obj = NULL;
-	short int chnl_mode;
+	s8 chnl_mode;
 	struct chnl_attr chnl_attr_obj;
 	dsp_status status = DSP_SOK;
 	struct cmm_object *hcmm_mgr = NULL;	/* Shared memory manager hndl */
@@ -488,11 +474,11 @@ dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 	bhandle hstrm_res;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(phStrm != NULL);
+	DBC_REQUIRE(strmres != NULL);
 	DBC_REQUIRE(pattr != NULL);
-	*phStrm = NULL;
+	*strmres = NULL;
 	if (dir != DSP_TONODE && dir != DSP_FROMNODE) {
-		status = DSP_EDIRECTION;
+		status = -EPERM;
 	} else {
 		/* Get the channel id from the node (set in node_connect()) */
 		status = node_get_channel_id(hnode, dir, index, &ul_chnl_id);
@@ -501,9 +487,9 @@ dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 		status = node_get_strm_mgr(hnode, &strm_mgr_obj);
 
 	if (DSP_SUCCEEDED(status)) {
-		MEM_ALLOC_OBJECT(strm_obj, struct strm_object, STRM_SIGNATURE);
+		strm_obj = kzalloc(sizeof(struct strm_object), GFP_KERNEL);
 		if (strm_obj == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			strm_obj->strm_mgr_obj = strm_mgr_obj;
 			strm_obj->dir = dir;
@@ -582,41 +568,44 @@ func_cont:
 			 * over-ride non-returnable status codes so we return
 			 * something documented
 			 */
-			if (status != DSP_EMEMORY && status !=
-			    DSP_EINVALIDARG && status != DSP_EFAIL) {
+			if (status != -ENOMEM && status !=
+			    -EINVAL && status != -EPERM) {
 				/*
 				 * We got a status that's not return-able.
 				 * Assert that we got something we were
-				 * expecting (DSP_EHANDLE isn't acceptable,
+				 * expecting (-EFAULT isn't acceptable,
 				 * strm_mgr_obj->hchnl_mgr better be valid or we
-				 * assert here), and then return DSP_EFAIL.
+				 * assert here), and then return -EPERM.
 				 */
 				DBC_ASSERT(status == CHNL_E_OUTOFSTREAMS ||
 					   status == CHNL_E_BADCHANID ||
-					   status == CHNL_E_CHANBUSY ||
+					   status == -EALREADY ||
 					   status == CHNL_E_NOIORPS);
-				status = DSP_EFAIL;
+				status = -EPERM;
 			}
 		}
 	}
 	if (DSP_SUCCEEDED(status)) {
-		*phStrm = strm_obj;
-		drv_proc_insert_strm_res_element(*phStrm, &hstrm_res, pr_ctxt);
+		status = drv_proc_insert_strm_res_element(strm_obj,
+							&hstrm_res, pr_ctxt);
+		if (DSP_FAILED(status))
+			delete_strm(strm_obj);
+		else
+			*strmres = (struct strm_res_object *)hstrm_res;
 	} else {
 		(void)delete_strm(strm_obj);
 	}
 
 	/* ensure we return a documented error code */
-	DBC_ENSURE((DSP_SUCCEEDED(status) &&
-		    MEM_IS_VALID_HANDLE((*phStrm), STRM_SIGNATURE)) ||
-		   (*phStrm == NULL && (status == DSP_EHANDLE ||
-					status == DSP_EDIRECTION
-					|| status == DSP_EVALUE
-					|| status == DSP_EFAIL)));
+	DBC_ENSURE((DSP_SUCCEEDED(status) && strm_obj) ||
+		   (*strmres == NULL && (status == -EFAULT ||
+					status == -EPERM
+					|| status == -EINVAL
+					|| status == -EPERM)));
 
 	dev_dbg(bridge, "%s: hnode: %p dir: 0x%x index: 0x%x pattr: %p "
-		"phStrm: %p status: 0x%x\n", __func__,
-		hnode, dir, index, pattr, phStrm, status);
+		"strmres: %p status: 0x%x\n", __func__,
+		hnode, dir, index, pattr, strmres, status);
 	return status;
 }
 
@@ -638,8 +627,8 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 	DBC_REQUIRE(pulBytes != NULL);
 	DBC_REQUIRE(pdw_arg != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hStrm) {
+		status = -EFAULT;
 		goto func_end;
 	}
 	intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
@@ -655,11 +644,11 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 		*pdw_arg = chnl_ioc_obj.dw_arg;
 		if (!CHNL_IS_IO_COMPLETE(chnl_ioc_obj)) {
 			if (CHNL_IS_TIMED_OUT(chnl_ioc_obj)) {
-				status = DSP_ETIMEOUT;
+				status = -ETIME;
 			} else {
 				/* Allow reclaims after idle to succeed */
 				if (!CHNL_IS_IO_CANCELLED(chnl_ioc_obj))
-					status = DSP_EFAIL;
+					status = -EPERM;
 
 			}
 		}
@@ -692,9 +681,9 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 	}
 func_end:
 	/* ensure we return a documented return code */
-	DBC_ENSURE(DSP_SUCCEEDED(status) || status == DSP_EHANDLE ||
-		   status == DSP_ETIMEOUT || status == DSP_ETRANSLATE ||
-		   status == DSP_EFAIL);
+	DBC_ENSURE(DSP_SUCCEEDED(status) || status == -EFAULT ||
+		   status == -ETIME || status == DSP_ETRANSLATE ||
+		   status == -EPERM);
 
 	dev_dbg(bridge, "%s: hStrm: %p buf_ptr: %p pulBytes: %p pdw_arg: %p "
 		"status 0x%x\n", __func__, hStrm,
@@ -717,14 +706,14 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(hnotification != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hStrm) {
+		status = -EFAULT;
 	} else if ((event_mask & ~((DSP_STREAMIOCOMPLETION) |
 				   DSP_STREAMDONE)) != 0) {
-		status = DSP_EVALUE;
+		status = -EINVAL;
 	} else {
 		if (notify_type != DSP_SIGNALEVENT)
-			status = DSP_ENOTIMPL;
+			status = -ENOSYS;
 
 	}
 	if (DSP_SUCCEEDED(status)) {
@@ -737,9 +726,9 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 							    hnotification);
 	}
 	/* ensure we return a documented return code */
-	DBC_ENSURE(DSP_SUCCEEDED(status) || status == DSP_EHANDLE ||
-		   status == DSP_ETIMEOUT || status == DSP_ETRANSLATE ||
-		   status == DSP_ENOTIMPL || status == DSP_EFAIL);
+	DBC_ENSURE(DSP_SUCCEEDED(status) || status == -EFAULT ||
+		   status == -ETIME || status == DSP_ETRANSLATE ||
+		   status == -ENOSYS || status == -EPERM);
 	return status;
 }
 
@@ -765,8 +754,8 @@ dsp_status strm_select(IN struct strm_object **strm_tab, u32 nStrms,
 
 	*pmask = 0;
 	for (i = 0; i < nStrms; i++) {
-		if (!MEM_IS_VALID_HANDLE(strm_tab[i], STRM_SIGNATURE)) {
-			status = DSP_EHANDLE;
+		if (!strm_tab[i]) {
+			status = -EFAULT;
 			break;
 		}
 	}
@@ -788,11 +777,11 @@ dsp_status strm_select(IN struct strm_object **strm_tab, u32 nStrms,
 	}
 	if (DSP_SUCCEEDED(status) && utimeout > 0 && *pmask == 0) {
 		/* Non-zero timeout */
-		sync_events = (struct sync_object **)mem_alloc(nStrms *
-			      sizeof(struct sync_object *), MEM_PAGED);
+		sync_events = kmalloc(nStrms * sizeof(struct sync_object *),
+								GFP_KERNEL);
 
 		if (sync_events == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			for (i = 0; i < nStrms; i++) {
 				intf_fxns =
@@ -838,7 +827,7 @@ static dsp_status delete_strm(struct strm_object *hStrm)
 	struct bridge_drv_interface *intf_fxns;
 	dsp_status status = DSP_SOK;
 
-	if (MEM_IS_VALID_HANDLE(hStrm, STRM_SIGNATURE)) {
+	if (hStrm) {
 		if (hStrm->chnl_obj) {
 			intf_fxns = hStrm->strm_mgr_obj->intf_fxns;
 			/* Channel close can fail only if the channel handle
@@ -853,9 +842,9 @@ static dsp_status delete_strm(struct strm_object *hStrm)
 				}
 			}
 		}
-		MEM_FREE_OBJECT(hStrm);
+		kfree(hStrm);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -867,6 +856,6 @@ static dsp_status delete_strm(struct strm_object *hStrm)
  */
 static void delete_strm_mgr(struct strm_mgr *strm_mgr_obj)
 {
-	if (MEM_IS_VALID_HANDLE(strm_mgr_obj, STRMMGR_SIGNATURE))
-		MEM_FREE_OBJECT(strm_mgr_obj);
+	if (strm_mgr_obj)
+		kfree(strm_mgr_obj);
 }

@@ -29,7 +29,6 @@
 
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/cfg.h>
-#include <dspbridge/mem.h>
 #include <dspbridge/ntfy.h>
 #include <dspbridge/drv.h>
 
@@ -52,6 +51,15 @@
 #include "_tiomap_pwr.h"
 #include <dspbridge/io_sm.h>
 
+#include <plat/dmtimer.h>
+
+/* GP Timer number to trigger interrupt for MMU-fault ISR on DSP */
+#define GPTIMER_FOR_DSP_MMU_FAULT      8
+/* Bit mask to enable overflow interrupt */
+#define GPTIMER_IRQ_OVERFLOW           2
+/* Max time to check for GP Timer IRQ */
+#define GPTIMER_IRQ_WAIT_MAX_CNT       1000
+
 static struct hw_mmu_map_attrs_t map_attrs = { HW_LITTLE_ENDIAN,
 	HW_ELEM_SIZE16BIT,
 	HW_MMU_CPUES
@@ -60,6 +68,9 @@ static struct hw_mmu_map_attrs_t map_attrs = { HW_LITTLE_ENDIAN,
 #define VIRT_TO_PHYS(x)       ((x) - PAGE_OFFSET + PHYS_OFFSET)
 
 static u32 dummy_va_addr;
+
+static struct omap_dm_timer *timer;
+
 /*
  *  ======== bridge_deh_create ========
  *      Creates DEH manager object.
@@ -69,8 +80,6 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 {
 	dsp_status status = DSP_SOK;
 	struct deh_mgr *deh_mgr_obj = NULL;
-	struct cfg_hostres cfg_host_res;
-	struct cfg_devnode *dev_node_obj;
 	struct wmd_dev_context *hwmd_context = NULL;
 
 	/*  Message manager will be created when a file is loaded, since
@@ -81,9 +90,9 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 	DBC_ASSERT(hwmd_context);
 	dummy_va_addr = 0;
 	/* Allocate IO manager object: */
-	MEM_ALLOC_OBJECT(deh_mgr_obj, struct deh_mgr, SIGNATURE);
+	deh_mgr_obj = kzalloc(sizeof(struct deh_mgr), GFP_KERNEL);
 	if (deh_mgr_obj == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	} else {
 		/* Create an NTFY object to manage notifications */
 		deh_mgr_obj->ntfy_obj = kmalloc(sizeof(struct ntfy_object),
@@ -91,18 +100,11 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 		if (deh_mgr_obj->ntfy_obj)
 			ntfy_init(deh_mgr_obj->ntfy_obj);
 		else
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 
 		/* Create a MMUfault DPC */
 		tasklet_init(&deh_mgr_obj->dpc_tasklet, mmu_fault_dpc,
 			     (u32) deh_mgr_obj);
-
-		if (DSP_SUCCEEDED(status))
-			status = dev_get_dev_node(hdev_obj, &dev_node_obj);
-
-		if (DSP_SUCCEEDED(status))
-			status =
-			    cfg_get_host_resources(dev_node_obj, &cfg_host_res);
 
 		if (DSP_SUCCEEDED(status)) {
 			/* Fill in context structure */
@@ -117,7 +119,7 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 					 (void *)deh_mgr_obj)) == 0)
 				status = DSP_SOK;
 			else
-				status = DSP_EFAIL;
+				status = -EPERM;
 		}
 	}
 	if (DSP_FAILED(status)) {
@@ -125,6 +127,14 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 		bridge_deh_destroy((struct deh_mgr *)deh_mgr_obj);
 		*phDehMgr = NULL;
 	} else {
+		timer = omap_dm_timer_request_specific(
+					GPTIMER_FOR_DSP_MMU_FAULT);
+		if (timer)
+			omap_dm_timer_disable(timer);
+		else {
+			pr_err("%s:GPTimer not available\n", __func__);
+			return -ENODEV;
+		}
 		*phDehMgr = (struct deh_mgr *)deh_mgr_obj;
 	}
 
@@ -140,7 +150,7 @@ dsp_status bridge_deh_destroy(struct deh_mgr *hdeh_mgr)
 	dsp_status status = DSP_SOK;
 	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)hdeh_mgr;
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 		/* Release dummy VA buffer */
 		bridge_deh_release_dummy_mem();
 		/* If notification object exists, delete it */
@@ -155,7 +165,10 @@ dsp_status bridge_deh_destroy(struct deh_mgr *hdeh_mgr)
 		tasklet_kill(&deh_mgr_obj->dpc_tasklet);
 
 		/* Deallocate the DEH manager object */
-		MEM_FREE_OBJECT(deh_mgr_obj);
+		kfree(deh_mgr_obj);
+		/* The GPTimer is no longer needed */
+		omap_dm_timer_free(timer);
+		timer = NULL;
 	}
 
 	return status;
@@ -172,7 +185,7 @@ dsp_status bridge_deh_register_notify(struct deh_mgr *hdeh_mgr, u32 event_mask,
 	dsp_status status = DSP_SOK;
 	struct deh_mgr *deh_mgr_obj = (struct deh_mgr *)hdeh_mgr;
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 		if (event_mask)
 			status = ntfy_register(deh_mgr_obj->ntfy_obj,
 				hnotification, event_mask, notify_type);
@@ -196,19 +209,18 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 	u32 mem_physical = 0;
 	u32 hw_mmu_max_tlb_count = 31;
 	extern u32 fault_addr;
-	struct cfg_hostres resources;
+	struct cfg_hostres *resources;
 	hw_status hw_status_obj;
+	u32 cnt = 0;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 		printk(KERN_INFO
 		       "bridge_deh_notify: ********** DEVICE EXCEPTION "
 		       "**********\n");
 		dev_context =
 		    (struct wmd_dev_context *)deh_mgr_obj->hwmd_context;
+		resources = dev_context->resources;
 
 		switch (ulEventMask) {
 		case DSP_SYSERROR:
@@ -221,6 +233,9 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 			printk(KERN_ERR
 			       "bridge_deh_notify: DSP_SYSERROR, err_info "
 			       "= 0x%x\n", dwErrInfo);
+			dump_dl_modules(dev_context);
+			dump_dsp_stack(dev_context);
+
 			break;
 		case DSP_MMUFAULT:
 			/* MMU fault routine should have set err info
@@ -238,13 +253,17 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 			printk(KERN_INFO
 			       "bridge_deh_notify: DSP_MMUFAULT, fault "
 			       "address = 0x%x\n", (unsigned int)fault_addr);
-			dummy_va_addr =
-			    (u32) mem_calloc(sizeof(char) * 0x1000, MEM_PAGED);
+			dummy_va_addr = (u32) kzalloc(sizeof(char) * 0x1000,
+								GFP_ATOMIC);
 			mem_physical =
 			    VIRT_TO_PHYS(PG_ALIGN_LOW
 					 ((u32) dummy_va_addr, PG_SIZE4K));
 			dev_context = (struct wmd_dev_context *)
 			    deh_mgr_obj->hwmd_context;
+
+			print_dsp_trace_buffer(dev_context);
+			dump_dl_modules(dev_context);
+
 			/* Reset the dynamic mmu index to fixed count if it
 			 * exceeds 31. So that the dynmmuindex is always
 			 * between the range of standard/fixed entries
@@ -256,17 +275,52 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 			}
 			if (DSP_SUCCEEDED(status)) {
 				hw_status_obj =
-				    hw_mmu_tlb_add(resources.dw_dmmu_base,
+				    hw_mmu_tlb_add(resources->dw_dmmu_base,
 						   mem_physical, fault_addr,
 						   HW_PAGE_SIZE4KB, 1,
 						   &map_attrs, HW_SET, HW_SET);
 			}
-			/* send an interrupt to DSP */
-			omap_mbox_msg_send(dev_context->mbox,
-					   MBX_DEH_CLASS | MBX_DEH_EMMU);
+			/*
+			 * Send a GP Timer interrupt to DSP
+			 * The DSP expects a GP timer interrupt after an
+			 * MMU-Fault Request GPTimer
+			 */
+			if (timer) {
+				omap_dm_timer_enable(timer);
+				/* Enable overflow interrupt */
+				omap_dm_timer_set_int_enable(timer,
+						GPTIMER_IRQ_OVERFLOW);
+				/*
+				 * Set counter value to overflow counter after
+				 * one tick and start timer
+				 */
+				omap_dm_timer_set_load_start(timer, 0,
+								0xfffffffe);
+
+				/* Wait 80us for timer to overflow */
+				udelay(80);
+
+				/*
+				 * Check interrupt status and
+				 * wait for interrupt
+				 */
+				cnt = 0;
+				while (!(omap_dm_timer_read_status(timer) &
+					GPTIMER_IRQ_OVERFLOW)) {
+					if (cnt++ >=
+						GPTIMER_IRQ_WAIT_MAX_CNT) {
+						pr_err("%s: GPTimer interrupt"
+							" failed\n", __func__);
+						break;
+					}
+				}
+			}
+
 			/* Clear MMU interrupt */
-			hw_mmu_event_ack(resources.dw_dmmu_base,
+			hw_mmu_event_ack(resources->dw_dmmu_base,
 					 HW_MMU_TRANSLATION_FAULT);
+			dump_dsp_stack(deh_mgr_obj->hwmd_context);
+			omap_dm_timer_disable(timer);
 			break;
 #ifdef CONFIG_BRIDGE_NTFY_PWRERR
 		case DSP_PWRERROR:
@@ -308,8 +362,6 @@ void bridge_deh_notify(struct deh_mgr *hdeh_mgr, u32 ulEventMask, u32 dwErrInfo)
 		dev_context->dw_brd_state = BRD_ERROR;
 		/* Disable all the clocks that were enabled by DSP */
 		(void)dsp_peripheral_clocks_disable(dev_context, NULL);
-		/* Call DSP Trace Buffer */
-		print_dsp_trace_buffer(hdeh_mgr->hwmd_context);
 #ifdef CONFIG_BRIDGE_WDT3
 		/*
 		 * Avoid the subsequent WDT if it happens once,
@@ -334,7 +386,7 @@ dsp_status bridge_deh_get_info(struct deh_mgr *hdeh_mgr,
 	DBC_REQUIRE(deh_mgr_obj);
 	DBC_REQUIRE(pErrInfo);
 
-	if (MEM_IS_VALID_HANDLE(deh_mgr_obj, SIGNATURE)) {
+	if (deh_mgr_obj) {
 		/* Copy DEH error info structure to PROC error info
 		 * structure. */
 		pErrInfo->dw_err_mask = deh_mgr_obj->err_info.dw_err_mask;
@@ -342,7 +394,7 @@ dsp_status bridge_deh_get_info(struct deh_mgr *hdeh_mgr,
 		pErrInfo->dw_val2 = deh_mgr_obj->err_info.dw_val2;
 		pErrInfo->dw_val3 = deh_mgr_obj->err_info.dw_val3;
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;

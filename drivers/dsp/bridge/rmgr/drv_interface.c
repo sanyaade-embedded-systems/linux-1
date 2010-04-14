@@ -42,7 +42,6 @@
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/services.h>
 #include <dspbridge/sync.h>
-#include <dspbridge/reg.h>
 
 /*  ----------------------------------- Platform Manager */
 #include <dspbridge/wcdioctl.h>
@@ -93,10 +92,9 @@ static s32 driver_major;
 static char *base_img;
 char *iva_img;
 static s32 shm_size = 0x500000;	/* 5 MB */
-static u32 phys_mempool_base;
-static u32 phys_mempool_size;
 static int tc_wordswapon;	/* Default value is always false */
 #ifdef CONFIG_BRIDGE_RECOVERY
+#define REC_TIMEOUT 5000       /* recovery timeout in msecs */
 static atomic_t bridge_cref;	/* number of bridge open handles */
 static struct workqueue_struct *bridge_rec_queue;
 static struct work_struct bridge_recovery_work;
@@ -140,13 +138,6 @@ MODULE_PARM_DESC(base_img, "DSP base image, default = NULL");
 module_param(shm_size, int, 0);
 MODULE_PARM_DESC(shm_size, "shm size, default = 4 MB, minimum = 64 KB");
 
-module_param(phys_mempool_base, uint, 0);
-MODULE_PARM_DESC(phys_mempool_base,
-		 "Physical memory pool base passed to driver");
-
-module_param(phys_mempool_size, uint, 0);
-MODULE_PARM_DESC(phys_mempool_size,
-		 "Physical memory pool size passed to driver");
 module_param(tc_wordswapon, int, 0);
 MODULE_PARM_DESC(tc_wordswapon, "TC Word Swap Option. default = 0");
 
@@ -179,7 +170,10 @@ static void bridge_recover(struct work_struct *work)
 	struct cfg_devnode *dev_node;
 	if (atomic_read(&bridge_cref)) {
 		INIT_COMPLETION(bridge_comp);
-		wait_for_completion(&bridge_comp);
+		while (!wait_for_completion_timeout(&bridge_comp,
+						msecs_to_jiffies(REC_TIMEOUT)))
+			pr_info("%s:%d handle(s) still opened\n",
+					__func__, atomic_read(&bridge_cref));
 	}
 	dev = dev_get_first();
 	dev_get_dev_node(dev, &dev_node);
@@ -217,11 +211,11 @@ static struct notifier_block iva_clk_notifier = {
 static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 {
 	int status;
-	u32 init_status;
-	u32 temp;
+	u32 init_status = DSP_SOK;
 	dev_t dev = 0;
 	int result;
 	struct dspbridge_platform_data *pdata = pdev->dev.platform_data;
+	struct drv_data *drv_datap = NULL;
 
 	omap_dspbridge_dev = pdev;
 
@@ -268,48 +262,35 @@ static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 
 	/*  Autostart flag.  This should be set to true if the DSP image should
 	 *  be loaded and run during bridge module initialization */
-
-	if (base_img) {
-		temp = true;
-		reg_set_value(AUTOSTART, (u8 *) &temp, sizeof(temp));
-		reg_set_value(DEFEXEC, (u8 *) base_img, strlen(base_img) + 1);
+	drv_datap = kzalloc(sizeof(struct drv_data), GFP_KERNEL);
+	if (drv_datap) {
+		drv_datap->shm_size = shm_size;
+		drv_datap->tc_wordswapon = tc_wordswapon;
+		if (base_img) {
+			drv_datap->base_img = kmalloc(strlen(base_img) + 1,
+								GFP_KERNEL);
+			if (drv_datap->base_img)
+				strncpy(drv_datap->base_img, base_img,
+							strlen(base_img) + 1);
+			else
+				status = -ENOMEM;
+		}
 	} else {
-		temp = false;
-		reg_set_value(AUTOSTART, (u8 *) &temp, sizeof(temp));
-		reg_set_value(DEFEXEC, (u8 *) "\0", (u32) 2);
+		init_status = -ENOMEM;
 	}
-
-	if (shm_size >= 0x10000) {	/* 64 KB */
-		init_status = reg_set_value(SHMSIZE, (u8 *) &shm_size,
-					    sizeof(shm_size));
-	} else {
-		init_status = DSP_EINVALIDARG;
+	if (shm_size < 0x10000) {	/* 64 KB */
+		init_status = -EINVAL;
 		status = -1;
 		pr_err("%s: shm size must be at least 64 KB\n", __func__);
 	}
 	dev_dbg(bridge, "%s: requested shm_size = 0x%x\n", __func__, shm_size);
 
-	if (pdata->phys_mempool_base && pdata->phys_mempool_size) {
-		phys_mempool_base = pdata->phys_mempool_base;
-		phys_mempool_size = pdata->phys_mempool_size;
-	}
-
-	dev_dbg(bridge, "%s: phys_mempool_base = 0x%x \n", __func__,
-		phys_mempool_base);
-
-	dev_dbg(bridge, "%s: phys_mempool_size = 0x%x\n", __func__,
-		phys_mempool_base);
-	if ((phys_mempool_base > 0x0) && (phys_mempool_size > 0x0))
-		mem_ext_phys_pool_init(phys_mempool_base, phys_mempool_size);
-	if (tc_wordswapon) {
+	if ((pdata->phys_mempool_base > 0) && (pdata->phys_mempool_size > 0))
+		mem_ext_phys_pool_init(pdata->phys_mempool_base,
+						pdata->phys_mempool_size);
+	if (tc_wordswapon)
 		dev_dbg(bridge, "%s: TC Word Swap is enabled\n", __func__);
-		reg_set_value(TCWORDSWAP, (u8 *) &tc_wordswapon,
-			      sizeof(tc_wordswapon));
-	} else {
-		dev_dbg(bridge, "%s: TC Word Swap is disabled\n", __func__);
-		reg_set_value(TCWORDSWAP, (u8 *) &tc_wordswapon,
-			      sizeof(tc_wordswapon));
-	}
+
 	if (DSP_SUCCEEDED(init_status)) {
 #ifdef CONFIG_BRIDGE_DVFS
 		clk_handle = clk_get(NULL, "iva2_ck");
@@ -321,6 +302,7 @@ static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 			pr_err("%s: cpufreq_register_notifier failed for "
 			       "iva2_ck\n", __func__);
 #endif
+		dev_set_drvdata(bridge, drv_datap);
 		driver_context = dsp_init(&init_status);
 		if (DSP_FAILED(init_status)) {
 			status = -1;
@@ -460,23 +442,42 @@ static int bridge_open(struct inode *ip, struct file *filp)
 	 */
 
 #ifdef CONFIG_BRIDGE_RECOVERY
-	if (recover)
-		wait_for_completion(&bridge_open_comp);
+	if (recover) {
+		if (filp->f_flags & O_NONBLOCK ||
+			wait_for_completion_killable(&bridge_open_comp))
+			return -EBUSY;
+	}
 #endif
 
-	pr_ctxt = mem_calloc(sizeof(struct process_context), MEM_PAGED);
+	pr_ctxt = kzalloc(sizeof(struct process_context), GFP_KERNEL);
 	if (pr_ctxt) {
 		pr_ctxt->res_state = PROC_RES_ALLOCATED;
 		spin_lock_init(&pr_ctxt->dmm_map_lock);
 		INIT_LIST_HEAD(&pr_ctxt->dmm_map_list);
 		spin_lock_init(&pr_ctxt->dmm_rsv_lock);
 		INIT_LIST_HEAD(&pr_ctxt->dmm_rsv_list);
-		mutex_init(&pr_ctxt->node_mutex);
-		mutex_init(&pr_ctxt->strm_mutex);
+
+		pr_ctxt->node_idp = kzalloc(sizeof(struct idr), GFP_KERNEL);
+		if (pr_ctxt->node_idp) {
+			idr_init(pr_ctxt->node_idp);
+			spin_lock_init(&pr_ctxt->node_idp->lock);
+		} else {
+			status = -ENOMEM;
+			goto err;
+		}
+
+		pr_ctxt->strm_idp = kzalloc(sizeof(struct idr), GFP_KERNEL);
+		if (pr_ctxt->strm_idp) {
+			idr_init(pr_ctxt->strm_idp);
+			spin_lock_init(&pr_ctxt->strm_idp->lock);
+		} else {
+			status = -ENOMEM;
+		}
+
 	} else {
 		status = -ENOMEM;
 	}
-
+err:
 	filp->private_data = pr_ctxt;
 
 #ifdef CONFIG_BRIDGE_RECOVERY
@@ -684,6 +685,7 @@ static ssize_t mpu_address_show(struct device *dev,
 	u32 mem_poolsize = 0;
 	u32 GppPa = 0, DspVa = 0;
 	u32 armPhyMemOffUncached = 0;
+	struct dspbridge_platform_data *pdata = bridge->platform_data;
 	hdev_obj = (struct dev_object *)drv_get_first_dev_object();
 	dev_get_wmd_context(hdev_obj, &dw_context);
 	if (!dw_context) {
@@ -703,7 +705,7 @@ static ssize_t mpu_address_show(struct device *dev,
 	 * the offset value for cached address region
 	 * on DSP address space
 	 */
-	mem_poolsize = phys_mempool_base - 0x20000000;
+	mem_poolsize = pdata->phys_mempool_base - 0x20000000;
 
 	/* Retrive the above calculated addresses */
 	return sprintf(buf, "mempoolsizeOffset 0x%x GppPaOffset 0x%x\n",

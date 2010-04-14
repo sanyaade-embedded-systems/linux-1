@@ -62,7 +62,7 @@ struct rmm_target_obj;
  *      reserve         - If TRUE, reserve the memory specified by dspAddr.
  *  Returns:
  *      DSP_SOK:                Success.
- *      DSP_EMEMORY:            Memory allocation on GPP failed.
+ *      -ENOMEM:            Memory allocation on GPP failed.
  *      DSP_EOVERLAYMEMORY:     Cannot "allocate" overlay memory because it's
  *                              already in use.
  *  Requires:
@@ -88,7 +88,7 @@ extern dsp_status rmm_alloc(struct rmm_target_obj *target, u32 segid, u32 size,
  *      num_segs:        - Number of memory segments.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Memory allocation failed.
+ *      -ENOMEM:    Memory allocation failed.
  *  Requires:
  *      RMM initialized.
  *      target_obj != NULL.

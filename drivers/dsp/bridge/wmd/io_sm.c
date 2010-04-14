@@ -38,10 +38,8 @@
 
 /* Services Layer */
 #include <dspbridge/cfg.h>
-#include <dspbridge/mem.h>
 #include <dspbridge/ntfy.h>
 #include <dspbridge/sync.h>
-#include <dspbridge/reg.h>
 
 /* Hardware Abstraction Layer */
 #include <hw_defs.h>
@@ -57,6 +55,7 @@
 
 /* Platform Manager */
 #include <dspbridge/cod.h>
+#include <dspbridge/node.h>
 #include <dspbridge/dev.h>
 
 /* Others */
@@ -64,6 +63,7 @@
 #include <dspbridge/mgr.h>
 #include <dspbridge/drv.h>
 #include "_cmm.h"
+#include "module_list.h"
 
 /* This */
 #include <dspbridge/io_sm.h>
@@ -80,10 +80,14 @@
 
 #define MAX_PM_REQS 32
 
+#define MMU_FAULT_HEAD1 0xa5a5a5a5
+#define MMU_FAULT_HEAD2 0x96969696
+#define POLL_MAX 1000
+#define MAX_MMU_DBGBUFF 10240
+
 /* IO Manager: only one created per board */
 struct io_mgr {
 	/* These four fields must be the first fields in a io_mgr_ struct */
-	u32 dw_signature;	/* Used for object validation */
 	struct wmd_dev_context *hwmd_context;	/* WMD device context */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
 	struct dev_object *hdev_obj;	/* Device this board represents */
@@ -130,16 +134,16 @@ struct io_mgr {
 
 /* Function Prototypes */
 static void io_dispatch_chnl(IN struct io_mgr *pio_mgr,
-			     IN OUT struct chnl_object *pchnl, u32 iMode);
+				IN OUT struct chnl_object *pchnl, u8 iMode);
 static void io_dispatch_msg(IN struct io_mgr *pio_mgr,
 			    struct msg_mgr *hmsg_mgr);
 static void io_dispatch_pm(struct io_mgr *pio_mgr);
 static void notify_chnl_complete(struct chnl_object *pchnl,
 				 struct chnl_irp *chnl_packet_obj);
 static void input_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-		       u32 iMode);
+			u8 iMode);
 static void output_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-			u32 iMode);
+			u8 iMode);
 static void input_msg(struct io_mgr *pio_mgr, struct msg_mgr *hmsg_mgr);
 static void output_msg(struct io_mgr *pio_mgr, struct msg_mgr *hmsg_mgr);
 static u32 find_ready_output(struct chnl_mgr *chnl_mgr_obj,
@@ -175,18 +179,18 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	struct io_mgr *pio_mgr = NULL;
 	struct shm *shared_mem = NULL;
 	struct wmd_dev_context *hwmd_context = NULL;
-	struct cfg_hostres host_res;
 	struct cfg_devnode *dev_node_obj;
 	struct chnl_mgr *hchnl_mgr;
-	u32 dev_type;
+	u8 dev_type;
+
 	/* Check requirements */
 	if (!phIOMgr || !pMgrAttrs || pMgrAttrs->word_size == 0) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	dev_get_chnl_mgr(hdev_obj, &hchnl_mgr);
 	if (!hchnl_mgr || hchnl_mgr->hio_mgr) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	/*
@@ -196,7 +200,7 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	 */
 	dev_get_wmd_context(hdev_obj, &hwmd_context);
 	if (!hwmd_context) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	dev_get_dev_type(hdev_obj, &dev_type);
@@ -209,9 +213,9 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	shared_mem = (struct shm *)-1;
 
 	/* Allocate IO manager object */
-	MEM_ALLOC_OBJECT(pio_mgr, struct io_mgr, IO_MGRSIGNATURE);
+	pio_mgr = kzalloc(sizeof(struct io_mgr), GFP_KERNEL);
 	if (pio_mgr == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 
@@ -240,11 +244,7 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 			status = dev_get_dev_node(hdev_obj, &dev_node_obj);
 
 	}
-	if (DSP_SUCCEEDED(status)) {
-		status = cfg_get_host_resources((struct cfg_devnode *)
-						drv_get_first_dev_extension(),
-						&host_res);
-	}
+
 	if (DSP_SUCCEEDED(status)) {
 		pio_mgr->hwmd_context = hwmd_context;
 		pio_mgr->shared_irq = pMgrAttrs->irq_shared;
@@ -256,7 +256,7 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	if (DSP_SUCCEEDED(status)) {
 		if ((request_irq(INT_34XX_WDT3_IRQ, io_isr_wdt3, 0,
 				 "dsp_wdt", (void *)pio_mgr)) != 0)
-			status = DSP_EFAIL;
+			status = -EPERM;
 		else
 			/*
 			 * Disable at this moment, it will be enabled
@@ -287,11 +287,8 @@ func_end:
 dsp_status bridge_io_destroy(struct io_mgr *hio_mgr)
 {
 	dsp_status status = DSP_SOK;
-	struct wmd_dev_context *hwmd_context;
-	if (MEM_IS_VALID_HANDLE(hio_mgr, IO_MGRSIGNATURE)) {
-		/* Disable interrupts from the board */
-		status = dev_get_wmd_context(hio_mgr->hdev_obj, &hwmd_context);
 
+	if (hio_mgr) {
 #ifdef CONFIG_BRIDGE_WDT3
 		free_irq(INT_34XX_WDT3_IRQ, (void *)hio_mgr);
 #endif
@@ -304,9 +301,9 @@ dsp_status bridge_io_destroy(struct io_mgr *hio_mgr)
 		kfree(hio_mgr->pmsg);
 #endif
 		/* Free this IO manager object */
-		MEM_FREE_OBJECT(hio_mgr);
+		kfree(hio_mgr);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -340,11 +337,12 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	u32 ul_pad_size = 0;
 	u32 i;
 	dsp_status status = DSP_SOK;
-	u32 num_procs = 0;
+	u8 num_procs = 0;
 	s32 ndx = 0;
 	/* DSP MMU setup table */
 	struct wmdioctl_extproc ae_proc[WMDIOCTL_NUMOFMMUTLB];
-	struct cfg_hostres host_res;
+	struct cfg_hostres *host_res;
+	struct wmd_dev_context *pwmd_context;
 	u32 map_attrs;
 	u32 shm0_end;
 	u32 ul_dyn_ext_base;
@@ -358,18 +356,29 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 		HW_PAGE_SIZE64KB, HW_PAGE_SIZE4KB
 	};
 
+
+	status = dev_get_wmd_context(hio_mgr->hdev_obj, &pwmd_context);
+	if (!pwmd_context) {
+		status = -EFAULT;
+		goto func_end;
+	}
+
+	host_res = pwmd_context->resources;
+	if (!host_res) {
+		status = -EFAULT;
+		goto func_end;
+	}
 	dev_get_cod_mgr(hio_mgr->hdev_obj, &cod_man);
 	if (!cod_man) {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 		goto func_end;
 	}
 	hchnl_mgr = hio_mgr->hchnl_mgr;
 	/* The message manager is destroyed when the board is stopped. */
 	dev_get_msg_mgr(hio_mgr->hdev_obj, &hio_mgr->hmsg_mgr);
 	hmsg_mgr = hio_mgr->hmsg_mgr;
-	if (!MEM_IS_VALID_HANDLE(hchnl_mgr, CHNL_MGRSIGNATURE) ||
-	    !MEM_IS_VALID_HANDLE(hmsg_mgr, MSGMGR_SIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hchnl_mgr || !hmsg_mgr) {
+		status = -EFAULT;
 		goto func_end;
 	}
 	if (hio_mgr->shared_mem)
@@ -458,13 +467,11 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 					      sizeof(struct
 						     mgr_processorextinfo),
 					      &num_procs);
-		cfg_get_host_resources((struct cfg_devnode *)
-				       drv_get_first_dev_extension(),
-				       &host_res);
+
 		/* The first MMU TLB entry(TLB_0) in DCD is ShmBase. */
 		ndx = 0;
-		ul_gpp_pa = host_res.dw_mem_phys[1];
-		ul_gpp_va = host_res.dw_mem_base[1];
+		ul_gpp_pa = host_res->dw_mem_phys[1];
+		ul_gpp_va = host_res->dw_mem_base[1];
 		/* This is the virtual uncached ioremapped address!!! */
 		/* Why can't we directly take the DSPVA from the symbols? */
 		ul_dsp_va = hio_mgr->ext_proc_info.ty_tlb[0].ul_dsp_virt;
@@ -487,11 +494,11 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 			ul_dyn_ext_base, ul_ext_end, ul_seg_size, ul_seg1_size);
 
 		if ((ul_seg_size + ul_seg1_size + ul_pad_size) >
-		    host_res.dw_mem_length[1]) {
+		    host_res->dw_mem_length[1]) {
 			pr_err("%s: shm Error, reserved 0x%x required 0x%x\n",
-			       __func__, host_res.dw_mem_length[1],
+			       __func__, host_res->dw_mem_length[1],
 			       ul_seg_size + ul_seg1_size + ul_pad_size);
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	}
 	if (DSP_FAILED(status))
@@ -642,7 +649,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 				hio_mgr->ext_proc_info.ty_tlb[i].ul_gpp_phys,
 				hio_mgr->ext_proc_info.ty_tlb[i].ul_dsp_virt,
 				ul_gpp_pa, ul_dsp_va, ul_seg_size);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			if (ndx < MAX_LOCK_TLB_ENTRIES) {
 				ae_proc[ndx].ul_dsp_va =
@@ -712,7 +719,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 		goto func_end;
 	} else {
 		if (ae_proc[0].ul_dsp_va > ul_shm_base) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		/* ul_shm_base may not be at ul_dsp_va address */
@@ -736,7 +743,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 		ul_shm_base = (u32) MEM_LINEAR_ADDRESS((void *)ul_shm_base,
 						       ul_mem_length);
 		if (ul_shm_base == 0) {
-			status = DSP_EPOINTER;
+			status = -EFAULT;
 			goto func_end;
 		}
 		/* Register SM */
@@ -809,11 +816,11 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	    (hio_mgr->ul_trace_buffer_current - ul_dsp_va);
 	/* Calculate the size of trace buffer */
 	kfree(hio_mgr->pmsg);
-	hio_mgr->pmsg = mem_alloc(((hio_mgr->ul_trace_buffer_end -
-				    hio_mgr->ul_trace_buffer_begin) *
-				   hio_mgr->word_size) + 2, MEM_NONPAGED);
+	hio_mgr->pmsg = kmalloc(((hio_mgr->ul_trace_buffer_end -
+				hio_mgr->ul_trace_buffer_begin) *
+				hio_mgr->word_size) + 2, GFP_KERNEL);
 	if (!hio_mgr->pmsg)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	hio_mgr->ul_dsp_va = ul_dsp_va;
 	hio_mgr->ul_gpp_va = (ul_gpp_va + ul_seg1_size + ul_pad_size);
@@ -829,7 +836,7 @@ func_end:
  */
 u32 io_buf_size(struct io_mgr *hio_mgr)
 {
-	if (MEM_IS_VALID_HANDLE(hio_mgr, IO_MGRSIGNATURE))
+	if (hio_mgr)
 		return hio_mgr->usm_buf_size;
 	else
 		return 0;
@@ -844,7 +851,7 @@ void io_cancel_chnl(struct io_mgr *hio_mgr, u32 ulChnl)
 	struct io_mgr *pio_mgr = (struct io_mgr *)hio_mgr;
 	struct shm *sm;
 
-	if (!MEM_IS_VALID_HANDLE(hio_mgr, IO_MGRSIGNATURE))
+	if (!hio_mgr)
 		goto func_end;
 	sm = hio_mgr->shared_mem;
 
@@ -862,9 +869,9 @@ func_end:
  *      Proc-copy chanl dispatch.
  */
 static void io_dispatch_chnl(IN struct io_mgr *pio_mgr,
-			     IN OUT struct chnl_object *pchnl, u32 iMode)
+				IN OUT struct chnl_object *pchnl, u8 iMode)
 {
-	if (!MEM_IS_VALID_HANDLE(pio_mgr, IO_MGRSIGNATURE))
+	if (!pio_mgr)
 		goto func_end;
 
 	/* See if there is any data available for transfer */
@@ -884,7 +891,7 @@ func_end:
  */
 static void io_dispatch_msg(IN struct io_mgr *pio_mgr, struct msg_mgr *hmsg_mgr)
 {
-	if (!MEM_IS_VALID_HANDLE(pio_mgr, IO_MGRSIGNATURE))
+	if (!pio_mgr)
 		goto func_end;
 
 	/* We are performing both input and output processing. */
@@ -953,12 +960,12 @@ void io_dpc(IN OUT unsigned long pRefData)
 	u32 requested;
 	u32 serviced;
 
-	if (!MEM_IS_VALID_HANDLE(pio_mgr, IO_MGRSIGNATURE))
+	if (!pio_mgr)
 		goto func_end;
 	chnl_mgr_obj = pio_mgr->hchnl_mgr;
 	dev_get_msg_mgr(pio_mgr->hdev_obj, &msg_mgr_obj);
 	dev_get_deh_mgr(pio_mgr->hdev_obj, &hdeh_mgr);
-	if (!MEM_IS_VALID_HANDLE(chnl_mgr_obj, CHNL_MGRSIGNATURE))
+	if (!chnl_mgr_obj)
 		goto func_end;
 
 	requested = pio_mgr->dpc_req;
@@ -973,13 +980,17 @@ void io_dpc(IN OUT unsigned long pRefData)
 		if ((pio_mgr->intr_val > DEH_BASE) &&
 		    (pio_mgr->intr_val < DEH_LIMIT)) {
 			/* Notify DSP/BIOS exception */
-			if (hdeh_mgr)
+			if (hdeh_mgr) {
+#ifndef DSP_TRACE_BUF_DISABLED
+				print_dsp_debug_trace(pio_mgr);
+#endif
 				bridge_deh_notify(hdeh_mgr, DSP_SYSERROR,
 						  pio_mgr->intr_val);
+			}
 		}
 		io_dispatch_chnl(pio_mgr, NULL, IO_SERVICE);
 #ifdef CHNL_MESSAGES
-		if (MEM_IS_VALID_HANDLE(msg_mgr_obj, MSGMGR_SIGNATURE))
+		if (msg_mgr_obj)
 			io_dispatch_msg(pio_mgr, msg_mgr_obj);
 #endif
 #ifndef DSP_TRACEBUF_DISABLED
@@ -1036,7 +1047,7 @@ void io_mbox_msg(u32 msg)
  *      interrupts the DSP.
  */
 void io_request_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-		     u32 iMode, OUT u16 *pwMbVal)
+			u8 iMode, OUT u16 *pwMbVal)
 {
 	struct chnl_mgr *chnl_mgr_obj;
 	struct shm *sm;
@@ -1083,7 +1094,7 @@ void iosm_schedule(struct io_mgr *pio_mgr)
 {
 	unsigned long flags;
 
-	if (!MEM_IS_VALID_HANDLE(pio_mgr, IO_MGRSIGNATURE))
+	if (!pio_mgr)
 		return;
 
 	/* Increment count of DPC's pending. */
@@ -1138,7 +1149,7 @@ func_end:
  *      Dispatch a buffer on an input channel.
  */
 static void input_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-		       u32 iMode)
+			u8 iMode)
 {
 	struct chnl_mgr *chnl_mgr_obj;
 	struct shm *sm;
@@ -1390,7 +1401,7 @@ static void notify_chnl_complete(struct chnl_object *pchnl,
 {
 	bool signal_event;
 
-	if (!MEM_IS_VALID_HANDLE(pchnl, CHNL_SIGNATURE) || !pchnl->sync_event ||
+	if (!pchnl || !pchnl->sync_event ||
 	    !pchnl->pio_completions || !chnl_packet_obj)
 		goto func_end;
 
@@ -1424,7 +1435,7 @@ func_end:
  *      Dispatch a buffer on an output channel.
  */
 static void output_chnl(struct io_mgr *pio_mgr, struct chnl_object *pchnl,
-			u32 iMode)
+			u8 iMode)
 {
 	struct chnl_mgr *chnl_mgr_obj;
 	struct shm *sm;
@@ -1616,7 +1627,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 	status =
 	    cod_get_sym_value(cod_man, SHM0_SHARED_BASE_SYM, &ul_shm0_base);
 	if (ul_shm0_base == 0) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	/* Get end of 1st SM Heap region */
@@ -1625,7 +1636,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 		status = cod_get_sym_value(cod_man, SHM0_SHARED_END_SYM,
 					   &shm0_end);
 		if (shm0_end == 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 	}
@@ -1636,7 +1647,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 		    cod_get_sym_value(cod_man, SHM0_SHARED_RESERVED_BASE_SYM,
 				      &ul_shm0_rsrvd_start);
 		if (ul_shm0_rsrvd_start == 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 	}
@@ -1654,14 +1665,14 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 		ul_rsrvd_size =
 		    (shm0_end - ul_shm0_rsrvd_start + 1) * hio_mgr->word_size;
 		if (ul_rsrvd_size <= 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		/* Calc size of SM DSP can alloc from */
 		ul_dsp_size =
 		    (ul_shm0_rsrvd_start - ul_shm0_base) * hio_mgr->word_size;
 		if (ul_dsp_size <= 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		/* First TLB entry reserved for Bridge SM use. */
@@ -1680,7 +1691,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 			dw_offset = ul_dsp_virt - dw_gpp_base_pa;
 
 		if (ul_shm0_rsrvd_start * hio_mgr->word_size < ul_dsp_virt) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		/*
@@ -1710,7 +1721,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 					   dw_gpp_base_va);
 		/* First SM region is seg_id = 1 */
 		if (ul_shm_seg_id0 != 1)
-			status = DSP_EFAIL;
+			status = -EPERM;
 	}
 func_end:
 	return status;
@@ -1762,7 +1773,7 @@ dsp_status io_sh_msetting(struct io_mgr *hio_mgr, u8 desc, void *pargs)
 			hio_mgr->shared_mem->opp_table_struct.curr_opp_pt =
 			    *(u32 *) pargs;
 		else
-			return DSP_EFAIL;
+			return -EPERM;
 		break;
 	case SHM_OPPINFO:
 		/*
@@ -1893,71 +1904,6 @@ void print_dsp_debug_trace(struct io_mgr *hio_mgr)
 #endif
 
 /*
- *  ======== pack_trace_buffer ========
- *      Removes extra nulls from the trace buffer returned from the DSP.
- *      Works even on buffers that already are packed (null removed); but has
- *      one bug in that case -- loses the last character (replaces with '\0').
- *      Continues through conversion for full set of bytes input characters.
- *  Parameters:
- *    lpBuf:            Pointer to input/output buffer
- *    bytes:           Number of characters in the buffer
- *    ul_num_words:	Number of DSP words in the buffer. Indicates potential
- *                      number of extra carriage returns to generate.
- *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Unable to allocate memory.
- *  Requires:
- *      lpBuf must be a fully allocated writable block of at least bytes.
- *      There are no more than ul_num_words extra characters needed (the number
- *      of linefeeds minus the number of NULLS in the input buffer).
- */
-static dsp_status pack_trace_buffer(char *lpBuf, u32 bytes, u32 ul_num_words)
-{
-	dsp_status status = DSP_SOK;
-	char *lp_tmp_buf;
-	char *lp_buf_start;
-	char *lp_tmp_start;
-	u32 i;
-	char this_char;
-
-	/* Tmp workspace, 1 KB longer than input buf */
-	lp_tmp_buf = mem_calloc((bytes + ul_num_words), MEM_PAGED);
-	if (lp_tmp_buf == NULL)
-		status = DSP_EMEMORY;
-
-	if (DSP_SUCCEEDED(status)) {
-		lp_buf_start = lpBuf;
-		lp_tmp_start = lp_tmp_buf;
-		for (i = bytes; i > 0; i--) {
-			this_char = *lpBuf++;
-			switch (this_char) {
-			case '\0':	/* Skip null bytes */
-				break;
-			case '\n':	/* Convert \n to \r\n */
-				/*
-				 * NOTE: do not reverse order; Some OS
-				 * editors control doesn't understand "\n\r"
-				 */
-				*lp_tmp_buf++ = '\r';
-				*lp_tmp_buf++ = '\n';
-				break;
-			default:	/* Copy in the actual ascii byte */
-				*lp_tmp_buf++ = this_char;
-				break;
-			}
-		}
-		*lp_tmp_buf = '\0';	/* Temp buf MUST be null terminated */
-		/* Cut output down to input buf size */
-		strncpy(lp_buf_start, lp_tmp_start, bytes);
-		/* Make sure output is null terminated */
-		lp_buf_start[bytes - 1] = '\0';
-		kfree(lp_tmp_start);
-	}
-
-	return status;
-}
-
-/*
  *  ======== print_dsp_trace_buffer ========
  *      Prints the trace buffer returned from the DSP (if DBG_Trace is enabled).
  *  Parameters:
@@ -1965,7 +1911,7 @@ static dsp_status pack_trace_buffer(char *lpBuf, u32 bytes, u32 ul_num_words)
  *                      number of extra carriage returns to generate.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EMEMORY:    Unable to allocate memory.
+ *      -ENOMEM:    Unable to allocate memory.
  *  Requires:
  *      hdeh_mgr muse be valid. Checked in bridge_deh_notify.
  */
@@ -1975,69 +1921,160 @@ dsp_status print_dsp_trace_buffer(struct wmd_dev_context *hwmd_context)
 	struct cod_manager *cod_mgr;
 	u32 ul_trace_end;
 	u32 ul_trace_begin;
+	u32 trace_cur_pos;
 	u32 ul_num_bytes = 0;
 	u32 ul_num_words = 0;
 	u32 ul_word_size = 2;
-	CONST u32 max_size = 512;
 	char *psz_buf;
+	char *str_beg;
+	char *trace_end;
+	char *buf_end;
+	char *new_line;
 
-	struct wmd_dev_context *pwmd_context = (struct wmd_dev_context *)
-	    hwmd_context;
+	struct wmd_dev_context *pwmd_context = hwmd_context;
 	struct bridge_drv_interface *intf_fxns;
 	struct dev_object *dev_obj = (struct dev_object *)
 	    pwmd_context->hdev_obj;
 
-	dev_get_cod_mgr(dev_obj, &cod_mgr);
-	if (!cod_mgr)
-		status = DSP_EHANDLE;
+	status = dev_get_cod_mgr(dev_obj, &cod_mgr);
 
-	if (DSP_SUCCEEDED(status)) {
+	if (cod_mgr)
 		/* Look for SYS_PUTCBEG/SYS_PUTCEND */
 		status =
 		    cod_get_sym_value(cod_mgr, COD_TRACEBEG, &ul_trace_begin);
-	}
+	else
+		status = -EFAULT;
+
 	if (DSP_SUCCEEDED(status))
 		status =
 		    cod_get_sym_value(cod_mgr, COD_TRACEEND, &ul_trace_end);
 
-	if (DSP_SUCCEEDED(status)) {
-		ul_num_bytes = (ul_trace_end - ul_trace_begin) * ul_word_size;
-		/*
-		 * If the chip type is 55 then the addresses will be
-		 * byte addresses; convert them to word addresses.
-		 */
-		if (ul_num_bytes > max_size)
-			ul_num_bytes = max_size;
 
-		/* Make sure the data we request fits evenly */
-		ul_num_bytes = (ul_num_bytes / ul_word_size) * ul_word_size;
-		ul_num_words = ul_num_bytes * ul_word_size;
-		dev_get_intf_fxns(dev_obj, &intf_fxns);
-		if (!intf_fxns)
-			status = DSP_EHANDLE;
-	}
+	if (DSP_SUCCEEDED(status))
+		/* trace_cur_pos will hold the address of a DSP pointer */
+		status = cod_get_sym_value(cod_mgr, COD_TRACECURPOS,
+							&trace_cur_pos);
 
-	if (DSP_SUCCEEDED(status)) {
-		psz_buf = mem_calloc(max_size, MEM_NONPAGED);
-		if (psz_buf != NULL) {
-			/* Read bytes from the DSP trace buffer... */
-			status = (*intf_fxns->pfn_brd_read) (hwmd_context,
-							     (u8 *) psz_buf,
-							     (u32)
-							     ul_trace_begin,
-							     ul_num_bytes, 0);
+	if (DSP_FAILED(status))
+		goto func_end;
 
-			if (DSP_SUCCEEDED(status)) {
-				/* Pack and do newline conversion */
-				pack_trace_buffer(psz_buf, ul_num_bytes,
-						  ul_num_words);
-				pr_info("%s:\n%s\n", __func__, psz_buf);
+	ul_num_bytes = (ul_trace_end - ul_trace_begin);
+
+	ul_num_words = ul_num_bytes * ul_word_size;
+	status = dev_get_intf_fxns(dev_obj, &intf_fxns);
+
+	if (DSP_FAILED(status))
+		goto func_end;
+
+	psz_buf = kzalloc(ul_num_bytes + 2, GFP_ATOMIC);
+	if (psz_buf != NULL) {
+		/* Read trace buffer data */
+		status = (*intf_fxns->pfn_brd_read)(pwmd_context,
+			(u8 *)psz_buf, (u32)ul_trace_begin,
+			ul_num_bytes, 0);
+
+		if (DSP_FAILED(status))
+			goto func_end;
+
+		/* Pack and do newline conversion */
+		pr_debug("PrintDspTraceBuffer: "
+			"before pack and unpack.\n");
+		pr_debug("%s: DSP Trace Buffer Begin:\n"
+			"=======================\n%s\n",
+			__func__, psz_buf);
+
+		/* Read the value at the DSP address in trace_cur_pos. */
+		status = (*intf_fxns->pfn_brd_read)(pwmd_context,
+				(u8 *)&trace_cur_pos, (u32)trace_cur_pos,
+				4, 0);
+		if (DSP_FAILED(status))
+			goto func_end;
+		/* Pack and do newline conversion */
+		pr_info("%s: DSP Trace Buffer Begin:\n"
+			"=======================\n%s\n",
+			__func__, psz_buf);
+
+
+		/* convert to offset */
+		trace_cur_pos = trace_cur_pos - ul_trace_begin;
+
+		if (ul_num_bytes) {
+			/*
+			 * The buffer is not full, find the end of the
+			 * data -- buf_end will be >= pszBuf after
+			 * while.
+			 */
+			buf_end = &psz_buf[ul_num_bytes+1];
+			/* DSP print position */
+			trace_end = &psz_buf[trace_cur_pos];
+
+			/*
+			 * Search buffer for a new_line and replace it
+			 * with '\0', then print as string.
+			 * Continue until end of buffer is reached.
+			 */
+			str_beg = trace_end;
+			ul_num_bytes = buf_end - str_beg;
+
+			while (str_beg < buf_end) {
+				new_line = strnchr(str_beg, ul_num_bytes,
+								'\n');
+				if (new_line && new_line < buf_end) {
+					*new_line = 0;
+					pr_debug("%s\n", str_beg);
+					str_beg = ++new_line;
+					ul_num_bytes = buf_end - str_beg;
+				} else {
+					/*
+					 * Assume buffer empty if it contains
+					 * a zero
+					 */
+					if (*str_beg != '\0') {
+						str_beg[ul_num_bytes] = 0;
+						pr_debug("%s\n", str_beg);
+					}
+					str_beg = buf_end;
+					ul_num_bytes = 0;
+				}
 			}
-			kfree(psz_buf);
-		} else {
-			status = DSP_EMEMORY;
+			/*
+			 * Search buffer for a nNewLine and replace it
+			 * with '\0', then print as string.
+			 * Continue until buffer is exhausted.
+			 */
+			str_beg = psz_buf;
+			ul_num_bytes = trace_end - str_beg;
+
+			while (str_beg < trace_end) {
+				new_line = strnchr(str_beg, ul_num_bytes, '\n');
+				if (new_line != NULL && new_line < trace_end) {
+					*new_line = 0;
+					pr_debug("%s\n", str_beg);
+					str_beg = ++new_line;
+					ul_num_bytes = trace_end - str_beg;
+				} else {
+					/*
+					 * Assume buffer empty if it contains
+					 * a zero
+					 */
+					if (*str_beg != '\0') {
+						str_beg[ul_num_bytes] = 0;
+						pr_debug("%s\n", str_beg);
+					}
+					str_beg = trace_end;
+					ul_num_bytes = 0;
+				}
+			}
 		}
+		pr_info("\n=======================\n"
+			"DSP Trace Buffer End:\n");
+		kfree(psz_buf);
+	} else {
+		status = -ENOMEM;
 	}
+func_end:
+	if (DSP_FAILED(status))
+		dev_dbg(bridge, "%s Failed, status 0x%x\n", __func__, status);
 	return status;
 }
 
@@ -2045,6 +2082,329 @@ void io_sm_init(void)
 {
 	/* Do nothing */
 }
+/**
+ * dump_dsp_stack() - This function dumps the data on the DSP stack.
+ * @wmd_context:	Mini driver's device context pointer.
+ *
+ */
+dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
+{
+	dsp_status status = DSP_SOK;
+	struct cod_manager *code_mgr;
+	struct node_mgr *node_mgr;
+	u32 trace_begin;
+	char name[256];
+	struct {
+		u32 head[2];
+		u32 size;
+	} mmu_fault_dbg_info;
+	u32 *buffer;
+	u32 *buffer_end;
+	u32 exc_type;
+	u32 i;
+	u32 offset_output;
+	u32 total_size;
+	u32 poll_cnt;
+	const char *dsp_regs[] = {"EFR", "IERR", "ITSR", "NTSR",
+				"IRP", "NRP", "AMR", "SSR",
+				"ILC", "RILC", "IER", "CSR"};
+	struct bridge_drv_interface *intf_fxns;
+	struct dev_object *dev_object = wmd_context->hdev_obj;
+
+	status = dev_get_cod_mgr(dev_object, &code_mgr);
+	if (!code_mgr) {
+		pr_debug("%s: Failed on dev_get_cod_mgr.\n", __func__);
+		status = -EFAULT;
+	}
+
+	if (DSP_SUCCEEDED(status)) {
+		status = dev_get_node_manager(dev_object, &node_mgr);
+		if (!node_mgr) {
+			pr_debug("%s: Failed on dev_get_node_manager.\n",
+								__func__);
+			status = -EFAULT;
+		}
+	}
+
+	if (DSP_SUCCEEDED(status)) {
+		/* Look for SYS_PUTCBEG/SYS_PUTCEND: */
+		status =
+			cod_get_sym_value(code_mgr, COD_TRACEBEG, &trace_begin);
+		pr_debug("%s: trace_begin Value 0x%x\n",
+			__func__, trace_begin);
+		if (DSP_FAILED(status))
+			pr_debug("%s: Failed on cod_get_sym_value.\n",
+								__func__);
+	}
+	if (DSP_SUCCEEDED(status))
+		status = dev_get_intf_fxns(dev_object, &intf_fxns);
+	/*
+	 * Check for the "magic number" in the trace buffer.  If it has
+	 * yet to appear then poll the trace buffer to wait for it.  Its
+	 * appearance signals that the DSP has finished dumping its state.
+	 */
+	mmu_fault_dbg_info.head[0] = 0;
+	mmu_fault_dbg_info.head[1] = 0;
+	if (DSP_SUCCEEDED(status)) {
+		poll_cnt = 0;
+		while ((mmu_fault_dbg_info.head[0] != MMU_FAULT_HEAD1 ||
+			mmu_fault_dbg_info.head[1] != MMU_FAULT_HEAD2) &&
+			poll_cnt < POLL_MAX) {
+
+			/* Read DSP dump size from the DSP trace buffer... */
+			status = (*intf_fxns->pfn_brd_read)(wmd_context,
+				(u8 *)&mmu_fault_dbg_info, (u32)trace_begin,
+				sizeof(mmu_fault_dbg_info), 0);
+
+			if (DSP_FAILED(status))
+				break;
+
+			poll_cnt++;
+		}
+
+		if (mmu_fault_dbg_info.head[0] != MMU_FAULT_HEAD1 &&
+			mmu_fault_dbg_info.head[1] != MMU_FAULT_HEAD2) {
+			status = -ETIME;
+			pr_err("%s:No DSP MMU-Fault information available.\n",
+							__func__);
+		}
+	}
+
+	if (DSP_SUCCEEDED(status)) {
+		total_size = mmu_fault_dbg_info.size;
+		/* Limit the size in case DSP went crazy */
+		if (total_size > MAX_MMU_DBGBUFF)
+			total_size = MAX_MMU_DBGBUFF;
+
+		buffer = kzalloc(total_size, GFP_ATOMIC);
+		buffer_end =  buffer + total_size / 4;
+
+		if (!buffer) {
+			status = -ENOMEM;
+			pr_debug("%s: Failed to "
+				"allocate stack dump buffer.\n", __func__);
+			goto func_end;
+		}
+
+		/* Read bytes from the DSP trace buffer... */
+		status = (*intf_fxns->pfn_brd_read)(wmd_context,
+				(u8 *)buffer, (u32)trace_begin,
+				total_size, 0);
+		if (DSP_FAILED(status)) {
+			pr_debug("%s: Failed to Read Trace Buffer.\n",
+								__func__);
+			goto func_end;
+		}
+
+		pr_err("Aproximate Crash Position:\n");
+		pr_err("--------------------------\n");
+
+		exc_type = buffer[3];
+		if (!exc_type)
+			i = buffer[79];         /* IRP */
+		else
+			i = buffer[80];         /* NRP */
+
+		if ((*buffer > 0x01000000) && (node_find_addr(node_mgr, i,
+			0x1000, &offset_output, name) == DSP_SOK))
+			pr_err("0x%-8x [\"%s\" + 0x%x]\n", i, name,
+							i - offset_output);
+		else
+			pr_err("0x%-8x [Unable to match to a symbol.]\n", i);
+
+		pr_err("Execution Info:\n");
+		pr_err("---------------\n");
+
+		for (i = 0; i < 32; i++) {
+			if (i == 4 || i == 6 || i == 8)
+				pr_err("A%d 0x%-8x [Function Argument %d]\n",
+							i, *buffer++, i-3);
+			else if (i == 15)
+				pr_err("A15 0x%-8x [Frame Pointer]\n",
+								*buffer++);
+			else
+				pr_err("A%d 0x%x\n", i, *buffer++);
+		}
+
+		pr_err("\nB0 0x%x\n", *buffer++);
+		pr_err("B1 0x%x\n", *buffer++);
+		pr_err("B2 0x%x\n", *buffer++);
+
+		if ((*buffer > 0x01000000) && (node_find_addr(node_mgr, *buffer,
+			0x1000, &offset_output, name) == DSP_SOK))
+
+			pr_err("B3 0x%-8x [Function Return Pointer:"
+				" \"%s\" + 0x%x]\n", *buffer, name,
+				*buffer - offset_output);
+		else
+			pr_err("B3 0x%-8x [Function Return Pointer:"
+				"Unable to match to a symbol.]\n", *buffer);
+
+		buffer++;
+
+		for (i = 4; i < 32; i++) {
+			if (i == 4 || i == 6 || i == 8)
+				pr_err("B%d 0x%-8x [Function Argument %d]\n",
+							i, *buffer++, i-2);
+			else if (i == 15)
+				pr_err("B14 0x%-8x [Data Page Pointer]\n",
+								*buffer++);
+			else
+				pr_err("B%d 0x%x\n", i, *buffer++);
+		}
+
+		for (i = 0; i < ARRAY_SIZE(dsp_regs); i++)
+			pr_err("%s 0x%x\n", dsp_regs[i], *buffer++);
+
+		for (i = 0; buffer < buffer_end; i++, buffer++) {
+			if ((*buffer > 0x01000000) && (node_find_addr(node_mgr,
+				*buffer , 0x600, &offset_output, name) ==
+				DSP_SOK))
+				pr_err("[%d] 0x%-8x [\"%s\" + 0x%x]\n",
+					i, *buffer, name,
+					*buffer - offset_output);
+			else
+				pr_err("[%d] 0x%x\n", i, *buffer);
+		}
+		kfree(buffer - total_size / 4);
+	}
+func_end:
+	return status;
+}
+
+/**
+ * dump_dl_modules() - This functions dumps the _DLModules loaded in DSP side
+ * @wmd_context:		Mini driver's device context pointer.
+ *
+ */
+void dump_dl_modules(struct wmd_dev_context *wmd_context)
+{
+	struct cod_manager *code_mgr;
+	struct bridge_drv_interface *intf_fxns;
+	struct wmd_dev_context *wmd_ctxt = wmd_context;
+	struct dev_object *dev_object = wmd_ctxt->hdev_obj;
+	struct modules_header modules_hdr;
+	struct dll_module *module_struct = NULL;
+	u32 module_dsp_addr;
+	u32 module_size;
+	u32 module_struct_size = 0;
+	u32 sect_ndx;
+	char *sect_str ;
+	dsp_status status = DSP_SOK;
+
+	status = dev_get_intf_fxns(dev_object, &intf_fxns);
+	if (DSP_FAILED(status)) {
+		pr_debug("%s: Failed on dev_get_intf_fxns.\n", __func__);
+		goto func_end;
+	}
+
+	status = dev_get_cod_mgr(dev_object, &code_mgr);
+	if (!code_mgr) {
+		pr_debug("%s: Failed on dev_get_cod_mgr.\n", __func__);
+		status = -EFAULT;
+		goto func_end;
+	}
+
+	/* Lookup  the address of the modules_header structure */
+	status = cod_get_sym_value(code_mgr, "_DLModules", &module_dsp_addr);
+	if (DSP_FAILED(status)) {
+		pr_debug("%s: Failed on cod_get_sym_value for _DLModules.\n",
+			__func__);
+		goto func_end;
+	}
+
+	pr_debug("%s: _DLModules at 0x%x\n", __func__, module_dsp_addr);
+
+	/* Copy the modules_header structure from DSP memory. */
+	status = (*intf_fxns->pfn_brd_read)(wmd_context, (u8 *) &modules_hdr,
+				(u32) module_dsp_addr, sizeof(modules_hdr), 0);
+
+	if (DSP_FAILED(status)) {
+		pr_debug("%s: Failed failed to read modules header.\n",
+								__func__);
+		goto func_end;
+	}
+
+	module_dsp_addr = modules_hdr.first_module;
+	module_size = modules_hdr.first_module_size;
+
+	pr_debug("%s: dll_module_header 0x%x %d\n", __func__, module_dsp_addr,
+								module_size);
+
+	pr_err("%s: \nDynamically Loaded Modules:\n"
+		"---------------------------\n", __func__);
+
+	/* For each dll_module structure in the list... */
+	while (module_size) {
+		/*
+		 * Allocate/re-allocate memory to hold the dll_module
+		 * structure. The memory is re-allocated only if the existing
+		 * allocation is too small.
+		 */
+		if (module_size > module_struct_size) {
+			kfree(module_struct);
+			module_struct = kzalloc(module_size+128, GFP_ATOMIC);
+			module_struct_size = module_size+128;
+			pr_debug("%s: allocated module struct %p %d\n",
+				__func__, module_struct, module_struct_size);
+			if (!module_struct)
+				goto func_end;
+		}
+		/* Copy the dll_module structure from DSP memory */
+		status = (*intf_fxns->pfn_brd_read)(wmd_context,
+			(u8 *)module_struct, module_dsp_addr, module_size, 0);
+
+		if (DSP_FAILED(status)) {
+			pr_debug(
+			"%s: Failed to read dll_module stuct for 0x%x.\n",
+			__func__, module_dsp_addr);
+			break;
+		}
+
+		/* Update info regarding the _next_ module in the list. */
+		module_dsp_addr = module_struct->next_module;
+		module_size = module_struct->next_module_size;
+
+		pr_debug("%s: next module 0x%x %d, this module num sects %d\n",
+			__func__, module_dsp_addr, module_size,
+			module_struct->num_sects);
+
+		/*
+		 * The section name strings start immedialty following
+		 * the array of dll_sect structures.
+		 */
+		sect_str = (char *) &module_struct->
+					sects[module_struct->num_sects];
+		pr_err("%s\n", sect_str);
+
+		/*
+		 * Advance to the first section name string.
+		 * Each string follows the one before.
+		 */
+		sect_str += strlen(sect_str) + 1;
+
+		/* Access each dll_sect structure and its name string. */
+		for (sect_ndx = 0;
+			sect_ndx < module_struct->num_sects; sect_ndx++) {
+			pr_err("    Section: 0x%x ",
+				module_struct->sects[sect_ndx].sect_load_adr);
+
+			if (((u32) sect_str - (u32) module_struct) <
+				module_struct_size) {
+				pr_err("%s\n", sect_str);
+				/* Each string follows the one before. */
+				sect_str += strlen(sect_str)+1;
+			} else {
+				pr_err("<string error>\n");
+				pr_debug("%s: section name sting address "
+					"is invalid %p\n", __func__, sect_str);
+			}
+		}
+	}
+func_end:
+	kfree(module_struct);
+}
+
 
 #ifdef CONFIG_BRIDGE_WDT3
 /*

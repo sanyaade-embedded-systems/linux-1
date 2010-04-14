@@ -34,7 +34,7 @@
  *      utimeout        : timeout interval in milliseocnds
  *  Returns:
  *      DSP_SOK         : Success.
- *      DSP_ETIMEOUT    : Wait timed out. *pu_index is undetermined.
+ *      -ETIME    : Wait timed out. *pu_index is undetermined.
  *  Details:
  */
 
@@ -53,8 +53,8 @@ dsp_status mgr_wait_for_bridge_events(struct dsp_notification
  *      dev_node_obj:       Device object as known to Windows system.
  *  Returns:
  *      DSP_SOK:        Success
- *      DSP_EMEMORY:    Failed to Create the Object
- *      DSP_EFAIL:      General Failure
+ *      -ENOMEM:    Failed to Create the Object
+ *      -EPERM:      General Failure
  *  Requires:
  *      MGR Initialized (refs > 0 )
  *      phMgrObject != NULL.
@@ -79,7 +79,7 @@ extern dsp_status mgr_create(OUT struct mgr_object **hmgr_obj,
  *      DSP_SOK:        Success.
  *                      DCD Manager freed; MGR Object destroyed;
  *                      MGR Object deleted from the Registry.
- *      DSP_EFAIL:      Failed to destroy MGR Object
+ *      -EPERM:      Failed to destroy MGR Object
  *  Requires:
  *      MGR Initialized (refs > 0 )
  *      hmgr_obj is a valid MGR handle .
@@ -102,12 +102,12 @@ extern dsp_status mgr_destroy(struct mgr_object *hmgr_obj);
  *                          in the database will be returned.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EINVALIDARG:    Parameter node_id is > than the number of nodes.
+ *      -EINVAL:    Parameter node_id is > than the number of nodes.
  *                          configutred in the system
  *      DSP_ECHANGEDURINGENUM:  During Enumeration there has been a change in
  *                              the number of nodes configured or in the
  *                              the properties of the enumerated nodes.
- *      DSP_EFAIL:          Failed to querry the Node Data Base
+ *      -EPERM:          Failed to querry the Node Data Base
  *  Requires:
  *      pNDBPROPS is not null
  *      undb_props_size >= sizeof(dsp_ndbprops)
@@ -136,9 +136,9 @@ extern dsp_status mgr_enum_node_info(u32 node_id,
  *                          in the database will be returned
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EINVALIDARG:    Parameter processor_id is > than the number of
+ *      -EINVAL:    Parameter processor_id is > than the number of
  *                          DSP Processors in the system.
- *      DSP_EFAIL:          Failed to querry the Node Data Base
+ *      -EPERM:          Failed to querry the Node Data Base
  *  Requires:
  *      processor_info is not null
  *      pu_num_procs is not null
@@ -153,7 +153,7 @@ extern dsp_status mgr_enum_processor_info(u32 processor_id,
 					  OUT struct dsp_processorinfo
 					  *processor_info,
 					  u32 processor_info_size,
-					  OUT u32 *pu_num_procs);
+					  OUT u8 *pu_num_procs);
 /*
  *  ======== mgr_exit ========
  *  Purpose:
@@ -177,13 +177,13 @@ extern void mgr_exit(void);
  *      phDCDHandle:    Ptr to receive the DCD Handle.
  *  Returns:
  *      DSP_SOK:        Sucess
- *      DSP_EFAIL:      Failure to get the Handle
+ *      -EPERM:      Failure to get the Handle
  *  Requires:
  *      MGR is initialized.
  *      phDCDHandle != NULL
  *  Ensures:
  *      DSP_SOK and *phDCDHandle != NULL ||
- *      DSP_EFAIL and *phDCDHandle == NULL
+ *      -EPERM and *phDCDHandle == NULL
  */
 extern dsp_status mgr_get_dcd_handle(IN struct mgr_object
 				     *hMGRHandle, OUT u32 *phDCDHandle);

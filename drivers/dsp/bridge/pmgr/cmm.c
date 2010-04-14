@@ -41,7 +41,6 @@
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/cfg.h>
 #include <dspbridge/list.h>
-#include <dspbridge/mem.h>
 #include <dspbridge/sync.h>
 #include <dspbridge/utildefs.h>
 
@@ -53,11 +52,6 @@
 #include <dspbridge/cmm.h>
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-/* Object signatures */
-#define CMMSIGNATURE       0x004d4d43	/* "CMM"   (in reverse) */
-#define SMEMSIGNATURE      0x4D454D53	/* "SMEM"  SM space */
-#define CMMXLATESIGNATURE  0x584d4d43	/* "CMMX"  CMM Xlator */
-
 #define NEXT_PA(pnode)   (pnode->dw_pa + pnode->ul_size)
 
 /* Other bus/platform translations */
@@ -71,7 +65,6 @@
  *      vma - virtual memory allocator.(not used).
  */
 struct cmm_allocator {		/* sma */
-	u32 dw_signature;	/* SMA allocator signature SMEMSIGNATURE */
 	unsigned int shm_base;	/* Start of physical SM block */
 	u32 ul_sm_size;		/* Size of SM block in bytes */
 	unsigned int dw_vm_base;	/* Start of VM block. (Dev driver
@@ -89,7 +82,6 @@ struct cmm_allocator {		/* sma */
 };
 
 struct cmm_xlator {		/* Pa<->Va translator object */
-	u32 dw_signature;	/* "CMMX" */
 	/* CMM object this translator associated */
 	struct cmm_object *hcmm_mgr;
 	/*
@@ -104,7 +96,6 @@ struct cmm_xlator {		/* Pa<->Va translator object */
 
 /* CMM Mgr */
 struct cmm_object {
-	u32 dw_signature;	/* Used for object validation */
 	/*
 	 * Cmm Lock is used to serialize access mem manager for multi-threads.
 	 */
@@ -191,7 +182,7 @@ void *cmm_calloc_buf(struct cmm_object *hcmm_mgr, u32 usize,
 	if (pp_buf_va != NULL)
 		*pp_buf_va = NULL;
 
-	if ((MEM_IS_VALID_HANDLE(cmm_mgr_obj, CMMSIGNATURE)) && (usize != 0)) {
+	if (cmm_mgr_obj && (usize != 0)) {
 		if (pattrs->ul_seg_id > 0) {
 			/* SegId > 0 is SM */
 			/* get the allocator object for this segment id */
@@ -265,7 +256,7 @@ dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
 
 	*ph_cmm_mgr = NULL;
 	/* create, zero, and tag a cmm mgr object */
-	MEM_ALLOC_OBJECT(cmm_obj, struct cmm_object, CMMSIGNATURE);
+	cmm_obj = kzalloc(sizeof(struct cmm_object), GFP_KERNEL);
 	if (cmm_obj != NULL) {
 		if (pMgrAttrs == NULL)
 			pMgrAttrs = &cmm_dfltmgrattrs;	/* set defaults */
@@ -282,17 +273,17 @@ dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
 			cmm_obj->dw_page_size = sys_info.dw_page_size;
 		} else {
 			cmm_obj->dw_page_size = 0;
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 		/* Note: DSP SM seg table(aDSPSMSegTab[]) zero'd by
 		 * MEM_ALLOC_OBJECT */
 		if (DSP_SUCCEEDED(status)) {
 			/* create node free list */
 			cmm_obj->node_free_list_head =
-					mem_calloc(sizeof(struct lst_list),
-						   MEM_NONPAGED);
+					kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 			if (cmm_obj->node_free_list_head == NULL)
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			else
 				INIT_LIST_HEAD(&cmm_obj->
 					       node_free_list_head->head);
@@ -306,7 +297,7 @@ dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
 			cmm_destroy(cmm_obj, true);
 
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	return status;
 }
@@ -325,8 +316,8 @@ dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce)
 	struct cmm_mnode *pnode;
 
 	DBC_REQUIRE(refs > 0);
-	if (!MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hcmm_mgr) {
+		status = -EFAULT;
 		return status;
 	}
 	mutex_lock(&cmm_mgr_obj->cmm_lock);
@@ -337,7 +328,7 @@ dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce)
 		if (DSP_SUCCEEDED(status)) {
 			if (temp_info.ul_total_in_use_cnt > 0) {
 				/* outstanding allocations */
-				status = DSP_EFAIL;
+				status = -EPERM;
 			}
 		}
 	}
@@ -366,7 +357,7 @@ dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce)
 	if (DSP_SUCCEEDED(status)) {
 		/* delete CS & cmm mgr object */
 		mutex_destroy(&cmm_mgr_obj->cmm_lock);
-		MEM_FREE_OBJECT(cmm_mgr_obj);
+		kfree(cmm_mgr_obj);
 	}
 	return status;
 }
@@ -393,7 +384,7 @@ dsp_status cmm_free_buf(struct cmm_object *hcmm_mgr, void *buf_pa,
 			u32 ul_seg_id)
 {
 	struct cmm_object *cmm_mgr_obj = (struct cmm_object *)hcmm_mgr;
-	dsp_status status = DSP_EPOINTER;
+	dsp_status status = -EFAULT;
 	struct cmm_mnode *mnode_obj = NULL;
 	struct cmm_allocator *allocator = NULL;
 	struct cmm_attrs *pattrs;
@@ -405,9 +396,8 @@ dsp_status cmm_free_buf(struct cmm_object *hcmm_mgr, void *buf_pa,
 		pattrs = &cmm_dfltalctattrs;
 		ul_seg_id = pattrs->ul_seg_id;
 	}
-	if (!(MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) ||
-	    !(ul_seg_id > 0)) {
-		status = DSP_EHANDLE;
+	if (!hcmm_mgr || !(ul_seg_id > 0)) {
+		status = -EFAULT;
 		return status;
 	}
 	/* get the allocator for this segment id */
@@ -476,8 +466,8 @@ dsp_status cmm_get_info(struct cmm_object *hcmm_mgr,
 
 	DBC_REQUIRE(cmm_info_obj != NULL);
 
-	if (!MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hcmm_mgr) {
+		status = -EFAULT;
 		return status;
 	}
 	mutex_lock(&cmm_mgr_obj->cmm_lock);
@@ -571,8 +561,8 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 		"dw_dsp_base %x ul_dsp_size %x dw_gpp_base_va %x\n", __func__,
 		dw_gpp_base_pa, ul_size, dwDSPAddrOffset, dw_dsp_base,
 		ul_dsp_size, dw_gpp_base_va);
-	if (!MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) {
-		status = DSP_EHANDLE;
+	if (!hcmm_mgr) {
+		status = -EFAULT;
 		return status;
 	}
 	/* make sure we have room for another allocator */
@@ -580,19 +570,19 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 	slot_seg = get_slot(cmm_mgr_obj);
 	if (slot_seg < 0) {
 		/* get a slot number */
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	/* Check if input ul_size is big enough to alloc at least one block */
 	if (DSP_SUCCEEDED(status)) {
 		if (ul_size < cmm_mgr_obj->ul_min_block_size) {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 			goto func_end;
 		}
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/* create, zero, and tag an SM allocator object */
-		MEM_ALLOC_OBJECT(psma, struct cmm_allocator, SMEMSIGNATURE);
+		psma = kzalloc(sizeof(struct cmm_allocator), GFP_KERNEL);
 	}
 	if (psma != NULL) {
 		psma->hcmm_mgr = hcmm_mgr;	/* ref to parent */
@@ -604,29 +594,27 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 		psma->dw_dsp_base = dw_dsp_base;
 		psma->ul_dsp_size = ul_dsp_size;
 		if (psma->dw_vm_base == 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		if (DSP_SUCCEEDED(status)) {
 			/* return the actual segment identifier */
 			*pulSegId = (u32) slot_seg + 1;
 			/* create memory free list */
-			psma->free_list_head = mem_calloc(sizeof(struct
-								 lst_list),
-							  MEM_NONPAGED);
+			psma->free_list_head = kzalloc(sizeof(struct lst_list),
+								GFP_KERNEL);
 			if (psma->free_list_head == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_end;
 			}
 			INIT_LIST_HEAD(&psma->free_list_head->head);
 		}
 		if (DSP_SUCCEEDED(status)) {
 			/* create memory in-use list */
-			psma->in_use_list_head = mem_calloc(sizeof(struct
-								   lst_list),
-							    MEM_NONPAGED);
+			psma->in_use_list_head = kzalloc(sizeof(struct
+							lst_list), GFP_KERNEL);
 			if (psma->in_use_list_head == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_end;
 			}
 			INIT_LIST_HEAD(&psma->in_use_list_head->head);
@@ -640,7 +628,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 				lst_put_tail(psma->free_list_head,
 					     (struct list_head *)new_node);
 			} else {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				goto func_end;
 			}
 		}
@@ -649,7 +637,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 			un_register_gppsm_seg(psma);
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 	/* make entry */
@@ -675,7 +663,7 @@ dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 	u32 ul_id = ul_seg_id;
 
 	DBC_REQUIRE(ul_seg_id > 0);
-	if (MEM_IS_VALID_HANDLE(hcmm_mgr, CMMSIGNATURE)) {
+	if (hcmm_mgr) {
 		if (ul_seg_id == CMM_ALLSEGMENTS)
 			ul_id = 1;
 
@@ -691,7 +679,7 @@ dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 					cmm_mgr_obj->pa_gppsm_seg_tab[ul_id -
 								      1] = NULL;
 				} else if (ul_seg_id != CMM_ALLSEGMENTS) {
-					status = DSP_EFAIL;
+					status = -EPERM;
 				}
 				mutex_unlock(&cmm_mgr_obj->cmm_lock);
 				if (ul_seg_id != CMM_ALLSEGMENTS)
@@ -700,10 +688,10 @@ dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 				ul_id++;
 			}	/* end while */
 		} else {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -757,7 +745,7 @@ static void un_register_gppsm_seg(struct cmm_allocator *psma)
 		MEM_UNMAP_LINEAR_ADDRESS((void *)psma->dw_vm_base);
 
 	/* Free allocator itself */
-	MEM_FREE_OBJECT(psma);
+	kfree(psma);
 }
 
 /*
@@ -797,8 +785,7 @@ static struct cmm_mnode *get_node(struct cmm_object *cmm_mgr_obj, u32 dw_pa,
 	DBC_REQUIRE(ul_size != 0);
 	/* Check cmm mgr's node freelist */
 	if (LST_IS_EMPTY(cmm_mgr_obj->node_free_list_head)) {
-		pnode = (struct cmm_mnode *)mem_calloc(sizeof(struct cmm_mnode),
-						       MEM_PAGED);
+		pnode = kzalloc(sizeof(struct cmm_mnode), GFP_KERNEL);
 	} else {
 		/* surely a valid element */
 		pnode = (struct cmm_mnode *)
@@ -951,7 +938,7 @@ static struct cmm_allocator *get_allocator(struct cmm_object *cmm_mgr_obj,
 	allocator = cmm_mgr_obj->pa_gppsm_seg_tab[ul_seg_id - 1];
 	if (allocator != NULL) {
 		/* make sure it's for real */
-		if (!MEM_IS_VALID_HANDLE(allocator, SMEMSIGNATURE)) {
+		if (!allocator) {
 			allocator = NULL;
 			DBC_ASSERT(false);
 		}
@@ -985,13 +972,13 @@ dsp_status cmm_xlator_create(OUT struct cmm_xlatorobject **phXlator,
 	if (pXlatorAttrs == NULL)
 		pXlatorAttrs = &cmm_dfltxlatorattrs;	/* set defaults */
 
-	MEM_ALLOC_OBJECT(xlator_object, struct cmm_xlator, CMMXLATESIGNATURE);
+	xlator_object = kzalloc(sizeof(struct cmm_xlator), GFP_KERNEL);
 	if (xlator_object != NULL) {
 		xlator_object->hcmm_mgr = hcmm_mgr;	/* ref back to CMM */
 		/* SM seg_id */
 		xlator_object->ul_seg_id = pXlatorAttrs->ul_seg_id;
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	if (DSP_SUCCEEDED(status))
 		*phXlator = (struct cmm_xlatorobject *)xlator_object;
@@ -1012,10 +999,10 @@ dsp_status cmm_xlator_delete(struct cmm_xlatorobject *xlator, bool bForce)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE)) {
-		MEM_FREE_OBJECT(xlator_obj);
+	if (xlator_obj) {
+		kfree(xlator_obj);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -1038,7 +1025,7 @@ void *cmm_xlator_alloc_buf(struct cmm_xlatorobject *xlator, void *pVaBuf,
 	DBC_REQUIRE(uPaSize > 0);
 	DBC_REQUIRE(xlator_obj->ul_seg_id > 0);
 
-	if (MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE)) {
+	if (xlator_obj) {
 		attrs.ul_seg_id = xlator_obj->ul_seg_id;
 		*(volatile u32 *)pVaBuf = 0;
 		/* Alloc SM */
@@ -1064,14 +1051,14 @@ void *cmm_xlator_alloc_buf(struct cmm_xlatorobject *xlator, void *pVaBuf,
 dsp_status cmm_xlator_free_buf(struct cmm_xlatorobject *xlator, void *pBufVa)
 {
 	struct cmm_xlator *xlator_obj = (struct cmm_xlator *)xlator;
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	void *buf_pa = NULL;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pBufVa != NULL);
 	DBC_REQUIRE(xlator_obj->ul_seg_id > 0);
 
-	if (MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE)) {
+	if (xlator_obj) {
 		/* convert Va to Pa so we can free it. */
 		buf_pa = cmm_xlator_translate(xlator, pBufVa, CMM_VA2PA);
 		if (buf_pa) {
@@ -1102,7 +1089,7 @@ dsp_status cmm_xlator_info(struct cmm_xlatorobject *xlator, IN OUT u8 ** paddr,
 	DBC_REQUIRE(paddr != NULL);
 	DBC_REQUIRE((uSegId > 0) && (uSegId <= CMM_MAXGPPSEGS));
 
-	if (MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE)) {
+	if (xlator_obj) {
 		if (set_info) {
 			/* set translators virtual address range */
 			xlator_obj->dw_virt_base = (u32) *paddr;
@@ -1111,7 +1098,7 @@ dsp_status cmm_xlator_info(struct cmm_xlatorobject *xlator, IN OUT u8 ** paddr,
 			*paddr = (u8 *) xlator_obj->dw_virt_base;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -1132,14 +1119,14 @@ void *cmm_xlator_translate(struct cmm_xlatorobject *xlator, void *paddr,
 	DBC_REQUIRE(paddr != NULL);
 	DBC_REQUIRE((xType >= CMM_VA2PA) && (xType <= CMM_DSPPA2PA));
 
-	if (!MEM_IS_VALID_HANDLE(xlator_obj, CMMXLATESIGNATURE))
+	if (!xlator_obj)
 		goto loop_cont;
 
 	cmm_mgr_obj = (struct cmm_object *)xlator_obj->hcmm_mgr;
 	/* get this translator's default SM allocator */
 	DBC_ASSERT(xlator_obj->ul_seg_id > 0);
 	allocator = cmm_mgr_obj->pa_gppsm_seg_tab[xlator_obj->ul_seg_id - 1];
-	if (!MEM_IS_VALID_HANDLE(allocator, SMEMSIGNATURE))
+	if (!allocator)
 		goto loop_cont;
 
 	if ((xType == CMM_VA2DSPPA) || (xType == CMM_VA2PA) ||

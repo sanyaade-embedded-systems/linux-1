@@ -23,10 +23,6 @@
 #include <dspbridge/devdefs.h>
 #include <dspbridge/sync.h>
 
-/* CHNL Object validation signatures: */
-#define CHNL_MGRSIGNATURE   0x52474D43	/* "CMGR" (in reverse). */
-#define CHNL_SIGNATURE      0x4C4E4843	/* "CHNL" (in reverse). */
-
 /* Channel manager limits: */
 #define CHNL_MAXCHANNELS    32	/* Max channels available per transport */
 
@@ -49,9 +45,9 @@
 #define CHNL_MODEMASK       0x1001
 
 /* Higher level channel states: */
-#define CHNL_STATEREADY     0x0000	/* Channel ready for I/O. */
-#define CHNL_STATECANCEL    0x0001	/* I/O was cancelled. */
-#define CHNL_STATEEOS       0x0002	/* End Of Stream reached. */
+#define CHNL_STATEREADY		0	/* Channel ready for I/O. */
+#define CHNL_STATECANCEL	1	/* I/O was cancelled. */
+#define CHNL_STATEEOS		2	/* End Of Stream reached. */
 
 /* Determine if user supplied an event for this channel: */
 #define CHNL_IS_USER_EVENT(mode)  (mode & CHNL_MODEUSEREVENT)
@@ -77,8 +73,8 @@ struct chnl_info {
 	bhandle event_obj;	/* Channel I/O completion event. */
 	/*Abstraction of I/O completion event. */
 	struct sync_object *sync_event;
-	u32 dw_mode;		/* Channel mode. */
-	u32 dw_state;		/* Current channel state. */
+	s8 dw_mode;		/* Channel mode. */
+	u8 dw_state;		/* Current channel state. */
 	u32 bytes_tx;		/* Total bytes transferred. */
 	u32 cio_cs;		/* Number of IOCs in queue. */
 	u32 cio_reqs;		/* Number of IO Requests in queue. */
@@ -87,17 +83,17 @@ struct chnl_info {
 
 /* Channel manager info: */
 struct chnl_mgrinfo {
-	u32 dw_type;		/* Type of channel class library. */
+	u8 dw_type;		/* Type of channel class library. */
 	/* Channel handle, given the channel id. */
 	struct chnl_object *chnl_obj;
-	u32 open_channels;	/* Number of open channels. */
-	u32 max_channels;	/* total # of chnls supported */
+	u8 open_channels;	/* Number of open channels. */
+	u8 max_channels;	/* total # of chnls supported */
 };
 
 /* Channel Manager Attrs: */
 struct chnl_mgrattrs {
 	/* Max number of channels this manager can use. */
-	u32 max_channels;
+	u8 max_channels;
 	u32 word_size;		/* DSP Word size. */
 };
 

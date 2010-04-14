@@ -80,8 +80,7 @@ struct msg_ctrl {
  *  ready to go to the DSP.
  */
 struct msg_mgr {
-	/* The first two fields must match those in msgobj.h */
-	u32 dw_signature;
+	/* The first field must match that in msgobj.h */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD. */
 
 	struct io_mgr *hio_mgr;	/* IO manager */
@@ -107,7 +106,6 @@ struct msg_mgr {
  */
 struct msg_queue {
 	struct list_head list_elem;
-	u32 dw_signature;
 	struct msg_mgr *hmsg_mgr;
 	u32 max_msgs;		/* Node message depth */
 	u32 msgq_id;		/* Node environment pointer */

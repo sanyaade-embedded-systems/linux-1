@@ -30,8 +30,6 @@
 #define IO_SERVICE          2
 #define IO_MAXSERVICE       IO_SERVICE
 
-#define IO_MGRSIGNATURE     0x494f4D43	/* "IOGR" */
-
 #define DSP_FIELD_ADDR(type, field, base, wordsize) \
     ((((s32)&(((type *)0)->field)) / wordsize) + (u32)base)
 
@@ -125,7 +123,7 @@ void dsp_wdt_set_enable(bool);
 
 extern void io_request_chnl(struct io_mgr *hio_mgr,
 			    struct chnl_object *pchnl,
-			    u32 iMode, OUT u16 *pwMbVal);
+			    u8 iMode, OUT u16 *pwMbVal);
 
 /*
  *  ======== iosm_schedule ========
@@ -306,5 +304,10 @@ extern void io_sm_init(void);
  */
 extern dsp_status print_dsp_trace_buffer(struct wmd_dev_context
 					 *hwmd_context);
+
+dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context);
+
+void dump_dl_modules(struct wmd_dev_context *wmd_context);
+
 
 #endif /* IOSM_ */

@@ -35,7 +35,7 @@
  *      chnl_obj:          Channel object handle.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EHANDLE:    Invalid chnl_obj.
+ *      -EFAULT:    Invalid chnl_obj.
  *  Requires:
  *      chnl_init(void) called.
  *      No thread must be blocked on this channel's I/O completion event.
@@ -60,9 +60,9 @@ extern dsp_status chnl_close(struct chnl_object *chnl_obj);
  *      pMgrAttrs->word_size:   DSP Word size in equivalent PC bytes..
  *  Returns:
  *      DSP_SOK:                Success;
- *      DSP_EHANDLE:            hdev_obj is invalid.
- *      DSP_EINVALIDARG:        max_channels is 0.
- *      DSP_EMEMORY:            Insufficient memory for requested resources.
+ *      -EFAULT:            hdev_obj is invalid.
+ *      -EINVAL:        max_channels is 0.
+ *      -ENOMEM:            Insufficient memory for requested resources.
  *      CHNL_E_ISR:             Unable to plug channel ISR for configured IRQ.
  *      CHNL_E_MAXCHANNELS:     This manager cannot handle this many channels.
  *      CHNL_E_INVALIDIRQ:      Invalid IRQ number. Must be 0 <= birq <= 15.
@@ -90,7 +90,7 @@ extern dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
  *      hchnl_mgr:           Channel manager object.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EHANDLE:        hchnl_mgr was invalid.
+ *      -EFAULT:        hchnl_mgr was invalid.
  *  Requires:
  *      chnl_init(void) called.
  *  Ensures:

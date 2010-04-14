@@ -75,14 +75,14 @@ extern u32 dev_brd_write_fxn(void *pArb,
  *      dev_node_obj:       Platform (Windows) specific device node.
  *  Returns:
  *      DSP_SOK:            Module is loaded, device object has been created
- *      DSP_EMEMORY:        Insufficient memory to create needed resources.
+ *      -ENOMEM:        Insufficient memory to create needed resources.
  *      DEV_E_NEWWMD:       The WMD was compiled for a newer version of WCD.
  *      DEV_E_NULLWMDINTF:  WMD passed back a NULL fxn Interface Struct Ptr
  *      DEV_E_NOCODMODULE:  No ZL file name was specified in the registry
  *                          for this dev_node_obj.
  *      LDR_E_FILEUNABLETOOPEN: Unable to open the specified WMD.
  *      LDR_E_NOMEMORY:         PELDR is out of resources.
- *      DSP_EFAIL:              Unable to find WMD entry point function.
+ *      -EPERM:              Unable to find WMD entry point function.
  *      COD_E_NOZLFUNCTIONS:    One or more ZL functions exports not found.
  *      COD_E_ZLCREATEFAILED:   Unable to load ZL DLL.
  *  Requires:
@@ -99,9 +99,6 @@ extern u32 dev_brd_write_fxn(void *pArb,
 extern dsp_status dev_create_device(OUT struct dev_object
 				    **phDevObject,
 				    IN CONST char *pstrWMDFileName,
-				    IN CONST struct cfg_hostres
-				    *pHostConfig, IN CONST struct cfg_dspres
-				    *pDspConfig,
 				    struct cfg_devnode *dev_node_obj);
 
 /*
@@ -120,14 +117,14 @@ extern dsp_status dev_create_device(OUT struct dev_object
  *      dev_node_obj:       Platform (Windows) specific device node.
  *  Returns:
  *      DSP_SOK:            Module is loaded, device object has been created
- *      DSP_EMEMORY:        Insufficient memory to create needed resources.
+ *      -ENOMEM:        Insufficient memory to create needed resources.
  *      DEV_E_NEWWMD:       The WMD was compiled for a newer version of WCD.
  *      DEV_E_NULLWMDINTF:  WMD passed back a NULL fxn Interface Struct Ptr
  *      DEV_E_NOCODMODULE:  No ZL file name was specified in the registry
  *                          for this dev_node_obj.
  *      LDR_E_FILEUNABLETOOPEN: Unable to open the specified WMD.
  *      LDR_E_NOMEMORY:         PELDR is out of resources.
- *      DSP_EFAIL:              Unable to find WMD entry point function.
+ *      -EPERM:              Unable to find WMD entry point function.
  *      COD_E_NOZLFUNCTIONS:    One or more ZL functions exports not found.
  *      COD_E_ZLCREATEFAILED:   Unable to load ZL DLL.
  *  Requires:
@@ -146,7 +143,6 @@ extern dsp_status dev_create_iva_device(OUT struct dev_object
 					IN CONST char *pstrWMDFileName,
 					IN CONST struct cfg_hostres
 					*pHostConfig,
-					IN CONST struct cfg_dspres *pDspConfig,
 					struct cfg_devnode *dev_node_obj);
 
 /*
@@ -159,7 +155,7 @@ extern dsp_status dev_create_iva_device(OUT struct dev_object
  *      hdev_obj: Handle to device object created with dev_create_device().
  *  Returns:
  *      DSP_SOK:    Successful Creation of Node Manager
- *      DSP_EFAIL:  Some Error Occurred.
+ *      -EPERM:  Some Error Occurred.
  *  Requires:
  *      DEV Initialized
  *      Valid hdev_obj
@@ -177,13 +173,13 @@ extern dsp_status dev_create2(IN struct dev_object *hdev_obj);
  *      hdev_obj: Handle to device object created with dev_create_device().
  *  Returns:
  *      DSP_SOK:    Successful Creation of Node Manager
- *      DSP_EFAIL:  Some Error Occurred.
+ *      -EPERM:  Some Error Occurred.
  *  Requires:
  *      DEV Initialized
  *      Valid hdev_obj
  *  Ensures:
  *      DSP_SOK and hdev_obj->hnode_mgr == NULL
- *      else    DSP_EFAIL.
+ *      else    -EPERM.
  */
 extern dsp_status dev_destroy2(IN struct dev_object *hdev_obj);
 
@@ -197,8 +193,8 @@ extern dsp_status dev_destroy2(IN struct dev_object *hdev_obj);
  *                      dev_create_device().
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
- *      DSP_EFAIL:      The WMD failed it's bridge_dev_destroy() function.
+ *      -EFAULT:    Invalid hdev_obj.
+ *      -EPERM:      The WMD failed it's bridge_dev_destroy() function.
  *  Requires:
  *      DEV Initialized.
  *  Ensures:
@@ -216,7 +212,7 @@ extern dsp_status dev_destroy_device(struct dev_object
  *      *phMgr:         Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phMgr != NULL.
  *      DEV Initialized.
@@ -239,7 +235,7 @@ extern dsp_status dev_get_chnl_mgr(struct dev_object *hdev_obj,
  *      *phMgr:         Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phMgr != NULL.
  *      DEV Initialized.
@@ -262,7 +258,7 @@ extern dsp_status dev_get_cmm_mgr(struct dev_object *hdev_obj,
  *      *phMgr:         Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phMgr != NULL.
  *      DEV Initialized.
@@ -284,7 +280,7 @@ extern dsp_status dev_get_dmm_mgr(struct dev_object *hdev_obj,
  *      *phCodMgr:      Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phCodMgr != NULL.
  *      DEV Initialized.
@@ -304,7 +300,7 @@ extern dsp_status dev_get_cod_mgr(struct dev_object *hdev_obj,
  *      *phDehMgr:  Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:    Success.
- *      DSP_EHANDLE:   Invalid hdev_obj.
+ *      -EFAULT:   Invalid hdev_obj.
  *  Requires:
  *      phDehMgr != NULL.
  *      DEH Initialized.
@@ -325,7 +321,7 @@ extern dsp_status dev_get_deh_mgr(struct dev_object *hdev_obj,
  *      phDevNode:      Ptr to location to get the device node handle.
  *  Returns:
  *      DSP_SOK:        In Win95, returns a DEVNODE in *dev_node_obj; In NT, ???
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phDevNode != NULL.
  *      DEV Initialized.
@@ -346,7 +342,7 @@ extern dsp_status dev_get_dev_node(struct dev_object *hdev_obj,
  *      phDevNode:      Ptr to location to get the device node handle.
  *  Returns:
  *      DSP_SOK:        Success
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phDevNode != NULL.
  *      DEV Initialized.
@@ -355,7 +351,7 @@ extern dsp_status dev_get_dev_node(struct dev_object *hdev_obj,
  *      else:           *phDevNode is NULL.
  */
 extern dsp_status dev_get_dev_type(struct dev_object *hdevObject,
-				   u32 *dev_type);
+					u8 *dev_type);
 
 /*
  *  ======== dev_get_first ========
@@ -387,7 +383,7 @@ extern struct dev_object *dev_get_first(void);
  *      *ppIntfFxns:    Ptr to location to store fxn interface.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      ppIntfFxns != NULL.
  *      DEV Initialized.
@@ -408,7 +404,7 @@ extern dsp_status dev_get_intf_fxns(struct dev_object *hdev_obj,
  *      *phMgr:         Ptr to location to store handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phMgr != NULL.
  *      DEV Initialized.
@@ -472,7 +468,7 @@ extern void dev_get_msg_mgr(struct dev_object *hdev_obj,
  *                      returned..
  *  Returns:
  *      DSP_SOK:        Success
- *      DSP_EHANDLE:    Invalid Dev Object handle.
+ *      -EFAULT:    Invalid Dev Object handle.
  *  Requires:
  *      DEV Initialized.
  *      phNodeMgr is not null
@@ -495,7 +491,7 @@ extern dsp_status dev_get_node_manager(struct dev_object
  *      pul_value:       Ptr to symbol value.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *      COD_E_NOSYMBOLSLOADED:  Symbols have not been loaded onto the board.
  *      COD_E_SYMBOLNOTFOUND:   The symbol could not be found.
  *  Requires:
@@ -517,7 +513,7 @@ extern dsp_status dev_get_symbol(struct dev_object *hdev_obj,
  *      *phWmdContext:  Ptr to location to store context handle.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      phWmdContext != NULL.
  *      DEV Initialized.
@@ -567,7 +563,7 @@ extern bool dev_init(void);
  *  Returns:
  *      DSP_SOK:        TRUE: device has been locked.
  *      DSP_SFALSE:     FALSE: device not locked.
- *      DSP_EHANDLE:    hdev_obj was invalid.
+ *      -EFAULT:    hdev_obj was invalid.
  *  Requires:
  *      DEV Initialized.
  *  Ensures:
@@ -613,7 +609,7 @@ extern dsp_status dev_insert_proc_object(IN struct dev_object
  *      pbAlreadyAttached:  Ptr to return the bool
  *  Returns:
  *      DSP_SOK:            If successful.
- *      DSP_EFAIL           Failure to Remove the PROC Object from the list
+ *      -EPERM           Failure to Remove the PROC Object from the list
  *  Requires:
  *      DevObject is Valid
  *      proc_obj != 0
@@ -640,7 +636,7 @@ extern dsp_status dev_remove_proc_object(struct dev_object
  *      ulStatus:    A status word, most likely a BRD_STATUS.
  *  Returns:
  *      DSP_SOK:     All registered clients were asynchronously notified.
- *      DSP_EINVALIDARG:   Invalid hdev_obj.
+ *      -EINVAL:   Invalid hdev_obj.
  *  Requires:
  *      DEV Initialized.
  *  Ensures:
@@ -674,7 +670,7 @@ extern dsp_status dev_remove_device(struct cfg_devnode *dev_node_obj);
  *      hmgr:           Handle to a channel manager, or NULL.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hdev_obj.
+ *      -EFAULT:    Invalid hdev_obj.
  *  Requires:
  *      DEV Initialized.
  *  Ensures:

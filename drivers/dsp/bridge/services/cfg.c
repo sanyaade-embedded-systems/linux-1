@@ -25,10 +25,10 @@
 #include <dspbridge/dbc.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/reg.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/cfg.h>
+#include <dspbridge/drv.h>
 
 struct drv_ext {
 	struct list_head link;
@@ -55,18 +55,15 @@ dsp_status cfg_get_auto_start(struct cfg_devnode *dev_node_obj,
 {
 	dsp_status status = DSP_SOK;
 	u32 dw_buf_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	dw_buf_size = sizeof(*pdwAutoStart);
 	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
-	if (!pdwAutoStart)
-		status = CFG_E_INVALIDPOINTER;
-	if (DSP_SUCCEEDED(status)) {
-		status = reg_get_value(AUTOSTART, (u8 *) pdwAutoStart,
-				       &dw_buf_size);
-		if (DSP_FAILED(status))
-			status = CFG_E_RESOURCENOTAVAIL;
-	}
+		status = -EFAULT;
+	if (!pdwAutoStart || !drv_datap)
+		status = -EFAULT;
+	if (DSP_SUCCEEDED(status))
+		*pdwAutoStart = (drv_datap->base_img) ? 1 : 0;
 
 	DBC_ENSURE((status == DSP_SOK &&
 		    (*pdwAutoStart == 0 || *pdwAutoStart == 1))
@@ -84,57 +81,29 @@ dsp_status cfg_get_dev_object(struct cfg_devnode *dev_node_obj,
 {
 	dsp_status status = DSP_SOK;
 	u32 dw_buf_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
+
+	if (!drv_datap)
+		status = -EPERM;
 
 	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
+		status = -EFAULT;
 
 	if (!pdwValue)
-		status = CFG_E_INVALIDHDEVNODE;
+		status = -EFAULT;
 
 	dw_buf_size = sizeof(pdwValue);
 	if (DSP_SUCCEEDED(status)) {
 
-		/* check the device string and then call the reg_set_value */
+		/* check the device string and then store dev object */
 		if (!
 		    (strcmp
 		     ((char *)((struct drv_ext *)dev_node_obj)->sz_string,
 		      "TIOMAP1510")))
-			status =
-			    reg_get_value("DEVICE_DSP", (u8 *) pdwValue,
-					  &dw_buf_size);
+			*pdwValue = (u32)drv_datap->dev_object;
 	}
 	if (DSP_FAILED(status))
 		pr_err("%s: Failed, status 0x%x\n", __func__, status);
-	return status;
-}
-
-/*
- *  ======== cfg_get_dsp_resources ========
- *  Purpose:
- *      Get the DSP resources available to a given device.
- */
-dsp_status cfg_get_dsp_resources(struct cfg_devnode *dev_node_obj,
-				 OUT struct cfg_dspres *pDSPResTable)
-{
-	dsp_status status = DSP_SOK;	/* return value */
-	u32 dw_res_size;
-	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
-	else if (!pDSPResTable)
-		status = CFG_E_INVALIDPOINTER;
-	else
-		status = reg_get_value(DSPRESOURCES, (u8 *) pDSPResTable,
-				       &dw_res_size);
-	if (DSP_FAILED(status)) {
-		status = CFG_E_RESOURCENOTAVAIL;
-		pr_err("%s: Failed, status 0x%x\n", __func__, status);
-	}
-	/* assert that resource values are reasonable */
-	DBC_ASSERT(pDSPResTable->chip_type < 256);
-	DBC_ASSERT(pDSPResTable->word_size > 0);
-	DBC_ASSERT(pDSPResTable->word_size < 32);
-	DBC_ASSERT(pDSPResTable->chip_number > 0);
-	DBC_ASSERT(pDSPResTable->chip_number < 256);
 	return status;
 }
 
@@ -147,57 +116,28 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
 			     OUT char *pstrExecFile)
 {
 	dsp_status status = DSP_SOK;
-	u32 exec_size = ul_buf_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
-	else if (!pstrExecFile)
-		status = CFG_E_INVALIDPOINTER;
+		status = -EFAULT;
+	else if (!pstrExecFile || !drv_datap)
+		status = -EFAULT;
 
-	if (DSP_SUCCEEDED(status)) {
-		status =
-		    reg_get_value(DEFEXEC, (u8 *) pstrExecFile, &exec_size);
-		if (DSP_FAILED(status))
-			status = CFG_E_RESOURCENOTAVAIL;
-		else if (exec_size > ul_buf_size)
-			status = DSP_ESIZE;
+	if (DSP_FAILED(status))
+		goto func_end;
 
-	}
+	if (drv_datap->base_img && strlen(drv_datap->base_img) > ul_buf_size)
+		status = -EINVAL;
+
+	if (DSP_SUCCEEDED(status))
+		strcpy(pstrExecFile, drv_datap->base_img);
+
 	if (DSP_FAILED(status))
 		pr_err("%s: Failed, status 0x%x\n", __func__, status);
+func_end:
 	DBC_ENSURE(((status == DSP_SOK) &&
 		    (strlen(pstrExecFile) <= ul_buf_size))
 		   || (status != DSP_SOK));
-	return status;
-}
-
-/*
- *  ======== cfg_get_host_resources ========
- *  Purpose:
- *      Get the Host allocated resources assigned to a given device.
- */
-dsp_status cfg_get_host_resources(struct cfg_devnode *dev_node_obj,
-				  OUT struct cfg_hostres *pHostResTable)
-{
-	dsp_status status = DSP_SOK;
-	u32 dw_buf_size;
-
-	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
-
-	if (!pHostResTable)
-		status = CFG_E_INVALIDPOINTER;
-
-	if (DSP_SUCCEEDED(status)) {
-		dw_buf_size = sizeof(struct cfg_hostres);
-		if (DSP_FAILED
-		    (reg_get_value
-		     (CURRENTCONFIG, (u8 *) pHostResTable, &dw_buf_size))) {
-			status = CFG_E_RESOURCENOTAVAIL;
-		}
-	}
-	if (DSP_FAILED(status))
-		dev_dbg(bridge, "%s Failed, status 0x%x\n", __func__, status);
 	return status;
 }
 
@@ -206,26 +146,34 @@ dsp_status cfg_get_host_resources(struct cfg_devnode *dev_node_obj,
  *  Purpose:
  *      Retrieve the Object handle from the Registry
  */
-dsp_status cfg_get_object(OUT u32 *pdwValue, u32 dw_type)
+dsp_status cfg_get_object(OUT u32 *pdwValue, u8 dw_type)
 {
-	dsp_status status = DSP_EINVALIDARG;
-	u32 dw_buf_size;
+	dsp_status status = -EINVAL;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
+
 	DBC_REQUIRE(pdwValue != NULL);
 
-	dw_buf_size = sizeof(pdwValue);
+	if (!drv_datap)
+		return -EPERM;
+
 	switch (dw_type) {
 	case (REG_DRV_OBJECT):
-		status =
-		    reg_get_value(DRVOBJECT, (u8 *) pdwValue, &dw_buf_size);
-		if (DSP_FAILED(status))
-			status = CFG_E_RESOURCENOTAVAIL;
+		if (drv_datap->drv_object) {
+			*pdwValue = (u32)drv_datap->drv_object;
+			status = DSP_SOK;
+		} else {
+			status = -ENODATA;
+		}
 		break;
 	case (REG_MGR_OBJECT):
-		status =
-		    reg_get_value(MGROBJECT, (u8 *) pdwValue, &dw_buf_size);
-		if (DSP_FAILED(status))
-			status = CFG_E_RESOURCENOTAVAIL;
+		if (drv_datap->mgr_object) {
+			*pdwValue = (u32)drv_datap->mgr_object;
+			status = DSP_SOK;
+		} else {
+			status = -ENODATA;
+		}
 		break;
+
 	default:
 		break;
 	}
@@ -245,19 +193,6 @@ dsp_status cfg_get_object(OUT u32 *pdwValue, u32 dw_type)
  */
 bool cfg_init(void)
 {
-	struct cfg_dspres dsp_resources;
-
-	dsp_resources.chip_type = DSPTYPE64;
-	dsp_resources.chip_number = 1;
-	dsp_resources.word_size = DSPWORDSIZE;
-	dsp_resources.mem_types = 0;
-	dsp_resources.mem_desc[0].mem_type = 0;
-	dsp_resources.mem_desc[0].ul_min = 0;
-	dsp_resources.mem_desc[0].ul_max = 0;
-	if (DSP_FAILED(reg_set_value(DSPRESOURCES, (u8 *) &dsp_resources,
-				     sizeof(struct cfg_dspres))))
-		pr_err("Failed to initialize DSP resources in registry\n");
-
 	return true;
 }
 
@@ -269,18 +204,21 @@ bool cfg_init(void)
 dsp_status cfg_set_dev_object(struct cfg_devnode *dev_node_obj, u32 dwValue)
 {
 	dsp_status status = DSP_SOK;
-	u32 dw_buff_size;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
+
+	if (!drv_datap) {
+		pr_err("%s: Failed, status 0x%x\n", __func__, status);
+		return -EPERM;
+	}
 
 	if (!dev_node_obj)
-		status = CFG_E_INVALIDHDEVNODE;
+		status = -EFAULT;
 
-	dw_buff_size = sizeof(dwValue);
 	if (DSP_SUCCEEDED(status)) {
 		/* Store the WCD device object in the Registry */
 
 		if (!(strcmp((char *)dev_node_obj, "TIOMAP1510"))) {
-			status = reg_set_value("DEVICE_DSP", (u8 *) &dwValue,
-					       dw_buff_size);
+			drv_datap->dev_object = (void *) dwValue;
 		}
 	}
 	if (DSP_FAILED(status))
@@ -294,20 +232,22 @@ dsp_status cfg_set_dev_object(struct cfg_devnode *dev_node_obj, u32 dwValue)
  *  Purpose:
  *      Store the Driver Object handle
  */
-dsp_status cfg_set_object(u32 dwValue, u32 dw_type)
+dsp_status cfg_set_object(u32 dwValue, u8 dw_type)
 {
-	dsp_status status = DSP_EINVALIDARG;
-	u32 dw_buff_size;
+	dsp_status status = -EINVAL;
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
-	dw_buff_size = sizeof(dwValue);
+	if (!drv_datap)
+		return -EPERM;
+
 	switch (dw_type) {
 	case (REG_DRV_OBJECT):
-		status =
-		    reg_set_value(DRVOBJECT, (u8 *) &dwValue, dw_buff_size);
+		drv_datap->drv_object = (void *)dwValue;
+		status = DSP_SOK;
 		break;
 	case (REG_MGR_OBJECT):
-		status =
-		    reg_set_value(MGROBJECT, (u8 *) &dwValue, dw_buff_size);
+		drv_datap->mgr_object = (void *)dwValue;
+		status = DSP_SOK;
 		break;
 	default:
 		break;

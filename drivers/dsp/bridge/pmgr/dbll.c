@@ -27,7 +27,6 @@
 #include <dspbridge/gh.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 
 /* Dynamic loader library interface */
 #include <dspbridge/dynamic_loader.h>
@@ -36,9 +35,6 @@
 /*  ----------------------------------- This */
 #include <dspbridge/dbll.h>
 #include <dspbridge/rmm.h>
-
-#define DBLL_TARGSIGNATURE      0x544c4c44	/* "TLLD" */
-#define DBLL_LIBSIGNATURE       0x4c4c4c44	/* "LLLD" */
 
 /* Number of buckets for symbol hash table */
 #define MAXBUCKETS 211
@@ -61,7 +57,6 @@
  *  ======== dbll_tar_obj ========
  */
 struct dbll_tar_obj {
-	u32 dw_signature;	/* For object validation */
 	struct dbll_attrs attrs;
 	struct dbll_library_obj *head;	/* List of all opened libraries */
 };
@@ -114,7 +109,6 @@ struct dbll_init_obj {
  *  ======== dbll_library_obj ========
  */
 struct dbll_library_obj {
-	u32 dw_signature;	/* For object validation */
 	struct dbll_library_obj *next;	/* Next library in target's list */
 	struct dbll_library_obj *prev;	/* Previous in the list */
 	struct dbll_tar_obj *target_obj;	/* target for this library */
@@ -213,7 +207,7 @@ void dbll_close(struct dbll_library_obj *zl_lib)
 	struct dbll_tar_obj *zl_target;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(zl_lib->open_ref > 0);
 	zl_target = zl_lib->target_obj;
 	zl_lib->open_ref--;
@@ -237,7 +231,7 @@ void dbll_close(struct dbll_library_obj *zl_lib)
 			gh_delete(zl_lib->sym_tab);
 
 		/* remove the library object itself */
-		MEM_FREE_OBJECT(zl_lib);
+		kfree(zl_lib);
 		zl_lib = NULL;
 	}
 }
@@ -256,20 +250,17 @@ dsp_status dbll_create(struct dbll_tar_obj **target_obj,
 	DBC_REQUIRE(target_obj != NULL);
 
 	/* Allocate DBL target object */
-	MEM_ALLOC_OBJECT(pzl_target, struct dbll_tar_obj, DBLL_TARGSIGNATURE);
+	pzl_target = kzalloc(sizeof(struct dbll_tar_obj), GFP_KERNEL);
 	if (target_obj != NULL) {
 		if (pzl_target == NULL) {
 			*target_obj = NULL;
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			pzl_target->attrs = *pattrs;
 			*target_obj = (struct dbll_tar_obj *)pzl_target;
 		}
-		DBC_ENSURE((DSP_SUCCEEDED(status) &&
-			    MEM_IS_VALID_HANDLE(((struct dbll_tar_obj
-						  *)(*target_obj)),
-						DBLL_TARGSIGNATURE))
-			   || (DSP_FAILED(status) && *target_obj == NULL));
+		DBC_ENSURE((DSP_SUCCEEDED(status) && *target_obj) ||
+				(DSP_FAILED(status) && *target_obj == NULL));
 	}
 
 	return status;
@@ -283,10 +274,10 @@ void dbll_delete(struct dbll_tar_obj *target)
 	struct dbll_tar_obj *zl_target = (struct dbll_tar_obj *)target;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_target, DBLL_TARGSIGNATURE));
+	DBC_REQUIRE(zl_target);
 
 	if (zl_target != NULL)
-		MEM_FREE_OBJECT(zl_target);
+		kfree(zl_target);
 
 }
 
@@ -317,7 +308,7 @@ bool dbll_get_addr(struct dbll_library_obj *zl_lib, char *name,
 	bool status = false;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(name != NULL);
 	DBC_REQUIRE(ppSym != NULL);
 	DBC_REQUIRE(zl_lib->sym_tab != NULL);
@@ -342,7 +333,7 @@ void dbll_get_attrs(struct dbll_tar_obj *target, struct dbll_attrs *pattrs)
 	struct dbll_tar_obj *zl_target = (struct dbll_tar_obj *)target;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_target, DBLL_TARGSIGNATURE));
+	DBC_REQUIRE(zl_target);
 	DBC_REQUIRE(pattrs != NULL);
 
 	if ((pattrs != NULL) && (zl_target != NULL))
@@ -362,7 +353,7 @@ bool dbll_get_c_addr(struct dbll_library_obj *zl_lib, char *name,
 	bool status = false;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(ppSym != NULL);
 	DBC_REQUIRE(zl_lib->sym_tab != NULL);
 	DBC_REQUIRE(name != NULL);
@@ -400,7 +391,7 @@ dsp_status dbll_get_sect(struct dbll_library_obj *lib, char *name, u32 *paddr,
 	DBC_REQUIRE(name != NULL);
 	DBC_REQUIRE(paddr != NULL);
 	DBC_REQUIRE(psize != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 
 	/* If DOFF file is not open, we open it. */
 	if (zl_lib != NULL) {
@@ -415,7 +406,7 @@ dsp_status dbll_get_sect(struct dbll_library_obj *lib, char *name, u32 *paddr,
 							      SEEK_SET);
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		byte_size = 1;
@@ -471,7 +462,7 @@ dsp_status dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
 	dsp_status status = DSP_SOK;
 	bool opened_doff = false;
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(pEntry != NULL);
 	DBC_REQUIRE(attrs != NULL);
 
@@ -489,7 +480,7 @@ dsp_status dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
 						    name_hash,
 						    name_match, sym_delete);
 			if (zl_lib->sym_tab == NULL)
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 
 		}
 		/*
@@ -587,9 +578,9 @@ dsp_status dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
 dsp_status dbll_load_sect(struct dbll_library_obj *zl_lib, char *sectName,
 			  struct dbll_attrs *attrs)
 {
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 
-	return DSP_ENOTIMPL;
+	return -ENOSYS;
 }
 
 /*
@@ -604,7 +595,7 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_target, DBLL_TARGSIGNATURE));
+	DBC_REQUIRE(zl_target);
 	DBC_REQUIRE(zl_target->attrs.fopen != NULL);
 	DBC_REQUIRE(file != NULL);
 	DBC_REQUIRE(pLib != NULL);
@@ -620,10 +611,9 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 	}
 	if (zl_lib == NULL) {
 		/* Allocate DBL library object */
-		MEM_ALLOC_OBJECT(zl_lib, struct dbll_library_obj,
-				 DBLL_LIBSIGNATURE);
+		zl_lib = kzalloc(sizeof(struct dbll_library_obj), GFP_KERNEL);
 		if (zl_lib == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			zl_lib->ul_pos = 0;
 			/* Increment ref count to allow close on failure
@@ -631,10 +621,10 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 			zl_lib->open_ref++;
 			zl_lib->target_obj = zl_target;
 			/* Keep a copy of the file name */
-			zl_lib->file_name = mem_calloc(strlen(file) + 1,
-						       MEM_PAGED);
+			zl_lib->file_name = kzalloc(strlen(file) + 1,
+							GFP_KERNEL);
 			if (zl_lib->file_name == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 			} else {
 				strncpy(zl_lib->file_name, file,
 					strlen(file) + 1);
@@ -685,7 +675,7 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 	    gh_create(MAXBUCKETS, sizeof(struct dbll_symbol), name_hash,
 		      name_match, sym_delete);
 	if (zl_lib->sym_tab == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	} else {
 		/* Do a fake load to get symbols - set write func to no_op */
 		zl_lib->init.dl_init.writemem = no_op;
@@ -726,10 +716,8 @@ func_cont:
 			dbll_close((struct dbll_library_obj *)zl_lib);
 
 	}
-	DBC_ENSURE((DSP_SUCCEEDED(status) && (zl_lib->open_ref > 0) &&
-		    MEM_IS_VALID_HANDLE(((struct dbll_library_obj *)(*pLib)),
-					DBLL_LIBSIGNATURE))
-		   || (DSP_FAILED(status) && *pLib == NULL));
+	DBC_ENSURE((DSP_SUCCEEDED(status) && (zl_lib->open_ref > 0) && *pLib)
+				|| (DSP_FAILED(status) && *pLib == NULL));
 
 	dev_dbg(bridge, "%s: target: %p file: %s pLib: %p, status 0x%x\n",
 		__func__, target, file, pLib, status);
@@ -752,7 +740,7 @@ dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(name != NULL);
 	DBC_REQUIRE(pContent != NULL);
 	DBC_REQUIRE(size != 0);
@@ -770,7 +758,7 @@ dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
 							      SEEK_SET);
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	if (DSP_FAILED(status))
 		goto func_cont;
@@ -792,10 +780,10 @@ dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
 	/* Align size */
 	ul_sect_size = DOFF_ALIGN(ul_sect_size);
 	if (ul_sect_size > size) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 	} else {
 		if (!dload_get_section(zl_lib->desc, sect, pContent))
-			status = DSP_EFREAD;
+			status = -EBADF;
 
 	}
 func_cont:
@@ -817,7 +805,7 @@ void dbll_set_attrs(struct dbll_tar_obj *target, struct dbll_attrs *pattrs)
 {
 	struct dbll_tar_obj *zl_target = (struct dbll_tar_obj *)target;
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_target, DBLL_TARGSIGNATURE));
+	DBC_REQUIRE(zl_target);
 	DBC_REQUIRE(pattrs != NULL);
 
 	if ((pattrs != NULL) && (zl_target != NULL))
@@ -834,7 +822,7 @@ void dbll_unload(struct dbll_library_obj *lib, struct dbll_attrs *attrs)
 	s32 err = 0;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(zl_lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(zl_lib);
 	DBC_REQUIRE(zl_lib->load_ref > 0);
 	dev_dbg(bridge, "%s: lib: %p\n", __func__, lib);
 	zl_lib->load_ref--;
@@ -874,7 +862,7 @@ dsp_status dbll_unload_sect(struct dbll_library_obj *lib, char *sectName,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(sectName != NULL);
 
-	return DSP_ENOTIMPL;
+	return -ENOSYS;
 }
 
 /*
@@ -915,10 +903,10 @@ static dsp_status dof_open(struct dbll_library_obj *zl_lib)
 		if (zl_lib->desc == NULL) {
 			(zl_lib->target_obj->attrs.fclose) (zl_lib->fp);
 			zl_lib->fp = NULL;
-			status = DSP_EFOPEN;
+			status = -EBADF;
 		}
 	} else {
-		status = DSP_EFOPEN;
+		status = -EBADF;
 	}
 
 	return status;
@@ -999,7 +987,7 @@ static int dbll_read_buffer(struct dynamic_loader_stream *this, void *buffer,
 
 	DBC_REQUIRE(this != NULL);
 	lib = pstream->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	if (lib != NULL) {
 		bytes_read =
@@ -1021,7 +1009,7 @@ static int dbll_set_file_posn(struct dynamic_loader_stream *this,
 
 	DBC_REQUIRE(this != NULL);
 	lib = pstream->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	if (lib != NULL) {
 		status = (*(lib->target_obj->attrs.fseek)) (lib->fp, (long)pos,
@@ -1047,7 +1035,7 @@ static struct dynload_symbol *dbll_find_symbol(struct dynamic_loader_sym *this,
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	if (lib != NULL) {
 		if (lib->target_obj->attrs.sym_lookup) {
@@ -1096,7 +1084,7 @@ static struct dynload_symbol *find_in_symbol_table(struct dynamic_loader_sym
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	DBC_REQUIRE(lib->sym_tab != NULL);
 
 	sym = (struct dbll_symbol *)gh_find(lib->sym_tab, (char *)name);
@@ -1122,7 +1110,7 @@ static struct dynload_symbol *dbll_add_to_symbol_table(struct dynamic_loader_sym
 	DBC_REQUIRE(this != NULL);
 	DBC_REQUIRE(name);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	/* Check to see if symbol is already defined in symbol table */
 	if (!(lib->target_obj->attrs.base_image)) {
@@ -1137,8 +1125,7 @@ static struct dynload_symbol *dbll_add_to_symbol_table(struct dynamic_loader_sym
 		}
 	}
 	/* Allocate string to copy symbol name */
-	symbol.name = (char *)mem_calloc(strlen((char *const)name) + 1,
-					 MEM_PAGED);
+	symbol.name = kzalloc(strlen((char *const)name) + 1, GFP_KERNEL);
 	if (symbol.name == NULL)
 		return NULL;
 
@@ -1174,7 +1161,7 @@ static void dbll_purge_symbol_table(struct dynamic_loader_sym *this,
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	/* May not need to do anything */
 }
@@ -1190,9 +1177,9 @@ static void *allocate(struct dynamic_loader_sym *this, unsigned memsize)
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
-	buf = mem_calloc(memsize, MEM_PAGED);
+	buf = kzalloc(memsize, GFP_KERNEL);
 
 	return buf;
 }
@@ -1207,7 +1194,7 @@ static void deallocate(struct dynamic_loader_sym *this, void *memPtr)
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	kfree(memPtr);
 }
@@ -1224,7 +1211,7 @@ static void dbll_err_report(struct dynamic_loader_sym *this, const char *errstr,
 
 	DBC_REQUIRE(this != NULL);
 	lib = ldr_sym->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	vsnprintf((char *)temp_buf, MAXEXPR, (char *)errstr, args);
 	dev_dbg(bridge, "%s\n", temp_buf);
 }
@@ -1258,7 +1245,7 @@ static int dbll_rmm_alloc(struct dynamic_loader_allocate *this,
 
 	DBC_REQUIRE(this != NULL);
 	lib = dbll_alloc_obj->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 
 	mem_sect_type =
 	    (stype == DLOAD_TEXT) ? DBLL_CODE : (stype ==
@@ -1270,13 +1257,13 @@ static int dbll_rmm_alloc(struct dynamic_loader_allocate *this,
 	DBC_REQUIRE(info->name);
 	token_len = strlen((char *)(info->name)) + 1;
 
-	sz_sect_name = mem_calloc(token_len, MEM_PAGED);
-	sz_last_token = mem_calloc(token_len, MEM_PAGED);
-	sz_sec_last_token = mem_calloc(token_len, MEM_PAGED);
+	sz_sect_name = kzalloc(token_len, GFP_KERNEL);
+	sz_last_token = kzalloc(token_len, GFP_KERNEL);
+	sz_sec_last_token = kzalloc(token_len, GFP_KERNEL);
 
 	if (sz_sect_name == NULL || sz_sec_last_token == NULL ||
 	    sz_last_token == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_cont;
 	}
 	strncpy(sz_sect_name, (char *)(info->name), token_len);
@@ -1333,7 +1320,7 @@ func_cont:
 						    (u32 *) &rmm_addr_obj,
 						    seg_id, req, FALSE);
 	}
-	if (DSP_FAILED(status)) {
+	if (DSP_FAILED(status) || !lib) {
 		ret = false;
 	} else {
 		/* RMM gives word address. Need to convert to byte address */
@@ -1370,7 +1357,7 @@ static void rmm_dealloc(struct dynamic_loader_allocate *this,
 	    DBLL_DATA;
 	DBC_REQUIRE(this != NULL);
 	lib = dbll_alloc_obj->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	/* segid was set by alloc function */
 	segid = (u32) info->context;
 	if (mem_sect_type == DBLL_CODE)
@@ -1410,7 +1397,7 @@ static int read_mem(struct dynamic_loader_initialize *this, void *buf,
 
 	DBC_REQUIRE(this != NULL);
 	lib = init_obj->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	/* Need bridge_brd_read function */
 	return bytes_read;
 }
@@ -1431,7 +1418,7 @@ static int write_mem(struct dynamic_loader_initialize *this, void *buf,
 
 	DBC_REQUIRE(this != NULL);
 	lib = init_obj->lib;
-	if (!MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE))
+	if (!lib)
 		return false;
 
 	target_obj = lib->target_obj;
@@ -1502,7 +1489,7 @@ static int execute(struct dynamic_loader_initialize *this, ldr_addr start)
 
 	DBC_REQUIRE(this != NULL);
 	lib = init_obj->lib;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(lib, DBLL_LIBSIGNATURE));
+	DBC_REQUIRE(lib);
 	/* Save entry point */
 	if (lib != NULL)
 		lib->entry = (u32) start;
@@ -1515,4 +1502,88 @@ static int execute(struct dynamic_loader_initialize *this, ldr_addr start)
  */
 static void release(struct dynamic_loader_initialize *this)
 {
+}
+
+/**
+ *  find_symbol_context - Basic symbol context structure
+ * @address:		Symbol Adress
+ * @offset_range:		Offset range where the search for the DSP symbol
+ *			started.
+ * @cur_best_offset:	Best offset to start looking for the DSP symbol
+ * @sym_addr:		Address of the DSP symbol
+ * @name:		Symbol name
+ *
+ */
+struct find_symbol_context {
+	/* input */
+	u32 address;
+	u32 offset_range;
+	/* state */
+	u32 cur_best_offset;
+	/* output */
+	u32 sym_addr;
+	char name[120];
+};
+
+/**
+ * find_symbol_callback() - Validates symbol address and copies the symbol name
+ *			to the user data.
+ * @elem:		dsp library context
+ * @user_data:		Find symbol context
+ *
+ */
+void find_symbol_callback(void *elem, void *user_data)
+{
+	struct dbll_symbol *symbol = elem;
+	struct find_symbol_context *context = user_data;
+	u32 symbol_addr = symbol->value.value;
+	u32 offset = context->address - symbol_addr;
+
+	/*
+	 * Address given should be greater than symbol address,
+	 * symbol address should be  within specified range
+	 * and the offset should be better than previous one
+	 */
+	if (context->address >= symbol_addr && symbol_addr < (u32)-1 &&
+		offset < context->cur_best_offset) {
+		context->cur_best_offset = offset;
+		context->sym_addr = symbol_addr;
+		strncpy(context->name, symbol->name, sizeof(context->name));
+	}
+
+	return;
+}
+
+/**
+ * dbll_find_dsp_symbol() - This function retrieves the dsp symbol from the dsp binary.
+ * @zl_lib:		DSP binary obj library pointer
+ * @address:		Given address to find the dsp symbol
+ * @offset_range:		offset range to look for dsp symbol
+ * @sym_addr_output:	Symbol Output address
+ * @name_output:		String with the dsp symbol
+ *
+ * 	This function retrieves the dsp symbol from the dsp binary.
+ */
+bool dbll_find_dsp_symbol(struct dbll_library_obj *zl_lib, u32 address,
+				u32 offset_range, u32 *sym_addr_output,
+				char *name_output)
+{
+	bool status = false;
+	struct find_symbol_context context;
+
+	context.address = address;
+	context.offset_range = offset_range;
+	context.cur_best_offset = offset_range;
+	context.sym_addr = 0;
+	context.name[0] = '\0';
+
+	gh_iterate(zl_lib->sym_tab, find_symbol_callback, &context);
+
+	if (context.name[0]) {
+		status = true;
+		strcpy(name_output, context.name);
+		*sym_addr_output = context.sym_addr;
+	}
+
+	return status;
 }

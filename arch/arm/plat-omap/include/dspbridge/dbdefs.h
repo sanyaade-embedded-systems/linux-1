@@ -547,12 +547,4 @@ bit 15 - Output (writeable) buffer
 /* Max registry path length. Also the max registry value length. */
 #define MAXREGPATHLENGTH	255
 
-/* MiniDriver related definitions */
-#define DEFEXEC		"DefaultExecutable"	/* Default executable */
-#define AUTOSTART	"AutoStart"	/* Statically load flag */
-#define CURRENTCONFIG	"CurrentConfig"	/* Current resources */
-#define SHMSIZE		"SHMSize"	/* Size of shm reservd on MPU */
-#define TCWORDSWAP	"TCWordSwap"	/* Traffic Controller WordSwp */
-#define DSPRESOURCES	"DspTMSResources"	/* C55 DSP resurces on OMAP */
-
 #endif /* DBDEFS_ */

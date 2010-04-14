@@ -31,7 +31,6 @@
 #include <dspbridge/cfg.h>
 #include <dspbridge/ldr.h>
 #include <dspbridge/list.h>
-#include <dspbridge/mem.h>
 
 /*  ----------------------------------- Platform Manager */
 #include <dspbridge/cod.h>
@@ -56,7 +55,6 @@
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
 
-#define SIGNATURE           0x5f564544	/* "DEV_" (in reverse) */
 #define MAKEVERSION(major, minor)   (major * 10 + minor)
 #define WCDVERSION          MAKEVERSION(WCD_MAJOR_VERSION, WCD_MINOR_VERSION)
 
@@ -65,7 +63,6 @@ struct dev_object {
 	/* LST requires "link" to be first field! */
 	struct list_head link;	/* Link to next dev_object. */
 	u32 dev_type;		/* Device Type */
-	u32 dw_signature;	/* Used for object validation. */
 	struct cfg_devnode *dev_node_obj;	/* Platform specific dev id */
 	struct wmd_dev_context *hwmd_context;	/* WMD Context Handle */
 	struct bridge_drv_interface wmd_interface;	/* Function interface to WMD. */
@@ -91,7 +88,6 @@ static u32 refs;		/* Module reference count */
 /*  ----------------------------------- Function Prototypes */
 static dsp_status fxn_not_implemented(int arg, ...);
 static dsp_status init_cod_mgr(struct dev_object *dev_obj);
-static bool IS_VALID_HANDLE(struct dev_object *hObj);
 static void store_interface_fxns(struct bridge_drv_interface *drv_fxns,
 				 OUT struct bridge_drv_interface *intf_fxns);
 /*
@@ -110,7 +106,7 @@ u32 dev_brd_write_fxn(void *pArb, u32 ulDspAddr, void *pHostBuf,
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pHostBuf != NULL);	/* Required of BrdWrite(). */
-	if (IS_VALID_HANDLE(dev_obj)) {
+	if (dev_obj) {
 		/* Require of BrdWrite() */
 		DBC_ASSERT(dev_obj->hwmd_context != NULL);
 		status =
@@ -135,10 +131,9 @@ u32 dev_brd_write_fxn(void *pArb, u32 ulDspAddr, void *pHostBuf,
  */
 dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 			     IN CONST char *pstrWMDFileName,
-			     IN CONST struct cfg_hostres *pHostConfig,
-			     IN CONST struct cfg_dspres *pDspConfig,
 			     struct cfg_devnode *dev_node_obj)
 {
+	struct cfg_hostres *host_res;
 	struct ldr_module *module_obj = NULL;
 	struct bridge_drv_interface *drv_fxns = NULL;
 	struct dev_object *dev_obj = NULL;
@@ -150,20 +145,24 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDevObject != NULL);
 	DBC_REQUIRE(pstrWMDFileName != NULL);
-	DBC_REQUIRE(pHostConfig != NULL);
-	DBC_REQUIRE(pDspConfig != NULL);
+
+	status = drv_request_bridge_res_dsp((void *)&host_res);
+
+	if (DSP_FAILED(status))
+		dev_dbg(bridge, "%s: Failed to reserve bridge resources\n",
+			__func__);
 
 	/*  Get the WMD interface functions */
 	bridge_drv_entry(&drv_fxns, pstrWMDFileName);
 	if (DSP_FAILED(cfg_get_object((u32 *) &hdrv_obj, REG_DRV_OBJECT))) {
 		/* don't propogate CFG errors from this PROC function */
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 	/* Create the device object, and pass a handle to the WMD for
 	 * storage. */
 	if (DSP_SUCCEEDED(status)) {
 		DBC_ASSERT(drv_fxns);
-		MEM_ALLOC_OBJECT(dev_obj, struct dev_object, SIGNATURE);
+		dev_obj = kzalloc(sizeof(struct dev_object), GFP_KERNEL);
 		if (dev_obj) {
 			/* Fill out the rest of the Dev Object structure: */
 			dev_obj->dev_node_obj = dev_node_obj;
@@ -172,22 +171,23 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 			dev_obj->hchnl_mgr = NULL;
 			dev_obj->hdeh_mgr = NULL;
 			dev_obj->lock_owner = NULL;
-			dev_obj->word_size = pDspConfig->word_size;
+			dev_obj->word_size = DSPWORDSIZE;
 			dev_obj->hdrv_obj = hdrv_obj;
 			dev_obj->dev_type = DSP_UNIT;
 			/* Store this WMD's interface functions, based on its
 			 * version. */
 			store_interface_fxns(drv_fxns, &dev_obj->wmd_interface);
+
 			/* Call fxn_dev_create() to get the WMD's device
 			 * context handle. */
 			status = (dev_obj->wmd_interface.pfn_dev_create)
 			    (&dev_obj->hwmd_context, dev_obj,
-			     pHostConfig, pDspConfig);
+			     host_res);
 			/* Assert bridge_dev_create()'s ensure clause: */
 			DBC_ASSERT(DSP_FAILED(status)
 				   || (dev_obj->hwmd_context != NULL));
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	}
 	/* Attempt to create the COD manager for this device: */
@@ -197,19 +197,19 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 	/* Attempt to create the channel manager for this device: */
 	if (DSP_SUCCEEDED(status)) {
 		mgr_attrs.max_channels = CHNL_MAXCHANNELS;
-		io_mgr_attrs.birq = pHostConfig->birq_registers;
+		io_mgr_attrs.birq = host_res->birq_registers;
 		io_mgr_attrs.irq_shared =
-		    (pHostConfig->birq_attrib & CFG_IRQSHARED);
-		io_mgr_attrs.word_size = pDspConfig->word_size;
-		mgr_attrs.word_size = pDspConfig->word_size;
-		num_windows = pHostConfig->num_mem_windows;
+		    (host_res->birq_attrib & CFG_IRQSHARED);
+		io_mgr_attrs.word_size = DSPWORDSIZE;
+		mgr_attrs.word_size = DSPWORDSIZE;
+		num_windows = host_res->num_mem_windows;
 		if (num_windows) {
 			/* Assume last memory window is for CHNL */
-			io_mgr_attrs.shm_base = pHostConfig->dw_mem_base[1] +
-			    pHostConfig->dw_offset_for_monitor;
+			io_mgr_attrs.shm_base = host_res->dw_mem_base[1] +
+			    host_res->dw_offset_for_monitor;
 			io_mgr_attrs.usm_length =
-			    pHostConfig->dw_mem_length[1] -
-			    pHostConfig->dw_offset_for_monitor;
+			    host_res->dw_mem_length[1] -
+			    host_res->dw_offset_for_monitor;
 		} else {
 			io_mgr_attrs.shm_base = 0;
 			io_mgr_attrs.usm_length = 0;
@@ -217,7 +217,7 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 			       __func__);
 		}
 		status = chnl_create(&dev_obj->hchnl_mgr, dev_obj, &mgr_attrs);
-		if (status == DSP_ENOTIMPL) {
+		if (status == -ENOSYS) {
 			/* It's OK for a device not to have a channel
 			 * manager: */
 			status = DSP_SOK;
@@ -247,10 +247,10 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 	}
 	/* Create the Processor List */
 	if (DSP_SUCCEEDED(status)) {
-		dev_obj->proc_list = mem_calloc(sizeof(struct lst_list),
-						MEM_NONPAGED);
+		dev_obj->proc_list = kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 		if (!(dev_obj->proc_list))
-			status = DSP_EFAIL;
+			status = -EPERM;
 		else
 			INIT_LIST_HEAD(&dev_obj->proc_list->head);
 	}
@@ -267,13 +267,12 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 		if (dev_obj && dev_obj->dmm_mgr)
 			dmm_destroy(dev_obj->dmm_mgr);
 
-		if (dev_obj)
-			MEM_FREE_OBJECT(dev_obj);
+		kfree(dev_obj);
 
 		*phDevObject = NULL;
 	}
 
-	DBC_ENSURE((DSP_SUCCEEDED(status) && IS_VALID_HANDLE(*phDevObject)) ||
+	DBC_ENSURE((DSP_SUCCEEDED(status) && *phDevObject) ||
 		   (DSP_FAILED(status) && !*phDevObject));
 	return status;
 }
@@ -291,7 +290,7 @@ dsp_status dev_create2(struct dev_object *hdev_obj)
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(IS_VALID_HANDLE(hdev_obj));
+	DBC_REQUIRE(hdev_obj);
 
 	/* There can be only one Node Manager per DEV object */
 	DBC_ASSERT(!dev_obj->hnode_mgr);
@@ -315,11 +314,11 @@ dsp_status dev_destroy2(struct dev_object *hdev_obj)
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(IS_VALID_HANDLE(hdev_obj));
+	DBC_REQUIRE(hdev_obj);
 
 	if (dev_obj->hnode_mgr) {
 		if (DSP_FAILED(node_delete_mgr(dev_obj->hnode_mgr)))
-			status = DSP_EFAIL;
+			status = -EPERM;
 		else
 			dev_obj->hnode_mgr = NULL;
 
@@ -343,7 +342,7 @@ dsp_status dev_destroy_device(struct dev_object *hdev_obj)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		if (dev_obj->cod_mgr) {
 			cod_delete(dev_obj->cod_mgr);
 			dev_obj->cod_mgr = NULL;
@@ -391,7 +390,7 @@ dsp_status dev_destroy_device(struct dev_object *hdev_obj)
 			    (dev_obj->hwmd_context);
 			dev_obj->hwmd_context = NULL;
 		} else
-			status = DSP_EFAIL;
+			status = -EPERM;
 		if (DSP_SUCCEEDED(status)) {
 			kfree(dev_obj->proc_list);
 			dev_obj->proc_list = NULL;
@@ -401,11 +400,11 @@ dsp_status dev_destroy_device(struct dev_object *hdev_obj)
 			/* Free The library * LDR_FreeModule
 			 * (dev_obj->module_obj); */
 			/* Free this dev object: */
-			MEM_FREE_OBJECT(dev_obj);
+			kfree(dev_obj);
 			dev_obj = NULL;
 		}
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -426,11 +425,11 @@ dsp_status dev_get_chnl_mgr(struct dev_object *hdev_obj,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phMgr != NULL);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		*phMgr = dev_obj->hchnl_mgr;
 	} else {
 		*phMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phMgr != NULL) &&
@@ -453,11 +452,11 @@ dsp_status dev_get_cmm_mgr(struct dev_object *hdev_obj,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phMgr != NULL);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		*phMgr = dev_obj->hcmm_mgr;
 	} else {
 		*phMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phMgr != NULL) &&
@@ -480,11 +479,11 @@ dsp_status dev_get_dmm_mgr(struct dev_object *hdev_obj,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phMgr != NULL);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		*phMgr = dev_obj->dmm_mgr;
 	} else {
 		*phMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phMgr != NULL) &&
@@ -506,11 +505,11 @@ dsp_status dev_get_cod_mgr(struct dev_object *hdev_obj,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phCodMgr != NULL);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		*phCodMgr = dev_obj->cod_mgr;
 	} else {
 		*phCodMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phCodMgr != NULL) &&
@@ -528,12 +527,12 @@ dsp_status dev_get_deh_mgr(struct dev_object *hdev_obj,
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDehMgr != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hdev_obj, SIGNATURE));
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	DBC_REQUIRE(hdev_obj);
+	if (hdev_obj) {
 		*phDehMgr = hdev_obj->hdeh_mgr;
 	} else {
 		*phDehMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -552,11 +551,11 @@ dsp_status dev_get_dev_node(struct dev_object *hdev_obj,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDevNode != NULL);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		*phDevNode = dev_obj->dev_node_obj;
 	} else {
 		*phDevNode = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phDevNode != NULL) &&
@@ -576,7 +575,7 @@ struct dev_object *dev_get_first(void)
 
 	dev_obj = (struct dev_object *)drv_get_first_dev_object();
 
-	DBC_ENSURE((dev_obj == NULL) || IS_VALID_HANDLE(dev_obj));
+	DBC_ENSURE((dev_obj == NULL) || dev_obj);
 
 	return dev_obj;
 }
@@ -596,11 +595,11 @@ dsp_status dev_get_intf_fxns(struct dev_object *hdev_obj,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(ppIntfFxns != NULL);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		*ppIntfFxns = &dev_obj->wmd_interface;
 	} else {
 		*ppIntfFxns = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((ppIntfFxns != NULL) &&
@@ -618,13 +617,13 @@ dsp_status dev_get_io_mgr(struct dev_object *hdev_obj,
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phIOMgr != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hdev_obj, SIGNATURE));
+	DBC_REQUIRE(hdev_obj);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		*phIOMgr = hdev_obj->hio_mgr;
 	} else {
 		*phIOMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -641,12 +640,12 @@ struct dev_object *dev_get_next(struct dev_object *hdev_obj)
 {
 	struct dev_object *next_dev_object = NULL;
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		next_dev_object = (struct dev_object *)
 		    drv_get_next_dev_object((u32) hdev_obj);
 	}
-	DBC_ENSURE((next_dev_object == NULL)
-		   || IS_VALID_HANDLE(next_dev_object));
+	DBC_ENSURE((next_dev_object == NULL) || next_dev_object);
+
 	return next_dev_object;
 }
 
@@ -657,7 +656,7 @@ void dev_get_msg_mgr(struct dev_object *hdev_obj, OUT struct msg_mgr **phMsgMgr)
 {
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phMsgMgr != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hdev_obj, SIGNATURE));
+	DBC_REQUIRE(hdev_obj);
 
 	*phMsgMgr = hdev_obj->hmsg_mgr;
 }
@@ -676,11 +675,11 @@ dsp_status dev_get_node_manager(struct dev_object *hdev_obj,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phNodeMgr != NULL);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		*phNodeMgr = dev_obj->hnode_mgr;
 	} else {
 		*phNodeMgr = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phNodeMgr != NULL) &&
@@ -700,15 +699,15 @@ dsp_status dev_get_symbol(struct dev_object *hdev_obj,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pstrSym != NULL && pul_value != NULL);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		dev_get_cod_mgr(hdev_obj, &cod_mgr);
 		if (cod_mgr)
 			status = cod_get_sym_value(cod_mgr, (char *)pstrSym,
 							pul_value);
 		else
-			status = DSP_EHANDLE;
+			status = -EFAULT;
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	return status;
@@ -728,11 +727,11 @@ dsp_status dev_get_wmd_context(struct dev_object *hdev_obj,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phWmdContext != NULL);
 
-	if (IS_VALID_HANDLE(hdev_obj)) {
+	if (hdev_obj) {
 		*phWmdContext = dev_obj->hwmd_context;
 	} else {
 		*phWmdContext = NULL;
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((phWmdContext != NULL) &&
@@ -851,10 +850,10 @@ dsp_status dev_set_chnl_mgr(struct dev_object *hdev_obj,
 
 	DBC_REQUIRE(refs > 0);
 
-	if (IS_VALID_HANDLE(hdev_obj))
+	if (hdev_obj)
 		dev_obj->hchnl_mgr = hmgr;
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	DBC_ENSURE(DSP_FAILED(status) || (dev_obj->hchnl_mgr == hmgr));
 	return status;
@@ -868,7 +867,7 @@ dsp_status dev_set_chnl_mgr(struct dev_object *hdev_obj,
 void dev_set_msg_mgr(struct dev_object *hdev_obj, struct msg_mgr *hmgr)
 {
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(IS_VALID_HANDLE(hdev_obj));
+	DBC_REQUIRE(hdev_obj);
 
 	hdev_obj->hmsg_mgr = hmgr;
 }
@@ -881,8 +880,6 @@ void dev_set_msg_mgr(struct dev_object *hdev_obj, struct msg_mgr *hmgr)
 dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
 {
 	struct dev_object *hdev_obj = NULL;	/* handle to 'Bridge Device */
-	struct cfg_hostres host_res;	/* resources struct. */
-	struct cfg_dspres dsp_res;	/* DSP resources struct */
 	/* wmd filename */
 	char sz_wmd_file_name[CFG_MAXSEARCHPATHLEN] = "UMA";
 	dsp_status status;
@@ -890,16 +887,10 @@ dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
 
 	DBC_REQUIRE(refs > 0);
 
-	status = cfg_get_host_resources(dev_node_obj, &host_res);
-	if (DSP_SUCCEEDED(status)) {
-		/* Get DSP resources of device from Registry: */
-		status = cfg_get_dsp_resources(dev_node_obj, &dsp_res);
-	}
-	if (DSP_SUCCEEDED(status)) {
 		/* Given all resources, create a device object. */
 		status =
-		    dev_create_device(&hdev_obj, sz_wmd_file_name, &host_res,
-				      &dsp_res, dev_node_obj);
+	    dev_create_device(&hdev_obj, sz_wmd_file_name,
+				      dev_node_obj);
 		if (DSP_SUCCEEDED(status)) {
 			/* Store away the hdev_obj with the DEVNODE */
 			status =
@@ -910,7 +901,6 @@ dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
 				hdev_obj = NULL;
 			}
 		}
-	}
 	if (DSP_SUCCEEDED(status)) {
 		/* Create the Manager Object */
 		status = mgr_create(&hmgr_obj, dev_node_obj);
@@ -933,32 +923,11 @@ dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
  *  Parameters:
  *      Multiple, optional.
  *  Returns:
- *      DSP_ENOTIMPL:   Always.
+ *      -ENOSYS:   Always.
  */
 static dsp_status fxn_not_implemented(int arg, ...)
 {
-	return DSP_ENOTIMPL;
-}
-
-/*
- *  ======== IS_VALID_HANDLE ========
- *  Purpose:
- *      Validate the device object handle.
- *  Parameters:
- *      hdev_obj:     Handle to device object created with
- *                      dev_create_device().
- *  Returns:
- *      true if handle is valid; false otherwise.
- *  Requires:
- *  Ensures:
- */
-static bool IS_VALID_HANDLE(struct dev_object *hObj)
-{
-	bool ret;
-
-	ret = (hObj != NULL) && (hObj->dw_signature == SIGNATURE);
-
-	return ret;
+	return -ENOSYS;
 }
 
 /*
@@ -970,7 +939,7 @@ static bool IS_VALID_HANDLE(struct dev_object *hObj)
  *                              dev_create_device()
  *  Returns:
  *      DSP_SOK:                Success.
- *      DSP_EHANDLE:            Invalid hdev_obj.
+ *      -EFAULT:            Invalid hdev_obj.
  *  Requires:
  *      Should only be called once by dev_create_device() for a given DevObject.
  *  Ensures:
@@ -981,7 +950,7 @@ static dsp_status init_cod_mgr(struct dev_object *dev_obj)
 	char *sz_dummy_file = "dummy";
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(!IS_VALID_HANDLE(dev_obj) || (dev_obj->cod_mgr == NULL));
+	DBC_REQUIRE(!dev_obj || (dev_obj->cod_mgr == NULL));
 
 	status = cod_create(&dev_obj->cod_mgr, sz_dummy_file, NULL);
 
@@ -1014,7 +983,7 @@ dsp_status dev_insert_proc_object(struct dev_object *hdev_obj,
 	struct dev_object *dev_obj = (struct dev_object *)hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(IS_VALID_HANDLE(dev_obj));
+	DBC_REQUIRE(dev_obj);
 	DBC_REQUIRE(proc_obj != 0);
 	DBC_REQUIRE(dev_obj->proc_list != NULL);
 	DBC_REQUIRE(pbAlreadyAttached != NULL);
@@ -1049,11 +1018,11 @@ dsp_status dev_insert_proc_object(struct dev_object *hdev_obj,
  */
 dsp_status dev_remove_proc_object(struct dev_object *hdev_obj, u32 proc_obj)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct list_head *cur_elem;
 	struct dev_object *dev_obj = (struct dev_object *)hdev_obj;
 
-	DBC_REQUIRE(IS_VALID_HANDLE(dev_obj));
+	DBC_REQUIRE(dev_obj);
 	DBC_REQUIRE(proc_obj != 0);
 	DBC_REQUIRE(dev_obj->proc_list != NULL);
 	DBC_REQUIRE(!LST_IS_EMPTY(dev_obj->proc_list));
@@ -1072,7 +1041,7 @@ dsp_status dev_remove_proc_object(struct dev_object *hdev_obj, u32 proc_obj)
 	return status;
 }
 
-dsp_status dev_get_dev_type(struct dev_object *hdevObject, u32 *dev_type)
+dsp_status dev_get_dev_type(struct dev_object *hdevObject, u8 *dev_type)
 {
 	dsp_status status = DSP_SOK;
 	struct dev_object *dev_obj = (struct dev_object *)hdevObject;

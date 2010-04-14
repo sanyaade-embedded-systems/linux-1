@@ -30,8 +30,6 @@
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/cfg.h>
 #include <dspbridge/list.h>
-#include <dspbridge/mem.h>
-#include <dspbridge/reg.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/drv.h>
@@ -45,10 +43,7 @@
 #include <dspbridge/resourcecleanup.h>
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-#define SIGNATURE   0x5f52474d	/* "DRV_" (in reverse) */
-
 struct drv_object {
-	u32 dw_signature;
 	struct lst_list *dev_list;
 	struct lst_list *dev_node_string;
 };
@@ -64,14 +59,22 @@ struct drv_ext {
 
 /*  ----------------------------------- Globals */
 static s32 refs;
+static bool ext_phys_mem_pool_enabled;
+struct ext_phys_mem_pool {
+	u32 phys_mem_base;
+	u32 phys_mem_size;
+	u32 virt_mem_base;
+	u32 next_phys_alloc_ptr;
+};
+static struct ext_phys_mem_pool ext_mem_pool;
 
 /*  ----------------------------------- Function Prototypes */
-static dsp_status request_bridge_resources(u32 dw_context, s32 fRequest);
-static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 fRequest);
+static dsp_status request_bridge_resources(struct cfg_hostres *res);
+
 
 /* GPP PROCESS CLEANUP CODE */
 
-static dsp_status drv_proc_free_node_res(bhandle hPCtxt);
+static int drv_proc_free_node_res(int id, void *p, void *data);
 extern enum node_state node_get_state(bhandle hnode);
 
 /* Allocate and add a node resource element
@@ -83,95 +86,64 @@ dsp_status drv_insert_node_res_element(bhandle hnode, bhandle hNodeRes,
 	    (struct node_res_object **)hNodeRes;
 	struct process_context *ctxt = (struct process_context *)hPCtxt;
 	dsp_status status = DSP_SOK;
-	struct node_res_object *temp_node_res = NULL;
+	int retval;
 
-	*node_res_obj = (struct node_res_object *)mem_calloc
-	    (1 * sizeof(struct node_res_object), MEM_PAGED);
-	if (*node_res_obj == NULL)
-		status = DSP_EHANDLE;
-
-	if (DSP_SUCCEEDED(status)) {
-		if (mutex_lock_interruptible(&ctxt->node_mutex)) {
-			kfree(*node_res_obj);
-			return DSP_EFAIL;
-		}
-		(*node_res_obj)->hnode = hnode;
-		if (ctxt->node_list != NULL) {
-			temp_node_res = ctxt->node_list;
-			while (temp_node_res->next != NULL)
-				temp_node_res = temp_node_res->next;
-
-			temp_node_res->next = *node_res_obj;
-		} else {
-			ctxt->node_list = *node_res_obj;
-		}
-		mutex_unlock(&ctxt->node_mutex);
+	*node_res_obj = kzalloc(sizeof(struct node_res_object), GFP_KERNEL);
+	if (!*node_res_obj) {
+		status = -ENOMEM;
+		goto func_end;
 	}
+
+	(*node_res_obj)->hnode = hnode;
+	spin_lock(&ctxt->node_idp->lock);
+	retval = idr_get_new(ctxt->node_idp, *node_res_obj,
+						&(*node_res_obj)->id);
+	spin_unlock(&ctxt->node_idp->lock);
+	if (retval == -EAGAIN) {
+		if (!idr_pre_get(ctxt->node_idp, GFP_KERNEL)) {
+			pr_err("%s: OUT OF MEMORY\n", __func__);
+			status = -ENOMEM;
+			goto func_end;
+		}
+
+		spin_lock(&ctxt->node_idp->lock);
+		retval = idr_get_new(ctxt->node_idp, *node_res_obj,
+						&(*node_res_obj)->id);
+		spin_unlock(&ctxt->node_idp->lock);
+	}
+	if (retval) {
+		pr_err("%s: FAILED, IDR is FULL\n", __func__);
+		status = -EPERM;
+	}
+func_end:
+	if (DSP_FAILED(status))
+		kfree(*node_res_obj);
 
 	return status;
 }
 
 /* Release all Node resources and its context
-* This is called from .Node_Delete. */
-dsp_status drv_remove_node_res_element(bhandle hNodeRes, bhandle hPCtxt)
+ * Actual Node De-Allocation */
+static int drv_proc_free_node_res(int id, void *p, void *data)
 {
-	struct node_res_object *node_res_obj =
-	    (struct node_res_object *)hNodeRes;
-	struct process_context *ctxt = (struct process_context *)hPCtxt;
-	struct node_res_object *temp_node;
+	struct process_context *ctxt = data;
 	dsp_status status = DSP_SOK;
-
-	if (mutex_lock_interruptible(&ctxt->node_mutex))
-		return DSP_EFAIL;
-	temp_node = ctxt->node_list;
-	if (temp_node == node_res_obj) {
-		ctxt->node_list = node_res_obj->next;
-	} else {
-		while (temp_node && temp_node->next != node_res_obj)
-			temp_node = temp_node->next;
-		if (!temp_node)
-			status = DSP_ENOTFOUND;
-		else
-			temp_node->next = node_res_obj->next;
-	}
-	mutex_unlock(&ctxt->node_mutex);
-	kfree(node_res_obj);
-	return status;
-}
-
-/* Actual Node De-Allocation */
-static dsp_status drv_proc_free_node_res(bhandle hPCtxt)
-{
-	struct process_context *ctxt = (struct process_context *)hPCtxt;
-	dsp_status status = DSP_SOK;
-	struct node_res_object *node_list = NULL;
-	struct node_res_object *node_res_obj = NULL;
+	struct node_res_object *node_res_obj = p;
 	u32 node_state;
 
-	node_list = ctxt->node_list;
-	while (node_list != NULL) {
-		node_res_obj = node_list;
-		node_list = node_list->next;
-		if (node_res_obj->node_allocated) {
-			node_state = node_get_state(node_res_obj->hnode);
-			if (node_state <= NODE_DELETING) {
-				if ((node_state == NODE_RUNNING) ||
-				    (node_state == NODE_PAUSED) ||
-				    (node_state == NODE_TERMINATING)) {
-					status = node_terminate
-					    (node_res_obj->hnode, &status);
-					status =
-					    node_delete(node_res_obj->hnode,
-							ctxt);
-				} else if ((node_state == NODE_ALLOCATED)
-					   || (node_state == NODE_CREATED))
-					status =
-					    node_delete(node_res_obj->hnode,
-							ctxt);
-			}
+	if (node_res_obj->node_allocated) {
+		node_state = node_get_state(node_res_obj->hnode);
+		if (node_state <= NODE_DELETING) {
+			if ((node_state == NODE_RUNNING) ||
+			    (node_state == NODE_PAUSED) ||
+			    (node_state == NODE_TERMINATING))
+				node_terminate(node_res_obj->hnode, &status);
+
+			node_delete(node_res_obj, ctxt);
 		}
 	}
-	return status;
+
+	return 0;
 }
 
 /* Release all Mapped and Reserved DMM resources */
@@ -226,49 +198,12 @@ void drv_proc_node_update_heap_status(bhandle hNodeRes, s32 status)
  */
 dsp_status drv_remove_all_node_res_elements(bhandle hPCtxt)
 {
-	struct process_context *ctxt = (struct process_context *)hPCtxt;
-	dsp_status status = DSP_SOK;
-	struct node_res_object *temp_node2 = NULL;
-	struct node_res_object *temp_node = NULL;
+	struct process_context *ctxt = hPCtxt;
 
-	drv_proc_free_node_res(ctxt);
-	temp_node = ctxt->node_list;
-	while (temp_node != NULL) {
-		temp_node2 = temp_node;
-		temp_node = temp_node->next;
-		kfree(temp_node2);
-	}
-	ctxt->node_list = NULL;
-	return status;
-}
+	idr_for_each(ctxt->node_idp, drv_proc_free_node_res, ctxt);
+	idr_destroy(ctxt->node_idp);
 
-/* Getting the node resource element */
-dsp_status drv_get_node_res_element(bhandle hnode, bhandle hNodeRes,
-				    bhandle hPCtxt)
-{
-	struct node_res_object **node_res = (struct node_res_object **)hNodeRes;
-	struct process_context *ctxt = (struct process_context *)hPCtxt;
-	dsp_status status = DSP_SOK;
-	struct node_res_object *temp_node2 = NULL;
-	struct node_res_object *temp_node = NULL;
-
-	if (mutex_lock_interruptible(&ctxt->node_mutex))
-		return DSP_EFAIL;
-
-	temp_node = ctxt->node_list;
-	while ((temp_node != NULL) && (temp_node->hnode != hnode)) {
-		temp_node2 = temp_node;
-		temp_node = temp_node->next;
-	}
-
-	mutex_unlock(&ctxt->node_mutex);
-
-	if (temp_node != NULL)
-		*node_res = temp_node;
-	else
-		status = DSP_ENOTFOUND;
-
-	return status;
+	return DSP_SOK;
 }
 
 /* Allocate the STRM resource element
@@ -277,75 +212,47 @@ dsp_status drv_get_node_res_element(bhandle hnode, bhandle hNodeRes,
 dsp_status drv_proc_insert_strm_res_element(bhandle hStreamHandle,
 					    bhandle hstrm_res, bhandle hPCtxt)
 {
-	struct strm_res_object **pstrm_res =
-	    (struct strm_res_object **)hstrm_res;
-	struct process_context *ctxt = (struct process_context *)hPCtxt;
+	struct strm_res_object **pstrm_res = hstrm_res;
+	struct process_context *ctxt = hPCtxt;
 	dsp_status status = DSP_SOK;
-	struct strm_res_object *temp_strm_res = NULL;
+	int retval;
 
-	*pstrm_res = (struct strm_res_object *)
-	    mem_calloc(1 * sizeof(struct strm_res_object), MEM_PAGED);
-	if (*pstrm_res == NULL)
-		status = DSP_EHANDLE;
-
-	if (DSP_SUCCEEDED(status)) {
-		if (mutex_lock_interruptible(&ctxt->strm_mutex)) {
-			kfree(*pstrm_res);
-			return DSP_EFAIL;
-		}
-		(*pstrm_res)->hstream = hStreamHandle;
-		if (ctxt->pstrm_list != NULL) {
-			temp_strm_res = ctxt->pstrm_list;
-			while (temp_strm_res->next != NULL)
-				temp_strm_res = temp_strm_res->next;
-
-			temp_strm_res->next = *pstrm_res;
-		} else {
-			ctxt->pstrm_list = *pstrm_res;
-		}
-		mutex_unlock(&ctxt->strm_mutex);
+	*pstrm_res = kzalloc(sizeof(struct strm_res_object), GFP_KERNEL);
+	if (*pstrm_res == NULL) {
+		status = -EFAULT;
+		goto func_end;
 	}
+
+	(*pstrm_res)->hstream = hStreamHandle;
+	spin_lock(&ctxt->strm_idp->lock);
+	retval = idr_get_new(ctxt->strm_idp, *pstrm_res,
+						&(*pstrm_res)->id);
+	spin_unlock(&ctxt->strm_idp->lock);
+	if (retval == -EAGAIN) {
+		if (!idr_pre_get(ctxt->strm_idp, GFP_KERNEL)) {
+			pr_err("%s: OUT OF MEMORY\n", __func__);
+			status = -ENOMEM;
+			goto func_end;
+		}
+
+		spin_lock(&ctxt->strm_idp->lock);
+		retval = idr_get_new(ctxt->strm_idp, *pstrm_res,
+						&(*pstrm_res)->id);
+		spin_unlock(&ctxt->strm_idp->lock);
+	}
+	if (retval) {
+		pr_err("%s: FAILED, IDR is FULL\n", __func__);
+		status = -EPERM;
+	}
+
+func_end:
 	return status;
 }
 
-/* Release Stream resource element context
-* This function called after the actual resource is freed
- */
-dsp_status drv_proc_remove_strm_res_element(bhandle hstrm_res, bhandle hPCtxt)
+static int drv_proc_free_strm_res(int id, void *p, void *data)
 {
-	struct strm_res_object *pstrm_res = (struct strm_res_object *)hstrm_res;
-	struct process_context *ctxt = (struct process_context *)hPCtxt;
-	struct strm_res_object *temp_strm_res;
-	dsp_status status = DSP_SOK;
-
-	if (mutex_lock_interruptible(&ctxt->strm_mutex))
-		return DSP_EFAIL;
-	temp_strm_res = ctxt->pstrm_list;
-
-	if (ctxt->pstrm_list == pstrm_res) {
-		ctxt->pstrm_list = pstrm_res->next;
-	} else {
-		while (temp_strm_res && temp_strm_res->next != pstrm_res)
-			temp_strm_res = temp_strm_res->next;
-		if (temp_strm_res == NULL)
-			status = DSP_ENOTFOUND;
-		else
-			temp_strm_res->next = pstrm_res->next;
-	}
-	mutex_unlock(&ctxt->strm_mutex);
-	kfree(pstrm_res);
-	return status;
-}
-
-/* Release all Stream resources and its context
-* This is called from .bridge_release.
- */
-dsp_status drv_remove_all_strm_res_elements(bhandle hPCtxt)
-{
-	struct process_context *ctxt = (struct process_context *)hPCtxt;
-	dsp_status status = DSP_SOK;
-	struct strm_res_object *strm_res = NULL;
-	struct strm_res_object *strm_tmp = NULL;
+	struct process_context *ctxt = data;
+	struct strm_res_object *strm_res = p;
 	struct stream_info strm_info;
 	struct dsp_streaminfo user;
 	u8 **ap_buffer = NULL;
@@ -354,60 +261,36 @@ dsp_status drv_remove_all_strm_res_elements(bhandle hPCtxt)
 	u32 dw_arg;
 	s32 ul_buf_size;
 
-	strm_tmp = ctxt->pstrm_list;
-	while (strm_tmp) {
-		strm_res = strm_tmp;
-		strm_tmp = strm_tmp->next;
-		if (strm_res->num_bufs) {
-			ap_buffer = mem_alloc((strm_res->num_bufs *
-					       sizeof(u8 *)), MEM_NONPAGED);
-			if (ap_buffer) {
-				status = strm_free_buffer(strm_res->hstream,
-							  ap_buffer,
-							  strm_res->num_bufs,
-							  ctxt);
-				kfree(ap_buffer);
-			}
+	if (strm_res->num_bufs) {
+		ap_buffer = kmalloc(strm_res->num_bufs * sizeof(u8 *),
+					GFP_KERNEL);
+		if (ap_buffer) {
+			strm_free_buffer(strm_res, ap_buffer,
+						strm_res->num_bufs, ctxt);
+			kfree(ap_buffer);
 		}
-		strm_info.user_strm = &user;
-		user.number_bufs_in_stream = 0;
-		strm_get_info(strm_res->hstream, &strm_info, sizeof(strm_info));
-		while (user.number_bufs_in_stream--)
-			strm_reclaim(strm_res->hstream, &buf_ptr, &ul_bytes,
-				     (u32 *) &ul_buf_size, &dw_arg);
-		status = strm_close(strm_res->hstream, ctxt);
 	}
-	return status;
+	strm_info.user_strm = &user;
+	user.number_bufs_in_stream = 0;
+	strm_get_info(strm_res->hstream, &strm_info, sizeof(strm_info));
+	while (user.number_bufs_in_stream--)
+		strm_reclaim(strm_res->hstream, &buf_ptr, &ul_bytes,
+			     (u32 *) &ul_buf_size, &dw_arg);
+	strm_close(strm_res, ctxt);
+	return 0;
 }
 
-/* Getting the stream resource element */
-dsp_status drv_get_strm_res_element(bhandle hStrm, bhandle hstrm_res,
-				    bhandle hPCtxt)
+/* Release all Stream resources and its context
+* This is called from .bridge_release.
+ */
+dsp_status drv_remove_all_strm_res_elements(bhandle hPCtxt)
 {
-	struct strm_res_object **strm_res =
-	    (struct strm_res_object **)hstrm_res;
 	struct process_context *ctxt = (struct process_context *)hPCtxt;
-	dsp_status status = DSP_SOK;
-	struct strm_res_object *temp_strm2 = NULL;
-	struct strm_res_object *temp_strm;
 
-	if (mutex_lock_interruptible(&ctxt->strm_mutex))
-		return DSP_EFAIL;
+	idr_for_each(ctxt->strm_idp, drv_proc_free_strm_res, ctxt);
+	idr_destroy(ctxt->strm_idp);
 
-	temp_strm = ctxt->pstrm_list;
-	while ((temp_strm != NULL) && (temp_strm->hstream != hStrm)) {
-		temp_strm2 = temp_strm;
-		temp_strm = temp_strm->next;
-	}
-
-	mutex_unlock(&ctxt->strm_mutex);
-
-	if (temp_strm != NULL)
-		*strm_res = temp_strm;
-	else
-		status = DSP_ENOTFOUND;
-
-	return status;
+	return DSP_SOK;
 }
 
 /* Updating the stream resource element */
@@ -436,28 +319,27 @@ dsp_status drv_create(OUT struct drv_object **phDRVObject)
 	DBC_REQUIRE(phDRVObject != NULL);
 	DBC_REQUIRE(refs > 0);
 
-	MEM_ALLOC_OBJECT(pdrv_object, struct drv_object, SIGNATURE);
+	pdrv_object = kzalloc(sizeof(struct drv_object), GFP_KERNEL);
 	if (pdrv_object) {
 		/* Create and Initialize List of device objects */
-		pdrv_object->dev_list = mem_calloc(sizeof(struct lst_list),
-						   MEM_NONPAGED);
+		pdrv_object->dev_list = kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 		if (pdrv_object->dev_list) {
 			/* Create and Initialize List of device Extension */
 			pdrv_object->dev_node_string =
-					mem_calloc(sizeof(struct lst_list),
-						   MEM_NONPAGED);
+				kzalloc(sizeof(struct lst_list), GFP_KERNEL);
 			if (!(pdrv_object->dev_node_string)) {
-				status = DSP_EFAIL;
+				status = -EPERM;
 			} else {
 				INIT_LIST_HEAD(&pdrv_object->
 					       dev_node_string->head);
 				INIT_LIST_HEAD(&pdrv_object->dev_list->head);
 			}
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 	/* Store the DRV Object in the Registry */
 	if (DSP_SUCCEEDED(status))
@@ -471,8 +353,7 @@ dsp_status drv_create(OUT struct drv_object **phDRVObject)
 		kfree(pdrv_object);
 	}
 
-	DBC_ENSURE(DSP_FAILED(status) ||
-		   MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_ENSURE(DSP_FAILED(status) || pdrv_object);
 	return status;
 }
 
@@ -501,7 +382,7 @@ dsp_status drv_destroy(struct drv_object *hDRVObject)
 	struct drv_object *pdrv_object = (struct drv_object *)hDRVObject;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_REQUIRE(pdrv_object);
 
 	/*
 	 *  Delete the List if it exists.Should not come here
@@ -510,10 +391,10 @@ dsp_status drv_destroy(struct drv_object *hDRVObject)
 	 */
 	kfree(pdrv_object->dev_list);
 	kfree(pdrv_object->dev_node_string);
-	MEM_FREE_OBJECT(pdrv_object);
+	kfree(pdrv_object);
 	/* Update the DRV Object in Registry to be 0 */
 	(void)cfg_set_object(0, REG_DRV_OBJECT);
-	DBC_ENSURE(!MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_ENSURE(!pdrv_object);
 	return status;
 }
 
@@ -532,7 +413,7 @@ dsp_status drv_get_dev_object(u32 index, struct drv_object *hdrv_obj,
 #endif
 	struct dev_object *dev_obj;
 	u32 i;
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_obj, SIGNATURE));
+	DBC_REQUIRE(pdrv_obj);
 	DBC_REQUIRE(phDevObject != NULL);
 	DBC_REQUIRE(index >= 0);
 	DBC_REQUIRE(refs > 0);
@@ -547,7 +428,7 @@ dsp_status drv_get_dev_object(u32 index, struct drv_object *hdrv_obj,
 		*phDevObject = (struct dev_object *)dev_obj;
 	} else {
 		*phDevObject = NULL;
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 
 	return status;
@@ -681,7 +562,7 @@ dsp_status drv_insert_dev_object(struct drv_object *hDRVObject,
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(hdev_obj != NULL);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_REQUIRE(pdrv_object);
 	DBC_ASSERT(pdrv_object->dev_list);
 
 	lst_put_tail(pdrv_object->dev_list, (struct list_head *)hdev_obj);
@@ -701,12 +582,12 @@ dsp_status drv_insert_dev_object(struct drv_object *hDRVObject,
 dsp_status drv_remove_dev_object(struct drv_object *hDRVObject,
 				 struct dev_object *hdev_obj)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct drv_object *pdrv_object = (struct drv_object *)hDRVObject;
 	struct list_head *cur_elem;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(pdrv_object, SIGNATURE));
+	DBC_REQUIRE(pdrv_object);
 	DBC_REQUIRE(hdev_obj != NULL);
 
 	DBC_REQUIRE(pdrv_object->dev_list != NULL);
@@ -755,7 +636,7 @@ dsp_status drv_request_resources(u32 dw_context, u32 *pDevNodeString)
 
 	status = cfg_get_object((u32 *) &pdrv_object, REG_DRV_OBJECT);
 	if (DSP_SUCCEEDED(status)) {
-		pszdev_node = mem_calloc(sizeof(struct drv_ext), MEM_NONPAGED);
+		pszdev_node = kzalloc(sizeof(struct drv_ext), GFP_KERNEL);
 		if (pszdev_node) {
 			lst_init_elem(&pszdev_node->link);
 			strncpy(pszdev_node->sz_string,
@@ -766,7 +647,7 @@ dsp_status drv_request_resources(u32 dw_context, u32 *pDevNodeString)
 			lst_put_tail(pdrv_object->dev_node_string,
 				     (struct list_head *)pszdev_node);
 		} else {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			*pDevNodeString = 0;
 		}
 	} else {
@@ -774,18 +655,6 @@ dsp_status drv_request_resources(u32 dw_context, u32 *pDevNodeString)
 			__func__);
 		*pDevNodeString = 0;
 	}
-
-	if (!(strcmp((char *)dw_context, "TIOMAP1510"))) {
-		dev_dbg(bridge, "%s: Allocating resources for UMA\n", __func__);
-		status = request_bridge_resources_dsp(dw_context, DRV_ASSIGN);
-	} else {
-		status = DSP_EFAIL;
-		dev_dbg(bridge, "%s: Unknown Device\n", __func__);
-	}
-
-	if (DSP_FAILED(status))
-		dev_dbg(bridge, "%s: Failed to reserve bridge resources\n",
-			__func__);
 
 	DBC_ENSURE((DSP_SUCCEEDED(status) && pDevNodeString != NULL &&
 		    !LST_IS_EMPTY(pdrv_object->dev_node_string)) ||
@@ -804,16 +673,6 @@ dsp_status drv_release_resources(u32 dw_context, struct drv_object *hdrv_obj)
 	dsp_status status = DSP_SOK;
 	struct drv_object *pdrv_object = (struct drv_object *)hdrv_obj;
 	struct drv_ext *pszdev_node;
-
-	if (!(strcmp((char *)((struct drv_ext *)dw_context)->sz_string,
-		     "TIOMAP1510")))
-		status = request_bridge_resources(dw_context, DRV_RELEASE);
-	else
-		dev_dbg(bridge, "%s: Unknown device\n", __func__);
-
-	if (DSP_FAILED(status))
-		dev_dbg(bridge, "%s: Failed to relese bridge resources\n",
-			__func__);
 
 	/*
 	 *  Irrespective of the status go ahead and clean it
@@ -848,114 +707,21 @@ dsp_status drv_release_resources(u32 dw_context, struct drv_object *hdrv_obj)
  *  Purpose:
  *      Reserves shared memory for bridge.
  */
-static dsp_status request_bridge_resources(u32 dw_context, s32 bRequest)
+static dsp_status request_bridge_resources(struct cfg_hostres *res)
 {
 	dsp_status status = DSP_SOK;
-	struct cfg_hostres *host_res;
-	u32 dw_buff_size;
+	struct cfg_hostres *host_res = res;
 
-	struct drv_ext *driver_ext;
-	u32 shm_size;
-
-	DBC_REQUIRE(dw_context != 0);
-
-	if (!bRequest) {
-		driver_ext = (struct drv_ext *)dw_context;
-		/* Releasing resources by deleting the registry key */
-		dw_buff_size = sizeof(struct cfg_hostres);
-		host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
-		if (host_res != NULL) {
-			if (DSP_FAILED(reg_get_value(CURRENTCONFIG,
-						     (u8 *) host_res,
-						     &dw_buff_size))) {
-				status = CFG_E_RESOURCENOTAVAIL;
-			}
-
-			dw_buff_size = sizeof(shm_size);
-			status = reg_get_value(SHMSIZE, (u8 *) &shm_size,
-					       &dw_buff_size);
-			if (DSP_SUCCEEDED(status)) {
-				if ((host_res->dw_mem_base[1]) &&
-				    (host_res->dw_mem_phys[1])) {
-					mem_free_phys_mem((void *)
-							  host_res->dw_mem_base
-							  [1],
-							  host_res->dw_mem_phys
-							  [1], shm_size);
-				}
-			} else {
-				dev_dbg(bridge, "%s: Error getting shm size "
-					"from registry: %x. Not calling "
-					"mem_free_phys_mem\n", __func__,
-					status);
-			}
-			host_res->dw_mem_base[1] = 0;
-			host_res->dw_mem_phys[1] = 0;
-
-			if (host_res->dw_prm_base)
-				iounmap(host_res->dw_prm_base);
-			if (host_res->dw_cm_base)
-				iounmap(host_res->dw_cm_base);
-			if (host_res->dw_mem_base[0])
-				iounmap((void *)host_res->dw_mem_base[0]);
-			if (host_res->dw_mem_base[2])
-				iounmap((void *)host_res->dw_mem_base[2]);
-			if (host_res->dw_mem_base[3])
-				iounmap((void *)host_res->dw_mem_base[3]);
-			if (host_res->dw_mem_base[4])
-				iounmap((void *)host_res->dw_mem_base[4]);
-			if (host_res->dw_wd_timer_dsp_base)
-				iounmap(host_res->dw_wd_timer_dsp_base);
-			if (host_res->dw_dmmu_base)
-				iounmap(host_res->dw_dmmu_base);
-			if (host_res->dw_per_base)
-				iounmap(host_res->dw_per_base);
-			if (host_res->dw_per_pm_base)
-				iounmap((void *)host_res->dw_per_pm_base);
-			if (host_res->dw_core_pm_base)
-				iounmap((void *)host_res->dw_core_pm_base);
-			if (host_res->dw_sys_ctrl_base)
-				iounmap(host_res->dw_sys_ctrl_base);
-
-			host_res->dw_prm_base = NULL;
-			host_res->dw_cm_base = NULL;
-			host_res->dw_mem_base[0] = (u32) NULL;
-			host_res->dw_mem_base[2] = (u32) NULL;
-			host_res->dw_mem_base[3] = (u32) NULL;
-			host_res->dw_mem_base[4] = (u32) NULL;
-			host_res->dw_wd_timer_dsp_base = NULL;
-			host_res->dw_dmmu_base = NULL;
-			host_res->dw_sys_ctrl_base = NULL;
-
-			dw_buff_size = sizeof(struct cfg_hostres);
-			status = reg_set_value(CURRENTCONFIG, (u8 *) host_res,
-					       (u32) dw_buff_size);
-			/*  Set all the other entries to NULL */
-			kfree(host_res);
-		} else {
-			status = DSP_EMEMORY;
-		}
-		return status;
-	}
-	dw_buff_size = sizeof(struct cfg_hostres);
-	host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
-	if (host_res != NULL) {
 		/* num_mem_windows must not be more than CFG_MAXMEMREGISTERS */
 		host_res->num_mem_windows = 2;
 		/* First window is for DSP internal memory */
 
-		host_res->dw_prm_base = ioremap(OMAP_IVA2_PRM_BASE,
-						OMAP_IVA2_PRM_SIZE);
-		host_res->dw_cm_base = ioremap(OMAP_IVA2_CM_BASE,
-					       OMAP_IVA2_CM_SIZE);
 		host_res->dw_sys_ctrl_base = ioremap(OMAP_SYSC_BASE,
 						     OMAP_SYSC_SIZE);
 		dev_dbg(bridge, "dw_mem_base[0] 0x%x\n",
 			host_res->dw_mem_base[0]);
 		dev_dbg(bridge, "dw_mem_base[3] 0x%x\n",
 			host_res->dw_mem_base[3]);
-		dev_dbg(bridge, "dw_prm_base %p\n", host_res->dw_prm_base);
-		dev_dbg(bridge, "dw_cm_base %p\n", host_res->dw_cm_base);
 		dev_dbg(bridge, "dw_wd_timer_dsp_base %p\n",
 			host_res->dw_wd_timer_dsp_base);
 		dev_dbg(bridge, "dw_dmmu_base %p\n", host_res->dw_dmmu_base);
@@ -972,48 +738,29 @@ static dsp_status request_bridge_resources(u32 dw_context, s32 bRequest)
 		/* CHNL_MAXCHANNELS */
 		host_res->dw_num_chnls = CHNL_MAXCHANNELS;
 		host_res->dw_chnl_buf_size = 0x400;
-		dw_buff_size = sizeof(struct cfg_hostres);
-		status = reg_set_value(CURRENTCONFIG, (u8 *) host_res,
-				       sizeof(struct cfg_hostres));
-		if (DSP_FAILED(status)) {
-			dev_dbg(bridge, "%s: Failed to set the registry value "
-				"for CURRENTCONFIG\n", __func__);
-		}
-		kfree(host_res);
-	}
-	/* End Mem alloc */
 	return status;
 }
 
 /*
- *  ======== request_bridge_resources_dsp ========
+ *  ======== drv_request_bridge_res_dsp ========
  *  Purpose:
  *      Reserves shared memory for bridge.
  */
-static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 bRequest)
+dsp_status drv_request_bridge_res_dsp(void **phost_resources)
 {
 	dsp_status status = DSP_SOK;
 	struct cfg_hostres *host_res;
 	u32 dw_buff_size;
 	u32 dma_addr;
 	u32 shm_size;
-
-	DBC_REQUIRE(dw_context != 0);
+	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	dw_buff_size = sizeof(struct cfg_hostres);
 
-	host_res = mem_calloc(dw_buff_size, MEM_NONPAGED);
+	host_res = kzalloc(dw_buff_size, GFP_KERNEL);
 
 	if (host_res != NULL) {
-		if (DSP_FAILED(cfg_get_host_resources((struct cfg_devnode *)
-						      dw_context, host_res))) {
-			status = request_bridge_resources(dw_context, bRequest);
-			if (DSP_SUCCEEDED(status)) {
-				status = cfg_get_host_resources
-				    ((struct cfg_devnode *)dw_context,
-				     host_res);
-			}
-		}
+		request_bridge_resources(host_res);
 		/* num_mem_windows must not be more than CFG_MAXMEMREGISTERS */
 		host_res->num_mem_windows = 4;
 
@@ -1045,22 +792,19 @@ static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 bRequest)
 			host_res->dw_mem_base[3]);
 		dev_dbg(bridge, "dw_mem_base[4] 0x%x\n",
 			host_res->dw_mem_base[4]);
-		dev_dbg(bridge, "dw_prm_base %p\n", host_res->dw_prm_base);
-		dev_dbg(bridge, "dw_cm_base %p\n", host_res->dw_cm_base);
 		dev_dbg(bridge, "dw_wd_timer_dsp_base %p\n",
 			host_res->dw_wd_timer_dsp_base);
 		dev_dbg(bridge, "dw_dmmu_base %p\n", host_res->dw_dmmu_base);
-		dw_buff_size = sizeof(shm_size);
-		status =
-		    reg_get_value(SHMSIZE, (u8 *) &shm_size, &dw_buff_size);
-		if (DSP_SUCCEEDED(status)) {
+
+		shm_size = drv_datap->shm_size;
+		if (shm_size >= 0x10000) {
 			/* Allocate Physically contiguous,
 			 * non-cacheable  memory */
 			host_res->dw_mem_base[1] =
 			    (u32) mem_alloc_phys_mem(shm_size, 0x100000,
 						     &dma_addr);
 			if (host_res->dw_mem_base[1] == 0) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				pr_err("shm reservation Failed\n");
 			} else {
 				host_res->dw_mem_length[1] = shm_size;
@@ -1082,15 +826,155 @@ static dsp_status request_bridge_resources_dsp(u32 dw_context, s32 bRequest)
 			host_res->dw_num_chnls = CHNL_MAXCHANNELS;
 			host_res->dw_chnl_buf_size = 0x400;
 			dw_buff_size = sizeof(struct cfg_hostres);
-			status = reg_set_value(CURRENTCONFIG, (u8 *) host_res,
-					       sizeof(struct cfg_hostres));
-			if (DSP_FAILED(status)) {
-				dev_dbg(bridge, "%s: Failed to set the registry"
-					" value for CURRENTCONFIG\n", __func__);
-			}
 		}
-		kfree(host_res);
+		*phost_resources = host_res;
+	} else {
+		status = -ENOMEM;
 	}
 	/* End Mem alloc */
 	return status;
+}
+
+void mem_ext_phys_pool_init(u32 poolPhysBase, u32 poolSize)
+{
+	u32 pool_virt_base;
+
+	/* get the virtual address for the physical memory pool passed */
+	pool_virt_base = (u32) ioremap(poolPhysBase, poolSize);
+
+	if ((void **)pool_virt_base == NULL) {
+		pr_err("%s: external physical memory map failed\n", __func__);
+		ext_phys_mem_pool_enabled = false;
+	} else {
+		ext_mem_pool.phys_mem_base = poolPhysBase;
+		ext_mem_pool.phys_mem_size = poolSize;
+		ext_mem_pool.virt_mem_base = pool_virt_base;
+		ext_mem_pool.next_phys_alloc_ptr = poolPhysBase;
+		ext_phys_mem_pool_enabled = true;
+	}
+}
+
+void mem_ext_phys_pool_release(void)
+{
+	if (ext_phys_mem_pool_enabled) {
+		iounmap((void *)(ext_mem_pool.virt_mem_base));
+		ext_phys_mem_pool_enabled = false;
+	}
+}
+
+/*
+ *  ======== mem_ext_phys_mem_alloc ========
+ *  Purpose:
+ *     Allocate physically contiguous, uncached memory from external memory pool
+ */
+
+static void *mem_ext_phys_mem_alloc(u32 bytes, u32 align, OUT u32 * pPhysAddr)
+{
+	u32 new_alloc_ptr;
+	u32 offset;
+	u32 virt_addr;
+
+	if (align == 0)
+		align = 1;
+
+	if (bytes > ((ext_mem_pool.phys_mem_base + ext_mem_pool.phys_mem_size)
+		     - ext_mem_pool.next_phys_alloc_ptr)) {
+		pPhysAddr = NULL;
+		return NULL;
+	} else {
+		offset = (ext_mem_pool.next_phys_alloc_ptr & (align - 1));
+		if (offset == 0)
+			new_alloc_ptr = ext_mem_pool.next_phys_alloc_ptr;
+		else
+			new_alloc_ptr = (ext_mem_pool.next_phys_alloc_ptr) +
+			    (align - offset);
+		if ((new_alloc_ptr + bytes) <=
+		    (ext_mem_pool.phys_mem_base + ext_mem_pool.phys_mem_size)) {
+			/* we can allocate */
+			*pPhysAddr = new_alloc_ptr;
+			ext_mem_pool.next_phys_alloc_ptr =
+			    new_alloc_ptr + bytes;
+			virt_addr =
+			    ext_mem_pool.virt_mem_base + (new_alloc_ptr -
+							  ext_mem_pool.
+							  phys_mem_base);
+			return (void *)virt_addr;
+		} else {
+			*pPhysAddr = 0;
+			return NULL;
+		}
+	}
+}
+
+/*
+ *  ======== mem_alloc_phys_mem ========
+ *  Purpose:
+ *      Allocate physically contiguous, uncached memory
+ */
+void *mem_alloc_phys_mem(u32 byte_size, u32 ulAlign, OUT u32 * pPhysicalAddress)
+{
+	void *va_mem = NULL;
+	dma_addr_t pa_mem;
+
+	if (byte_size > 0) {
+		if (ext_phys_mem_pool_enabled) {
+			va_mem = mem_ext_phys_mem_alloc(byte_size, ulAlign,
+							(u32 *) &pa_mem);
+		} else
+			va_mem = dma_alloc_coherent(NULL, byte_size, &pa_mem,
+								GFP_KERNEL);
+		if (va_mem == NULL)
+			*pPhysicalAddress = 0;
+		else
+			*pPhysicalAddress = pa_mem;
+	}
+	return va_mem;
+}
+
+/*
+ *  ======== mem_flush_cache ========
+ *  Purpose:
+ *      Flush cache
+ */
+void mem_flush_cache(void *pMemBuf, u32 byte_size, s32 FlushType)
+{
+	if (!pMemBuf)
+		return;
+
+	switch (FlushType) {
+		/* invalidate only */
+	case PROC_INVALIDATE_MEM:
+		dmac_inv_range(pMemBuf, pMemBuf + byte_size);
+		outer_inv_range(__pa((u32) pMemBuf), __pa((u32) pMemBuf +
+							  byte_size));
+		break;
+		/* writeback only */
+	case PROC_WRITEBACK_MEM:
+		dmac_clean_range(pMemBuf, pMemBuf + byte_size);
+		outer_clean_range(__pa((u32) pMemBuf), __pa((u32) pMemBuf +
+							    byte_size));
+		break;
+		/* writeback and invalidate */
+	case PROC_WRITEBACK_INVALIDATE_MEM:
+		dmac_flush_range(pMemBuf, pMemBuf + byte_size);
+		outer_flush_range(__pa((u32) pMemBuf), __pa((u32) pMemBuf +
+							    byte_size));
+		break;
+	}
+
+}
+
+/*
+ *  ======== mem_free_phys_mem ========
+ *  Purpose:
+ *      Free the given block of physically contiguous memory.
+ */
+void mem_free_phys_mem(void *pVirtualAddress, u32 pPhysicalAddress,
+		       u32 byte_size)
+{
+	DBC_REQUIRE(pVirtualAddress != NULL);
+
+	if (!ext_phys_mem_pool_enabled)
+		dma_free_coherent(NULL, byte_size, pVirtualAddress,
+				  pPhysicalAddress);
 }

@@ -72,6 +72,14 @@ struct dspbridge_platform_data {
 	struct dsp_shm_freq_table *dsp_freq_table;
 	u8 dsp_num_speeds;
 
+	/* functions to write and read PRCM registers */
+	void (*dsp_prm_write)(u32, s16 , u16);
+	u32 (*dsp_prm_read)(s16 , u16);
+	u32 (*dsp_prm_rmw_bits)(u32, u32, s16, s16);
+	void (*dsp_cm_write)(u32, s16 , u16);
+	u32 (*dsp_cm_read)(s16 , u16);
+	u32 (*dsp_cm_rmw_bits)(u32, u32, s16, s16);
+
 	u32 phys_mempool_base;
 	u32 phys_mempool_size;
 };

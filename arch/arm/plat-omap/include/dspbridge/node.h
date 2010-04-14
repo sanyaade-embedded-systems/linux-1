@@ -39,12 +39,12 @@
  *      ph_node:             Location to store node handle on output.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EMEMORY:        Insufficient memory on GPP.
- *      DSP_EUUID:          Node UUID has not been registered.
+ *      -ENOMEM:        Insufficient memory on GPP.
+ *      -ENOKEY:          Node UUID has not been registered.
  *      DSP_ESYMBOL:        iAlg functions not found for a DAIS node.
- *      DSP_ERANGE:         attr_in != NULL and attr_in->prio out of
+ *      -EDOM:         attr_in != NULL and attr_in->prio out of
  *                          range.
- *      DSP_EFAIL:          A failure occured, unable to allocate node.
+ *      -EPERM:          A failure occured, unable to allocate node.
  *      DSP_EWRONGSTATE:    Proccessor is not in the running state.
  *  Requires:
  *      node_init(void) called.
@@ -60,7 +60,7 @@ extern dsp_status node_allocate(struct proc_object *hprocessor,
 				OPTIONAL IN CONST struct dsp_cbdata
 				*pargs, OPTIONAL IN CONST struct dsp_nodeattrin
 				*attr_in,
-				OUT struct node_object **ph_node,
+				OUT struct node_res_object **noderes,
 				struct process_context *pr_ctxt);
 
 /*
@@ -76,10 +76,10 @@ extern dsp_status node_allocate(struct proc_object *hprocessor,
  *                      buffer on output.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid node handle.
- *      DSP_EMEMORY:    Insufficent memory.
- *      DSP_EFAIL:      General Failure.
- *      DSP_ESIZE:      Invalid Size.
+ *      -EFAULT:    Invalid node handle.
+ *      -ENOMEM:    Insufficent memory.
+ *      -EPERM:      General Failure.
+ *      -EINVAL:      Invalid Size.
  *  Requires:
  *      node_init(void) called.
  *      pbuffer != NULL.
@@ -98,15 +98,15 @@ extern dsp_status node_alloc_msg_buf(struct node_object *hnode,
  *      prio:          New priority level to set node's priority to.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ERANGE:         prio is out of range.
- *      DSP_ENODETYPE:      The specified node is not a task node.
+ *      -EFAULT:        Invalid hnode.
+ *      -EDOM:         prio is out of range.
+ *      -EPERM:      The specified node is not a task node.
  *      DSP_EWRONGSTATE:    Node is not in the NODE_ALLOCATED, NODE_PAUSED,
  *                          or NODE_RUNNING state.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_ERESTART:       A critical error has occurred and the DSP is
  *                          being restarted.
- *      DSP_EFAIL:          Unable to change node's runtime priority level.
+ *      -EPERM:          Unable to change node's runtime priority level.
  *  Requires:
  *      node_init(void) called.
  *  Ensures:
@@ -123,7 +123,7 @@ extern dsp_status node_change_priority(struct node_object *hnode, s32 prio);
  *      hProc:          Handle to processor object being destroyed.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Unable to delete all nodes belonging to hProc.
+ *      -EPERM:      Unable to delete all nodes belonging to hProc.
  *  Requires:
  *      Valid hnode_mgr.
  *      hProc != NULL.
@@ -165,15 +165,15 @@ extern dsp_status node_close_orphans(struct node_mgr *hnode_mgr,
  *                      pass binary data.
  *  Returns:
  *      DSP_SOK:                Success.
- *      DSP_EHANDLE:            Invalid hNode1 or hNode2.
- *      DSP_EMEMORY:            Insufficient host memory.
- *      DSP_EVALUE:             A stream index parameter is invalid.
- *      DSP_EALREADYCONNECTED:  A connection already exists for one of the
+ *      -EFAULT:            Invalid hNode1 or hNode2.
+ *      -ENOMEM:            Insufficient host memory.
+ *      -EINVAL:             A stream index parameter is invalid.
+ *      -EISCONN:  A connection already exists for one of the
  *                              indices uStream1 or uStream2.
  *      DSP_EWRONGSTATE:        Either hNode1 or hNode2 is not in the
  *                              NODE_ALLOCATED state.
- *      DSP_ENOMORECONNECTIONS: No more connections available.
- *      DSP_EFAIL:              Attempt to make an illegal connection (eg,
+ *      -ECONNREFUSED: No more connections available.
+ *      -EPERM:              Attempt to make an illegal connection (eg,
  *                              Device node to device node, or device node to
  *                              GPP), the two nodes are on different DSPs.
  *  Requires:
@@ -198,15 +198,15 @@ extern dsp_status node_connect(struct node_object *hNode1,
  *      hnode:              Node handle returned from node_allocate().
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EHANDLE:        Invalid hnode.
+ *      -EFAULT:        Invalid hnode.
  *      DSP_ESYMBOL:        Create function not found in the COFF file.
  *      DSP_EWRONGSTATE:    Node is not in the NODE_ALLOCATED state.
- *      DSP_EMEMORY:        Memory allocation failure on the DSP.
+ *      -ENOMEM:        Memory allocation failure on the DSP.
  *      DSP_ETASK:          Unable to create node's task or process on the DSP.
  *      DSP_ESTREAM:        Stream creation failure on the DSP.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EUSER1-16:      A user-defined failure occurred on the DSP.
- *      DSP_EFAIL:          A failure occurred, unable to create node.
+ *      -EPERM:          A failure occurred, unable to create node.
  *  Requires:
  *      node_init(void) called.
  *  Ensures:
@@ -226,8 +226,8 @@ extern dsp_status node_create(struct node_object *hnode);
  *      hdev_obj:     Device for this processor.
  *  Returns:
  *      DSP_SOK:        Success;
- *      DSP_EMEMORY:    Insufficient memory for requested resources.
- *      DSP_EFAIL:      General failure.
+ *      -ENOMEM:    Insufficient memory for requested resources.
+ *      -EPERM:      General failure.
  *  Requires:
  *      node_init(void) called.
  *      phNodeMgr != NULL.
@@ -250,18 +250,18 @@ extern dsp_status node_create_mgr(OUT struct node_mgr **phNodeMgr,
  *      hnode:              Node handle returned from node_allocate().
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -EFAULT:        Invalid hnode.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EDELETE:        A deletion failure occurred.
  *      DSP_EUSER1-16:      Node specific failure occurred on the DSP.
- *      DSP_EFAIL:          A failure occurred in deleting the node.
+ *      -EPERM:          A failure occurred in deleting the node.
  *      DSP_ESYMBOL:        Delete function not found in the COFF file.
  *  Requires:
  *      node_init(void) called.
  *  Ensures:
  *      DSP_SOK:            hnode is invalid.
  */
-extern dsp_status node_delete(struct node_object *hnode,
+extern dsp_status node_delete(struct node_res_object *hnoderes,
 			      struct process_context *pr_ctxt);
 
 /*
@@ -292,14 +292,14 @@ extern dsp_status node_delete_mgr(struct node_mgr *hnode_mgr);
  *      pu_allocated:    Location to write total number of allocated nodes.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_ESIZE:      node_tab is too small to hold all node handles.
+ *      -EINVAL:      node_tab is too small to hold all node handles.
  *  Requires:
  *      Valid hnode_mgr.
  *      node_tab != NULL || node_tab_size == 0.
  *      pu_num_nodes != NULL.
  *      pu_allocated != NULL.
  *  Ensures:
- *      - (DSP_ESIZE && *pu_num_nodes == 0)
+ *      - (-EINVAL && *pu_num_nodes == 0)
  *      - || (DSP_SOK && *pu_num_nodes <= node_tab_size)  &&
  *        (*pu_allocated == *pu_num_nodes)
  */
@@ -333,8 +333,8 @@ extern void node_exit(void);
  *      pattr:          Same buffer attributes passed to node_alloc_msg_buf.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid node handle.
- *      DSP_EFAIL:      Failure to free the buffer.
+ *      -EFAULT:    Invalid node handle.
+ *      -EPERM:      Failure to free the buffer.
  *  Requires:
  *      node_init(void) called.
  *      pbuffer != NULL.
@@ -357,7 +357,7 @@ extern dsp_status node_free_msg_buf(struct node_object *hnode,
  *      attr_size:      Size of pattr.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hnode.
+ *      -EFAULT:    Invalid hnode.
  *  Requires:
  *      node_init(void) called.
  *      pattr != NULL.
@@ -381,10 +381,10 @@ extern dsp_status node_get_attr(struct node_object *hnode,
  *      utimeout:       Timeout in milliseconds to wait for message.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hnode.
- *      DSP_ENODETYPE:  Cannot retrieve messages from this type of node.
- *      DSP_ETIMEOUT:   Timeout occurred and no message is available.
- *      DSP_EFAIL:      Error occurred while trying to retrieve a message.
+ *      -EFAULT:    Invalid hnode.
+ *      -EPERM:  Cannot retrieve messages from this type of node.
+ *      -ETIME:   Timeout occurred and no message is available.
+ *      -EPERM:      Error occurred while trying to retrieve a message.
  *  Requires:
  *      node_init(void) called.
  *      message != NULL.
@@ -402,7 +402,7 @@ extern dsp_status node_get_message(struct node_object *hnode,
  *      phNldrObj:      Pointer to a Nldr manager handle
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hnode.
+ *      -EFAULT:    Invalid hnode.
  *  Ensures:
  */
 extern dsp_status node_get_nldr_obj(struct node_mgr *hnode_mgr,
@@ -442,11 +442,11 @@ void node_on_exit(struct node_object *hnode, s32 nStatus);
  *                          running on the DSP.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ENODETYPE:      Node is not a task or socket node.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -EFAULT:        Invalid hnode.
+ *      -EPERM:      Node is not a task or socket node.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EWRONGSTSATE:   Node is not in NODE_RUNNING state.
- *      DSP_EFAIL:          Failed to pause node.
+ *      -EPERM:          Failed to pause node.
  *  Requires:
  *      node_init(void) called.
  *  Ensures:
@@ -466,11 +466,11 @@ extern dsp_status node_pause(struct node_object *hnode);
  *      utimeout:           Timeout in msecs to wait.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ENODETYPE:      Messages can't be sent to this type of node.
- *      DSP_ETIMEOUT:       Timeout occurred before message could be set.
+ *      -EFAULT:        Invalid hnode.
+ *      -EPERM:      Messages can't be sent to this type of node.
+ *      -ETIME:       Timeout occurred before message could be set.
  *      DSP_EWRONGSTATE:    Node is in invalid state for sending messages.
- *      DSP_EFAIL:          Unable to send message.
+ *      -EPERM:          Unable to send message.
  *  Requires:
  *      node_init(void) called.
  *      pmsg != NULL.
@@ -490,10 +490,10 @@ extern dsp_status node_put_message(struct node_object *hnode,
  *      hnotification:  Handle to be used for notification.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    Invalid hnode.
- *      DSP_EMEMORY:    Insufficient memory on GPP.
- *      DSP_EVALUE:     event_mask is invalid.
- *      DSP_ENOTIMPL:   Notification type specified by notify_type is not
+ *      -EFAULT:    Invalid hnode.
+ *      -ENOMEM:    Insufficient memory on GPP.
+ *      -EINVAL:     event_mask is invalid.
+ *      -ENOSYS:   Notification type specified by notify_type is not
  *                      supported.
  *  Requires:
  *      node_init(void) called.
@@ -516,12 +516,12 @@ extern dsp_status node_register_notify(struct node_object *hnode,
  *                          running on the DSP.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ENODETYPE:      hnode doesn't represent a message, task or dais
+ *      -EFAULT:        Invalid hnode.
+ *      -EPERM:      hnode doesn't represent a message, task or dais
  *                          socket node.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
+ *      -ETIME:       A timeout occurred before the DSP responded.
  *      DSP_EWRONGSTSATE:   Node is not in NODE_PAUSED or NODE_CREATED state.
- *      DSP_EFAIL:          Unable to start or resume execution.
+ *      -EPERM:          Unable to start or resume execution.
  *      DSP_ESYMBOL:        Execute function not found in the COFF file.
  *  Requires:
  *      node_init(void) called.
@@ -541,11 +541,11 @@ extern dsp_status node_run(struct node_object *hnode);
  *                          value (DSP_EUSER1-16).
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EHANDLE:        Invalid hnode.
- *      DSP_ETIMEOUT:       A timeout occurred before the DSP responded.
- *      DSP_ENODETYPE:      Type of node specified cannot be terminated.
+ *      -EFAULT:        Invalid hnode.
+ *      -ETIME:       A timeout occurred before the DSP responded.
+ *      -EPERM:      Type of node specified cannot be terminated.
  *      DSP_EWRONGSTATE:    Operation not valid for the current node state.
- *      DSP_EFAIL:          Unable to terminate the node.
+ *      -EPERM:          Unable to terminate the node.
  *  Requires:
  *      node_init(void) called.
  *      pstatus != NULL.
@@ -566,4 +566,19 @@ extern dsp_status node_get_uuid_props(void *hprocessor,
 				      OUT struct dsp_ndbprops
 				      *node_props);
 
+/**
+ * node_find_addr() - Find the closest symbol to the given address.
+ *
+ * @node_mgr:		Node manager handle
+ * @sym_addr:		Given address to find the closest symbol
+ * @offset_range:		offset range to look fo the closest symbol
+ * @sym_addr_output:	Symbol Output address
+ * @sym_name:		String with the symbol name of the closest symbol
+ *
+ * 	This function finds the closest symbol to the address where a MMU
+ *	Fault occurred on the DSP side.
+ */
+dsp_status node_find_addr(struct node_mgr *node_mgr, u32 sym_addr,
+				u32 offset_range, void *sym_addr_output,
+				char *sym_name);
 #endif /* NODE_ */

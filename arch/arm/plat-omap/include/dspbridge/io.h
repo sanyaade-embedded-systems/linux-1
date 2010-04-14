@@ -39,7 +39,7 @@
  *      pMgrAttrs->word_size:   DSP Word size in equivalent PC bytes..
  *  Returns:
  *      DSP_SOK:                Success;
- *      DSP_EMEMORY:            Insufficient memory for requested resources.
+ *      -ENOMEM:            Insufficient memory for requested resources.
  *      CHNL_E_ISR:             Unable to plug channel ISR for configured IRQ.
  *      CHNL_E_INVALIDIRQ:      Invalid IRQ number. Must be 0 <= birq <= 15.
  *      CHNL_E_INVALIDWORDSIZE: Invalid DSP word size.  Must be > 0.
@@ -62,7 +62,7 @@ extern dsp_status io_create(OUT struct io_mgr **phIOMgr,
  *      hio_mgr:         IOmanager object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    hio_mgr was invalid.
+ *      -EFAULT:    hio_mgr was invalid.
  *  Requires:
  *      io_init(void) called.
  *  Ensures:
@@ -105,7 +105,7 @@ extern bool io_init(void);
  *      hio_mgr:         IOmanager object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EHANDLE:    hio_mgr was invalid.
+ *      -EFAULT:    hio_mgr was invalid.
  *  Requires:
  *      io_init(void) called.
  *  Ensures:

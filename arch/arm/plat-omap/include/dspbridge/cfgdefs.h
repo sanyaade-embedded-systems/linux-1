@@ -65,8 +65,6 @@ struct cfg_hostres {
 	u32 dw_chnl_offset;
 	u32 dw_chnl_buf_size;
 	u32 dw_num_chnls;
-	void __iomem *dw_prm_base;
-	void __iomem *dw_cm_base;
 	void __iomem *dw_per_base;
 	u32 dw_per_pm_base;
 	u32 dw_core_pm_base;
@@ -79,15 +77,6 @@ struct cfg_dspmemdesc {
 	u32 mem_type;		/* Type of memory. */
 	u32 ul_min;		/* Minimum amount of memory of this type. */
 	u32 ul_max;		/* Maximum amount of memory of this type. */
-};
-
-struct cfg_dspres {
-	u32 chip_type;		/* DSP chip type. */
-	u32 word_size;		/* Number of bytes in a word */
-	u32 chip_number;	/* Number of chips. */
-	u32 mem_types;		/* Types of memory. */
-	struct cfg_dspmemdesc mem_desc[CFG_DSPMAXMEMTYPES];
-	/* DSP Memory types */
 };
 
 #endif /* CFGDEFS_ */

@@ -43,8 +43,8 @@ extern void cfg_exit(void);
  *      pdwAutoStart:   Ptr to location for 32 bit autostart mask.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: Unable to retreive resource.
+ *      -EFAULT:  dev_node_obj is invalid.
+ *      -ENODATA: Unable to retreive resource.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -63,7 +63,7 @@ extern dsp_status cfg_get_auto_start(IN struct cfg_devnode *dev_node_obj,
  *      DSP_SOK:    Success.  pdwVersion contains Class Driver version in
  *                  the form: 0xAABBCCDD where AABB is Major version and
  *                  CCDD is Minor.
- *      DSP_EFAIL:  Failure.
+ *      -EPERM:  Failure.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -82,9 +82,9 @@ extern dsp_status cfg_get_cd_version(OUT u32 *pdwVersion);
  *      pdwValue:       Ptr to location to store the value.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_INVALIDPOINTER:   phDevObject is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The resource is not available.
+ *      -EFAULT:  dev_node_obj is invalid.
+ *      -EFAULT:   phDevObject is invalid.
+ *      -ENODATA: The resource is not available.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -93,27 +93,6 @@ extern dsp_status cfg_get_cd_version(OUT u32 *pdwVersion);
  */
 extern dsp_status cfg_get_dev_object(IN struct cfg_devnode *dev_node_obj,
 				     OUT u32 *pdwValue);
-
-/*
- *  ======== cfg_get_dsp_resources ========
- *  Purpose:
- *      Get the DSP resources available to a given device.
- *  Parameters:
- *      dev_node_obj:	Handle to the DEVNODE who's resources we are querying.
- *      pDSPResTable:   Ptr to a location to store the DSP resource table.
- *  Returns:
- *      DSP_SOK:                On success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The DSP Resource information is not
- *                              available
- *  Requires:
- *      CFG initialized.
- *  Ensures:
- *      DSP_SOK:    pDSPResTable points to a filled table of resources allocated
- *                  for the specified WMD.
- */
-extern dsp_status cfg_get_dsp_resources(IN struct cfg_devnode *dev_node_obj,
-					OUT struct cfg_dspres *pDSPResTable);
 
 /*
  *  ======== cfg_get_exec_file ========
@@ -125,9 +104,9 @@ extern dsp_status cfg_get_dsp_resources(IN struct cfg_devnode *dev_node_obj,
  *      pstrExecFile:   Ptr to character buf to hold ExecFile.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_INVALIDPOINTER:   pstrExecFile is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The resource is not available.
+ *      -EFAULT:  dev_node_obj is invalid.
+ *      -EFAULT:   pstrExecFile is invalid.
+ *      -ENODATA: The resource is not available.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -137,28 +116,6 @@ extern dsp_status cfg_get_dsp_resources(IN struct cfg_devnode *dev_node_obj,
  */
 extern dsp_status cfg_get_exec_file(IN struct cfg_devnode *dev_node_obj,
 				    IN u32 buf_size, OUT char *pstrExecFile);
-
-/*
- *  ======== cfg_get_host_resources ========
- *  Purpose:
- *      Get the Host PC allocated resources assigned to a given device.
- *  Parameters:
- *      dev_node_obj:	Handle to the DEVNODE who's resources we are querying.
- *      pHostResTable:  Ptr to a location to store the host resource table.
- *  Returns:
- *      DSP_SOK:                On success.
- *      CFG_E_INVALIDPOINTER:   pHostResTable is invalid.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The resource is not available.
- *  Requires:
- *      CFG initialized.
- *  Ensures:
- *      DSP_SOK:    pHostResTable points to a filled table of resources
- *                  allocated for the specified WMD.
- *
- */
-extern dsp_status cfg_get_host_resources(IN struct cfg_devnode *dev_node_obj,
-					 OUT struct cfg_hostres *pHostResTable);
 
 /*
  *  ======== cfg_get_object ========
@@ -175,7 +132,7 @@ extern dsp_status cfg_get_host_resources(IN struct cfg_devnode *dev_node_obj,
  *      DSP_SOK:    *pdwValue is set to the retrieved u32(non-Zero).
  *      else:       *pdwValue is set to 0L.
  */
-extern dsp_status cfg_get_object(OUT u32 *pdwValue, u32 dw_type);
+extern dsp_status cfg_get_object(OUT u32 *pdwValue, u8 dw_type);
 
 /*
  *  ======== cfg_get_perf_value ========
@@ -203,8 +160,8 @@ extern void cfg_get_perf_value(OUT bool *pfEnablePerf);
  *      pWMDFileName:   Ptr to a character buffer to hold the WMD filename.
  *  Returns:
  *      DSP_SOK:                On success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: The filename is not available.
+ *      -EFAULT:  dev_node_obj is invalid.
+ *      -ENODATA: The filename is not available.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -226,9 +183,9 @@ extern dsp_status cfg_get_wmd_file_name(IN struct cfg_devnode *dev_node_obj,
  *      pstrZLFileName: Ptr to character buf to hold ZLFileName.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDPOINTER:   pstrZLFileName is invalid.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      CFG_E_RESOURCENOTAVAIL: couldn't find the ZLFileName.
+ *      -EFAULT:   pstrZLFileName is invalid.
+ *      -EFAULT:  dev_node_obj is invalid.
+ *      -ENODATA: couldn't find the ZLFileName.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -261,8 +218,8 @@ extern bool cfg_init(void);
  *      dwValue:    Arbitrary value to store.
  *  Returns:
  *      DSP_SOK:                Success.
- *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      DSP_EFAIL:              Internal Error.
+ *      -EFAULT:  dev_node_obj is invalid.
+ *      -EPERM:              Internal Error.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -280,12 +237,12 @@ extern dsp_status cfg_set_dev_object(IN struct cfg_devnode *dev_node_obj,
  *      dw_type          Type of Object to Store
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Internal Error.
+ *      -EPERM:      Internal Error.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
  *      DSP_SOK:        The Private u32 was successfully set.
  */
-extern dsp_status cfg_set_object(IN u32 dwValue, IN u32 dw_type);
+extern dsp_status cfg_set_object(IN u32 dwValue, u8 dw_type);
 
 #endif /* CFG_ */

@@ -26,8 +26,8 @@
 #define CHNL_INITIOREQS      4	/* Default # of I/O requests. */
 
 /* Channel modes */
-#define CHNL_MODETODSP       0x0000	/* Data streaming to the DSP. */
-#define CHNL_MODEFROMDSP     0x0001	/* Data streaming from the DSP. */
+#define CHNL_MODETODSP		0	/* Data streaming to the DSP. */
+#define CHNL_MODEFROMDSP	1	/* Data streaming from the DSP. */
 
 /* GetIOCompletion flags */
 #define CHNL_IOCINFINITE     0xffffffff	/* Wait forever for IO completion. */

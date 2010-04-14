@@ -28,7 +28,6 @@
 
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/cfg.h>
-#include <dspbridge/mem.h>
 #include <dspbridge/sync.h>
 
 /*  ----------------------------------- Others */
@@ -41,10 +40,8 @@
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
 #define ZLDLLNAME               ""
-#define SIGNATURE               0x5f52474d	/* "MGR_" (in reverse) */
 
 struct mgr_object {
-	u32 dw_signature;
 	struct dcd_manager *hdcd_mgr;	/* Proc/Node data manager */
 };
 
@@ -65,7 +62,7 @@ dsp_status mgr_create(OUT struct mgr_object **phMgrObject,
 	DBC_REQUIRE(phMgrObject != NULL);
 	DBC_REQUIRE(refs > 0);
 
-	MEM_ALLOC_OBJECT(pmgr_obj, struct mgr_object, SIGNATURE);
+	pmgr_obj = kzalloc(sizeof(struct mgr_object), GFP_KERNEL);
 	if (pmgr_obj) {
 		status = dcd_create_manager(ZLDLLNAME, &pmgr_obj->hdcd_mgr);
 		if (DSP_SUCCEEDED(status)) {
@@ -75,18 +72,17 @@ dsp_status mgr_create(OUT struct mgr_object **phMgrObject,
 				*phMgrObject = pmgr_obj;
 			} else {
 				dcd_destroy_manager(pmgr_obj->hdcd_mgr);
-				MEM_FREE_OBJECT(pmgr_obj);
+				kfree(pmgr_obj);
 			}
 		} else {
 			/* failed to Create DCD Manager */
-			MEM_FREE_OBJECT(pmgr_obj);
+			kfree(pmgr_obj);
 		}
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 
-	DBC_ENSURE(DSP_FAILED(status) ||
-		   MEM_IS_VALID_HANDLE(pmgr_obj, SIGNATURE));
+	DBC_ENSURE(DSP_FAILED(status) || pmgr_obj);
 	return status;
 }
 
@@ -100,18 +96,17 @@ dsp_status mgr_destroy(struct mgr_object *hmgr_obj)
 	struct mgr_object *pmgr_obj = (struct mgr_object *)hmgr_obj;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(hmgr_obj, SIGNATURE));
+	DBC_REQUIRE(hmgr_obj);
 
 	/* Free resources */
 	if (hmgr_obj->hdcd_mgr)
 		dcd_destroy_manager(hmgr_obj->hdcd_mgr);
 
-	MEM_FREE_OBJECT(pmgr_obj);
+	kfree(pmgr_obj);
 	/* Update the Registry with NULL for MGR Object */
 	(void)cfg_set_object(0, REG_MGR_OBJECT);
 
-	DBC_ENSURE(DSP_FAILED(status) ||
-		   !MEM_IS_VALID_HANDLE(hmgr_obj, SIGNATURE));
+	DBC_ENSURE(DSP_FAILED(status) || !hmgr_obj);
 
 	return status;
 }
@@ -142,7 +137,7 @@ dsp_status mgr_enum_node_info(u32 node_id, OUT struct dsp_ndbprops *pndb_props,
 	if (DSP_FAILED(status))
 		goto func_cont;
 
-	DBC_ASSERT(MEM_IS_VALID_HANDLE(pmgr_obj, SIGNATURE));
+	DBC_ASSERT(pmgr_obj);
 	/* Forever loop till we hit failed or no more items in the
 	 * Enumeration. We will exit the loop other than DSP_SOK; */
 	while (status == DSP_SOK) {
@@ -157,7 +152,7 @@ dsp_status mgr_enum_node_info(u32 node_id, OUT struct dsp_ndbprops *pndb_props,
 	}
 	if (DSP_SUCCEEDED(status)) {
 		if (node_id > (node_index - 1)) {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 		} else {
 			status = dcd_get_object_def(pmgr_obj->hdcd_mgr,
 						    (struct dsp_uuid *)
@@ -187,7 +182,7 @@ func_cont:
 dsp_status mgr_enum_processor_info(u32 processor_id,
 				   OUT struct dsp_processorinfo *
 				   processor_info, u32 processor_info_size,
-				   OUT u32 *pu_num_procs)
+				   OUT u8 *pu_num_procs)
 {
 	dsp_status status = DSP_SOK;
 	dsp_status status1 = DSP_SOK;
@@ -200,9 +195,8 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 	struct mgr_processorextinfo *ext_info;
 	struct dev_object *hdev_obj;
 	struct drv_object *hdrv_obj;
-	s32 dev_type;
+	u8 dev_type;
 	struct cfg_devnode *dev_node;
-	struct cfg_dspres chip_resources;
 	bool proc_detect = false;
 
 	DBC_REQUIRE(processor_info != NULL);
@@ -215,17 +209,13 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 	if (DSP_SUCCEEDED(status)) {
 		status = drv_get_dev_object(processor_id, hdrv_obj, &hdev_obj);
 		if (DSP_SUCCEEDED(status)) {
-			status = dev_get_dev_type(hdev_obj, (u32 *) &dev_type);
+			status = dev_get_dev_type(hdev_obj, (u8 *) &dev_type);
 			status = dev_get_dev_node(hdev_obj, &dev_node);
-			if (dev_type == DSP_UNIT)
-				status = cfg_get_dsp_resources(dev_node,
-							       &chip_resources);
-			else
-				status = DSP_EFAIL;
+			if (dev_type != DSP_UNIT)
+				status = -EPERM;
 
 			if (DSP_SUCCEEDED(status)) {
-				processor_info->processor_type =
-				    chip_resources.chip_type;
+				processor_info->processor_type = DSPTYPE64;
 			}
 		}
 	}
@@ -237,7 +227,7 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 		dev_dbg(bridge, "%s: Failed to get MGR Object\n", __func__);
 		goto func_end;
 	}
-	DBC_ASSERT(MEM_IS_VALID_HANDLE(pmgr_obj, SIGNATURE));
+	DBC_ASSERT(pmgr_obj);
 	/* Forever loop till we hit no more items in the
 	 * Enumeration. We will exit the loop other than DSP_SOK; */
 	while (status1 == DSP_SOK) {
@@ -281,19 +271,18 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 			}
 			/* User applciatiuons aonly check for chip type, so
 			 * this clumsy overwrite */
-			processor_info->processor_type =
-			    chip_resources.chip_type;
+			processor_info->processor_type = DSPTYPE64;
 		} else {
 			dev_dbg(bridge, "%s: Failed to get DCD processor info "
 				"%x\n", __func__, status2);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 	}
 	*pu_num_procs = proc_index;
 	if (proc_detect == false) {
 		dev_dbg(bridge, "%s: Failed to get proc info from DCD, so use "
 			"CFG registry\n", __func__);
-		processor_info->processor_type = chip_resources.chip_type;
+		processor_info->processor_type = DSPTYPE64;
 	}
 func_end:
 	return status;
@@ -321,14 +310,14 @@ void mgr_exit(void)
 dsp_status mgr_get_dcd_handle(struct mgr_object *hMGRHandle,
 			      OUT u32 *phDCDHandle)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct mgr_object *pmgr_obj = (struct mgr_object *)hMGRHandle;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDCDHandle != NULL);
 
 	*phDCDHandle = (u32) NULL;
-	if (MEM_IS_VALID_HANDLE(pmgr_obj, SIGNATURE)) {
+	if (pmgr_obj) {
 		*phDCDHandle = (u32) pmgr_obj->hdcd_mgr;
 		status = DSP_SOK;
 	}

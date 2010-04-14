@@ -20,7 +20,6 @@
 #ifndef WCDIOCTL_
 #define WCDIOCTL_
 
-#include <dspbridge/mem.h>
 #include <dspbridge/cmm.h>
 #include <dspbridge/strmdefs.h>
 #include <dspbridge/dbdcd.h>
@@ -351,34 +350,6 @@ union Trapped_Args {
 		struct cmm_object *hcmm_mgr;
 		struct cmm_info __user *cmm_info_obj;
 	} args_cmm_getinfo;
-
-	/* MEM Module */
-	struct {
-		u32 byte_size;
-		enum mem_poolattrs type;
-		void *mem;
-	} args_mem_alloc;
-
-	struct {
-		u32 byte_size;
-		enum mem_poolattrs type;
-		void *mem;
-	} args_mem_calloc;
-
-	struct {
-		void *mem;
-	} args_mem_free;
-
-	struct {
-		void *pbuffer;
-		u32 size;
-		void *locked_buffer;
-	} args_mem_pagelock;
-
-	struct {
-		void *pbuffer;
-		u32 size;
-	} args_mem_pageunlock;
 
 	/* UTIL module */
 	struct {

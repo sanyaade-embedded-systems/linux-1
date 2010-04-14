@@ -27,9 +27,7 @@
 
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/cfg.h>
-#include <dspbridge/mem.h>
 #include <dspbridge/ntfy.h>
-#include <dspbridge/reg.h>
 #include <dspbridge/sync.h>
 #include <dspbridge/clk.h>
 
@@ -46,9 +44,7 @@ void services_exit(void)
 {
 	/* Uninitialize all SERVICES modules here */
 	clk_exit();
-	reg_exit();
 	cfg_exit();
-	mem_exit();
 }
 
 /*
@@ -59,31 +55,22 @@ void services_exit(void)
 bool services_init(void)
 {
 	bool ret = true;
-	bool fcfg, fmem;
-	bool freg, fclk;
+	bool fcfg;
+	bool fclk;
 
 	/* Perform required initialization of SERVICES modules. */
-	fmem = services_mem_init();
-	freg = reg_init();
 	fcfg = cfg_init();
 	fclk = services_clk_init();
 
-	ret = fcfg && fmem && freg && fclk;
+	ret = fcfg && fclk;
 
 	if (!ret) {
 
 		if (fclk)
 			clk_exit();
 
-		if (freg)
-			reg_exit();
-
 		if (fcfg)
 			cfg_exit();
-
-		if (fmem)
-			mem_exit();
-
 	}
 
 	return ret;

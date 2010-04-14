@@ -47,12 +47,9 @@
 
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/list.h>
-#include <dspbridge/mem.h>
 
 /*  ----------------------------------- This */
 #include <dspbridge/rmm.h>
-
-#define RMM_TARGSIGNATURE   0x544d4d52	/* "TMMR" */
 
 /*
  *  ======== rmm_header ========
@@ -79,7 +76,6 @@ struct rmm_ovly_sect {
  *  ======== rmm_target_obj ========
  */
 struct rmm_target_obj {
-	u32 dw_signature;
 	struct rmm_segment *seg_tab;
 	struct rmm_header **free_list;
 	u32 num_segs;
@@ -105,7 +101,7 @@ dsp_status rmm_alloc(struct rmm_target_obj *target, u32 segid, u32 size,
 	u32 addr;
 	dsp_status status = DSP_SOK;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(target, RMM_TARGSIGNATURE));
+	DBC_REQUIRE(target);
 	DBC_REQUIRE(dspAddr != NULL);
 	DBC_REQUIRE(size > 0);
 	DBC_REQUIRE(reserve || (target->num_segs > 0));
@@ -113,7 +109,7 @@ dsp_status rmm_alloc(struct rmm_target_obj *target, u32 segid, u32 size,
 
 	if (!reserve) {
 		if (!alloc_block(target, segid, size, align, dspAddr)) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			/* Increment the number of allocated blocks in this
 			 * segment */
@@ -145,9 +141,9 @@ dsp_status rmm_alloc(struct rmm_target_obj *target, u32 segid, u32 size,
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/* No overlap - allocate list element for new section. */
-		new_sect = mem_calloc(sizeof(struct rmm_ovly_sect), MEM_PAGED);
+		new_sect = kzalloc(sizeof(struct rmm_ovly_sect), GFP_KERNEL);
 		if (new_sect == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			lst_init_elem((struct list_head *)new_sect);
 			new_sect->addr = addr;
@@ -185,10 +181,10 @@ dsp_status rmm_create(struct rmm_target_obj **target_obj,
 	DBC_REQUIRE(num_segs == 0 || seg_tab != NULL);
 
 	/* Allocate DBL target object */
-	MEM_ALLOC_OBJECT(target, struct rmm_target_obj, RMM_TARGSIGNATURE);
+	target = kzalloc(sizeof(struct rmm_target_obj), GFP_KERNEL);
 
 	if (target == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	if (DSP_FAILED(status))
 		goto func_cont;
@@ -198,26 +194,25 @@ dsp_status rmm_create(struct rmm_target_obj **target_obj,
 		goto func_cont;
 
 	/* Allocate the memory for freelist from host's memory */
-	target->free_list = mem_calloc(num_segs * sizeof(struct rmm_header *),
-				       MEM_PAGED);
+	target->free_list = kzalloc(num_segs * sizeof(struct rmm_header *),
+							GFP_KERNEL);
 	if (target->free_list == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	} else {
 		/* Allocate headers for each element on the free list */
 		for (i = 0; i < (s32) num_segs; i++) {
 			target->free_list[i] =
-			    mem_calloc(sizeof(struct rmm_header), MEM_PAGED);
+				kzalloc(sizeof(struct rmm_header), GFP_KERNEL);
 			if (target->free_list[i] == NULL) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				break;
 			}
 		}
 		/* Allocate memory for initial segment table */
-		target->seg_tab = mem_calloc(num_segs *
-					     sizeof(struct rmm_segment),
-					     MEM_PAGED);
+		target->seg_tab = kzalloc(num_segs * sizeof(struct rmm_segment),
+								GFP_KERNEL);
 		if (target->seg_tab == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			/* Initialize segment table and free list */
 			sptr = target->seg_tab;
@@ -236,10 +231,10 @@ dsp_status rmm_create(struct rmm_target_obj **target_obj,
 func_cont:
 	/* Initialize overlay memory list */
 	if (DSP_SUCCEEDED(status)) {
-		target->ovly_list = mem_calloc(sizeof(struct lst_list),
-					       MEM_NONPAGED);
+		target->ovly_list = kzalloc(sizeof(struct lst_list),
+							GFP_KERNEL);
 		if (target->ovly_list == NULL) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		} else {
 			INIT_LIST_HEAD(&target->ovly_list->head);
 		}
@@ -254,8 +249,7 @@ func_cont:
 
 	}
 
-	DBC_ENSURE((DSP_SUCCEEDED(status) && MEM_IS_VALID_HANDLE((*target_obj),
-							RMM_TARGSIGNATURE))
+	DBC_ENSURE((DSP_SUCCEEDED(status) && *target_obj)
 		   || (DSP_FAILED(status) && *target_obj == NULL));
 
 	return status;
@@ -271,7 +265,7 @@ void rmm_delete(struct rmm_target_obj *target)
 	struct rmm_header *next;
 	u32 i;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(target, RMM_TARGSIGNATURE));
+	DBC_REQUIRE(target);
 
 	kfree(target->seg_tab);
 
@@ -297,7 +291,7 @@ void rmm_delete(struct rmm_target_obj *target)
 		kfree(target->free_list);
 	}
 
-	MEM_FREE_OBJECT(target);
+	kfree(target);
 }
 
 /*
@@ -321,7 +315,7 @@ bool rmm_free(struct rmm_target_obj *target, u32 segid, u32 addr, u32 size,
 	struct rmm_ovly_sect *sect;
 	bool ret = true;
 
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(target, RMM_TARGSIGNATURE));
+	DBC_REQUIRE(target);
 
 	DBC_REQUIRE(reserved || segid < target->num_segs);
 	DBC_REQUIRE(reserved || (addr >= target->seg_tab[segid].base &&
@@ -496,7 +490,7 @@ static bool free_block(struct rmm_target_obj *target, u32 segid, u32 addr,
 	bool ret = true;
 
 	/* Create a memory header to hold the newly free'd block. */
-	rhead = mem_calloc(sizeof(struct rmm_header), MEM_PAGED);
+	rhead = kzalloc(sizeof(struct rmm_header), GFP_KERNEL);
 	if (rhead == NULL) {
 		ret = false;
 	} else {

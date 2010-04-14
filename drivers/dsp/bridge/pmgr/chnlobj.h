@@ -23,13 +23,6 @@
 #include <dspbridge/chnldefs.h>
 #include <dspbridge/wmd.h>
 
-/* Object validateion macros: */
-#define CHNL_IS_VALID_MGR(h) \
-		((h != NULL) && ((h)->dw_signature == CHNL_MGRSIGNATURE))
-
-#define CHNL_IS_VALID_CHNL(h)\
-		((h != NULL) && ((h)->dw_signature == CHNL_SIGNATURE))
-
 /*
  *  This struct is the first field in a chnl_mgr struct, as implemented in
  *  a WMD channel class library.  Other, implementation specific fields
@@ -37,7 +30,6 @@
  */
 struct chnl_mgr_ {
 	/* These must be the first fields in a chnl_mgr struct: */
-	u32 dw_signature;	/* Used for object validation. */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD. */
 };
 
@@ -48,7 +40,6 @@ struct chnl_mgr_ {
  */
 struct chnl_object_ {
 	/* These must be the first fields in a chnl_object struct: */
-	u32 dw_signature;	/* Used for object validation. */
 	struct chnl_mgr_ *chnl_mgr_obj;	/* Pointer back to channel manager. */
 };
 

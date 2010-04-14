@@ -112,7 +112,6 @@ struct shm {
 
 	/* Channel Manager: only one created per board: */
 struct chnl_mgr {
-	u32 dw_signature;	/* Used for object validation */
 	/* Function interface to WMD */
 	struct bridge_drv_interface *intf_fxns;
 	struct io_mgr *hio_mgr;	/* IO manager */
@@ -125,10 +124,10 @@ struct chnl_mgr {
 	/* Critical section object handle */
 	spinlock_t chnl_mgr_lock;
 	u32 word_size;		/* Size in bytes of DSP word */
-	u32 max_channels;	/* Total number of channels */
-	u32 open_channels;	/* Total number of open channels */
+	u8 max_channels;	/* Total number of channels */
+	u8 open_channels;	/* Total number of open channels */
 	struct chnl_object **ap_channel;	/* Array of channels */
-	u32 dw_type;		/* Type of channel class library */
+	u8 dw_type;		/* Type of channel class library */
 	/* If no shm syms, return for CHNL_Open */
 	dsp_status chnl_open_status;
 };
@@ -138,12 +137,11 @@ struct chnl_mgr {
  *     up to CHNL_MAXCHANNELS + CHNL_MAXDDMACHNLS per board.
  */
 struct chnl_object {
-	u32 dw_signature;	/* Used for object validation */
 	/* Pointer back to channel manager */
 	struct chnl_mgr *chnl_mgr_obj;
 	u32 chnl_id;		/* Channel id */
-	u32 dw_state;		/* Current channel state */
-	u32 chnl_mode;		/* Chnl mode and attributes */
+	u8 dw_state;		/* Current channel state */
+	s8 chnl_mode;		/* Chnl mode and attributes */
 	/* Chnl I/O completion event (user mode) */
 	bhandle user_event;
 	/* Abstract syncronization object */

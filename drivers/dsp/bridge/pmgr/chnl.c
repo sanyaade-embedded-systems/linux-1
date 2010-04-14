@@ -30,7 +30,6 @@
 
 /*  ----------------------------------- OS Adaptation Layer */
 #include <dspbridge/cfg.h>
-#include <dspbridge/mem.h>
 #include <dspbridge/sync.h>
 
 /*  ----------------------------------- Platform Manager */
@@ -72,7 +71,7 @@ dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
 	    (pMgrAttrs->max_channels <= CHNL_MAXCHANNELS))
 		status = DSP_SOK;
 	else if (pMgrAttrs->max_channels == 0)
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 	else
 		status = CHNL_E_MAXCHANNELS;
 
@@ -104,7 +103,7 @@ dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
 		}
 	}
 
-	DBC_ENSURE(DSP_FAILED(status) || CHNL_IS_VALID_MGR(chnl_mgr_obj));
+	DBC_ENSURE(DSP_FAILED(status) || chnl_mgr_obj);
 
 	return status;
 }
@@ -122,15 +121,15 @@ dsp_status chnl_destroy(struct chnl_mgr *hchnl_mgr)
 
 	DBC_REQUIRE(refs > 0);
 
-	if (CHNL_IS_VALID_MGR(chnl_mgr_obj)) {
+	if (chnl_mgr_obj) {
 		intf_fxns = chnl_mgr_obj->intf_fxns;
 		/* Let WMD channel module destroy the chnl_mgr: */
 		status = (*intf_fxns->pfn_chnl_destroy) (hchnl_mgr);
 	} else {
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	}
 
-	DBC_ENSURE(DSP_FAILED(status) || !CHNL_IS_VALID_MGR(chnl_mgr_obj));
+	DBC_ENSURE(DSP_FAILED(status) || !chnl_mgr_obj);
 
 	return status;
 }

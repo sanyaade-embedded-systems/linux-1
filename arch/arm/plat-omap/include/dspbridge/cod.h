@@ -26,6 +26,7 @@
 #define COD_MAXPATHLENGTH       255
 #define COD_TRACEBEG            "SYS_PUTCBEG"
 #define COD_TRACEEND            "SYS_PUTCEND"
+#define COD_TRACECURPOS	"BRIDGE_SYS_PUTC_current"
 #define COD_TRACESECT           "trace"
 #define COD_TRACEBEGOLD         "PUTCBEG"
 #define COD_TRACEENDOLD         "PUTCEND"
@@ -87,7 +88,7 @@ extern void cod_close(struct cod_libraryobj *lib);
  *      DSP_SOK:                Success.
  *      COD_E_NOZLFUNCTIONS:    Could not initialize ZL functions.
  *      COD_E_ZLCREATEFAILED:   ZL_Create failed.
- *      DSP_ENOTIMPL:           attrs was not NULL.  We don't yet support
+ *      -ENOSYS:           attrs was not NULL.  We don't yet support
  *                              non default values of attrs.
  *  Requires:
  *      COD module initialized.
@@ -156,7 +157,7 @@ extern dsp_status cod_get_base_lib(struct cod_manager *cod_mgr_obj,
  *      usize:       size of name buffer.
  *  Returns:
  *      DSP_SOK:    Success.
- *      DSP_EFAIL:  Buffer too small.
+ *      -EPERM:  Buffer too small.
  *  Requires:
  *      COD module initialized.
  *      valid cod_mgr_obj.
@@ -286,7 +287,7 @@ extern bool cod_init(void);
  *      envp:       array of environment strings for DSP exec.
  *  Returns:
  *      DSP_SOK:                   Success.
- *      COD_E_OPENFAILED:       Failed to open target code.
+ *      -EBADF:       Failed to open target code.
  *      COD_E_LOADFAILED:       Failed to load code onto target.
  *  Requires:
  *      COD module initialized.
@@ -315,7 +316,7 @@ extern dsp_status cod_load_base(struct cod_manager *cod_mgr_obj,
  *                      and cod_get_section.
  *  Returns:
  *      S_OK:                   Success.
- *      COD_E_OPENFAILED:       Failed to open target code.
+ *      -EBADF:       Failed to open target code.
  *  Requires:
  *      COD module initialized.
  *      hmgr is valid.
@@ -337,7 +338,7 @@ extern dsp_status cod_open(struct cod_manager *hmgr,
  *      flags:          Specifies whether to load symbols.
  *  Returns:
  *      DSP_SOK:            Success.
- *      COD_E_OPENFAILED:   Failed to open target code.
+ *      -EBADF:   Failed to open target code.
  *  Requires:
  *      COD module initialized.
  *      hmgr is valid.

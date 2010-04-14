@@ -29,7 +29,6 @@
 #include <dspbridge/dbc.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 #include <dspbridge/sync.h>
 
 /*  ----------------------------------- Link Driver */
@@ -47,8 +46,6 @@
 /*  ----------------------------------- This */
 #include <dspbridge/disp.h>
 
-#define DISP_SIGNATURE       0x50534944	/* "PSID" */
-
 /* Size of a reply from RMS */
 #define REPLYSIZE (3 * sizeof(rms_word))
 
@@ -64,7 +61,6 @@
  *  ======== disp_object ========
  */
 struct disp_object {
-	u32 dw_signature;	/* Used for object validation */
 	struct dev_object *hdev_obj;	/* Device for this processor */
 	struct bridge_drv_interface *intf_fxns;	/* Function interface to WMD */
 	struct chnl_mgr *hchnl_mgr;	/* Channel manager */
@@ -100,7 +96,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 	u32 ul_chnl_id;
 	struct chnl_attr chnl_attr_obj;
 	dsp_status status = DSP_SOK;
-	u32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDispObject != NULL);
@@ -110,9 +106,9 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 	*phDispObject = NULL;
 
 	/* Allocate Node Dispatcher object */
-	MEM_ALLOC_OBJECT(disp_obj, struct disp_object, DISP_SIGNATURE);
+	disp_obj = kzalloc(sizeof(struct disp_object), GFP_KERNEL);
 	if (disp_obj == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	else
 		disp_obj->hdev_obj = hdev_obj;
 
@@ -120,7 +116,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 	if (DSP_SUCCEEDED(status)) {
 		status = dev_get_chnl_mgr(hdev_obj, &(disp_obj->hchnl_mgr));
 		if (DSP_SUCCEEDED(status)) {
-			(void)dev_get_intf_fxns(hdev_obj, &intf_fxns);
+			status = dev_get_intf_fxns(hdev_obj, &intf_fxns);
 			disp_obj->intf_fxns = intf_fxns;
 		}
 	}
@@ -136,7 +132,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 		goto func_cont;
 
 	if (dev_type != DSP_UNIT) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_cont;
 	}
 
@@ -164,9 +160,9 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 		/* Allocate buffer for commands, replies */
 		disp_obj->ul_bufsize = pDispAttrs->ul_chnl_buf_size;
 		disp_obj->ul_bufsize_rms = RMS_COMMANDBUFSIZE;
-		disp_obj->pbuf = mem_calloc(disp_obj->ul_bufsize, MEM_PAGED);
+		disp_obj->pbuf = kzalloc(disp_obj->ul_bufsize, GFP_KERNEL);
 		if (disp_obj->pbuf == NULL)
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 	}
 func_cont:
 	if (DSP_SUCCEEDED(status))
@@ -175,8 +171,7 @@ func_cont:
 		delete_disp(disp_obj);
 
 	DBC_ENSURE(((DSP_FAILED(status)) && ((*phDispObject == NULL))) ||
-		   ((DSP_SUCCEEDED(status)) &&
-		    (MEM_IS_VALID_HANDLE((*phDispObject), DISP_SIGNATURE))));
+				((DSP_SUCCEEDED(status)) && *phDispObject));
 	return status;
 }
 
@@ -187,11 +182,11 @@ func_cont:
 void disp_delete(struct disp_object *disp_obj)
 {
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 
 	delete_disp(disp_obj);
 
-	DBC_ENSURE(!MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_ENSURE(!disp_obj);
 }
 
 /*
@@ -237,7 +232,7 @@ dsp_status disp_node_change_priority(struct disp_object *disp_obj,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 	DBC_REQUIRE(hnode != NULL);
 
 	/* Send message to RMS to change priority */
@@ -283,10 +278,10 @@ dsp_status disp_node_create(struct disp_object *disp_obj,
 	u32 max;
 	dsp_status status = DSP_SOK;
 	struct dsp_nodeinfo node_info;
-	u32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 	DBC_REQUIRE(hnode != NULL);
 	DBC_REQUIRE(node_get_type(hnode) != NODE_DEVICE);
 	DBC_REQUIRE(pNodeEnv != NULL);
@@ -316,7 +311,7 @@ dsp_status disp_node_create(struct disp_object *disp_obj,
 	    sizeof(struct rms_msg_args)
 	    / sizeof(rms_word) - 1 + dw_length;
 	if (total >= max) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		dev_dbg(bridge, "%s: Message args too large for buffer! size "
 			"= %d, max = %d\n", __func__, total, max);
 	}
@@ -461,7 +456,7 @@ dsp_status disp_node_create(struct disp_object *disp_obj,
 			}
 		} else {
 			/* Args won't fit */
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 	}
 	if (DSP_SUCCEEDED(status)) {
@@ -498,10 +493,10 @@ dsp_status disp_node_delete(struct disp_object *disp_obj,
 	u32 dw_arg;
 	struct rms_command *rms_cmd;
 	dsp_status status = DSP_SOK;
-	u32 dev_type;
+	u8 dev_type;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 	DBC_REQUIRE(hnode != NULL);
 
 	status = dev_get_dev_type(disp_obj->hdev_obj, &dev_type);
@@ -552,9 +547,9 @@ dsp_status disp_node_run(struct disp_object *disp_obj,
 	u32 dw_arg;
 	struct rms_command *rms_cmd;
 	dsp_status status = DSP_SOK;
-	u32 dev_type;
+	u8 dev_type;
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE));
+	DBC_REQUIRE(disp_obj);
 	DBC_REQUIRE(hnode != NULL);
 
 	status = dev_get_dev_type(disp_obj->hdev_obj, &dev_type);
@@ -603,7 +598,7 @@ static void delete_disp(struct disp_object *disp_obj)
 	dsp_status status = DSP_SOK;
 	struct bridge_drv_interface *intf_fxns;
 
-	if (MEM_IS_VALID_HANDLE(disp_obj, DISP_SIGNATURE)) {
+	if (disp_obj) {
 		intf_fxns = disp_obj->intf_fxns;
 
 		/* Free Node Dispatcher resources */
@@ -628,7 +623,7 @@ static void delete_disp(struct disp_object *disp_obj)
 		}
 		kfree(disp_obj->pbuf);
 
-		MEM_FREE_OBJECT(disp_obj);
+		kfree(disp_obj);
 	}
 }
 
@@ -648,7 +643,7 @@ static dsp_status fill_stream_def(rms_word *pdw_buf, u32 *ptotal, u32 offset,
 	dsp_status status = DSP_SOK;
 
 	if (total + sizeof(struct rms_strm_def) / sizeof(rms_word) >= max) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 	} else {
 		strm_def_obj = (struct rms_strm_def *)(pdw_buf + total);
 		strm_def_obj->bufsize = strm_def.buf_size;
@@ -672,7 +667,7 @@ static dsp_status fill_stream_def(rms_word *pdw_buf, u32 *ptotal, u32 offset,
 		    (dw_length + chars_in_rms_word - 1) / chars_in_rms_word;
 
 		if (total + name_len >= max) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			/*
 			 *  Zero out last word, since the device name may not
@@ -721,9 +716,9 @@ static dsp_status send_message(struct disp_object *disp_obj, u32 dwTimeout,
 	if (DSP_SUCCEEDED(status)) {
 		if (!CHNL_IS_IO_COMPLETE(chnl_ioc_obj)) {
 			if (CHNL_IS_TIMED_OUT(chnl_ioc_obj))
-				status = DSP_ETIMEOUT;
+				status = -ETIME;
 			else
-				status = DSP_EFAIL;
+				status = -EPERM;
 		}
 	}
 	/* Get the reply */
@@ -741,10 +736,10 @@ static dsp_status send_message(struct disp_object *disp_obj, u32 dwTimeout,
 	    (*intf_fxns->pfn_chnl_get_ioc) (chnl_obj, dwTimeout, &chnl_ioc_obj);
 	if (DSP_SUCCEEDED(status)) {
 		if (CHNL_IS_TIMED_OUT(chnl_ioc_obj)) {
-			status = DSP_ETIMEOUT;
+			status = -ETIME;
 		} else if (chnl_ioc_obj.byte_size < ul_bytes) {
 			/* Did not get all of the reply from the RMS */
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			if (CHNL_IS_IO_COMPLETE(chnl_ioc_obj)) {
 				DBC_ASSERT(chnl_ioc_obj.pbuf == pbuf);
@@ -752,7 +747,7 @@ static dsp_status send_message(struct disp_object *disp_obj, u32 dwTimeout,
 				*pdw_arg =
 				    (((rms_word *) (chnl_ioc_obj.pbuf))[1]);
 			} else {
-				status = DSP_EFAIL;
+				status = -EPERM;
 			}
 		}
 	}

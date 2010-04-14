@@ -28,7 +28,6 @@
 #include <dspbridge/drv.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 #include <dspbridge/cfg.h>
 
 /*  ----------------------------------- specific to this file */
@@ -131,7 +130,7 @@ dsp_status read_ext_dsp_data(struct wmd_dev_context *hDevContext,
 		DBC_ASSERT(ul_ext_end > ul_ext_base);
 
 		if (ul_ext_end < ul_ext_base)
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 		if (DSP_SUCCEEDED(status)) {
 			ul_tlb_base_virt =
@@ -157,7 +156,7 @@ dsp_status read_ext_dsp_data(struct wmd_dev_context *hDevContext,
 				 * only when the board is stopped.
 				*/
 				if (!dev_context->dw_dsp_ext_base_addr)
-					status = DSP_EFAIL;
+					status = -EPERM;
 			}
 
 			dw_base_addr = dw_ext_prog_virt_mem;
@@ -165,7 +164,7 @@ dsp_status read_ext_dsp_data(struct wmd_dev_context *hDevContext,
 	}
 
 	if (!dw_base_addr || !ul_ext_base || !ul_ext_end)
-		status = DSP_EFAIL;
+		status = -EPERM;
 
 	offset = dwDSPAddr - ul_ext_base;
 
@@ -186,35 +185,31 @@ dsp_status write_dsp_data(struct wmd_dev_context *hDevContext,
 {
 	u32 offset;
 	u32 dw_base_addr = hDevContext->dw_dsp_base_addr;
-	struct cfg_hostres resources;
-	dsp_status status;
+	struct cfg_hostres *resources = hDevContext->resources;
+	dsp_status status = DSP_SOK;
 	u32 base1, base2, base3;
 	base1 = OMAP_DSP_MEM1_SIZE;
 	base2 = OMAP_DSP_MEM2_BASE - OMAP_DSP_MEM1_BASE;
 	base3 = OMAP_DSP_MEM3_BASE - OMAP_DSP_MEM1_BASE;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-
-	if (DSP_FAILED(status))
-		return status;
+	if (!resources)
+		return -EPERM;
 
 	offset = dwDSPAddr - hDevContext->dw_dsp_start_add;
 	if (offset < base1) {
-		dw_base_addr = MEM_LINEAR_ADDRESS(resources.dw_mem_base[2],
-						  resources.dw_mem_length[2]);
+		dw_base_addr = MEM_LINEAR_ADDRESS(resources->dw_mem_base[2],
+						  resources->dw_mem_length[2]);
 	} else if (offset > base1 && offset < base2 + OMAP_DSP_MEM2_SIZE) {
-		dw_base_addr = MEM_LINEAR_ADDRESS(resources.dw_mem_base[3],
-						  resources.dw_mem_length[3]);
+		dw_base_addr = MEM_LINEAR_ADDRESS(resources->dw_mem_base[3],
+						  resources->dw_mem_length[3]);
 		offset = offset - base2;
 	} else if (offset >= base2 + OMAP_DSP_MEM2_SIZE &&
 		   offset < base3 + OMAP_DSP_MEM3_SIZE) {
-		dw_base_addr = MEM_LINEAR_ADDRESS(resources.dw_mem_base[4],
-						  resources.dw_mem_length[4]);
+		dw_base_addr = MEM_LINEAR_ADDRESS(resources->dw_mem_base[4],
+						  resources->dw_mem_length[4]);
 		offset = offset - base3;
 	} else {
-		return DSP_EFAIL;
+		return -EPERM;
 	}
 	if (ul_num_bytes)
 		memcpy((u8 *) (dw_base_addr + offset), pbHostBuf, ul_num_bytes);
@@ -244,7 +239,7 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 	u32 dw_ext_prog_virt_mem;
 	u32 ul_tlb_base_virt = 0;
 	u32 ul_shm_offset_virt = 0;
-	struct cfg_hostres host_res;
+	struct cfg_hostres *host_res = dev_context->resources;
 	bool trace_load = false;
 	temp_byte1 = 0x0;
 	temp_byte2 = 0x0;
@@ -320,7 +315,7 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 		DBC_ASSERT(ul_ext_end != 0);
 		DBC_ASSERT(ul_ext_end > ul_ext_base);
 		if (ul_ext_end < ul_ext_base)
-			ret = DSP_EFAIL;
+			ret = -EPERM;
 
 		if (DSP_SUCCEEDED(ret)) {
 			ul_tlb_base_virt =
@@ -347,10 +342,7 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 				dw_ext_prog_virt_mem =
 				    dev_context->atlb_entry[0].ul_gpp_va;
 			} else {
-				cfg_get_host_resources((struct cfg_devnode *)
-						drv_get_first_dev_extension(),
-						&host_res);
-				dw_ext_prog_virt_mem = host_res.dw_mem_base[1];
+				dw_ext_prog_virt_mem = host_res->dw_mem_base[1];
 				dw_ext_prog_virt_mem +=
 				    (ul_ext_base - ul_dyn_ext_base);
 			}
@@ -363,11 +355,11 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 			/* This dw_dsp_ext_base_addr will get cleared only when
 			 * the board is stopped. */
 			if (!dev_context->dw_dsp_ext_base_addr)
-				ret = DSP_EFAIL;
+				ret = -EPERM;
 		}
 	}
 	if (!dw_base_addr || !ul_ext_base || !ul_ext_end)
-		ret = DSP_EFAIL;
+		ret = -EPERM;
 
 	if (DSP_SUCCEEDED(ret)) {
 		for (i = 0; i < 4; i++)
@@ -376,7 +368,7 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 		dw_offset = dwDSPAddr - ul_ext_base;
 		/* Also make sure the dwDSPAddr is < ul_ext_end */
 		if (dwDSPAddr > ul_ext_end || dw_offset > dwDSPAddr)
-			ret = DSP_EFAIL;
+			ret = -EPERM;
 	}
 	if (DSP_SUCCEEDED(ret)) {
 		if (ul_num_bytes)
@@ -397,19 +389,36 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 
 dsp_status sm_interrupt_dsp(struct wmd_dev_context * dev_context, u16 mb_val)
 {
-	struct cfg_hostres resources;
 	dsp_status status = DSP_SOK;
-	u32 temp;
 
 	if (!dev_context->mbox)
-		return DSP_SOK;
+		return status;
 
-	status = cfg_get_host_resources((struct cfg_devnode *)
-					drv_get_first_dev_extension(),
-					&resources);
-	if (DSP_FAILED(status))
-		return DSP_EFAIL;
+	status = omap_mbox_msg_send(dev_context->mbox, mb_val);
 
+	if (status) {
+		pr_err("omap_mbox_msg_send Fail and status = %d\n", status);
+		status = -EPERM;
+	}
+
+	dev_dbg(bridge, "MBX: writing %x to Mailbox\n", mb_val);
+	return status;
+}
+
+int send_mbox_callback(void *arg)
+{
+	struct wmd_dev_context *dev_context;
+	struct cfg_hostres *resources;
+	u32 temp;
+	struct dspbridge_platform_data *pdata =
+		omap_dspbridge_dev->dev.platform_data;
+
+	dev_get_wmd_context(dev_get_first(), &dev_context);
+
+	if (!dev_context || !dev_context->resources)
+		return -EFAULT;
+
+	resources = dev_context->resources;
 	if (dev_context->dw_brd_state == BRD_DSP_HIBERNATION ||
 	    dev_context->dw_brd_state == BRD_HIBERNATION) {
 		/* Restart the peripheral clocks */
@@ -423,22 +432,25 @@ dsp_status sm_interrupt_dsp(struct wmd_dev_context * dev_context, u16 mb_val)
 		 * 2:0 AUTO_IVA2_DPLL - Enabling IVA2 DPLL auto control
 		 *     in CM_AUTOIDLE_PLL_IVA2 register
 		 */
-		*(reg_uword32 *) (resources.dw_cm_base + 0x34) = 0x1;
+		(*pdata->dsp_cm_write)(1 << OMAP3430_AUTO_IVA2_DPLL_SHIFT,
+				OMAP3430_IVA2_MOD, OMAP3430_CM_AUTOIDLE_PLL);
 
 		/*
 		 * 7:4 IVA2_DPLL_FREQSEL - IVA2 internal frq set to
 		 *     0.75 MHz - 1.0 MHz
 		 * 2:0 EN_IVA2_DPLL - Enable IVA2 DPLL in lock mode
 		 */
-		temp = *(reg_uword32 *) (resources.dw_cm_base + 0x4);
-		temp = (temp & 0xFFFFFF08) | 0x37;
-		*(reg_uword32 *) (resources.dw_cm_base + 0x4) = temp;
+		(*pdata->dsp_cm_rmw_bits)(OMAP3430_IVA2_DPLL_FREQSEL_MASK |
+				OMAP3430_EN_IVA2_DPLL_MASK,
+				0x3 << OMAP3430_IVA2_DPLL_FREQSEL_SHIFT |
+				0x7 << OMAP3430_EN_IVA2_DPLL_SHIFT,
+				OMAP3430_IVA2_MOD, OMAP3430_CM_CLKEN_PLL);
 
 		/* Restore mailbox settings */
 		omap_mbox_restore_ctx(dev_context->mbox);
 
 		/* Access MMU SYS CONFIG register to generate a short wakeup */
-		temp = *(reg_uword32 *) (resources.dw_dmmu_base + 0x10);
+		temp = *(reg_uword32 *) (resources->dw_dmmu_base + 0x10);
 
 		dev_context->dw_brd_state = BRD_RUNNING;
 	} else if (dev_context->dw_brd_state == BRD_RETENTION) {
@@ -446,13 +458,6 @@ dsp_status sm_interrupt_dsp(struct wmd_dev_context * dev_context, u16 mb_val)
 		dsp_peripheral_clocks_enable(dev_context, NULL);
 	}
 
-	status = omap_mbox_msg_send(dev_context->mbox, mb_val);
-
-	if (status) {
-		pr_err("omap_mbox_msg_send Fail and status = %d\n", status);
-		status = DSP_EFAIL;
-	}
-
-	dev_dbg(bridge, "MBX: writing %x to Mailbox\n", mb_val);
-	return DSP_SOK;
+	dev_context->dw_brd_state = BRD_RUNNING;
+	return 0;
 }

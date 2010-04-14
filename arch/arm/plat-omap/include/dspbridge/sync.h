@@ -80,14 +80,14 @@ void sync_set_event(struct sync_object *event);
  *
  * This functios will wait until @event is set or until timeout. In case of
  * success the function will return DSP_SOK and
- * in case of timeout the function will return DSP_ETIMEOUT
+ * in case of timeout the function will return -ETIME
  */
 
 static inline dsp_status sync_wait_on_event(struct sync_object *event,
 							unsigned timeout)
 {
 	return wait_for_completion_timeout(&event->comp,
-		msecs_to_jiffies(timeout)) ? DSP_SOK : DSP_ETIMEOUT;
+		msecs_to_jiffies(timeout)) ? DSP_SOK : -ETIME;
 }
 
 /**
@@ -100,7 +100,7 @@ static inline dsp_status sync_wait_on_event(struct sync_object *event,
  * This functios will wait until any of the array element is set or until
  * timeout. In case of success the function will return DSP_SOK and
  * @pu_index will store the index of the array element set and in case
- * of timeout the function will return DSP_ETIMEOUT.
+ * of timeout the function will return -ETIME.
  */
 
 dsp_status sync_wait_on_multiple_events(struct sync_object **events,

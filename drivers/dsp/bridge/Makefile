@@ -1,10 +1,8 @@
 obj-$(CONFIG_MPU_BRIDGE)	+= bridgedriver.o
 
 libgen = gen/gb.o gen/gs.o gen/gh.o gen/uuidutil.o
-libservices = services/mem.o services/sync.o \
-		services/clk.o services/cfg.o services/reg.o \
-               services/regsup.o services/ntfy.o \
-		services/services.o
+libservices = services/sync.o services/clk.o services/cfg.o \
+		services/ntfy.o services/services.o
 libwmd = wmd/chnl_sm.o wmd/msg_sm.o wmd/io_sm.o wmd/tiomap3430.o \
 		wmd/tiomap3430_pwr.o wmd/tiomap_io.o \
 		wmd/mmu_fault.o wmd/ue_deh.o
@@ -15,7 +13,7 @@ librmgr = rmgr/dbdcd.o rmgr/disp.o rmgr/drv.o rmgr/mgr.o rmgr/node.o \
 		rmgr/nldr.o rmgr/drv_interface.o
 libdload = dynload/cload.o dynload/getsection.o dynload/reloc.o \
 		 dynload/tramp.o
-libhw = hw/hw_prcm.o hw/hw_dspssC64P.o hw/hw_mmu.o
+libhw = hw/hw_mmu.o
 
 bridgedriver-objs = $(libgen) $(libservices) $(libwmd) $(libpmgr) $(librmgr) \
 			$(libdload) $(libhw)
@@ -30,5 +28,6 @@ ccflags-y += -Idrivers/dsp/bridge/services
 ccflags-y += -Idrivers/dsp/bridge/wmd
 ccflags-y += -Idrivers/dsp/bridge/pmgr
 ccflags-y += -Idrivers/dsp/bridge/rmgr
+ccflags-y += -Idrivers/dsp/bridge/dynload
 ccflags-y += -Idrivers/dsp/bridge/hw
 ccflags-y += -Iarch/arm

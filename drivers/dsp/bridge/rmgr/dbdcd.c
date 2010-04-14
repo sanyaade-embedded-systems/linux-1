@@ -33,10 +33,6 @@
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
 
-/*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
-#include <dspbridge/reg.h>
-
 /*  ----------------------------------- Platform Manager */
 #include <dspbridge/cod.h>
 
@@ -47,10 +43,6 @@
 #include <dspbridge/dbdcd.h>
 
 /*  ----------------------------------- Global defines. */
-#define SIGNATURE       0x5f444344	/* "DCD_" (in reverse). */
-
-#define IS_VALID_HANDLE(h) (((h) != NULL) && (h->dw_signature == SIGNATURE))
-
 #define MAX_INT2CHAR_LENGTH     16	/* Max int2char len of 32 bit int */
 
 /* Name of section containing dependent libraries */
@@ -58,9 +50,12 @@
 
 /* DCD specific structures. */
 struct dcd_manager {
-	u32 dw_signature;	/* Used for object validation. */
 	struct cod_manager *cod_mgr;	/* Handle to COD manager object. */
 };
+
+/*  Pointer to the registry support key */
+static struct list_head reg_key_list;
+static DEFINE_SPINLOCK(dbdcd_lock);
 
 /* Global reference variables. */
 static u32 refs;
@@ -93,12 +88,12 @@ dsp_status dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
 
 	DBC_REQUIRE(refs > 0);
 
-	if (IS_VALID_HANDLE(hdcd_mgr))
+	if (hdcd_mgr)
 		status = dcd_get_objects(hdcd_mgr, pszCoffPath,
 					 (dcd_registerfxn) dcd_register_object,
 					 (void *)pszCoffPath);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	return status;
 }
@@ -115,12 +110,12 @@ dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
 
 	DBC_REQUIRE(refs > 0);
 
-	if (IS_VALID_HANDLE(hdcd_mgr))
+	if (hdcd_mgr)
 		status = dcd_get_objects(hdcd_mgr, pszCoffPath,
 					 (dcd_registerfxn) dcd_register_object,
 					 NULL);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	return status;
 }
@@ -145,7 +140,7 @@ dsp_status dcd_create_manager(IN char *pszZlDllName,
 		goto func_end;
 
 	/* Create a DCD object. */
-	MEM_ALLOC_OBJECT(dcd_mgr_obj, struct dcd_manager, SIGNATURE);
+	dcd_mgr_obj = kzalloc(sizeof(struct dcd_manager), GFP_KERNEL);
 	if (dcd_mgr_obj != NULL) {
 		/* Fill out the object. */
 		dcd_mgr_obj->cod_mgr = cod_mgr;
@@ -153,7 +148,7 @@ dsp_status dcd_create_manager(IN char *pszZlDllName,
 		/* Return handle to this DCD interface. */
 		*phDcdMgr = dcd_mgr_obj;
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 		/*
 		 * If allocation of DcdManager object failed, delete the
@@ -163,8 +158,8 @@ dsp_status dcd_create_manager(IN char *pszZlDllName,
 	}
 
 	DBC_ENSURE((DSP_SUCCEEDED(status)) || ((cod_mgr == NULL) &&
-					       (status == DSP_EFAIL))
-		   || ((dcd_mgr_obj == NULL) && (status == DSP_EMEMORY)));
+					       (status == -EPERM))
+		   || ((dcd_mgr_obj == NULL) && (status == -ENOMEM)));
 
 func_end:
 	return status;
@@ -178,16 +173,16 @@ func_end:
 dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr)
 {
 	struct dcd_manager *dcd_mgr_obj = hdcd_mgr;
-	dsp_status status = DSP_EHANDLE;
+	dsp_status status = -EFAULT;
 
 	DBC_REQUIRE(refs >= 0);
 
-	if (IS_VALID_HANDLE(hdcd_mgr)) {
+	if (hdcd_mgr) {
 		/* Delete the COD manager. */
 		cod_delete(dcd_mgr_obj->cod_mgr);
 
 		/* Deallocate a DCD manager object. */
-		MEM_FREE_OBJECT(dcd_mgr_obj);
+		kfree(dcd_mgr_obj);
 
 		status = DSP_SOK;
 	}
@@ -204,14 +199,13 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 				OUT struct dsp_uuid *uuid_obj)
 {
 	dsp_status status = DSP_SOK;
-	char sz_reg_key[REG_MAXREGPATHLENGTH];
-	char sz_value[REG_MAXREGPATHLENGTH];
-	char sz_data[REG_MAXREGPATHLENGTH];
-	u32 dw_value_size;
-	u32 dw_data_size;
+	char sz_reg_key[DCD_MAXPATHLENGTH];
+	char sz_value[DCD_MAXPATHLENGTH];
 	struct dsp_uuid dsp_uuid_obj;
 	char sz_obj_type[MAX_INT2CHAR_LENGTH];	/* str. rep. of obj_type. */
 	u32 dw_key_len = 0;
+	struct dcd_key_elem *dcd_key;
+	int len;
 
 	DBC_REQUIRE(refs >= 0);
 	DBC_REQUIRE(cIndex >= 0);
@@ -225,25 +219,21 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 		 */
 		status = DSP_ECHANGEDURINGENUM;
 	} else {
-		/* Enumerate a specific key in the registry by index. */
-		dw_value_size = REG_MAXREGPATHLENGTH;
-		dw_data_size = REG_MAXREGPATHLENGTH;
-
 		/*
 		 * Pre-determine final key length. It's length of DCD_REGKEY +
 		 *  "_\0" + length of sz_obj_type string + terminating NULL.
 		 */
 		dw_key_len = strlen(DCD_REGKEY) + 1 + sizeof(sz_obj_type) + 1;
-		DBC_ASSERT(dw_key_len < REG_MAXREGPATHLENGTH);
+		DBC_ASSERT(dw_key_len < DCD_MAXPATHLENGTH);
 
 		/* Create proper REG key; concatenate DCD_REGKEY with
 		 * obj_type. */
 		strncpy(sz_reg_key, DCD_REGKEY, strlen(DCD_REGKEY) + 1);
 		if ((strlen(sz_reg_key) + strlen("_\0")) <
-		    REG_MAXREGPATHLENGTH) {
+		    DCD_MAXPATHLENGTH) {
 			strncat(sz_reg_key, "_\0", 2);
 		} else {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 
 		/* This snprintf is guaranteed not to exceed max size of an
@@ -252,22 +242,33 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 				  obj_type);
 
 		if (status == -1) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			status = DSP_SOK;
 			if ((strlen(sz_reg_key) + strlen(sz_obj_type)) <
-			    REG_MAXREGPATHLENGTH) {
+			    DCD_MAXPATHLENGTH) {
 				strncat(sz_reg_key, sz_obj_type,
 					strlen(sz_obj_type) + 1);
 			} else {
-				status = DSP_EFAIL;
+				status = -EPERM;
 			}
 		}
 
 		if (DSP_SUCCEEDED(status)) {
-			status = reg_enum_value(cIndex, sz_reg_key, sz_value,
-						&dw_value_size, sz_data,
-						&dw_data_size);
+			len = strlen(sz_reg_key);
+			spin_lock(&dbdcd_lock);
+			list_for_each_entry(dcd_key, &reg_key_list, link) {
+				if (!strncmp(dcd_key->name, sz_reg_key, len)
+						&& !cIndex--) {
+					strncpy(sz_value, &dcd_key->name[len],
+					       strlen(&dcd_key->name[len]) + 1);
+						break;
+				}
+			}
+			spin_unlock(&dbdcd_lock);
+
+			if (&dcd_key->link == &reg_key_list)
+				status = -ENODATA;
 		}
 
 		if (DSP_SUCCEEDED(status)) {
@@ -281,17 +282,17 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 			enum_refs++;
 
 			status = DSP_SOK;
-		} else if (status == REG_E_NOMOREITEMS) {
+		} else if (status == -ENODATA) {
 			/* At the end of enumeration. Reset enum_refs. */
 			enum_refs = 0;
 
 			status = DSP_SENUMCOMPLETE;
 		} else {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 	}
 
-	DBC_ENSURE(uuid_obj || (status == DSP_EFAIL));
+	DBC_ENSURE(uuid_obj || (status == -EPERM));
 
 	return status;
 }
@@ -303,11 +304,17 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
  */
 void dcd_exit(void)
 {
+	struct dcd_key_elem *rv, *rv_tmp;
 	DBC_REQUIRE(refs > 0);
 
 	refs--;
 	if (refs == 0) {
 		cod_exit();
+		list_for_each_entry_safe(rv, rv_tmp, &reg_key_list, link) {
+			list_del(&rv->link);
+			kfree(rv->path);
+			kfree(rv);
+		}
 	}
 
 	DBC_ENSURE(refs >= 0);
@@ -325,7 +332,7 @@ dsp_status dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(IS_VALID_HANDLE(hdcd_mgr));
+	DBC_REQUIRE(hdcd_mgr);
 	DBC_REQUIRE(uuid_obj != NULL);
 	DBC_REQUIRE(pDepLibUuids != NULL);
 	DBC_REQUIRE(pPersistentDepLibs != NULL);
@@ -348,7 +355,7 @@ dsp_status dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(IS_VALID_HANDLE(hdcd_mgr));
+	DBC_REQUIRE(hdcd_mgr);
 	DBC_REQUIRE(pNumLibs != NULL);
 	DBC_REQUIRE(pNumPersLibs != NULL);
 	DBC_REQUIRE(uuid_obj != NULL);
@@ -376,9 +383,9 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 	u32 ul_addr = 0;	/* Used by cod_get_section */
 	u32 ul_len = 0;		/* Used by cod_get_section */
 	u32 dw_buf_size;	/* Used by REG functions */
-	char sz_reg_key[REG_MAXREGPATHLENGTH];
+	char sz_reg_key[DCD_MAXPATHLENGTH];
 	char *sz_uuid;		/*[MAXUUIDLEN]; */
-	char sz_reg_data[REG_MAXREGPATHLENGTH];
+	struct dcd_key_elem *dcd_key = NULL;
 	char sz_sect_name[MAXUUIDLEN + 2];	/* ".[UUID]\0" */
 	char *psz_coff_buf;
 	u32 dw_key_len;		/* Len of REG key. */
@@ -388,66 +395,73 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 	DBC_REQUIRE(pObjDef != NULL);
 	DBC_REQUIRE(pObjUuid != NULL);
 
-	sz_uuid = (char *)mem_calloc(MAXUUIDLEN, MEM_PAGED);
+	sz_uuid = kzalloc(MAXUUIDLEN, GFP_KERNEL);
 	if (!sz_uuid) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 		goto func_end;
 	}
 
-	if (!IS_VALID_HANDLE(hdcd_mgr)) {
-		status = DSP_EHANDLE;
+	if (!hdcd_mgr) {
+		status = -EFAULT;
 		goto func_end;
 	}
 
 	/* Pre-determine final key length. It's length of DCD_REGKEY +
 	 *  "_\0" + length of sz_obj_type string + terminating NULL */
 	dw_key_len = strlen(DCD_REGKEY) + 1 + sizeof(sz_obj_type) + 1;
-	DBC_ASSERT(dw_key_len < REG_MAXREGPATHLENGTH);
+	DBC_ASSERT(dw_key_len < DCD_MAXPATHLENGTH);
 
 	/* Create proper REG key; concatenate DCD_REGKEY with obj_type. */
 	strncpy(sz_reg_key, DCD_REGKEY, strlen(DCD_REGKEY) + 1);
 
-	if ((strlen(sz_reg_key) + strlen("_\0")) < REG_MAXREGPATHLENGTH)
+	if ((strlen(sz_reg_key) + strlen("_\0")) < DCD_MAXPATHLENGTH)
 		strncat(sz_reg_key, "_\0", 2);
 	else
-		status = DSP_EFAIL;
+		status = -EPERM;
 
 	status = snprintf(sz_obj_type, MAX_INT2CHAR_LENGTH, "%d", obj_type);
 	if (status == -1) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 	} else {
 		status = DSP_SOK;
 
 		if ((strlen(sz_reg_key) + strlen(sz_obj_type)) <
-		    REG_MAXREGPATHLENGTH) {
+		    DCD_MAXPATHLENGTH) {
 			strncat(sz_reg_key, sz_obj_type,
 				strlen(sz_obj_type) + 1);
 		} else {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 
 		/* Create UUID value to set in registry. */
 		uuid_uuid_to_string(pObjUuid, sz_uuid, MAXUUIDLEN);
 
-		if ((strlen(sz_reg_key) + MAXUUIDLEN) < REG_MAXREGPATHLENGTH)
+		if ((strlen(sz_reg_key) + MAXUUIDLEN) < DCD_MAXPATHLENGTH)
 			strncat(sz_reg_key, sz_uuid, MAXUUIDLEN);
 		else
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 		/* Retrieve paths from the registry based on struct dsp_uuid */
-		dw_buf_size = REG_MAXREGPATHLENGTH;
+		dw_buf_size = DCD_MAXPATHLENGTH;
 	}
-	if (DSP_SUCCEEDED(status))
-		status =
-		    reg_get_value(sz_reg_key, (u8 *) sz_reg_data, &dw_buf_size);
+	if (DSP_SUCCEEDED(status)) {
+		spin_lock(&dbdcd_lock);
+		list_for_each_entry(dcd_key, &reg_key_list, link) {
+			if (!strncmp(dcd_key->name, sz_reg_key,
+						strlen(sz_reg_key) + 1))
+				break;
+		}
+		spin_unlock(&dbdcd_lock);
+		if (&dcd_key->link == &reg_key_list) {
+			status = -ENOKEY;
+			goto func_end;
+		}
+	}
 
-	if (DSP_FAILED(status)) {
-		status = DSP_EUUID;
-		goto func_end;
-	}
 
 	/* Open COFF file. */
-	status = cod_open(dcd_mgr_obj->cod_mgr, sz_reg_data, COD_NOLOAD, &lib);
+	status = cod_open(dcd_mgr_obj->cod_mgr, dcd_key->path,
+							COD_NOLOAD, &lib);
 	if (DSP_FAILED(status)) {
 		status = DSP_EDCDLOADBASE;
 		goto func_end;
@@ -470,9 +484,9 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 	}
 
 	/* Allocate zeroed buffer. */
-	psz_coff_buf = mem_calloc(ul_len + 4, MEM_PAGED);
+	psz_coff_buf = kzalloc(ul_len + 4, GFP_KERNEL);
 #ifdef _DB_TIOMAP
-	if (strstr(sz_reg_data, "iva") == NULL) {
+	if (strstr(dcd_key->path, "iva") == NULL) {
 		/* Locate section by objectID and read its content. */
 		status =
 		    cod_read_section(lib, sz_sect_name, psz_coff_buf, ul_len);
@@ -486,7 +500,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 #endif
 	if (DSP_SUCCEEDED(status)) {
 		/* Compres DSP buffer to conform to PC format. */
-		if (strstr(sz_reg_data, "iva") == NULL) {
+		if (strstr(dcd_key->path, "iva") == NULL) {
 			compress_buf(psz_coff_buf, ul_len, DSPWORDSIZE);
 		} else {
 			compress_buf(psz_coff_buf, ul_len, 1);
@@ -534,8 +548,8 @@ dsp_status dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
 	s32 object_type;
 
 	DBC_REQUIRE(refs > 0);
-	if (!IS_VALID_HANDLE(hdcd_mgr)) {
-		status = DSP_EHANDLE;
+	if (!hdcd_mgr) {
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -554,7 +568,7 @@ dsp_status dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
 	}
 
 	/* Allocate zeroed buffer. */
-	psz_coff_buf = mem_calloc(ul_len + 4, MEM_PAGED);
+	psz_coff_buf = kzalloc(ul_len + 4, GFP_KERNEL);
 #ifdef _DB_TIOMAP
 	if (strstr(pszCoffPath, "iva") == NULL) {
 		/* Locate section by objectID and read its content. */
@@ -631,16 +645,17 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 				IN OUT char *pstrLibName, IN OUT u32 * pdwSize,
 				enum nldr_phase phase, OUT bool *phase_split)
 {
-	char sz_reg_key[REG_MAXREGPATHLENGTH];
+	char sz_reg_key[DCD_MAXPATHLENGTH];
 	char sz_uuid[MAXUUIDLEN];
 	u32 dw_key_len;		/* Len of REG key. */
 	char sz_obj_type[MAX_INT2CHAR_LENGTH];	/* str. rep. of obj_type. */
 	dsp_status status = DSP_SOK;
+	struct dcd_key_elem *dcd_key = NULL;
 
 	DBC_REQUIRE(uuid_obj != NULL);
 	DBC_REQUIRE(pstrLibName != NULL);
 	DBC_REQUIRE(pdwSize != NULL);
-	DBC_REQUIRE(IS_VALID_HANDLE(hdcd_mgr));
+	DBC_REQUIRE(hdcd_mgr);
 
 	dev_dbg(bridge, "%s: hdcd_mgr %p, uuid_obj %p, pstrLibName %p, pdwSize "
 		"%p\n", __func__, hdcd_mgr, uuid_obj, pstrLibName, pdwSize);
@@ -650,14 +665,14 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 	 *  "_\0" + length of sz_obj_type string + terminating NULL.
 	 */
 	dw_key_len = strlen(DCD_REGKEY) + 1 + sizeof(sz_obj_type) + 1;
-	DBC_ASSERT(dw_key_len < REG_MAXREGPATHLENGTH);
+	DBC_ASSERT(dw_key_len < DCD_MAXPATHLENGTH);
 
 	/* Create proper REG key; concatenate DCD_REGKEY with obj_type. */
 	strncpy(sz_reg_key, DCD_REGKEY, strlen(DCD_REGKEY) + 1);
-	if ((strlen(sz_reg_key) + strlen("_\0")) < REG_MAXREGPATHLENGTH)
+	if ((strlen(sz_reg_key) + strlen("_\0")) < DCD_MAXPATHLENGTH)
 		strncat(sz_reg_key, "_\0", 2);
 	else
-		status = DSP_EFAIL;
+		status = -EPERM;
 
 	switch (phase) {
 	case NLDR_CREATE:
@@ -677,29 +692,37 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 		sprintf(sz_obj_type, "%d", DSP_DCDLIBRARYTYPE);
 		break;
 	default:
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 		DBC_ASSERT(false);
 	}
 	if (DSP_SUCCEEDED(status)) {
 		if ((strlen(sz_reg_key) + strlen(sz_obj_type)) <
-		    REG_MAXREGPATHLENGTH) {
+		    DCD_MAXPATHLENGTH) {
 			strncat(sz_reg_key, sz_obj_type,
 				strlen(sz_obj_type) + 1);
 		} else {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 		/* Create UUID value to find match in registry. */
 		uuid_uuid_to_string(uuid_obj, sz_uuid, MAXUUIDLEN);
-		if ((strlen(sz_reg_key) + MAXUUIDLEN) < REG_MAXREGPATHLENGTH) {
+		if ((strlen(sz_reg_key) + MAXUUIDLEN) < DCD_MAXPATHLENGTH)
 			strncat(sz_reg_key, sz_uuid, MAXUUIDLEN);
-		} else {
-			status = DSP_EFAIL;
-		}
+		else
+			status = -EPERM;
 	}
 	if (DSP_SUCCEEDED(status)) {
-		/* Retrieve path from the registry based on dsp_uuid */
-		status = reg_get_value(sz_reg_key, (u8 *) pstrLibName, pdwSize);
+		spin_lock(&dbdcd_lock);
+		list_for_each_entry(dcd_key, &reg_key_list, link) {
+			/*  See if the name matches. */
+			if (!strncmp(dcd_key->name, sz_reg_key,
+						strlen(sz_reg_key) + 1))
+				break;
+		}
+		spin_unlock(&dbdcd_lock);
 	}
+
+	if (&dcd_key->link == &reg_key_list)
+		status = -ENOKEY;
 
 	/* If can't find, phases might be registered as generic LIBRARYTYPE */
 	if (DSP_FAILED(status) && phase != NLDR_NOPHASE) {
@@ -708,28 +731,40 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 
 		strncpy(sz_reg_key, DCD_REGKEY, strlen(DCD_REGKEY) + 1);
 		if ((strlen(sz_reg_key) + strlen("_\0")) <
-		    REG_MAXREGPATHLENGTH) {
+		    DCD_MAXPATHLENGTH) {
 			strncat(sz_reg_key, "_\0", 2);
 		} else {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 		sprintf(sz_obj_type, "%d", DSP_DCDLIBRARYTYPE);
 		if ((strlen(sz_reg_key) + strlen(sz_obj_type))
-		    < REG_MAXREGPATHLENGTH) {
+		    < DCD_MAXPATHLENGTH) {
 			strncat(sz_reg_key, sz_obj_type,
 				strlen(sz_obj_type) + 1);
 		} else {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 		uuid_uuid_to_string(uuid_obj, sz_uuid, MAXUUIDLEN);
-		if ((strlen(sz_reg_key) + MAXUUIDLEN) < REG_MAXREGPATHLENGTH)
+		if ((strlen(sz_reg_key) + MAXUUIDLEN) < DCD_MAXPATHLENGTH)
 			strncat(sz_reg_key, sz_uuid, MAXUUIDLEN);
 		else
-			status = DSP_EFAIL;
+			status = -EPERM;
 
-		status = reg_get_value(sz_reg_key, (u8 *) pstrLibName, pdwSize);
+		spin_lock(&dbdcd_lock);
+		list_for_each_entry(dcd_key, &reg_key_list, link) {
+			/*  See if the name matches. */
+			if (!strncmp(dcd_key->name, sz_reg_key,
+						strlen(sz_reg_key) + 1))
+				break;
+		}
+		spin_unlock(&dbdcd_lock);
+
+		status = (&dcd_key->link != &reg_key_list) ?
+						DSP_SOK : -ENOKEY;
 	}
 
+	if (DSP_SUCCEEDED(status))
+		memcpy(pstrLibName, dcd_key->path, strlen(dcd_key->path) + 1);
 	return status;
 }
 
@@ -755,6 +790,8 @@ bool dcd_init(void)
 			if (init_cod)
 				cod_exit();
 		}
+
+		INIT_LIST_HEAD(&reg_key_list);
 	}
 
 	if (ret)
@@ -776,11 +813,12 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 			       IN char *psz_path_name)
 {
 	dsp_status status = DSP_SOK;
-	char sz_reg_key[REG_MAXREGPATHLENGTH];
+	char sz_reg_key[DCD_MAXPATHLENGTH];
 	char sz_uuid[MAXUUIDLEN + 1];
 	u32 dw_path_size = 0;
 	u32 dw_key_len;		/* Len of REG key. */
 	char sz_obj_type[MAX_INT2CHAR_LENGTH];	/* str. rep. of obj_type. */
+	struct dcd_key_elem *dcd_key = NULL;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(uuid_obj != NULL);
@@ -799,35 +837,35 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 	 *  "_\0" + length of sz_obj_type string + terminating NULL.
 	 */
 	dw_key_len = strlen(DCD_REGKEY) + 1 + sizeof(sz_obj_type) + 1;
-	DBC_ASSERT(dw_key_len < REG_MAXREGPATHLENGTH);
+	DBC_ASSERT(dw_key_len < DCD_MAXPATHLENGTH);
 
 	/* Create proper REG key; concatenate DCD_REGKEY with obj_type. */
 	strncpy(sz_reg_key, DCD_REGKEY, strlen(DCD_REGKEY) + 1);
-	if ((strlen(sz_reg_key) + strlen("_\0")) < REG_MAXREGPATHLENGTH)
+	if ((strlen(sz_reg_key) + strlen("_\0")) < DCD_MAXPATHLENGTH)
 		strncat(sz_reg_key, "_\0", 2);
 	else {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 
 	status = snprintf(sz_obj_type, MAX_INT2CHAR_LENGTH, "%d", obj_type);
 	if (status == -1) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 	} else {
 		status = DSP_SOK;
 		if ((strlen(sz_reg_key) + strlen(sz_obj_type)) <
-		    REG_MAXREGPATHLENGTH) {
+		    DCD_MAXPATHLENGTH) {
 			strncat(sz_reg_key, sz_obj_type,
 				strlen(sz_obj_type) + 1);
 		} else
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 		/* Create UUID value to set in registry. */
 		uuid_uuid_to_string(uuid_obj, sz_uuid, MAXUUIDLEN);
-		if ((strlen(sz_reg_key) + MAXUUIDLEN) < REG_MAXREGPATHLENGTH)
+		if ((strlen(sz_reg_key) + MAXUUIDLEN) < DCD_MAXPATHLENGTH)
 			strncat(sz_reg_key, sz_uuid, MAXUUIDLEN);
 		else
-			status = DSP_EFAIL;
+			status = -EPERM;
 	}
 
 	if (DSP_FAILED(status))
@@ -837,17 +875,80 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 	 * If psz_path_name != NULL, perform registration, otherwise,
 	 * perform unregistration.
 	 */
+
 	if (psz_path_name) {
-		/* Add new reg value (UUID+obj_type) with COFF path info */
 		dw_path_size = strlen(psz_path_name) + 1;
-		status =
-		    reg_set_value(sz_reg_key, (u8 *) psz_path_name,
-				  dw_path_size);
+		spin_lock(&dbdcd_lock);
+		list_for_each_entry(dcd_key, &reg_key_list, link) {
+			/*  See if the name matches. */
+			if (!strncmp(dcd_key->name, sz_reg_key,
+						strlen(sz_reg_key) + 1))
+				break;
+		}
+		spin_unlock(&dbdcd_lock);
+		if (&dcd_key->link == &reg_key_list) {
+			/*
+			 * Add new reg value (UUID+obj_type)
+			 * with COFF path info
+			 */
+
+			dcd_key = kmalloc(sizeof(struct dcd_key_elem),
+								GFP_KERNEL);
+			if (!dcd_key) {
+				status = -ENOMEM;
+				goto func_end;
+			}
+
+			dcd_key->path = kmalloc(strlen(sz_reg_key) + 1,
+								GFP_KERNEL);
+
+			if (!dcd_key->path) {
+				kfree(dcd_key);
+				status = -ENOMEM;
+				goto func_end;
+			}
+
+			strncpy(dcd_key->name, sz_reg_key,
+						strlen(sz_reg_key) + 1);
+			strncpy(dcd_key->path, psz_path_name ,
+						dw_path_size);
+			spin_lock(&dbdcd_lock);
+			list_add_tail(&dcd_key->link, &reg_key_list);
+			spin_unlock(&dbdcd_lock);
+		} else {
+			/*  Make sure the new data is the same. */
+			if (strncmp(dcd_key->path, psz_path_name,
+							dw_path_size)) {
+				/*  The caller needs a different data size! */
+				kfree(dcd_key->path);
+				dcd_key->path = kmalloc(dw_path_size,
+								GFP_KERNEL);
+				if (dcd_key->path == NULL) {
+					status = -ENOMEM;
+					goto func_end;
+				}
+			}
+
+			/*  We have a match!  Copy out the data. */
+			memcpy(dcd_key->path, psz_path_name, dw_path_size);
+		}
 		dev_dbg(bridge, "%s: psz_path_name=%s, dw_path_size=%d\n",
 			__func__, psz_path_name, dw_path_size);
 	} else {
 		/* Deregister an existing object */
-		status = reg_delete_value(sz_reg_key);
+		status = -EPERM;
+		spin_lock(&dbdcd_lock);
+		list_for_each_entry(dcd_key, &reg_key_list, link) {
+			if (!strncmp(dcd_key->name, sz_reg_key,
+						strlen(sz_reg_key) + 1)) {
+				list_del(&dcd_key->link);
+				kfree(dcd_key->path);
+				kfree(dcd_key);
+				status = DSP_SOK;
+				break;
+			}
+		}
+		spin_unlock(&dbdcd_lock);
 	}
 
 	if (DSP_SUCCEEDED(status)) {
@@ -1057,9 +1158,9 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		DBC_REQUIRE(token);
 		token_len = strlen(token);
 		pGenObj->obj_data.node_obj.pstr_create_phase_fxn =
-		    mem_calloc(token_len + 1, MEM_PAGED);
+					kzalloc(token_len + 1, GFP_KERNEL);
 		if (!pGenObj->obj_data.node_obj.pstr_create_phase_fxn) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			break;
 		}
 		strncpy(pGenObj->obj_data.node_obj.pstr_create_phase_fxn,
@@ -1072,9 +1173,9 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		DBC_REQUIRE(token);
 		token_len = strlen(token);
 		pGenObj->obj_data.node_obj.pstr_execute_phase_fxn =
-		    mem_calloc(token_len + 1, MEM_PAGED);
+					kzalloc(token_len + 1, GFP_KERNEL);
 		if (!pGenObj->obj_data.node_obj.pstr_execute_phase_fxn) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			break;
 		}
 		strncpy(pGenObj->obj_data.node_obj.pstr_execute_phase_fxn,
@@ -1087,9 +1188,9 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		DBC_REQUIRE(token);
 		token_len = strlen(token);
 		pGenObj->obj_data.node_obj.pstr_delete_phase_fxn =
-		    mem_calloc(token_len + 1, MEM_PAGED);
+					kzalloc(token_len + 1, GFP_KERNEL);
 		if (!pGenObj->obj_data.node_obj.pstr_delete_phase_fxn) {
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 			break;
 		}
 		strncpy(pGenObj->obj_data.node_obj.pstr_delete_phase_fxn,
@@ -1110,9 +1211,9 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		if (token) {
 			token_len = strlen(token);
 			pGenObj->obj_data.node_obj.pstr_i_alg_name =
-			    mem_calloc(token_len + 1, MEM_PAGED);
+					kzalloc(token_len + 1, GFP_KERNEL);
 			if (!pGenObj->obj_data.node_obj.pstr_i_alg_name) {
-				status = DSP_EMEMORY;
+				status = -ENOMEM;
 				break;
 			}
 			strncpy(pGenObj->obj_data.node_obj.pstr_i_alg_name,
@@ -1147,6 +1248,11 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 
 			pGenObj->obj_data.node_obj.ndb_props.count_profiles =
 			    atoi(token);
+			if (pGenObj->obj_data.node_obj.ndb_props.count_profiles
+							> MAX_PROFILES) {
+				status = -EINVAL;
+				break;
+			}
 			for (i = 0;
 			     i <
 			     pGenObj->obj_data.node_obj.
@@ -1222,12 +1328,12 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 		break;
 
 	default:
-		status = DSP_EFAIL;
+		status = -EPERM;
 		break;
 	}
 
 	/* Check for Memory leak */
-	if (status == DSP_EMEMORY) {
+	if (status == -ENOMEM) {
 		kfree(pGenObj->obj_data.node_obj.pstr_create_phase_fxn);
 		kfree(pGenObj->obj_data.node_obj.pstr_execute_phase_fxn);
 		kfree(pGenObj->obj_data.node_obj.pstr_delete_phase_fxn);
@@ -1333,7 +1439,7 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 
 	DBC_REQUIRE(refs > 0);
 
-	DBC_REQUIRE(IS_VALID_HANDLE(hdcd_mgr));
+	DBC_REQUIRE(hdcd_mgr);
 	DBC_REQUIRE(pNumLibs != NULL);
 	DBC_REQUIRE(uuid_obj != NULL);
 
@@ -1345,9 +1451,9 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 	}
 
 	/* Allocate a buffer for file name */
-	psz_file_name = mem_calloc(dw_data_size, MEM_PAGED);
+	psz_file_name = kzalloc(dw_data_size, GFP_KERNEL);
 	if (psz_file_name == NULL) {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	} else {
 		/* Get the name of the library */
 		status = dcd_get_library_name(hdcd_mgr, uuid_obj, psz_file_name,
@@ -1374,9 +1480,9 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 		goto func_cont;
 
 	/* Allocate zeroed buffer. */
-	psz_coff_buf = mem_calloc(ul_len + 4, MEM_PAGED);
+	psz_coff_buf = kzalloc(ul_len + 4, GFP_KERNEL);
 	if (psz_coff_buf == NULL)
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	/* Read section contents. */
 	status = cod_read_section(lib, DEPLIBSECT, psz_coff_buf, ul_len);

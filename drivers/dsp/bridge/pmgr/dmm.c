@@ -33,7 +33,6 @@
 #include <dspbridge/errbase.h>
 
 /*  ----------------------------------- OS Adaptation Layer */
-#include <dspbridge/mem.h>
 #include <dspbridge/sync.h>
 
 /*  ----------------------------------- Platform Manager */
@@ -44,9 +43,6 @@
 #include <dspbridge/dmm.h>
 
 /*  ----------------------------------- Defines, Data Structures, Typedefs */
-/* Object signatures */
-#define DMMSIGNATURE       0x004d4d44	/* "DMM"   (in reverse) */
-
 #define DMM_ADDR_VIRTUAL(a) \
 	(((struct map_page *)(a) - virtual_mapping_table) * PG_SIZE4K +\
 	dyn_mem_map_beg)
@@ -54,7 +50,6 @@
 
 /* DMM Mgr */
 struct dmm_object {
-	u32 dw_signature;	/* Used for object validation */
 	/* Dmm Lock is used to serialize access mem manager for
 	 * multi-threads. */
 	spinlock_t dmm_lock;	/* Lock to access dmm mgr */
@@ -101,10 +96,11 @@ dsp_status dmm_create_tables(struct dmm_object *dmm_mgr, u32 addr, u32 size)
 		dyn_mem_map_beg = addr;
 		table_size = PG_ALIGN_HIGH(size, PG_SIZE4K) / PG_SIZE4K;
 		/*  Create the free list */
-		virtual_mapping_table = (struct map_page *)mem_calloc
-		    (table_size * sizeof(struct map_page), MEM_LARGEVIRTMEM);
+		virtual_mapping_table = __vmalloc(table_size *
+				sizeof(struct map_page), GFP_KERNEL |
+				__GFP_HIGHMEM | __GFP_ZERO, PAGE_KERNEL);
 		if (virtual_mapping_table == NULL)
-			status = DSP_EMEMORY;
+			status = -ENOMEM;
 		else {
 			/* On successful allocation,
 			 * all entries are zero ('free') */
@@ -136,12 +132,12 @@ dsp_status dmm_create(OUT struct dmm_object **phDmmMgr,
 
 	*phDmmMgr = NULL;
 	/* create, zero, and tag a cmm mgr object */
-	MEM_ALLOC_OBJECT(dmm_obj, struct dmm_object, DMMSIGNATURE);
+	dmm_obj = kzalloc(sizeof(struct dmm_object), GFP_KERNEL);
 	if (dmm_obj != NULL) {
 		spin_lock_init(&dmm_obj->dmm_lock);
 		*phDmmMgr = dmm_obj;
 	} else {
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 	}
 
 	return status;
@@ -158,12 +154,12 @@ dsp_status dmm_destroy(struct dmm_object *dmm_mgr)
 	dsp_status status = DSP_SOK;
 
 	DBC_REQUIRE(refs > 0);
-	if (MEM_IS_VALID_HANDLE(dmm_mgr, DMMSIGNATURE)) {
+	if (dmm_mgr) {
 		status = dmm_delete_tables(dmm_obj);
 		if (DSP_SUCCEEDED(status))
-			MEM_FREE_OBJECT(dmm_obj);
+			kfree(dmm_obj);
 	} else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 
 	return status;
 }
@@ -179,10 +175,10 @@ dsp_status dmm_delete_tables(struct dmm_object *dmm_mgr)
 
 	DBC_REQUIRE(refs > 0);
 	/* Delete all DMM tables */
-	if (MEM_IS_VALID_HANDLE(dmm_mgr, DMMSIGNATURE))
+	if (dmm_mgr)
 		vfree(virtual_mapping_table);
 	else
-		status = DSP_EHANDLE;
+		status = -EFAULT;
 	return status;
 }
 
@@ -320,7 +316,7 @@ dsp_status dmm_reserve_memory(struct dmm_object *dmm_mgr, u32 size,
 		*prsv_addr = rsv_addr;
 	} else
 		/*dSP chunk of given size is not available */
-		status = DSP_EMEMORY;
+		status = -ENOMEM;
 
 	spin_unlock(&dmm_obj->dmm_lock);
 

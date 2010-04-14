@@ -24,6 +24,7 @@
 #include <dspbridge/devdefs.h>
 
 #include <dspbridge/drvdefs.h>
+#include <linux/idr.h>
 
 #define DRV_ASSIGN     1
 #define DRV_RELEASE    0
@@ -84,7 +85,7 @@ struct node_res_object {
 	s32 node_allocated;	/* Node status */
 	s32 heap_allocated;	/* Heap status */
 	s32 streams_allocated;	/* Streams status */
-	struct node_res_object *next;
+	int id;
 };
 
 /* Used for DMM mapped memory accounting */
@@ -116,13 +117,23 @@ struct strm_res_object {
 	void *hstream;
 	u32 num_bufs;
 	u32 dir;
-	struct strm_res_object *next;
+	int id;
 };
 
 /* Overall Bridge process resource usage state */
 enum gpp_proc_res_state {
 	PROC_RES_ALLOCATED,
 	PROC_RES_FREED
+};
+
+/* Bridge Data */
+struct drv_data {
+	char *base_img;
+	s32 shm_size;
+	int tc_wordswapon;
+	void *drv_object;
+	void *dev_object;
+	void *mgr_object;
 };
 
 /* Process Context */
@@ -134,8 +145,7 @@ struct process_context {
 	void *hprocessor;
 
 	/* DSP Node resources */
-	struct node_res_object *node_list;
-	struct mutex node_mutex;
+	struct idr *node_idp;
 
 	/* DMM mapped memory resources */
 	struct list_head dmm_map_list;
@@ -149,8 +159,7 @@ struct process_context {
 	struct dspheap_res_object *pdspheap_list;
 
 	/* Stream resources */
-	struct strm_res_object *pstrm_list;
-	struct mutex strm_mutex;
+	struct idr *strm_idp;
 };
 
 /*
@@ -162,8 +171,8 @@ struct process_context {
  *      phDrvObject:    Location to store created DRV Object handle.
  *  Returns:
  *      DSP_SOK:        Sucess
- *      DSP_EMEMORY:    Failed in Memory allocation
- *      DSP_EFAIL:      General Failure
+ *      -ENOMEM:    Failed in Memory allocation
+ *      -EPERM:      General Failure
  *  Requires:
  *      DRV Initialized (refs > 0 )
  *      phDrvObject != NULL.
@@ -192,7 +201,7 @@ extern dsp_status drv_create(struct drv_object **phDrvObject);
  *      hdrv_obj:     Handle to Driver object .
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Failed to destroy DRV Object
+ *      -EPERM:      Failed to destroy DRV Object
  *  Requires:
  *      DRV Initialized (cRegs > 0 )
  *      hdrv_obj is not NULL and a valid DRV handle .
@@ -259,10 +268,10 @@ extern u32 drv_get_first_dev_extension(void);
  *      Device Object List not Empty
  *  Returns:
  *      DSP_SOK:        Success
- *      DSP_EFAIL:      Failed to Get the Dev Object
+ *      -EPERM:      Failed to Get the Dev Object
  *  Ensures:
  *      DSP_SOK:        *phDevObject != NULL
- *      DSP_EFAIL:      *phDevObject = NULL
+ *      -EPERM:      *phDevObject = NULL
  */
 extern dsp_status drv_get_dev_object(u32 index,
 				     struct drv_object *hdrv_obj,
@@ -321,7 +330,7 @@ extern dsp_status drv_init(void);
  *      hdev_obj:     Handle to DeviceObject to insert.
  *  Returns:
  *      DSP_SOK:        If successful.
- *      DSP_EFAIL:      General Failure:
+ *      -EPERM:      General Failure:
  *  Requires:
  *      hdrv_obj != NULL and Valid DRV Handle.
  *      hdev_obj != NULL.
@@ -341,7 +350,7 @@ extern dsp_status drv_insert_dev_object(struct drv_object *hdrv_obj,
  *      hdev_obj:     Handle to DevObject to Remove
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Unable to find dev_obj.
+ *      -EPERM:      Unable to find dev_obj.
  *  Requires:
  *      hdrv_obj != NULL and a Valid DRV Handle.
  *      hdev_obj != NULL.
@@ -389,7 +398,120 @@ extern dsp_status drv_request_resources(IN u32 dw_context,
 extern dsp_status drv_release_resources(IN u32 dw_context,
 					struct drv_object *hdrv_obj);
 
+dsp_status drv_request_bridge_res_dsp(void **phost_resources);
+
 #ifdef CONFIG_BRIDGE_RECOVERY
 void bridge_recover_schedule(void);
 #endif
+/*
+ *  ======== mem_ext_phys_pool_init ========
+ *  Purpose:
+ *      Uses the physical memory chunk passed for internal consitent memory
+ *      allocations.
+ *      physical address based on the page frame address.
+ *  Parameters:
+ *      poolPhysBase  starting address of the physical memory pool.
+ *      poolSize      size of the physical memory pool.
+ *  Returns:
+ *      none.
+ *  Requires:
+ *      - MEM initialized.
+ *      - valid physical address for the base and size > 0
+ */
+extern void mem_ext_phys_pool_init(IN u32 poolPhysBase, IN u32 poolSize);
+
+/*
+ *  ======== mem_ext_phys_pool_release ========
+ */
+extern void mem_ext_phys_pool_release(void);
+
+/*  ======== mem_alloc_phys_mem ========
+ *  Purpose:
+ *      Allocate physically contiguous, uncached memory
+ *  Parameters:
+ *      byte_size:     Number of bytes to allocate.
+ *      ulAlign:    Alignment Mask.
+ *      pPhysicalAddress: Physical address of allocated memory.
+ *  Returns:
+ *      Pointer to a block of memory;
+ *      NULL if memory couldn't be allocated, or if byte_size == 0.
+ *  Requires:
+ *      MEM initialized.
+ *  Ensures:
+ *      The returned pointer, if not NULL, points to a valid memory block of
+ *      the size requested.  Returned physical address refers to physical
+ *      location of memory.
+ */
+extern void *mem_alloc_phys_mem(IN u32 byte_size,
+				IN u32 ulAlign, OUT u32 *pPhysicalAddress);
+
+/*
+ *  ======== mem_flush_cache ========
+ *  Purpose:
+ *      Performs system cache sync with discard
+ *  Parameters:
+ *      pMemBuf:    Pointer to memory region to be flushed.
+ *      pMemBuf:    Size of the memory region to be flushed.
+ *  Returns:
+ *  Requires:
+ *      MEM is initialized.
+ *  Ensures:
+ *      Cache is synchronized
+ */
+extern void mem_flush_cache(void *pMemBuf, u32 byte_size, s32 FlushType);
+
+/*
+ *  ======== mem_free_phys_mem ========
+ *  Purpose:
+ *      Free the given block of physically contiguous memory.
+ *  Parameters:
+ *      pVirtualAddress:  Pointer to virtual memory region allocated
+ *      by mem_alloc_phys_mem().
+ *      pPhysicalAddress:  Pointer to physical memory region  allocated
+ *      by mem_alloc_phys_mem().
+ *      byte_size:  Size of the memory region allocated by mem_alloc_phys_mem().
+ *  Returns:
+ *  Requires:
+ *      MEM initialized.
+ *      pVirtualAddress is a valid memory address returned by
+ *          mem_alloc_phys_mem()
+ *  Ensures:
+ *      pVirtualAddress is no longer a valid pointer to memory.
+ */
+extern void mem_free_phys_mem(void *pVirtualAddress,
+			      u32 pPhysicalAddress, u32 byte_size);
+
+/*
+ *  ======== MEM_LINEAR_ADDRESS ========
+ *  Purpose:
+ *      Get the linear address corresponding to the given physical address.
+ *  Parameters:
+ *      pPhysAddr:  Physical address to be mapped.
+ *      byte_size:     Number of bytes in physical range to map.
+ *  Returns:
+ *      The corresponding linear address, or NULL if unsuccessful.
+ *  Requires:
+ *      MEM initialized.
+ *  Ensures:
+ *  Notes:
+ *      If valid linear address is returned, be sure to call
+ *      MEM_UNMAP_LINEAR_ADDRESS().
+ */
+#define MEM_LINEAR_ADDRESS(pPhyAddr, byte_size) pPhyAddr
+
+/*
+ *  ======== MEM_UNMAP_LINEAR_ADDRESS ========
+ *  Purpose:
+ *      Unmap the linear address mapped in MEM_LINEAR_ADDRESS.
+ *  Parameters:
+ *      pBaseAddr: Ptr to mapped memory (as returned by MEM_LINEAR_ADDRESS()).
+ *  Returns:
+ *  Requires:
+ *      - MEM initialized.
+ *      - pBaseAddr is a valid linear address mapped in MEM_LINEAR_ADDRESS.
+ *  Ensures:
+ *      - pBaseAddr no longer points to a valid linear address.
+ */
+#define MEM_UNMAP_LINEAR_ADDRESS(pBaseAddr) {}
+
 #endif /* DRV_ */
