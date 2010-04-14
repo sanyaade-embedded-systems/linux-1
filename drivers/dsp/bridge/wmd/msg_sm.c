@@ -58,12 +58,12 @@ dsp_status bridge_msg_create(OUT struct msg_mgr **phMsgMgr,
 	dsp_status status = DSP_SOK;
 
 	if (!phMsgMgr || !msgCallback || !hdev_obj) {
-		status = DSP_EPOINTER;
+		status = -EFAULT;
 		goto func_end;
 	}
 	dev_get_io_mgr(hdev_obj, &hio_mgr);
 	if (!hio_mgr) {
-		status = DSP_EPOINTER;
+		status = -EFAULT;
 		goto func_end;
 	}
 	*phMsgMgr = NULL;
@@ -461,7 +461,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 			status = -EPERM;
 		} else {
 			if (LST_IS_EMPTY(hmsg_mgr->msg_free_list)) {
-				status = DSP_EPOINTER;
+				status = -EFAULT;
 				goto func_cont;
 			}
 			/* Get msg from free list */

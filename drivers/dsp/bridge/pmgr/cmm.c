@@ -384,7 +384,7 @@ dsp_status cmm_free_buf(struct cmm_object *hcmm_mgr, void *buf_pa,
 			u32 ul_seg_id)
 {
 	struct cmm_object *cmm_mgr_obj = (struct cmm_object *)hcmm_mgr;
-	dsp_status status = DSP_EPOINTER;
+	dsp_status status = -EFAULT;
 	struct cmm_mnode *mnode_obj = NULL;
 	struct cmm_allocator *allocator = NULL;
 	struct cmm_attrs *pattrs;

@@ -451,7 +451,7 @@ typedef dsp_status(*fxn_chnl_close) (struct chnl_object *chnl_obj);
  *  Returns:
  *      DSP_SOK:        Success;
  *      DSP_EHANDLE:    Invalid chnl_obj.
- *      DSP_EPOINTER:   pHostBuf is invalid.
+ *      -EFAULT:   pHostBuf is invalid.
  *      CHNL_E_NOEOS:   User cannot mark EOS on an input channel.
  *      -ECANCELED: I/O has been cancelled on this channel.  No further
  *                      I/O is allowed.
@@ -492,7 +492,7 @@ typedef dsp_status(*fxn_chnl_addioreq) (struct chnl_object
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid chnl_obj.
- *      DSP_EPOINTER:   pIOC is invalid.
+ *      -EFAULT:   pIOC is invalid.
  *      CHNL_E_NOIOC:   CHNL_IOCNOWAIT was specified as the dwTimeOut parameter
  *                      yet no I/O completions were queued.
  *  Requires:
@@ -556,7 +556,7 @@ typedef dsp_status(*fxn_chnl_flushio) (struct chnl_object *chnl_obj,
  *  Returns:
  *      DSP_SOK:        Success;
  *      DSP_EHANDLE:    Invalid chnl_obj.
- *      DSP_EPOINTER:   pInfo == NULL.
+ *      -EFAULT:   pInfo == NULL.
  *  Requires:
  *  Ensures:
  *      DSP_SOK:        pInfo points to a filled in chnl_info struct,
@@ -576,7 +576,7 @@ typedef dsp_status(*fxn_chnl_getinfo) (struct chnl_object *chnl_obj,
  *  Returns:
  *      DSP_SOK:            Success;
  *      DSP_EHANDLE:        Invalid hchnl_mgr.
- *      DSP_EPOINTER:       pMgrInfo == NULL.
+ *      -EFAULT:       pMgrInfo == NULL.
  *      CHNL_E_BADCHANID:   Invalid channel ID.
  *  Requires:
  *  Ensures:

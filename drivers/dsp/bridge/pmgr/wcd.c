@@ -173,12 +173,12 @@ static inline void _cp_fm_usr(void *to, const void __user * from,
 		return;
 
 	if (unlikely(!from)) {
-		*err = DSP_EPOINTER;
+		*err = -EFAULT;
 		return;
 	}
 
 	if (unlikely(copy_from_user(to, from, bytes)))
-		*err = DSP_EPOINTER;
+		*err = -EFAULT;
 }
 
 #define CP_FM_USR(to, from, err, n)				\
@@ -191,12 +191,12 @@ static inline void _cp_to_usr(void __user *to, const void *from,
 		return;
 
 	if (unlikely(!to)) {
-		*err = DSP_EPOINTER;
+		*err = -EFAULT;
 		return;
 	}
 
 	if (unlikely(copy_to_user(to, from, bytes)))
-		*err = DSP_EPOINTER;
+		*err = -EFAULT;
 }
 
 #define CP_TO_USR(to, from, err, n)				\
@@ -498,7 +498,7 @@ u32 mgrwrap_register_object(union Trapped_Args *args, void *pr_ctxt)
 				(char *)args->args_mgr_registerobject.
 				psz_path_name, path_size);
 	if (!ret) {
-		status = DSP_EPOINTER;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -1092,7 +1092,7 @@ u32 nodewrap_allocate(union Trapped_Args *args, void *pr_ctxt)
 		CP_TO_USR(args->args_node_allocate.ph_node, &node_res->id,
 			status, 1);
 		if (DSP_FAILED(status)) {
-			status = DSP_EPOINTER;
+			status = -EFAULT;
 			node_delete(node_res, pr_ctxt);
 		} else {
 			*args->args_node_allocate.ph_node += 1;
@@ -1293,7 +1293,7 @@ u32 nodewrap_free_msg_buf(union Trapped_Args *args, void *pr_ctxt)
 	}
 
 	if (!args->args_node_freemsgbuf.pbuffer)
-		return DSP_EPOINTER;
+		return -EFAULT;
 
 	if (DSP_SUCCEEDED(status)) {
 		status = node_free_msg_buf(node_res->hnode,
@@ -1530,7 +1530,7 @@ u32 strmwrap_allocate_buffer(union Trapped_Args *args, void *pr_ctxt)
 		CP_TO_USR(args->args_strm_allocatebuffer.ap_buffer, ap_buffer,
 			  status, num_bufs);
 		if (DSP_FAILED(status)) {
-			status = DSP_EPOINTER;
+			status = -EFAULT;
 			strm_free_buffer(strm_res,
 					 ap_buffer, num_bufs, pr_ctxt);
 		}
@@ -1666,7 +1666,7 @@ u32 strmwrap_issue(union Trapped_Args *args, void *pr_ctxt)
 		return DSP_EHANDLE;
 
 	if (!args->args_strm_issue.pbuffer)
-		return DSP_EPOINTER;
+		return -EFAULT;
 
 	/* No need of doing CP_FM_USR for the user buffer (pbuffer)
 	   as this is done in Bridge internal function bridge_chnl_add_io_req

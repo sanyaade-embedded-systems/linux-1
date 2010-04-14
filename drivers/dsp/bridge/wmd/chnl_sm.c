@@ -109,7 +109,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 
 	/* Validate args:  */
 	if (pHostBuf == NULL) {
-		status = DSP_EPOINTER;
+		status = -EFAULT;
 	} else if (!pchnl) {
 		status = DSP_EHANDLE;
 	} else if (is_eos && CHNL_IS_INPUT(pchnl->chnl_mode)) {
@@ -155,7 +155,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 			if (status) {
 				kfree(host_sys_buf);
 				host_sys_buf = NULL;
-				status = DSP_EPOINTER;
+				status = -EFAULT;
 				goto func_end;
 			}
 		}
@@ -552,7 +552,7 @@ dsp_status bridge_chnl_get_info(struct chnl_object *chnl_obj,
 			status = DSP_EHANDLE;
 		}
 	} else {
-		status = DSP_EPOINTER;
+		status = -EFAULT;
 	}
 	return status;
 }
@@ -579,7 +579,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 
 	/* Check args: */
 	if (pIOC == NULL) {
-		status = DSP_EPOINTER;
+		status = -EFAULT;
 	} else if (!pchnl) {
 		status = DSP_EHANDLE;
 	} else if (dwTimeOut == CHNL_IOCNOWAIT) {
@@ -681,7 +681,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 
 		/* If the addr is in user mode, then copy it */
 		if (!host_sys_buf || !ioc.pbuf) {
-			status = DSP_EPOINTER;
+			status = -EFAULT;
 			goto func_cont;
 		}
 		if (!CHNL_IS_INPUT(pchnl->chnl_mode))
@@ -694,7 +694,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 				status = 0;
 		}
 		if (status)
-			status = DSP_EPOINTER;
+			status = -EFAULT;
 func_cont1:
 		kfree(host_sys_buf);
 	}
@@ -734,7 +734,7 @@ dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
 			status = CHNL_E_BADCHANID;
 		}
 	} else {
-		status = DSP_EPOINTER;
+		status = -EFAULT;
 	}
 
 	return status;

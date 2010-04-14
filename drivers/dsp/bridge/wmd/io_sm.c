@@ -743,7 +743,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 		ul_shm_base = (u32) MEM_LINEAR_ADDRESS((void *)ul_shm_base,
 						       ul_mem_length);
 		if (ul_shm_base == 0) {
-			status = DSP_EPOINTER;
+			status = -EFAULT;
 			goto func_end;
 		}
 		/* Register SM */
