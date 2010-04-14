@@ -964,7 +964,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 				       dev_brd_write_fxn,
 				       p_proc_object->hdev_obj, NULL);
 		if (DSP_FAILED(status)) {
-			if (status == COD_E_OPENFAILED) {
+			if (status == -EBADF) {
 				dev_dbg(bridge, "%s: Failure to Load the EXE\n",
 					__func__);
 			}

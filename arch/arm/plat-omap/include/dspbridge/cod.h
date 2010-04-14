@@ -287,7 +287,7 @@ extern bool cod_init(void);
  *      envp:       array of environment strings for DSP exec.
  *  Returns:
  *      DSP_SOK:                   Success.
- *      COD_E_OPENFAILED:       Failed to open target code.
+ *      -EBADF:       Failed to open target code.
  *      COD_E_LOADFAILED:       Failed to load code onto target.
  *  Requires:
  *      COD module initialized.
@@ -316,7 +316,7 @@ extern dsp_status cod_load_base(struct cod_manager *cod_mgr_obj,
  *                      and cod_get_section.
  *  Returns:
  *      S_OK:                   Success.
- *      COD_E_OPENFAILED:       Failed to open target code.
+ *      -EBADF:       Failed to open target code.
  *  Requires:
  *      COD module initialized.
  *      hmgr is valid.
@@ -338,7 +338,7 @@ extern dsp_status cod_open(struct cod_manager *hmgr,
  *      flags:          Specifies whether to load symbols.
  *  Returns:
  *      DSP_SOK:            Success.
- *      COD_E_OPENFAILED:   Failed to open target code.
+ *      -EBADF:   Failed to open target code.
  *  Requires:
  *      COD module initialized.
  *      hmgr is valid.
