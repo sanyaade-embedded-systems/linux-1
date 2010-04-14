@@ -234,7 +234,7 @@ extern bool strm_init(void);
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hStrm.
- *      DSP_ESTREAMFULL:    The stream is full.
+ *      -ENOSR:    The stream is full.
  *      -EPERM:          Failure occurred, unable to issue buffer.
  *  Requires:
  *      strm_init(void) called.

@@ -442,7 +442,7 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
 			     (u32) tmp_buf, dw_arg);
 		}
 		if (status == CHNL_E_NOIORPS)
-			status = DSP_ESTREAMFULL;
+			status = -ENOSR;
 	}
 
 	dev_dbg(bridge, "%s: hStrm: %p pbuf: %p ul_bytes: 0x%x dw_arg: 0x%x "
