@@ -1205,7 +1205,7 @@ dsp_status node_create(struct node_object *hnode)
 	     hnode->num_inputs - 1) ||
 	    (hnode->num_outputs && hnode->max_output_index >
 	     hnode->num_outputs - 1))
-		status = DSP_ENOTCONNECTED;
+		status = -ENOTCONN;
 
 	if (DSP_SUCCEEDED(status)) {
 		/* If node's create function is not loaded, load it */
