@@ -674,7 +674,7 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 		/* Wait for DSP to clear word in shared memory */
 		/* Read the Location */
 		if (!wait_for_start(dev_context, dw_sync_addr))
-			status = WMD_E_TIMEOUT;
+			status = -ETIMEDOUT;
 
 		dev_get_io_mgr(dev_context->hdev_obj, &hio_mgr);
 		if (hio_mgr) {

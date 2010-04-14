@@ -59,7 +59,7 @@ struct wmd_dev_context;
  *  Returns:
  *      DSP_SOK:        Success.
  *      WMD_E_HARDWARE: A test of hardware assumptions/integrity failed.
- *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
+ *      -ETIMEDOUT:  Timeout occured waiting for a response from hardware.
  *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL
@@ -98,7 +98,7 @@ typedef dsp_status(*fxn_brd_setstate) (struct wmd_dev_context
  *      dwDSPAddr:      DSP address at which to start execution.
  *  Returns:
  *      DSP_SOK:        Success.
- *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
+ *      -ETIMEDOUT:  Timeout occured waiting for a response from hardware.
  *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL
@@ -149,7 +149,7 @@ typedef dsp_status(*fxn_brd_memcopy) (struct wmd_dev_context
  *      ulMemType:      Memory space on DSP to which to transfer.
  *  Returns:
  *      DSP_SOK:        Success.
- *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
+ *      -ETIMEDOUT:  Timeout occured waiting for a response from hardware.
  *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL;
@@ -211,7 +211,7 @@ typedef dsp_status(*fxn_brd_memunmap) (struct wmd_dev_context
  *      hDevContext:    Handle to mini-driver defined device context.
  *  Returns:
  *      DSP_SOK:        Success.
- *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
+ *      -ETIMEDOUT:  Timeout occured waiting for a response from hardware.
  *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL
@@ -253,7 +253,7 @@ typedef dsp_status(*fxn_brd_status) (struct wmd_dev_context *hDevContext,
  *      ulMemType:      Memory space on DSP from which to transfer.
  *  Returns:
  *      DSP_SOK:        Success.
- *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
+ *      -ETIMEDOUT:  Timeout occured waiting for a response from hardware.
  *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL;
@@ -279,7 +279,7 @@ typedef dsp_status(*fxn_brd_read) (struct wmd_dev_context *hDevContext,
  *      ulMemType:      Memory space on DSP to which to transfer.
  *  Returns:
  *      DSP_SOK:        Success.
- *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
+ *      -ETIMEDOUT:  Timeout occured waiting for a response from hardware.
  *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL;

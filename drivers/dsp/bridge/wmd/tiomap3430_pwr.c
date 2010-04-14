@@ -111,7 +111,7 @@ dsp_status handle_hibernation_from_dsp(struct wmd_dev_context *dev_context)
 	}
 	if (timeout == 0) {
 		pr_err("%s: Timed out waiting for DSP off mode\n", __func__);
-		status = WMD_E_TIMEOUT;
+		status = -ETIMEDOUT;
 		return status;
 	} else {
 		/* disable bh to void concurrency with mbox tasklet */
@@ -242,7 +242,7 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 		dev_get_deh_mgr(dev_context->hdev_obj, &hdeh_mgr);
 		bridge_deh_notify(hdeh_mgr, DSP_PWRERROR, 0);
 #endif /* CONFIG_BRIDGE_NTFY_PWRERR */
-		return WMD_E_TIMEOUT;
+		return -ETIMEDOUT;
 	} else {
 		/* disable bh to void concurrency with mbox tasklet */
 		spin_lock_bh(&lock);
