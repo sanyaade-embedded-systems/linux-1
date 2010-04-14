@@ -713,7 +713,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 		status = -EINVAL;
 	} else {
 		if (notify_type != DSP_SIGNALEVENT)
-			status = DSP_ENOTIMPL;
+			status = -ENOSYS;
 
 	}
 	if (DSP_SUCCEEDED(status)) {
@@ -728,7 +728,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 	/* ensure we return a documented return code */
 	DBC_ENSURE(DSP_SUCCEEDED(status) || status == DSP_EHANDLE ||
 		   status == -ETIME || status == DSP_ETRANSLATE ||
-		   status == DSP_ENOTIMPL || status == -EPERM);
+		   status == -ENOSYS || status == -EPERM);
 	return status;
 }
 

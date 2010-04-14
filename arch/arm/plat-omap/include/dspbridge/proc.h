@@ -184,7 +184,7 @@ extern dsp_status proc_enum_nodes(void *hprocessor,
  *  Ensures:
  *  Details:
  *      This function currently returns
- *      DSP_ENOTIMPL, and does not write any data to the resource_info struct.
+ *      -ENOSYS, and does not write any data to the resource_info struct.
  */
 extern dsp_status proc_get_resource_info(void *hprocessor,
 					 u32 resource_type,

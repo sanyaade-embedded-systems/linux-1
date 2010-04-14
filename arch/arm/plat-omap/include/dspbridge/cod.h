@@ -88,7 +88,7 @@ extern void cod_close(struct cod_libraryobj *lib);
  *      DSP_SOK:                Success.
  *      COD_E_NOZLFUNCTIONS:    Could not initialize ZL functions.
  *      COD_E_ZLCREATEFAILED:   ZL_Create failed.
- *      DSP_ENOTIMPL:           attrs was not NULL.  We don't yet support
+ *      -ENOSYS:           attrs was not NULL.  We don't yet support
  *                              non default values of attrs.
  *  Requires:
  *      COD module initialized.

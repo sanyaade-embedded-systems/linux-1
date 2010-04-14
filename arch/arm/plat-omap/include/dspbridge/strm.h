@@ -340,7 +340,7 @@ extern dsp_status strm_reclaim(struct strm_object *hStrm,
  *      DSP_EHANDLE:    Invalid hStrm.
  *      DSP_EMEMORY:    Insufficient memory on GPP.
  *      -EINVAL:     event_mask is invalid.
- *      DSP_ENOTIMPL:   Notification type specified by notify_type is not
+ *      -ENOSYS:   Notification type specified by notify_type is not
  *                      supported.
  *  Requires:
  *      strm_init(void) called.

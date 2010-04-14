@@ -217,7 +217,7 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 			       __func__);
 		}
 		status = chnl_create(&dev_obj->hchnl_mgr, dev_obj, &mgr_attrs);
-		if (status == DSP_ENOTIMPL) {
+		if (status == -ENOSYS) {
 			/* It's OK for a device not to have a channel
 			 * manager: */
 			status = DSP_SOK;
@@ -923,11 +923,11 @@ dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
  *  Parameters:
  *      Multiple, optional.
  *  Returns:
- *      DSP_ENOTIMPL:   Always.
+ *      -ENOSYS:   Always.
  */
 static dsp_status fxn_not_implemented(int arg, ...)
 {
-	return DSP_ENOTIMPL;
+	return -ENOSYS;
 }
 
 /*

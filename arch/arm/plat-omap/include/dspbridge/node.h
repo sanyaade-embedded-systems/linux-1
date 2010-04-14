@@ -493,7 +493,7 @@ extern dsp_status node_put_message(struct node_object *hnode,
  *      DSP_EHANDLE:    Invalid hnode.
  *      DSP_EMEMORY:    Insufficient memory on GPP.
  *      -EINVAL:     event_mask is invalid.
- *      DSP_ENOTIMPL:   Notification type specified by notify_type is not
+ *      -ENOSYS:   Notification type specified by notify_type is not
  *                      supported.
  *  Requires:
  *      node_init(void) called.

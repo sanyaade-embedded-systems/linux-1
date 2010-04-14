@@ -764,7 +764,7 @@ dsp_status proc_get_state(void *hprocessor,
 dsp_status proc_get_trace(void *hprocessor, u8 * pbuf, u32 max_size)
 {
 	dsp_status status;
-	status = DSP_ENOTIMPL;
+	status = -ENOSYS;
 	return status;
 }
 

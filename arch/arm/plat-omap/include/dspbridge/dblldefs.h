@@ -361,7 +361,7 @@ typedef dsp_status(*dbll_load_fxn) (struct dbll_library_obj *lib,
  *      DSP_SOK:        Success.
  *      DSP_ENOSECT:    Section not found.
  *      DSP_EFWRITE:    Write function failed.
- *      DSP_ENOTIMPL:   Function not implemented.
+ *      -ENOSYS:   Function not implemented.
  *  Requires:
  *      Valid lib.
  *      sectName != NULL.
@@ -466,7 +466,7 @@ typedef void (*dbll_unload_fxn) (struct dbll_library_obj *library,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_ENOSECT:    Named section not found.
- *      DSP_ENOTIMPL
+ *      -ENOSYS
  *  Requires:
  *      DBL initialized.
  *      Valid lib.

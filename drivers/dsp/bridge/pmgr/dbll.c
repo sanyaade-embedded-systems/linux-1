@@ -580,7 +580,7 @@ dsp_status dbll_load_sect(struct dbll_library_obj *zl_lib, char *sectName,
 {
 	DBC_REQUIRE(zl_lib);
 
-	return DSP_ENOTIMPL;
+	return -ENOSYS;
 }
 
 /*
@@ -862,7 +862,7 @@ dsp_status dbll_unload_sect(struct dbll_library_obj *lib, char *sectName,
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(sectName != NULL);
 
-	return DSP_ENOTIMPL;
+	return -ENOSYS;
 }
 
 /*

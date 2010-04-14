@@ -231,7 +231,7 @@ dsp_status cod_create(OUT struct cod_manager **phMgr, char *pstrDummyFile,
 
 	/* we don't support non-default attrs yet */
 	if (attrs != NULL)
-		return DSP_ENOTIMPL;
+		return -ENOSYS;
 
 	mgr_new = kzalloc(sizeof(struct cod_manager), GFP_KERNEL);
 	if (mgr_new == NULL)

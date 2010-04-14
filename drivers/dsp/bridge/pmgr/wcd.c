@@ -1597,7 +1597,7 @@ u32 __deprecated strmwrap_get_event_handle(union Trapped_Args * args,
 					   void *pr_ctxt)
 {
 	pr_err("%s: deprecated dspbridge ioctl\n", __func__);
-	return DSP_ENOTIMPL;
+	return -ENOSYS;
 }
 
 /*
@@ -1703,7 +1703,7 @@ u32 strmwrap_open(union Trapped_Args *args, void *pr_ctxt)
 		if (DSP_SUCCEEDED(status)) {
 			attr.stream_attr_in = &strm_attr_in;
 			if (attr.stream_attr_in->strm_mode == STRMMODE_LDMA)
-				return DSP_ENOTIMPL;
+				return -ENOSYS;
 		}
 
 	}
@@ -1814,7 +1814,7 @@ u32 __deprecated cmmwrap_calloc_buf(union Trapped_Args * args, void *pr_ctxt)
 {
 	/* This operation is done in kernel */
 	pr_err("%s: deprecated dspbridge ioctl\n", __func__);
-	return DSP_ENOTIMPL;
+	return -ENOSYS;
 }
 
 /*
@@ -1824,7 +1824,7 @@ u32 __deprecated cmmwrap_free_buf(union Trapped_Args * args, void *pr_ctxt)
 {
 	/* This operation is done in kernel */
 	pr_err("%s: deprecated dspbridge ioctl\n", __func__);
-	return DSP_ENOTIMPL;
+	return -ENOSYS;
 }
 
 /*

@@ -2046,7 +2046,7 @@ dsp_status node_pause(struct node_object *hnode)
 	status = proc_get_processor_id(pnode->hprocessor, &proc_id);
 
 	if (proc_id == IVA_UNIT)
-		status = DSP_ENOTIMPL;
+		status = -ENOSYS;
 
 	if (DSP_SUCCEEDED(status)) {
 		hnode_mgr = hnode->hnode_mgr;

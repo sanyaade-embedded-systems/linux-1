@@ -1043,7 +1043,7 @@ typedef void (*fxn_msg_setqueueid) (struct msg_queue *msg_queue_obj,
  *  and copied into the 'Bridge class driver's own space.  If any interface
  *  function field is set to a value of NULL, then the class driver will
  *  consider that function not implemented, and return the error code
- *  DSP_ENOTIMPL when a WMD client attempts to call that function.
+ *  -ENOSYS when a WMD client attempts to call that function.
  *
  *  This function table contains WCD version numbers, which are used by the
  *  WMD loader to help ensure backwards compatility between older WMD's and a
