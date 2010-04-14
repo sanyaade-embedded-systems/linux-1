@@ -79,7 +79,7 @@ extern dsp_status node_allocate(struct proc_object *hprocessor,
  *      DSP_EHANDLE:    Invalid node handle.
  *      DSP_EMEMORY:    Insufficent memory.
  *      -EPERM:      General Failure.
- *      DSP_ESIZE:      Invalid Size.
+ *      -EINVAL:      Invalid Size.
  *  Requires:
  *      node_init(void) called.
  *      pbuffer != NULL.
@@ -292,14 +292,14 @@ extern dsp_status node_delete_mgr(struct node_mgr *hnode_mgr);
  *      pu_allocated:    Location to write total number of allocated nodes.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_ESIZE:      node_tab is too small to hold all node handles.
+ *      -EINVAL:      node_tab is too small to hold all node handles.
  *  Requires:
  *      Valid hnode_mgr.
  *      node_tab != NULL || node_tab_size == 0.
  *      pu_num_nodes != NULL.
  *      pu_allocated != NULL.
  *  Ensures:
- *      - (DSP_ESIZE && *pu_num_nodes == 0)
+ *      - (-EINVAL && *pu_num_nodes == 0)
  *      - || (DSP_SOK && *pu_num_nodes <= node_tab_size)  &&
  *        (*pu_allocated == *pu_num_nodes)
  */

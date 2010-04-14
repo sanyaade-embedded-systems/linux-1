@@ -1643,7 +1643,7 @@ dsp_status node_enum_nodes(struct node_mgr *hnode_mgr, void **node_tab,
 	if (hnode_mgr->num_nodes > node_tab_size) {
 		*pu_allocated = hnode_mgr->num_nodes;
 		*pu_num_nodes = 0;
-		status = DSP_ESIZE;
+		status = -EINVAL;
 	} else {
 		hnode = (struct node_object *)lst_first(hnode_mgr->
 			node_list);

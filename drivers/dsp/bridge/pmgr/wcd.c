@@ -418,7 +418,7 @@ u32 mgrwrap_enum_node_info(union Trapped_Args *args, void *pr_ctxt)
 	u32 size = args->args_mgr_enumnode_info.undb_props_size;
 
 	if (size < sizeof(struct dsp_ndbprops))
-		return DSP_ESIZE;
+		return -EINVAL;
 
 	pndb_props = kmalloc(size, GFP_KERNEL);
 	if (pndb_props == NULL)
@@ -450,7 +450,7 @@ u32 mgrwrap_enum_proc_info(union Trapped_Args *args, void *pr_ctxt)
 	u32 size = args->args_mgr_enumproc_info.processor_info_size;
 
 	if (size < sizeof(struct dsp_processorinfo))
-		return DSP_ESIZE;
+		return -EINVAL;
 
 	processor_info = kmalloc(size, GFP_KERNEL);
 	if (processor_info == NULL)
@@ -664,7 +664,7 @@ u32 procwrap_enum_node_info(union Trapped_Args *args, void *pr_ctxt)
 	void *hprocessor = ((struct process_context *)pr_ctxt)->hprocessor;
 
 	if (!args->args_proc_enumnode_info.node_tab_size)
-		return DSP_ESIZE;
+		return -EINVAL;
 
 	status = proc_enum_nodes(hprocessor,
 				 node_tab,
@@ -723,7 +723,7 @@ u32 procwrap_enum_resources(union Trapped_Args *args, void *pr_ctxt)
 
 	if (args->args_proc_enumresources.resource_info_size <
 	    sizeof(struct dsp_resourceinfo))
-		return DSP_ESIZE;
+		return -EINVAL;
 
 	status =
 	    proc_get_resource_info(hprocessor,
@@ -750,7 +750,7 @@ u32 procwrap_get_state(union Trapped_Args *args, void *pr_ctxt)
 
 	if (args->args_proc_getstate.state_info_size <
 	    sizeof(struct dsp_processorstate))
-		return DSP_ESIZE;
+		return -EINVAL;
 
 	status = proc_get_state(hprocessor, &proc_state,
 			   args->args_proc_getstate.state_info_size);
@@ -770,7 +770,7 @@ u32 procwrap_get_trace(union Trapped_Args *args, void *pr_ctxt)
 	void *hprocessor = ((struct process_context *)pr_ctxt)->hprocessor;
 
 	if (args->args_proc_gettrace.max_size > MAX_TRACEBUFLEN)
-		return DSP_ESIZE;
+		return -EINVAL;
 
 	pbuf = kzalloc(args->args_proc_gettrace.max_size, GFP_KERNEL);
 	if (pbuf != NULL) {
@@ -913,7 +913,7 @@ u32 procwrap_map(union Trapped_Args *args, void *pr_ctxt)
 	void *hprocessor = ((struct process_context *)pr_ctxt)->hprocessor;
 
 	if (!args->args_proc_mapmem.ul_size)
-		return DSP_ESIZE;
+		return -EINVAL;
 
 	status = proc_map(args->args_proc_mapmem.hprocessor,
 			  args->args_proc_mapmem.pmpu_addr,
@@ -963,7 +963,7 @@ u32 procwrap_reserve_memory(union Trapped_Args *args, void *pr_ctxt)
 
 	if ((args->args_proc_rsvmem.ul_size <= 0) ||
 	    (args->args_proc_rsvmem.ul_size & (PG_SIZE4K - 1)) != 0)
-		return DSP_ESIZE;
+		return -EINVAL;
 
 	status = proc_reserve_memory(hprocessor,
 				     args->args_proc_rsvmem.ul_size, &prsv_addr,
@@ -1122,7 +1122,7 @@ u32 nodewrap_alloc_msg_buf(union Trapped_Args *args, void *pr_ctxt)
 		return DSP_EHANDLE;
 
 	if (!args->args_node_allocmsgbuf.usize)
-		return DSP_ESIZE;
+		return -EINVAL;
 
 	if (args->args_node_allocmsgbuf.pattr) {	/* Optional argument */
 		CP_FM_USR(&attr, args->args_node_allocmsgbuf.pattr, status, 1);

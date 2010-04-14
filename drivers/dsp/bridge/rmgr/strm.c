@@ -113,7 +113,7 @@ dsp_status strm_allocate_buffer(struct strm_res_object *strmres, u32 usize,
 		 * Allocate from segment specified at time of stream open.
 		 */
 		if (usize == 0)
-			status = DSP_ESIZE;
+			status = -EINVAL;
 
 	} else {
 		status = DSP_EHANDLE;
@@ -319,7 +319,7 @@ dsp_status strm_get_info(struct strm_object *hStrm,
 	} else {
 		if (stream_info_size < sizeof(struct stream_info)) {
 			/* size of users info */
-			status = DSP_ESIZE;
+			status = -EINVAL;
 		}
 	}
 	if (DSP_FAILED(status))

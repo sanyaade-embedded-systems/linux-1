@@ -124,7 +124,7 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
 		status = -EFAULT;
 
 	if (strlen(drv_datap->base_img) > ul_buf_size)
-		status = DSP_ESIZE;
+		status = -EINVAL;
 
 	if (DSP_SUCCEEDED(status) && drv_datap->base_img)
 		strcpy(pstrExecFile, drv_datap->base_img);

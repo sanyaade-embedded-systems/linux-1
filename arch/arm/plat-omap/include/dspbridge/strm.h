@@ -38,7 +38,7 @@
  *      DSP_EHANDLE:    Invalid hStrm.
  *      DSP_EMEMORY:    Insufficient memory.
  *      -EPERM:      Failure occurred, unable to allocate buffers.
- *      DSP_ESIZE:      usize must be > 0 bytes.
+ *      -EINVAL:      usize must be > 0 bytes.
  *  Requires:
  *      strm_init(void) called.
  *      ap_buffer != NULL.
@@ -172,7 +172,7 @@ extern dsp_status strm_get_event_handle(struct strm_object *hStrm,
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_EHANDLE:        Invalid hStrm.
- *      DSP_ESIZE:          stream_info_size < sizeof(dsp_streaminfo).
+ *      -EINVAL:          stream_info_size < sizeof(dsp_streaminfo).
  *      -EPERM:          Unable to get stream info.
  *  Requires:
  *      strm_init(void) called.

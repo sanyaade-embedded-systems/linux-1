@@ -138,7 +138,7 @@ extern dsp_status proc_detach(struct process_context *pr_ctxt);
  *  Returns:
  *      DSP_SOK     :   Success.
  *      DSP_EHANDLE :   Invalid processor handle.
- *      DSP_ESIZE   :   The amount of memory allocated for node_tab is
+ *      -EINVAL   :   The amount of memory allocated for node_tab is
  *		      insufficent. That is the number of nodes actually
  *		      allocated on the DSP is greater than the value
  *		      specified for node_tab_size.

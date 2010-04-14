@@ -1376,7 +1376,7 @@ dsp_status proc_stop(void *hprocessor)
 	if (DSP_SUCCEEDED(status) && hnode_mgr) {
 		status = node_enum_nodes(hnode_mgr, &hnode, node_tab_size,
 					 &num_nodes, &nodes_allocated);
-		if ((status == DSP_ESIZE) || (nodes_allocated > 0)) {
+		if ((status == -EINVAL) || (nodes_allocated > 0)) {
 			pr_err("%s: Can't stop device, active nodes = %d \n",
 			       __func__, nodes_allocated);
 			return DSP_EWRONGSTATE;
