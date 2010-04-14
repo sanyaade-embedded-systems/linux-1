@@ -586,8 +586,14 @@ void omap_sram_idle(void)
 	_omap_sram_idle(omap3_arm_context, save_state);
 	cpu_init();
 
+
 	if (is_suspending())
 		pm_dbg_regset_save(2);
+	/* Ensure that Mpu state is restored back as ON
+	 * after coming out of suspend/Idle.
+	 */
+	prm_rmw_mod_reg_bits(OMAP_POWERSTATEST_MASK, 0x3,
+		MPU_MOD, PM_PWSTCTRL);
 
 	/* Restore normal SDRC POWER settings */
 	if (omap_rev() >= OMAP3430_REV_ES3_0 &&
@@ -1223,10 +1229,16 @@ void omap3_pm_off_mode_enable(int enable)
 	resource_unlock_opp(VDD1_OPP);
 	resource_unlock_opp(VDD2_OPP);
 #endif
+	/* For Mpu only next state should be set as OFF, the
+	 * powerstate bits of PM_PWSTCTRL_MPU should not be explicitily
+	 * set as OFF
+	 */
+
 	list_for_each_entry(pwrst, &pwrst_list, node) {
 		if (strcmp("iva2_pwrdm", pwrst->pwrdm->name)) {
 			pwrst->next_state = state;
-			set_pwrdm_state(pwrst->pwrdm, state);
+			if (strcmp("mpu_pwrdm", pwrst->pwrdm->name))
+				set_pwrdm_state(pwrst->pwrdm, state);
 		}
 	}
 }
