@@ -32,7 +32,7 @@
 
 #define VP_IDLE_TIMEOUT 	200
 #define VP_TRANXDONE_TIMEOUT	300
-#define ABO_LDO_TRANXDONE_TIMEOUT       100
+#define ABO_LDO_TRANXDONE_TIMEOUT       30
 
 
 /**
@@ -491,6 +491,13 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 			udelay(1);
 			timeout++;
 		}
+
+		if (timeout == ABO_LDO_TRANXDONE_TIMEOUT)
+			pr_debug("ABB: TRANXDONE timed out"
+					"waiting for OPP change\n");
+
+		timeout = 0;
+
 		/* Clear the Status Bit of ABB_LDO_TRANXDONE */
 		while (timeout < ABO_LDO_TRANXDONE_TIMEOUT) {
 			prm_write_mod_reg(abb_tranxdone_st, OCP_MOD,
@@ -502,6 +509,10 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 				udelay(1);
 				timeout++;
 		}
+		if (timeout >= ABO_LDO_TRANXDONE_TIMEOUT)
+			pr_warning("ABB: TRANXDONE timed out trying"
+					"to clear status\n.");
+
 	}
 
 	/* Clear initVDD copy trigger bit */

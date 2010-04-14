@@ -39,7 +39,6 @@
 #include <plat/dma.h>
 #include <plat/dmtimer.h>
 #include <plat/usb.h>
-
 #include <plat/resource.h>
 
 #include <asm/tlbflush.h>
@@ -80,6 +79,7 @@ u32 sleep_while_idle;
 u32 enable_oswr;
 u32 wakeup_timer_seconds;
 u32 voltage_off_while_idle;
+u32 sr2_wt_cnt_val;
 
 struct power_state {
 	struct powerdomain *pwrdm;
@@ -972,7 +972,6 @@ static void __init omap3_d2d_idle(void)
 static void __init prcm_setup_regs(void)
 {
 	u32 cm_clksel1_mpu, cm_clksel1_iva2;
-	u32 efuse_cntrl;
 
 	/*set Bypass clock dividers for MPU and IVA */
 	cm_clksel1_mpu = cm_read_mod_reg(MPU_MOD, CM_CLKSEL1);
@@ -1191,21 +1190,15 @@ static void __init prcm_setup_regs(void)
 
 	/* Intialize ABB LDO
 	* Set ACTIVE_FBB_SEL Clear ACTIVE_RBB_SEL
-	* And read the Efuse for SLEEP_RBB_SEL
+	* and  SLEEP_RBB_SEL
 	*/
 	if (cpu_is_omap3630()) {
 		prm_set_mod_reg_bits(OMAP3630_ACTIVE_FBB_SEL,
 			OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
 		prm_clear_mod_reg_bits(OMAP3630_ACTIVE_RBB_SEL,
 			OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
-		efuse_cntrl = omap_readl(OMAP3630_EFUSE_CNTRL);
-		efuse_cntrl &= 0x1;
-		if (efuse_cntrl)
-			prm_set_mod_reg_bits(OMAP3630_SLEEP_RBB_SEL,
-				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
-		else
-			prm_clear_mod_reg_bits(OMAP3630_SLEEP_RBB_SEL,
-				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
+		prm_clear_mod_reg_bits(OMAP3630_SLEEP_RBB_SEL,
+			OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
 	}
 
 	omap3_iva_idle();
@@ -1361,6 +1354,17 @@ static int __init omap3_pm_init(void)
 {
 	struct power_state *pwrst, *tmp;
 	int ret;
+	struct clk *sys_ck;
+	u32 sys_clk_speed;
+
+	sys_ck = clk_get(NULL, "sys_ck");
+	sys_clk_speed = clk_get_rate(sys_ck);
+
+	/* Program the ABB LDO settling time counter (PRM_LDO_ABB_SETUP.SR2_
+	 * WTCNT_VALUE
+	 */
+	sr2_wt_cnt_val = (30 * (sys_clk_speed))/8;
+	sr2_wt_cnt_val <<= 8;
 
 	if (!cpu_is_omap34xx())
 		return -ENODEV;
@@ -1370,9 +1374,8 @@ static int __init omap3_pm_init(void)
 	/* XXX prcm_setup_regs needs to be before enabling hw
 	 * supervised mode for powerdomains */
 	prcm_setup_regs();
-
 	ret = request_irq(INT_34XX_PRCM_MPU_IRQ,
-			  (irq_handler_t)prcm_interrupt_handler,
+			(irq_handler_t)prcm_interrupt_handler,
 			  IRQF_DISABLED, "prcm", NULL);
 	if (ret) {
 		printk(KERN_ERR "request_irq failed to register for 0x%x\n",

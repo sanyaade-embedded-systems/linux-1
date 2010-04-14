@@ -43,6 +43,9 @@
 #warning MPU latency constraints require CONFIG_CPU_IDLE to function!
 #endif
 
+extern u32 sr2_wt_cnt_val;
+
+
 /**
  * init_latency - Initializes the mpu/core latency resource.
  * @resp: Latency resource to be initalized
@@ -366,13 +369,6 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 {
 	int i, ret = 0, raise;
 	unsigned long freq;
-	u32 sr2_wt_cnt_val  = 0x0;
-	struct clk *sys_ck;
-	u32 sys_clk_speed;
-	sys_ck = clk_get(NULL, "sys_ck");
-	sys_clk_speed = clk_get_rate(sys_ck);
-	sr2_wt_cnt_val = (30 * (sys_clk_speed))/8;
-	sr2_wt_cnt_val <<= 8;
 
 	/* See if have a freq associated, if not, invalid opp */
 	ret = opp_to_freq(&freq, opp_type, target_level);
@@ -387,8 +383,7 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 	omap_smartreflex_disable(res);
 
 	/*
-	 * Program the ABB LDO settling time counter (PRM_LDO_ABB_SETUP.SR2_
-	 * WTCNT_VALUE), Select the fast/slow OPP (PRM_LDO_ABB_CTRL.OPP_SEL)
+	 * Select the fast/slow OPP (PRM_LDO_ABB_CTRL.OPP_SEL)
 	 * according to OPP, Enable the ABB LDO (PRM_LDO_ABB_SETUP.SR2EN) if
 	 * it is a fast OPP so it can go in FBB mode else Clear the
 	 * PRM_LDO_ABB_SETUP.SR2EN if it is to be bypassed for
@@ -396,11 +391,11 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 	 */
 	if (cpu_is_omap3630()) {
 		if (res == VDD1_OPP) {
-			prm_rmw_mod_reg_bits(OMAP3630_SR2_WT_CNT_MASK,
-			sr2_wt_cnt_val,	OMAP3430_GR_MOD,
-			OMAP3630_PRM_LDO_ABB_CTRL);
 			switch (target_level) {
 			case VDD1_OPP4:
+				prm_rmw_mod_reg_bits(OMAP3630_SR2_WT_CNT_MASK,
+				sr2_wt_cnt_val, OMAP3430_GR_MOD,
+				OMAP3630_PRM_LDO_ABB_CTRL);
 				prm_rmw_mod_reg_bits(OMAP3630_OPP_SEL, 0x1,
 				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_SETUP);
 				prm_set_mod_reg_bits(OMAP3630_SR2_EN,

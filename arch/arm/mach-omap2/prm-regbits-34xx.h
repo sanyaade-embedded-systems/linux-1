@@ -249,7 +249,6 @@
 /* 3630 specific bits */
 #define OMAP3630_ABO_LDO_TRANXDONE_EN				(1 << 26)
 
-
 /* PRM_IRQENABLE_MPU specific bits */
 #define OMAP3430ES2_SND_PERIPH_DPLL_RECAL_EN_SHIFT		25
 #define OMAP3430ES2_SND_PERIPH_DPLL_RECAL_EN			(1 << 25)
