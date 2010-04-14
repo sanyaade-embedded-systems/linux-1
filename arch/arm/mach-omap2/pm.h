@@ -75,10 +75,6 @@ extern int resource_access_opp_lock(int res, int delta);
 
 extern int omap3_pm_get_suspend_state(struct powerdomain *pwrdm);
 extern int omap3_pm_set_suspend_state(struct powerdomain *pwrdm, int state);
-extern int program_vdd2_opp_3430(void);
-extern int reprogram_vdd2_opp_3430(void);
-extern int program_vdd2_opp_3630(void);
-extern int reprogram_vdd2_opp_3630(void);
 
 extern u32 wakeup_timer_seconds;
 extern struct omap_dm_timer *gptimer_wakeup;
