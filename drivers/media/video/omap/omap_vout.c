@@ -573,8 +573,6 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	int *cropped_offset = &vout->cropped_offset;
 
 	if (flg_720 == VIDEO_720_ENABLE) {
-		pix->height = win->w.height;
-		pix->width = win->w.width;
 		crop->height = win->w.height;
 		crop->width = win->w.width;
 	}
