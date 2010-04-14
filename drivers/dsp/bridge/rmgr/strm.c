@@ -569,7 +569,7 @@ func_cont:
 			 * something documented
 			 */
 			if (status != -ENOMEM && status !=
-			    DSP_EINVALIDARG && status != -EPERM) {
+			    -EINVAL && status != -EPERM) {
 				/*
 				 * We got a status that's not return-able.
 				 * Assert that we got something we were

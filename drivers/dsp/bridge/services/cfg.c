@@ -144,7 +144,7 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
  */
 dsp_status cfg_get_object(OUT u32 *pdwValue, u8 dw_type)
 {
-	dsp_status status = DSP_EINVALIDARG;
+	dsp_status status = -EINVAL;
 	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	DBC_REQUIRE(pdwValue != NULL);
@@ -230,7 +230,7 @@ dsp_status cfg_set_dev_object(struct cfg_devnode *dev_node_obj, u32 dwValue)
  */
 dsp_status cfg_set_object(u32 dwValue, u8 dw_type)
 {
-	dsp_status status = DSP_EINVALIDARG;
+	dsp_status status = -EINVAL;
 	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	if (!drv_datap)

@@ -391,7 +391,7 @@ typedef void (*fxn_deh_notify) (struct deh_mgr *hdeh_mgr,
  *      DSP_SOK:                Success.
  *      DSP_EHANDLE:            hchnl_mgr is invalid.
  *      -ENOMEM:            Insufficient memory for requested resources.
- *      DSP_EINVALIDARG:        Invalid number of IOReqs.
+ *      -EINVAL:        Invalid number of IOReqs.
  *      CHNL_E_OUTOFSTREAMS:    No free channels available.
  *      CHNL_E_BADCHANID:       Channel ID is out of range.
  *      -EALREADY:        Channel is in use.

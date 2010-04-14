@@ -165,7 +165,7 @@ static  inline dsp_status ntfy_register(struct ntfy_object *ntfy_obj,
 		goto func_end;
 	}
 	if (!event) {
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 		goto func_end;
 	}
 	ne = ntfy_event_create(event, type);

@@ -40,7 +40,7 @@
  *  Returns:
  *      DSP_SOK:            Success.
  *      DSP_SALREADYASLEEP: Success, but the DSP was already asleep.
- *      DSP_EINVALIDARG:    The specified sleepCode is not supported.
+ *      -EINVAL:    The specified sleepCode is not supported.
  *      -ETIME:       A timeout occured while waiting for DSP sleep
  *                          confirmation.
  *      -EPERM:          General failure, unable to send sleep command to

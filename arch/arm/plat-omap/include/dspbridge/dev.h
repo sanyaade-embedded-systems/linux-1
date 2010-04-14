@@ -636,7 +636,7 @@ extern dsp_status dev_remove_proc_object(struct dev_object
  *      ulStatus:    A status word, most likely a BRD_STATUS.
  *  Returns:
  *      DSP_SOK:     All registered clients were asynchronously notified.
- *      DSP_EINVALIDARG:   Invalid hdev_obj.
+ *      -EINVAL:   Invalid hdev_obj.
  *  Requires:
  *      DEV Initialized.
  *  Ensures:

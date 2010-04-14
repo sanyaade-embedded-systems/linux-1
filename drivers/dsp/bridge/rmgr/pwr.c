@@ -63,9 +63,9 @@ dsp_status pwr_sleep_dsp(IN CONST u32 sleepCode, IN CONST u32 timeout)
 		else if (sleepCode == PWR_EMERGENCYDEEPSLEEP)
 			ioctlcode = WMDIOCTL_EMERGENCYSLEEP;
 		else
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 
-		if (status != DSP_EINVALIDARG) {
+		if (status != -EINVAL) {
 			status = (*intf_fxns->pfn_dev_cntrl) (dw_context,
 							      ioctlcode,
 							      (void *)&arg);

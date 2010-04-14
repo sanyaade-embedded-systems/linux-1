@@ -152,7 +152,7 @@ dsp_status mgr_enum_node_info(u32 node_id, OUT struct dsp_ndbprops *pndb_props,
 	}
 	if (DSP_SUCCEEDED(status)) {
 		if (node_id > (node_index - 1)) {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 		} else {
 			status = dcd_get_object_def(pmgr_obj->hdcd_mgr,
 						    (struct dsp_uuid *)

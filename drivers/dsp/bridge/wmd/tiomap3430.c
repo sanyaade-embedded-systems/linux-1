@@ -1295,7 +1295,7 @@ static dsp_status bridge_brd_mem_map(struct wmd_dev_context *hDevContext,
 		__func__, hDevContext, ul_mpu_addr, ulVirtAddr, ul_num_bytes,
 		ul_map_attr);
 	if (ul_num_bytes == 0)
-		return DSP_EINVALIDARG;
+		return -EINVAL;
 
 	if (ul_map_attr & DSP_MAP_DIR_MASK) {
 		attrs = ul_map_attr;
@@ -1330,7 +1330,7 @@ static dsp_status bridge_brd_mem_map(struct wmd_dev_context *hDevContext,
 			 * Mixedsize isn't enabled, so size can't be
 			 * zero here
 			 */
-			return DSP_EINVALIDARG;
+			return -EINVAL;
 		}
 	}
 	if (attrs & DSP_MAPDONOTLOCK)
@@ -1384,7 +1384,7 @@ static dsp_status bridge_brd_mem_map(struct wmd_dev_context *hDevContext,
 	if (!vma) {
 		pr_err("%s: Failed to get VMA region for 0x%x (%d)\n",
 		       __func__, ul_mpu_addr, ul_num_bytes);
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 		up_read(&mm->mmap_sem);
 		goto func_cont;
 	}

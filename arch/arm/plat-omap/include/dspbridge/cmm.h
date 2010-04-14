@@ -176,7 +176,7 @@ extern dsp_status cmm_get_handle(void *hprocessor,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Invalid handle.
- *      DSP_EINVALIDARG Invalid input argument.
+ *      -EINVAL Invalid input argument.
  *  Requires:
  *  Ensures:
  *
@@ -214,7 +214,7 @@ extern bool cmm_init(void);
  *  Returns:
  *      DSP_SOK:         Success.
  *      DSP_EHANDLE:     Invalid hcmm_mgr handle.
- *      DSP_EINVALIDARG: Invalid input argument.
+ *      -EINVAL: Invalid input argument.
  *      -EPERM:       Unable to register.
  *      - On success *pulSegId is a valid SM segment ID.
  *  Requires:
@@ -245,7 +245,7 @@ extern dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
  *  Returns:
  *       DSP_SOK:         Success.
  *       DSP_EHANDLE:     Invalid handle.
- *       DSP_EINVALIDARG: Invalid ul_seg_id.
+ *       -EINVAL: Invalid ul_seg_id.
  *       -EPERM:       Unable to unregister for unknown reason.
  *  Requires:
  *  Ensures:
@@ -286,7 +286,7 @@ extern void *cmm_xlator_alloc_buf(struct cmm_xlatorobject *xlator,
  *     pXlatorAttrs:   Translator attributes used for the client NODE or STREAM.
  *  Returns:
  *     DSP_SOK:            Success.
- *     DSP_EINVALIDARG:    Bad input Attrs.
+ *     -EINVAL:    Bad input Attrs.
  *     -ENOMEM:   Insufficient memory(local) for requested resources.
  *  Requires:
  *     phXlator != NULL

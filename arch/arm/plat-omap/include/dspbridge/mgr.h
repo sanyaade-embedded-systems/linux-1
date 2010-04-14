@@ -102,7 +102,7 @@ extern dsp_status mgr_destroy(struct mgr_object *hmgr_obj);
  *                          in the database will be returned.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EINVALIDARG:    Parameter node_id is > than the number of nodes.
+ *      -EINVAL:    Parameter node_id is > than the number of nodes.
  *                          configutred in the system
  *      DSP_ECHANGEDURINGENUM:  During Enumeration there has been a change in
  *                              the number of nodes configured or in the
@@ -136,7 +136,7 @@ extern dsp_status mgr_enum_node_info(u32 node_id,
  *                          in the database will be returned
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EINVALIDARG:    Parameter processor_id is > than the number of
+ *      -EINVAL:    Parameter processor_id is > than the number of
  *                          DSP Processors in the system.
  *      -EPERM:          Failed to querry the Node Data Base
  *  Requires:

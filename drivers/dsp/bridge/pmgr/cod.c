@@ -153,7 +153,7 @@ static s32 cod_f_read(void __user *pbuffer, s32 size, s32 cCount,
 		return dw_bytes_read / size;
 	}
 
-	return DSP_EINVALIDARG;
+	return -EINVAL;
 }
 
 static s32 cod_f_seek(struct file *filp, s32 lOffset, s32 cOrigin)

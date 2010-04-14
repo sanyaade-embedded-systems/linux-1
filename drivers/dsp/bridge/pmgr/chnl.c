@@ -71,7 +71,7 @@ dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
 	    (pMgrAttrs->max_channels <= CHNL_MAXCHANNELS))
 		status = DSP_SOK;
 	else if (pMgrAttrs->max_channels == 0)
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 	else
 		status = CHNL_E_MAXCHANNELS;
 

@@ -488,7 +488,7 @@ dsp_status bridge_chnl_flush_io(struct chnl_object *chnl_obj, u32 dwTimeOut)
 	if (pchnl) {
 		if ((dwTimeOut == CHNL_IOCNOWAIT)
 		    && CHNL_IS_OUTPUT(pchnl->chnl_mode)) {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 		} else {
 			chnl_mode = pchnl->chnl_mode;
 			chnl_mgr_obj = pchnl->chnl_mgr_obj;
@@ -790,7 +790,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 
 	/* Validate Args: */
 	if (pattrs->uio_reqs == 0) {
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 	} else {
 		if (!hchnl_mgr) {
 			status = DSP_EHANDLE;

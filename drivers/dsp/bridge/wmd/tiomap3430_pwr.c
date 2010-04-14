@@ -68,7 +68,7 @@ dsp_status handle_constraints_set(struct wmd_dev_context *dev_context,
 	if (!opp_idx || (opp_idx > pdata->dsp_num_speeds)) {
 		pr_err("%s: DSP requested for an invalid OPP %d Vs %d->%d!\n",
 		       __func__, opp_idx, 1, pdata->dsp_num_speeds);
-		return DSP_EINVALIDARG;
+		return -EINVAL;
 	}
 	/* Read the target value requested by DSP  */
 	dev_dbg(bridge, "OPP: %s opp requested = 0x%x\n", __func__, opp_idx);
@@ -184,7 +184,7 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 
 	/* Check if sleep code is valid */
 	if ((dw_cmd != PWR_DEEPSLEEP) && (dw_cmd != PWR_EMERGENCYDEEPSLEEP))
-		return DSP_EINVALIDARG;
+		return -EINVAL;
 
 	switch (dev_context->dw_brd_state) {
 	case BRD_RUNNING:

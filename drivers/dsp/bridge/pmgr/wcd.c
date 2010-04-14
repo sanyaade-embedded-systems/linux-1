@@ -503,7 +503,7 @@ u32 mgrwrap_register_object(union Trapped_Args *args, void *pr_ctxt)
 	}
 
 	if (args->args_mgr_registerobject.obj_type >= DSP_DCDMAXOBJTYPE)
-		return DSP_EINVALIDARG;
+		return -EINVAL;
 
 	status = dcd_register_object(&uuid_obj,
 				     args->args_mgr_registerobject.obj_type,
@@ -545,7 +545,7 @@ u32 mgrwrap_wait_for_bridge_events(union Trapped_Args *args, void *pr_ctxt)
 	u32 count = args->args_mgr_wait.count;
 
 	if (count > MAX_EVENTS)
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 
 	/* get the array of pointers to user structures */
 	CP_FM_USR(anotifications, args->args_mgr_wait.anotifications,
@@ -688,7 +688,7 @@ u32 procwrap_flush_memory(union Trapped_Args *args, void *pr_ctxt)
 	void *hprocessor = ((struct process_context *)pr_ctxt)->hprocessor;
 
 	if (args->args_proc_flushmemory.ul_flags > PROC_WRBK_INV_ALL)
-		return DSP_EINVALIDARG;
+		return -EINVAL;
 
 	status = proc_flush_memory(hprocessor,
 				   args->args_proc_flushmemory.pmpu_addr,
@@ -799,7 +799,7 @@ u32 procwrap_load(union Trapped_Args *args, void *pr_ctxt)
 	void *hprocessor = ((struct process_context *)pr_ctxt)->hprocessor;
 
 	if (count <= 0 || count > MAX_LOADARGS) {
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 		goto func_cont;
 	}
 
@@ -922,7 +922,7 @@ u32 procwrap_map(union Trapped_Args *args, void *pr_ctxt)
 			  args->args_proc_mapmem.ul_map_attr, pr_ctxt);
 	if (DSP_SUCCEEDED(status)) {
 		if (put_user(map_addr, args->args_proc_mapmem.pp_map_addr)) {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 			proc_un_map(hprocessor, map_addr, pr_ctxt);
 		}
 
@@ -970,7 +970,7 @@ u32 procwrap_reserve_memory(union Trapped_Args *args, void *pr_ctxt)
 				     pr_ctxt);
 	if (DSP_SUCCEEDED(status)) {
 		if (put_user(prsv_addr, args->args_proc_rsvmem.pp_rsv_addr)) {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 			proc_un_reserve_memory(args->args_proc_rsvmem.
 					       hprocessor, prsv_addr, pr_ctxt);
 		}
@@ -1519,7 +1519,7 @@ u32 strmwrap_allocate_buffer(union Trapped_Args *args, void *pr_ctxt)
 		return DSP_EHANDLE;
 
 	if (num_bufs > MAX_BUFS)
-		return DSP_EINVALIDARG;
+		return -EINVAL;
 
 	ap_buffer = kmalloc((num_bufs * sizeof(u8 *)), GFP_KERNEL);
 
@@ -1572,7 +1572,7 @@ u32 strmwrap_free_buffer(union Trapped_Args *args, void *pr_ctxt)
 		return DSP_EHANDLE;
 
 	if (num_bufs > MAX_BUFS)
-		return DSP_EINVALIDARG;
+		return -EINVAL;
 
 	ap_buffer = kmalloc((num_bufs * sizeof(u8 *)), GFP_KERNEL);
 
@@ -1793,7 +1793,7 @@ u32 strmwrap_select(union Trapped_Args *args, void *pr_ctxt)
 		return DSP_EHANDLE;
 
 	if (args->args_strm_select.strm_num > MAX_STREAMS)
-		return DSP_EINVALIDARG;
+		return -EINVAL;
 
 	CP_FM_USR(strm_tab, strm_res->hstream, status,
 		  args->args_strm_select.strm_num);

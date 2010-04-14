@@ -279,7 +279,7 @@ static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 		init_status = -ENOMEM;
 	}
 	if (shm_size < 0x10000) {	/* 64 KB */
-		init_status = DSP_EINVALIDARG;
+		init_status = -EINVAL;
 		status = -1;
 		pr_err("%s: shm size must be at least 64 KB\n", __func__);
 	}

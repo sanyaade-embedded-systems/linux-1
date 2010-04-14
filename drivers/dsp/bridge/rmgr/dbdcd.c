@@ -692,7 +692,7 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 		sprintf(sz_obj_type, "%d", DSP_DCDLIBRARYTYPE);
 		break;
 	default:
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 		DBC_ASSERT(false);
 	}
 	if (DSP_SUCCEEDED(status)) {

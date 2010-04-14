@@ -31,7 +31,7 @@
  *      args:       Argument structure.
  *      pResult:
  *  Returns:
- *      DSP_SOK if command called; DSP_EINVALIDARG if command not in IOCTL
+ *      DSP_SOK if command called; -EINVAL if command not in IOCTL
  *      table.
  *  Requires:
  *  Ensures:

@@ -422,7 +422,7 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 	if (((attr_in->heap_size) & (PG_SIZE4K - 1))) {
 		pr_err("%s: node heap size not aligned to 4K, size = 0x%x \n",
 		       __func__, attr_in->heap_size);
-		status = DSP_EINVALIDARG;
+		status = -EINVAL;
 	} else {
 		pnode->create_args.asa.task_arg_obj.heap_size =
 		    attr_in->heap_size;

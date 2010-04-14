@@ -576,7 +576,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 	/* Check if input ul_size is big enough to alloc at least one block */
 	if (DSP_SUCCEEDED(status)) {
 		if (ul_size < cmm_mgr_obj->ul_min_block_size) {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 			goto func_end;
 		}
 	}
@@ -688,7 +688,7 @@ dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 				ul_id++;
 			}	/* end while */
 		} else {
-			status = DSP_EINVALIDARG;
+			status = -EINVAL;
 		}
 	} else {
 		status = DSP_EHANDLE;
