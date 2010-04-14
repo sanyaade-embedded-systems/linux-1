@@ -1248,6 +1248,11 @@ static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 
 			pGenObj->obj_data.node_obj.ndb_props.count_profiles =
 			    atoi(token);
+			if (pGenObj->obj_data.node_obj.ndb_props.count_profiles
+							> MAX_PROFILES) {
+				status = -EINVAL;
+				break;
+			}
 			for (i = 0;
 			     i <
 			     pGenObj->obj_data.node_obj.
