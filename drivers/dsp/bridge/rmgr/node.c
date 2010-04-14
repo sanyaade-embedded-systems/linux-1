@@ -906,7 +906,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 	 */
 	if (DSP_SUCCEEDED(status) && pattrs) {
 		if (pattrs->strm_mode != STRMMODE_PROCCOPY)
-			status = DSP_ESTRMMODE;	/* illegal stream mode */
+			status = -EPERM;	/* illegal stream mode */
 
 	}
 	if (DSP_FAILED(status))
