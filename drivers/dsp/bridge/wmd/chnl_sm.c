@@ -100,7 +100,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 	struct dev_object *dev_obj;
 	u8 dw_state;
 	bool is_eos;
-	struct chnl_mgr *chnl_mgr_obj = pchnl->chnl_mgr_obj;
+	struct chnl_mgr *chnl_mgr_obj;
 	u8 *host_sys_buf = NULL;
 	bool sched_dpc = false;
 	u16 mb_val = 0;
@@ -130,9 +130,11 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 		}
 	}
 
+	chnl_mgr_obj = pchnl->chnl_mgr_obj;
+
 	dev_obj = dev_get_first();
 	dev_get_wmd_context(dev_obj, &dev_ctxt);
-	if (!dev_ctxt)
+	if (!dev_ctxt || !chnl_mgr_obj)
 		status = -EFAULT;
 
 	if (DSP_FAILED(status))

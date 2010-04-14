@@ -123,14 +123,18 @@ dsp_status cfg_get_exec_file(struct cfg_devnode *dev_node_obj, u32 ul_buf_size,
 	else if (!pstrExecFile || !drv_datap)
 		status = -EFAULT;
 
-	if (strlen(drv_datap->base_img) > ul_buf_size)
+	if (DSP_FAILED(status))
+		goto func_end;
+
+	if (drv_datap->base_img && strlen(drv_datap->base_img) > ul_buf_size)
 		status = -EINVAL;
 
-	if (DSP_SUCCEEDED(status) && drv_datap->base_img)
+	if (DSP_SUCCEEDED(status))
 		strcpy(pstrExecFile, drv_datap->base_img);
 
 	if (DSP_FAILED(status))
 		pr_err("%s: Failed, status 0x%x\n", __func__, status);
+func_end:
 	DBC_ENSURE(((status == DSP_SOK) &&
 		    (strlen(pstrExecFile) <= ul_buf_size))
 		   || (status != DSP_SOK));

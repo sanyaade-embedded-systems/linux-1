@@ -936,6 +936,7 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 			__func__, psz_path_name, dw_path_size);
 	} else {
 		/* Deregister an existing object */
+		status = -EPERM;
 		spin_lock(&dbdcd_lock);
 		list_for_each_entry(dcd_key, &reg_key_list, link) {
 			if (!strncmp(dcd_key->name, sz_reg_key,
@@ -943,12 +944,11 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 				list_del(&dcd_key->link);
 				kfree(dcd_key->path);
 				kfree(dcd_key);
+				status = DSP_SOK;
 				break;
 			}
 		}
 		spin_unlock(&dbdcd_lock);
-		if (&dcd_key->link == &reg_key_list)
-			status = -EPERM;
 	}
 
 	if (DSP_SUCCEEDED(status)) {

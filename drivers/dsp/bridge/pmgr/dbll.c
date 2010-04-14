@@ -1320,7 +1320,7 @@ func_cont:
 						    (u32 *) &rmm_addr_obj,
 						    seg_id, req, FALSE);
 	}
-	if (DSP_FAILED(status)) {
+	if (DSP_FAILED(status) || !lib) {
 		ret = false;
 	} else {
 		/* RMM gives word address. Need to convert to byte address */

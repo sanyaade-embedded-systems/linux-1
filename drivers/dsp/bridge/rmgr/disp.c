@@ -116,7 +116,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 	if (DSP_SUCCEEDED(status)) {
 		status = dev_get_chnl_mgr(hdev_obj, &(disp_obj->hchnl_mgr));
 		if (DSP_SUCCEEDED(status)) {
-			(void)dev_get_intf_fxns(hdev_obj, &intf_fxns);
+			status = dev_get_intf_fxns(hdev_obj, &intf_fxns);
 			disp_obj->intf_fxns = intf_fxns;
 		}
 	}

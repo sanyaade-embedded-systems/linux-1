@@ -1961,9 +1961,11 @@ dsp_status nldr_find_addr(struct nldr_nodeobject *nldr_node, u32 sym_addr,
 		root = nldr_node->root;
 	}
 
-	status1 = dbll_find_dsp_symbol(root.lib, sym_addr,
+	if (root.lib)
+		status1 = dbll_find_dsp_symbol(root.lib, sym_addr,
 			offset_range, offset_output, sym_name);
-
+	else
+		status1 = false;
 	/* If symbol not found, check dependent libraries */
 	if (!status1)
 		for (i = 0; i < root.dep_libs; i++) {
