@@ -750,7 +750,7 @@ DBAPI node_alloc_msg_buf(struct node_object *hnode, u32 usize,
 			break;
 		default:
 			/* alignment value not suportted */
-			status = DSP_EALIGNMENT;
+			status = -EPERM;
 			break;
 		}
 		if (DSP_SUCCEEDED(status)) {
