@@ -120,7 +120,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 		dw_state = pchnl->dw_state;
 		if (dw_state != CHNL_STATEREADY) {
 			if (dw_state & CHNL_STATECANCEL)
-				status = CHNL_E_CANCELLED;
+				status = -ECANCELED;
 			else if ((dw_state & CHNL_STATEEOS)
 				 && CHNL_IS_OUTPUT(pchnl->chnl_mode))
 				status = CHNL_E_EOS;
