@@ -84,7 +84,7 @@ dsp_status cfg_get_dev_object(struct cfg_devnode *dev_node_obj,
 	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	if (!drv_datap)
-		status = DSP_EFAIL;
+		status = -EPERM;
 
 	if (!dev_node_obj)
 		status = CFG_E_INVALIDHDEVNODE;
@@ -150,7 +150,7 @@ dsp_status cfg_get_object(OUT u32 *pdwValue, u8 dw_type)
 	DBC_REQUIRE(pdwValue != NULL);
 
 	if (!drv_datap)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	switch (dw_type) {
 	case (REG_DRV_OBJECT):
@@ -204,7 +204,7 @@ dsp_status cfg_set_dev_object(struct cfg_devnode *dev_node_obj, u32 dwValue)
 
 	if (!drv_datap) {
 		pr_err("%s: Failed, status 0x%x\n", __func__, status);
-		return DSP_EFAIL;
+		return -EPERM;
 	}
 
 	if (!dev_node_obj)
@@ -234,7 +234,7 @@ dsp_status cfg_set_object(u32 dwValue, u8 dw_type)
 	struct drv_data *drv_datap = dev_get_drvdata(bridge);
 
 	if (!drv_datap)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	switch (dw_type) {
 	case (REG_DRV_OBJECT):

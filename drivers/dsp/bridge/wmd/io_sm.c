@@ -256,7 +256,7 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 	if (DSP_SUCCEEDED(status)) {
 		if ((request_irq(INT_34XX_WDT3_IRQ, io_isr_wdt3, 0,
 				 "dsp_wdt", (void *)pio_mgr)) != 0)
-			status = DSP_EFAIL;
+			status = -EPERM;
 		else
 			/*
 			 * Disable at this moment, it will be enabled
@@ -649,7 +649,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 				hio_mgr->ext_proc_info.ty_tlb[i].ul_gpp_phys,
 				hio_mgr->ext_proc_info.ty_tlb[i].ul_dsp_virt,
 				ul_gpp_pa, ul_dsp_va, ul_seg_size);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			if (ndx < MAX_LOCK_TLB_ENTRIES) {
 				ae_proc[ndx].ul_dsp_va =
@@ -719,7 +719,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 		goto func_end;
 	} else {
 		if (ae_proc[0].ul_dsp_va > ul_shm_base) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		/* ul_shm_base may not be at ul_dsp_va address */
@@ -1627,7 +1627,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 	status =
 	    cod_get_sym_value(cod_man, SHM0_SHARED_BASE_SYM, &ul_shm0_base);
 	if (ul_shm0_base == 0) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	/* Get end of 1st SM Heap region */
@@ -1636,7 +1636,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 		status = cod_get_sym_value(cod_man, SHM0_SHARED_END_SYM,
 					   &shm0_end);
 		if (shm0_end == 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 	}
@@ -1647,7 +1647,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 		    cod_get_sym_value(cod_man, SHM0_SHARED_RESERVED_BASE_SYM,
 				      &ul_shm0_rsrvd_start);
 		if (ul_shm0_rsrvd_start == 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 	}
@@ -1665,14 +1665,14 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 		ul_rsrvd_size =
 		    (shm0_end - ul_shm0_rsrvd_start + 1) * hio_mgr->word_size;
 		if (ul_rsrvd_size <= 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		/* Calc size of SM DSP can alloc from */
 		ul_dsp_size =
 		    (ul_shm0_rsrvd_start - ul_shm0_base) * hio_mgr->word_size;
 		if (ul_dsp_size <= 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		/* First TLB entry reserved for Bridge SM use. */
@@ -1691,7 +1691,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 			dw_offset = ul_dsp_virt - dw_gpp_base_pa;
 
 		if (ul_shm0_rsrvd_start * hio_mgr->word_size < ul_dsp_virt) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		/*
@@ -1721,7 +1721,7 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
 					   dw_gpp_base_va);
 		/* First SM region is seg_id = 1 */
 		if (ul_shm_seg_id0 != 1)
-			status = DSP_EFAIL;
+			status = -EPERM;
 	}
 func_end:
 	return status;
@@ -1773,7 +1773,7 @@ dsp_status io_sh_msetting(struct io_mgr *hio_mgr, u8 desc, void *pargs)
 			hio_mgr->shared_mem->opp_table_struct.curr_opp_pt =
 			    *(u32 *) pargs;
 		else
-			return DSP_EFAIL;
+			return -EPERM;
 		break;
 	case SHM_OPPINFO:
 		/*

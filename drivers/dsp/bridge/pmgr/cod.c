@@ -168,7 +168,7 @@ static s32 cod_f_seek(struct file *filp, s32 lOffset, s32 cOrigin)
 	dw_cur_pos = filp->f_op->llseek(filp, lOffset, cOrigin);
 
 	if ((s32) dw_cur_pos < 0)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	/* we can't use DSP_SOK here */
 	return 0;
@@ -185,7 +185,7 @@ static s32 cod_f_tell(struct file *filp)
 	dw_cur_pos = filp->f_op->llseek(filp, 0, SEEK_CUR);
 
 	if ((s32) dw_cur_pos < 0)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	return dw_cur_pos;
 }
@@ -350,7 +350,7 @@ dsp_status cod_get_base_name(struct cod_manager *cod_mgr_obj, char *pszName,
 	if (usize <= COD_MAXPATHLENGTH)
 		strncpy(pszName, cod_mgr_obj->sz_zl_file, usize);
 	else
-		status = DSP_EFAIL;
+		status = -EPERM;
 
 	return status;
 }

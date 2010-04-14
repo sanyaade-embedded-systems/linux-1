@@ -172,7 +172,7 @@ struct process_context {
  *  Returns:
  *      DSP_SOK:        Sucess
  *      DSP_EMEMORY:    Failed in Memory allocation
- *      DSP_EFAIL:      General Failure
+ *      -EPERM:      General Failure
  *  Requires:
  *      DRV Initialized (refs > 0 )
  *      phDrvObject != NULL.
@@ -201,7 +201,7 @@ extern dsp_status drv_create(struct drv_object **phDrvObject);
  *      hdrv_obj:     Handle to Driver object .
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Failed to destroy DRV Object
+ *      -EPERM:      Failed to destroy DRV Object
  *  Requires:
  *      DRV Initialized (cRegs > 0 )
  *      hdrv_obj is not NULL and a valid DRV handle .
@@ -268,10 +268,10 @@ extern u32 drv_get_first_dev_extension(void);
  *      Device Object List not Empty
  *  Returns:
  *      DSP_SOK:        Success
- *      DSP_EFAIL:      Failed to Get the Dev Object
+ *      -EPERM:      Failed to Get the Dev Object
  *  Ensures:
  *      DSP_SOK:        *phDevObject != NULL
- *      DSP_EFAIL:      *phDevObject = NULL
+ *      -EPERM:      *phDevObject = NULL
  */
 extern dsp_status drv_get_dev_object(u32 index,
 				     struct drv_object *hdrv_obj,
@@ -330,7 +330,7 @@ extern dsp_status drv_init(void);
  *      hdev_obj:     Handle to DeviceObject to insert.
  *  Returns:
  *      DSP_SOK:        If successful.
- *      DSP_EFAIL:      General Failure:
+ *      -EPERM:      General Failure:
  *  Requires:
  *      hdrv_obj != NULL and Valid DRV Handle.
  *      hdev_obj != NULL.
@@ -350,7 +350,7 @@ extern dsp_status drv_insert_dev_object(struct drv_object *hdrv_obj,
  *      hdev_obj:     Handle to DevObject to Remove
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Unable to find dev_obj.
+ *      -EPERM:      Unable to find dev_obj.
  *  Requires:
  *      hdrv_obj != NULL and a Valid DRV Handle.
  *      hdev_obj != NULL.

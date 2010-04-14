@@ -273,7 +273,7 @@ dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
 			cmm_obj->dw_page_size = sys_info.dw_page_size;
 		} else {
 			cmm_obj->dw_page_size = 0;
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 		/* Note: DSP SM seg table(aDSPSMSegTab[]) zero'd by
 		 * MEM_ALLOC_OBJECT */
@@ -328,7 +328,7 @@ dsp_status cmm_destroy(struct cmm_object *hcmm_mgr, bool bForce)
 		if (DSP_SUCCEEDED(status)) {
 			if (temp_info.ul_total_in_use_cnt > 0) {
 				/* outstanding allocations */
-				status = DSP_EFAIL;
+				status = -EPERM;
 			}
 		}
 	}
@@ -570,7 +570,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 	slot_seg = get_slot(cmm_mgr_obj);
 	if (slot_seg < 0) {
 		/* get a slot number */
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	/* Check if input ul_size is big enough to alloc at least one block */
@@ -594,7 +594,7 @@ dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 		psma->dw_dsp_base = dw_dsp_base;
 		psma->ul_dsp_size = ul_dsp_size;
 		if (psma->dw_vm_base == 0) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		if (DSP_SUCCEEDED(status)) {
@@ -679,7 +679,7 @@ dsp_status cmm_un_register_gppsm_seg(struct cmm_object *hcmm_mgr,
 					cmm_mgr_obj->pa_gppsm_seg_tab[ul_id -
 								      1] = NULL;
 				} else if (ul_seg_id != CMM_ALLSEGMENTS) {
-					status = DSP_EFAIL;
+					status = -EPERM;
 				}
 				mutex_unlock(&cmm_mgr_obj->cmm_lock);
 				if (ul_seg_id != CMM_ALLSEGMENTS)
@@ -1051,7 +1051,7 @@ void *cmm_xlator_alloc_buf(struct cmm_xlatorobject *xlator, void *pVaBuf,
 dsp_status cmm_xlator_free_buf(struct cmm_xlatorobject *xlator, void *pBufVa)
 {
 	struct cmm_xlator *xlator_obj = (struct cmm_xlator *)xlator;
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	void *buf_pa = NULL;
 
 	DBC_REQUIRE(refs > 0);

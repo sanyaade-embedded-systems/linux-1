@@ -607,7 +607,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 			/* No response from DSP */
 			ioc.status |= CHNL_IOCSTATTIMEOUT;
 			dequeue_ioc = false;
-		} else if (stat_sync == DSP_EFAIL) {
+		} else if (stat_sync == -EPERM) {
 			/* This can occur when the user mode thread is
 			 * aborted (^C), or when _VWIN32_WaitSingleObject()
 			 * fails due to unkown causes. */

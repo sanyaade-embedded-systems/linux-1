@@ -63,7 +63,7 @@ extern dsp_status cfg_get_auto_start(IN struct cfg_devnode *dev_node_obj,
  *      DSP_SOK:    Success.  pdwVersion contains Class Driver version in
  *                  the form: 0xAABBCCDD where AABB is Major version and
  *                  CCDD is Minor.
- *      DSP_EFAIL:  Failure.
+ *      -EPERM:  Failure.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -219,7 +219,7 @@ extern bool cfg_init(void);
  *  Returns:
  *      DSP_SOK:                Success.
  *      CFG_E_INVALIDHDEVNODE:  dev_node_obj is invalid.
- *      DSP_EFAIL:              Internal Error.
+ *      -EPERM:              Internal Error.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
@@ -237,7 +237,7 @@ extern dsp_status cfg_set_dev_object(IN struct cfg_devnode *dev_node_obj,
  *      dw_type          Type of Object to Store
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Internal Error.
+ *      -EPERM:      Internal Error.
  *  Requires:
  *      CFG initialized.
  *  Ensures:

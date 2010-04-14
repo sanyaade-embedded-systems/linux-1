@@ -60,7 +60,7 @@ struct wmd_dev_context;
  *      DSP_SOK:        Success.
  *      WMD_E_HARDWARE: A test of hardware assumptions/integrity failed.
  *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL
  *  Ensures:
@@ -78,7 +78,7 @@ typedef dsp_status(*fxn_brd_monitor) (struct wmd_dev_context *hDevContext);
  *      ulBrdState:     Board state
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL;
  *      ulBrdState  <= BRD_LASTSTATE.
@@ -99,7 +99,7 @@ typedef dsp_status(*fxn_brd_setstate) (struct wmd_dev_context
  *  Returns:
  *      DSP_SOK:        Success.
  *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL
  *      Board is in monitor (BRD_IDLE) state.
@@ -123,7 +123,7 @@ typedef dsp_status(*fxn_brd_start) (struct wmd_dev_context
  *  ulMemType:  What section of memory to copy to
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      dev_context != NULL
  *  Ensures:
@@ -150,7 +150,7 @@ typedef dsp_status(*fxn_brd_memcopy) (struct wmd_dev_context
  *  Returns:
  *      DSP_SOK:        Success.
  *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL;
  *      pHostBuf != NULL.
@@ -174,7 +174,7 @@ typedef dsp_status(*fxn_brd_memwrite) (struct wmd_dev_context
  *      map_attrs:       Mapping attributes (e.g. endianness).
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL;
  *  Ensures:
@@ -194,7 +194,7 @@ typedef dsp_status(*fxn_brd_memmap) (struct wmd_dev_context
  *      ul_num_bytes:     Number of bytes to unmap.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL;
  *  Ensures:
@@ -212,7 +212,7 @@ typedef dsp_status(*fxn_brd_memunmap) (struct wmd_dev_context
  *  Returns:
  *      DSP_SOK:        Success.
  *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL
  *  Ensures:
@@ -254,7 +254,7 @@ typedef dsp_status(*fxn_brd_status) (struct wmd_dev_context *hDevContext,
  *  Returns:
  *      DSP_SOK:        Success.
  *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL;
  *      pHostBuf != NULL.
@@ -280,7 +280,7 @@ typedef dsp_status(*fxn_brd_read) (struct wmd_dev_context *hDevContext,
  *  Returns:
  *      DSP_SOK:        Success.
  *      WMD_E_TIMEOUT:  Timeout occured waiting for a response from hardware.
- *      DSP_EFAIL:      Other, unspecified error.
+ *      -EPERM:      Other, unspecified error.
  *  Requires:
  *      hDevContext != NULL;
  *      pHostBuf != NULL.
@@ -701,7 +701,7 @@ typedef dsp_status(*fxn_dev_create) (OUT struct wmd_dev_context
  *      dw_cmd:          WMD defined command code.
  *      pargs:          Pointer to an arbitrary argument structure.
  *  Returns:
- *      DSP_SOK or DSP_EFAIL. Actual command error codes should be passed back
+ *      DSP_SOK or -EPERM. Actual command error codes should be passed back
  *      in the pargs structure, and are defined by the WMD implementor.
  *  Requires:
  *      All calls are currently assumed to be synchronous.  There are no
@@ -722,7 +722,7 @@ typedef dsp_status(*fxn_dev_ctrl) (struct wmd_dev_context *hDevContext,
  *      hDevContext:    Handle to mini-driver defined device information.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Failed to release a resource previously acquired.
+ *      -EPERM:      Failed to release a resource previously acquired.
  *  Requires:
  *      hDevContext != NULL;
  *  Ensures:
@@ -740,7 +740,7 @@ typedef dsp_status(*fxn_dev_destroy) (struct wmd_dev_context *hDevContext);
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EMEMORY:    Memory allocation failure.
- *      DSP_EFAIL:      Creation failed.
+ *      -EPERM:      Creation failed.
  *  Requires:
  *      hdev_obj != NULL;
  *      phDehMgr != NULL;
@@ -757,7 +757,7 @@ typedef dsp_status(*fxn_deh_create) (OUT struct deh_mgr
  *      hdeh_mgr:        Handle to DEH manager object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Destroy failed.
+ *      -EPERM:      Destroy failed.
  *  Requires:
  *      hdeh_mgr != NULL;
  *  Ensures:
@@ -772,7 +772,7 @@ typedef dsp_status(*fxn_deh_destroy) (struct deh_mgr *hdeh_mgr);
  *      hdeh_mgr:        Handle to DEH manager object.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Destroy failed.
+ *      -EPERM:      Destroy failed.
  *  Requires:
  *      hdeh_mgr != NULL;
  *  Ensures:
@@ -790,7 +790,7 @@ typedef dsp_status(*fxn_deh_registernotify)
  *      pErrInfo:       Ptr to error info structure.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Creation failed.
+ *      -EPERM:      Creation failed.
  *  Requires:
  *      phDehMgr != NULL;
  *      pErrorInfo != NULL;
@@ -810,7 +810,7 @@ typedef dsp_status(*fxn_deh_getinfo) (struct deh_mgr *phDehMgr,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EMEMORY:    Memory allocation failure.
- *      DSP_EFAIL:      Creation failed.
+ *      -EPERM:      Creation failed.
  *  Requires:
  *      hdev_obj != NULL;
  *      Channel manager already created;
@@ -832,7 +832,7 @@ typedef dsp_status(*fxn_io_create) (OUT struct io_mgr **phIOMgr,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EMEMORY:    Memory allocation failure.
- *      DSP_EFAIL:      Creation failed.
+ *      -EPERM:      Creation failed.
  *  Requires:
  *      Valid hio_mgr;
  *  Ensures:
@@ -849,7 +849,7 @@ typedef dsp_status(*fxn_io_destroy) (struct io_mgr *hio_mgr);
  *      hio_mgr:     IO Manager.
  *  Returns:
  *      DSP_SOK:    Success.
- *      DSP_EFAIL:  Internal failure occurred.
+ *      -EPERM:  Internal failure occurred.
  *  Requires:
  *      Valid hio_mgr;
  *  Ensures:
@@ -865,7 +865,7 @@ typedef dsp_status(*fxn_io_onloaded) (struct io_mgr *hio_mgr);
  *      pProcLoadStat   Processor Load statistics
  *  Returns:
  *      DSP_SOK:    Success.
- *      DSP_EFAIL:  Internal failure occurred.
+ *      -EPERM:  Internal failure occurred.
  *  Requires:
  *      Valid hio_mgr;
  *  Ensures:
@@ -961,7 +961,7 @@ typedef void (*fxn_msg_deletequeue) (struct msg_queue *msg_queue_obj);
  *  Returns:
  *      DSP_SOK:       Success.
  *      DSP_ETIMEOUT:  Timeout occurred.
- *      DSP_EFAIL:     No frames available for message (max_msgs too
+ *      -EPERM:     No frames available for message (max_msgs too
  *                     small).
  *  Requires:
  *      Valid msg_queue_obj.
@@ -983,7 +983,7 @@ typedef dsp_status(*fxn_msg_get) (struct msg_queue *msg_queue_obj,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_ETIMEOUT:   Timeout occurred.
- *      DSP_EFAIL:      No frames available for message (max_msgs too
+ *      -EPERM:      No frames available for message (max_msgs too
  *                      small).
  *  Requires:
  *      Valid msg_queue_obj.

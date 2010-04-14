@@ -130,7 +130,7 @@ dsp_status read_ext_dsp_data(struct wmd_dev_context *hDevContext,
 		DBC_ASSERT(ul_ext_end > ul_ext_base);
 
 		if (ul_ext_end < ul_ext_base)
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 		if (DSP_SUCCEEDED(status)) {
 			ul_tlb_base_virt =
@@ -156,7 +156,7 @@ dsp_status read_ext_dsp_data(struct wmd_dev_context *hDevContext,
 				 * only when the board is stopped.
 				*/
 				if (!dev_context->dw_dsp_ext_base_addr)
-					status = DSP_EFAIL;
+					status = -EPERM;
 			}
 
 			dw_base_addr = dw_ext_prog_virt_mem;
@@ -164,7 +164,7 @@ dsp_status read_ext_dsp_data(struct wmd_dev_context *hDevContext,
 	}
 
 	if (!dw_base_addr || !ul_ext_base || !ul_ext_end)
-		status = DSP_EFAIL;
+		status = -EPERM;
 
 	offset = dwDSPAddr - ul_ext_base;
 
@@ -193,7 +193,7 @@ dsp_status write_dsp_data(struct wmd_dev_context *hDevContext,
 	base3 = OMAP_DSP_MEM3_BASE - OMAP_DSP_MEM1_BASE;
 
 	if (!resources)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	offset = dwDSPAddr - hDevContext->dw_dsp_start_add;
 	if (offset < base1) {
@@ -209,7 +209,7 @@ dsp_status write_dsp_data(struct wmd_dev_context *hDevContext,
 						  resources->dw_mem_length[4]);
 		offset = offset - base3;
 	} else {
-		return DSP_EFAIL;
+		return -EPERM;
 	}
 	if (ul_num_bytes)
 		memcpy((u8 *) (dw_base_addr + offset), pbHostBuf, ul_num_bytes);
@@ -315,7 +315,7 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 		DBC_ASSERT(ul_ext_end != 0);
 		DBC_ASSERT(ul_ext_end > ul_ext_base);
 		if (ul_ext_end < ul_ext_base)
-			ret = DSP_EFAIL;
+			ret = -EPERM;
 
 		if (DSP_SUCCEEDED(ret)) {
 			ul_tlb_base_virt =
@@ -355,11 +355,11 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 			/* This dw_dsp_ext_base_addr will get cleared only when
 			 * the board is stopped. */
 			if (!dev_context->dw_dsp_ext_base_addr)
-				ret = DSP_EFAIL;
+				ret = -EPERM;
 		}
 	}
 	if (!dw_base_addr || !ul_ext_base || !ul_ext_end)
-		ret = DSP_EFAIL;
+		ret = -EPERM;
 
 	if (DSP_SUCCEEDED(ret)) {
 		for (i = 0; i < 4; i++)
@@ -368,7 +368,7 @@ dsp_status write_ext_dsp_data(struct wmd_dev_context *dev_context,
 		dw_offset = dwDSPAddr - ul_ext_base;
 		/* Also make sure the dwDSPAddr is < ul_ext_end */
 		if (dwDSPAddr > ul_ext_end || dw_offset > dwDSPAddr)
-			ret = DSP_EFAIL;
+			ret = -EPERM;
 	}
 	if (DSP_SUCCEEDED(ret)) {
 		if (ul_num_bytes)
@@ -398,7 +398,7 @@ dsp_status sm_interrupt_dsp(struct wmd_dev_context * dev_context, u16 mb_val)
 
 	if (status) {
 		pr_err("omap_mbox_msg_send Fail and status = %d\n", status);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 
 	dev_dbg(bridge, "MBX: writing %x to Mailbox\n", mb_val);

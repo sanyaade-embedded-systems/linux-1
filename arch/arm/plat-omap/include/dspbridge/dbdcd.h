@@ -85,7 +85,7 @@ extern dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EMEMORY:    Unable to allocate memory for DCD manager handle.
- *      DSP_EFAIL:      General failure.
+ *      -EPERM:      General failure.
  *  Requires:
  *      DCD initialized.
  *      pszZlDllName is non-NULL.
@@ -122,7 +122,7 @@ extern dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr);
  *      uuid_obj:              Pointer to a dsp_uuid object.
  *  Returns:
  *      DSP_SOK:            Success.
- *      DSP_EFAIL:          Unable to enumerate through the DCD database.
+ *      -EPERM:          Unable to enumerate through the DCD database.
  *      DSP_SENUMCOMPLETE:  Enumeration completed. This is not an error code.
  *  Requires:
  *      DCD initialized.
@@ -165,7 +165,7 @@ extern void dcd_exit(void);
  *      DSP_SOK: Success.
  *      DSP_EMEMORY: Memory allocation failure.
  *      DSP_EDCDREADSECT: Failure to read section containing library info.
- *      DSP_EFAIL: General failure.
+ *      -EPERM: General failure.
  *  Requires:
  *      DCD initialized.
  *      Valid hdcd_mgr.
@@ -195,7 +195,7 @@ extern dsp_status dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
  *      DSP_SOK: Success.
  *      DSP_EMEMORY: Memory allocation failure.
  *      DSP_EDCDREADSECT: Failure to read section containing library info.
- *      DSP_EFAIL: General failure.
+ *      -EPERM: General failure.
  *  Requires:
  *      DCD initialized.
  *      Valid hdcd_mgr.
@@ -224,7 +224,7 @@ extern dsp_status dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
  *      phase_split:    Are phases in multiple libraries
  *  Returns:
  *      DSP_SOK: Success.
- *      DSP_EFAIL: General failure.
+ *      -EPERM: General failure.
  *  Requires:
  *      DCD initialized.
  *      Valid hdcd_mgr.
@@ -259,7 +259,7 @@ extern dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
  *      DSP_EDCDREADSECT:   Unable to read object code section.
  *      DSP_EDCDGETSECT:    Unable to access object code section.
  *      DSP_EDCDLOADBASE:   Unable to load code base.
- *      DSP_EFAIL:          General failure.
+ *      -EPERM:          General failure.
  *      DSP_EHANDLE:        Invalid DCD_HMANAGER handle.
  *  Requires:
  *      DCD initialized.
@@ -330,7 +330,7 @@ extern bool dcd_init(void);
  *      psz_path_name:    Path to the object's COFF file.
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Failed to register object.
+ *      -EPERM:      Failed to register object.
  *  Requires:
  *      DCD initialized.
  *      uuid_obj and szPathName are non-NULL values.
@@ -352,7 +352,7 @@ extern dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
  *      obj_type:    Type of object.
  *  Returns:
  *      DSP_SOK:    Success.
- *      DSP_EFAIL:  Unable to de-register the specified object.
+ *      -EPERM:  Unable to de-register the specified object.
  *  Requires:
  *      DCD initialized.
  *      uuid_obj is a non-NULL value.

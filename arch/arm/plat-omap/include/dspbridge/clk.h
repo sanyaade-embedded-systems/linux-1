@@ -84,7 +84,7 @@ extern bool services_clk_init(void);
  *  Parameters:
  *  Returns:
  *      DSP_SOK:	Success.
- *	DSP_EFAIL:	Error occured while enabling the clock.
+ *	-EPERM:	Error occured while enabling the clock.
  *  Requires:
  *  Ensures:
  */
@@ -97,7 +97,7 @@ extern dsp_status services_clk_enable(IN enum services_clk_id clk_id);
  *  Parameters:
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Error occured while disabling the clock.
+ *      -EPERM:      Error occured while disabling the clock.
  *  Requires:
  *  Ensures:
  */
@@ -110,7 +110,7 @@ extern dsp_status services_clk_disable(IN enum services_clk_id clk_id);
  *  Parameters:
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Error occured while Getting the clock rate.
+ *      -EPERM:      Error occured while Getting the clock rate.
  *  Requires:
  *  Ensures:
  */
@@ -123,7 +123,7 @@ extern dsp_status services_clk_get_rate(IN enum services_clk_id clk_id,
  *  Parameters:
  *  Returns:
  *      DSP_SOK:        Success.
- *      DSP_EFAIL:      Error occured while setting the clock parent to 32KHz.
+ *      -EPERM:      Error occured while setting the clock parent to 32KHz.
  *  Requires:
  *  Ensures:
  */
@@ -137,7 +137,7 @@ extern void ssi_clk_prepare(bool FLAG);
  *  Parameters:
  *  Returns:
  *      s32:        Reference Count for the clock.
- *      DSP_EFAIL:  Error occured while getting the reference count of a clock.
+ *      -EPERM:  Error occured while getting the reference count of a clock.
  *  Requires:
  *  Ensures:
  */

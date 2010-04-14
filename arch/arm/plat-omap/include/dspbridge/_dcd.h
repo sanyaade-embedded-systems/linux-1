@@ -63,7 +63,7 @@ extern bool wcd_init(void);
  *  Parameters:
  *  Returns:
  *      DSP_SOK:        Allow this device to load
- *      DSP_EFAIL:      Failure.
+ *      -EPERM:      Failure.
  *  Requires:
  *      WCD initialized.
  *  Ensures:

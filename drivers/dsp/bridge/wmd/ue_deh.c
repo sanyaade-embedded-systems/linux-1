@@ -119,7 +119,7 @@ dsp_status bridge_deh_create(OUT struct deh_mgr **phDehMgr,
 					 (void *)deh_mgr_obj)) == 0)
 				status = DSP_SOK;
 			else
-				status = DSP_EFAIL;
+				status = -EPERM;
 		}
 	}
 	if (DSP_FAILED(status)) {

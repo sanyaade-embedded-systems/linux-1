@@ -76,7 +76,7 @@ extern void *cmm_calloc_buf(struct cmm_object *hcmm_mgr,
  *  Returns:
  *      DSP_SOK:        Success;
  *      DSP_EMEMORY:    Insufficient memory for requested resources.
- *      DSP_EFAIL:      Failed to initialize critical sect sync object.
+ *      -EPERM:      Failed to initialize critical sect sync object.
  *
  *  Requires:
  *      cmm_init(void) called.
@@ -96,11 +96,11 @@ extern dsp_status cmm_create(OUT struct cmm_object **ph_cmm_mgr,
  *  Parameters:
  *      hcmm_mgr:   Cmm Mgr handle.
  *      bForce:    Force deallocation of all cmm memory immediately if set TRUE.
- *                 If FALSE, and outstanding allocations will return DSP_EFAIL
+ *                 If FALSE, and outstanding allocations will return -EPERM
  *                 status.
  *  Returns:
  *      DSP_SOK:        CMM object & resources deleted.
- *      DSP_EFAIL:      Unable to free CMM object due to outstanding allocation.
+ *      -EPERM:      Unable to free CMM object due to outstanding allocation.
  *      DSP_EHANDLE:    Unable to free CMM due to bad handle.
  *  Requires:
  *      CMM is initialized.
@@ -135,7 +135,7 @@ extern void cmm_exit(void);
  *                  Set to 0 to use default segment.
  *  Returns:
  *      DSP_SOK
- *      DSP_EFAIL
+ *      -EPERM
  *  Requires:
  *      CMM initialized.
  *      buf_pa != NULL
@@ -215,7 +215,7 @@ extern bool cmm_init(void);
  *      DSP_SOK:         Success.
  *      DSP_EHANDLE:     Invalid hcmm_mgr handle.
  *      DSP_EINVALIDARG: Invalid input argument.
- *      DSP_EFAIL:       Unable to register.
+ *      -EPERM:       Unable to register.
  *      - On success *pulSegId is a valid SM segment ID.
  *  Requires:
  *      ul_size > 0
@@ -246,7 +246,7 @@ extern dsp_status cmm_register_gppsm_seg(struct cmm_object *hcmm_mgr,
  *       DSP_SOK:         Success.
  *       DSP_EHANDLE:     Invalid handle.
  *       DSP_EINVALIDARG: Invalid ul_seg_id.
- *       DSP_EFAIL:       Unable to unregister for unknown reason.
+ *       -EPERM:       Unable to unregister for unknown reason.
  *  Requires:
  *  Ensures:
  *
@@ -309,7 +309,7 @@ extern dsp_status cmm_xlator_create(OUT struct cmm_xlatorobject **phXlator,
  *  Returns:
  *      DSP_SOK:        Success.
  *      DSP_EHANDLE:    Bad translator handle.
- *      DSP_EFAIL:      Unable to free translator resources.
+ *      -EPERM:      Unable to free translator resources.
  *  Requires:
  *      refs > 0
  *  Ensures:

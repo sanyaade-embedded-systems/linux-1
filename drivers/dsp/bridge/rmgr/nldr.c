@@ -1571,7 +1571,7 @@ static dsp_status load_ovly(struct nldr_nodeobject *nldr_node_obj,
 							   ovly_section->size,
 							   ovly_section->page);
 				if (bytes != ovly_section->size)
-					status = DSP_EFAIL;
+					status = -EPERM;
 
 				ovly_section = ovly_section->next_sect;
 			}
@@ -1592,7 +1592,7 @@ static dsp_status load_ovly(struct nldr_nodeobject *nldr_node_obj,
 							   ovly_section->size,
 							   ovly_section->page);
 				if (bytes != ovly_section->size)
-					status = DSP_EFAIL;
+					status = -EPERM;
 
 				ovly_section = ovly_section->next_sect;
 			}

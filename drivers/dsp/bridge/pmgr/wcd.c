@@ -370,7 +370,7 @@ bool wcd_init(void)
  *  Parameters:
  *  Returns:
  *      DSP_SOK:	Allow this device to load
- *      DSP_EFAIL:      Failure.
+ *      -EPERM:      Failure.
  *  Requires:
  *      WCD initialized.
  *  Ensures:
@@ -617,7 +617,7 @@ u32 procwrap_ctrl(union Trapped_Args *args, void *pr_ctxt)
 
 	if (psize) {
 		if (get_user(cb_data_size, psize)) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_end;
 		}
 		cb_data_size += sizeof(u32);
@@ -1058,7 +1058,7 @@ u32 nodewrap_allocate(union Trapped_Args *args, void *pr_ctxt)
 	/* Optional argument */
 	if (psize) {
 		if (get_user(cb_data_size, psize))
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 		cb_data_size += sizeof(u32);
 		if (DSP_SUCCEEDED(status)) {
@@ -1199,7 +1199,7 @@ u32 nodewrap_connect(union Trapped_Args *args, void *pr_ctxt)
 	/* Optional argument */
 	if (psize) {
 		if (get_user(cb_data_size, psize))
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 		cb_data_size += sizeof(u32);
 		if (DSP_SUCCEEDED(status)) {

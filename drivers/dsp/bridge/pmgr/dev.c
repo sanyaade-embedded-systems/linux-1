@@ -156,7 +156,7 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 	bridge_drv_entry(&drv_fxns, pstrWMDFileName);
 	if (DSP_FAILED(cfg_get_object((u32 *) &hdrv_obj, REG_DRV_OBJECT))) {
 		/* don't propogate CFG errors from this PROC function */
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 	/* Create the device object, and pass a handle to the WMD for
 	 * storage. */
@@ -250,7 +250,7 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 		dev_obj->proc_list = kzalloc(sizeof(struct lst_list),
 							GFP_KERNEL);
 		if (!(dev_obj->proc_list))
-			status = DSP_EFAIL;
+			status = -EPERM;
 		else
 			INIT_LIST_HEAD(&dev_obj->proc_list->head);
 	}
@@ -318,7 +318,7 @@ dsp_status dev_destroy2(struct dev_object *hdev_obj)
 
 	if (dev_obj->hnode_mgr) {
 		if (DSP_FAILED(node_delete_mgr(dev_obj->hnode_mgr)))
-			status = DSP_EFAIL;
+			status = -EPERM;
 		else
 			dev_obj->hnode_mgr = NULL;
 
@@ -390,7 +390,7 @@ dsp_status dev_destroy_device(struct dev_object *hdev_obj)
 			    (dev_obj->hwmd_context);
 			dev_obj->hwmd_context = NULL;
 		} else
-			status = DSP_EFAIL;
+			status = -EPERM;
 		if (DSP_SUCCEEDED(status)) {
 			kfree(dev_obj->proc_list);
 			dev_obj->proc_list = NULL;
@@ -1018,7 +1018,7 @@ dsp_status dev_insert_proc_object(struct dev_object *hdev_obj,
  */
 dsp_status dev_remove_proc_object(struct dev_object *hdev_obj, u32 proc_obj)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct list_head *cur_elem;
 	struct dev_object *dev_obj = (struct dev_object *)hdev_obj;
 

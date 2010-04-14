@@ -113,7 +113,7 @@ dsp_status drv_insert_node_res_element(bhandle hnode, bhandle hNodeRes,
 	}
 	if (retval) {
 		pr_err("%s: FAILED, IDR is FULL\n", __func__);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 func_end:
 	if (DSP_FAILED(status))
@@ -242,7 +242,7 @@ dsp_status drv_proc_insert_strm_res_element(bhandle hStreamHandle,
 	}
 	if (retval) {
 		pr_err("%s: FAILED, IDR is FULL\n", __func__);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 
 func_end:
@@ -329,7 +329,7 @@ dsp_status drv_create(OUT struct drv_object **phDRVObject)
 			pdrv_object->dev_node_string =
 				kzalloc(sizeof(struct lst_list), GFP_KERNEL);
 			if (!(pdrv_object->dev_node_string)) {
-				status = DSP_EFAIL;
+				status = -EPERM;
 			} else {
 				INIT_LIST_HEAD(&pdrv_object->
 					       dev_node_string->head);
@@ -428,7 +428,7 @@ dsp_status drv_get_dev_object(u32 index, struct drv_object *hdrv_obj,
 		*phDevObject = (struct dev_object *)dev_obj;
 	} else {
 		*phDevObject = NULL;
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 
 	return status;
@@ -582,7 +582,7 @@ dsp_status drv_insert_dev_object(struct drv_object *hDRVObject,
 dsp_status drv_remove_dev_object(struct drv_object *hDRVObject,
 				 struct dev_object *hdev_obj)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct drv_object *pdrv_object = (struct drv_object *)hDRVObject;
 	struct list_head *cur_elem;
 

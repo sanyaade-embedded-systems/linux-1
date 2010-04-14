@@ -342,7 +342,7 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 	if (DSP_SUCCEEDED(status)) {
 		status = dev_get_node_manager(hdev_obj, &hnode_mgr);
 		if (hnode_mgr == NULL)
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 	}
 
@@ -362,7 +362,7 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 	/* If processor is in error state then don't attempt
 	   to send the message */
 	if (proc_state.proc_state == PROC_ERROR) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 
@@ -370,7 +370,7 @@ dsp_status node_allocate(struct proc_object *hprocessor,
 	if (hnode_mgr->ul_fxn_addrs[0] == 0) {
 		/* No RMS on target - we currently can't handle this */
 		pr_err("%s: Failed, no RMS in base image\n", __func__);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	} else {
 		/* Validate attr_in fields, if non-NULL */
 		if (attr_in) {
@@ -611,7 +611,7 @@ func_cont:
 
 			host_res = pwmd_context->resources;
 			if (!host_res)
-				status = DSP_EFAIL;
+				status = -EPERM;
 
 			if (DSP_FAILED(status)) {
 				pr_err("%s: Failed to get host resource, status"
@@ -866,10 +866,10 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 		if (hNode1 != (struct node_object *)DSP_HGPPNODE &&
 		    hNode2 != (struct node_object *)DSP_HGPPNODE &&
 		    hNode1->hnode_mgr != hNode2->hnode_mgr)
-			status = DSP_EFAIL;
+			status = -EPERM;
 		/* Cannot connect a node to itself */
 		if (hNode1 == hNode2)
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 	}
 	if (DSP_SUCCEEDED(status)) {
@@ -899,7 +899,7 @@ dsp_status node_connect(struct node_object *hNode1, u32 uStream1,
 		if (node1_type == NODE_MESSAGE || node2_type == NODE_MESSAGE ||
 		    (node1_type != NODE_TASK && node1_type != NODE_DAISSOCKET &&
 		     node2_type != NODE_TASK && node2_type != NODE_DAISSOCKET))
-			status = DSP_EFAIL;
+			status = -EPERM;
 	}
 	/*
 	 * Check stream mode. Default is STRMMODE_PROCCOPY.
@@ -1176,7 +1176,7 @@ dsp_status node_create(struct node_object *hnode)
 	/* If processor is in error state then don't attempt to create
 	   new node */
 	if (proc_state.proc_state == PROC_ERROR) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	/* create struct dsp_cbdata struct for PWR calls */
@@ -1836,7 +1836,7 @@ dsp_status node_get_message(struct node_object *hnode,
 	/* If processor is in error state then don't attempt to get the
 	   message */
 	if (proc_state.proc_state == PROC_ERROR) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	hnode_mgr = hnode->hnode_mgr;
@@ -2068,7 +2068,7 @@ dsp_status node_pause(struct node_object *hnode)
 		/* If processor is in error state then don't attempt
 		   to send the message */
 		if (proc_state.proc_state == PROC_ERROR) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_cont;
 		}
 
@@ -2130,7 +2130,7 @@ dsp_status node_put_message(struct node_object *hnode,
 	/* If processor is in bad state then don't attempt sending the
 	   message */
 	if (proc_state.proc_state == PROC_ERROR) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	hnode_mgr = hnode->hnode_mgr;
@@ -2178,7 +2178,7 @@ dsp_status node_put_message(struct node_object *hnode,
 			} else {
 				pr_err("%s: udsp_word_size is zero!\n",
 				       __func__);
-				status = DSP_EFAIL;	/* bad DSPWordSize */
+				status = -EPERM;	/* bad DSPWordSize */
 			}
 		} else {	/* failed to translate buffer address */
 			status = DSP_ETRANSLATE;
@@ -2281,7 +2281,7 @@ dsp_status node_run(struct node_object *hnode)
 		goto func_end;
 	/* If processor is in error state then don't attempt to run the node */
 	if (proc_state.proc_state == PROC_ERROR) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	node_type = node_get_type(hnode);
@@ -2435,7 +2435,7 @@ dsp_status node_terminate(struct node_object *hnode, OUT dsp_status *pstatus)
 		/* If processor is in error state then don't attempt to send
 		 * A kill task command */
 		if (proc_state.proc_state == PROC_ERROR) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_cont;
 		}
 
@@ -2483,13 +2483,13 @@ dsp_status node_terminate(struct node_object *hnode, OUT dsp_status *pstatus)
 								  DSP_SYSERROR,
 								  DSP_EXCEPTIONABORT);
 								status =
-								    DSP_EFAIL;
+								    -EPERM;
 							}
 						} else
 							status = DSP_SOK;
 					}
 				} else
-					status = DSP_EFAIL;
+					status = -EPERM;
 			} else	/* Convert SYNC status to DSP status */
 				status = DSP_SOK;
 		}
@@ -2501,7 +2501,7 @@ func_cont:
 		mutex_lock(&hnode_mgr->node_mgr_lock);
 		/* Make sure node wasn't deleted while we blocked */
 		if (!hnode) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			*pstatus = hnode->exit_status;
 			dev_dbg(bridge, "%s: hnode: %p env 0x%x status 0x%x\n",
@@ -2993,7 +2993,7 @@ static dsp_status get_proc_props(struct node_mgr *hnode_mgr,
 	if (DSP_SUCCEEDED(status)) {
 		host_res = pwmd_context->resources;
 		if (!host_res)
-			return DSP_EFAIL;
+			return -EPERM;
 		hnode_mgr->ul_chnl_offset = host_res->dw_chnl_offset;
 		hnode_mgr->ul_chnl_buf_size = host_res->dw_chnl_buf_size;
 		hnode_mgr->ul_num_chnls = host_res->dw_num_chnls;
@@ -3045,7 +3045,7 @@ dsp_status node_get_uuid_props(void *hprocessor,
 	/* If processor is in error state then don't attempt
 	   to send the message */
 	if (proc_state.proc_state == PROC_ERROR) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 

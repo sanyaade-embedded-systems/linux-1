@@ -104,7 +104,7 @@ dsp_status handle_hibernation_from_dsp(struct wmd_dev_context *dev_context)
 	while ((pwr_state != PWRDM_POWER_OFF) && --timeout) {
 		if (msleep_interruptible(10)) {
 			pr_err("Waiting for DSP OFF mode interrupted\n");
-			return DSP_EFAIL;
+			return -EPERM;
 		}
 		pwr_state = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD,
 					PM_PWSTST) & OMAP_POWERSTATEST_MASK;
@@ -121,7 +121,7 @@ dsp_status handle_hibernation_from_dsp(struct wmd_dev_context *dev_context)
 		if (pwr_state != PWRDM_POWER_OFF) {
 			pr_info("%s: message received while DSP trying to"
 							" sleep\n", __func__);
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_cont;
 
 		}
@@ -218,7 +218,7 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 		return DSP_SALREADYASLEEP;
 	default:
 		dev_dbg(bridge, "PM: %s - Bridge in Illegal state\n", __func__);
-		return DSP_EFAIL;
+		return -EPERM;
 	}
 
 	/* Get the PRCM DSP power domain status */
@@ -229,7 +229,7 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 	while ((pwr_state != target_pwr_state) && --timeout) {
 		if (msleep_interruptible(10)) {
 			pr_err("Waiting for DSP to Suspend interrupted\n");
-			return DSP_EFAIL;
+			return -EPERM;
 		}
 		pwr_state = (*pdata->dsp_prm_read)(OMAP3430_IVA2_MOD,
 					PM_PWSTST) & OMAP_POWERSTATEST_MASK;
@@ -251,7 +251,7 @@ dsp_status sleep_dsp(struct wmd_dev_context *dev_context, IN u32 dw_cmd,
 		if (pwr_state != target_pwr_state) {
 			pr_err("%s: message received while DSP trying to"
 							" sleep\n", __func__);
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto func_cont;
 
 		}
@@ -336,7 +336,7 @@ dsp_status dsp_peripheral_clk_ctrl(struct wmd_dev_context *dev_context,
 	ext_clk = (u32) *((u32 *) pargs);
 
 	if (!resources)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	ext_clk_id = ext_clk & MBX_PM_CLK_IDMASK;
 
@@ -352,7 +352,7 @@ dsp_status dsp_peripheral_clk_ctrl(struct wmd_dev_context *dev_context,
 	/* DBC_ASSERT(clk_id_index < MBX_PM_MAX_RESOURCES); */
 	if (clk_id_index == MBX_PM_MAX_RESOURCES) {
 		/* return with a more meaningfull error code */
-		return DSP_EFAIL;
+		return -EPERM;
 	}
 	ext_clk_cmd = (ext_clk >> MBX_PM_CLK_CMDSHIFT) & MBX_PM_CLK_CMDMASK;
 	switch (ext_clk_cmd) {
@@ -442,7 +442,7 @@ dsp_status pre_scale_dsp(struct wmd_dev_context *dev_context, IN void *pargs)
 		sm_interrupt_dsp(dev_context, MBX_PM_SETPOINT_PRENOTIFY);
 		return DSP_SOK;
 	} else {
-		return DSP_EFAIL;
+		return -EPERM;
 	}
 #endif /* #ifdef CONFIG_BRIDGE_DVFS */
 	return DSP_SOK;
@@ -484,7 +484,7 @@ dsp_status post_scale_dsp(struct wmd_dev_context *dev_context, IN void *pargs)
 		dev_dbg(bridge, "OPP: %s wrote to shm. Sent post notification "
 			"to DSP\n", __func__);
 	} else {
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 #endif /* #ifdef CONFIG_BRIDGE_DVFS */
 	return status;
@@ -503,7 +503,7 @@ dsp_status dsp_peripheral_clocks_disable(struct wmd_dev_context *dev_context,
 	u32 value;
 
 	if (!resources)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	for (clk_idx = 0; clk_idx < MBX_PM_MAX_RESOURCES; clk_idx++) {
 		if (((dev_context->dsp_per_clks) >> clk_idx) & 0x01) {
@@ -542,12 +542,12 @@ dsp_status dsp_peripheral_clocks_enable(struct wmd_dev_context *dev_context,
 					IN void *pargs)
 {
 	u32 clk_idx;
-	dsp_status int_clk_status = DSP_EFAIL, fun_clk_status = DSP_EFAIL;
+	dsp_status int_clk_status = -EPERM, fun_clk_status = -EPERM;
 	struct cfg_hostres *resources = dev_context->resources;
 	u32 value;
 
 	if (!resources)
-		return DSP_EFAIL;
+		return -EPERM;
 
 	for (clk_idx = 0; clk_idx < MBX_PM_MAX_RESOURCES; clk_idx++) {
 		if (((dev_context->dsp_per_clks) >> clk_idx) & 0x01) {
@@ -575,7 +575,7 @@ dsp_status dsp_peripheral_clocks_enable(struct wmd_dev_context *dev_context,
 		}
 	}
 	if ((int_clk_status | fun_clk_status) != DSP_SOK)
-		return DSP_EFAIL;
+		return -EPERM;
 	return DSP_SOK;
 }
 

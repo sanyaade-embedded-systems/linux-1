@@ -226,7 +226,7 @@ proc_attach(u32 processor_id,
 		kfree(p_proc_object);
 	}
 func_end:
-	DBC_ENSURE((status == DSP_EFAIL && *ph_processor == NULL) ||
+	DBC_ENSURE((status == -EPERM && *ph_processor == NULL) ||
 			(DSP_SUCCEEDED(status) && p_proc_object));
 
 	return status;
@@ -261,7 +261,7 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
  *      hdev_obj:     Handle to the Device
  *  Returns:
  *      DSP_SOK:   On Successful Loading
- *      DSP_EFAIL  General Failure
+ *      -EPERM  General Failure
  *  Requires:
  *      hdev_obj != NULL
  *  Ensures:
@@ -269,7 +269,7 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
 dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
 			   struct dev_object *hdev_obj)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct proc_object *p_proc_object;
 	char sz_exec_file[MAXCMDLINELEN];
 	char *argv[2];
@@ -372,7 +372,7 @@ dsp_status proc_ctrl(void *hprocessor, u32 dw_cmd, IN struct dsp_cbdata * arg)
 				       arg))) {
 			status = DSP_SOK;
 		} else {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 	} else {
 		status = DSP_EHANDLE;
@@ -430,7 +430,7 @@ dsp_status proc_enum_nodes(void *hprocessor, void **node_tab,
 			   IN u32 node_tab_size, OUT u32 *pu_num_nodes,
 			   OUT u32 *pu_allocated)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct node_mgr *hnode_mgr = NULL;
 
@@ -589,7 +589,7 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 				  OUT struct dsp_resourceinfo *resource_info,
 				  u32 resource_info_size)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct node_mgr *hnode_mgr = NULL;
 	struct nldr_object *nldr_obj = NULL;
@@ -640,7 +640,7 @@ dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
 						   proc_load_stat));
 		break;
 	default:
-		status = DSP_EFAIL;
+		status = -EPERM;
 		break;
 	}
 func_end:
@@ -671,7 +671,7 @@ void proc_exit(void)
 dsp_status proc_get_dev_object(void *hprocessor,
 			       struct dev_object **phDevObject)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 
 	DBC_REQUIRE(refs > 0);
@@ -732,7 +732,7 @@ dsp_status proc_get_state(void *hprocessor,
 				break;
 			default:
 				proc_state_obj->proc_state = 0xFF;
-				status = DSP_EFAIL;
+				status = -EPERM;
 				break;
 			}
 		}
@@ -839,7 +839,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 	}
 	dev_get_cod_mgr(p_proc_object->hdev_obj, &cod_mgr);
 	if (!cod_mgr) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_end;
 	}
 	status = proc_stop(hprocessor);
@@ -863,7 +863,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 		if (status == -1) {
 			dev_dbg(bridge, "%s: Proc ID string overflow\n",
 				__func__);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			new_envp =
 			    prepend_envp(new_envp, (char **)user_envp,
@@ -915,7 +915,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 				status = DSP_SOK;
 
 			if (DSP_FAILED(status)) {
-				status = DSP_EFAIL;
+				status = -EPERM;
 			} else {
 				DBC_ASSERT(p_proc_object->psz_last_coff ==
 					   NULL);
@@ -1545,7 +1545,7 @@ func_end:
  */
 static dsp_status proc_monitor(struct proc_object *p_proc_object)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct msg_mgr *hmsg_mgr;
 	int brd_state;
 

@@ -157,7 +157,7 @@ extern dsp_status cod_get_base_lib(struct cod_manager *cod_mgr_obj,
  *      usize:       size of name buffer.
  *  Returns:
  *      DSP_SOK:    Success.
- *      DSP_EFAIL:  Buffer too small.
+ *      -EPERM:  Buffer too small.
  *  Requires:
  *      COD module initialized.
  *      valid cod_mgr_obj.

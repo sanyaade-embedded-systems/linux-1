@@ -329,7 +329,7 @@ dsp_status bridge_msg_get(struct msg_queue *msg_queue_obj,
 		}
 	} else {
 		if (msg_queue_obj->done)
-			status = DSP_EFAIL;
+			status = -EPERM;
 		else
 			msg_queue_obj->io_msg_pend++;
 
@@ -353,7 +353,7 @@ dsp_status bridge_msg_get(struct msg_queue *msg_queue_obj,
 			/*  Signal that we're not going to access msg_queue_obj
 			 *  anymore, so it can be deleted. */
 			(void)sync_set_event(msg_queue_obj->sync_done_ack);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			if (DSP_SUCCEEDED(status)) {
 				DBC_ASSERT(!LST_IS_EMPTY
@@ -434,7 +434,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 		iosm_schedule(hmsg_mgr->hio_mgr);
 	} else {
 		if (msg_queue_obj->done)
-			status = DSP_EFAIL;
+			status = -EPERM;
 		else
 			msg_queue_obj->io_msg_pend++;
 
@@ -458,7 +458,7 @@ dsp_status bridge_msg_put(struct msg_queue *msg_queue_obj,
 			/*  Signal that we're not going to access msg_queue_obj
 			 *  anymore, so it can be deleted. */
 			(void)sync_set_event(msg_queue_obj->sync_done_ack);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			if (LST_IS_EMPTY(hmsg_mgr->msg_free_list)) {
 				status = DSP_EPOINTER;

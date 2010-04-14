@@ -78,7 +78,7 @@ dsp_status msg_create(OUT struct msg_mgr **phMsgMgr,
 		/* Finally, return the new message manager handle: */
 		*phMsgMgr = hmsg_mgr;
 	} else {
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 	return status;
 }

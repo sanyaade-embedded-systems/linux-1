@@ -183,7 +183,7 @@ dsp_status strm_close(struct strm_res_object *strmres,
 	spin_unlock(&pr_ctxt->strm_idp->lock);
 func_end:
 	DBC_ENSURE(status == DSP_SOK || status == DSP_EHANDLE ||
-		   status == DSP_EPENDING || status == DSP_EFAIL);
+		   status == DSP_EPENDING || status == -EPERM);
 
 	dev_dbg(bridge, "%s: hstrm: %p, status 0x%x\n", __func__,
 		hstrm, status);
@@ -569,19 +569,19 @@ func_cont:
 			 * something documented
 			 */
 			if (status != DSP_EMEMORY && status !=
-			    DSP_EINVALIDARG && status != DSP_EFAIL) {
+			    DSP_EINVALIDARG && status != -EPERM) {
 				/*
 				 * We got a status that's not return-able.
 				 * Assert that we got something we were
 				 * expecting (DSP_EHANDLE isn't acceptable,
 				 * strm_mgr_obj->hchnl_mgr better be valid or we
-				 * assert here), and then return DSP_EFAIL.
+				 * assert here), and then return -EPERM.
 				 */
 				DBC_ASSERT(status == CHNL_E_OUTOFSTREAMS ||
 					   status == CHNL_E_BADCHANID ||
 					   status == CHNL_E_CHANBUSY ||
 					   status == CHNL_E_NOIORPS);
-				status = DSP_EFAIL;
+				status = -EPERM;
 			}
 		}
 	}
@@ -601,7 +601,7 @@ func_cont:
 		   (*strmres == NULL && (status == DSP_EHANDLE ||
 					status == DSP_EDIRECTION
 					|| status == DSP_EVALUE
-					|| status == DSP_EFAIL)));
+					|| status == -EPERM)));
 
 	dev_dbg(bridge, "%s: hnode: %p dir: 0x%x index: 0x%x pattr: %p "
 		"strmres: %p status: 0x%x\n", __func__,
@@ -648,7 +648,7 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 			} else {
 				/* Allow reclaims after idle to succeed */
 				if (!CHNL_IS_IO_CANCELLED(chnl_ioc_obj))
-					status = DSP_EFAIL;
+					status = -EPERM;
 
 			}
 		}
@@ -683,7 +683,7 @@ func_end:
 	/* ensure we return a documented return code */
 	DBC_ENSURE(DSP_SUCCEEDED(status) || status == DSP_EHANDLE ||
 		   status == DSP_ETIMEOUT || status == DSP_ETRANSLATE ||
-		   status == DSP_EFAIL);
+		   status == -EPERM);
 
 	dev_dbg(bridge, "%s: hStrm: %p buf_ptr: %p pulBytes: %p pdw_arg: %p "
 		"status 0x%x\n", __func__, hStrm,
@@ -728,7 +728,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 	/* ensure we return a documented return code */
 	DBC_ENSURE(DSP_SUCCEEDED(status) || status == DSP_EHANDLE ||
 		   status == DSP_ETIMEOUT || status == DSP_ETRANSLATE ||
-		   status == DSP_ENOTIMPL || status == DSP_EFAIL);
+		   status == DSP_ENOTIMPL || status == -EPERM);
 	return status;
 }
 

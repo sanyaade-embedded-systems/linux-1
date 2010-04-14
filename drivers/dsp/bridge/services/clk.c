@@ -157,12 +157,12 @@ dsp_status services_clk_enable(IN enum services_clk_id clk_id)
 			       "CLK dev id = %s\n",
 			       services_clks[clk_id].clk_name,
 			       services_clks[clk_id].dev);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 	} else {
 		pr_err("%s: failed to get CLK %s, CLK dev id = %s\n", __func__,
 		     services_clks[clk_id].clk_name, services_clks[clk_id].dev);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 	/* The SSI module need to configured not to have the Forced idle for
 	 * master interface. If it is set to forced idle, the SSI module is
@@ -196,7 +196,7 @@ dsp_status clk_set32k_hz(IN enum services_clk_id clk_id)
 			pr_err("%s: failed for %s, dev id = %s\n", __func__,
 			       services_clks[clk_id].clk_name,
 			       services_clks[clk_id].dev);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 	}
 	return status;
@@ -236,7 +236,7 @@ dsp_status services_clk_disable(IN enum services_clk_id clk_id)
 		       "CLK dev id = %s\n",
 		       services_clks[clk_id].clk_name,
 		       services_clks[clk_id].dev);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 	return status;
 }
@@ -267,7 +267,7 @@ dsp_status services_clk_get_rate(IN enum services_clk_id clk_id, u32 *speedKhz)
 		pr_err("%s: failed to get %s, dev Id = %s\n", __func__,
 		       services_clks[clk_id].clk_name,
 		       services_clks[clk_id].dev);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 	return status;
 }
@@ -288,7 +288,7 @@ s32 clk_get_use_cnt(IN enum services_clk_id clk_id)
 		pr_err("%s: failed to get %s, dev Id = %s\n", __func__,
 		       services_clks[clk_id].clk_name,
 		       services_clks[clk_id].dev);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 	return use_count;
 }

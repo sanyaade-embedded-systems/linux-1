@@ -780,7 +780,7 @@ dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
 	/* Align size */
 	ul_sect_size = DOFF_ALIGN(ul_sect_size);
 	if (ul_sect_size > size) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 	} else {
 		if (!dload_get_section(zl_lib->desc, sect, pContent))
 			status = DSP_EFREAD;

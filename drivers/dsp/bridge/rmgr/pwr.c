@@ -40,7 +40,7 @@ dsp_status pwr_sleep_dsp(IN CONST u32 sleepCode, IN CONST u32 timeout)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct wmd_dev_context *dw_context;
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct dev_object *hdev_obj = NULL;
 	u32 ioctlcode = 0;
 	u32 arg = timeout;
@@ -82,7 +82,7 @@ dsp_status pwr_wake_dsp(IN CONST u32 timeout)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct wmd_dev_context *dw_context;
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct dev_object *hdev_obj = NULL;
 	u32 arg = timeout;
 
@@ -115,7 +115,7 @@ dsp_status pwr_pm_pre_scale(IN u16 voltage_domain, u32 level)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct wmd_dev_context *dw_context;
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct dev_object *hdev_obj = NULL;
 	u32 arg[2];
 
@@ -151,7 +151,7 @@ dsp_status pwr_pm_post_scale(IN u16 voltage_domain, u32 level)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct wmd_dev_context *dw_context;
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct dev_object *hdev_obj = NULL;
 	u32 arg[2];
 

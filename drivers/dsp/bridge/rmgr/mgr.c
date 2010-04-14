@@ -212,7 +212,7 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 			status = dev_get_dev_type(hdev_obj, (u8 *) &dev_type);
 			status = dev_get_dev_node(hdev_obj, &dev_node);
 			if (dev_type != DSP_UNIT)
-				status = DSP_EFAIL;
+				status = -EPERM;
 
 			if (DSP_SUCCEEDED(status)) {
 				processor_info->processor_type = DSPTYPE64;
@@ -275,7 +275,7 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 		} else {
 			dev_dbg(bridge, "%s: Failed to get DCD processor info "
 				"%x\n", __func__, status2);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 	}
 	*pu_num_procs = proc_index;
@@ -310,7 +310,7 @@ void mgr_exit(void)
 dsp_status mgr_get_dcd_handle(struct mgr_object *hMGRHandle,
 			      OUT u32 *phDCDHandle)
 {
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct mgr_object *pmgr_obj = (struct mgr_object *)hMGRHandle;
 
 	DBC_REQUIRE(refs > 0);

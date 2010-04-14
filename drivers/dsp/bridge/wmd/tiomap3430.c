@@ -327,7 +327,7 @@ static dsp_status bridge_brd_read(struct wmd_dev_context *hDevContext,
 	u32 dsp_base_addr = hDevContext->dw_dsp_base_addr;
 
 	if (dwDSPAddr < dev_context->dw_dsp_start_add) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		return status;
 	}
 	/* change here to account for the 3 bands of the DSP internal memory */
@@ -419,14 +419,14 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 	 * get cleared when the DSP program starts. */
 	if ((ul_shm_base_virt == 0) || (ul_shm_base == 0)) {
 		pr_err("%s: Illegal SM base\n", __func__);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	} else
 		*((volatile u32 *)dw_sync_addr) = 0xffffffff;
 
 	if (DSP_SUCCEEDED(status)) {
 		resources = dev_context->resources;
 		if (!resources)
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 		/* Assert RST1 i.e only the RST only for DSP megacell */
 		if (DSP_SUCCEEDED(status)) {
@@ -546,7 +546,7 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 				    clk_set32k_hz(bpwr_clks
 						  [clk_id_index].fun_clk);
 			} else {
-				status = DSP_EFAIL;
+				status = -EPERM;
 			}
 			clk_cmd = (BPWR_ENABLE_CLOCK << MBX_PM_CLK_CMDSHIFT) |
 			    ul_load_monitor_timer;
@@ -581,7 +581,7 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 				    clk_set32k_hz(bpwr_clks
 						  [clk_id_index].fun_clk);
 			} else {
-				status = DSP_EFAIL;
+				status = -EPERM;
 			}
 
 			clk_cmd = (BPWR_ENABLE_CLOCK << MBX_PM_CLK_CMDSHIFT) |
@@ -622,7 +622,7 @@ static dsp_status bridge_brd_start(struct wmd_dev_context *hDevContext,
 			hDevContext->mbox = NULL;
 			pr_err("%s: Failed to get dsp mailbox handle\n",
 			       __func__);
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 
 	}
@@ -856,7 +856,7 @@ static dsp_status bridge_brd_write(struct wmd_dev_context *hDevContext,
 	struct wmd_dev_context *dev_context = hDevContext;
 
 	if (dwDSPAddr < dev_context->dw_dsp_start_add) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		return status;
 	}
 	if ((dwDSPAddr - dev_context->dw_dsp_start_add) <
@@ -916,7 +916,7 @@ static dsp_status bridge_dev_create(OUT struct wmd_dev_context **ppDevContext,
 								 dw_mem_length
 								 [3]);
 	if (!dev_context->dw_dsp_base_addr)
-		status = DSP_EFAIL;
+		status = -EPERM;
 
 	pt_attrs = kzalloc(sizeof(struct pg_table_attrs), GFP_KERNEL);
 	if (pt_attrs != NULL) {
@@ -1091,7 +1091,7 @@ static dsp_status bridge_dev_ctrl(struct wmd_dev_context *dev_context,
 		status = handle_constraints_set(dev_context, pargs);
 		break;
 	default:
-		status = DSP_EFAIL;
+		status = -EPERM;
 		break;
 	}
 	return status;
@@ -1397,7 +1397,7 @@ static dsp_status bridge_brd_mem_map(struct wmd_dev_context *hDevContext,
 		for (pg_i = 0; pg_i < num_usr_pgs; pg_i++) {
 			pa = user_va2_pa(mm, mpu_addr);
 			if (!pa) {
-				status = DSP_EFAIL;
+				status = -EPERM;
 				pr_err("DSPBRIDGE: VM_IO mapping physical"
 				       "address is invalid\n");
 				break;
@@ -1451,7 +1451,7 @@ static dsp_status bridge_brd_mem_map(struct wmd_dev_context *hDevContext,
 				       "Value = %d, Buffer"
 				       "size=0x%x\n", ul_mpu_addr,
 				       vma->vm_flags, pg_num, ul_num_bytes);
-				status = DSP_EFAIL;
+				status = -EPERM;
 				break;
 			}
 		}
@@ -1470,7 +1470,7 @@ func_cont:
 			bridge_brd_mem_un_map(dev_context, ulVirtAddr,
 					   (pg_i * PG_SIZE4K));
 		}
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 	/*
 	 * In any case, flush the TLB
@@ -1568,7 +1568,7 @@ static dsp_status bridge_brd_mem_un_map(struct wmd_dev_context *hDevContext,
 			/* va_curr aligned to pte_size? */
 			if (pte_size == 0 || rem_bytes_l2 < pte_size ||
 			    va_curr & (pte_size - 1)) {
-				status = DSP_EFAIL;
+				status = -EPERM;
 				break;
 			}
 
@@ -1598,7 +1598,7 @@ static dsp_status bridge_brd_mem_un_map(struct wmd_dev_context *hDevContext,
 			}
 			if (hw_mmu_pte_clear(pte_addr_l2, va_curr, pte_size)
 			    == RET_FAIL) {
-				status = DSP_EFAIL;
+				status = -EPERM;
 				goto EXIT_LOOP;
 			}
 
@@ -1619,14 +1619,14 @@ static dsp_status bridge_brd_mem_un_map(struct wmd_dev_context *hDevContext,
 				    RET_OK)
 					status = DSP_SOK;
 				else {
-					status = DSP_EFAIL;
+					status = -EPERM;
 					spin_unlock(&pt->pg_lock);
 					goto EXIT_LOOP;
 				}
 			}
 			rem_bytes -= pte_count * PG_SIZE4K;
 		} else
-			status = DSP_EFAIL;
+			status = -EPERM;
 
 		spin_unlock(&pt->pg_lock);
 		continue;
@@ -1635,7 +1635,7 @@ skip_coarse_page:
 		/* pte_size = 1 MB or 16 MB */
 		if (pte_size == 0 || rem_bytes < pte_size ||
 		    va_curr & (pte_size - 1)) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			break;
 		}
 
@@ -1666,7 +1666,7 @@ skip_coarse_page:
 			rem_bytes -= pte_size;
 			va_curr += pte_size;
 		} else {
-			status = DSP_EFAIL;
+			status = -EPERM;
 			goto EXIT_LOOP;
 		}
 	}
@@ -1789,7 +1789,7 @@ static dsp_status pte_set(struct pg_table_attrs *pt, u32 pa, u32 va,
 			pte_val = *(u32 *) pte_addr_l1;
 			pte_size = hw_mmu_pte_size_l1(pte_val);
 		} else {
-			return DSP_EFAIL;
+			return -EPERM;
 		}
 		spin_lock(&pt->pg_lock);
 		if (pte_size == HW_MMU_COARSE_PAGE_SIZE) {
@@ -1825,7 +1825,7 @@ static dsp_status pte_set(struct pg_table_attrs *pt, u32 pa, u32 va,
 		} else {
 			/* Found valid L1 PTE of another size.
 			 * Should not overwrite it. */
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 		if (DSP_SUCCEEDED(status)) {
 			pg_tbl_va = l2_base_va;
@@ -1922,7 +1922,7 @@ static dsp_status mem_map_vmalloc(struct wmd_dev_context *dev_context,
 	if (DSP_SUCCEEDED(status))
 		status = DSP_SOK;
 	else
-		status = DSP_EFAIL;
+		status = -EPERM;
 
 	/*
 	 * In any case, flush the TLB

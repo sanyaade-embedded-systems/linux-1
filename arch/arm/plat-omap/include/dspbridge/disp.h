@@ -38,7 +38,7 @@
  *  Returns:
  *      DSP_SOK:                Success;
  *      DSP_EMEMORY:            Insufficient memory for requested resources.
- *      DSP_EFAIL:              Unable to create dispatcher.
+ *      -EPERM:              Unable to create dispatcher.
  *  Requires:
  *      disp_init(void) called.
  *      pDispAttrs != NULL.
@@ -136,7 +136,7 @@ extern dsp_status disp_node_change_priority(struct disp_object
  *      DSP_ESTREAM:    Stream creation failure on the DSP.
  *      DSP_ETIMEOUT:   A timeout occurred before the DSP responded.
  *      DSP_EUSER:      A user-defined failure occurred.
- *      DSP_EFAIL:      A failure occurred, unable to create node.
+ *      -EPERM:      A failure occurred, unable to create node.
  *  Requires:
  *      disp_init(void) called.
  *      Valid hDispObject.

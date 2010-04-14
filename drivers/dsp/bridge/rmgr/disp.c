@@ -132,7 +132,7 @@ dsp_status disp_create(OUT struct disp_object **phDispObject,
 		goto func_cont;
 
 	if (dev_type != DSP_UNIT) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		goto func_cont;
 	}
 
@@ -311,7 +311,7 @@ dsp_status disp_node_create(struct disp_object *disp_obj,
 	    sizeof(struct rms_msg_args)
 	    / sizeof(rms_word) - 1 + dw_length;
 	if (total >= max) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 		dev_dbg(bridge, "%s: Message args too large for buffer! size "
 			"= %d, max = %d\n", __func__, total, max);
 	}
@@ -456,7 +456,7 @@ dsp_status disp_node_create(struct disp_object *disp_obj,
 			}
 		} else {
 			/* Args won't fit */
-			status = DSP_EFAIL;
+			status = -EPERM;
 		}
 	}
 	if (DSP_SUCCEEDED(status)) {
@@ -643,7 +643,7 @@ static dsp_status fill_stream_def(rms_word *pdw_buf, u32 *ptotal, u32 offset,
 	dsp_status status = DSP_SOK;
 
 	if (total + sizeof(struct rms_strm_def) / sizeof(rms_word) >= max) {
-		status = DSP_EFAIL;
+		status = -EPERM;
 	} else {
 		strm_def_obj = (struct rms_strm_def *)(pdw_buf + total);
 		strm_def_obj->bufsize = strm_def.buf_size;
@@ -667,7 +667,7 @@ static dsp_status fill_stream_def(rms_word *pdw_buf, u32 *ptotal, u32 offset,
 		    (dw_length + chars_in_rms_word - 1) / chars_in_rms_word;
 
 		if (total + name_len >= max) {
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			/*
 			 *  Zero out last word, since the device name may not
@@ -718,7 +718,7 @@ static dsp_status send_message(struct disp_object *disp_obj, u32 dwTimeout,
 			if (CHNL_IS_TIMED_OUT(chnl_ioc_obj))
 				status = DSP_ETIMEOUT;
 			else
-				status = DSP_EFAIL;
+				status = -EPERM;
 		}
 	}
 	/* Get the reply */
@@ -739,7 +739,7 @@ static dsp_status send_message(struct disp_object *disp_obj, u32 dwTimeout,
 			status = DSP_ETIMEOUT;
 		} else if (chnl_ioc_obj.byte_size < ul_bytes) {
 			/* Did not get all of the reply from the RMS */
-			status = DSP_EFAIL;
+			status = -EPERM;
 		} else {
 			if (CHNL_IS_IO_COMPLETE(chnl_ioc_obj)) {
 				DBC_ASSERT(chnl_ioc_obj.pbuf == pbuf);
@@ -747,7 +747,7 @@ static dsp_status send_message(struct disp_object *disp_obj, u32 dwTimeout,
 				*pdw_arg =
 				    (((rms_word *) (chnl_ioc_obj.pbuf))[1]);
 			} else {
-				status = DSP_EFAIL;
+				status = -EPERM;
 			}
 		}
 	}

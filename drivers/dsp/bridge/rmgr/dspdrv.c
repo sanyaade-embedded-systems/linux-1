@@ -48,7 +48,7 @@
 u32 dsp_init(OUT u32 *init_status)
 {
 	char dev_node[MAXREGPATHLENGTH] = "TIOMAP1510";
-	dsp_status status = DSP_EFAIL;
+	dsp_status status = -EPERM;
 	struct drv_object *drv_obj = NULL;
 	u32 device_node;
 	u32 device_node_string;
@@ -74,7 +74,7 @@ u32 dsp_init(OUT u32 *init_status)
 			    ((u32) device_node_string, drv_obj);
 	} else {
 		dev_dbg(bridge, "%s: drv_request_resources Failed\n", __func__);
-		status = DSP_EFAIL;
+		status = -EPERM;
 	}
 
 	/* Unwind whatever was loaded */
