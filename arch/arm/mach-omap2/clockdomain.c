@@ -902,7 +902,7 @@ void omap2_clkdm_allow_idle(struct clockdomain *clkdm)
 	 * dependency code and data for OMAP4.
 	 */
 	if (cpu_is_omap44xx()) {
-		WARN_ONCE(1, "clockdomain: OMAP4 wakeup/sleep dependency "
+		pr_debug("clockdomain: OMAP4 wakeup/sleep dependency "
 			  "support is not yet implemented\n");
 	} else {
 		if (atomic_read(&clkdm->usecount) > 0)
