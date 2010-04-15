@@ -134,6 +134,9 @@
 /* Dummy defines to keep multi-omap compiles happy */
 #define OMAP1_DMA_REVISION		0
 #define OMAP1_DMA_IRQSTATUS_L0		0
+#define OMAP1_DMA_IRQSTATUS_L1		0
+#define OMAP1_DMA_IRQSTATUS_L2		0
+#define OMAP1_DMA_IRQSTATUS_L3		0
 #define OMAP1_DMA_IRQENABLE_L0		0
 #define OMAP1_DMA_OCP_SYSCONFIG		0
 #define OMAP1_DMA_CAPS_0		0

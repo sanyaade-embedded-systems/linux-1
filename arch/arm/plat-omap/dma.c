@@ -818,6 +818,9 @@ int omap_request_dma(int dev_id, const char *dev_name,
 		/* Clear the CSR register and IRQ status register */
 		dma_write(OMAP2_DMA_CSR_CLEAR_MASK, CSR(free_ch));
 		dma_write(1 << free_ch, IRQSTATUS_L0);
+		dma_write(1 << free_ch, IRQSTATUS_L1);
+		dma_write(1 << free_ch, IRQSTATUS_L2);
+		dma_write(1 << free_ch, IRQSTATUS_L3);
 	}
 
 	*dma_ch_out = free_ch;
@@ -856,6 +859,9 @@ void omap_free_dma(int lch)
 		/* Clear the CSR register and IRQ status register */
 		dma_write(OMAP2_DMA_CSR_CLEAR_MASK, CSR(lch));
 		dma_write(1 << lch, IRQSTATUS_L0);
+		dma_write(1 << lch, IRQSTATUS_L1);
+		dma_write(1 << lch, IRQSTATUS_L2);
+		dma_write(1 << lch, IRQSTATUS_L3);
 
 		/* Disable all DMA interrupts for the channel. */
 		dma_write(0, CICR(lch));
@@ -2224,6 +2230,9 @@ static int omap2_dma_handle_ch(int ch)
 
 	dma_write(OMAP2_DMA_CSR_CLEAR_MASK, CSR(ch));
 	dma_write(1 << ch, IRQSTATUS_L0);
+	dma_write(1 << ch, IRQSTATUS_L1);
+	dma_write(1 << ch, IRQSTATUS_L2);
+	dma_write(1 << ch, IRQSTATUS_L3);
 
 	/* If the ch is not chained then chain_id will be -1 */
 	if (dma_chan[ch].chain_id != -1) {
@@ -2443,6 +2452,12 @@ static int __init omap_init_dma(void)
 			irq = INT_44XX_SDMA_IRQ0;
 		else
 			irq = INT_24XX_SDMA_IRQ0;
+		if (cpu_is_omap34xx()) {
+			dma_write(0xFFFFFFFF, IRQSTATUS_L0);
+			dma_write(0xFFFFFFFF, IRQSTATUS_L1);
+			dma_write(0xFFFFFFFF, IRQSTATUS_L2);
+			dma_write(0xFFFFFFFF, IRQSTATUS_L3);
+		}
 		setup_irq(irq, &omap24xx_dma_irq);
 	}
 
