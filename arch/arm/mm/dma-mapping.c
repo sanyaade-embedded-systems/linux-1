@@ -22,13 +22,7 @@
 #include <asm/highmem.h>
 #include <asm/cacheflush.h>
 #include <asm/tlbflush.h>
-#include <asm/system.h>
-#include <asm/kmap_types.h>
-#include <asm/fixmap.h>
-#include <asm/pgtable.h>
 #include <asm/sizes.h>
-
-#include "mm.h"
 
 /* Sanity check size */
 #if (CONSISTENT_DMA_SIZE % SZ_2M)
@@ -443,7 +437,7 @@ static void dma_cache_maint_contiguous(struct page *page, unsigned long offset,
 				       size_t size, int direction)
 {
 	void *vaddr;
-	unsigned long paddr, va, idx, pte, flags;
+	unsigned long paddr;
 	void (*inner_op)(const void *, const void *);
 	void (*outer_op)(unsigned long, unsigned long);
 
@@ -464,8 +458,6 @@ static void dma_cache_maint_contiguous(struct page *page, unsigned long offset,
 		BUG();
 	}
 
-	paddr = page_to_phys(page) + offset;
-
 	if (!PageHighMem(page)) {
 		vaddr = page_address(page) + offset;
 		inner_op(vaddr, vaddr + size);
@@ -475,20 +467,10 @@ static void dma_cache_maint_contiguous(struct page *page, unsigned long offset,
 			vaddr += offset;
 			inner_op(vaddr, vaddr + size);
 			kunmap_high(page);
-		} else if (cache_is_vipt_nonaliasing()) {
-			local_irq_save(flags);
-			idx = KM_L2_CACHE + KM_TYPE_NR * smp_processor_id();
-			va = __fix_to_virt(FIX_KMAP_BEGIN + idx);
-			pte = pfn_pte(paddr >> PAGE_SHIFT, PAGE_KERNEL);
-			set_pte_ext(TOP_PTE(va), pte, 0);
-			local_flush_tlb_kernel_page(va);
-			vaddr = (void *)va + offset;
-			inner_op(vaddr, vaddr + size);
-			local_irq_restore(flags);
 		}
-
 	}
 
+	paddr = page_to_phys(page) + offset;
 	outer_op(paddr, paddr + size);
 }
 
