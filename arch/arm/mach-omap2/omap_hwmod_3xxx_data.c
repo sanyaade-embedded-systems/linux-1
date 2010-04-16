@@ -924,7 +924,7 @@ static struct omap_hwmod omap3xxx_gptimer1 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT1_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT1,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -950,7 +950,7 @@ static struct omap_hwmod omap3xxx_gptimer2 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT2_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT2,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -976,7 +976,7 @@ static struct omap_hwmod omap3xxx_gptimer3 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT3_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT3,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -999,7 +999,7 @@ static struct omap_hwmod omap3xxx_gptimer4 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT4_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT4,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -1025,7 +1025,7 @@ static struct omap_hwmod omap3xxx_gptimer5 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT5_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT5,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -1051,7 +1051,7 @@ static struct omap_hwmod omap3xxx_gptimer6 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT6_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT6,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -1077,7 +1077,7 @@ static struct omap_hwmod omap3xxx_gptimer7 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT7_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT7,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -1103,7 +1103,7 @@ static struct omap_hwmod omap3xxx_gptimer8 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT8_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT8,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -1129,7 +1129,7 @@ static struct omap_hwmod omap3xxx_gptimer9 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT9_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT9,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -1155,7 +1155,7 @@ static struct omap_hwmod omap3xxx_gptimer10 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT10_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT10,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -1181,7 +1181,7 @@ static struct omap_hwmod omap3xxx_gptimer11 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT11_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT11,
 			.idlest_reg_id = 1,
 		},
 	},
@@ -1207,7 +1207,7 @@ static struct omap_hwmod omap3xxx_gptimer12 = {
 	.prcm		= {
 		.omap2 = {
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_GPT12_SHIFT,
+			.module_bit = OMAP3430_GRPSEL_GPT12,
 			.idlest_reg_id = 1,
 		},
 	},
