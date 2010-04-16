@@ -171,7 +171,9 @@ static int dpi_set_mode(struct omap_dss_device *dssdev)
 err2:
 	dss_select_clk_source_dsi(lcd_channel_ix, false, false);
 err1:
+#ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
 	dsi_pll_uninit(lcd_channel_ix);
+#endif
 err0:
 	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
 	return r;
