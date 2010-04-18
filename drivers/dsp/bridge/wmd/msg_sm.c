@@ -185,8 +185,8 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 	if (DSP_SUCCEEDED(status)) {
 		msg_q->sync_done = kzalloc(sizeof(struct sync_object),
 							GFP_KERNEL);
-		if (msg_q->sync_event)
-			sync_init_event(msg_q->sync_event);
+		if (msg_q->sync_done)
+			sync_init_event(msg_q->sync_done);
 		else
 			status = -ENOMEM;
 	}
@@ -194,7 +194,7 @@ dsp_status bridge_msg_create_queue(struct msg_mgr *hmsg_mgr,
 	if (DSP_SUCCEEDED(status)) {
 		msg_q->sync_done_ack = kzalloc(sizeof(struct sync_object),
 							GFP_KERNEL);
-		if (msg_q->sync_event)
+		if (msg_q->sync_done_ack)
 			sync_init_event(msg_q->sync_done_ack);
 		else
 			status = -ENOMEM;
