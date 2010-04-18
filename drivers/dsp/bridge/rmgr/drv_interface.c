@@ -98,8 +98,8 @@ static int tc_wordswapon;	/* Default value is always false */
 static atomic_t bridge_cref;	/* number of bridge open handles */
 static struct workqueue_struct *bridge_rec_queue;
 static struct work_struct bridge_recovery_work;
-static DECLARE_COMPLETION_ONSTACK(bridge_comp);
-static DECLARE_COMPLETION_ONSTACK(bridge_open_comp);
+static DECLARE_COMPLETION(bridge_comp);
+static DECLARE_COMPLETION(bridge_open_comp);
 static bool recover;
 #endif
 
