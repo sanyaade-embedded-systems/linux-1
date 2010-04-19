@@ -95,10 +95,8 @@ dsp_status drv_insert_node_res_element(bhandle hnode, bhandle hNodeRes,
 	}
 
 	(*node_res_obj)->hnode = hnode;
-	spin_lock(&ctxt->node_idp->lock);
 	retval = idr_get_new(ctxt->node_idp, *node_res_obj,
 						&(*node_res_obj)->id);
-	spin_unlock(&ctxt->node_idp->lock);
 	if (retval == -EAGAIN) {
 		if (!idr_pre_get(ctxt->node_idp, GFP_KERNEL)) {
 			pr_err("%s: OUT OF MEMORY\n", __func__);
@@ -106,10 +104,8 @@ dsp_status drv_insert_node_res_element(bhandle hnode, bhandle hNodeRes,
 			goto func_end;
 		}
 
-		spin_lock(&ctxt->node_idp->lock);
 		retval = idr_get_new(ctxt->node_idp, *node_res_obj,
 						&(*node_res_obj)->id);
-		spin_unlock(&ctxt->node_idp->lock);
 	}
 	if (retval) {
 		pr_err("%s: FAILED, IDR is FULL\n", __func__);
@@ -224,10 +220,8 @@ dsp_status drv_proc_insert_strm_res_element(bhandle hStreamHandle,
 	}
 
 	(*pstrm_res)->hstream = hStreamHandle;
-	spin_lock(&ctxt->strm_idp->lock);
 	retval = idr_get_new(ctxt->strm_idp, *pstrm_res,
 						&(*pstrm_res)->id);
-	spin_unlock(&ctxt->strm_idp->lock);
 	if (retval == -EAGAIN) {
 		if (!idr_pre_get(ctxt->strm_idp, GFP_KERNEL)) {
 			pr_err("%s: OUT OF MEMORY\n", __func__);
@@ -235,10 +229,8 @@ dsp_status drv_proc_insert_strm_res_element(bhandle hStreamHandle,
 			goto func_end;
 		}
 
-		spin_lock(&ctxt->strm_idp->lock);
 		retval = idr_get_new(ctxt->strm_idp, *pstrm_res,
 						&(*pstrm_res)->id);
-		spin_unlock(&ctxt->strm_idp->lock);
 	}
 	if (retval) {
 		pr_err("%s: FAILED, IDR is FULL\n", __func__);

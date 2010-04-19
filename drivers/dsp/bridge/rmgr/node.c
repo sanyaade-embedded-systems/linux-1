@@ -1584,9 +1584,7 @@ func_cont1:
 	/*
 	 * Release all Node resources and its context
 	 */
-	spin_lock(&pr_ctxt->node_idp->lock);
 	idr_remove(pr_ctxt->node_idp, ((struct node_res_object *)node_res)->id);
-	spin_unlock(&pr_ctxt->node_idp->lock);
 	kfree(node_res);
 
 	/* Exit critical section */
