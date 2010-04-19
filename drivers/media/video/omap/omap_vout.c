@@ -585,8 +585,6 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	int *cropped_offset = &vout->cropped_offset;
 
 	if (flg_720 == VIDEO_720_ENABLE) {
-		pix->height = win->w.height;
-		pix->width = win->w.width;
 		crop->height = win->w.height;
 		crop->width = win->w.width;
 	}
@@ -622,8 +620,13 @@ static int omap_vout_calculate_offset(struct omap_vout_device *vout)
 	vout->ps = ps;
 	vout->vr_ps = vr_ps;
 	line_length = MAX_PIXELS_PER_LINE;
-	ctop = (pix->height - crop->height) - crop->top;
-	cleft = (pix->width - crop->width) - crop->left;
+	if (flg_720 == VIDEO_720_ENABLE) {
+		ctop = crop->top;
+		cleft = crop->left;
+	} else {
+		ctop = (pix->height - crop->height) - crop->top;
+		cleft = (pix->width - crop->width) - crop->left;
+	}
 	vout->line_length = line_length;
 	switch (rotation) {
 	case dss_rotation_90_degree:
