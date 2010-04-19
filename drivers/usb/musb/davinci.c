@@ -98,6 +98,11 @@ void musb_platform_enable(struct musb *musb)
 	tmp |= old;
 
 	val = ~MUSB_INTR_SOF;
+#ifdef CONFIG_MUSB_SCHEDULE_INTR_EP
+	if (is_intr_sched())
+		val = ~0x0;
+#endif
+
 	tmp |= ((val & 0x01ff) << DAVINCI_USB_USBINT_SHIFT);
 	musb_writel(musb->ctrl_base, DAVINCI_USB_INT_MASK_SET_REG, tmp);
 
@@ -378,6 +383,7 @@ static irqreturn_t davinci_interrupt(int irq, void *__hci)
 int musb_platform_set_mode(struct musb *musb, u8 mode)
 {
 	/* EVM can't do this (right?) */
+	WARN("FIXME: %p not implemented\n", __func__);
 	return -EIO;
 }
 
