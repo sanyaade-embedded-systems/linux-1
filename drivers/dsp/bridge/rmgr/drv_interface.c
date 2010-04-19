@@ -460,20 +460,16 @@ static int bridge_open(struct inode *ip, struct file *filp)
 		pr_ctxt->node_idp = kzalloc(sizeof(struct idr), GFP_KERNEL);
 		if (pr_ctxt->node_idp) {
 			idr_init(pr_ctxt->node_idp);
-			spin_lock_init(&pr_ctxt->node_idp->lock);
 		} else {
 			status = -ENOMEM;
 			goto err;
 		}
 
 		pr_ctxt->strm_idp = kzalloc(sizeof(struct idr), GFP_KERNEL);
-		if (pr_ctxt->strm_idp) {
+		if (pr_ctxt->strm_idp)
 			idr_init(pr_ctxt->strm_idp);
-			spin_lock_init(&pr_ctxt->strm_idp->lock);
-		} else {
+		else
 			status = -ENOMEM;
-		}
-
 	} else {
 		status = -ENOMEM;
 	}

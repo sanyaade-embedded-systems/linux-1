@@ -178,9 +178,7 @@ dsp_status strm_close(struct strm_res_object *strmres,
 	if (DSP_FAILED(status))
 		goto func_end;
 
-	spin_lock(&pr_ctxt->strm_idp->lock);
 	idr_remove(pr_ctxt->strm_idp, strmres->id);
-	spin_unlock(&pr_ctxt->strm_idp->lock);
 func_end:
 	DBC_ENSURE(status == DSP_SOK || status == -EFAULT ||
 		   status == DSP_EPENDING || status == -EPERM);
