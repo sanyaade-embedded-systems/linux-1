@@ -1786,21 +1786,30 @@ u32 strmwrap_select(union Trapped_Args *args, void *pr_ctxt)
 	struct strm_object *strm_tab[MAX_STREAMS];
 	dsp_status status = DSP_SOK;
 	struct strm_res_object *strm_res;
-
-	find_strm_handle(&strm_res, pr_ctxt, args->args_strm_select.stream_tab);
-
-	if (!strm_res)
-		return -EFAULT;
+	int *ids[MAX_STREAMS];
+	int i;
 
 	if (args->args_strm_select.strm_num > MAX_STREAMS)
 		return -EINVAL;
 
-	CP_FM_USR(strm_tab, strm_res->hstream, status,
-		  args->args_strm_select.strm_num);
-	if (DSP_SUCCEEDED(status)) {
-		status = strm_select(strm_tab, args->args_strm_select.strm_num,
-				     &mask, args->args_strm_select.utimeout);
+	CP_FM_USR(ids, args->args_strm_select.stream_tab, status,
+		args->args_strm_select.strm_num);
+
+	if (DSP_FAILED(status))
+		return status;
+
+	for (i = 0; i < args->args_strm_select.strm_num; i++) {
+		find_strm_handle(&strm_res, pr_ctxt, ids[i]);
+
+		if (!strm_res)
+			return -EFAULT;
+
+		strm_tab[i] = strm_res->hstream;
 	}
+
+	status = strm_select(strm_tab, args->args_strm_select.strm_num,
+				     &mask, args->args_strm_select.utimeout);
+
 	CP_TO_USR(args->args_strm_select.pmask, &mask, status, 1);
 	return status;
 }
