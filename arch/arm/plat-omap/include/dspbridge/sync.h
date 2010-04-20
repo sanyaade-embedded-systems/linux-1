@@ -86,7 +86,9 @@ void sync_set_event(struct sync_object *event);
 static inline dsp_status sync_wait_on_event(struct sync_object *event,
 							unsigned timeout)
 {
-	return wait_for_completion_timeout(&event->comp,
+	if (SYNC_INFINITE == timeout)
+		timeout = MAX_SCHEDULE_TIMEOUT;
+	return wait_for_completion_interruptible_timeout(&event->comp,
 		msecs_to_jiffies(timeout)) ? DSP_SOK : -ETIME;
 }
 
