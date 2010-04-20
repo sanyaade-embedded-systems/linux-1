@@ -1054,6 +1054,7 @@ u32 nodewrap_allocate(union Trapped_Args *args, void *pr_ctxt)
 	struct dsp_nodeattrin proc_attr_in, *attr_in = NULL;
 	struct node_res_object *node_res;
 	void *hprocessor = ((struct process_context *)pr_ctxt)->hprocessor;
+	int nodeid;
 
 	/* Optional argument */
 	if (psize) {
@@ -1089,13 +1090,11 @@ u32 nodewrap_allocate(union Trapped_Args *args, void *pr_ctxt)
 				       attr_in, &node_res, pr_ctxt);
 	}
 	if (DSP_SUCCEEDED(status)) {
-		CP_TO_USR(args->args_node_allocate.ph_node, &node_res->id,
-			status, 1);
+		nodeid = node_res->id + 1;
+		CP_TO_USR(args->args_node_allocate.ph_node, &nodeid, status, 1);
 		if (DSP_FAILED(status)) {
 			status = -EFAULT;
 			node_delete(node_res, pr_ctxt);
-		} else {
-			*args->args_node_allocate.ph_node += 1;
 		}
 	}
 func_cont:
@@ -1690,6 +1689,7 @@ u32 strmwrap_open(union Trapped_Args *args, void *pr_ctxt)
 	struct strm_res_object *strm_res_obj;
 	struct dsp_streamattrin strm_attr_in;
 	struct node_res_object *node_res;
+	int strmid;
 
 	find_node_handle(&node_res, pr_ctxt, args->args_strm_open.hnode);
 
@@ -1711,9 +1711,10 @@ u32 strmwrap_open(union Trapped_Args *args, void *pr_ctxt)
 			   args->args_strm_open.direction,
 			   args->args_strm_open.index, &attr, &strm_res_obj,
 			   pr_ctxt);
-	CP_TO_USR(args->args_strm_open.ph_stream, &strm_res_obj->id, status, 1);
-	if (DSP_SUCCEEDED(status))
-		*args->args_strm_open.ph_stream += 1;
+	if (DSP_SUCCEEDED(status)) {
+		strmid = strm_res_obj->id + 1;
+		CP_TO_USR(args->args_strm_open.ph_stream, &strmid, status, 1);
+	}
 	return status;
 }
 
