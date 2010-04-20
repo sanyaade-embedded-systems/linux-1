@@ -1363,6 +1363,85 @@ static struct snd_soc_dai_ops abe_tones_dai_ops = {
 	.set_sysclk	= twl6040_set_dai_sysclk,
 };
 
+static int abe_voice_startup(struct snd_pcm_substream *substream,
+			struct snd_soc_dai *dai)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_device *socdev = rtd->socdev;
+	struct snd_soc_codec *codec = socdev->card->codec;
+	struct twl6040_data *priv = codec->private_data;
+	struct twl4030_codec_data *pdata = codec->dev->platform_data;
+	struct platform_device *pdev = container_of(codec->dev,
+					struct platform_device, dev);
+
+	if (!priv->sysclk) {
+		dev_err(codec->dev,
+			"no mclk configured, call set_sysclk() on init\n");
+		return -EINVAL;
+	}
+
+	/*
+	 * capture is not supported at 17.64 MHz,
+	 * it's reserved for headset low-power playback scenario
+	 */
+	if ((priv->sysclk == 17640000) && substream->stream) {
+		dev_err(codec->dev,
+			"capture mode is not supported at %dHz\n",
+			priv->sysclk);
+		return -EINVAL;
+	}
+
+	snd_pcm_hw_constraint_list(substream->runtime, 0,
+				SNDRV_PCM_HW_PARAM_RATE,
+				priv->sysclk_constraints);
+
+	if (!priv->configure++) {
+		if (pdata->device_enable)
+			pdata->device_enable(pdev);
+
+		abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_AMIC,
+			(abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_AMIC]);
+#ifdef CONFIG_SND_OMAP_VOICE_TEST
+		/* Sidetone disable */
+		abe_write_mixer(MIXSDT, MUTE_GAIN, RAMP_0MS, MIX_SDT_INPUT_UP_MIXER);
+		abe_write_mixer(MIXSDT, MUTE_GAIN, RAMP_0MS, MIX_SDT_INPUT_DL1_MIXER);
+
+		/* echo ref. disable */
+		abe_write_mixer(MIXECHO, MUTE_GAIN, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_mixer(MIXECHO, MUTE_GAIN, RAMP_0MS, GAIN_RIGHT_OFFSET);
+
+		/* Vx_UL linked with AMIC */
+		abe_write_mixer(MIXAUDUL, MUTE_GAIN, RAMP_0MS, MIX_AUDUL_INPUT_MM_DL);
+		abe_write_mixer(MIXAUDUL, MUTE_GAIN, RAMP_0MS, MIX_AUDUL_INPUT_TONES);
+		abe_write_mixer(MIXAUDUL, GAIN_0dB, RAMP_0MS, MIX_AUDUL_INPUT_UPLINK);
+		abe_write_mixer(MIXAUDUL, MUTE_GAIN, RAMP_0MS, MIX_AUDUL_INPUT_VX_DL);
+
+		/* Voice Record disable */
+		abe_write_mixer(MIXVXREC, MUTE_GAIN, RAMP_0MS, MIX_VXREC_INPUT_TONES);
+		abe_write_mixer(MIXVXREC, MUTE_GAIN, RAMP_0MS, MIX_VXREC_INPUT_VX_DL);
+		abe_write_mixer(MIXVXREC, MUTE_GAIN, RAMP_0MS, MIX_VXREC_INPUT_MM_DL);
+		abe_write_mixer(MIXVXREC, MUTE_GAIN, RAMP_0MS, MIX_VXREC_INPUT_VX_UL);
+#else
+		abe_write_gain(GAINS_DL1, GAIN_0dB,  RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_DL1, GAIN_0dB,  RAMP_0MS, GAIN_RIGHT_OFFSET);
+		abe_write_gain(GAINS_DL2, GAIN_0dB,  RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_DL2, GAIN_0dB,  RAMP_0MS, GAIN_RIGHT_OFFSET);
+
+		abe_write_gain(GAINS_AMIC , GAIN_M6dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_AMIC, GAIN_M6dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+
+		abe_write_gain(GAINS_SPLIT, GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_SPLIT, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+
+		abe_write_gain(GAINS_DL1, GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_DL1, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+		abe_write_gain(GAINS_DL2, GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_DL2, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+#endif
+	}
+	return 0;
+}
+
 static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 			struct snd_pcm_hw_params *params,
 			struct snd_soc_dai *dai)
@@ -1375,7 +1454,9 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 	int rate;
 	int channels;
 	abe_data_format_t format;
+#ifndef CONFIG_SND_OMAP_VOICE_TEST
 	abe_dma_t dma_sink;
+#endif
 
 	rate = params_rate(params);
 	switch (rate) {
@@ -1408,10 +1489,20 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	format.f = rate;
+#ifdef CONFIG_SND_OMAP_VOICE_TEST
+	/* Vx_DL/UL connection to McBSP 2 ports */
+	format.f = 8000;
+	format.samp_format = MONO_MSB;
+	abe_connect_serial_port(VX_DL_PORT, &format, MCBSP2_RX);
+	format.f = 8000;
+	format.samp_format = MONO_RSHIFTED_16;
+	abe_connect_serial_port(VX_UL_PORT, &format, MCBSP2_TX);
+#else
 	if (!substream->stream)
 		abe_connect_cbpr_dmareq_port(VX_DL_PORT, &format, ABE_CBPR1_IDX, &dma_sink);
 	else
 		abe_connect_cbpr_dmareq_port(VX_UL_PORT, &format, ABE_CBPR2_IDX, &dma_sink);
+#endif
 
 	return 0;
 }
@@ -1436,10 +1527,18 @@ static int abe_voice_trigger(struct snd_pcm_substream *substream,
 				priv->sysclk);
 			return -EPERM;
 		}
-		if (!substream->stream)
+
+		if (!substream->stream) {
 			abe_enable_data_transfer(VX_DL_PORT);
-		else
+#ifdef CONFIG_SND_OMAP_VOICE_TEST
+			abe_enable_data_transfer(PDM_DL_PORT);
+#endif
+		} else {
 			abe_enable_data_transfer(VX_UL_PORT);
+#ifdef CONFIG_SND_OMAP_VOICE_TEST
+			abe_enable_data_transfer(PDM_UL_PORT);
+#endif
+		}
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		if (!substream->stream)
@@ -1455,7 +1554,7 @@ static int abe_voice_trigger(struct snd_pcm_substream *substream,
 }
 
 static struct snd_soc_dai_ops abe_voice_dai_ops = {
-	.startup	= abe_mm_startup,
+	.startup	= abe_voice_startup,
 	.hw_params	= abe_voice_hw_params,
 	.shutdown	= abe_mm_shutdown,
 	.trigger	= abe_voice_trigger,
