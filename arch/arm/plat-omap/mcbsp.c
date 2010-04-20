@@ -211,7 +211,7 @@ void omap_mcbsp_set_tx_threshold(unsigned int id, u16 threshold)
 	struct omap_mcbsp *mcbsp;
 	void __iomem *io_base;
 
-	if (!cpu_is_omap34xx())
+	if (!cpu_is_omap34xx() && !cpu_is_omap44xx())
 		return;
 
 	if (!omap_mcbsp_check_valid_id(id)) {
@@ -235,7 +235,7 @@ void omap_mcbsp_set_rx_threshold(unsigned int id, u16 threshold)
 	struct omap_mcbsp *mcbsp;
 	void __iomem *io_base;
 
-	if (!cpu_is_omap34xx())
+	if (!cpu_is_omap34xx() && !cpu_is_omap44xx())
 		return;
 
 	if (!omap_mcbsp_check_valid_id(id)) {
@@ -312,7 +312,7 @@ static inline void omap34xx_mcbsp_request(struct omap_mcbsp *mcbsp)
 	 * Enable wakup behavior, smart idle and all wakeups
 	 * REVISIT: some wakeups may be unnecessary
 	 */
-	if (cpu_is_omap34xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap44xx()) {
 		u16 syscon;
 
 		syscon = OMAP_MCBSP_READ(mcbsp->io_base, SYSCON);
@@ -336,7 +336,7 @@ static inline void omap34xx_mcbsp_free(struct omap_mcbsp *mcbsp)
 	/*
 	 * Disable wakup behavior, smart idle and all wakeups
 	 */
-	if (cpu_is_omap34xx()) {
+	if (cpu_is_omap34xx() || cpu_is_omap44xx()) {
 		u16 syscon;
 
 		syscon = OMAP_MCBSP_READ(mcbsp->io_base, SYSCON);
@@ -565,7 +565,7 @@ void omap_mcbsp_start(unsigned int id, int tx, int rx)
 		OMAP_MCBSP_WRITE(io_base, SPCR2, w | (1 << 7));
 	}
 
-	if (cpu_is_omap2430() || cpu_is_omap34xx()) {
+	if (cpu_is_omap2430() || cpu_is_omap34xx() || cpu_is_omap44xx()) {
 		/* Release the transmitter and receiver */
 		w = OMAP_MCBSP_READ(io_base, XCCR);
 		w &= ~(tx ? XDISABLE : 0);
@@ -597,7 +597,7 @@ void omap_mcbsp_stop(unsigned int id, int tx, int rx)
 
 	/* Reset transmitter */
 	tx &= 1;
-	if (cpu_is_omap2430() || cpu_is_omap34xx()) {
+	if (cpu_is_omap2430() || cpu_is_omap34xx() || cpu_is_omap44xx()) {
 		w = OMAP_MCBSP_READ(io_base, XCCR);
 		w |= (tx ? XDISABLE : 0);
 		OMAP_MCBSP_WRITE(io_base, XCCR, w);
@@ -607,7 +607,7 @@ void omap_mcbsp_stop(unsigned int id, int tx, int rx)
 
 	/* Reset receiver */
 	rx &= 1;
-	if (cpu_is_omap2430() || cpu_is_omap34xx()) {
+	if (cpu_is_omap2430() || cpu_is_omap34xx() || cpu_is_omap44xx()) {
 		w = OMAP_MCBSP_READ(io_base, RCCR);
 		w |= (rx ? RDISABLE : 0);
 		OMAP_MCBSP_WRITE(io_base, RCCR, w);
