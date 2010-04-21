@@ -44,6 +44,11 @@
 #include "mmc-twl4030.h"
 #include <linux/delay.h>
 
+#include <plat/omap_device.h>
+#include <plat/omap_hwmod.h>
+
+static int ts_gpio;
+
 static int sdp4430_keymap[] = {
 	KEY(0, 0, KEY_E),
 	KEY(0, 1, KEY_R),
@@ -256,10 +261,12 @@ static int sdp4430_panel_disable_lcd(struct omap_dss_device *dssdev) {
 	return 0;
 }
 
-static void __init sdp4430_display_init(void)
-{
-	return;
-}
+static struct omap_device_pm_latency omap_dss_latency[] = {
+	[0] = {
+		.deactivate_func	= omap_device_idle_hwmods,
+		.activate_func		= omap_device_enable_hwmods,
+	},
+};
 
 static struct omap_dss_device sdp4430_lcd_device = {
 	.name			= "lcd",
@@ -428,6 +435,40 @@ static struct platform_device sdp4430_dss_device = {
 	},
 };
 
+#define MAX_OMAP_DSS_HWMOD_NAME_LEN 16
+static const char name[] = "omapdss";
+struct omap_device *od;
+
+static void __init sdp4430_display_init(void) {
+	struct omap_hwmod *oh;
+	char oh_name[MAX_OMAP_DSS_HWMOD_NAME_LEN];
+	int l, idx;
+	struct omap_dss_platform_data *pdata;
+	int bus_id = 1;
+	idx = 1;
+
+	l = snprintf(oh_name, MAX_OMAP_DSS_HWMOD_NAME_LEN,
+			"dss");
+	WARN(l >= MAX_OMAP_DSS_HWMOD_NAME_LEN,
+		"String buffer overflow in DSS device setup\n");
+
+	oh = omap_hwmod_lookup(oh_name);
+	if (!oh) {
+		pr_err("Could not look up %s\n", oh_name);
+		return -EEXIST;
+	}
+
+	od = omap_device_build(name, -1, oh, &sdp4430_dss_data,
+			sizeof(struct omap_dss_board_info),
+			omap_dss_latency,
+			ARRAY_SIZE(omap_dss_latency), 0);
+
+	WARN(IS_ERR(od), "Could not build omap_device for %s %s\n",
+			name, oh_name);
+
+	return;
+}
+
 /* end Display */
 
 static struct regulator_consumer_supply sdp4430_vdda_dac_supply = {
@@ -435,7 +476,6 @@ static struct regulator_consumer_supply sdp4430_vdda_dac_supply = {
 	.dev		= &sdp4430_dss_device.dev,
 };
 static struct platform_device *sdp4430_devices[] __initdata = {
-	&sdp4430_dss_device,
 	&sdp4430_keypad_device,
 };
 
@@ -571,7 +611,6 @@ static void __init omap_4430sdp_init_irq(void)
 #ifdef CONFIG_OMAP_32K_TIMER
 	omap2_gp_clockevent_set_gptimer(1);
 #endif
-	gic_init_irq();
 }
 
 static struct regulator_init_data sdp4430_vaux1 = {

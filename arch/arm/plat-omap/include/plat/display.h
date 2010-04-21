@@ -25,6 +25,8 @@
 #include <linux/device.h>
 #include <asm/atomic.h>
 
+#include <plat/omap_device.h>
+
 #define DISPC_IRQ_FRAMEDONE		(1 << 0)
 			/* OMAP4: FRAMEDONE1: for prim LCD*/
 #define DISPC_IRQ_VSYNC			(1 << 1)
@@ -328,6 +330,7 @@ struct omap_dss_board_info {
 	int num_devices;
 	struct omap_dss_device **devices;
 	struct omap_dss_device *default_device;
+	void (*set_mpu_wkup_lat)(struct device *dev, int set);
 };
 
 struct omap_video_timings {
@@ -631,6 +634,8 @@ struct omap_dss_driver {
 struct pico_platform_data {
 	u8 gpio_intr;
 };
+
+extern struct omap_device *od;
 
 int omap_dss_register_driver(struct omap_dss_driver *);
 void omap_dss_unregister_driver(struct omap_dss_driver *);
