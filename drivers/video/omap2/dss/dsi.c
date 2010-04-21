@@ -220,15 +220,11 @@ extern void __iomem  *dss_base;
 #define REGM3_MAX (1 << 4)
 #define REGM4_MAX (1 << 4)
 #define LP_DIV_MAX ((1 << 13) - 1)
-#define PWM2ON		0x3
-#define PWM2OFF		0x4
-#define TOGGLE3		0x92
 #define PWDNSTATUS2	0x4
 
 #ifdef CONFIG_ARCH_OMAP4
 extern void __iomem  *dss_base;
 extern void __iomem  *dispc_base;
-void __iomem  *gpio_base;
 void __iomem  *dsi_base;
 void __iomem  *dsi2_base;
 #endif
@@ -3894,11 +3890,6 @@ static int dsi_core_init(enum dsi lcd_ix)
 	return 0;
 }
 
-#define GPIO_OE		0x134
-#define GPIO_DATAOUT	0x13C
-#define OMAP24XX_GPIO_CLEARDATAOUT	0x190
-#define OMAP24XX_GPIO_SETDATAOUT	0x194
-
 static int dsi_display_enable(struct omap_dss_device *dssdev)
 {
 	int r = 0, val = 0;
@@ -3935,34 +3926,6 @@ if (cpu_is_omap44xx())
 	r = _dsi_reset(lcd_ix);
 	if (r)
 		goto err2;
-
-
-	if (cpu_is_omap44xx() && (lcd_ix == dsi1)) {
-
-		gpio_base=ioremap(0x48059000,0x1000);
-		val = __raw_readl(gpio_base+GPIO_OE);
-		val &= ~0x140;
-		__raw_writel(val, gpio_base+GPIO_OE);
-		mdelay(120);
-
-		/* To output signal high */
-		val = __raw_readl(gpio_base+OMAP24XX_GPIO_SETDATAOUT);
-		val |= 0x140;
-		__raw_writel(val, gpio_base+OMAP24XX_GPIO_SETDATAOUT);
-		mdelay(120);
-
-		val = __raw_readl(gpio_base+OMAP24XX_GPIO_CLEARDATAOUT);
-		val |= 0x140;
-		__raw_writel(val, gpio_base+OMAP24XX_GPIO_CLEARDATAOUT);
-		mdelay(120);
-
-		val = __raw_readl(gpio_base+OMAP24XX_GPIO_SETDATAOUT);
-		val |= 0x140;
-		__raw_writel(val, gpio_base+OMAP24XX_GPIO_SETDATAOUT);
-
-		mdelay(120);
-		printk(KERN_DEBUG "GPIO reset done ");
-	}
 
 	r = dsi_display_init_dispc(dssdev);
 	if (r)
