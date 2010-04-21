@@ -567,6 +567,19 @@ void musb_g_tx(struct musb *musb, u8 epnum)
 #endif
 
 /*
+ * Enable DMA Mode 1 for RX transfers. This works reliably only
+ * with g_file_storage at the moment. Enabling this feature will
+ * result in a performance gain of about 30% for at least
+ * g_file_storage use cases.
+ * Making it a module parameter for overriding the short_not_ok check.
+ * so that this can be tested with g_zero, etc.
+ */
+static int musb_use_dma_mode1_rx;
+module_param_named(dma_mode1_rx, musb_use_dma_mode1_rx, bool,
+						S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(dma_mode1_rx, "Enable Mode 1 for RX transfers. Default = n");
+
+/*
  * Context: controller locked, IRQs blocked, endpoint selected
  */
 static void rxstate(struct musb *musb, struct musb_request *req)
@@ -578,6 +591,7 @@ static void rxstate(struct musb *musb, struct musb_request *req)
 	unsigned		fifo_count = 0;
 	u16			len = musb_ep->packet_sz;
 	u16			csr = musb_readw(epio, MUSB_RXCSR);
+	int			use_mode_1 = 0;
 
 	/* We shouldn't get here while DMA is active, but we do... */
 	if (dma_channel_status(musb_ep->dma) == MUSB_DMA_STATUS_BUSY) {
@@ -620,6 +634,20 @@ static void rxstate(struct musb *musb, struct musb_request *req)
 
 	if (csr & MUSB_RXCSR_RXPKTRDY) {
 		len = musb_readw(epio, MUSB_RXCOUNT);
+
+		/*
+		 * Enable Mode 1 for RX transfers only for g_file_storage, for
+		 * which request->short_not_ok is set.
+		 * This should give a throughput boost of about 30 percent
+		 * for g_file_storage.
+		 * The module param can override the short_not_Ok check.
+		 */
+		if ((musb_use_dma_mode1_rx || request->short_not_ok)
+					&& len == musb_ep->packet_sz)
+			use_mode_1 = 1;
+		else
+			use_mode_1 = 0;
+
 		if (request->actual < request->length) {
 #ifdef CONFIG_USB_INVENTRA_DMA
 			if (is_dma_capable() && musb_ep->dma) {
@@ -651,28 +679,37 @@ static void rxstate(struct musb *musb, struct musb_request *req)
 	 * then becomes usable as a runtime "use mode 1" hint...
 	 */
 
-				csr |= MUSB_RXCSR_DMAENAB;
-#ifdef USE_MODE1
-				csr |= MUSB_RXCSR_AUTOCLEAR;
-				/* csr |= MUSB_RXCSR_DMAMODE; */
-
-				/* this special sequence (enabling and then
-				 * disabling MUSB_RXCSR_DMAMODE) is required
-				 * to get DMAReq to activate
-				 */
-				musb_writew(epio, MUSB_RXCSR,
-					csr | MUSB_RXCSR_DMAMODE);
-#endif
-				musb_writew(epio, MUSB_RXCSR, csr);
+	/*
+	 * Experimental: Mode1 works with g_file_storage use cases
+	 * For other drivers, it appears that sometimes an end-point
+	 * interrupt is received before the DMA completion interrupt
+	 * REVISIT this at a later date. For now, enable mode 1
+	 * by default for g_file_storage
+	 */
+		if (use_mode_1) {
+			/* this special sequence (enabling and then
+			 * disabling MUSB_RXCSR_DMAMODE) is required
+			 * to get DMAReq to activate
+			 */
+			csr |= MUSB_RXCSR_AUTOCLEAR;
+			musb_writew(epio, MUSB_RXCSR, csr);
+			csr |= MUSB_RXCSR_DMAENAB;
+			musb_writew(epio, MUSB_RXCSR, csr);
+			csr |= MUSB_RXCSR_DMAMODE;
+			musb_writew(epio, MUSB_RXCSR, csr);
+			csr |= MUSB_RXCSR_DMAENAB;
+			musb_writew(epio, MUSB_RXCSR, csr);
+		} else {
+			csr |= MUSB_RXCSR_DMAENAB;
+			musb_writew(epio, MUSB_RXCSR, csr);
+		}
 
 				if (request->actual < request->length) {
 					int transfer_size = 0;
-#ifdef USE_MODE1
-					transfer_size = min(request->length,
-							channel->max_len);
-#else
-					transfer_size = len;
-#endif
+					transfer_size = use_mode_1 ?
+							min(request->length,
+							channel->max_len) : len;
+
 					if (transfer_size <= musb_ep->packet_sz)
 						musb_ep->dma->desired_mode = 0;
 					else
