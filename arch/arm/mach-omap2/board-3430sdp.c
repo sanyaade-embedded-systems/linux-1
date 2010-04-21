@@ -837,6 +837,12 @@ static struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 	.reset_gpio_port[2]  = -EINVAL
 };
 
+static const struct ohci_hcd_omap_platform_data ohci_pdata __initconst = {
+	.port_mode[0] = OMAP_OHCI_PORT_MODE_UNUSED,
+	.port_mode[1] = OMAP_OHCI_PORT_MODE_UNUSED,
+	.port_mode[2] = OMAP_OHCI_PORT_MODE_PHY_3PIN_DATSE0,
+};
+
 #ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata = {
 	OMAP3_MUX(CAM_STROBE, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
@@ -991,6 +997,7 @@ static void __init omap_3430sdp_init(void)
 	sdp_flash_init(sdp_flash_partitions);
 	sdp3430_display_init();
 	usb_ehci_init(&ehci_pdata);
+	usb_ohci_init(&ohci_pdata);
 	sdp3430_cam_init();
 }
 
