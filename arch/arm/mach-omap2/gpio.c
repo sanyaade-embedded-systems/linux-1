@@ -66,6 +66,8 @@ static inline struct gpio_bank *get_gpio_bank(int gpio)
 {
 	if (cpu_is_omap24xx() || cpu_is_omap34xx() || cpu_is_omap44xx())
 		return &gpio_bank[gpio >> 5];
+
+	return NULL;
 }
 
 static inline int get_gpio_index(int gpio)
@@ -557,8 +559,8 @@ static void omap_gpio_free(struct gpio_chip *chip, unsigned offset)
 			void __iomem *reg = bank->base + OMAP4_GPIO_IRQWAKEN0;
 			__raw_writel(1 << offset, reg);
 		} else {
-			spin_lock_irqsave(&bank->lock, flags);
-			return -EINVAL;
+			spin_unlock_irqrestore(&bank->lock, flags);
+			return;
 		}
 	}
 
@@ -1270,7 +1272,7 @@ void __init omap_gpio_early_init(void)
 		pdata = kzalloc(sizeof(struct omap_gpio_platform_data),
 					GFP_KERNEL);
 		if (!pdata) {
-			WARN("Memory allocation failed gpio%d \n", i + 1);
+			WARN(1, "Memory allocation failed gpio%d \n", i + 1);
 			return;
 		}
 
@@ -1321,8 +1323,8 @@ int __init omap_init_gpio(void)
 		pdata = kzalloc(sizeof(struct omap_gpio_platform_data),
 					GFP_KERNEL);
 		if (!pdata) {
-			WARN("Memory allocation failed gpio%d \n", i + 1);
-			return;
+			WARN(1, "Memory allocation failed gpio%d \n", i + 1);
+			return -ENOMEM;
 		}
 		pdata->base = oh->_rt_va;
 		pdata->irq = oh->mpu_irqs[0].irq;
