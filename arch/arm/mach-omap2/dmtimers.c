@@ -249,7 +249,7 @@ void __init omap2_dm_timer_early_init(void)
 					GFP_KERNEL);
 
 			if (!pdata) {
-				WARN("gptimer%d :Memory allocation failed\n"
+				WARN(1, "gptimer%d :Memory allocation failed\n"
 						, i+1);
 				return;
 			}
@@ -404,9 +404,9 @@ fail:
 					GFP_KERNEL);
 
 			if (!pdata) {
-				WARN("gptimer%d :Memory allocation failed\n"
+				WARN(1, "gptimer%d :Memory allocation failed\n"
 						, i+1);
-				return;
+				return -ENOMEM;
 			}
 
 			pdata->omap_dm_clk_enable = omap2_dm_timer_enable;
