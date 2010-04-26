@@ -1505,6 +1505,11 @@ static int omap_hsmmc_disable(struct mmc_host *mmc, int lazy)
 		delay = omap_hsmmc_enabled_to_disabled(host);
 		if (lazy || delay < 0)
 			return delay;
+
+		/* change state to OFF, as host already in power-off mode */
+		if (host->power_mode == MMC_POWER_OFF)
+			omap_hsmmc_sleep_to_off(host);
+
 		return 0;
 	}
 	case DISABLED:
