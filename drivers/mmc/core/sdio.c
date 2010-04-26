@@ -335,6 +335,7 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 			goto err;
 		}
 		card = oldcard;
+		host->card = oldcard;
 		return 0;
 	}
 
@@ -458,6 +459,7 @@ static int mmc_sdio_suspend(struct mmc_host *host)
 		}
 	}
 
+	host->card->state &= ~MMC_STATE_HIGHSPEED;
 	return err;
 }
 
@@ -490,6 +492,21 @@ static int mmc_sdio_resume(struct mmc_host *host)
 			err = pmops->resume(&func->dev);
 		}
 	}
+
+	/* spped and bus width is not configured at init */
+	mmc_claim_host(host);
+	err = sdio_enable_hs(host->card);
+	/* Change to the card's maximum speed */
+	if (!err) {
+		if (mmc_card_highspeed(host->card))
+			mmc_set_clock(host, 50000000);
+		else
+			mmc_set_clock(host, host->card->cis.max_dtr);
+	}
+	/* Switch to wider bus (if supported)*/
+	if (!err)
+		err = sdio_enable_wide(host->card);
+	mmc_release_host(host);
 
 	return err;
 }
