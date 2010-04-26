@@ -1935,7 +1935,7 @@ dsp_status nldr_find_addr(struct nldr_nodeobject *nldr_node, u32 sym_addr,
 	s32 i = 0;
 	struct lib_node root = { NULL, 0, NULL };
 	DBC_REQUIRE(refs > 0);
-	DBC_REQUIRE(MEM_IS_VALID_HANDLE(nldr_node, NLDR_NODESIGNATURE));
+	DBC_REQUIRE(nldr_node);
 	DBC_REQUIRE(offset_output != NULL);
 	DBC_REQUIRE(sym_name != NULL);
 	pr_debug("%s(0x%x, 0x%x, 0x%x, 0x%x,  %s)\n", __func__, (u32) nldr_node,
