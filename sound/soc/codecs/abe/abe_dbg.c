@@ -37,8 +37,8 @@ void abe_dbg_log_copy(abe_uint32 x)
 
 void abe_dbg_log(abe_uint32 x)
 {
-	abe_time_stamp_t t;
-	abe_millis_t m;
+	abe_time_stamp_t t = 0;
+	abe_millis_t m = 0;
 	abe_micros_t time;
 
 	abe_read_sys_clock(&time);	/* extract system timer */
@@ -111,6 +111,7 @@ void abe_debugger(abe_uint32 x)
 void abe_load_embeddded_patterns (void)
 {
 	abe_uint32 i;
+#if 0
 #define patterns_dmic_len 60
 const long patterns_dmic[patterns_dmic_len] = {	// 9.6kHZ
 	315564800, 510594560, 510594560, 315564800, 510594560, 510594560,
@@ -124,6 +125,7 @@ const long patterns_dmic[patterns_dmic_len] = {	// 9.6kHZ
 	-315565056, -510594816, -510594816, -315565056, -510594816, -510594816,
 	-256, -256, -256, -256, -256, -256,
 };
+#endif
 #define patterns_mcpdm_len (6*12)
 const long patterns_mcpdm[patterns_mcpdm_len] = {
 	268435200, 464943616, 536870912, 536870912, 464943616, 268435200,
@@ -139,7 +141,7 @@ const long patterns_mcpdm[patterns_mcpdm_len] = {
 	-268435712, -464943872, -536870912, -536870912, -464943872, -268435712,
 	-256, -256, -256, -256, -256, -256,
 };
-
+#if 0
 #define patterns_amic_len 120
 const long patterns_amic[patterns_amic_len] = { // 6 / 12kHz
 	218364928,	398972672,
@@ -203,6 +205,7 @@ const long patterns_amic[patterns_amic_len] = { // 6 / 12kHz
 	-218365184,	-398972928,
 	-256,			-256,
 };
+#endif
 #define patterns_48k_len 24
 const long patterns_48k[patterns_48k_len] = {	// 4kHz 8kHZ
 	268435200,	464943616,
