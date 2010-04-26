@@ -53,7 +53,7 @@ void abe_load_fw_param(abe_uint32 *PMEM, abe_uint32 PMEM_SIZE,
 					abe_uint32 *DMEM, abe_uint32 DMEM_SIZE)
 {
 	static abe_uint32 warm_boot;
-	abe_uint32 event_gen, idle_state;
+	abe_uint32 event_gen;
 
 #if PC_SIMULATION
 	/* the code is loaded from the Checkers */
@@ -305,7 +305,7 @@ void abe_default_configuration(abe_uint32 use_case)
 void abe_irq_processing(void)
 {
 	abe_uint32 clear_abe_irq;
-	abe_uint32 abe_irq_dbg_write_ptr, i, cmem_src, sm_cm;
+	abe_uint32 abe_irq_dbg_write_ptr, i, cmem_src, sm_cm = 0;
 	abe_irq_data_t IRQ_data;
 #define IrqFiFoMask ((D_McuIrqFifo_sizeof >> 2) - 1)
 
@@ -636,7 +636,7 @@ void abe_set_opp_processing(abe_opp_t opp)
  */
 void abe_set_ping_pong_buffer(abe_port_id port, abe_uint32 n_bytes)
 {
-	abe_uint32 sio_pp_desc_address, struct_offset, *src, dst, n_samples, datasize, base_and_size;
+	abe_uint32 sio_pp_desc_address, struct_offset, *src, n_samples, datasize, base_and_size;
 	ABE_SPingPongDescriptor desc_pp;
 
 	/* ping_pong is only supported on MM_DL */
@@ -690,7 +690,7 @@ void abe_set_ping_pong_buffer(abe_port_id port, abe_uint32 n_bytes)
  */
 void abe_read_next_ping_pong_buffer(abe_port_id port, abe_uint32 *p, abe_uint32 *n)
 {
-	abe_uint32 sio_pp_desc_address, datasize;
+	abe_uint32 sio_pp_desc_address;
 	ABE_SPingPongDescriptor desc_pp;
 
 	/* ping_pong is only supported on MM_DL */
