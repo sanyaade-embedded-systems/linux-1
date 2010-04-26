@@ -733,34 +733,6 @@ complete:
 		}
 		if (stat & (OMAP_I2C_STAT_RRDY | OMAP_I2C_STAT_RDR)) {
 			u8 num_bytes = 1;
-
-			/*
-			 * I2C Errata(Errata Nos. OMAP2: 1.67, OMAP3: 1.8)
-			 * Not applicable for OMAP4.
-			 * Under certain rare conditions, RDR could be set again
-			 * when the bus is busy, then ignore the interrupt and
-			 * clear the interrupt.
-			 */
-			if ((stat & OMAP_I2C_STAT_RDR) && !cpu_is_omap44xx()) {
-				/* Step 1: If RDR is set, clear it */
-				omap_i2c_ack_stat(dev, stat & OMAP_I2C_STAT_RDR);
-
-				/* Step 2: */
-				if(!(omap_i2c_read_reg(dev, OMAP_I2C_STAT_REG)
-							& OMAP_I2C_STAT_BB)) {
-					/* Step 3: */
-					if(omap_i2c_read_reg(dev,
-						OMAP_I2C_STAT_REG)
-							& OMAP_I2C_STAT_RDR) {
-						omap_i2c_ack_stat(dev, stat
-							& OMAP_I2C_STAT_RDR);
-						dev_err(dev->dev,
-						"I2C : RDR when the bus is busy.\n");
-						continue;
-					}
-
-				}
-			}
 			if (dev->fifo_size) {
 				if (stat & OMAP_I2C_STAT_RRDY)
 					num_bytes = dev->fifo_size;
