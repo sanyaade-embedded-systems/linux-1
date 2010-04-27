@@ -31,6 +31,9 @@
 #include <linux/i2c/twl.h>
 #include <linux/clk.h>
 
+#include <plat/omap_hwmod.h>
+#include <plat/omap_device.h>
+
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/pcm_params.h>
@@ -266,16 +269,20 @@ static void twl6040_init_vdd_regs(struct snd_soc_codec *codec)
 	}
 }
 
-static void abe_init_chip(struct snd_soc_codec *codec)
+static void abe_init_chip(struct snd_soc_codec *codec,
+			struct platform_device *pdev)
 {
 	struct twl6040_data *priv = codec->private_data;
+	struct twl4030_codec_data *pdata = codec->dev->platform_data;
 	abe_opp_t OPP = ABE_OPP100;
 
 	abe_init_mem();
 	/* aess_clk has to be enabled to access hal register.
 	 * Disabel the clk after it has been used.
 	 */
-	clk_enable(priv->clk);
+	if (pdata->device_enable)
+		pdata->device_enable(pdev);
+
 	abe_load_fw();
 	abe_reset_hal();
 	/* Config OPP 100 for now */
@@ -296,7 +303,8 @@ static void abe_init_chip(struct snd_soc_codec *codec)
 	/* Vx in HS, MM in HF and Tones in HF */
 	twl6040_write(codec, TWL6040_REG_SHADOW, 0x92);
 
-	clk_disable(priv->clk);
+	if (pdata->device_idle)
+		pdata->device_idle(pdev);
 }
 
 /* twl6040 codec manual power-up sequence */
@@ -1107,7 +1115,9 @@ static int abe_mm_startup(struct snd_pcm_substream *substream,
 				priv->sysclk_constraints);
 
 	if (!priv->configure++) {
-		clk_enable(priv->clk);
+		if (pdata->device_enable)
+			pdata->device_enable(pdev);
+
 		abe_set_router_configuration(UPROUTE, UPROUTE_CONFIG_AMIC,
 			(abe_router_t *)abe_router_ul_table_preset[UPROUTE_CONFIG_AMIC]);
 
@@ -1224,9 +1234,12 @@ static void abe_mm_shutdown(struct snd_pcm_substream *substream,
 	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
 	struct twl6040_data *priv = codec->private_data;
+	struct twl4030_codec_data *pdata = codec->dev->platform_data;
+	struct platform_device *pdev = container_of(codec->dev,
+					struct platform_device, dev);
 
-	if(!--priv->configure)
-		clk_disable(priv->clk);
+	if(!--priv->configure && pdata->device_idle)
+		pdata->device_idle(pdev);
 }
 
 static struct snd_soc_dai_ops abe_mm_dai_ops = {
@@ -1532,7 +1545,7 @@ static int abe_twl6040_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	abe_init_chip(codec);
+	abe_init_chip(codec, pdev);
 	snd_soc_add_controls(codec, twl6040_snd_controls,
 				ARRAY_SIZE(twl6040_snd_controls));
 	abe_twl6040_add_widgets(codec);
@@ -1561,13 +1574,35 @@ struct snd_soc_codec_device soc_codec_dev_abe_twl6040 = {
 };
 EXPORT_SYMBOL_GPL(soc_codec_dev_abe_twl6040);
 
+static struct omap_device_pm_latency omap_aess_latency[] = {
+	{
+		.deactivate_func = omap_device_idle_hwmods,
+		.activate_func = omap_device_enable_hwmods,
+		.flags = OMAP_DEVICE_LATENCY_AUTO_ADJUST,
+	},
+};
+
 static int __devinit abe_twl6040_codec_probe(struct platform_device *pdev)
 {
 	struct twl4030_codec_data *twl_codec = pdev->dev.platform_data;
 	struct snd_soc_codec *codec;
 	struct twl6040_data *priv;
+	struct omap_hwmod *oh;
+	struct omap_device *od;
 	int audpwron, naudint;
 	int ret = 0;
+
+	oh = omap_hwmod_lookup("aess");
+	if (!oh)
+		printk (KERN_ERR "Could not look up aess hw_mod\n");
+
+	od = omap_device_build("omap-aess", -1, oh, twl_codec,
+				sizeof(struct twl4030_codec_data),
+				omap_aess_latency,
+				ARRAY_SIZE(omap_aess_latency), 0);
+
+	if (od <= 0)
+		printk(KERN_ERR "Could not build omap_device for omap-aess\n");
 
 	priv = kzalloc(sizeof(struct twl6040_data), GFP_KERNEL);
 	if (priv == NULL)
@@ -1580,6 +1615,10 @@ static int __devinit abe_twl6040_codec_probe(struct platform_device *pdev)
 		audpwron = -EINVAL;
 		naudint = 0;
 	}
+
+	twl_codec->device_enable = omap_device_enable;
+	twl_codec->device_idle = omap_device_idle;
+	twl_codec->device_shutdown = omap_device_shutdown;
 
 	priv->audpwron = audpwron;
 	priv->naudint = naudint;
@@ -1639,13 +1678,6 @@ static int __devinit abe_twl6040_codec_probe(struct platform_device *pdev)
 		}
 	}
 
-	priv->clk = clk_get(&pdev->dev, "aess_fclk");
-	if (IS_ERR(priv->clk)) {
-		ret = PTR_ERR(priv->clk);
-		dev_err(&pdev->dev, "unable to get aess_fclk: %d\n", ret);
-		goto clk_err;
-	}
-
 	/* init vio registers */
 	twl6040_init_vio_regs(codec);
 
@@ -1675,7 +1707,8 @@ irq_err:
 	if (naudint)
 		free_irq(naudint, codec);
 gpio2_err:
-	clk_put(priv->clk);
+	if (twl_codec->device_shutdown)
+		twl_codec->device_shutdown(pdev);
 clk_err:
 	if (gpio_is_valid(audpwron))
 		gpio_free(audpwron);
@@ -1689,6 +1722,7 @@ cache_err:
 static int __devexit abe_twl6040_codec_remove(struct platform_device *pdev)
 {
 	struct twl6040_data *priv = twl6040_codec->private_data;
+	struct twl4030_codec_data *pdata = pdev->dev.platform_data;
 	int audpwron = priv->audpwron;
 	int naudint = priv->naudint;
 
@@ -1698,7 +1732,8 @@ static int __devexit abe_twl6040_codec_remove(struct platform_device *pdev)
 	if (naudint)
 		free_irq(naudint, twl6040_codec);
 
-	clk_put(priv->clk);
+	if (pdata->device_shutdown)
+		pdata->device_shutdown(pdev);
 
 	snd_soc_unregister_dais(abe_dai, ARRAY_SIZE(abe_dai));
 	snd_soc_unregister_codec(twl6040_codec);
