@@ -1179,7 +1179,9 @@ static int vidioc_s_ext_ctrls(struct file *file, void *_fh,
 			}
 		}
 
-		if (rval)
+		/* If 720p Hack is selected, send it to ISP also */
+		if (rval ||
+		    (!rval && ctrl.id == V4L2_CID_PRIVATE_OMAP3ISP_720PHACK))
 			rval = isp_s_ctrl(isp, &ctrl);
 
 		if (rval) {
