@@ -139,6 +139,18 @@ static struct vcontrol {
 		},
 		.current_value = 0,
 	},
+	{
+		{
+			.id = V4L2_CID_PRIVATE_OMAP3ISP_720PHACK,
+			.type = V4L2_CTRL_TYPE_BOOLEAN,
+			.name = "omap3isp: Enable 720p hack",
+			.minimum = 0,
+			.maximum = 1,
+			.step = 1,
+			.default_value = 0,
+		},
+		.current_value = 0,
+	},
 };
 
 static struct v4l2_querymenu video_menu[] = {
@@ -1567,7 +1579,7 @@ static int isp_try_pipeline(struct device *dev,
 		pipe->prv_in = PRV_RAW_CCDC;
 
 		if ((pix_output->width == 1280) &&
-		    (pix_output->height == 720)) {
+		    (pix_output->height == 720) && isp->use720p) {
 			pipe->modules = OMAP_ISP_PREVIEW |
 					OMAP_ISP_CCDC;
 			pipe->prv_out = PREVIEW_MEM;
@@ -2182,6 +2194,9 @@ int isp_g_ctrl(struct device *dev, struct v4l2_control *a)
 	case V4L2_CID_PRIVATE_OMAP3ISP_CSI2MEM:
 		a->value = isp->isp_csi2.force_mem_out ? 1 : 0;
 		break;
+	case V4L2_CID_PRIVATE_OMAP3ISP_720PHACK:
+		a->value = isp->use720p ? 1 : 0;
+		break;
 	default:
 		rval = -EINVAL;
 		break;
@@ -2234,6 +2249,9 @@ int isp_s_ctrl(struct device *dev, struct v4l2_control *a)
 		/* NOTE: User must call again VIDIOC_S_FMT to make this
 			 effective */
 		isp->isp_csi2.force_mem_out = new_value ? true : false;
+		break;
+	case V4L2_CID_PRIVATE_OMAP3ISP_720PHACK:
+		isp->use720p = new_value ? true : false;
 		break;
 	default:
 		rval = -EINVAL;
@@ -2951,6 +2969,7 @@ static int isp_probe(struct platform_device *pdev)
 	}
 
 	isp->ref_count = 0;
+	isp->use720p = false;
 	omap3isp_pdev = pdev;
 
 	mutex_init(&(isp->isp_mutex));

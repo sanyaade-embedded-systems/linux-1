@@ -478,6 +478,9 @@ struct isp_device {
 	struct isp_csi2_device isp_csi2;
 
 	struct iommu *iommu;
+
+	/* Flag to enable 720p hack */
+	bool use720p;
 };
 
 void isp_hist_dma_done(struct device *dev);

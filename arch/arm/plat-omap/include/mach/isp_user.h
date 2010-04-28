@@ -67,6 +67,9 @@ struct omap34xxcam_sensor_info {
 /* Boolean control used to force CSI2->MEM datapath on pipeline calculation */
 #define V4L2_CID_PRIVATE_OMAP3ISP_CSI2MEM	(V4L2_CID_PRIVATE_BASE + 0)
 
+/* Boolean control used to toggle 720p hack, which avoids using ISP resizer */
+#define V4L2_CID_PRIVATE_OMAP3ISP_720PHACK	(V4L2_CID_PRIVATE_BASE + 1)
+
 /* AE/AWB related structures and flags*/
 
 /* Flags for update field */
