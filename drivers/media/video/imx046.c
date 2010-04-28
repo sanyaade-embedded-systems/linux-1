@@ -94,6 +94,8 @@ struct imx046_sensor {
 	int ver;
 	int fps;
 	bool resuming;
+	/* HACK: Keep flag to enable/disable 720p basesize */
+	bool use720p;
 };
 
 static struct imx046_sensor imx046;
@@ -344,7 +346,19 @@ static struct vcontrol {
 			.default_value = IMX046_MIN_TEST_PATT_MODE,
 		},
 		.current_value = IMX046_MIN_TEST_PATT_MODE,
-	}
+	},
+	{
+		{
+			.id = V4L2_CID_PRIVATE_OMAP3ISP_720PHACK,
+			.type = V4L2_CTRL_TYPE_BOOLEAN,
+			.name = "imx046: Enable 720p basesize",
+			.minimum = 0,
+			.maximum = 1,
+			.step = 1,
+			.default_value = 0,
+		},
+		.current_value = 0,
+	},
 };
 
 /**
@@ -528,12 +542,18 @@ static int imx046_write_regs(struct i2c_client *client,
  * the routine will find the size with a height that is equal to or less
  * than the requested height.
  */
-static enum imx046_image_size imx046_find_size(unsigned int width,
-							unsigned int height)
+static enum imx046_image_size imx046_find_size(struct v4l2_int_device *s,
+					       unsigned int width,
+					       unsigned int height)
 {
+	struct imx046_sensor *sensor = s->priv;
 	enum imx046_image_size isize;
 
 	for (isize = QUART_MP; isize <= EIGHT_MP; isize++) {
+		/* Skip 720p when needed */
+		if (!sensor->use720p && isize == p729p_MP)
+			continue;
+
 		if ((imx046_sizes[isize].height >= height) &&
 			(imx046_sizes[isize].width >= width)) {
 			break;
@@ -1218,6 +1238,9 @@ static int ioctl_g_ctrl(struct v4l2_int_device *s,
 	case V4L2_CID_TEST_PATTERN:
 		vc->value = lvc->current_value;
 		break;
+	case V4L2_CID_PRIVATE_OMAP3ISP_720PHACK:
+		vc->value = lvc->current_value;
+		break;
 	}
 
 	return 0;
@@ -1235,6 +1258,7 @@ static int ioctl_g_ctrl(struct v4l2_int_device *s,
 static int ioctl_s_ctrl(struct v4l2_int_device *s,
 			     struct v4l2_control *vc)
 {
+	struct imx046_sensor *sensor = s->priv;
 	int retval = -EINVAL;
 	int i;
 	struct vcontrol *lvc;
@@ -1253,6 +1277,11 @@ static int ioctl_s_ctrl(struct v4l2_int_device *s,
 		break;
 	case V4L2_CID_TEST_PATTERN:
 		retval = imx046_configure_test_pattern(vc->value, s, lvc);
+		break;
+	case V4L2_CID_PRIVATE_OMAP3ISP_720PHACK:
+		sensor->use720p = vc->value ? true : false;
+		lvc->current_value = vc->value;
+		retval = 0;
 		break;
 	}
 
@@ -1311,7 +1340,7 @@ static int ioctl_try_fmt_cap(struct v4l2_int_device *s,
 	struct imx046_sensor *sensor = s->priv;
 	struct v4l2_pix_format *pix2 = &sensor->pix;
 
-	isize = imx046_find_size(pix->width, pix->height);
+	isize = imx046_find_size(s, pix->width, pix->height);
 	isize_current = isize;
 
 	pix->width = imx046_sizes[isize].width;
@@ -1687,7 +1716,10 @@ static int ioctl_dev_init(struct v4l2_int_device *s)
 static int ioctl_enum_framesizes(struct v4l2_int_device *s,
 					struct v4l2_frmsizeenum *frms)
 {
+	struct imx046_sensor *sensor = s->priv;
 	int ifmt;
+	int basesize_count;
+	int isize;
 
 	for (ifmt = 0; ifmt < NUM_CAPTURE_FORMATS; ifmt++) {
 		if (frms->pixel_format == imx046_formats[ifmt].pixelformat)
@@ -1697,14 +1729,19 @@ static int ioctl_enum_framesizes(struct v4l2_int_device *s,
 	if (ifmt == NUM_CAPTURE_FORMATS)
 		return -EINVAL;
 
+	basesize_count = ARRAY_SIZE(imx046_sizes) - (sensor->use720p ? 0 : 1);
+
 	/* Check that the index we are being asked for is not
 	   out of bounds. */
-	if (frms->index >= ARRAY_SIZE(imx046_sizes))
+	if (frms->index >= basesize_count)
 		return -EINVAL;
 
+	/* Ignore 720p basesize as needed */
+	isize = ((frms->index >= p729p_MP) && !sensor->use720p) ? (frms->index + 1) : frms->index;
+
 	frms->type = V4L2_FRMSIZE_TYPE_DISCRETE;
-	frms->discrete.width = imx046_sizes[frms->index].width;
-	frms->discrete.height = imx046_sizes[frms->index].height;
+	frms->discrete.width = imx046_sizes[isize].width;
+	frms->discrete.height = imx046_sizes[isize].height;
 
 	return 0;
 }
@@ -1842,6 +1879,9 @@ static int __devinit imx046_probe(struct i2c_client *client,
 	sensor->pix.width = IMX046_IMAGE_WIDTH_MAX;
 	sensor->pix.height = IMX046_IMAGE_HEIGHT_MAX;
 	sensor->pix.pixelformat = V4L2_PIX_FMT_SRGGB10;
+
+	/* Disable 720p cropped basesize by default */
+	sensor->use720p = false;
 
 	err = v4l2_int_device_register(sensor->v4l2_int_device);
 	if (err)
