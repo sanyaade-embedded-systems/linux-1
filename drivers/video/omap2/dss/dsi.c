@@ -970,7 +970,7 @@ int dsi_calc_clock_rates(struct dsi_clock_info *cinfo)
 	if (cinfo->use_dss2_sys_clk) {
 		/* We have hardcoded the value of SYS_CLK
 		* till the time HWMOD framework isnt available*/
-		cinfo->clkin = 26000000;
+		cinfo->clkin = 38400000;
 		cinfo->highfreq = 0;
 	} else if (cinfo->use_dss2_fck) {
 
@@ -3046,7 +3046,6 @@ static void dsi_framedone_irq_callback(void *data, u32 mask)
 	/* SIDLEMODE back to smart-idle */
 	dispc_enable_sidle();
 	dsi_1.framedone_received = true;
-	udelay(100);
 	wake_up(&dsi_1.waitqueue);
 }
 
@@ -3059,7 +3058,6 @@ static void dsi2_framedone_irq_callback(void *data, u32 mask)
 	/* SIDLEMODE back to smart-idle */
 	dispc_enable_sidle();
 	dsi_2.framedone_received = true;
-	udelay(100);
 	wake_up(&dsi_2.waitqueue);
 }
 
@@ -3174,7 +3172,7 @@ static void dsi_handle_framedone(enum dsi lcd_ix)
 	 * make sure that the transfer has been completed. It would be more
 	 * optimal, but more complex, to wait only just before starting next
 	 * transfer. */
-#if 0
+
 	r = dsi_vc_send_bta_sync(lcd_ix, channel);
 	if (r)
 		DSSERR("BTA after framedone failed\n");
@@ -3184,7 +3182,7 @@ static void dsi_handle_framedone(enum dsi lcd_ix)
 		/*DSSERR("Received error during frame transfer:\n");*/
 		dsi_vc_flush_receive_data(lcd_ix, 0);
 	}
-#endif
+
 #ifdef CONFIG_OMAP2_DSS_FAKE_VSYNC
 	dispc_fake_vsync_irq(lcd_ix);
 #endif
@@ -3258,10 +3256,10 @@ static int dsi_update_thread(void *data)
 			  */
 			if (cpu_is_omap34xx())
 				dsi_vc_config_vp(lcd_ix, 0);
-			/*
+
 			if (dsi_1.te_enabled && dsi_1.use_ext_te)
 				device->driver->wait_for_te(device);
-			*/
+
 			dsi_1.framedone_received = false;
 
 			dsi_update_screen_dispc(lcd_ix, device, x, y, w, h);
@@ -3393,10 +3391,10 @@ static int dsi2_update_thread(void *data)
 			  */
 			if (cpu_is_omap34xx())
 				dsi_vc_config_vp(lcd_ix, 0);
-			/*
+
 			if (dsi_2.te_enabled && dsi_2.use_ext_te)
 				device->driver->wait_for_te(device);
-			*/
+
 			dsi_2.framedone_received = false;
 			dsi_update_screen_dispc(lcd_ix, device, x, y, w, h);
 
