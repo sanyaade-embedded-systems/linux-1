@@ -1136,6 +1136,7 @@ static int abe_mm_hw_params(struct snd_pcm_substream *substream,
 	struct twl6040_data *priv = codec->private_data;
 	u8 lppllctl;
 	int rate;
+	int channels;
 	unsigned int sysclk;
 	abe_data_format_t format;
 	abe_dma_t dma_sink;
@@ -1158,13 +1159,25 @@ static int abe_mm_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
+	channels = params_channels(params);
+	switch (channels) {
+	case 1:
+		format.samp_format = MONO_MSB;
+		break;
+	case 2:
+		format.samp_format = STEREO_MSB;
+		break;
+	default:
+		dev_err(codec->dev, "%d channels not supported", channels);
+		return -EINVAL;
+	}
+
 	if (priv->pll == TWL6040_LPPLL_ID) {
 		priv->sysclk = sysclk;
 		twl6040_write(codec, TWL6040_REG_LPPLLCTL, lppllctl);
 	}
 
 	format.f = rate;
-	format.samp_format = STEREO_MSB;
 	if (!substream->stream)
 		abe_connect_cbpr_dmareq_port(MM_DL_PORT, &format, ABE_CBPR0_IDX, &dma_sink);
 	else
@@ -1246,6 +1259,7 @@ static int abe_tones_hw_params(struct snd_pcm_substream *substream,
 	struct twl6040_data *priv = codec->private_data;
 	u8 lppllctl;
 	int rate;
+	int channels;
 	unsigned int sysclk;
 	abe_data_format_t format;
 	abe_dma_t dma_sink;
@@ -1268,13 +1282,25 @@ static int abe_tones_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
+	channels = params_channels(params);
+	switch (channels) {
+	case 1:
+		format.samp_format = MONO_MSB;
+		break;
+	case 2:
+		format.samp_format = STEREO_MSB;
+		break;
+	default:
+		dev_err(codec->dev, "%d channels not supported", channels);
+		return -EINVAL;
+	}
+
 	if (priv->pll == TWL6040_LPPLL_ID) {
 		priv->sysclk = sysclk;
 		twl6040_write(codec, TWL6040_REG_LPPLLCTL, lppllctl);
 	}
 
 	format.f = rate;
-	format.samp_format = STEREO_MSB;
 	if (!substream->stream)
 		abe_connect_cbpr_dmareq_port(TONES_DL_PORT, &format,
 							ABE_CBPR5_IDX, &dma_sink);
@@ -1333,6 +1359,7 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 	struct twl6040_data *priv = codec->private_data;
 	u8 lppllctl;
 	int rate;
+	int channels;
 	abe_data_format_t format;
 	abe_dma_t dma_sink;
 
@@ -1353,8 +1380,20 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 
+	channels = params_channels(params);
+	switch (channels) {
+		case 1:
+		format.samp_format = MONO_MSB;
+		break;
+	case 2:
+		format.samp_format = STEREO_MSB;
+		break;
+	default:
+		dev_err(codec->dev, "%d channels not supported", channels);
+		return -EINVAL;
+	}
+
 	format.f = rate;
-	format.samp_format = STEREO_MSB;
 	if (!substream->stream)
 		abe_connect_cbpr_dmareq_port(VX_DL_PORT, &format, ABE_CBPR1_IDX, &dma_sink);
 	else
