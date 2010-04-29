@@ -21,6 +21,7 @@
 #include <linux/usb/otg.h>
 #include <linux/input.h>
 #include <linux/input/matrix_keypad.h>
+#include <linux/input/sfh7741.h>
 
 #include <mach/hardware.h>
 #include <asm/mach-types.h>
@@ -134,6 +135,17 @@ static struct platform_device sdp4430_keypad_device = {
 	},
 };
 
+static struct sfh7741_platform_data omap_sfh7741_data = {
+		.gpio_intr = 184,
+		.gpio_en = 188,
+};
+static struct platform_device sdp4430_proximity_device = {
+	.name		= "sfh7741",
+	.id		= 1,
+	.dev		= {
+		.platform_data = &omap_sfh7741_data,
+	},
+};
 /* Begin Synaptic Touchscreen TM-01217 */
 
 static char *tm12xx_idev_names[] = {
@@ -199,6 +211,7 @@ static struct platform_device sdp4430_lcd_device = {
 static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_lcd_device,
 	&sdp4430_keypad_device,
+	&sdp4430_proximity_device,
 };
 
 static __attribute__ ((unused)) struct
