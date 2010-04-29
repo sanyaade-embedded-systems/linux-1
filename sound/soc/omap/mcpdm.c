@@ -47,6 +47,7 @@ static inline int omap_mcpdm_read(u16 reg)
 	return __raw_readl(mcpdm->io_base + reg);
 }
 
+#ifdef MCPDM_DEBUG
 static void omap_mcpdm_reg_dump(void)
 {
 	dev_dbg(mcpdm->dev, "***********************\n");
@@ -80,6 +81,7 @@ static void omap_mcpdm_reg_dump(void)
 			omap_mcpdm_read(MCPDM_DN_OFFSET));
 	dev_dbg(mcpdm->dev, "***********************\n");
 }
+#endif
 
 /*
  * Takes the McPDM module in and out of reset state.
@@ -506,12 +508,12 @@ static int __devexit omap_mcpdm_remove(struct platform_device *pdev)
 static struct platform_driver omap_mcpdm_driver = {
 	.probe = omap_mcpdm_probe,
 	.remove = __devexit_p(omap_mcpdm_remove),
+	.suspend = omap_mcpdm_suspend,
+	.resume = omap_mcpdm_resume,
 	.driver = {
 		.name = "omap-mcpdm",
 	},
 };
-
-static struct platform_device *omap_mcpdm_device;
 
 static int __init omap_mcpdm_init(void)
 {
