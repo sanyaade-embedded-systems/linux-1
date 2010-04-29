@@ -610,6 +610,9 @@ struct omap_dss_device {
 	int (*set_wss)(struct omap_dss_device *dssdev, u32 wss);
 	u32 (*get_wss)(struct omap_dss_device *dssdev);
 
+	/*HDMI specific */
+	void (*get_edid)(struct omap_dss_device *dssdev);
+	void (*set_custom_edid_timing_code)(struct omap_dss_device *dssdev, int mode, int code);
 	/* platform specific  */
 	int (*platform_enable)(struct omap_dss_device *dssdev);
 	void (*platform_disable)(struct omap_dss_device *dssdev);
