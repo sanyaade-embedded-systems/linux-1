@@ -154,12 +154,6 @@ static int omap34xxcam_vbq_setup(struct videobuf_queue *vbq, unsigned int *cnt,
 	struct omap34xxcam_fh *ofh = to_omap34xxcam_fh(vfh);
 	struct omap34xxcam_videodev *vdev = ofh->vdev;
 
-	if (*cnt <= 0)
-		*cnt = VIDEO_MAX_FRAME;	/* supply a default number of buffers */
-
-	if (*cnt > VIDEO_MAX_FRAME)
-		*cnt = VIDEO_MAX_FRAME;
-
 	*size = vdev->pix.sizeimage;
 
 	while (*size * *cnt > ofh->vdev->vdev_sensor_config.capture_mem)
