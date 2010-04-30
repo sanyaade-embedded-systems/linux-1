@@ -176,6 +176,10 @@ static __init void _pwrdm_setup(struct powerdomain *pwrdm)
 
 	pwrdm_wait_transition(pwrdm);
 	pwrdm->state = pwrdm_read_pwrst(pwrdm);
+	if ((pwrdm->state <= 0) || (pwrdm->state >= PWRDM_MAX_PWRSTS)) {
+		pr_err("pwrdm->state out of range %d\n", pwrdm->state);
+		return;
+	}
 	pwrdm->state_counter[pwrdm->state] = 1;
 
 }
