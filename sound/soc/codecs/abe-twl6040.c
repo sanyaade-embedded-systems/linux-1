@@ -309,6 +309,22 @@ static void abe_init_chip(struct snd_soc_codec *codec,
 	abe_write_mixer(MIXDL2, GAIN_M6dB, RAMP_0MS, MIX_DL2_INPUT_MM_DL);
 	abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_0MS, MIX_DL2_INPUT_MM_UL2);
 
+	abe_write_mixer(MIXSDT, MUTE_GAIN, RAMP_0MS, MIX_SDT_INPUT_UP_MIXER);
+	abe_write_mixer(MIXSDT, GAIN_0dB, RAMP_0MS, MIX_SDT_INPUT_DL1_MIXER);
+
+	abe_write_mixer(MIXECHO, MUTE_GAIN, RAMP_0MS, GAIN_LEFT_OFFSET);
+	abe_write_mixer(MIXECHO, MUTE_GAIN, RAMP_0MS, GAIN_RIGHT_OFFSET);
+
+	abe_write_mixer(MIXAUDUL, MUTE_GAIN, RAMP_0MS, MIX_AUDUL_INPUT_TONES);
+	abe_write_mixer(MIXAUDUL, GAIN_M6dB, RAMP_0MS, MIX_AUDUL_INPUT_UPLINK);
+	abe_write_mixer(MIXAUDUL, MUTE_GAIN, RAMP_0MS, MIX_AUDUL_INPUT_MM_DL);
+	abe_write_mixer(MIXAUDUL, MUTE_GAIN, RAMP_0MS, MIX_AUDUL_INPUT_VX_DL);
+
+	abe_write_mixer(MIXVXREC, MUTE_GAIN, RAMP_0MS, MIX_VXREC_INPUT_TONES);
+	abe_write_mixer(MIXVXREC, MUTE_GAIN, RAMP_0MS, MIX_VXREC_INPUT_VX_DL);
+	abe_write_mixer(MIXVXREC, MUTE_GAIN, RAMP_0MS, MIX_VXREC_INPUT_MM_DL);
+	abe_write_mixer(MIXVXREC, MUTE_GAIN, RAMP_0MS, MIX_VXREC_INPUT_VX_UL);
+
 	/* load the high-pass coefficient of IHF-Right */
 	abe_write_equalizer(EQ2L, &dl2_eq);
 	/* load the high-pass coefficient of IHF-Left */
@@ -1140,8 +1156,8 @@ static int abe_mm_startup(struct snd_pcm_substream *substream,
 		abe_write_gain(GAINS_DL2, GAIN_0dB,  RAMP_0MS, GAIN_LEFT_OFFSET);
 		abe_write_gain(GAINS_DL2, GAIN_0dB,  RAMP_0MS, GAIN_RIGHT_OFFSET);
 
-		abe_write_gain(GAINS_AMIC , GAIN_M6dB, RAMP_0MS, GAIN_LEFT_OFFSET);
-		abe_write_gain(GAINS_AMIC, GAIN_M6dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+		abe_write_gain(GAINS_AMIC , GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+		abe_write_gain(GAINS_AMIC, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
 
 		abe_write_gain(GAINS_SPLIT, GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
 		abe_write_gain(GAINS_SPLIT, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
@@ -1441,8 +1457,8 @@ static int abe_voice_startup(struct snd_pcm_substream *substream,
 		abe_write_gain(GAINS_DL2, GAIN_0dB,  RAMP_0MS, GAIN_LEFT_OFFSET);
 		abe_write_gain(GAINS_DL2, GAIN_0dB,  RAMP_0MS, GAIN_RIGHT_OFFSET);
 
-		abe_write_gain(GAINS_AMIC , GAIN_M6dB, RAMP_0MS, GAIN_LEFT_OFFSET);
-		abe_write_gain(GAINS_AMIC, GAIN_M6dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
+                abe_write_gain(GAINS_AMIC, GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
+                abe_write_gain(GAINS_AMIC, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
 
 		abe_write_gain(GAINS_SPLIT, GAIN_0dB, RAMP_0MS, GAIN_LEFT_OFFSET);
 		abe_write_gain(GAINS_SPLIT, GAIN_0dB, RAMP_0MS, GAIN_RIGHT_OFFSET);
