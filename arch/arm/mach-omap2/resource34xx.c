@@ -148,7 +148,8 @@ int set_pd_latency(struct shared_resource *resp, u32 latency)
 	}
 
 	if (!enable_off_mode && pd_lat_level == PD_LATENCY_OFF)
-		pd_lat_level = PD_LATENCY_RET;
+		if (strcmp("iva2_pwrdm", pwrdm->name))
+			pd_lat_level = PD_LATENCY_RET;
 
 	resp->curr_level = pd_lat_level;
 	set_pwrdm_state(pwrdm, pd_lat_level);
