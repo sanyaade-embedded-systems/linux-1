@@ -331,6 +331,21 @@ struct omap_dss_board_info {
 	struct omap_dss_device **devices;
 	struct omap_dss_device *default_device;
 	void (*set_mpu_wkup_lat)(struct device *dev, int set);
+	int (*device_enable) (struct platform_device *pdev);
+	int (*device_shutdown) (struct platform_device *pdev);
+	int (*device_idle) (struct platform_device *pdev);
+};
+
+struct omap_dss_platform_data {
+	int (*get_last_off_on_transaction_id)(struct device *dev);
+	int num_devices;
+	struct omap_dss_device **devices;
+	struct omap_dss_device *default_device;
+
+	void (*set_mpu_wkup_lat)(struct device *dev, int set);
+	int (*device_enable) (struct platform_device *pdev);
+	int (*device_shutdown) (struct platform_device *pdev);
+	int (*device_idle) (struct platform_device *pdev);
 };
 
 struct omap_video_timings {

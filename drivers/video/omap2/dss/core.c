@@ -35,6 +35,9 @@
 #include <plat/display.h>
 #include <plat/clock.h>
 
+#include <plat/omap_device.h>
+#include <plat/omap_hwmod.h>
+
 #include "dss.h"
 
 static struct {
@@ -59,7 +62,7 @@ module_param_named(def_disp, def_disp_name, charp, 0);
 MODULE_PARM_DESC(def_disp_name, "default display name");
 
 #ifdef DEBUG
-unsigned int dss_debug = 1;
+unsigned int dss_debug;
 module_param_named(debug, dss_debug, bool, 0644);
 #endif
 
@@ -283,6 +286,12 @@ static unsigned count_clk_bits(enum dss_clock clks)
 
 static void dss_clk_enable_no_ctx(enum dss_clock clks)
 {
+#ifdef CONFIG_MACH_OMAP_4430SDP
+	struct omap_dss_platform_data *pdata_dss = core.pdev->dev.platform_data;
+
+	if (od->_state != OMAP_DEVICE_STATE_ENABLED && pdata_dss->device_enable)
+		pdata_dss->device_enable(core.pdev);
+#else
 	unsigned num_clks = count_clk_bits(clks);
 
 	if (clks & DSS_CLK_ICK)
@@ -297,6 +306,7 @@ static void dss_clk_enable_no_ctx(enum dss_clock clks)
 		clk_enable(core.dss_96m_fck);
 
 	core.num_clks_enabled += num_clks;
+#endif
 }
 
 void dss_clk_enable(enum dss_clock clks)
@@ -311,6 +321,12 @@ void dss_clk_enable(enum dss_clock clks)
 
 static void dss_clk_disable_no_ctx(enum dss_clock clks)
 {
+#ifdef CONFIG_PM
+	struct omap_dss_platform_data *pdata_dss = core.pdev->dev.platform_data;
+
+	if (od->_state != OMAP_DEVICE_STATE_IDLE && pdata_dss->device_idle)
+		pdata_dss->device_idle(core.pdev);
+#else
 	unsigned num_clks = count_clk_bits(clks);
 
 	if (clks & DSS_CLK_ICK)
@@ -325,6 +341,7 @@ static void dss_clk_disable_no_ctx(enum dss_clock clks)
 		clk_disable(core.dss_96m_fck);
 
 	core.num_clks_enabled -= num_clks;
+#endif
 }
 
 void dss_clk_disable(enum dss_clock clks)
@@ -454,10 +471,10 @@ static void dss_uninitialize_debugfs(void)
 /* PLATFORM DEVICE */
 static int omap_dss_probe(struct platform_device *pdev)
 {
-	struct omap_dss_board_info *pdata = pdev->dev.platform_data;
 	int skip_init = 0;
 	int r;
 	int i;
+	struct omap_dss_platform_data *pdata_dss = pdev->dev.platform_data;
 
 	core.pdev = pdev;
 
@@ -556,16 +573,23 @@ static int omap_dss_probe(struct platform_device *pdev)
 		goto fail0;
 #endif
 
-	for (i = 0; i < pdata->num_devices; ++i) {
-		struct omap_dss_device *dssdev = pdata->devices[i];
+	pdata_dss = pdev->dev.platform_data;
+
+	for (i = 0; i < pdata_dss->num_devices; ++i) {
+		struct omap_dss_device *dssdev = pdata_dss->devices[i];
 
 		r = omap_dss_register_device(dssdev);
 		if (r)
 			DSSERR("device reg failed %d\n", i);
 
 		if (def_disp_name && strcmp(def_disp_name, dssdev->name) == 0)
-			pdata->default_device = dssdev;
+			pdata_dss->default_device = dssdev;
 	}
+
+#ifdef CONFIG_MACH_OMAP_4430SDP
+	if (od->_state != OMAP_DEVICE_STATE_ENABLED && pdata_dss->device_enable)
+		pdata_dss->device_enable(pdev);
+#endif
 
 	dss_clk_disable_all();
 
@@ -578,7 +602,7 @@ fail0:
 
 static int omap_dss_remove(struct platform_device *pdev)
 {
-	struct omap_dss_board_info *pdata = pdev->dev.platform_data;
+	struct omap_dss_platform_data *pdata = pdev->dev.platform_data;
 	int i;
 	int c;
 
@@ -647,7 +671,11 @@ static int omap_dss_remove(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_MACH_OMAP_4430SDP
+	pdata->device_shutdown(pdev);
+#else
 	dss_put_clocks();
+#endif
 
 	dss_uninit_overlays(pdev);
 	dss_uninit_overlay_managers(pdev);
@@ -754,7 +782,7 @@ static int dss_driver_probe(struct device *dev)
 	int r;
 	struct omap_dss_driver *dssdrv = to_dss_driver(dev->driver);
 	struct omap_dss_device *dssdev = to_dss_device(dev);
-	struct omap_dss_board_info *pdata = core.pdev->dev.platform_data;
+	struct omap_dss_platform_data *pdata = core.pdev->dev.platform_data;
 	bool force;
 
 	DSSDBG("driver_probe: dev %s/%s, drv %s\n",

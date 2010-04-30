@@ -421,18 +421,10 @@ static struct omap_dss_device *sdp4430_dss_devices[] = {
 #endif
 };
 
-static struct omap_dss_board_info sdp4430_dss_data = {
-	.num_devices	=	ARRAY_SIZE(sdp4430_dss_devices),
-	.devices	=	sdp4430_dss_devices,
+static struct omap_dss_platform_data sdp4430_dss_pdata = {
+	.num_devices		=	ARRAY_SIZE(sdp4430_dss_devices),
+	.devices			=	sdp4430_dss_devices,
 	.default_device	=	&sdp4430_lcd_device,
-};
-
-static struct platform_device sdp4430_dss_device = {
-	.name	=	"omapdss",
-	.id	=	-1,
-	.dev	= {
-	.platform_data = &sdp4430_dss_data,
-	},
 };
 
 #define MAX_OMAP_DSS_HWMOD_NAME_LEN 16
@@ -458,14 +450,22 @@ static void __init sdp4430_display_init(void) {
 		return -EEXIST;
 	}
 
-	od = omap_device_build(name, -1, oh, &sdp4430_dss_data,
-			sizeof(struct omap_dss_board_info),
+	pdata				=	&sdp4430_dss_pdata;
+	pdata->num_devices	=	ARRAY_SIZE(sdp4430_dss_devices);
+	pdata->devices		=	sdp4430_dss_devices,
+	pdata->default_device	=	&sdp4430_lcd_device,
+
+	pdata->device_enable	=	omap_device_enable;
+	pdata->device_idle	=	omap_device_idle;
+	pdata->device_shutdown	=	omap_device_shutdown;
+
+	od = omap_device_build(name, -1, oh, pdata,
+			sizeof(struct omap_dss_platform_data),
 			omap_dss_latency,
 			ARRAY_SIZE(omap_dss_latency), 0);
 
 	WARN(IS_ERR(od), "Could not build omap_device for %s %s\n",
 			name, oh_name);
-
 	return;
 }
 
@@ -473,7 +473,7 @@ static void __init sdp4430_display_init(void) {
 
 static struct regulator_consumer_supply sdp4430_vdda_dac_supply = {
 	.supply		= "vdda_dac",
-	.dev		= &sdp4430_dss_device.dev,
+	.dev		= &sdp4430_lcd_device.dev,
 };
 static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_keypad_device,
@@ -740,7 +740,7 @@ static struct regulator_consumer_supply sdp4430_vpll2_supplies[] = {
 	},
 	{
 		.supply		= "vdds_dsi",
-		.dev		= &sdp4430_dss_device.dev,
+		.dev		= &sdp4430_lcd_device.dev,
 	}
 };
 
