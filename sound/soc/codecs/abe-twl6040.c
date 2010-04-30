@@ -272,7 +272,6 @@ static void twl6040_init_vdd_regs(struct snd_soc_codec *codec)
 static void abe_init_chip(struct snd_soc_codec *codec,
 			struct platform_device *pdev)
 {
-	struct twl6040_data *priv = codec->private_data;
 	struct twl4030_codec_data *pdata = codec->dev->platform_data;
 	abe_opp_t OPP = ABE_OPP100;
 
@@ -1844,10 +1843,11 @@ reg_err:
 irq_err:
 	if (naudint)
 		free_irq(naudint, codec);
+	if (gpio_is_valid(audpwron))
+		gpio_free(audpwron);
 gpio2_err:
 	if (twl_codec->device_shutdown)
 		twl_codec->device_shutdown(pdev);
-clk_err:
 	if (gpio_is_valid(audpwron))
 		gpio_free(audpwron);
 gpio1_err:
