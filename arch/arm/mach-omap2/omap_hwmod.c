@@ -497,8 +497,14 @@ static int _enable_clocks(struct omap_hwmod *oh)
 
 	pr_debug("omap_hwmod: %s: enabling clocks\n", oh->name);
 
-	if (oh->_clk && !IS_ERR(oh->_clk))
-		clk_enable(oh->_clk);
+	if (oh->_clk && !IS_ERR(oh->_clk)) {
+#ifdef CONFIG_PM
+		if (!strcmp(oh->_clk->name, "uart3_fck"))
+			return 0;
+		else
+#endif
+			clk_enable(oh->_clk);
+	}
 
 	if (oh->slaves_cnt > 0) {
 		for (i = 0, os = *oh->slaves; i < oh->slaves_cnt; i++, os++) {
@@ -531,6 +537,7 @@ static int _disable_clocks(struct omap_hwmod *oh)
 #ifdef CONFIG_PM
 		if (!strcmp(oh->_clk->name, "emif1_ick") ||
 				!strcmp(oh->_clk->name, "emif2_ick") ||
+				!strcmp(oh->_clk->name, "uart3_fck") ||
 				!strcmp(oh->_clk->name, "gpmc_ick"))
 			return 0;
 		else
