@@ -2994,6 +2994,7 @@ static int __devexit serial8250_remove(struct platform_device *dev)
 
 static int serial8250_suspend(struct platform_device *dev, pm_message_t state)
 {
+#ifndef CONFIG_PM
 	int i;
 
 	for (i = 0; i < UART_NR; i++) {
@@ -3002,12 +3003,13 @@ static int serial8250_suspend(struct platform_device *dev, pm_message_t state)
 		if (up->port.type != PORT_UNKNOWN && up->port.dev == &dev->dev)
 			uart_suspend_port(&serial8250_reg, &up->port);
 	}
-
+#endif
 	return 0;
 }
 
 static int serial8250_resume(struct platform_device *dev)
 {
+#ifndef CONFIG_PM
 	int i;
 
 	for (i = 0; i < UART_NR; i++) {
@@ -3016,7 +3018,7 @@ static int serial8250_resume(struct platform_device *dev)
 		if (up->port.type != PORT_UNKNOWN && up->port.dev == &dev->dev)
 			serial8250_resume_port(i);
 	}
-
+#endif
 	return 0;
 }
 
