@@ -37,6 +37,7 @@
 #include <plat/timer-gp.h>
 #include <plat/usb.h>
 #include <plat/syntm12xx.h>
+#include <plat/omap_device.h>
 #include <asm/hardware/gic.h>
 #include <asm/hardware/cache-l2x0.h>
 #include <linux/i2c/twl.h>
@@ -129,6 +130,9 @@ static struct matrix_keypad_platform_data sdp4430_keypad_data = {
 	.keymap_data		= &sdp4430_keymap_data,
 	.num_row_gpios		= 8,
 	.num_col_gpios		= 8,
+	.device_enable		= omap_device_enable,
+	.device_shutdown	= omap_device_shutdown,
+	.device_idle		= omap_device_idle,
 };
 
 static struct platform_device sdp4430_keypad_device = {

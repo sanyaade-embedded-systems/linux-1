@@ -31,6 +31,7 @@
 #include <linux/io.h>
 #include <linux/input.h>
 #include <linux/input/matrix_keypad.h>
+#include <linux/clk.h>
 #include <plat/omap_hwmod.h>
 #include <plat/omap_device.h>
 
@@ -176,6 +177,8 @@ static int __devinit omap_keypad_probe(struct platform_device *pdev)
 	struct input_dev *input_dev;
 	const struct matrix_keymap_data *keymap_data;
 	struct omap_keypad *keypad_data;
+	struct clk *cclk;
+	int ret;
 
 	unsigned int status = 0, row_shift = 0, error = 0, length = 0, id = 0;
 	unsigned short *keypad_codes;
@@ -208,6 +211,16 @@ static int __devinit omap_keypad_probe(struct platform_device *pdev)
 				ARRAY_SIZE(omap_keyboard_latency), 1);
 	WARN(IS_ERR(od), "Could not build omap_device for %s %s\n",
 		name, oh_name);
+
+	/* FIXME: Enabling clocks here since the driver does not do
+	 * a omap_device_enable.
+	 */
+	cclk = clk_get(NULL, "keyboard_fck");
+	if (IS_ERR(cclk))
+		goto failed_free_pdata;
+	ret = clk_enable(cclk);
+	if (ret)
+		printk(KERN_ERR " Unable to get keyboard_fck \n");
 
 	/* platform data */
 	pdata = pdev->dev.platform_data;
