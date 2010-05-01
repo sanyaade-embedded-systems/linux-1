@@ -431,15 +431,6 @@ static struct omap_dss_device sdp4430_picoDLP_device = {
 
 
 static struct omap_dss_device *sdp4430_dss_devices[] = {
-/* wl128x BT, FM, GPS connectivity chip */
-static int gpios[] = {55, -1, -1};
-static struct platform_device wl128x_device = {
-	.name           = "kim",
-	.id             = -1,
-	.dev.platform_data = &gpios,
-};
-
-static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_lcd_device,
 	&sdp4430_lcd2_device,
 #ifdef CONFIG_OMAP2_DSS_HDMI
@@ -503,6 +494,14 @@ static void __init sdp4430_display_init(void) {
 static struct regulator_consumer_supply sdp4430_vdda_dac_supply = {
 	.supply		= "vdda_dac",
 	.dev		= &sdp4430_lcd_device.dev,
+};
+
+/* wl128x BT, FM, GPS connectivity chip */
+static int gpios[] = {55, -1, -1};
+static struct platform_device wl128x_device = {
+	.name           = "kim",
+	.id             = -1,
+	.dev.platform_data = &gpios,
 };
 static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_keypad_device,
