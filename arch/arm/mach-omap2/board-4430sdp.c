@@ -20,6 +20,7 @@
 #include <linux/usb/otg.h>
 #include <linux/i2c/twl.h>
 #include <linux/regulator/machine.h>
+#include <linux/spi/spi.h>
 
 #include <mach/hardware.h>
 #include <mach/omap4-common.h>
@@ -32,6 +33,30 @@
 #include <plat/control.h>
 #include <plat/timer-gp.h>
 #include <plat/usb.h>
+
+#define ETHERNET_KS8851_IRQ		34
+#define ETHERNET_KS8851_POWER_ENABLE	48
+#define ETHERNET_KS8851_QUART		138
+
+static struct spi_board_info sdp4430_spi_board_info[] __initdata = {
+	{
+		.modalias               = "ks8851",
+		.bus_num                = 1,
+		.chip_select            = 0,
+		.max_speed_hz           = 24000000,
+		.irq                    = ETHERNET_KS8851_IRQ,
+	},
+};
+
+static void omap_ethernet_init(void)
+{
+	gpio_request(ETHERNET_KS8851_POWER_ENABLE, "ethernet");
+	gpio_direction_output(ETHERNET_KS8851_POWER_ENABLE, 1);
+	gpio_request(ETHERNET_KS8851_QUART, "quart");
+	gpio_direction_output(ETHERNET_KS8851_QUART, 1);
+	gpio_request(ETHERNET_KS8851_IRQ, "ks8851");
+	gpio_direction_input(ETHERNET_KS8851_IRQ);
+}
 
 static struct platform_device sdp4430_lcd_device = {
 	.name		= "sdp4430_lcd",
@@ -261,6 +286,11 @@ static void __init omap_4430sdp_init(void)
 	/* FIXME: allow multi-omap to boot until musb is updated for omap4 */
 	if (!cpu_is_omap44xx())
 		usb_musb_init(&musb_board_data);
+
+	omap_ethernet_init();
+	sdp4430_spi_board_info[0].irq = gpio_to_irq(ETHERNET_KS8851_IRQ);
+	spi_register_board_info(sdp4430_spi_board_info,
+			ARRAY_SIZE(sdp4430_spi_board_info));
 }
 
 static void __init omap_4430sdp_map_io(void)
