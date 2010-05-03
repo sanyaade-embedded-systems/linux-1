@@ -3764,9 +3764,9 @@ void dispc_dump_irqs(struct seq_file *s)
 	PIS(SYNC_LOST_DIGIT);
 	PIS(WAKEUP);
 #undef PIS
-}
+}EXPORT_SYMBOL(dispc_dump_irqs);
 #else
-void dispc_dump_irqs(struct seq_file *s) { }
+void dispc_dump_irqs(struct seq_file *s) { } EXPORT_SYMBOL(dispc_dump_irqs);
 #endif
 
 void dispc_dump_regs(struct seq_file *s)

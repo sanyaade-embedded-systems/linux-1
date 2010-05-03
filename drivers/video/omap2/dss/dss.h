@@ -272,6 +272,7 @@ int dsi_calc_clock_rates(struct dsi_clock_info *cinfo);
 /* DSI2 */
 int dsi2_init(struct platform_device *pdev);
 void dsi2_exit(void);
+void dsi_dump_irqs(struct seq_file *s);
 
 /* DPI */
 int dpi_init(void);
@@ -382,7 +383,7 @@ int dispc_calc_clock_rates(unsigned long dispc_fclk_rate,
 int dispc_set_clock_div(enum omap_channel channel,
 		struct dispc_clock_info *cinfo);
 int dispc_get_clock_div(struct dispc_clock_info *cinfo);
-
+void dispc_dump_irqs(struct seq_file *s);
 
 /* VENC */
 int venc_init(struct platform_device *pdev);
