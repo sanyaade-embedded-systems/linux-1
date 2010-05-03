@@ -1542,7 +1542,9 @@ void dsi_dump_irqs(struct seq_file *s)
 	PIS(ULPSACTIVENOT_ALL0);
 	PIS(ULPSACTIVENOT_ALL1);
 #undef PIS
-}
+}EXPORT_SYMBOL(dsi_dump_irqs);
+#else
+void dsi_dump_irqs(struct seq_file *s) { } EXPORT_SYMBOL(dsi_dump_irqs);
 #endif
 void dsi_dump_regs(enum dsi lcd_ix, struct seq_file *s)
 {
