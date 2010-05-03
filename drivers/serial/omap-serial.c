@@ -255,7 +255,7 @@ static void serial_omap_start_tx(struct uart_port *port)
 	unsigned int start;
 	int ret = 0;
 
-	if (!up->use_dma || up->port.x_char) {
+	if (!up->use_dma) {
 		serial_omap_enable_ier_thri(up);
 		return;
 	}
