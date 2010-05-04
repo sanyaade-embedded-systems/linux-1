@@ -13,6 +13,11 @@
 #ifndef OMAP_ARCH_OMAP4_COMMON_H
 #define OMAP_ARCH_OMAP4_COMMON_H
 
+/*
+ * wfi used in low power code.
+ */
+#define do_wfi()	__asm__ __volatile__ ("wfi" : : : "memory")
+
 #ifdef CONFIG_CACHE_L2X0
 extern void __iomem *l2cache_base;
 #endif
