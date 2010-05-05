@@ -668,6 +668,9 @@ static int s_pix_parm(struct omap34xxcam_videodev *vdev,
 	return rval;
 }
 
+static int __vidioc_s_ext_ctrls(struct file *file, void *_fh,
+				struct v4l2_ext_controls *a);
+
 /**
  * vidioc_s_fmt_vid_cap - V4L2 set format capabilities IOCTL handler
  * @file: ptr. to system file structure
@@ -685,6 +688,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *_fh,
 	struct omap34xxcam_videodev *vdev = ofh->vdev;
 	struct v4l2_pix_format pix_tmp;
 	struct v4l2_fract timeperframe;
+	struct v4l2_ext_controls ext_ctrls;
+	struct v4l2_ext_control ext_ctrl_720phack;
 	int rval;
 
 	if (vdev->vdev_sensor == v4l2_int_device_dummy())
@@ -699,6 +704,22 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *_fh,
 	vdev->want_pix = f->fmt.pix;
 
 	timeperframe = vdev->want_timeperframe;
+
+	/* HACK: Toggle 720p hack only on exact 720p size request */
+	memset(&ext_ctrls, 0, sizeof(ext_ctrls));
+	memset(&ext_ctrl_720phack, 0, sizeof(ext_ctrl_720phack));
+
+	ext_ctrl_720phack.id = V4L2_CID_PRIVATE_OMAP3ISP_720PHACK;
+	if (((f->fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) ||
+	     (f->fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY)) &&
+	    (f->fmt.pix.width == 1280) && (f->fmt.pix.height == 720)) {
+		ext_ctrl_720phack.value = 1;
+	} else {
+		ext_ctrl_720phack.value = 0;
+	}
+	ext_ctrls.count = 1;
+	ext_ctrls.controls = &ext_ctrl_720phack;
+	__vidioc_s_ext_ctrls(file, _fh, &ext_ctrls);
 
 	rval = s_pix_parm(vdev, &pix_tmp, &f->fmt.pix, &timeperframe);
 	if (!rval)
@@ -727,6 +748,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *_fh,
 	struct omap34xxcam_videodev *vdev = ofh->vdev;
 	struct v4l2_pix_format pix_tmp;
 	struct v4l2_fract timeperframe;
+	struct v4l2_ext_controls ext_ctrls;
+	struct v4l2_ext_control ext_ctrl_720phack;
 	int rval;
 
 	if (vdev->vdev_sensor == v4l2_int_device_dummy())
@@ -735,6 +758,22 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *_fh,
 	mutex_lock(&vdev->mutex);
 
 	timeperframe = vdev->want_timeperframe;
+
+	/* HACK: Toggle 720p hack only on exact 720p size request */
+	memset(&ext_ctrls, 0, sizeof(ext_ctrls));
+	memset(&ext_ctrl_720phack, 0, sizeof(ext_ctrl_720phack));
+
+	ext_ctrl_720phack.id = V4L2_CID_PRIVATE_OMAP3ISP_720PHACK;
+	if (((f->fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) ||
+	     (f->fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY)) &&
+	    (f->fmt.pix.width == 1280) && (f->fmt.pix.height == 720)) {
+		ext_ctrl_720phack.value = 1;
+	} else {
+		ext_ctrl_720phack.value = 0;
+	}
+	ext_ctrls.count = 1;
+	ext_ctrls.controls = &ext_ctrl_720phack;
+	__vidioc_s_ext_ctrls(file, _fh, &ext_ctrls);
 
 	rval = try_pix_parm(vdev, &pix_tmp, &f->fmt.pix, &timeperframe);
 
@@ -1152,16 +1191,14 @@ static int vidioc_g_ext_ctrls(struct file *file, void *_fh,
 	return rval;
 }
 
-static int vidioc_s_ext_ctrls(struct file *file, void *_fh,
-			      struct v4l2_ext_controls *a)
+static int __vidioc_s_ext_ctrls(struct file *file, void *_fh,
+				struct v4l2_ext_controls *a)
 {
 	struct v4l2_fh *vfh = _fh;
 	struct omap34xxcam_fh *ofh = to_omap34xxcam_fh(vfh);
 	struct omap34xxcam_videodev *vdev = ofh->vdev;
 	struct device *isp = vdev->cam->isp;
 	int i, ctrl_idx, rval = 0;
-
-	mutex_lock(&vdev->mutex);
 
 	for (ctrl_idx = 0; ctrl_idx < a->count; ctrl_idx++) {
 		struct v4l2_control ctrl;
@@ -1192,6 +1229,19 @@ static int vidioc_s_ext_ctrls(struct file *file, void *_fh,
 		a->controls[ctrl_idx].value = ctrl.value;
 	}
 
+	return rval;
+}
+
+static int vidioc_s_ext_ctrls(struct file *file, void *_fh,
+			      struct v4l2_ext_controls *a)
+{
+	struct v4l2_fh *vfh = _fh;
+	struct omap34xxcam_fh *ofh = to_omap34xxcam_fh(vfh);
+	struct omap34xxcam_videodev *vdev = ofh->vdev;
+	int rval = 0;
+
+	mutex_lock(&vdev->mutex);
+	rval = __vidioc_s_ext_ctrls(file, _fh, a);
 	mutex_unlock(&vdev->mutex);
 
 	return rval;
