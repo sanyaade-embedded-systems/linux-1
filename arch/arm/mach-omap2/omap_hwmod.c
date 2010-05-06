@@ -495,8 +495,6 @@ static int _enable_clocks(struct omap_hwmod *oh)
 	struct omap_hwmod_ocp_if *os;
 	int i;
 
-	pr_debug("omap_hwmod: %s: enabling clocks\n", oh->name);
-
 	if (oh->_clk && !IS_ERR(oh->_clk)) {
 #ifdef CONFIG_PM
 		if (!strcmp(oh->_clk->name, "uart3_fck"))
@@ -530,8 +528,6 @@ static int _disable_clocks(struct omap_hwmod *oh)
 {
 	struct omap_hwmod_ocp_if *os;
 	int i;
-
-	pr_debug("omap_hwmod: %s: disabling clocks\n", oh->name);
 
 	if (oh->_clk && !IS_ERR(oh->_clk)) {
 #ifdef CONFIG_PM
