@@ -346,21 +346,24 @@ static inline irqreturn_t serial_omap_irq(int irq, void *dev_id)
 	unsigned int iir, lsr;
 	unsigned long flags;
 
-	spin_lock_irqsave(&up->port.lock, flags);
 	iir = serial_in(up, UART_IIR);
 	if (iir & UART_IIR_NO_INT)
 		return IRQ_NONE;
 
+	spin_lock_irqsave(&up->port.lock, flags);
 	lsr = serial_in(up, UART_LSR);
 	if (iir & UART_IER_RLSI) {
-		if (up->use_dma)
-			up->ier &= ~UART_IER_RDI;
-			serial_out(up, UART_IER, up->ier);
-		if (!up->use_dma ||
-				serial_omap_start_rxdma(up) != 0)
+		if (!up->use_dma) {
 			if (lsr & UART_LSR_DR)
 				receive_chars(up, &lsr);
+		} else {
+			up->ier &= ~UART_IER_RDI;
+			serial_out(up, UART_IER, up->ier);
+			if (serial_omap_start_rxdma(up) != 0)
+				if (lsr & UART_LSR_DR)
+					receive_chars(up, &lsr);
 		}
+	}
 
 	check_modem_status(up);
 	if ((lsr & UART_LSR_THRE) && (iir & UART_IIR_THRI))
