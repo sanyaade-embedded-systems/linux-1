@@ -45,13 +45,7 @@
 #define UART_OMAP_NO_EMPTY_FIFO_READ_IP_REV	0x52
 #define UART_OMAP_WER		0x17	/* Wake-up enable register */
 
-/*
- * NOTE: By default the serial timeout is disabled as it causes lost characters
- * over the serial ports. This means that the UART clocks will stay on until
- * disabled via sysfs. This also causes that any deeper omap sleep states are
- * blocked. 
- */
-#define DEFAULT_TIMEOUT 0
+#define DEFAULT_TIMEOUT (5 * HZ)
 
 #define MAX_UART_HWMOD_NAME_LEN		16
 
