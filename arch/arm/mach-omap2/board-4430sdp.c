@@ -366,7 +366,7 @@ static int sdp4430_panel_disable_hdmi(struct omap_dss_device *dssdev)
 
 	return 0;
 }
-static void __init sdp4430_hdmi_init(void)
+static __attribute__ ((unused)) void __init sdp4430_hdmi_init(void)
 {
 	return;
 }
