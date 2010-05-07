@@ -316,6 +316,10 @@ static unsigned int dsi_perf;
 module_param_named(dsi_perf, dsi_perf, bool, 0644);
 #endif
 
+static bool dsi_te_sync = 1;
+module_param_named(dsi_te_sync, dsi_te_sync, bool, 0644);
+MODULE_PARM_DESC(dsi_te_sync, "enable/disable tearing");
+
 
 static inline void dsi_write_reg(enum dsi lcd_ix,
 		const struct dsi_reg idx, u32 val)
@@ -3164,6 +3168,8 @@ static void dsi_framedone_irq_callback(void *data, u32 mask)
 	/* SIDLEMODE back to smart-idle */
 	dispc_enable_sidle();
 	dsi_1.framedone_received = true;
+	if (!dsi_te_sync)
+		udelay(100);
 	wake_up(&dsi_1.waitqueue);
 }
 
@@ -3176,6 +3182,8 @@ static void dsi2_framedone_irq_callback(void *data, u32 mask)
 	/* SIDLEMODE back to smart-idle */
 	dispc_enable_sidle();
 	dsi_2.framedone_received = true;
+	if (!dsi_te_sync)
+		udelay(100);
 	wake_up(&dsi_2.waitqueue);
 }
 
@@ -3375,7 +3383,8 @@ static int dsi_update_thread(void *data)
 			if (cpu_is_omap34xx())
 				dsi_vc_config_vp(lcd_ix, 0);
 
-			if (dsi_1.te_enabled && dsi_1.use_ext_te)
+			if (dsi_te_sync && dsi_1.te_enabled
+					&& dsi_1.use_ext_te)
 				device->driver->wait_for_te(device);
 
 			dsi_1.framedone_received = false;
@@ -3510,7 +3519,8 @@ static int dsi2_update_thread(void *data)
 			if (cpu_is_omap34xx())
 				dsi_vc_config_vp(lcd_ix, 0);
 
-			if (dsi_2.te_enabled && dsi_2.use_ext_te)
+			if (dsi_te_sync && dsi_2.te_enabled
+					&& dsi_2.use_ext_te)
 				device->driver->wait_for_te(device);
 
 			dsi_2.framedone_received = false;
