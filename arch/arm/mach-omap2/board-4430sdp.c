@@ -51,8 +51,6 @@
 #include <plat/omap_device.h>
 #include <plat/omap_hwmod.h>
 
-static int ts_gpio;
-
 #define OMAP4_CMA3000ACCL_GPIO		186
 
 static int sdp4430_keymap[] = {
