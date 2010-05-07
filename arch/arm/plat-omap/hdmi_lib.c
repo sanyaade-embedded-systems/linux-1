@@ -530,7 +530,7 @@ static void hdmi_core_powerdown_disable(void)
 }
 
 /* todo: power off the core */
-static void hdmi_core_powerdown_enable(void)
+static __attribute__ ((unused)) void hdmi_core_powerdown_enable(void)
 {
 	REG_FLD_MOD(HDMI_CORE_SYS, HDMI_CORE_CTRL1, 0x1, 0, 0);
 }
@@ -1084,7 +1084,7 @@ static void hdmi_w1_audio_enable(void)
 	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 1, 31, 31);
 }
 
-static void hdmi_w1_audio_disable(void)
+static __attribute__ ((unused))__attribute__ ((unused)) void hdmi_w1_audio_disable(void)
 {
 	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 0, 31, 31);
 }
