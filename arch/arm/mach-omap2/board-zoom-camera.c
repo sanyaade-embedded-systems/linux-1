@@ -66,7 +66,7 @@ static struct regulator *zoom_imx046_reg2;
 #define IMX046_CSI2_PHY_TCLK_TERM	0
 #define IMX046_CSI2_PHY_TCLK_MISS	1
 #define IMX046_CSI2_PHY_TCLK_SETTLE	14
-#define IMX046_BIGGEST_FRAME_BYTE_SIZE	PAGE_ALIGN(3280 * 2464 * 2)
+#define IMX046_BIGGEST_FRAME_BYTE_SIZE	PAGE_ALIGN(ALIGN(3280, 0x20) * 2464 * 2)
 #endif
 
 #ifdef CONFIG_VIDEO_LV8093
@@ -126,7 +126,7 @@ struct lv8093_platform_data zoom_lv8093_platform_data = {
 
 static struct omap34xxcam_sensor_config imx046_hwc = {
 	.sensor_isp  = 0,
-	.capture_mem = IMX046_BIGGEST_FRAME_BYTE_SIZE * 2,
+	.capture_mem = IMX046_BIGGEST_FRAME_BYTE_SIZE * 4,
 	.ival_default	= { 1, 10 },
 	.isp_if = ISP_CSIA,
 };
