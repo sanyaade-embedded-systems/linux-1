@@ -1,9 +1,9 @@
-07 May 2010
+08 May 2010
 
 
 1.  Introduction
 ----------------
-This document accompanies OMAP(TM) Software Release L24.6 for Linux 2.6.33-rc2
+This document accompanies OMAP(TM) Software Release L24.6 for Linux 2.6.33.2
 on OMAP4430 SDP. The document specifies:
 	- Instructions for unpacking the release
 	- New features and features the release supports
@@ -14,7 +14,7 @@ on OMAP4430 SDP. The document specifies:
 2. Release Summary
 ------------------
 This is a release of the Linux Baseport for OMAP4430. It supports the
-OMAP4 Wakeup SDP board. The kernel is based on Linux-omap version 2.6.33-rc2
+OMAP4 Wakeup SDP board. The kernel is based on Linux-omap version 2.6.33.2
 from open source. U-boot is based on open-source version 1.1.4.
 
 The u-boot source can be obtained via GIT from:
