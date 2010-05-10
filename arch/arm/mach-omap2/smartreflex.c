@@ -32,7 +32,7 @@
 
 #include "smartreflex.h"
 
-#define SMARTREFLEX_NAME_LEN	16
+#define SMARTREFLEX_NAME_LEN	24
 #define SR_DISABLE_TIMEOUT	200
 
 static int sys_volt_margin;
@@ -461,7 +461,14 @@ int sr_enable(int srid, u32 target_opp_no)
 {
 	u32 nvalue_reciprocal;
 	struct omap_sr *sr = _sr_lookup(srid);
-	struct omap_smartreflex_data *pdata = sr->pdev->dev.platform_data;
+	struct omap_smartreflex_data *pdata;
+
+	/*Check whether sr is NULL or not*/
+	if (!sr) {
+		pr_err("_sr_lookup(srid)returned NULL \n");
+		return false;
+	}
+	pdata = sr->pdev->dev.platform_data;
 
 	if (target_opp_no > pdata->no_opp) {
 		pr_notice("Wrong target opp\n");
@@ -506,6 +513,11 @@ void sr_disable(int srid)
 	struct omap_sr *sr = _sr_lookup(srid);
 	int timeout = 0;
 
+	/*Check whether sr is NULL or not*/
+	if (!sr) {
+		pr_err("_sr_lookup(srid)returned NULL \n");
+		return;
+	}
 	/* Check if SR Ris already disabled. If yes do nothing */
 	if (!(sr_read_reg(sr, SRCONFIG) & SRCONFIG_SRENABLE))
 		return;
@@ -741,6 +753,8 @@ static int __devinit omap_smartreflex_probe(struct platform_device *pdev)
 	int ret = 0;
 	char name[SMARTREFLEX_NAME_LEN];
 
+	if (!sr_info)
+		return -ENOMEM;
 	sr_info->pdev = pdev;
 	sr_info->srid = pdev->id + 1;
 	sr_info->is_sr_reset = 1,
