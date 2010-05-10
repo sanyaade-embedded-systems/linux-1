@@ -770,6 +770,9 @@ static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 			sr_data->sr_nvalue =
 					kzalloc(sizeof(sr_data->sr_nvalue) *
 					sr_data->no_opp , GFP_KERNEL);
+			if (!sr_data->sr_nvalue)
+				return;
+
 			sr_data->senn_mod = 0x1;
 			sr_data->senp_mod = 0x1;
 			sr_data->sr_nvalue[3] = cal_opp_nvalue(omap_ctrl_readl(
@@ -788,6 +791,9 @@ static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 			sr_data->sr_nvalue =
 				kzalloc(sizeof(sr_data->sr_nvalue) *
 				sr_data->no_opp , GFP_KERNEL);
+			if (!sr_data->sr_nvalue)
+				return;
+
 			sr_data->senn_mod = 0x1;
 			sr_data->senp_mod = 0x1;
 			sr_data->sr_nvalue[1] = cal_opp_nvalue(omap_ctrl_readl(
@@ -804,6 +810,9 @@ static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 			sr_data->sr_nvalue =
 					kzalloc(sizeof(sr_data->sr_nvalue) *
 					sr_data->no_opp , GFP_KERNEL);
+			if (!sr_data->sr_nvalue)
+				return;
+
 			sr_data->senn_mod =
 				(omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
 					OMAP343X_SR1_SENNENABLE_MASK) >>
@@ -830,6 +839,9 @@ static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 			sr_data->sr_nvalue =
 				kzalloc(sizeof(sr_data->sr_nvalue) *
 				sr_data->no_opp , GFP_KERNEL);
+			if (!sr_data->sr_nvalue)
+				return;
+
 			sr_data->senn_mod =
 				(omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
 					OMAP343X_SR2_SENNENABLE_MASK) >>
@@ -861,6 +873,8 @@ static void __init omap34xx_sr_testing_nvalues(
 		sr_data->no_opp = 5;
 		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
 				sr_data->no_opp , GFP_KERNEL);
+		if (!sr_data->sr_nvalue)
+			return;
 
 		sr_data->senp_mod = 0x03;	/* SenN-M5 enabled */
 		sr_data->senn_mod = 0x03;
@@ -882,6 +896,8 @@ static void __init omap34xx_sr_testing_nvalues(
 		sr_data->no_opp = 3;
 		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
 					sr_data->no_opp , GFP_KERNEL);
+		if (!sr_data->sr_nvalue)
+			return;
 
 		sr_data->senp_mod = 0x03;	/* SenN-M5 enabled */
 		sr_data->senn_mod = 0x03;
@@ -900,6 +916,9 @@ static void __init omap36xx_sr_testing_nvalues(
 		sr_data->no_opp = 4;
 		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
 						sr_data->no_opp , GFP_KERNEL);
+		if (!sr_data->sr_nvalue)
+			return;
+
 		sr_data->senp_mod = 0x1;
 		sr_data->senn_mod = 0x1;
 
@@ -914,6 +933,9 @@ static void __init omap36xx_sr_testing_nvalues(
 		sr_data->no_opp = 2;
 		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
 						sr_data->no_opp , GFP_KERNEL);
+		if (!sr_data->sr_nvalue)
+			return;
+
 		sr_data->senp_mod = 0x1;
 		sr_data->senn_mod = 0x1;
 
