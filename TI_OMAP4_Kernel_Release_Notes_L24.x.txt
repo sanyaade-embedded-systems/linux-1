@@ -31,6 +31,7 @@ Components that are supported in the release:
    Neon, I2C, MMC/SD/eMMC (with ADMA support), Ethernet, RTC,
    SDMA (including descriptor loading), Keypad, Touch screen, McSPI, McBSP, Mentor USB,
    Phoenix General Purpose ADC, Battery Charging, Power Management Frameworks,
+   Sensors (Proximity and Accelerometer)
    Audio (Phoenix Audio IC, ABE, AESS),
    Display driver (TAAL based), Basic display (DSS2 migration, FB dev), Tiler memory manager.
    WLAN support
@@ -365,6 +366,10 @@ NOTE:
 	- All clocks are still kept enabled on bootloader.
 	- These features can only be validated on EMU devices with omap4_pm_defconfig
 
+- Sensors
+	- Proximity sensor
+	- Accelerometer sensor
+
 - Audio
 	- Audio Playback to Phoenix Earphone
 	- Audio Playback using Tones port
@@ -397,6 +402,7 @@ NOTE:
 	Mentor USB,
 	Phoenix General Purpose ADC,
 	Battery Charging.
+	Sensors (Proximity and Accelerometer)
 
 - Audio
 	Audio playback to Phoenix Hand-free, Head set output devices.
