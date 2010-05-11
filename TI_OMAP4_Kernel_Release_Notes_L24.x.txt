@@ -1,4 +1,4 @@
-08 May 2010
+11 May 2010
 
 
 1.  Introduction
@@ -231,14 +231,7 @@ OMAP4 device supports a pico DLP and secondary LCD output on the secondary
 LCD manager (with the name of '2lcd').  The configuration of the display
 happens in a non-conventional way.
 
-3.4.3.1 For building kernel image with Pico DLP support:
-	In menuconfig following "pico DLP" option needs to be set
-	Device drivers ->
-		Graphics support ->
-			OMAP 2/3 Diaplay subsystem support ->
-					omap 2/3 display drivers ->
-					<*> pico DLP 
-3.4.3.2 After bootup:
+3.4.3.1 After bootup:
 
 To configure output to either pico DLP or secondary LCD, set the overlay's
 manager to the secondary LCD manager:
@@ -247,7 +240,7 @@ echo "0" > /sys/devices/platform/omapdss/overlay0/enabled
 echo "2lcd" > /sys/devices/platform/omapdss/overlay0/manager
 echo "1" > /sys/devices/platform/omapdss/overlay0/enabled
 
-3.4.3.3	Then enable the correct display to chose pico DLP or secondary LCD (default
+3.4.3.2	Then enable the correct display to chose pico DLP or secondary LCD (default
 is secondary LCD).  Assuming display1 is secondary LCD, and display3 is
 pico DLP:
 
@@ -256,7 +249,7 @@ echo "0" > /sys/devices/platform/omapdss/display1/enabled
 echo "pico_DLP" > /sys/devices/platform/omapdss/manager2/display -- This will set secondary manager to pico.
 echo "1" > /sys/devices/platform/omapdss/display3/enabled
 
-3.4.3.4	Now to switch back to secondary 
+3.4.3.3	Now to switch back to secondary 
 echo "0" > /sys/devices/platform/omapdss/display3/enabled
 echo "2lcd" > /sys/devices/platform/omapdss/manager2/display
 echo "1" > /sys/devices/platform/omapdss/display1/enabled
@@ -429,6 +422,7 @@ Refer to Program schedule.
 
 4.5 Defects Fixed in This Release
 
+OMAPS00217886   UART console hangs and system freezes if one uses omap-serial driver instead of 8250 driver
 OMAPS00216357   Packet loss in multiple ICMP transfers
 OMAPS00211463   NFS speed is too slow in L24x
 OMAPS00214519   After boot SATO image and Calibrate Touchscreen if the screen is touched X-server crashes.
@@ -485,7 +479,6 @@ OMAPS00214020   ethernet doesn't get configured with L24.4 kernel Postponed
 
 4.10 Limitations
 
-1) At u-boot level saveenv command doesn't work.
 2) MAC address reading from ethernet EEPROM is not supported.
 
 
