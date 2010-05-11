@@ -479,7 +479,6 @@ OMAPS00214020   ethernet doesn't get configured with L24.4 kernel Postponed
 
 4.10 Limitations
 
-2) MAC address reading from ethernet EEPROM is not supported.
 
 
 5. Tool Chain
