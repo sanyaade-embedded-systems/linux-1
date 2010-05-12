@@ -44,6 +44,9 @@
 
 #define DISPC_SZ_REGS			SZ_1K
 
+
+#define NO_ARR_ELM(A)			(sizeof(A)/sizeof(A[0]))
+
 struct dispc_reg { u16 idx; };
 
 #define DISPC_REG(idx)			((const struct dispc_reg) { idx })
@@ -757,7 +760,7 @@ static void _dispc_set_scale_coef(enum omap_plane plane,
 
 				}
 
-				for (i = 0; i < sizeof(coeff_mvals); i++) {
+				for (i = 0; i < NO_ARR_ELM(coeff_mvals) ; i++) {
 					if (coeff_mvals[i] == default_mval)
 						break;
 				}
