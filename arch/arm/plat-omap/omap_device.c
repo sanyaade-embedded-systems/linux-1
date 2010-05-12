@@ -400,11 +400,10 @@ struct omap_device *omap_device_build_ss(const char *pdev_name, int pdev_id,
 	od->pdev.id = pdev_id;
 
 	res_count = omap_device_count_resources(od);
-	if (res_count > 0) {
+	if (res_count > 0)
 		res = kzalloc(sizeof(struct resource) * res_count, GFP_KERNEL);
-		if (!res)
-			goto odbs_exit3;
-	}
+	if (!res)
+		goto odbs_exit3;
 	omap_device_fill_resources(od, res);
 
 	od->pdev.num_resources = res_count;
