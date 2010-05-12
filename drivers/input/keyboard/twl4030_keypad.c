@@ -333,30 +333,34 @@ static int __devinit twl4030_kp_program(struct twl4030_keypad *kp)
  */
 static int __devinit twl4030_kp_probe(struct platform_device *pdev)
 {
-	struct twl4030_keypad_data *pdata = pdev->dev.platform_data;
-	const struct matrix_keymap_data *keymap_data = pdata->keymap_data;
+	struct twl4030_keypad_data *pdata;
+	const struct matrix_keymap_data *keymap_data;
 	struct twl4030_keypad *kp;
 	struct input_dev *input;
 	u8 reg;
 	int error;
-
+	if (!pdev) {
+		printk(KERN_ERR "Invalid platorm_device\n");
+		return -EINVAL;
+	}
+	pdata = pdev->dev.platform_data;
 	if (!pdata || !pdata->rows || !pdata->cols ||
 	    pdata->rows > TWL4030_MAX_ROWS || pdata->cols > TWL4030_MAX_COLS) {
 		dev_err(&pdev->dev, "Invalid platform_data\n");
 		return -EINVAL;
 	}
-
+	keymap_data = pdata->keymap_data;
 	kp = kzalloc(sizeof(*kp), GFP_KERNEL);
+	if (!kp)
+		return  -ENOMEM;
 	input = input_allocate_device();
-	if (!kp || !input) {
+	if (!input) {
 		error = -ENOMEM;
-		goto err1;
+		goto err0;
 	}
-
 	/* Get the debug Device */
 	kp->dbg_dev = &pdev->dev;
 	kp->input = input;
-
 	kp->n_rows = pdata->rows;
 	kp->n_cols = pdata->cols;
 	kp->irq = platform_get_irq(pdev, 0);
@@ -430,6 +434,7 @@ err2:
 	input = NULL;
 err1:
 	input_free_device(input);
+err0:
 	kfree(kp);
 	return error;
 }
