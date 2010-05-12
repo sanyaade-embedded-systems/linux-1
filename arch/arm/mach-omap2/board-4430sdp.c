@@ -35,6 +35,8 @@
 #include <plat/common.h>
 #include <plat/control.h>
 #include <plat/timer-gp.h>
+#include <plat/display.h>
+#include <linux/delay.h>
 #include <plat/usb.h>
 #include <plat/omap_device.h>
 #include <plat/omap_hwmod.h>
@@ -285,8 +287,6 @@ error1:
 	return status;
 }
 
-/* Begin Synaptic Touchscreen TM-01217 */
-
 static char *tm12xx_idev_names[] = {
 	"Synaptic TM12XX TouchPoint 1",
 	"Synaptic TM12XX TouchPoint 2",
@@ -320,18 +320,87 @@ static struct tm12xx_ts_platform_data tm12xx_platform_data[] = {
 		.swap_xy = 1,
 	},
 };
+/* Begin Synaptic Touchscreen TM-01217 */
+static int sdp4430_taal_enable(struct omap_dss_device *dssdev)
+{
+	gpio_request(102, "dsi1_en_gpio");/* DSI1_GPIO_102*/
+	gpio_direction_output(102, 0);
+	mdelay(500);
+	gpio_set_value(102, 1);
+	mdelay(500);
+	gpio_set_value(102, 0);
+	mdelay(500);
+	gpio_set_value(102, 1);
+#if 0
+	twl_i2c_write_u8(0xBD, 0xFF, 0x03);
+	twl_i2c_write_u8(0xBD, 0x7F, 0x04);
+	twl_i2c_write_u8(0xBE, 0x30, 0x92);
+#endif
 
-/* End Synaptic Touchscreen TM-01217 */
+	gpio_request(27, "dsi1_bl_gpio"); /*DSI1_GPIO_27*/
+	gpio_direction_output(27, 1);
+	mdelay(120);
+	gpio_set_value(27, 0);
+	mdelay(120);
+	return 0;
+}
 
-static struct platform_device sdp4430_lcd_device = {
-	.name		= "sdp4430_lcd",
-	.id		= -1,
+static void sdp4430_taal_disable(struct omap_dss_device *dssdev)
+{
+	gpio_set_value(102 /*DSI1_GPIO_102*/, 1);
+	gpio_set_value(27 /*DSI1_GPIO_27*/, 0);
+}
+
+static struct omap_dss_device sdp4430_lcd_device = {
+	.name			= "lcd",
+	.driver_name		= "taal",
+	.type			= OMAP_DISPLAY_TYPE_DSI,
+	.reset_gpio		= 102,
+	.phy.dsi		= {
+		.clk_lane	= 1,
+		.clk_pol	= 0,
+		.data1_lane	= 2,
+		.data1_pol	= 0,
+		.data2_lane	= 3,
+		.data2_pol	= 0,
+		.ext_te		= true,
+		.ext_te_gpio	= 101,
+		.div		= {
+			.lck_div	= 1,
+			.pck_div	= 6,
+			.regm		= 150,
+			.regn		= 20,
+			.regm3		= 4,
+			.regm4		= 4,
+			.lp_clk_div	= 6,
+		},
+	},
+	.platform_enable	=	sdp4430_taal_enable,
+	.platform_disable	=	sdp4430_taal_disable,
 };
 
-static struct platform_device *sdp4430_devices[] __initdata = {
+static struct omap_dss_device *sdp4430_dss_devices[] = {
 	&sdp4430_lcd_device,
 	&sdp4430_keypad_device,
 	&sdp4430_proximity_device,
+};
+
+static struct omap_dss_board_info sdp4430_dss_data = {
+	.num_devices	=	ARRAY_SIZE(sdp4430_dss_devices),
+	.devices	=	sdp4430_dss_devices,
+	.default_device	=	&sdp4430_lcd_device,
+};
+
+static struct platform_device sdp4430_dss_device = {
+	.name	=	"omapdss",
+	.id	=	-1,
+	.dev	= {
+		.platform_data = &sdp4430_dss_data,
+	},
+};
+
+static struct platform_device *sdp4430_devices[] __initdata = {
+	&sdp4430_dss_device,
 };
 
 static struct omap_lcd_config sdp4430_lcd_config __initdata = {
@@ -661,11 +730,22 @@ fail1:
 	gpio_free(OMAP4_SFH7741_SENSOR_OUTPUT_GPIO);
 }
 
+static void __init omap4_display_init(void)
+{
+	void __iomem *phymux_base = NULL;
+	unsigned int dsimux = 0xFFFFFFFF;
+	phymux_base = ioremap(0x4A100000, 0x1000);
+	/* Turning on DSI PHY Mux*/
+	__raw_writel(dsimux, phymux_base+0x618);
+	dsimux = __raw_readl(phymux_base+0x618);
+}
+
 static void __init omap_4430sdp_init(void)
 {
 	int status;
 
 	omap4_i2c_init();
+	omap4_display_init();
 	platform_add_devices(sdp4430_devices, ARRAY_SIZE(sdp4430_devices));
 	omap_serial_init();
 	omap4_twl6030_hsmmc_init(mmc);
