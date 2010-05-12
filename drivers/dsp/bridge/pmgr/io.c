@@ -22,7 +22,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -47,13 +46,13 @@ static u32 refs;
  *      Create an IO manager object, responsible for managing IO between
  *      CHNL and msg_ctrl
  */
-dsp_status io_create(OUT struct io_mgr **phIOMgr, struct dev_object *hdev_obj,
+int io_create(OUT struct io_mgr **phIOMgr, struct dev_object *hdev_obj,
 		     IN CONST struct io_attrs *pMgrAttrs)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct io_mgr *hio_mgr = NULL;
 	struct io_mgr_ *pio_mgr = NULL;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phIOMgr != NULL);
@@ -63,10 +62,10 @@ dsp_status io_create(OUT struct io_mgr **phIOMgr, struct dev_object *hdev_obj,
 
 	/* A memory base of 0 implies no memory base: */
 	if ((pMgrAttrs->shm_base != 0) && (pMgrAttrs->usm_length == 0))
-		status = CHNL_E_INVALIDMEMBASE;
+		status = -EINVAL;
 
 	if (pMgrAttrs->word_size == 0)
-		status = CHNL_E_INVALIDWORDSIZE;
+		status = -EINVAL;
 
 	if (DSP_SUCCEEDED(status)) {
 		status = dev_get_intf_fxns(hdev_obj, &intf_fxns);
@@ -95,11 +94,11 @@ dsp_status io_create(OUT struct io_mgr **phIOMgr, struct dev_object *hdev_obj,
  *  Purpose:
  *      Delete IO manager.
  */
-dsp_status io_destroy(struct io_mgr *hio_mgr)
+int io_destroy(struct io_mgr *hio_mgr)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct io_mgr_ *pio_mgr = (struct io_mgr_ *)hio_mgr;
-	dsp_status status;
+	int status;
 
 	DBC_REQUIRE(refs > 0);
 

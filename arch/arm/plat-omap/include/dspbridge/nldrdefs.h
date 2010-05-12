@@ -116,7 +116,7 @@ enum nldr_phase {
  *                      will be passed to nldr_load/nldr_unload.
  *      pf_phase_split:   pointer to boolean variable referenced in node.c
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -ENOMEM:    Insufficient memory on GPP.
  *  Requires:
  *      nldr_init(void) called.
@@ -124,10 +124,10 @@ enum nldr_phase {
  *      node_props != NULL.
  *      phNldrNode != NULL.
  *  Ensures:
- *      DSP_SOK:        IsValidNode(*phNldrNode).
+ *      0:        IsValidNode(*phNldrNode).
  *      error:          *phNldrNode == NULL.
  */
-typedef dsp_status(*nldr_allocatefxn) (struct nldr_object *nldr_obj,
+typedef int(*nldr_allocatefxn) (struct nldr_object *nldr_obj,
 				       void *priv_ref,
 				       IN CONST struct dcd_nodeprops
 				       * node_props,
@@ -145,7 +145,7 @@ typedef dsp_status(*nldr_allocatefxn) (struct nldr_object *nldr_obj,
  *      hdev_obj:     Device for this processor.
  *      pattrs:         Loader attributes.
  *  Returns:
- *      DSP_SOK:        Success;
+ *      0:        Success;
  *      -ENOMEM:    Insufficient memory for requested resources.
  *  Requires:
  *      nldr_init(void) called.
@@ -153,10 +153,10 @@ typedef dsp_status(*nldr_allocatefxn) (struct nldr_object *nldr_obj,
  *      hdev_obj != NULL.
  *	pattrs != NULL.
  *  Ensures:
- *      DSP_SOK:        Valid *phNldr.
+ *      0:        Valid *phNldr.
  *      error:          *phNldr == NULL.
  */
-typedef dsp_status(*nldr_createfxn) (OUT struct nldr_object **phNldr,
+typedef int(*nldr_createfxn) (OUT struct nldr_object **phNldr,
 				     struct dev_object *hdev_obj,
 				     IN CONST struct nldr_attrs *pattrs);
 
@@ -213,8 +213,8 @@ typedef void (*nldr_freefxn) (struct nldr_nodeobject *nldr_node_obj);
  *      pstrFxn:        Name of function.
  *      pulAddr:        Location to store function address.
  *  Returns:
- *      DSP_SOK:        Success.
- *      DSP_ESYMBOL:    Address of function not found.
+ *      0:        Success.
+ *      -ESPIPE:    Address of function not found.
  *  Requires:
  *      nldr_init(void) called.
  *      Valid nldr_node_obj.
@@ -222,7 +222,7 @@ typedef void (*nldr_freefxn) (struct nldr_nodeobject *nldr_node_obj);
  *      pstrFxn != NULL;
  *  Ensures:
  */
-typedef dsp_status(*nldr_getfxnaddrfxn) (struct nldr_nodeobject
+typedef int(*nldr_getfxnaddrfxn) (struct nldr_nodeobject
 					 * nldr_node_obj,
 					 char *pstrFxn, u32 * pulAddr);
 
@@ -245,18 +245,18 @@ typedef bool(*nldr_initfxn) (void);
  *      nldr_node_obj:      Handle returned from nldr_allocate().
  *      phase:          Type of function to load (create, delete, or execute).
  *  Returns:
- *      DSP_SOK:                Success.
+ *      0:                Success.
  *      -ENOMEM:            Insufficient memory on GPP.
- *      DSP_EOVERLAYMEMORY:     Can't overlay phase because overlay memory
+ *      -ENXIO:     Can't overlay phase because overlay memory
  *                              is already in use.
- *      DSP_EDYNLOAD:           Failure in dynamic loader library.
+ *      -EILSEQ:           Failure in dynamic loader library.
  *      DSP_EFWRITE:            Failed to write phase's code or date to target.
  *  Requires:
  *      nldr_init(void) called.
  *      Valid nldr_node_obj.
  *  Ensures:
  */
-typedef dsp_status(*nldr_loadfxn) (struct nldr_nodeobject *nldr_node_obj,
+typedef int(*nldr_loadfxn) (struct nldr_nodeobject *nldr_node_obj,
 				   enum nldr_phase phase);
 
 /*
@@ -267,14 +267,14 @@ typedef dsp_status(*nldr_loadfxn) (struct nldr_nodeobject *nldr_node_obj,
  *      nldr_node_obj:      Handle returned from nldr_allocate().
  *      phase:          Node function to unload (create, delete, or execute).
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -ENOMEM:    Insufficient memory on GPP.
  *  Requires:
  *      nldr_init(void) called.
  *      Valid nldr_node_obj.
  *  Ensures:
  */
-typedef dsp_status(*nldr_unloadfxn) (struct nldr_nodeobject *nldr_node_obj,
+typedef int(*nldr_unloadfxn) (struct nldr_nodeobject *nldr_node_obj,
 				     enum nldr_phase phase);
 
 /*

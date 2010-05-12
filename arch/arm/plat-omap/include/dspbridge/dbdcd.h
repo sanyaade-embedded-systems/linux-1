@@ -33,10 +33,10 @@
  *      pszCoffPath:            Pointer to name of COFF file containing DCD
  *                              objects to be registered.
  *  Returns:
- *      DSP_SOK:                Success.
- *      DSP_EDCDNOAUTOREGISTER: Unable to find auto-registration section.
- *      DSP_EDCDREADSECT:       Unable to read object code section.
- *      DSP_EDCDLOADBASE:       Unable to load code base.
+ *      0:                Success.
+ *      -EACCES: Unable to find auto-registration section.
+ *      -EACCES:       Unable to read object code section.
+ *      -EACCES:       Unable to load code base.
  *      -EFAULT:            Invalid DCD_HMANAGER handle..
  *  Requires:
  *      DCD initialized.
@@ -46,7 +46,7 @@
  *      COFF file to contain the right COFF sections, especially
  *      ".dcd_register", which is used for auto registration.
  */
-extern dsp_status dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
+extern int dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
 				    IN char *pszCoffPath);
 
 /*
@@ -59,10 +59,10 @@ extern dsp_status dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
  *      pszCoffPath:            Pointer to name of COFF file containing
  *                              DCD objects to be unregistered.
  *  Returns:
- *      DSP_SOK:                Success.
- *      DSP_EDCDNOAUTOREGISTER: Unable to find auto-registration section.
- *      DSP_EDCDREADSECT:       Unable to read object code section.
- *      DSP_EDCDLOADBASE:       Unable to load code base.
+ *      0:                Success.
+ *      -EACCES: Unable to find auto-registration section.
+ *      -EACCES:       Unable to read object code section.
+ *      -EACCES:       Unable to load code base.
  *      -EFAULT:            Invalid DCD_HMANAGER handle..
  *  Requires:
  *      DCD initialized.
@@ -72,7 +72,7 @@ extern dsp_status dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
  *      COFF file to contain the right COFF sections, especially
  *      ".dcd_register", which is used for auto unregistration.
  */
-extern dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
+extern int dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
 				      IN char *pszCoffPath);
 
 /*
@@ -83,7 +83,7 @@ extern dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
  *      pszZlDllName:   Pointer to a DLL name string.
  *      phDcdMgr:       A pointer to a DCD manager handle.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -ENOMEM:    Unable to allocate memory for DCD manager handle.
  *      -EPERM:      General failure.
  *  Requires:
@@ -93,7 +93,7 @@ extern dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
  *  Ensures:
  *      A DCD manager handle is created.
  */
-extern dsp_status dcd_create_manager(IN char *pszZlDllName,
+extern int dcd_create_manager(IN char *pszZlDllName,
 				     OUT struct dcd_manager **phDcdMgr);
 
 /*
@@ -103,13 +103,13 @@ extern dsp_status dcd_create_manager(IN char *pszZlDllName,
  *  Parameters:
  *      hdcd_mgr:        A DCD manager handle.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid DCD manager handle.
  *  Requires:
  *      DCD initialized.
  *  Ensures:
  */
-extern dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr);
+extern int dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr);
 
 /*
  *  ======== dcd_enumerate_object ========
@@ -121,9 +121,9 @@ extern dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr);
  *      obj_type:            Type of object to enumerate.
  *      uuid_obj:              Pointer to a dsp_uuid object.
  *  Returns:
- *      DSP_SOK:            Success.
+ *      0:            Success.
  *      -EPERM:          Unable to enumerate through the DCD database.
- *      DSP_SENUMCOMPLETE:  Enumeration completed. This is not an error code.
+ *      ENODATA:  Enumeration completed. This is not an error code.
  *  Requires:
  *      DCD initialized.
  *      uuid_obj is a valid pointer.
@@ -132,7 +132,7 @@ extern dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr);
  *      This function can be used in conjunction with dcd_get_object_def to
  *      retrieve object properties.
  */
-extern dsp_status dcd_enumerate_object(IN s32 cIndex,
+extern int dcd_enumerate_object(IN s32 cIndex,
 				       IN enum dsp_dcdobjtype obj_type,
 				       OUT struct dsp_uuid *uuid_obj);
 
@@ -162,9 +162,9 @@ extern void dcd_exit(void);
  *      pPersistentDepLibs: Array indicating if corresponding lib is persistent.
  *      phase: phase to obtain correct input library
  *  Returns:
- *      DSP_SOK: Success.
+ *      0: Success.
  *      -ENOMEM: Memory allocation failure.
- *      DSP_EDCDREADSECT: Failure to read section containing library info.
+ *      -EACCES: Failure to read section containing library info.
  *      -EPERM: General failure.
  *  Requires:
  *      DCD initialized.
@@ -173,7 +173,7 @@ extern void dcd_exit(void);
  *      pDepLibUuids != NULL.
  *  Ensures:
  */
-extern dsp_status dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
+extern int dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
 				   IN struct dsp_uuid *uuid_obj,
 				   u16 numLibs,
 				   OUT struct dsp_uuid *pDepLibUuids,
@@ -192,9 +192,9 @@ extern dsp_status dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
  *      pNumPersLibs:   number of persistent dependent library.
  *      phase:          Phase to obtain correct input library
  *  Returns:
- *      DSP_SOK: Success.
+ *      0: Success.
  *      -ENOMEM: Memory allocation failure.
- *      DSP_EDCDREADSECT: Failure to read section containing library info.
+ *      -EACCES: Failure to read section containing library info.
  *      -EPERM: General failure.
  *  Requires:
  *      DCD initialized.
@@ -203,7 +203,7 @@ extern dsp_status dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
  *      pNumLibs != NULL.
  *  Ensures:
  */
-extern dsp_status dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
+extern int dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
 				       IN struct dsp_uuid *uuid_obj,
 				       OUT u16 *pNumLibs,
 				       OUT u16 *pNumPersLibs,
@@ -223,7 +223,7 @@ extern dsp_status dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
  *      phase:          Which phase to load
  *      phase_split:    Are phases in multiple libraries
  *  Returns:
- *      DSP_SOK: Success.
+ *      0: Success.
  *      -EPERM: General failure.
  *  Requires:
  *      DCD initialized.
@@ -233,7 +233,7 @@ extern dsp_status dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
  *      pdwSize != NULL.
  *  Ensures:
  */
-extern dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
+extern int dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 				       IN struct dsp_uuid *uuid_obj,
 				       IN OUT char *pstrLibName,
 				       IN OUT u32 *pdwSize,
@@ -254,11 +254,11 @@ extern dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
  *      pObjDef:            Pointer to an object definition structure. A
  *                          union of various possible DCD object types.
  *  Returns:
- *      DSP_SOK: Success.
- *      DSP_EDCDPARSESECT:  Unable to parse content of object code section.
- *      DSP_EDCDREADSECT:   Unable to read object code section.
- *      DSP_EDCDGETSECT:    Unable to access object code section.
- *      DSP_EDCDLOADBASE:   Unable to load code base.
+ *      0: Success.
+ *      -EACCES:  Unable to parse content of object code section.
+ *      -EACCES:   Unable to read object code section.
+ *      -EACCES:    Unable to access object code section.
+ *      -EACCES:   Unable to load code base.
  *      -EPERM:          General failure.
  *      -EFAULT:        Invalid DCD_HMANAGER handle.
  *  Requires:
@@ -267,7 +267,7 @@ extern dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
  *      pObjDef is non-NULL.
  *  Ensures:
  */
-extern dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
+extern int dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 				     IN struct dsp_uuid *pObjUuid,
 				     IN enum dsp_dcdobjtype obj_type,
 				     OUT struct dcd_genericobj *pObjDef);
@@ -288,10 +288,10 @@ extern dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
  *                              DCD object.
  *      handle:                 Handle to pass to callback.
  *  Returns:
- *      DSP_SOK:                Success.
- *      DSP_EDCDNOAUTOREGISTER: Unable to find .dcd_register section.
- *      DSP_EDCDREADSECT:       Unable to read object code section.
- *      DSP_EDCDLOADBASE:       Unable to load code base.
+ *      0:                Success.
+ *      -EACCES: Unable to find .dcd_register section.
+ *      -EACCES:       Unable to read object code section.
+ *      -EACCES:       Unable to load code base.
  *      -EFAULT:            Invalid DCD_HMANAGER handle..
  *  Requires:
  *      DCD initialized.
@@ -301,7 +301,7 @@ extern dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
  *      COFF file to contain the right COFF sections, especially
  *      ".dcd_register", which is used for auto registration.
  */
-extern dsp_status dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
+extern int dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
 				  IN char *pszCoffPath,
 				  dcd_registerfxn registerFxn, void *handle);
 
@@ -329,7 +329,7 @@ extern bool dcd_init(void);
  *      obj_type:        Type of object.
  *      psz_path_name:    Path to the object's COFF file.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EPERM:      Failed to register object.
  *  Requires:
  *      DCD initialized.
@@ -337,7 +337,7 @@ extern bool dcd_init(void);
  *      obj_type is a valid type value.
  *  Ensures:
  */
-extern dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
+extern int dcd_register_object(IN struct dsp_uuid *uuid_obj,
 				      IN enum dsp_dcdobjtype obj_type,
 				      IN char *psz_path_name);
 
@@ -351,7 +351,7 @@ extern dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
  *                  object.
  *      obj_type:    Type of object.
  *  Returns:
- *      DSP_SOK:    Success.
+ *      0:    Success.
  *      -EPERM:  Unable to de-register the specified object.
  *  Requires:
  *      DCD initialized.
@@ -359,7 +359,7 @@ extern dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
  *      obj_type is a valid type value.
  *  Ensures:
  */
-extern dsp_status dcd_unregister_object(IN struct dsp_uuid *uuid_obj,
+extern int dcd_unregister_object(IN struct dsp_uuid *uuid_obj,
 					IN enum dsp_dcdobjtype obj_type);
 
 #endif /* _DBDCD_H */

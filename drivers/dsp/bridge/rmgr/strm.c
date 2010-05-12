@@ -22,7 +22,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -88,7 +87,7 @@ struct strm_object {
 static u32 refs;		/* module reference count */
 
 /*  ----------------------------------- Function Prototypes */
-static dsp_status delete_strm(struct strm_object *hStrm);
+static int delete_strm(struct strm_object *hStrm);
 static void delete_strm_mgr(struct strm_mgr *strm_mgr_obj);
 
 /*
@@ -96,11 +95,11 @@ static void delete_strm_mgr(struct strm_mgr *strm_mgr_obj);
  *  Purpose:
  *      Allocates buffers for a stream.
  */
-dsp_status strm_allocate_buffer(struct strm_res_object *strmres, u32 usize,
+int strm_allocate_buffer(struct strm_res_object *strmres, u32 usize,
 				OUT u8 **ap_buffer, u32 num_bufs,
 				struct process_context *pr_ctxt)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	u32 alloc_cnt = 0;
 	u32 i;
 	struct strm_object *hstrm = strmres->hstream;
@@ -148,12 +147,12 @@ func_end:
  *  Purpose:
  *      Close a stream opened with strm_open().
  */
-dsp_status strm_close(struct strm_res_object *strmres,
+int strm_close(struct strm_res_object *strmres,
 		      struct process_context *pr_ctxt)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct chnl_info chnl_info_obj;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct strm_object *hstrm = strmres->hstream;
 
 	DBC_REQUIRE(refs > 0);
@@ -162,7 +161,7 @@ dsp_status strm_close(struct strm_res_object *strmres,
 		status = -EFAULT;
 	} else {
 		/* Have all buffers been reclaimed? If not, return
-		 * DSP_EPENDING */
+		 * -EPIPE */
 		intf_fxns = hstrm->strm_mgr_obj->intf_fxns;
 		status =
 		    (*intf_fxns->pfn_chnl_get_info) (hstrm->chnl_obj,
@@ -170,7 +169,7 @@ dsp_status strm_close(struct strm_res_object *strmres,
 		DBC_ASSERT(DSP_SUCCEEDED(status));
 
 		if (chnl_info_obj.cio_cs > 0 || chnl_info_obj.cio_reqs > 0)
-			status = DSP_EPENDING;
+			status = -EPIPE;
 		else
 			status = delete_strm(hstrm);
 	}
@@ -180,8 +179,8 @@ dsp_status strm_close(struct strm_res_object *strmres,
 
 	idr_remove(pr_ctxt->strm_idp, strmres->id);
 func_end:
-	DBC_ENSURE(status == DSP_SOK || status == -EFAULT ||
-		   status == DSP_EPENDING || status == -EPERM);
+	DBC_ENSURE(status == 0 || status == -EFAULT ||
+		   status == -EPIPE || status == -EPERM);
 
 	dev_dbg(bridge, "%s: hstrm: %p, status 0x%x\n", __func__,
 		hstrm, status);
@@ -193,11 +192,11 @@ func_end:
  *  Purpose:
  *      Create a STRM manager object.
  */
-dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
+int strm_create(OUT struct strm_mgr **phStrmMgr,
 		       struct dev_object *dev_obj)
 {
 	struct strm_mgr *strm_mgr_obj;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phStrmMgr != NULL);
@@ -226,8 +225,8 @@ dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
 	else
 		delete_strm_mgr(strm_mgr_obj);
 
-	DBC_ENSURE(DSP_SUCCEEDED(status) &&
-		(*phStrmMgr || (DSP_FAILED(status) && *phStrmMgr == NULL)));
+	DBC_ENSURE((DSP_SUCCEEDED(status) && *phStrmMgr) ||
+				(DSP_FAILED(status) && *phStrmMgr == NULL));
 
 	return status;
 }
@@ -243,8 +242,6 @@ void strm_delete(struct strm_mgr *strm_mgr_obj)
 	DBC_REQUIRE(strm_mgr_obj);
 
 	delete_strm_mgr(strm_mgr_obj);
-
-	DBC_ENSURE(!strm_mgr_obj);
 }
 
 /*
@@ -266,10 +263,10 @@ void strm_exit(void)
  *  Purpose:
  *      Frees the buffers allocated for a stream.
  */
-dsp_status strm_free_buffer(struct strm_res_object *strmres, u8 ** ap_buffer,
+int strm_free_buffer(struct strm_res_object *strmres, u8 ** ap_buffer,
 			    u32 num_bufs, struct process_context *pr_ctxt)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	u32 i = 0;
 	struct strm_object *hstrm = strmres->hstream;
 
@@ -299,13 +296,13 @@ dsp_status strm_free_buffer(struct strm_res_object *strmres, u8 ** ap_buffer,
  *  Purpose:
  *      Retrieves information about a stream.
  */
-dsp_status strm_get_info(struct strm_object *hStrm,
+int strm_get_info(struct strm_object *hStrm,
 			 OUT struct stream_info *stream_info,
 			 u32 stream_info_size)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct chnl_info chnl_info_obj;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	void *virt_base = NULL;	/* NULL if no SM used */
 
 	DBC_REQUIRE(refs > 0);
@@ -366,10 +363,10 @@ func_end:
  *  Purpose:
  *      Idles a particular stream.
  */
-dsp_status strm_idle(struct strm_object *hStrm, bool fFlush)
+int strm_idle(struct strm_object *hStrm, bool fFlush)
 {
 	struct bridge_drv_interface *intf_fxns;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 
@@ -411,11 +408,11 @@ bool strm_init(void)
  *  Purpose:
  *      Issues a buffer on a stream
  */
-dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
+int strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
 		      u32 ul_buf_size, u32 dw_arg)
 {
 	struct bridge_drv_interface *intf_fxns;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	void *tmp_buf = NULL;
 
 	DBC_REQUIRE(refs > 0);
@@ -431,7 +428,7 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
 						       (void *)pbuf,
 						       CMM_VA2DSPPA);
 			if (tmp_buf == NULL)
-				status = DSP_ETRANSLATE;
+				status = -ESRCH;
 
 		}
 		if (DSP_SUCCEEDED(status)) {
@@ -439,7 +436,7 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
 			    (hStrm->chnl_obj, pbuf, ul_bytes, ul_buf_size,
 			     (u32) tmp_buf, dw_arg);
 		}
-		if (status == CHNL_E_NOIORPS)
+		if (status == -EIO)
 			status = -ENOSR;
 	}
 
@@ -455,7 +452,7 @@ dsp_status strm_issue(struct strm_object *hStrm, IN u8 *pbuf, u32 ul_bytes,
  *      Open a stream for sending/receiving data buffers to/from a task or
  *      XDAIS socket node on the DSP.
  */
-dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
+int strm_open(struct node_object *hnode, u32 dir, u32 index,
 		     IN struct strm_attr *pattr,
 		     OUT struct strm_res_object **strmres,
 		     struct process_context *pr_ctxt)
@@ -466,7 +463,7 @@ dsp_status strm_open(struct node_object *hnode, u32 dir, u32 index,
 	struct strm_object *strm_obj = NULL;
 	s8 chnl_mode;
 	struct chnl_attr chnl_attr_obj;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct cmm_object *hcmm_mgr = NULL;	/* Shared memory manager hndl */
 
 	bhandle hstrm_res;
@@ -575,10 +572,10 @@ func_cont:
 				 * strm_mgr_obj->hchnl_mgr better be valid or we
 				 * assert here), and then return -EPERM.
 				 */
-				DBC_ASSERT(status == CHNL_E_OUTOFSTREAMS ||
-					   status == CHNL_E_BADCHANID ||
+				DBC_ASSERT(status == -ENOSR ||
+					   status == -ECHRNG ||
 					   status == -EALREADY ||
-					   status == CHNL_E_NOIORPS);
+					   status == -EIO);
 				status = -EPERM;
 			}
 		}
@@ -597,9 +594,8 @@ func_cont:
 	/* ensure we return a documented error code */
 	DBC_ENSURE((DSP_SUCCEEDED(status) && strm_obj) ||
 		   (*strmres == NULL && (status == -EFAULT ||
-					status == -EPERM
-					|| status == -EINVAL
-					|| status == -EPERM)));
+					status == -EPERM ||
+					status == -EINVAL)));
 
 	dev_dbg(bridge, "%s: hnode: %p dir: 0x%x index: 0x%x pattr: %p "
 		"strmres: %p status: 0x%x\n", __func__,
@@ -612,12 +608,12 @@ func_cont:
  *  Purpose:
  *      Relcaims a buffer from a stream.
  */
-dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
+int strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 			u32 *pulBytes, u32 *pulBufSize, u32 *pdw_arg)
 {
 	struct bridge_drv_interface *intf_fxns;
 	struct chnl_ioc chnl_ioc_obj;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	void *tmp_buf = NULL;
 
 	DBC_REQUIRE(refs > 0);
@@ -671,7 +667,7 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 							       CMM_PA2VA);
 			}
 			if (tmp_buf == NULL)
-				status = DSP_ETRANSLATE;
+				status = -ESRCH;
 
 			chnl_ioc_obj.pbuf = tmp_buf;
 		}
@@ -680,7 +676,7 @@ dsp_status strm_reclaim(struct strm_object *hStrm, OUT u8 ** buf_ptr,
 func_end:
 	/* ensure we return a documented return code */
 	DBC_ENSURE(DSP_SUCCEEDED(status) || status == -EFAULT ||
-		   status == -ETIME || status == DSP_ETRANSLATE ||
+		   status == -ETIME || status == -ESRCH ||
 		   status == -EPERM);
 
 	dev_dbg(bridge, "%s: hStrm: %p buf_ptr: %p pulBytes: %p pdw_arg: %p "
@@ -694,12 +690,12 @@ func_end:
  *  Purpose:
  *      Register to be notified on specific events for this stream.
  */
-dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
+int strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 				u32 notify_type, struct dsp_notification
 				* hnotification)
 {
 	struct bridge_drv_interface *intf_fxns;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(hnotification != NULL);
@@ -725,7 +721,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
 	}
 	/* ensure we return a documented return code */
 	DBC_ENSURE(DSP_SUCCEEDED(status) || status == -EFAULT ||
-		   status == -ETIME || status == DSP_ETRANSLATE ||
+		   status == -ETIME || status == -ESRCH ||
 		   status == -ENOSYS || status == -EPERM);
 	return status;
 }
@@ -735,7 +731,7 @@ dsp_status strm_register_notify(struct strm_object *hStrm, u32 event_mask,
  *  Purpose:
  *      Selects a ready stream.
  */
-dsp_status strm_select(IN struct strm_object **strm_tab, u32 nStrms,
+int strm_select(IN struct strm_object **strm_tab, u32 nStrms,
 		       OUT u32 *pmask, u32 utimeout)
 {
 	u32 index;
@@ -743,7 +739,7 @@ dsp_status strm_select(IN struct strm_object **strm_tab, u32 nStrms,
 	struct bridge_drv_interface *intf_fxns;
 	struct sync_object **sync_events = NULL;
 	u32 i;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(strm_tab != NULL);
@@ -820,10 +816,10 @@ func_end:
  *  Purpose:
  *      Frees the resources allocated for a stream.
  */
-static dsp_status delete_strm(struct strm_object *hStrm)
+static int delete_strm(struct strm_object *hStrm)
 {
 	struct bridge_drv_interface *intf_fxns;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	if (hStrm) {
 		if (hStrm->chnl_obj) {

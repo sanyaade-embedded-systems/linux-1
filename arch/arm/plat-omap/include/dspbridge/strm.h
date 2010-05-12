@@ -34,7 +34,7 @@
  *      num_bufs:       Number of buffers to allocate.
  *      ap_buffer:       Array to hold buffer addresses.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid hStrm.
  *      -ENOMEM:    Insufficient memory.
  *      -EPERM:      Failure occurred, unable to allocate buffers.
@@ -44,7 +44,7 @@
  *      ap_buffer != NULL.
  *  Ensures:
  */
-extern dsp_status strm_allocate_buffer(struct strm_res_object *strmres,
+extern int strm_allocate_buffer(struct strm_res_object *strmres,
 				       u32 usize,
 				       OUT u8 **ap_buffer,
 				       u32 num_bufs,
@@ -57,16 +57,16 @@ extern dsp_status strm_allocate_buffer(struct strm_res_object *strmres,
  *  Parameter:
  *      hStrm:          Stream handle returned from strm_open().
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid hStrm.
- *      DSP_EPENDING:   Some data buffers issued to the stream have not
+ *      -EPIPE:   Some data buffers issued to the stream have not
  *                      been reclaimed.
  *      -EPERM:      Failure to close stream.
  *  Requires:
  *      strm_init(void) called.
  *  Ensures:
  */
-extern dsp_status strm_close(struct strm_res_object *strmres,
+extern int strm_close(struct strm_res_object *strmres,
 			     struct process_context *pr_ctxt);
 
 /*
@@ -79,7 +79,7 @@ extern dsp_status strm_close(struct strm_res_object *strmres,
  *                      output.
  *      dev_obj:           Device for this processor.
  *  Returns:
- *      DSP_SOK:        Success;
+ *      0:        Success;
  *      -ENOMEM:    Insufficient memory for requested resources.
  *      -EPERM:      General failure.
  *  Requires:
@@ -87,10 +87,10 @@ extern dsp_status strm_close(struct strm_res_object *strmres,
  *      phStrmMgr != NULL.
  *      dev_obj != NULL.
  *  Ensures:
- *      DSP_SOK:        Valid *phStrmMgr.
+ *      0:        Valid *phStrmMgr.
  *      error:          *phStrmMgr == NULL.
  */
-extern dsp_status strm_create(OUT struct strm_mgr **phStrmMgr,
+extern int strm_create(OUT struct strm_mgr **phStrmMgr,
 			      struct dev_object *dev_obj);
 
 /*
@@ -129,7 +129,7 @@ extern void strm_exit(void);
  *      ap_buffer:       Array containing buffer addresses.
  *      num_bufs:       Number of buffers to be freed.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid stream handle.
  *      -EPERM:      Failure occurred, unable to free buffers.
  *  Requires:
@@ -137,7 +137,7 @@ extern void strm_exit(void);
  *      ap_buffer != NULL.
  *  Ensures:
  */
-extern dsp_status strm_free_buffer(struct strm_res_object *strmres,
+extern int strm_free_buffer(struct strm_res_object *strmres,
 				   u8 **ap_buffer, u32 num_bufs,
 				   struct process_context *pr_ctxt);
 
@@ -150,14 +150,14 @@ extern dsp_status strm_free_buffer(struct strm_res_object *strmres,
  *      hStrm:          Stream handle returned from strm_open().
  *      ph_event:        Location to store event handle on output.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid hStrm.
  *  Requires:
  *      strm_init(void) called.
  *      ph_event != NULL.
  *  Ensures:
  */
-extern dsp_status strm_get_event_handle(struct strm_object *hStrm,
+extern int strm_get_event_handle(struct strm_object *hStrm,
 					OUT bhandle *ph_event);
 
 /*
@@ -170,7 +170,7 @@ extern dsp_status strm_get_event_handle(struct strm_object *hStrm,
  *      stream_info:        Location to store stream info on output.
  *      uSteamInfoSize:     Size of user's dsp_streaminfo structure.
  *  Returns:
- *      DSP_SOK:            Success.
+ *      0:            Success.
  *      -EFAULT:        Invalid hStrm.
  *      -EINVAL:          stream_info_size < sizeof(dsp_streaminfo).
  *      -EPERM:          Unable to get stream info.
@@ -179,7 +179,7 @@ extern dsp_status strm_get_event_handle(struct strm_object *hStrm,
  *      stream_info != NULL.
  *  Ensures:
  */
-extern dsp_status strm_get_info(struct strm_object *hStrm,
+extern int strm_get_info(struct strm_object *hStrm,
 				OUT struct stream_info *stream_info,
 				u32 stream_info_size);
 
@@ -198,7 +198,7 @@ extern dsp_status strm_get_info(struct strm_object *hStrm,
  *      hStrm:          Stream handle returned from strm_open().
  *      fFlush:         If TRUE, discard output buffers.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid hStrm.
  *      -ETIME:   A timeout occurred before the stream could be idled.
  *      DSP_ERESTART:   A critical error occurred, DSP is being restarted.
@@ -207,7 +207,7 @@ extern dsp_status strm_get_info(struct strm_object *hStrm,
  *      strm_init(void) called.
  *  Ensures:
  */
-extern dsp_status strm_idle(struct strm_object *hStrm, bool fFlush);
+extern int strm_idle(struct strm_object *hStrm, bool fFlush);
 
 /*
  *  ======== strm_init ========
@@ -232,7 +232,7 @@ extern bool strm_init(void);
  *      ul_buf_size:          Actual buffer size in bytes.
  *      dw_arg:              A user argument that travels with the buffer.
  *  Returns:
- *      DSP_SOK:            Success.
+ *      0:            Success.
  *      -EFAULT:        Invalid hStrm.
  *      -ENOSR:    The stream is full.
  *      -EPERM:          Failure occurred, unable to issue buffer.
@@ -241,7 +241,7 @@ extern bool strm_init(void);
  *      pbuf != NULL.
  *  Ensures:
  */
-extern dsp_status strm_issue(struct strm_object *hStrm, IN u8 * pbuf,
+extern int strm_issue(struct strm_object *hStrm, IN u8 * pbuf,
 			     u32 ul_bytes, u32 ul_buf_size, IN u32 dw_arg);
 
 /*
@@ -257,7 +257,7 @@ extern dsp_status strm_issue(struct strm_object *hStrm, IN u8 * pbuf,
  *                      applied to stream. Cannot be NULL.
  *      phStrm:         Location to store stream handle on output.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid hnode.
  *      -EPERM: Invalid dir.
  *      -EINVAL:     Invalid index.
@@ -268,10 +268,10 @@ extern dsp_status strm_issue(struct strm_object *hStrm, IN u8 * pbuf,
  *      phStrm != NULL.
  *      pattr != NULL.
  *  Ensures:
- *      DSP_SOK:        *phStrm is valid.
+ *      0:        *phStrm is valid.
  *      error:          *phStrm == NULL.
  */
-extern dsp_status strm_open(struct node_object *hnode, u32 dir,
+extern int strm_open(struct node_object *hnode, u32 dir,
 			    u32 index, IN struct strm_attr *pattr,
 			    OUT struct strm_res_object **strmres,
 			    struct process_context *pr_ctxt);
@@ -286,7 +286,7 @@ extern dsp_status strm_open(struct node_object *hnode, u32 dir,
  *      usize:          Size (GPP bytes) of the buffer.
  *      pbuffer:        Buffer address.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid hStrm.
  *      -EPERM:      Failure occurred, unable to prepare buffer.
  *  Requires:
@@ -294,7 +294,7 @@ extern dsp_status strm_open(struct node_object *hnode, u32 dir,
  *      pbuffer != NULL.
  *  Ensures:
  */
-extern dsp_status strm_prepare_buffer(struct strm_object *hStrm,
+extern int strm_prepare_buffer(struct strm_object *hStrm,
 				      u32 usize, u8 *pbuffer);
 
 /*
@@ -310,7 +310,7 @@ extern dsp_status strm_prepare_buffer(struct strm_object *hStrm,
  *      pdw_arg:         Location where user argument that travels with
  *                      the buffer will be written.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid hStrm.
  *      -ETIME:   A timeout occurred before a buffer could be
  *                      retrieved.
@@ -322,7 +322,7 @@ extern dsp_status strm_prepare_buffer(struct strm_object *hStrm,
  *      pdw_arg != NULL.
  *  Ensures:
  */
-extern dsp_status strm_reclaim(struct strm_object *hStrm,
+extern int strm_reclaim(struct strm_object *hStrm,
 			       OUT u8 **buf_ptr, u32 * pulBytes,
 			       u32 *pulBufSize, u32 *pdw_arg);
 
@@ -336,7 +336,7 @@ extern dsp_status strm_reclaim(struct strm_object *hStrm,
  *      notify_type:    Type of notification to be sent.
  *      hnotification:  Handle to be used for notification.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid hStrm.
  *      -ENOMEM:    Insufficient memory on GPP.
  *      -EINVAL:     event_mask is invalid.
@@ -347,7 +347,7 @@ extern dsp_status strm_reclaim(struct strm_object *hStrm,
  *      hnotification != NULL.
  *  Ensures:
  */
-extern dsp_status strm_register_notify(struct strm_object *hStrm,
+extern int strm_register_notify(struct strm_object *hStrm,
 				       u32 event_mask, u32 notify_type,
 				       struct dsp_notification
 				       *hnotification);
@@ -362,7 +362,7 @@ extern dsp_status strm_register_notify(struct strm_object *hStrm,
  *      pmask:          Location to store mask of ready streams on output.
  *      utimeout:       Timeout value (milliseconds).
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EDOM:     nStrms out of range.
 
  *      -EFAULT:    Invalid stream handle in array.
@@ -374,10 +374,10 @@ extern dsp_status strm_register_notify(struct strm_object *hStrm,
  *      nStrms > 0.
  *      pmask != NULL.
  *  Ensures:
- *      DSP_SOK:        *pmask != 0 || utimeout == 0.
+ *      0:        *pmask != 0 || utimeout == 0.
  *      Error:          *pmask == 0.
  */
-extern dsp_status strm_select(IN struct strm_object **strm_tab,
+extern int strm_select(IN struct strm_object **strm_tab,
 			      u32 nStrms, OUT u32 *pmask, u32 utimeout);
 
 /*
@@ -391,7 +391,7 @@ extern dsp_status strm_select(IN struct strm_object **strm_tab,
  *      usize:          Size (GPP bytes) of the buffer.
  *      pbuffer:        Buffer address.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    Invalid hStrm.
  *      -EPERM:      Failure occurred, unable to unprepare buffer.
  *  Requires:
@@ -399,7 +399,7 @@ extern dsp_status strm_select(IN struct strm_object **strm_tab,
  *      pbuffer != NULL.
  *  Ensures:
  */
-extern dsp_status strm_unprepare_buffer(struct strm_object *hStrm,
+extern int strm_unprepare_buffer(struct strm_object *hStrm,
 					u32 usize, u8 *pbuffer);
 
 #endif /* STRM_ */

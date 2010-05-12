@@ -22,7 +22,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -105,7 +104,7 @@ static u32 refs;
 DEFINE_MUTEX(proc_lock);	/* For critical sections */
 
 /*  ----------------------------------- Function Prototypes */
-static dsp_status proc_monitor(struct proc_object *hprocessor);
+static int proc_monitor(struct proc_object *hprocessor);
 static s32 get_envp_count(char **envp);
 static char **prepend_envp(char **new_envp, char **envp, s32 envp_elems,
 			   s32 cnew_envp, char *szVar);
@@ -116,12 +115,12 @@ static char **prepend_envp(char **new_envp, char **envp, s32 envp_elems,
  *      Prepare for communication with a particular DSP processor, and return
  *      a handle to the processor object.
  */
-dsp_status
+int
 proc_attach(u32 processor_id,
 	    OPTIONAL CONST struct dsp_processorattrin *attr_in,
 	    void **ph_processor, struct process_context *pr_ctxt)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *hdev_obj;
 	struct proc_object *p_proc_object = NULL;
 	struct mgr_object *hmgr_obj = NULL;
@@ -206,7 +205,7 @@ proc_attach(u32 processor_id,
 						is_already_attached);
 		if (DSP_SUCCEEDED(status)) {
 			if (p_proc_object->is_already_attached)
-				status = DSP_SALREADYATTACHED;
+				status = 0;
 		} else {
 			if (p_proc_object->ntfy_obj) {
 				ntfy_delete(p_proc_object->ntfy_obj);
@@ -232,7 +231,7 @@ func_end:
 	return status;
 }
 
-static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
+static int get_exec_file(struct cfg_devnode *dev_node_obj,
 				struct dev_object *hdev_obj,
 				u32 size, char *execFile)
 {
@@ -246,7 +245,7 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
 		if (iva_img) {
 			len = strlen(iva_img);
 			strncpy(execFile, iva_img, len + 1);
-			return DSP_SOK;
+			return 0;
 		}
 	}
 	return -ENOENT;
@@ -260,16 +259,16 @@ static dsp_status get_exec_file(struct cfg_devnode *dev_node_obj,
  *  Parameters:
  *      hdev_obj:     Handle to the Device
  *  Returns:
- *      DSP_SOK:   On Successful Loading
+ *      0:   On Successful Loading
  *      -EPERM  General Failure
  *  Requires:
  *      hdev_obj != NULL
  *  Ensures:
  */
-dsp_status proc_auto_start(struct cfg_devnode *dev_node_obj,
+int proc_auto_start(struct cfg_devnode *dev_node_obj,
 			   struct dev_object *hdev_obj)
 {
-	dsp_status status = -EPERM;
+	int status = -EPERM;
 	struct proc_object *p_proc_object;
 	char sz_exec_file[MAXCMDLINELEN];
 	char *argv[2];
@@ -337,9 +336,9 @@ func_end:
  *      Call the WMD_ICOTL fxn with the Argument This is a Synchronous
  *      Operation. arg can be null.
  */
-dsp_status proc_ctrl(void *hprocessor, u32 dw_cmd, IN struct dsp_cbdata * arg)
+int proc_ctrl(void *hprocessor, u32 dw_cmd, IN struct dsp_cbdata * arg)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = hprocessor;
 	u32 timeout = 0;
 
@@ -370,7 +369,7 @@ dsp_status proc_ctrl(void *hprocessor, u32 dw_cmd, IN struct dsp_cbdata * arg)
 		    if (DSP_SUCCEEDED((*p_proc_object->intf_fxns->pfn_dev_cntrl)
 				      (p_proc_object->hwmd_context, dw_cmd,
 				       arg))) {
-			status = DSP_SOK;
+			status = 0;
 		} else {
 			status = -EPERM;
 		}
@@ -387,9 +386,9 @@ dsp_status proc_ctrl(void *hprocessor, u32 dw_cmd, IN struct dsp_cbdata * arg)
  *      Destroys the  Processor Object. Removes the notification from the Dev
  *      List.
  */
-dsp_status proc_detach(struct process_context *pr_ctxt)
+int proc_detach(struct process_context *pr_ctxt)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = NULL;
 
 	DBC_REQUIRE(refs > 0);
@@ -426,11 +425,11 @@ dsp_status proc_detach(struct process_context *pr_ctxt)
  *      Enumerate and get configuration information about nodes allocated
  *      on a DSP processor.
  */
-dsp_status proc_enum_nodes(void *hprocessor, void **node_tab,
+int proc_enum_nodes(void *hprocessor, void **node_tab,
 			   IN u32 node_tab_size, OUT u32 *pu_num_nodes,
 			   OUT u32 *pu_allocated)
 {
-	dsp_status status = -EPERM;
+	int status = -EPERM;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct node_mgr *hnode_mgr = NULL;
 
@@ -528,11 +527,11 @@ static int memory_sync_vma(unsigned long start, u32 len,
 	return err;
 }
 
-static dsp_status proc_memory_sync(void *hprocessor, void *pmpu_addr,
+static int proc_memory_sync(void *hprocessor, void *pmpu_addr,
 				   u32 ul_size, u32 ul_flags)
 {
 	/* Keep STATUS here for future additions to this function */
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 
 	DBC_REQUIRE(refs > 0);
@@ -563,7 +562,7 @@ err_out:
  *  Purpose:
  *     Flush cache
  */
-dsp_status proc_flush_memory(void *hprocessor, void *pmpu_addr,
+int proc_flush_memory(void *hprocessor, void *pmpu_addr,
 			     u32 ul_size, u32 ul_flags)
 {
 	return proc_memory_sync(hprocessor, pmpu_addr, ul_size, ul_flags);
@@ -574,7 +573,7 @@ dsp_status proc_flush_memory(void *hprocessor, void *pmpu_addr,
  *  Purpose:
  *     Invalidates the memory specified
  */
-dsp_status proc_invalidate_memory(void *hprocessor, void *pmpu_addr,
+int proc_invalidate_memory(void *hprocessor, void *pmpu_addr,
 				  u32 ul_size)
 {
 	return proc_memory_sync(hprocessor, pmpu_addr, ul_size, 0);
@@ -585,11 +584,11 @@ dsp_status proc_invalidate_memory(void *hprocessor, void *pmpu_addr,
  *  Purpose:
  *      Enumerate the resources currently available on a processor.
  */
-dsp_status proc_get_resource_info(void *hprocessor, u32 resource_type,
+int proc_get_resource_info(void *hprocessor, u32 resource_type,
 				  OUT struct dsp_resourceinfo *resource_info,
 				  u32 resource_info_size)
 {
-	dsp_status status = -EPERM;
+	int status = -EPERM;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct node_mgr *hnode_mgr = NULL;
 	struct nldr_object *nldr_obj = NULL;
@@ -668,10 +667,10 @@ void proc_exit(void)
  *      Return the Dev Object handle for a given Processor.
  *
  */
-dsp_status proc_get_dev_object(void *hprocessor,
+int proc_get_dev_object(void *hprocessor,
 			       struct dev_object **phDevObject)
 {
-	dsp_status status = -EPERM;
+	int status = -EPERM;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 
 	DBC_REQUIRE(refs > 0);
@@ -679,7 +678,7 @@ dsp_status proc_get_dev_object(void *hprocessor,
 
 	if (p_proc_object) {
 		*phDevObject = p_proc_object->hdev_obj;
-		status = DSP_SOK;
+		status = 0;
 	} else {
 		*phDevObject = NULL;
 		status = -EFAULT;
@@ -696,11 +695,11 @@ dsp_status proc_get_dev_object(void *hprocessor,
  *  Purpose:
  *      Report the state of the specified DSP processor.
  */
-dsp_status proc_get_state(void *hprocessor,
+int proc_get_state(void *hprocessor,
 			  OUT struct dsp_processorstate *proc_state_obj,
 			  u32 state_info_size)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	int brd_status;
 	struct deh_mgr *hdeh_mgr;
@@ -761,9 +760,9 @@ dsp_status proc_get_state(void *hprocessor,
  *      This call is destructive, meaning the processor is placed in the monitor
  *      state as a result of this function.
  */
-dsp_status proc_get_trace(void *hprocessor, u8 * pbuf, u32 max_size)
+int proc_get_trace(void *hprocessor, u8 * pbuf, u32 max_size)
 {
-	dsp_status status;
+	int status;
 	status = -ENOSYS;
 	return status;
 }
@@ -794,10 +793,10 @@ bool proc_init(void)
  *      This will be an OEM-only function, and not part of the DSP/BIOS Bridge
  *      application developer's API.
  */
-dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
+int proc_load(void *hprocessor, IN CONST s32 argc_index,
 		     IN CONST char **user_args, IN CONST char **user_envp)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct io_mgr *hio_mgr;	/* IO manager handle */
 	struct msg_mgr *hmsg_mgr;
@@ -905,14 +904,14 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 		if (DSP_SUCCEEDED(status)) {
 			/*  Auto register nodes in specified COFF
 			 *  file.  If registration did not fail,
-			 *  (status = DSP_SOK or DSP_EDCDNOAUTOREGISTER)
+			 *  (status = 0 or -EACCES)
 			 *  save the name of the COFF file for
 			 *  de-registration in the future. */
 			status =
 			    dcd_auto_register(hdcd_handle,
 					      (char *)user_args[0]);
-			if (status == DSP_EDCDNOAUTOREGISTER)
-				status = DSP_SOK;
+			if (status == -EACCES)
+				status = 0;
 
 			if (DSP_FAILED(status)) {
 				status = -EPERM;
@@ -968,7 +967,7 @@ dsp_status proc_load(void *hprocessor, IN CONST s32 argc_index,
 				dev_dbg(bridge, "%s: Failure to Load the EXE\n",
 					__func__);
 			}
-			if (status == COD_E_SYMBOLNOTFOUND) {
+			if (status == -ESPIPE) {
 				pr_err("%s: Couldn't parse the file\n",
 				       __func__);
 			}
@@ -1061,7 +1060,7 @@ func_end:
  *  Purpose:
  *      Maps a MPU buffer to DSP address space.
  */
-dsp_status proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
+int proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
 		    void *req_addr, void **pp_map_addr, u32 ul_map_attr,
 		    struct process_context *pr_ctxt)
 {
@@ -1069,7 +1068,7 @@ dsp_status proc_map(void *hprocessor, void *pmpu_addr, u32 ul_size,
 	u32 pa_align;
 	struct dmm_object *dmm_mgr;
 	u32 size_align;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct dmm_map_object *map_obj;
 
@@ -1149,11 +1148,11 @@ func_end:
  *  Purpose:
  *      Register to be notified of specific processor events.
  */
-dsp_status proc_register_notify(void *hprocessor, u32 event_mask,
+int proc_register_notify(void *hprocessor, u32 event_mask,
 				u32 notify_type, struct dsp_notification
 				* hnotification)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct deh_mgr *hdeh_mgr;
 
@@ -1226,12 +1225,12 @@ func_end:
  *  Purpose:
  *      Reserve a virtually contiguous region of DSP address space.
  */
-dsp_status proc_reserve_memory(void *hprocessor, u32 ul_size,
+int proc_reserve_memory(void *hprocessor, u32 ul_size,
 			       void **pp_rsv_addr,
 			       struct process_context *pr_ctxt)
 {
 	struct dmm_object *dmm_mgr;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct dmm_rsv_object *rsv_obj;
 
@@ -1247,7 +1246,7 @@ dsp_status proc_reserve_memory(void *hprocessor, u32 ul_size,
 	}
 
 	status = dmm_reserve_memory(dmm_mgr, ul_size, (u32 *) pp_rsv_addr);
-	if (status != DSP_SOK)
+	if (status != 0)
 		goto func_end;
 
 	/*
@@ -1275,9 +1274,9 @@ func_end:
  *  Purpose:
  *      Start a processor running.
  */
-dsp_status proc_start(void *hprocessor)
+int proc_start(void *hprocessor)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct cod_manager *cod_mgr;	/* Code manager handle */
 	u32 dw_dsp_addr;	/* Loaded code's entry point. */
@@ -1290,7 +1289,7 @@ dsp_status proc_start(void *hprocessor)
 	}
 	/* Call the bridge_brd_start */
 	if (p_proc_object->proc_state != PROC_LOADED) {
-		status = DSP_EWRONGSTATE;
+		status = -EBADR;
 		goto func_end;
 	}
 	dev_get_cod_mgr(p_proc_object->hdev_obj, &cod_mgr);
@@ -1349,9 +1348,9 @@ func_end:
  *  Purpose:
  *      Stop a processor running.
  */
-dsp_status proc_stop(void *hprocessor)
+int proc_stop(void *hprocessor)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct msg_mgr *hmsg_mgr;
 	struct node_mgr *hnode_mgr;
@@ -1379,7 +1378,7 @@ dsp_status proc_stop(void *hprocessor)
 		if ((status == -EINVAL) || (nodes_allocated > 0)) {
 			pr_err("%s: Can't stop device, active nodes = %d \n",
 			       __func__, nodes_allocated);
-			return DSP_EWRONGSTATE;
+			return -EBADR;
 		}
 	}
 	/* Call the bridge_brd_stop */
@@ -1418,10 +1417,10 @@ func_end:
  *  Purpose:
  *      Removes a MPU buffer mapping from the DSP address space.
  */
-dsp_status proc_un_map(void *hprocessor, void *map_addr,
+int proc_un_map(void *hprocessor, void *map_addr,
 		       struct process_context *pr_ctxt)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct dmm_object *dmm_mgr;
 	u32 va_align;
@@ -1482,11 +1481,11 @@ func_end:
  *  Purpose:
  *      Frees a previously reserved region of DSP address space.
  */
-dsp_status proc_un_reserve_memory(void *hprocessor, void *prsv_addr,
+int proc_un_reserve_memory(void *hprocessor, void *prsv_addr,
 				  struct process_context *pr_ctxt)
 {
 	struct dmm_object *dmm_mgr;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hprocessor;
 	struct dmm_rsv_object *rsv_obj;
 
@@ -1502,7 +1501,7 @@ dsp_status proc_un_reserve_memory(void *hprocessor, void *prsv_addr,
 	}
 
 	status = dmm_un_reserve_memory(dmm_mgr, (u32) prsv_addr);
-	if (status != DSP_SOK)
+	if (status != 0)
 		goto func_end;
 
 	/*
@@ -1536,16 +1535,16 @@ func_end:
  *  Parameters:
  *      p_proc_object:    Pointer to Processor Object
  *  Returns:
- *      DSP_SOK:	Processor placed in monitor mode.
- *      !DSP_SOK:       Failed to place processor in monitor mode.
+ *      0:	Processor placed in monitor mode.
+ *      !0:       Failed to place processor in monitor mode.
  *  Requires:
  *      Valid Processor Handle
  *  Ensures:
  *      Success:	ProcObject state is PROC_IDLE
  */
-static dsp_status proc_monitor(struct proc_object *p_proc_object)
+static int proc_monitor(struct proc_object *p_proc_object)
 {
-	dsp_status status = -EPERM;
+	int status = -EPERM;
 	struct msg_mgr *hmsg_mgr;
 	int brd_state;
 
@@ -1566,7 +1565,7 @@ static dsp_status proc_monitor(struct proc_object *p_proc_object)
 	/* Place the Board in the Monitor State */
 	if (DSP_SUCCEEDED((*p_proc_object->intf_fxns->pfn_brd_monitor)
 			  (p_proc_object->hwmd_context))) {
-		status = DSP_SOK;
+		status = 0;
 		if (DSP_SUCCEEDED((*p_proc_object->intf_fxns->pfn_brd_status)
 				  (p_proc_object->hwmd_context, &brd_state)))
 			DBC_ASSERT(brd_state == BRD_IDLE);
@@ -1628,9 +1627,9 @@ static char **prepend_envp(char **new_envp, char **envp, s32 envp_elems,
  *  Purpose:
  *      Notify the processor the events.
  */
-dsp_status proc_notify_clients(void *hProc, u32 uEvents)
+int proc_notify_clients(void *hProc, u32 uEvents)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hProc;
 
 	DBC_REQUIRE(p_proc_object);
@@ -1652,9 +1651,9 @@ func_end:
  *      Notify the processor the events. This includes notifying all clients
  *      attached to a particulat DSP.
  */
-dsp_status proc_notify_all_clients(void *hProc, u32 uEvents)
+int proc_notify_all_clients(void *hProc, u32 uEvents)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hProc;
 
 	DBC_REQUIRE(IS_VALID_PROC_EVENT(uEvents));
@@ -1676,9 +1675,9 @@ func_end:
  *  Purpose:
  *      Retrieves the processor ID.
  */
-dsp_status proc_get_processor_id(void *hProc, u32 * procID)
+int proc_get_processor_id(void *hProc, u32 * procID)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct proc_object *p_proc_object = (struct proc_object *)hProc;
 
 	if (p_proc_object)

@@ -36,7 +36,7 @@
  *      hdev_obj:     Device for this processor.
  *      pDispAttrs:     Node dispatcher attributes.
  *  Returns:
- *      DSP_SOK:                Success;
+ *      0:                Success;
  *      -ENOMEM:            Insufficient memory for requested resources.
  *      -EPERM:              Unable to create dispatcher.
  *  Requires:
@@ -45,10 +45,10 @@
  *      hdev_obj != NULL.
  *      phDispObject != NULL.
  *  Ensures:
- *      DSP_SOK:        IS_VALID(*phDispObject).
+ *      0:        IS_VALID(*phDispObject).
  *      error:          *phDispObject == NULL.
  */
-extern dsp_status disp_create(OUT struct disp_object **phDispObject,
+extern int disp_create(OUT struct disp_object **phDispObject,
 			      struct dev_object *hdev_obj,
 			      IN CONST struct disp_attr *pDispAttrs);
 
@@ -104,7 +104,7 @@ extern bool disp_init(void);
  *      node_env:                Address of node's environment structure.
  *      prio:              New priority level to set node's priority to.
  *  Returns:
- *      DSP_SOK:                Success.
+ *      0:                Success.
  *      -ETIME:           A timeout occurred before the DSP responded.
  *  Requires:
  *      disp_init(void) called.
@@ -112,7 +112,7 @@ extern bool disp_init(void);
  *      hnode != NULL.
  *  Ensures:
  */
-extern dsp_status disp_node_change_priority(struct disp_object
+extern int disp_node_change_priority(struct disp_object
 					    *hDispObject,
 					    struct node_object *hnode,
 					    u32 ul_fxn_addr,
@@ -131,7 +131,7 @@ extern dsp_status disp_node_change_priority(struct disp_object
  *      pNodeEnv:       Location to store node environment pointer on
  *                      output.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      DSP_ETASK:      Unable to create the node's task or process on the DSP.
  *      DSP_ESTREAM:    Stream creation failure on the DSP.
  *      -ETIME:   A timeout occurred before the DSP responded.
@@ -146,7 +146,7 @@ extern dsp_status disp_node_change_priority(struct disp_object
  *      node_get_type(hnode) != NODE_DEVICE.
  *  Ensures:
  */
-extern dsp_status disp_node_create(struct disp_object *hDispObject,
+extern int disp_node_create(struct disp_object *hDispObject,
 				   struct node_object *hnode,
 				   u32 ul_fxn_addr,
 				   u32 ul_create_fxn,
@@ -165,7 +165,7 @@ extern dsp_status disp_node_create(struct disp_object *hDispObject,
  *      ul_delete_fxn:    Address of node's delete function.
  *      node_env:        Address of node's environment structure.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -ETIME:   A timeout occurred before the DSP responded.
  *  Requires:
  *      disp_init(void) called.
@@ -173,7 +173,7 @@ extern dsp_status disp_node_create(struct disp_object *hDispObject,
  *      hnode != NULL.
  *  Ensures:
  */
-extern dsp_status disp_node_delete(struct disp_object *hDispObject,
+extern int disp_node_delete(struct disp_object *hDispObject,
 				   struct node_object *hnode,
 				   u32 ul_fxn_addr,
 				   u32 ul_delete_fxn, nodeenv node_env);
@@ -191,7 +191,7 @@ extern dsp_status disp_node_delete(struct disp_object *hDispObject,
  *      ul_execute_fxn:   Address of node's execute function.
  *      node_env:        Address of node's environment structure.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -ETIME:   A timeout occurred before the DSP responded.
  *  Requires:
  *      disp_init(void) called.
@@ -199,7 +199,7 @@ extern dsp_status disp_node_delete(struct disp_object *hDispObject,
  *      hnode != NULL.
  *  Ensures:
  */
-extern dsp_status disp_node_run(struct disp_object *hDispObject,
+extern int disp_node_run(struct disp_object *hDispObject,
 				struct node_object *hnode,
 				u32 ul_fxn_addr,
 				u32 ul_execute_fxn, nodeenv node_env);

@@ -22,7 +22,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -86,8 +85,8 @@ struct dev_object {
 static u32 refs;		/* Module reference count */
 
 /*  ----------------------------------- Function Prototypes */
-static dsp_status fxn_not_implemented(int arg, ...);
-static dsp_status init_cod_mgr(struct dev_object *dev_obj);
+static int fxn_not_implemented(int arg, ...);
+static int init_cod_mgr(struct dev_object *dev_obj);
 static void store_interface_fxns(struct bridge_drv_interface *drv_fxns,
 				 OUT struct bridge_drv_interface *intf_fxns);
 /*
@@ -102,7 +101,7 @@ u32 dev_brd_write_fxn(void *pArb, u32 ulDspAddr, void *pHostBuf,
 {
 	struct dev_object *dev_obj = (struct dev_object *)pArb;
 	u32 ul_written = 0;
-	dsp_status status;
+	int status;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pHostBuf != NULL);	/* Required of BrdWrite(). */
@@ -129,7 +128,7 @@ u32 dev_brd_write_fxn(void *pArb, u32 ulDspAddr, void *pHostBuf,
  *      Called by the operating system to load the PM Mini Driver for a
  *      PM board (device).
  */
-dsp_status dev_create_device(OUT struct dev_object **phDevObject,
+int dev_create_device(OUT struct dev_object **phDevObject,
 			     IN CONST char *pstrWMDFileName,
 			     struct cfg_devnode *dev_node_obj)
 {
@@ -141,7 +140,7 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 	struct io_attrs io_mgr_attrs;
 	u32 num_windows;
 	struct drv_object *hdrv_obj = NULL;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDevObject != NULL);
 	DBC_REQUIRE(pstrWMDFileName != NULL);
@@ -220,7 +219,7 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
 		if (status == -ENOSYS) {
 			/* It's OK for a device not to have a channel
 			 * manager: */
-			status = DSP_SOK;
+			status = 0;
 		}
 		/* Create CMM mgr even if Msg Mgr not impl. */
 		status = cmm_create(&dev_obj->hcmm_mgr,
@@ -284,9 +283,9 @@ dsp_status dev_create_device(OUT struct dev_object **phDevObject,
  *      (PROC Auto_Start) or proc_load this fxn is called. This creates
  *      the Node Manager and updates the DEV Object.
  */
-dsp_status dev_create2(struct dev_object *hdev_obj)
+int dev_create2(struct dev_object *hdev_obj)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -308,9 +307,9 @@ dsp_status dev_create2(struct dev_object *hdev_obj)
  *  Purpose:
  *      Destroys the Node manager for this device.
  */
-dsp_status dev_destroy2(struct dev_object *hdev_obj)
+int dev_destroy2(struct dev_object *hdev_obj)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -335,9 +334,9 @@ dsp_status dev_destroy2(struct dev_object *hdev_obj)
  *      Destroys the channel manager for this device, if any, calls
  *      bridge_dev_destroy(), and then attempts to unload the WMD module.
  */
-dsp_status dev_destroy_device(struct dev_object *hdev_obj)
+int dev_destroy_device(struct dev_object *hdev_obj)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -416,10 +415,10 @@ dsp_status dev_destroy_device(struct dev_object *hdev_obj)
  *      Retrieve the handle to the channel manager handle created for this
  *      device.
  */
-dsp_status dev_get_chnl_mgr(struct dev_object *hdev_obj,
+int dev_get_chnl_mgr(struct dev_object *hdev_obj,
 			    OUT struct chnl_mgr **phMgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -443,10 +442,10 @@ dsp_status dev_get_chnl_mgr(struct dev_object *hdev_obj,
  *      Retrieve the handle to the shared memory manager created for this
  *      device.
  */
-dsp_status dev_get_cmm_mgr(struct dev_object *hdev_obj,
+int dev_get_cmm_mgr(struct dev_object *hdev_obj,
 			   OUT struct cmm_object **phMgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -470,10 +469,10 @@ dsp_status dev_get_cmm_mgr(struct dev_object *hdev_obj,
  *      Retrieve the handle to the dynamic memory manager created for this
  *      device.
  */
-dsp_status dev_get_dmm_mgr(struct dev_object *hdev_obj,
+int dev_get_dmm_mgr(struct dev_object *hdev_obj,
 			   OUT struct dmm_object **phMgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -496,10 +495,10 @@ dsp_status dev_get_dmm_mgr(struct dev_object *hdev_obj,
  *  Purpose:
  *      Retrieve the COD manager create for this device.
  */
-dsp_status dev_get_cod_mgr(struct dev_object *hdev_obj,
+int dev_get_cod_mgr(struct dev_object *hdev_obj,
 			   OUT struct cod_manager **phCodMgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -520,10 +519,10 @@ dsp_status dev_get_cod_mgr(struct dev_object *hdev_obj,
 /*
  *  ========= dev_get_deh_mgr ========
  */
-dsp_status dev_get_deh_mgr(struct dev_object *hdev_obj,
+int dev_get_deh_mgr(struct dev_object *hdev_obj,
 			   OUT struct deh_mgr **phDehMgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phDehMgr != NULL);
@@ -542,10 +541,10 @@ dsp_status dev_get_deh_mgr(struct dev_object *hdev_obj,
  *  Purpose:
  *      Retrieve the platform specific device ID for this device.
  */
-dsp_status dev_get_dev_node(struct dev_object *hdev_obj,
+int dev_get_dev_node(struct dev_object *hdev_obj,
 			    OUT struct cfg_devnode **phDevNode)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -575,8 +574,6 @@ struct dev_object *dev_get_first(void)
 
 	dev_obj = (struct dev_object *)drv_get_first_dev_object();
 
-	DBC_ENSURE((dev_obj == NULL) || dev_obj);
-
 	return dev_obj;
 }
 
@@ -586,10 +583,10 @@ struct dev_object *dev_get_first(void)
  *      Retrieve the WMD interface function structure for the loaded WMD.
  *      ppIntfFxns != NULL.
  */
-dsp_status dev_get_intf_fxns(struct dev_object *hdev_obj,
+int dev_get_intf_fxns(struct dev_object *hdev_obj,
 			     OUT struct bridge_drv_interface **ppIntfFxns)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -610,10 +607,10 @@ dsp_status dev_get_intf_fxns(struct dev_object *hdev_obj,
 /*
  *  ========= dev_get_io_mgr ========
  */
-dsp_status dev_get_io_mgr(struct dev_object *hdev_obj,
+int dev_get_io_mgr(struct dev_object *hdev_obj,
 			  OUT struct io_mgr **phIOMgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phIOMgr != NULL);
@@ -644,7 +641,6 @@ struct dev_object *dev_get_next(struct dev_object *hdev_obj)
 		next_dev_object = (struct dev_object *)
 		    drv_get_next_dev_object((u32) hdev_obj);
 	}
-	DBC_ENSURE((next_dev_object == NULL) || next_dev_object);
 
 	return next_dev_object;
 }
@@ -666,10 +662,10 @@ void dev_get_msg_mgr(struct dev_object *hdev_obj, OUT struct msg_mgr **phMsgMgr)
  *  Purpose:
  *      Retrieve the Node Manager Handle
  */
-dsp_status dev_get_node_manager(struct dev_object *hdev_obj,
+int dev_get_node_manager(struct dev_object *hdev_obj,
 				OUT struct node_mgr **phNodeMgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -690,10 +686,10 @@ dsp_status dev_get_node_manager(struct dev_object *hdev_obj,
 /*
  *  ======== dev_get_symbol ========
  */
-dsp_status dev_get_symbol(struct dev_object *hdev_obj,
+int dev_get_symbol(struct dev_object *hdev_obj,
 			  IN CONST char *pstrSym, OUT u32 * pul_value)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct cod_manager *cod_mgr;
 
 	DBC_REQUIRE(refs > 0);
@@ -718,10 +714,10 @@ dsp_status dev_get_symbol(struct dev_object *hdev_obj,
  *  Purpose:
  *      Retrieve the WMD Context handle, as returned by the WMD_Create fxn.
  */
-dsp_status dev_get_wmd_context(struct dev_object *hdev_obj,
+int dev_get_wmd_context(struct dev_object *hdev_obj,
 			       OUT struct wmd_dev_context **phWmdContext)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -799,9 +795,9 @@ bool dev_init(void)
  *  Purpose:
  *      Notify all clients of this device of a change in device status.
  */
-dsp_status dev_notify_clients(struct dev_object *hdev_obj, u32 ulStatus)
+int dev_notify_clients(struct dev_object *hdev_obj, u32 ulStatus)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	struct dev_object *dev_obj = hdev_obj;
 	void *proc_obj;
@@ -818,10 +814,10 @@ dsp_status dev_notify_clients(struct dev_object *hdev_obj, u32 ulStatus)
 /*
  *  ======== dev_remove_device ========
  */
-dsp_status dev_remove_device(struct cfg_devnode *dev_node_obj)
+int dev_remove_device(struct cfg_devnode *dev_node_obj)
 {
 	struct dev_object *hdev_obj;	/* handle to device object */
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj;
 
 	/* Retrieve the device object handle originaly stored with
@@ -842,10 +838,10 @@ dsp_status dev_remove_device(struct cfg_devnode *dev_node_obj)
  *  Purpose:
  *      Set the channel manager for this device.
  */
-dsp_status dev_set_chnl_mgr(struct dev_object *hdev_obj,
+int dev_set_chnl_mgr(struct dev_object *hdev_obj,
 			    struct chnl_mgr *hmgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -877,12 +873,12 @@ void dev_set_msg_mgr(struct dev_object *hdev_obj, struct msg_mgr *hmgr)
  *  Purpose:
  *      Initializes the new device with the BRIDGE environment.
  */
-dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
+int dev_start_device(struct cfg_devnode *dev_node_obj)
 {
 	struct dev_object *hdev_obj = NULL;	/* handle to 'Bridge Device */
 	/* wmd filename */
 	char sz_wmd_file_name[CFG_MAXSEARCHPATHLEN] = "UMA";
-	dsp_status status;
+	int status;
 	struct mgr_object *hmgr_obj = NULL;
 
 	DBC_REQUIRE(refs > 0);
@@ -925,7 +921,7 @@ dsp_status dev_start_device(struct cfg_devnode *dev_node_obj)
  *  Returns:
  *      -ENOSYS:   Always.
  */
-static dsp_status fxn_not_implemented(int arg, ...)
+static int fxn_not_implemented(int arg, ...)
 {
 	return -ENOSYS;
 }
@@ -938,15 +934,15 @@ static dsp_status fxn_not_implemented(int arg, ...)
  *      dev_obj:             Pointer to device object created with
  *                              dev_create_device()
  *  Returns:
- *      DSP_SOK:                Success.
+ *      0:                Success.
  *      -EFAULT:            Invalid hdev_obj.
  *  Requires:
  *      Should only be called once by dev_create_device() for a given DevObject.
  *  Ensures:
  */
-static dsp_status init_cod_mgr(struct dev_object *dev_obj)
+static int init_cod_mgr(struct dev_object *dev_obj)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	char *sz_dummy_file = "dummy";
 
 	DBC_REQUIRE(refs > 0);
@@ -966,7 +962,7 @@ static dsp_status init_cod_mgr(struct dev_object *dev_obj)
  *      dev_obj:         Ptr to Dev Object where the list is.
   *     pbAlreadyAttached:  Ptr to return the bool
  *  Returns:
- *      DSP_SOK:           If successful.
+ *      0:           If successful.
  *  Requires:
  *      List Exists
  *      hdev_obj is Valid handle
@@ -974,12 +970,12 @@ static dsp_status init_cod_mgr(struct dev_object *dev_obj)
  *      pbAlreadyAttached != NULL
  *      proc_obj != 0
  *  Ensures:
- *      DSP_SOK and List is not Empty.
+ *      0 and List is not Empty.
  */
-dsp_status dev_insert_proc_object(struct dev_object *hdev_obj,
+int dev_insert_proc_object(struct dev_object *hdev_obj,
 				  u32 proc_obj, OUT bool *pbAlreadyAttached)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = (struct dev_object *)hdev_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -1007,7 +1003,7 @@ dsp_status dev_insert_proc_object(struct dev_object *hdev_obj,
  *      p_proc_object:        Ptr to ProcObject to insert.
  *      dev_obj          Ptr to Dev Object where the list is.
  *  Returns:
- *      DSP_SOK:            If successful.
+ *      0:            If successful.
  *  Requires:
  *      List exists and is not empty
  *      proc_obj != 0
@@ -1016,9 +1012,9 @@ dsp_status dev_insert_proc_object(struct dev_object *hdev_obj,
  *  Details:
  *      List will be deleted when the DEV is destroyed.
  */
-dsp_status dev_remove_proc_object(struct dev_object *hdev_obj, u32 proc_obj)
+int dev_remove_proc_object(struct dev_object *hdev_obj, u32 proc_obj)
 {
-	dsp_status status = -EPERM;
+	int status = -EPERM;
 	struct list_head *cur_elem;
 	struct dev_object *dev_obj = (struct dev_object *)hdev_obj;
 
@@ -1033,7 +1029,7 @@ dsp_status dev_remove_proc_object(struct dev_object *hdev_obj, u32 proc_obj)
 		/* If found, remove it. */
 		if ((u32) cur_elem == proc_obj) {
 			lst_remove_elem(dev_obj->proc_list, cur_elem);
-			status = DSP_SOK;
+			status = 0;
 			break;
 		}
 	}
@@ -1041,9 +1037,9 @@ dsp_status dev_remove_proc_object(struct dev_object *hdev_obj, u32 proc_obj)
 	return status;
 }
 
-dsp_status dev_get_dev_type(struct dev_object *hdevObject, u8 *dev_type)
+int dev_get_dev_type(struct dev_object *hdevObject, u8 *dev_type)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dev_object *dev_obj = (struct dev_object *)hdevObject;
 
 	*dev_type = dev_obj->dev_type;

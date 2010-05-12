@@ -23,7 +23,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -52,11 +51,11 @@ static u32 refs;
  *      Create a channel manager object, responsible for opening new channels
  *      and closing old ones for a given 'Bridge board.
  */
-dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
+int chnl_create(OUT struct chnl_mgr **phChnlMgr,
 		       struct dev_object *hdev_obj,
 		       IN CONST struct chnl_mgrattrs *pMgrAttrs)
 {
-	dsp_status status;
+	int status;
 	struct chnl_mgr *hchnl_mgr;
 	struct chnl_mgr_ *chnl_mgr_obj = NULL;
 
@@ -69,19 +68,19 @@ dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
 	/* Validate args: */
 	if ((0 < pMgrAttrs->max_channels) &&
 	    (pMgrAttrs->max_channels <= CHNL_MAXCHANNELS))
-		status = DSP_SOK;
+		status = 0;
 	else if (pMgrAttrs->max_channels == 0)
 		status = -EINVAL;
 	else
-		status = CHNL_E_MAXCHANNELS;
+		status = -ECHRNG;
 
 	if (pMgrAttrs->word_size == 0)
-		status = CHNL_E_INVALIDWORDSIZE;
+		status = -EINVAL;
 
 	if (DSP_SUCCEEDED(status)) {
 		status = dev_get_chnl_mgr(hdev_obj, &hchnl_mgr);
 		if (DSP_SUCCEEDED(status) && hchnl_mgr != NULL)
-			status = CHNL_E_MGREXISTS;
+			status = -EEXIST;
 
 	}
 
@@ -113,11 +112,11 @@ dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
  *  Purpose:
  *      Close all open channels, and destroy the channel manager.
  */
-dsp_status chnl_destroy(struct chnl_mgr *hchnl_mgr)
+int chnl_destroy(struct chnl_mgr *hchnl_mgr)
 {
 	struct chnl_mgr_ *chnl_mgr_obj = (struct chnl_mgr_ *)hchnl_mgr;
 	struct bridge_drv_interface *intf_fxns;
-	dsp_status status;
+	int status;
 
 	DBC_REQUIRE(refs > 0);
 
@@ -128,8 +127,6 @@ dsp_status chnl_destroy(struct chnl_mgr *hchnl_mgr)
 	} else {
 		status = -EFAULT;
 	}
-
-	DBC_ENSURE(DSP_FAILED(status) || !chnl_mgr_obj);
 
 	return status;
 }

@@ -42,15 +42,15 @@ extern void cfg_exit(void);
  *      dev_node_obj:       Handle to the dev_node who's WMD we are querying.
  *      pdwAutoStart:   Ptr to location for 32 bit autostart mask.
  *  Returns:
- *      DSP_SOK:                Success.
+ *      0:                Success.
  *      -EFAULT:  dev_node_obj is invalid.
  *      -ENODATA: Unable to retreive resource.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
- *      DSP_SOK:        *pdwAutoStart contains autostart mask for this devnode.
+ *      0:        *pdwAutoStart contains autostart mask for this devnode.
  */
-extern dsp_status cfg_get_auto_start(IN struct cfg_devnode *dev_node_obj,
+extern int cfg_get_auto_start(IN struct cfg_devnode *dev_node_obj,
 				     OUT u32 *pdwAutoStart);
 
 /*
@@ -60,17 +60,17 @@ extern dsp_status cfg_get_auto_start(IN struct cfg_devnode *dev_node_obj,
  *  Parameters:
  *      pdwVersion: Ptr to u32 to contain version number upon return.
  *  Returns:
- *      DSP_SOK:    Success.  pdwVersion contains Class Driver version in
+ *      0:    Success.  pdwVersion contains Class Driver version in
  *                  the form: 0xAABBCCDD where AABB is Major version and
  *                  CCDD is Minor.
  *      -EPERM:  Failure.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
- *      DSP_SOK:    Success.
+ *      0:    Success.
  *      else:       *pdwVersion is NULL.
  */
-extern dsp_status cfg_get_cd_version(OUT u32 *pdwVersion);
+extern int cfg_get_cd_version(OUT u32 *pdwVersion);
 
 /*
  *  ======== cfg_get_dev_object ========
@@ -81,17 +81,17 @@ extern dsp_status cfg_get_cd_version(OUT u32 *pdwVersion);
  *      		value.
  *      pdwValue:       Ptr to location to store the value.
  *  Returns:
- *      DSP_SOK:                Success.
+ *      0:                Success.
  *      -EFAULT:  dev_node_obj is invalid.
  *      -EFAULT:   phDevObject is invalid.
  *      -ENODATA: The resource is not available.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
- *      DSP_SOK:    *pdwValue is set to the retrieved u32.
+ *      0:    *pdwValue is set to the retrieved u32.
  *      else:       *pdwValue is set to 0L.
  */
-extern dsp_status cfg_get_dev_object(IN struct cfg_devnode *dev_node_obj,
+extern int cfg_get_dev_object(IN struct cfg_devnode *dev_node_obj,
 				     OUT u32 *pdwValue);
 
 /*
@@ -103,18 +103,18 @@ extern dsp_status cfg_get_dev_object(IN struct cfg_devnode *dev_node_obj,
  *      buf_size:       Size of buffer.
  *      pstrExecFile:   Ptr to character buf to hold ExecFile.
  *  Returns:
- *      DSP_SOK:                Success.
+ *      0:                Success.
  *      -EFAULT:  dev_node_obj is invalid.
  *      -EFAULT:   pstrExecFile is invalid.
  *      -ENODATA: The resource is not available.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
- *      DSP_SOK:    Not more than buf_size bytes were copied into pstrExecFile,
+ *      0:    Not more than buf_size bytes were copied into pstrExecFile,
  *                  and *pstrExecFile contains default executable for this
  *                  devnode.
  */
-extern dsp_status cfg_get_exec_file(IN struct cfg_devnode *dev_node_obj,
+extern int cfg_get_exec_file(IN struct cfg_devnode *dev_node_obj,
 				    IN u32 buf_size, OUT char *pstrExecFile);
 
 /*
@@ -125,14 +125,14 @@ extern dsp_status cfg_get_exec_file(IN struct cfg_devnode *dev_node_obj,
  *      pdwValue:   Ptr to location to store the value.
  *      dw_type      Type of Object to Get
  *  Returns:
- *      DSP_SOK:    Success.
+ *      0:    Success.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
- *      DSP_SOK:    *pdwValue is set to the retrieved u32(non-Zero).
+ *      0:    *pdwValue is set to the retrieved u32(non-Zero).
  *      else:       *pdwValue is set to 0L.
  */
-extern dsp_status cfg_get_object(OUT u32 *pdwValue, u8 dw_type);
+extern int cfg_get_object(OUT u32 *pdwValue, u8 dw_type);
 
 /*
  *  ======== cfg_get_perf_value ========
@@ -159,17 +159,17 @@ extern void cfg_get_perf_value(OUT bool *pfEnablePerf);
  *      buf_size:       Size of buffer.
  *      pWMDFileName:   Ptr to a character buffer to hold the WMD filename.
  *  Returns:
- *      DSP_SOK:                On success.
+ *      0:                On success.
  *      -EFAULT:  dev_node_obj is invalid.
  *      -ENODATA: The filename is not available.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
- *      DSP_SOK:        Not more than buf_size bytes were copied
+ *      0:        Not more than buf_size bytes were copied
  *                      into pWMDFileName.
  *
  */
-extern dsp_status cfg_get_wmd_file_name(IN struct cfg_devnode *dev_node_obj,
+extern int cfg_get_wmd_file_name(IN struct cfg_devnode *dev_node_obj,
 					IN u32 buf_size,
 					OUT char *pWMDFileName);
 
@@ -182,18 +182,18 @@ extern dsp_status cfg_get_wmd_file_name(IN struct cfg_devnode *dev_node_obj,
  *      buf_size:       Size of buffer.
  *      pstrZLFileName: Ptr to character buf to hold ZLFileName.
  *  Returns:
- *      DSP_SOK:                Success.
+ *      0:                Success.
  *      -EFAULT:   pstrZLFileName is invalid.
  *      -EFAULT:  dev_node_obj is invalid.
  *      -ENODATA: couldn't find the ZLFileName.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
- *      DSP_SOK:    Not more than buf_size bytes were copied into
+ *      0:    Not more than buf_size bytes were copied into
  *                  pstrZLFileName, and *pstrZLFileName contains ZLFileName
  *                  for this devnode.
  */
-extern dsp_status cfg_get_zl_file(IN struct cfg_devnode *dev_node_obj,
+extern int cfg_get_zl_file(IN struct cfg_devnode *dev_node_obj,
 				  IN u32 buf_size, OUT char *pstrZLFileName);
 
 /*
@@ -217,15 +217,15 @@ extern bool cfg_init(void);
  *      dev_node_obj:   Platform's dev_node handle we are storing value with.
  *      dwValue:    Arbitrary value to store.
  *  Returns:
- *      DSP_SOK:                Success.
+ *      0:                Success.
  *      -EFAULT:  dev_node_obj is invalid.
  *      -EPERM:              Internal Error.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
- *      DSP_SOK:    The Private u32 was successfully set.
+ *      0:    The Private u32 was successfully set.
  */
-extern dsp_status cfg_set_dev_object(IN struct cfg_devnode *dev_node_obj,
+extern int cfg_set_dev_object(IN struct cfg_devnode *dev_node_obj,
 				     IN u32 dwValue);
 
 /*
@@ -236,13 +236,13 @@ extern dsp_status cfg_set_dev_object(IN struct cfg_devnode *dev_node_obj,
  *      dwValue:        Arbitrary value to store.
  *      dw_type          Type of Object to Store
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EPERM:      Internal Error.
  *  Requires:
  *      CFG initialized.
  *  Ensures:
- *      DSP_SOK:        The Private u32 was successfully set.
+ *      0:        The Private u32 was successfully set.
  */
-extern dsp_status cfg_set_object(IN u32 dwValue, u8 dw_type);
+extern int cfg_set_object(IN u32 dwValue, u8 dw_type);
 
 #endif /* CFG_ */

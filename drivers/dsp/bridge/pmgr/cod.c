@@ -28,7 +28,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -106,7 +105,7 @@ static s32 cod_f_close(struct file *filp)
 
 	filp_close(filp, NULL);
 
-	/* we can't use DSP_SOK here */
+	/* we can't use 0 here */
 	return 0;
 }
 
@@ -170,7 +169,7 @@ static s32 cod_f_seek(struct file *filp, s32 lOffset, s32 cOrigin)
 	if ((s32) dw_cur_pos < 0)
 		return -EPERM;
 
-	/* we can't use DSP_SOK here */
+	/* we can't use 0 here */
 	return 0;
 }
 
@@ -216,12 +215,12 @@ void cod_close(struct cod_libraryobj *lib)
  *      dynamically loaded object files.
  *
  */
-dsp_status cod_create(OUT struct cod_manager **phMgr, char *pstrDummyFile,
+int cod_create(OUT struct cod_manager **phMgr, char *pstrDummyFile,
 		      IN OPTIONAL CONST struct cod_attrs *attrs)
 {
 	struct cod_manager *mgr_new;
 	struct dbll_attrs zl_attrs;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(phMgr != NULL);
@@ -268,13 +267,13 @@ dsp_status cod_create(OUT struct cod_manager **phMgr, char *pstrDummyFile,
 
 	if (DSP_FAILED(status)) {
 		cod_delete(mgr_new);
-		return COD_E_ZLCREATEFAILED;
+		return -ESPIPE;
 	}
 
 	/* return the new manager */
 	*phMgr = mgr_new;
 
-	return DSP_SOK;
+	return 0;
 }
 
 /*
@@ -321,10 +320,10 @@ void cod_exit(void)
  *  Purpose:
  *      Get handle to the base image DBL library.
  */
-dsp_status cod_get_base_lib(struct cod_manager *cod_mgr_obj,
+int cod_get_base_lib(struct cod_manager *cod_mgr_obj,
 			    struct dbll_library_obj **plib)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(IS_VALID(cod_mgr_obj));
@@ -338,10 +337,10 @@ dsp_status cod_get_base_lib(struct cod_manager *cod_mgr_obj,
 /*
  *  ======== cod_get_base_name ========
  */
-dsp_status cod_get_base_name(struct cod_manager *cod_mgr_obj, char *pszName,
+int cod_get_base_name(struct cod_manager *cod_mgr_obj, char *pszName,
 			     u32 usize)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(IS_VALID(cod_mgr_obj));
@@ -361,7 +360,7 @@ dsp_status cod_get_base_name(struct cod_manager *cod_mgr_obj, char *pszName,
  *      Retrieve the entry point of a loaded DSP program image
  *
  */
-dsp_status cod_get_entry(struct cod_manager *cod_mgr_obj, u32 *pulEntry)
+int cod_get_entry(struct cod_manager *cod_mgr_obj, u32 *pulEntry)
 {
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(IS_VALID(cod_mgr_obj));
@@ -369,7 +368,7 @@ dsp_status cod_get_entry(struct cod_manager *cod_mgr_obj, u32 *pulEntry)
 
 	*pulEntry = cod_mgr_obj->ul_entry;
 
-	return DSP_SOK;
+	return 0;
 }
 
 /*
@@ -377,10 +376,10 @@ dsp_status cod_get_entry(struct cod_manager *cod_mgr_obj, u32 *pulEntry)
  *  Purpose:
  *      Get handle to the DBLL loader.
  */
-dsp_status cod_get_loader(struct cod_manager *cod_mgr_obj,
+int cod_get_loader(struct cod_manager *cod_mgr_obj,
 			  struct dbll_tar_obj **phLoader)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(IS_VALID(cod_mgr_obj));
@@ -397,11 +396,11 @@ dsp_status cod_get_loader(struct cod_manager *cod_mgr_obj,
  *      Retrieve the starting address and length of a section in the COFF file
  *      given the section name.
  */
-dsp_status cod_get_section(struct cod_libraryobj *lib, IN char *pstrSect,
+int cod_get_section(struct cod_libraryobj *lib, IN char *pstrSect,
 			   OUT u32 *puAddr, OUT u32 *puLen)
 {
 	struct cod_manager *cod_mgr_obj;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(lib != NULL);
@@ -417,7 +416,7 @@ dsp_status cod_get_section(struct cod_libraryobj *lib, IN char *pstrSect,
 		status = cod_mgr_obj->fxns.get_sect_fxn(lib->dbll_lib, pstrSect,
 							puAddr, puLen);
 	} else {
-		status = COD_E_NOSYMBOLSLOADED;
+		status = -ESPIPE;
 	}
 
 	DBC_ENSURE(DSP_SUCCEEDED(status) || ((*puAddr == 0) && (*puLen == 0)));
@@ -433,7 +432,7 @@ dsp_status cod_get_section(struct cod_libraryobj *lib, IN char *pstrSect,
  *      C symbol.
  *
  */
-dsp_status cod_get_sym_value(struct cod_manager *hmgr, char *pstrSym,
+int cod_get_sym_value(struct cod_manager *hmgr, char *pstrSym,
 			     u32 *pul_value)
 {
 	struct dbll_sym_val *dbll_sym;
@@ -450,15 +449,15 @@ dsp_status cod_get_sym_value(struct cod_manager *hmgr, char *pstrSym,
 		    get_addr_fxn(hmgr->base_lib, pstrSym, &dbll_sym)) {
 			if (!hmgr->fxns.
 			    get_c_addr_fxn(hmgr->base_lib, pstrSym, &dbll_sym))
-				return COD_E_SYMBOLNOTFOUND;
+				return -ESPIPE;
 		}
 	} else {
-		return COD_E_NOSYMBOLSLOADED;
+		return -ESPIPE;
 	}
 
 	*pul_value = dbll_sym->value;
 
-	return DSP_SOK;
+	return 0;
 }
 
 /*
@@ -493,13 +492,13 @@ bool cod_init(void)
  *      recalculated to reflect this.  In this way, we can support NULL
  *      terminating aArgs arrays, if nArgc is very large.
  */
-dsp_status cod_load_base(struct cod_manager *hmgr, u32 nArgc, char *aArgs[],
+int cod_load_base(struct cod_manager *hmgr, u32 nArgc, char *aArgs[],
 			 cod_writefxn pfn_write, void *pArb, char *envp[])
 {
 	dbll_flags flags;
 	struct dbll_attrs save_attrs;
 	struct dbll_attrs new_attrs;
-	dsp_status status;
+	int status;
 	u32 i;
 
 	DBC_REQUIRE(refs > 0);
@@ -551,10 +550,10 @@ dsp_status cod_load_base(struct cod_manager *hmgr, u32 nArgc, char *aArgs[],
  *  ======== cod_open ========
  *      Open library for reading sections.
  */
-dsp_status cod_open(struct cod_manager *hmgr, IN char *pszCoffPath,
+int cod_open(struct cod_manager *hmgr, IN char *pszCoffPath,
 		    cod_flags flags, struct cod_libraryobj **pLib)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct cod_libraryobj *lib = NULL;
 
 	DBC_REQUIRE(refs > 0);
@@ -588,10 +587,10 @@ dsp_status cod_open(struct cod_manager *hmgr, IN char *pszCoffPath,
  *  Purpose:
  *      Open base image for reading sections.
  */
-dsp_status cod_open_base(struct cod_manager *hmgr, IN char *pszCoffPath,
+int cod_open_base(struct cod_manager *hmgr, IN char *pszCoffPath,
 			 dbll_flags flags)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dbll_library_obj *lib;
 
 	DBC_REQUIRE(refs > 0);
@@ -626,10 +625,10 @@ dsp_status cod_open_base(struct cod_manager *hmgr, IN char *pszCoffPath,
  *  Purpose:
  *      Retrieve the content of a code section given the section name.
  */
-dsp_status cod_read_section(struct cod_libraryobj *lib, IN char *pstrSect,
+int cod_read_section(struct cod_libraryobj *lib, IN char *pstrSect,
 			    OUT char *pstrContent, IN u32 cContentSize)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(lib != NULL);
@@ -642,7 +641,7 @@ dsp_status cod_read_section(struct cod_libraryobj *lib, IN char *pstrSect,
 		    lib->cod_mgr->fxns.read_sect_fxn(lib->dbll_lib, pstrSect,
 						     pstrContent, cContentSize);
 	else
-		status = COD_E_NOSYMBOLSLOADED;
+		status = -ESPIPE;
 
 	return status;
 }

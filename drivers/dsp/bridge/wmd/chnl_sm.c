@@ -48,7 +48,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -80,7 +79,7 @@ static void free_chirp_list(struct lst_list *pList);
 
 static struct chnl_irp *make_new_chirp(void);
 
-static dsp_status search_free_channel(struct chnl_mgr *chnl_mgr_obj,
+static int search_free_channel(struct chnl_mgr *chnl_mgr_obj,
 				      OUT u32 *pdwChnl);
 
 /*
@@ -89,11 +88,11 @@ static dsp_status search_free_channel(struct chnl_mgr *chnl_mgr_obj,
  *      The direction (mode) is specified in the channel object. Note the DSP
  *      address is specified for channels opened in direct I/O mode.
  */
-dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
+int bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 			       u32 byte_size, u32 buf_size,
 			       OPTIONAL u32 dw_dsp_addr, u32 dw_arg)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 	struct chnl_irp *chnl_packet_obj = NULL;
 	struct wmd_dev_context *dev_ctxt;
@@ -113,7 +112,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 	} else if (!pchnl) {
 		status = -EFAULT;
 	} else if (is_eos && CHNL_IS_INPUT(pchnl->chnl_mode)) {
-		status = CHNL_E_NOEOS;
+		status = -EPERM;
 	} else {
 		/* Check the channel state: only queue chirp if channel state
 		 * allows */
@@ -123,7 +122,7 @@ dsp_status bridge_chnl_add_io_req(struct chnl_object *chnl_obj, void *pHostBuf,
 				status = -ECANCELED;
 			else if ((dw_state & CHNL_STATEEOS)
 				 && CHNL_IS_OUTPUT(pchnl->chnl_mode))
-				status = CHNL_E_EOS;
+				status = -EPIPE;
 			else
 				/* No other possible states left: */
 				DBC_ASSERT(0);
@@ -179,7 +178,7 @@ func_cont:
 			/* Check buffer size on output channels for fit. */
 			if (byte_size >
 			    io_buf_size(pchnl->chnl_mgr_obj->hio_mgr))
-				status = CHNL_E_BUFSIZE;
+				status = -EINVAL;
 
 		}
 	}
@@ -188,7 +187,7 @@ func_cont:
 		chnl_packet_obj =
 		    (struct chnl_irp *)lst_get_head(pchnl->free_packets_list);
 		if (chnl_packet_obj == NULL)
-			status = CHNL_E_NOIORPS;
+			status = -EIO;
 
 	}
 	if (DSP_SUCCEEDED(status)) {
@@ -252,9 +251,9 @@ func_end:
  *      This call is typically used in abort situations, and is a prelude to
  *      chnl_close();
  */
-dsp_status bridge_chnl_cancel_io(struct chnl_object *chnl_obj)
+int bridge_chnl_cancel_io(struct chnl_object *chnl_obj)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 	u32 chnl_id = -1;
 	s8 chnl_mode;
@@ -317,9 +316,9 @@ func_end:
  *      for this channel, and makes the corresponding logical channel id
  *      available for subsequent use.
  */
-dsp_status bridge_chnl_close(struct chnl_object *chnl_obj)
+int bridge_chnl_close(struct chnl_object *chnl_obj)
 {
-	dsp_status status;
+	int status;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 
 	/* Check args: */
@@ -384,11 +383,11 @@ func_cont:
  *      Create a channel manager object, responsible for opening new channels
  *      and closing old ones for a given board.
  */
-dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
+int bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
 			      struct dev_object *hdev_obj,
 			      IN CONST struct chnl_mgrattrs *pMgrAttrs)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct chnl_mgr *chnl_mgr_obj = NULL;
 	u8 max_channels;
 
@@ -446,9 +445,9 @@ dsp_status bridge_chnl_create(OUT struct chnl_mgr **phChnlMgr,
  *  Purpose:
  *      Close all open channels, and destroy the channel manager.
  */
-dsp_status bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr)
+int bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct chnl_mgr *chnl_mgr_obj = hchnl_mgr;
 	u32 chnl_id;
 
@@ -482,9 +481,9 @@ dsp_status bridge_chnl_destroy(struct chnl_mgr *hchnl_mgr)
  *  purpose:
  *      Flushes all the outstanding data requests on a channel.
  */
-dsp_status bridge_chnl_flush_io(struct chnl_object *chnl_obj, u32 dwTimeOut)
+int bridge_chnl_flush_io(struct chnl_object *chnl_obj, u32 dwTimeOut)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 	s8 chnl_mode = -1;
 	struct chnl_mgr *chnl_mgr_obj;
@@ -517,7 +516,7 @@ dsp_status bridge_chnl_flush_io(struct chnl_object *chnl_obj, u32 dwTimeOut)
 					continue;
 
 				if (chnl_ioc_obj.status & CHNL_IOCSTATTIMEOUT)
-					status = CHNL_E_WAITTIMEOUT;
+					status = -ETIMEDOUT;
 
 			}
 		} else {
@@ -535,10 +534,10 @@ dsp_status bridge_chnl_flush_io(struct chnl_object *chnl_obj, u32 dwTimeOut)
  *  Purpose:
  *      Retrieve information related to a channel.
  */
-dsp_status bridge_chnl_get_info(struct chnl_object *chnl_obj,
+int bridge_chnl_get_info(struct chnl_object *chnl_obj,
 			     OUT struct chnl_info *pInfo)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 	if (pInfo != NULL) {
 		if (pchnl) {
@@ -569,13 +568,13 @@ dsp_status bridge_chnl_get_info(struct chnl_object *chnl_obj,
  *      I/O request.
  *      Note: Ensures Channel Invariant (see notes above).
  */
-dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
+int bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 			    OUT struct chnl_ioc *pIOC)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct chnl_object *pchnl = (struct chnl_object *)chnl_obj;
 	struct chnl_irp *chnl_packet_obj;
-	dsp_status stat_sync;
+	int stat_sync;
 	bool dequeue_ioc = true;
 	struct chnl_ioc ioc = { NULL, 0, 0, 0, 0 };
 	u8 *host_sys_buf = NULL;
@@ -589,7 +588,7 @@ dsp_status bridge_chnl_get_ioc(struct chnl_object *chnl_obj, u32 dwTimeOut,
 		status = -EFAULT;
 	} else if (dwTimeOut == CHNL_IOCNOWAIT) {
 		if (LST_IS_EMPTY(pchnl->pio_completions))
-			status = CHNL_E_NOIOC;
+			status = -EREMOTEIO;
 
 	}
 
@@ -714,10 +713,10 @@ func_end:
  *  ======== bridge_chnl_get_mgr_info ========
  *      Retrieve information related to the channel manager.
  */
-dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
+int bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
 				 OUT struct chnl_mgrinfo *pMgrInfo)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct chnl_mgr *chnl_mgr_obj = (struct chnl_mgr *)hchnl_mgr;
 
 	if (pMgrInfo != NULL) {
@@ -736,7 +735,7 @@ dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
 				status = -EFAULT;
 			}
 		} else {
-			status = CHNL_E_BADCHANID;
+			status = -ECHRNG;
 		}
 	} else {
 		status = -EFAULT;
@@ -749,12 +748,12 @@ dsp_status bridge_chnl_get_mgr_info(struct chnl_mgr *hchnl_mgr, u32 uChnlID,
  *  ======== bridge_chnl_idle ========
  *      Idles a particular channel.
  */
-dsp_status bridge_chnl_idle(struct chnl_object *chnl_obj, u32 dwTimeOut,
+int bridge_chnl_idle(struct chnl_object *chnl_obj, u32 dwTimeOut,
 			    bool fFlush)
 {
 	s8 chnl_mode;
 	struct chnl_mgr *chnl_mgr_obj;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(chnl_obj);
 
@@ -779,11 +778,11 @@ dsp_status bridge_chnl_idle(struct chnl_object *chnl_obj, u32 dwTimeOut,
  *  ======== bridge_chnl_open ========
  *      Open a new half-duplex channel to the DSP board.
  */
-dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
+int bridge_chnl_open(OUT struct chnl_object **phChnl,
 			    struct chnl_mgr *hchnl_mgr, s8 chnl_mode,
 			    u32 uChnlId, CONST IN struct chnl_attr *pattrs)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct chnl_mgr *chnl_mgr_obj = hchnl_mgr;
 	struct chnl_object *pchnl = NULL;
 	struct sync_object *sync_event = NULL;
@@ -802,7 +801,7 @@ dsp_status bridge_chnl_open(OUT struct chnl_object **phChnl,
 		} else {
 			if (uChnlId != CHNL_PICKFREE) {
 				if (uChnlId >= chnl_mgr_obj->max_channels)
-					status = CHNL_E_BADCHANID;
+					status = -ECHRNG;
 				else if (chnl_mgr_obj->ap_channel[uChnlId] !=
 					 NULL)
 					status = -EALREADY;
@@ -910,11 +909,11 @@ func_end:
  *  ======== bridge_chnl_register_notify ========
  *      Registers for events on a particular channel.
  */
-dsp_status bridge_chnl_register_notify(struct chnl_object *chnl_obj,
+int bridge_chnl_register_notify(struct chnl_object *chnl_obj,
 				    u32 event_mask, u32 notify_type,
 				    struct dsp_notification *hnotification)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_ASSERT(!(event_mask & ~(DSP_STREAMDONE | DSP_STREAMIOCOMPLETION)));
 
@@ -1001,17 +1000,17 @@ static struct chnl_irp *make_new_chirp(void)
  *  ======== search_free_channel ========
  *      Search for a free channel slot in the array of channel pointers.
  */
-static dsp_status search_free_channel(struct chnl_mgr *chnl_mgr_obj,
+static int search_free_channel(struct chnl_mgr *chnl_mgr_obj,
 				      OUT u32 *pdwChnl)
 {
-	dsp_status status = CHNL_E_OUTOFSTREAMS;
+	int status = -ENOSR;
 	u32 i;
 
 	DBC_REQUIRE(chnl_mgr_obj);
 
 	for (i = 0; i < chnl_mgr_obj->max_channels; i++) {
 		if (chnl_mgr_obj->ap_channel[i] == NULL) {
-			status = DSP_SOK;
+			status = 0;
 			*pdwChnl = i;
 			break;
 		}

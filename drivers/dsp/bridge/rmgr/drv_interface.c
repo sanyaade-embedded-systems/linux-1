@@ -34,7 +34,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -119,7 +118,7 @@ static int omap34_xxbridge_suspend_lockout(struct omap34_xx_bridge_suspend_data
 {
 	if ((s)->suspended) {
 		if ((f)->f_flags & O_NONBLOCK)
-			return DSP_EDPMSUSPEND;
+			return -EPERM;
 		wait_event_interruptible((s)->suspend_wq, (s)->suspended == 0);
 	}
 	return 0;
@@ -211,7 +210,7 @@ static struct notifier_block iva_clk_notifier = {
 static int __devinit omap34_xx_bridge_probe(struct platform_device *pdev)
 {
 	int status;
-	u32 init_status = DSP_SOK;
+	u32 init_status = 0;
 	dev_t dev = 0;
 	int result;
 	struct dspbridge_platform_data *pdata = pdev->dev.platform_data;
@@ -332,7 +331,7 @@ static int __devexit omap34_xx_bridge_remove(struct platform_device *pdev)
 {
 	dev_t devno;
 	bool ret;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	bhandle hdrv_obj = NULL;
 
 	status = cfg_get_object((u32 *) &hdrv_obj, REG_DRV_OBJECT);
@@ -519,7 +518,7 @@ static long bridge_ioctl(struct file *filp, unsigned int code,
 			 unsigned long args)
 {
 	int status;
-	u32 retval = DSP_SOK;
+	u32 retval = 0;
 	union Trapped_Args buf_in;
 
 	DBC_REQUIRE(filp != NULL);
@@ -588,9 +587,9 @@ static int bridge_mmap(struct file *filp, struct vm_area_struct *vma)
 
 /* To remove all process resources before removing the process from the
  * process context list */
-dsp_status drv_remove_all_resources(bhandle hPCtxt)
+int drv_remove_all_resources(bhandle hPCtxt)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct process_context *ctxt = (struct process_context *)hPCtxt;
 	drv_remove_all_strm_res_elements(ctxt);
 	drv_remove_all_node_res_elements(ctxt);

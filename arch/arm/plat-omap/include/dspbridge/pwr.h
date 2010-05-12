@@ -18,7 +18,6 @@
 #define PWR_
 
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 #include <dspbridge/pwr_sh.h>
 
 /*
@@ -38,15 +37,15 @@
  *                          specified as zero.
  *
  *  Returns:
- *      DSP_SOK:            Success.
- *      DSP_SALREADYASLEEP: Success, but the DSP was already asleep.
+ *      0:            Success.
+ *      0: Success, but the DSP was already asleep.
  *      -EINVAL:    The specified sleepCode is not supported.
  *      -ETIME:       A timeout occured while waiting for DSP sleep
  *                          confirmation.
  *      -EPERM:          General failure, unable to send sleep command to
  *                          the DSP.
  */
-extern dsp_status pwr_sleep_dsp(IN CONST u32 sleepCode, IN CONST u32 timeout);
+extern int pwr_sleep_dsp(IN CONST u32 sleepCode, IN CONST u32 timeout);
 
 /*
  *  ======== pwr_wake_dsp ========
@@ -60,14 +59,14 @@ extern dsp_status pwr_sleep_dsp(IN CONST u32 sleepCode, IN CONST u32 timeout);
  *                          be specified as zero.
  *
  *  Returns:
- *      DSP_SOK:            Success.
- *      DSP_SALREADYAWAKE:  Success, but the DSP was already awake.
+ *      0:            Success.
+ *      0:  Success, but the DSP was already awake.
  *      -ETIME:       A timeout occured while waiting for wake
  *                          confirmation.
  *      -EPERM:          General failure, unable to send wake command to
  *                          the DSP.
  */
-extern dsp_status pwr_wake_dsp(IN CONST u32 timeout);
+extern int pwr_wake_dsp(IN CONST u32 timeout);
 
 /*
  *  ======== pwr_pm_pre_scale ========
@@ -78,14 +77,14 @@ extern dsp_status pwr_wake_dsp(IN CONST u32 timeout);
  *    level:			The level of voltage domain
  *
  *  Returns:
- *      DSP_SOK:            Success.
- *      DSP_SALREADYAWAKE:  Success, but the DSP was already awake.
+ *      0:            Success.
+ *      0:  Success, but the DSP was already awake.
  *      -ETIME:       A timeout occured while waiting for wake
  *                          confirmation.
  *      -EPERM:          General failure, unable to send wake command to
  *                          the DSP.
  */
-extern dsp_status pwr_pm_pre_scale(IN u16 voltage_domain, u32 level);
+extern int pwr_pm_pre_scale(IN u16 voltage_domain, u32 level);
 
 /*
  *  ======== pwr_pm_post_scale ========
@@ -96,13 +95,13 @@ extern dsp_status pwr_pm_pre_scale(IN u16 voltage_domain, u32 level);
  *    level:			The level of voltage domain
  *
  *  Returns:
- *      DSP_SOK:            Success.
- *      DSP_SALREADYAWAKE:  Success, but the DSP was already awake.
+ *      0:            Success.
+ *      0:  Success, but the DSP was already awake.
  *      -ETIME:       A timeout occured while waiting for wake
  *                          confirmation.
  *      -EPERM:          General failure, unable to send wake command to
  *                          the DSP.
  */
-extern dsp_status pwr_pm_post_scale(IN u16 voltage_domain, u32 level);
+extern int pwr_pm_post_scale(IN u16 voltage_domain, u32 level);
 
 #endif /* PWR_ */

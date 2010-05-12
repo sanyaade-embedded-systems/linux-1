@@ -31,12 +31,12 @@
  *      args:       Argument structure.
  *      pResult:
  *  Returns:
- *      DSP_SOK if command called; -EINVAL if command not in IOCTL
+ *      0 if command called; -EINVAL if command not in IOCTL
  *      table.
  *  Requires:
  *  Ensures:
  */
-extern dsp_status wcd_call_dev_io_ctl(unsigned int cmd,
+extern int wcd_call_dev_io_ctl(unsigned int cmd,
 				      union Trapped_Args *args,
 				      u32 *pResult, void *pr_ctxt);
 
@@ -62,13 +62,13 @@ extern bool wcd_init(void);
  *      completely initialized.
  *  Parameters:
  *  Returns:
- *      DSP_SOK:        Allow this device to load
+ *      0:        Allow this device to load
  *      -EPERM:      Failure.
  *  Requires:
  *      WCD initialized.
  *  Ensures:
  */
-extern dsp_status wcd_init_complete2(void);
+extern int wcd_init_complete2(void);
 
 /*
  *  ======== wcd_exit ========

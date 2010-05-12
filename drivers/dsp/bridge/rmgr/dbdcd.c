@@ -29,7 +29,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
 
@@ -63,12 +62,12 @@ static u32 enum_refs;
 
 /* Helper function prototypes. */
 static s32 atoi(char *psz_buf);
-static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
+static int get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 				     enum dsp_dcdobjtype obj_type,
 				     struct dcd_genericobj *pGenObj);
 static void compress_buf(char *psz_buf, u32 ul_buf_size, s32 cCharSize);
 static char dsp_char2_gpp_char(char *pWord, s32 cDspCharSize);
-static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
+static int get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 				   IN struct dsp_uuid *uuid_obj,
 				   IN OUT u16 *pNumLibs,
 				   OPTIONAL OUT u16 *pNumPersLibs,
@@ -81,10 +80,10 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
  *  Purpose:
  *      Parses the supplied image and resigsters with DCD.
  */
-dsp_status dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
+int dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
 			     IN char *pszCoffPath)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 
@@ -103,10 +102,10 @@ dsp_status dcd_auto_register(IN struct dcd_manager *hdcd_mgr,
  *  Purpose:
  *      Parses the supplied DSP image and unresiters from DCD.
  */
-dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
+int dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
 			       IN char *pszCoffPath)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 
@@ -125,12 +124,12 @@ dsp_status dcd_auto_unregister(IN struct dcd_manager *hdcd_mgr,
  *  Purpose:
  *      Creates DCD manager.
  */
-dsp_status dcd_create_manager(IN char *pszZlDllName,
+int dcd_create_manager(IN char *pszZlDllName,
 			      OUT struct dcd_manager **phDcdMgr)
 {
 	struct cod_manager *cod_mgr;	/* COD manager handle */
 	struct dcd_manager *dcd_mgr_obj = NULL;	/* DCD Manager pointer */
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs >= 0);
 	DBC_REQUIRE(phDcdMgr);
@@ -157,9 +156,8 @@ dsp_status dcd_create_manager(IN char *pszZlDllName,
 		cod_delete(cod_mgr);
 	}
 
-	DBC_ENSURE((DSP_SUCCEEDED(status)) || ((cod_mgr == NULL) &&
-					       (status == -EPERM))
-		   || ((dcd_mgr_obj == NULL) && (status == -ENOMEM)));
+	DBC_ENSURE((DSP_SUCCEEDED(status)) ||
+			((dcd_mgr_obj == NULL) && (status == -ENOMEM)));
 
 func_end:
 	return status;
@@ -170,10 +168,10 @@ func_end:
  *  Purpose:
  *      Frees DCD Manager object.
  */
-dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr)
+int dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr)
 {
 	struct dcd_manager *dcd_mgr_obj = hdcd_mgr;
-	dsp_status status = -EFAULT;
+	int status = -EFAULT;
 
 	DBC_REQUIRE(refs >= 0);
 
@@ -184,7 +182,7 @@ dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr)
 		/* Deallocate a DCD manager object. */
 		kfree(dcd_mgr_obj);
 
-		status = DSP_SOK;
+		status = 0;
 	}
 
 	return status;
@@ -195,10 +193,10 @@ dsp_status dcd_destroy_manager(IN struct dcd_manager *hdcd_mgr)
  *  Purpose:
  *      Enumerates objects in the DCD.
  */
-dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
+int dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 				OUT struct dsp_uuid *uuid_obj)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	char sz_reg_key[DCD_MAXPATHLENGTH];
 	char sz_value[DCD_MAXPATHLENGTH];
 	struct dsp_uuid dsp_uuid_obj;
@@ -217,7 +215,7 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 		 * than zero, then the current enum_refs must have been
 		 * incremented to greater than zero.
 		 */
-		status = DSP_ECHANGEDURINGENUM;
+		status = -EIDRM;
 	} else {
 		/*
 		 * Pre-determine final key length. It's length of DCD_REGKEY +
@@ -244,7 +242,7 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 		if (status == -1) {
 			status = -EPERM;
 		} else {
-			status = DSP_SOK;
+			status = 0;
 			if ((strlen(sz_reg_key) + strlen(sz_obj_type)) <
 			    DCD_MAXPATHLENGTH) {
 				strncat(sz_reg_key, sz_obj_type,
@@ -281,12 +279,12 @@ dsp_status dcd_enumerate_object(IN s32 cIndex, IN enum dsp_dcdobjtype obj_type,
 			/* Increment enum_refs to update reference count. */
 			enum_refs++;
 
-			status = DSP_SOK;
+			status = 0;
 		} else if (status == -ENODATA) {
 			/* At the end of enumeration. Reset enum_refs. */
 			enum_refs = 0;
 
-			status = DSP_SENUMCOMPLETE;
+			status = ENODATA;
 		} else {
 			status = -EPERM;
 		}
@@ -323,13 +321,13 @@ void dcd_exit(void)
 /*
  *  ======== dcd_get_dep_libs ========
  */
-dsp_status dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
+int dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
 			    IN struct dsp_uuid *uuid_obj,
 			    u16 numLibs, OUT struct dsp_uuid *pDepLibUuids,
 			    OUT bool *pPersistentDepLibs,
 			    IN enum nldr_phase phase)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(hdcd_mgr);
@@ -347,12 +345,12 @@ dsp_status dcd_get_dep_libs(IN struct dcd_manager *hdcd_mgr,
 /*
  *  ======== dcd_get_num_dep_libs ========
  */
-dsp_status dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
+int dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
 				IN struct dsp_uuid *uuid_obj,
 				OUT u16 *pNumLibs, OUT u16 *pNumPersLibs,
 				IN enum nldr_phase phase)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(hdcd_mgr);
@@ -372,14 +370,14 @@ dsp_status dcd_get_num_dep_libs(IN struct dcd_manager *hdcd_mgr,
  *      Retrieves the properties of a node or processor based on the UUID and
  *      object type.
  */
-dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
+int dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 			      IN struct dsp_uuid *pObjUuid,
 			      IN enum dsp_dcdobjtype obj_type,
 			      OUT struct dcd_genericobj *pObjDef)
 {
 	struct dcd_manager *dcd_mgr_obj = hdcd_mgr;	/* ptr to DCD mgr */
 	struct cod_libraryobj *lib = NULL;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	u32 ul_addr = 0;	/* Used by cod_get_section */
 	u32 ul_len = 0;		/* Used by cod_get_section */
 	u32 dw_buf_size;	/* Used by REG functions */
@@ -423,7 +421,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 	if (status == -1) {
 		status = -EPERM;
 	} else {
-		status = DSP_SOK;
+		status = 0;
 
 		if ((strlen(sz_reg_key) + strlen(sz_obj_type)) <
 		    DCD_MAXPATHLENGTH) {
@@ -463,7 +461,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 	status = cod_open(dcd_mgr_obj->cod_mgr, dcd_key->path,
 							COD_NOLOAD, &lib);
 	if (DSP_FAILED(status)) {
-		status = DSP_EDCDLOADBASE;
+		status = -EACCES;
 		goto func_end;
 	}
 
@@ -479,7 +477,7 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 	/* Get section information. */
 	status = cod_get_section(lib, sz_sect_name, &ul_addr, &ul_len);
 	if (DSP_FAILED(status)) {
-		status = DSP_EDCDGETSECT;
+		status = -EACCES;
 		goto func_end;
 	}
 
@@ -512,9 +510,9 @@ dsp_status dcd_get_object_def(IN struct dcd_manager *hdcd_mgr,
 		status =
 		    get_attrs_from_buf(psz_coff_buf, ul_len, obj_type, pObjDef);
 		if (DSP_FAILED(status))
-			status = DSP_EDCDPARSESECT;
+			status = -EACCES;
 	} else {
-		status = DSP_EDCDREADSECT;
+		status = -EACCES;
 	}
 
 	/* Free the previously allocated dynamic buffer. */
@@ -531,12 +529,12 @@ func_end:
 /*
  *  ======== dcd_get_objects ========
  */
-dsp_status dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
+int dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
 			   IN char *pszCoffPath, dcd_registerfxn registerFxn,
 			   void *handle)
 {
 	struct dcd_manager *dcd_mgr_obj = hdcd_mgr;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	char *psz_coff_buf;
 	char *psz_cur;
 	struct cod_libraryobj *lib = NULL;
@@ -556,14 +554,14 @@ dsp_status dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
 	/* Open DSP coff file, don't load symbols. */
 	status = cod_open(dcd_mgr_obj->cod_mgr, pszCoffPath, COD_NOLOAD, &lib);
 	if (DSP_FAILED(status)) {
-		status = DSP_EDCDLOADBASE;
+		status = -EACCES;
 		goto func_cont;
 	}
 
 	/* Get DCD_RESIGER_SECTION section information. */
 	status = cod_get_section(lib, DCD_REGISTER_SECTION, &ul_addr, &ul_len);
 	if (DSP_FAILED(status) || !(ul_len > 0)) {
-		status = DSP_EDCDNOAUTOREGISTER;
+		status = -EACCES;
 		goto func_cont;
 	}
 
@@ -621,7 +619,7 @@ dsp_status dcd_get_objects(IN struct dcd_manager *hdcd_mgr,
 			}
 		}
 	} else {
-		status = DSP_EDCDREADSECT;
+		status = -EACCES;
 	}
 
 	/* Free the previously allocated dynamic buffer. */
@@ -640,7 +638,7 @@ func_end:
  *      Retrieves the library name for the given UUID.
  *
  */
-dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
+int dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 				IN struct dsp_uuid *uuid_obj,
 				IN OUT char *pstrLibName, IN OUT u32 * pdwSize,
 				enum nldr_phase phase, OUT bool *phase_split)
@@ -649,7 +647,7 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 	char sz_uuid[MAXUUIDLEN];
 	u32 dw_key_len;		/* Len of REG key. */
 	char sz_obj_type[MAX_INT2CHAR_LENGTH];	/* str. rep. of obj_type. */
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dcd_key_elem *dcd_key = NULL;
 
 	DBC_REQUIRE(uuid_obj != NULL);
@@ -760,7 +758,7 @@ dsp_status dcd_get_library_name(IN struct dcd_manager *hdcd_mgr,
 		spin_unlock(&dbdcd_lock);
 
 		status = (&dcd_key->link != &reg_key_list) ?
-						DSP_SOK : -ENOKEY;
+						0 : -ENOKEY;
 	}
 
 	if (DSP_SUCCEEDED(status))
@@ -808,11 +806,11 @@ bool dcd_init(void)
  *      Registers a node or a processor with the DCD.
  *      If psz_path_name == NULL, unregister the specified DCD object.
  */
-dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
+int dcd_register_object(IN struct dsp_uuid *uuid_obj,
 			       IN enum dsp_dcdobjtype obj_type,
 			       IN char *psz_path_name)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	char sz_reg_key[DCD_MAXPATHLENGTH];
 	char sz_uuid[MAXUUIDLEN + 1];
 	u32 dw_path_size = 0;
@@ -852,7 +850,7 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 	if (status == -1) {
 		status = -EPERM;
 	} else {
-		status = DSP_SOK;
+		status = 0;
 		if ((strlen(sz_reg_key) + strlen(sz_obj_type)) <
 		    DCD_MAXPATHLENGTH) {
 			strncat(sz_reg_key, sz_obj_type,
@@ -944,7 +942,7 @@ dsp_status dcd_register_object(IN struct dsp_uuid *uuid_obj,
 				list_del(&dcd_key->link);
 				kfree(dcd_key->path);
 				kfree(dcd_key);
-				status = DSP_SOK;
+				status = 0;
 				break;
 			}
 		}
@@ -970,10 +968,10 @@ func_end:
  *  Call DCD_Register object with psz_path_name set to NULL to
  *  perform actual object de-registration.
  */
-dsp_status dcd_unregister_object(IN struct dsp_uuid *uuid_obj,
+int dcd_unregister_object(IN struct dsp_uuid *uuid_obj,
 				 IN enum dsp_dcdobjtype obj_type)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(uuid_obj != NULL);
@@ -1029,11 +1027,11 @@ static s32 atoi(char *psz_buf)
  *      retrieve an object's attributes from it. IMPORTANT: Assume the
  *      buffer has been converted from DSP format to GPP format.
  */
-static dsp_status get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
+static int get_attrs_from_buf(char *psz_buf, u32 ul_buf_size,
 				     enum dsp_dcdobjtype obj_type,
 				     struct dcd_genericobj *pGenObj)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	char seps[] = ", ";
 	char *psz_cur;
 	char *token;
@@ -1415,7 +1413,7 @@ static char dsp_char2_gpp_char(char *pWord, s32 cDspCharSize)
 /*
  *  ======== get_dep_lib_info ========
  */
-static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
+static int get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 				   IN struct dsp_uuid *uuid_obj,
 				   IN OUT u16 *pNumLibs,
 				   OPTIONAL OUT u16 *pNumPersLibs,
@@ -1435,7 +1433,7 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 	char *token = NULL;
 	bool get_uuids = (pDepLibUuids != NULL);
 	u16 dep_libs = 0;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 
@@ -1472,7 +1470,7 @@ static dsp_status get_dep_lib_info(IN struct dcd_manager *hdcd_mgr,
 		if (DSP_FAILED(status)) {
 			/* Ok, no dependent libraries */
 			ul_len = 0;
-			status = DSP_SNODEPENDENTLIBS;
+			status = 0;
 		}
 	}
 

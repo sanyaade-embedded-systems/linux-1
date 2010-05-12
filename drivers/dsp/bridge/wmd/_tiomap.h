@@ -362,7 +362,7 @@ struct wmd_dev_context {
 	 *     Given a DSP virtual address, traverse the page table and return
 	 *     a corresponding MPU physical address and size.
 	 */
-extern dsp_status wmd_tlb_dsp_va_to_mpu_pa(struct wmd_dev_context *dev_context,
+extern int wmd_tlb_dsp_va_to_mpu_pa(struct wmd_dev_context *dev_context,
 					   IN u32 ulVirtAddr,
 					   OUT u32 *ulPhysAddr,
 					   OUT u32 *sizeTlb);
@@ -377,12 +377,12 @@ extern dsp_status wmd_tlb_dsp_va_to_mpu_pa(struct wmd_dev_context *dev_context,
  *      hDevContext:    Handle to mini-driver defined device info.
  *      mb_val:         Value associated with interrupt(e.g. mailbox value).
  *  Returns:
- *      DSP_SOK:        Interrupt sent;
+ *      0:        Interrupt sent;
  *      else:           Unable to send interrupt.
  *  Requires:
  *  Ensures:
  */
-extern dsp_status sm_interrupt_dsp(struct wmd_dev_context *hDevContext,
+extern int sm_interrupt_dsp(struct wmd_dev_context *hDevContext,
 				   u16 mb_val);
 
 #endif /* _TIOMAP_ */

@@ -31,7 +31,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /* Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -163,7 +162,7 @@ static void io_wdt3_ovf(unsigned long);
 #endif
 
 /* Bus Addr (cached kernel) */
-static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
+static int register_shm_segs(struct io_mgr *hio_mgr,
 				    struct cod_manager *cod_man,
 				    u32 dw_gpp_base_pa);
 
@@ -171,11 +170,11 @@ static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
  *  ======== bridge_io_create ========
  *      Create an IO manager object.
  */
-dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
+int bridge_io_create(OUT struct io_mgr **phIOMgr,
 			    struct dev_object *hdev_obj,
 			    IN CONST struct io_attrs *pMgrAttrs)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct io_mgr *pio_mgr = NULL;
 	struct shm *shared_mem = NULL;
 	struct wmd_dev_context *hwmd_context = NULL;
@@ -250,7 +249,7 @@ dsp_status bridge_io_create(OUT struct io_mgr **phIOMgr,
 		pio_mgr->shared_irq = pMgrAttrs->irq_shared;
 
 	} else {
-		status = CHNL_E_ISR;
+		status = -EIO;
 	}
 #ifdef CONFIG_BRIDGE_WDT3
 	if (DSP_SUCCEEDED(status)) {
@@ -284,9 +283,9 @@ func_end:
  *  Purpose:
  *      Disable interrupts, destroy the IO manager.
  */
-dsp_status bridge_io_destroy(struct io_mgr *hio_mgr)
+int bridge_io_destroy(struct io_mgr *hio_mgr)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	if (hio_mgr) {
 #ifdef CONFIG_BRIDGE_WDT3
@@ -316,7 +315,7 @@ dsp_status bridge_io_destroy(struct io_mgr *hio_mgr)
  *      parameters from COFF file. ulSharedBufferBase and ulSharedBufferLimit
  *      are in DSP address units.
  */
-dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
+int bridge_io_on_loaded(struct io_mgr *hio_mgr)
 {
 	struct cod_manager *cod_man;
 	struct chnl_mgr *hchnl_mgr;
@@ -336,7 +335,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	u32 ul_seg_size = 0;
 	u32 ul_pad_size = 0;
 	u32 i;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	u8 num_procs = 0;
 	s32 ndx = 0;
 	/* DSP MMU setup table */
@@ -388,17 +387,17 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	status = cod_get_sym_value(cod_man, CHNL_SHARED_BUFFER_BASE_SYM,
 				   &ul_shm_base);
 	if (DSP_FAILED(status)) {
-		status = CHNL_E_NOMEMMAP;
+		status = -EFAULT;
 		goto func_end;
 	}
 	status = cod_get_sym_value(cod_man, CHNL_SHARED_BUFFER_LIMIT_SYM,
 				   &ul_shm_limit);
 	if (DSP_FAILED(status)) {
-		status = CHNL_E_NOMEMMAP;
+		status = -EFAULT;
 		goto func_end;
 	}
 	if (ul_shm_limit <= ul_shm_base) {
-		status = CHNL_E_INVALIDMEMBASE;
+		status = -EINVAL;
 		goto func_end;
 	}
 	/* Get total length in bytes */
@@ -417,7 +416,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 					   &ul_msg_limit);
 		if (DSP_SUCCEEDED(status)) {
 			if (ul_msg_limit <= ul_msg_base) {
-				status = CHNL_E_INVALIDMEMBASE;
+				status = -EINVAL;
 			} else {
 				/*
 				 * Length (bytes) of messaging part of shared
@@ -433,10 +432,10 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 				ul_mem_length = ul_shm_length + ul_msg_length;
 			}
 		} else {
-			status = CHNL_E_NOMEMMAP;
+			status = -EFAULT;
 		}
 	} else {
-		status = CHNL_E_NOMEMMAP;
+		status = -EFAULT;
 	}
 	if (DSP_SUCCEEDED(status)) {
 #ifndef DSP_TRACEBUF_DISABLED
@@ -447,18 +446,18 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 					   &shm0_end);
 #endif
 		if (DSP_FAILED(status))
-			status = CHNL_E_NOMEMMAP;
+			status = -EFAULT;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		status =
 		    cod_get_sym_value(cod_man, DYNEXTBASE, &ul_dyn_ext_base);
 		if (DSP_FAILED(status))
-			status = CHNL_E_NOMEMMAP;
+			status = -EFAULT;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		status = cod_get_sym_value(cod_man, EXTEND, &ul_ext_end);
 		if (DSP_FAILED(status))
-			status = CHNL_E_NOMEMMAP;
+			status = -EFAULT;
 	}
 	if (DSP_SUCCEEDED(status)) {
 		/* Get memory reserved in host resources */
@@ -715,7 +714,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	 * num_procs = 1.
 	 */
 	if (!hio_mgr->ext_proc_info.ty_tlb[0].ul_gpp_phys || num_procs != 1) {
-		status = CHNL_E_NOMEMMAP;
+		status = -EFAULT;
 		goto func_end;
 	} else {
 		if (ae_proc[0].ul_dsp_va > ul_shm_base) {
@@ -786,7 +785,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	status = cod_get_sym_value(cod_man, SYS_PUTCBEG,
 				   &hio_mgr->ul_trace_buffer_begin);
 	if (DSP_FAILED(status)) {
-		status = CHNL_E_NOMEMMAP;
+		status = -EFAULT;
 		goto func_end;
 	}
 
@@ -798,7 +797,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	status = cod_get_sym_value(cod_man, SYS_PUTCEND,
 				   &hio_mgr->ul_trace_buffer_end);
 	if (DSP_FAILED(status)) {
-		status = CHNL_E_NOMEMMAP;
+		status = -EFAULT;
 		goto func_end;
 	}
 	hio_mgr->ul_trace_buffer_end =
@@ -808,7 +807,7 @@ dsp_status bridge_io_on_loaded(struct io_mgr *hio_mgr)
 	status = cod_get_sym_value(cod_man, BRIDGE_SYS_PUTC_CURRENT,
 				   &hio_mgr->ul_trace_buffer_current);
 	if (DSP_FAILED(status)) {
-		status = CHNL_E_NOMEMMAP;
+		status = -EFAULT;
 		goto func_end;
 	}
 	hio_mgr->ul_trace_buffer_current =
@@ -907,7 +906,7 @@ func_end:
  */
 static void io_dispatch_pm(struct io_mgr *pio_mgr)
 {
-	dsp_status status;
+	int status;
 	u32 parg[2];
 
 	/* Perform Power message processing here */
@@ -1606,11 +1605,11 @@ func_end:
  *  purpose:
  *      Registers GPP SM segment with CMM.
  */
-static dsp_status register_shm_segs(struct io_mgr *hio_mgr,
+static int register_shm_segs(struct io_mgr *hio_mgr,
 				    struct cod_manager *cod_man,
 				    u32 dw_gpp_base_pa)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	u32 ul_shm0_base = 0;
 	u32 shm0_end = 0;
 	u32 ul_shm0_rsrvd_start = 0;
@@ -1759,7 +1758,7 @@ void io_intr_dsp2(IN struct io_mgr *pio_mgr, IN u16 mb_val)
  *  ======== IO_SHMcontrol ========
  *      Sets the requested shm setting.
  */
-dsp_status io_sh_msetting(struct io_mgr *hio_mgr, u8 desc, void *pargs)
+int io_sh_msetting(struct io_mgr *hio_mgr, u8 desc, void *pargs)
 {
 #ifdef CONFIG_BRIDGE_DVFS
 	u32 i;
@@ -1817,14 +1816,14 @@ dsp_status io_sh_msetting(struct io_mgr *hio_mgr, u8 desc, void *pargs)
 		break;
 	}
 #endif
-	return DSP_SOK;
+	return 0;
 }
 
 /*
  *  ======== bridge_io_get_proc_load ========
  *      Gets the Processor's Load information
  */
-dsp_status bridge_io_get_proc_load(IN struct io_mgr *hio_mgr,
+int bridge_io_get_proc_load(IN struct io_mgr *hio_mgr,
 				OUT struct dsp_procloadstat *pProcStat)
 {
 	pProcStat->curr_load = hio_mgr->shared_mem->load_mon_info.curr_dsp_load;
@@ -1839,7 +1838,7 @@ dsp_status bridge_io_get_proc_load(IN struct io_mgr *hio_mgr,
 		"Pred Freq = %d\n", pProcStat->curr_load,
 		pProcStat->predicted_load, pProcStat->curr_dsp_freq,
 		pProcStat->predicted_freq);
-	return DSP_SOK;
+	return 0;
 }
 
 #ifndef DSP_TRACEBUF_DISABLED
@@ -1910,14 +1909,14 @@ void print_dsp_debug_trace(struct io_mgr *hio_mgr)
  *    hdeh_mgr:          Handle to DEH manager object
  *                      number of extra carriage returns to generate.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -ENOMEM:    Unable to allocate memory.
  *  Requires:
  *      hdeh_mgr muse be valid. Checked in bridge_deh_notify.
  */
-dsp_status print_dsp_trace_buffer(struct wmd_dev_context *hwmd_context)
+int print_dsp_trace_buffer(struct wmd_dev_context *hwmd_context)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct cod_manager *cod_mgr;
 	u32 ul_trace_end;
 	u32 ul_trace_begin;
@@ -2087,9 +2086,9 @@ void io_sm_init(void)
  * @wmd_context:	Mini driver's device context pointer.
  *
  */
-dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
+int dump_dsp_stack(struct wmd_dev_context *wmd_context)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct cod_manager *code_mgr;
 	struct node_mgr *node_mgr;
 	u32 trace_begin;
@@ -2206,7 +2205,7 @@ dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
 			i = buffer[80];         /* NRP */
 
 		if ((*buffer > 0x01000000) && (node_find_addr(node_mgr, i,
-			0x1000, &offset_output, name) == DSP_SOK))
+			0x1000, &offset_output, name) == 0))
 			pr_err("0x%-8x [\"%s\" + 0x%x]\n", i, name,
 							i - offset_output);
 		else
@@ -2231,7 +2230,7 @@ dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
 		pr_err("B2 0x%x\n", *buffer++);
 
 		if ((*buffer > 0x01000000) && (node_find_addr(node_mgr, *buffer,
-			0x1000, &offset_output, name) == DSP_SOK))
+			0x1000, &offset_output, name) == 0))
 
 			pr_err("B3 0x%-8x [Function Return Pointer:"
 				" \"%s\" + 0x%x]\n", *buffer, name,
@@ -2259,7 +2258,7 @@ dsp_status dump_dsp_stack(struct wmd_dev_context *wmd_context)
 		for (i = 0; buffer < buffer_end; i++, buffer++) {
 			if ((*buffer > 0x01000000) && (node_find_addr(node_mgr,
 				*buffer , 0x600, &offset_output, name) ==
-				DSP_SOK))
+				0))
 				pr_err("[%d] 0x%-8x [\"%s\" + 0x%x]\n",
 					i, *buffer, name,
 					*buffer - offset_output);
@@ -2290,7 +2289,7 @@ void dump_dl_modules(struct wmd_dev_context *wmd_context)
 	u32 module_struct_size = 0;
 	u32 sect_ndx;
 	char *sect_str ;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	status = dev_get_intf_fxns(dev_object, &intf_fxns);
 	if (DSP_FAILED(status)) {

@@ -21,7 +21,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -53,10 +52,10 @@ static u32 refs;
  *  Purpose:
  *      MGR Object gets created only once during driver Loading.
  */
-dsp_status mgr_create(OUT struct mgr_object **phMgrObject,
+int mgr_create(OUT struct mgr_object **phMgrObject,
 		      struct cfg_devnode *dev_node_obj)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct mgr_object *pmgr_obj = NULL;
 
 	DBC_REQUIRE(phMgrObject != NULL);
@@ -90,9 +89,9 @@ dsp_status mgr_create(OUT struct mgr_object **phMgrObject,
  *  ========= mgr_destroy =========
  *     This function is invoked during bridge driver unloading.Frees MGR object.
  */
-dsp_status mgr_destroy(struct mgr_object *hmgr_obj)
+int mgr_destroy(struct mgr_object *hmgr_obj)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct mgr_object *pmgr_obj = (struct mgr_object *)hmgr_obj;
 
 	DBC_REQUIRE(refs > 0);
@@ -106,8 +105,6 @@ dsp_status mgr_destroy(struct mgr_object *hmgr_obj)
 	/* Update the Registry with NULL for MGR Object */
 	(void)cfg_set_object(0, REG_MGR_OBJECT);
 
-	DBC_ENSURE(DSP_FAILED(status) || !hmgr_obj);
-
 	return status;
 }
 
@@ -116,10 +113,10 @@ dsp_status mgr_destroy(struct mgr_object *hmgr_obj)
  *      Enumerate and get configuration information about nodes configured
  *      in the node database.
  */
-dsp_status mgr_enum_node_info(u32 node_id, OUT struct dsp_ndbprops *pndb_props,
+int mgr_enum_node_info(u32 node_id, OUT struct dsp_ndbprops *pndb_props,
 			      u32 undb_props_size, OUT u32 *pu_num_nodes)
 {
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	struct dsp_uuid node_uuid, temp_uuid;
 	u32 temp_index = 0;
 	u32 node_index = 0;
@@ -139,11 +136,11 @@ dsp_status mgr_enum_node_info(u32 node_id, OUT struct dsp_ndbprops *pndb_props,
 
 	DBC_ASSERT(pmgr_obj);
 	/* Forever loop till we hit failed or no more items in the
-	 * Enumeration. We will exit the loop other than DSP_SOK; */
-	while (status == DSP_SOK) {
+	 * Enumeration. We will exit the loop other than 0; */
+	while (status == 0) {
 		status = dcd_enumerate_object(temp_index++, DSP_DCDNODETYPE,
 					      &temp_uuid);
-		if (status == DSP_SOK) {
+		if (status == 0) {
 			node_index++;
 			if (node_id == (node_index - 1))
 				node_uuid = temp_uuid;
@@ -179,14 +176,14 @@ func_cont:
  *      Enumerate and get configuration information about available
  *      DSP processors.
  */
-dsp_status mgr_enum_processor_info(u32 processor_id,
+int mgr_enum_processor_info(u32 processor_id,
 				   OUT struct dsp_processorinfo *
 				   processor_info, u32 processor_info_size,
 				   OUT u8 *pu_num_procs)
 {
-	dsp_status status = DSP_SOK;
-	dsp_status status1 = DSP_SOK;
-	dsp_status status2 = DSP_SOK;
+	int status = 0;
+	int status1 = 0;
+	int status2 = 0;
 	struct dsp_uuid temp_uuid;
 	u32 temp_index = 0;
 	u32 proc_index = 0;
@@ -229,12 +226,12 @@ dsp_status mgr_enum_processor_info(u32 processor_id,
 	}
 	DBC_ASSERT(pmgr_obj);
 	/* Forever loop till we hit no more items in the
-	 * Enumeration. We will exit the loop other than DSP_SOK; */
-	while (status1 == DSP_SOK) {
+	 * Enumeration. We will exit the loop other than 0; */
+	while (status1 == 0) {
 		status1 = dcd_enumerate_object(temp_index++,
 					       DSP_DCDPROCESSORTYPE,
 					       &temp_uuid);
-		if (status1 != DSP_SOK)
+		if (status1 != 0)
 			break;
 
 		proc_index++;
@@ -307,10 +304,10 @@ void mgr_exit(void)
  *  ======== mgr_get_dcd_handle ========
  *      Retrieves the MGR handle. Accessor Function.
  */
-dsp_status mgr_get_dcd_handle(struct mgr_object *hMGRHandle,
+int mgr_get_dcd_handle(struct mgr_object *hMGRHandle,
 			      OUT u32 *phDCDHandle)
 {
-	dsp_status status = -EPERM;
+	int status = -EPERM;
 	struct mgr_object *pmgr_obj = (struct mgr_object *)hMGRHandle;
 
 	DBC_REQUIRE(refs > 0);
@@ -319,7 +316,7 @@ dsp_status mgr_get_dcd_handle(struct mgr_object *hMGRHandle,
 	*phDCDHandle = (u32) NULL;
 	if (pmgr_obj) {
 		*phDCDHandle = (u32) pmgr_obj->hdcd_mgr;
-		status = DSP_SOK;
+		status = 0;
 	}
 	DBC_ENSURE((DSP_SUCCEEDED(status) && *phDCDHandle != (u32) NULL) ||
 		   (DSP_FAILED(status) && *phDCDHandle == (u32) NULL));
@@ -357,11 +354,11 @@ bool mgr_init(void)
  *  ======== mgr_wait_for_bridge_events ========
  *      Block on any Bridge event(s)
  */
-dsp_status mgr_wait_for_bridge_events(struct dsp_notification **anotifications,
+int mgr_wait_for_bridge_events(struct dsp_notification **anotifications,
 				      u32 count, OUT u32 *pu_index,
 				      u32 utimeout)
 {
-	dsp_status status;
+	int status;
 	struct sync_object *sync_events[MAX_EVENTS];
 	u32 i;
 

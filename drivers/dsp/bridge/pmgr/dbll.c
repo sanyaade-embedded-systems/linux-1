@@ -20,7 +20,6 @@
 /*  ----------------------------------- DSP/BIOS Bridge */
 #include <dspbridge/std.h>
 #include <dspbridge/dbdefs.h>
-#include <dspbridge/errbase.h>
 
 /*  ----------------------------------- Trace & Debug */
 #include <dspbridge/dbc.h>
@@ -140,7 +139,7 @@ struct dbll_symbol {
 extern bool symbols_reloaded;
 
 static void dof_close(struct dbll_library_obj *zl_lib);
-static dsp_status dof_open(struct dbll_library_obj *zl_lib);
+static int dof_open(struct dbll_library_obj *zl_lib);
 static s32 no_op(struct dynamic_loader_initialize *thisptr, void *bufr,
 		 ldr_addr locn, struct ldr_section_info *info, unsigned bytsiz);
 
@@ -239,11 +238,11 @@ void dbll_close(struct dbll_library_obj *zl_lib)
 /*
  *  ======== dbll_create ========
  */
-dsp_status dbll_create(struct dbll_tar_obj **target_obj,
+int dbll_create(struct dbll_tar_obj **target_obj,
 		       struct dbll_attrs *pattrs)
 {
 	struct dbll_tar_obj *pzl_target;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(pattrs != NULL);
@@ -378,14 +377,14 @@ bool dbll_get_c_addr(struct dbll_library_obj *zl_lib, char *name,
  *  ======== dbll_get_sect ========
  *  Get the base address and size (in bytes) of a COFF section.
  */
-dsp_status dbll_get_sect(struct dbll_library_obj *lib, char *name, u32 *paddr,
+int dbll_get_sect(struct dbll_library_obj *lib, char *name, u32 *paddr,
 			 u32 *psize)
 {
 	u32 byte_size;
 	bool opened_doff = false;
 	const struct ldr_section_info *sect = NULL;
 	struct dbll_library_obj *zl_lib = (struct dbll_library_obj *)lib;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(name != NULL);
@@ -420,7 +419,7 @@ dsp_status dbll_get_sect(struct dbll_library_obj *lib, char *name, u32 *paddr,
 			/* Align size */
 			*psize = DOFF_ALIGN(*psize);
 		} else {
-			status = DSP_ENOSECT;
+			status = -ENXIO;
 		}
 	}
 	if (opened_doff) {
@@ -452,14 +451,14 @@ bool dbll_init(void)
 /*
  *  ======== dbll_load ========
  */
-dsp_status dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
+int dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
 		     struct dbll_attrs *attrs, u32 *pEntry)
 {
 	struct dbll_library_obj *zl_lib = (struct dbll_library_obj *)lib;
 	struct dbll_tar_obj *dbzl;
 	bool got_symbols = true;
 	s32 err;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	bool opened_doff = false;
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(zl_lib);
@@ -545,12 +544,12 @@ dsp_status dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
 						  &zl_lib->dload_mod_obj);
 
 			if (err != 0) {
-				status = DSP_EDYNLOAD;
+				status = -EILSEQ;
 			} else if (redefined_symbol) {
 				zl_lib->load_ref++;
 				dbll_unload(zl_lib, (struct dbll_attrs *)attrs);
 				redefined_symbol = false;
-				status = DSP_EDYNLOAD;
+				status = -EILSEQ;
 			} else {
 				*pEntry = zl_lib->entry;
 			}
@@ -575,7 +574,7 @@ dsp_status dbll_load(struct dbll_library_obj *lib, dbll_flags flags,
  *  ======== dbll_load_sect ========
  *  Not supported for COFF.
  */
-dsp_status dbll_load_sect(struct dbll_library_obj *zl_lib, char *sectName,
+int dbll_load_sect(struct dbll_library_obj *zl_lib, char *sectName,
 			  struct dbll_attrs *attrs)
 {
 	DBC_REQUIRE(zl_lib);
@@ -586,13 +585,13 @@ dsp_status dbll_load_sect(struct dbll_library_obj *zl_lib, char *sectName,
 /*
  *  ======== dbll_open ========
  */
-dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
+int dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 		     struct dbll_library_obj **pLib)
 {
 	struct dbll_tar_obj *zl_target = (struct dbll_tar_obj *)target;
 	struct dbll_library_obj *zl_lib = NULL;
 	s32 err;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(zl_target);
@@ -685,7 +684,7 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 					  &zl_lib->init.dl_init, 0,
 					  &zl_lib->dload_mod_obj);
 		if (err != 0) {
-			status = DSP_EDYNLOAD;
+			status = -EILSEQ;
 		} else {
 			/* Now that we have the symbol table, we can unload */
 			err = dynamic_unload_module(zl_lib->dload_mod_obj,
@@ -693,7 +692,7 @@ dsp_status dbll_open(struct dbll_tar_obj *target, char *file, dbll_flags flags,
 						    &zl_lib->allocate.dl_alloc,
 						    &zl_lib->init.dl_init);
 			if (err != 0)
-				status = DSP_EDYNLOAD;
+				status = -EILSEQ;
 
 			zl_lib->dload_mod_obj = NULL;
 		}
@@ -729,7 +728,7 @@ func_cont:
  *  ======== dbll_read_sect ========
  *  Get the content of a COFF section.
  */
-dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
+int dbll_read_sect(struct dbll_library_obj *lib, char *name,
 			  char *pContent, u32 size)
 {
 	struct dbll_library_obj *zl_lib = (struct dbll_library_obj *)lib;
@@ -737,7 +736,7 @@ dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
 	u32 byte_size;		/* size of bytes */
 	u32 ul_sect_size;	/* size of section */
 	const struct ldr_section_info *sect = NULL;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	DBC_REQUIRE(refs > 0);
 	DBC_REQUIRE(zl_lib);
@@ -765,7 +764,7 @@ dsp_status dbll_read_sect(struct dbll_library_obj *lib, char *name,
 
 	byte_size = 1;
 	if (!dload_get_section_info(zl_lib->desc, name, &sect)) {
-		status = DSP_ENOSECT;
+		status = -ENXIO;
 		goto func_cont;
 	}
 	/*
@@ -856,7 +855,7 @@ func_end:
  *  ======== dbll_unload_sect ========
  *  Not supported for COFF.
  */
-dsp_status dbll_unload_sect(struct dbll_library_obj *lib, char *sectName,
+int dbll_unload_sect(struct dbll_library_obj *lib, char *sectName,
 			    struct dbll_attrs *attrs)
 {
 	DBC_REQUIRE(refs > 0);
@@ -884,10 +883,10 @@ static void dof_close(struct dbll_library_obj *zl_lib)
 /*
  *  ======== dof_open ========
  */
-static dsp_status dof_open(struct dbll_library_obj *zl_lib)
+static int dof_open(struct dbll_library_obj *zl_lib)
 {
 	void *open = *(zl_lib->target_obj->attrs.fopen);
-	dsp_status status = DSP_SOK;
+	int status = 0;
 
 	/* First open the file for the dynamic loader, then open COF */
 	zl_lib->fp =
@@ -1226,7 +1225,7 @@ static int dbll_rmm_alloc(struct dynamic_loader_allocate *this,
 {
 	struct dbll_alloc *dbll_alloc_obj = (struct dbll_alloc *)this;
 	struct dbll_library_obj *lib;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	u32 mem_sect_type;
 	struct rmm_addr rmm_addr_obj;
 	s32 ret = TRUE;
@@ -1346,7 +1345,7 @@ static void rmm_dealloc(struct dynamic_loader_allocate *this,
 	struct dbll_alloc *dbll_alloc_obj = (struct dbll_alloc *)this;
 	struct dbll_library_obj *lib;
 	u32 segid;
-	dsp_status status = DSP_SOK;
+	int status = 0;
 	unsigned stype = DLOAD_SECTION_TYPE(info->type);
 	u32 mem_sect_type;
 	u32 free_size = 0;

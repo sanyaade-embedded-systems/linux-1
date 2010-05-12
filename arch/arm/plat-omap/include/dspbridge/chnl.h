@@ -34,16 +34,16 @@
  *  Parameters:
  *      chnl_obj:          Channel object handle.
  *  Returns:
- *      DSP_SOK:        Success;
+ *      0:        Success;
  *      -EFAULT:    Invalid chnl_obj.
  *  Requires:
  *      chnl_init(void) called.
  *      No thread must be blocked on this channel's I/O completion event.
  *  Ensures:
- *      DSP_SOK:        The I/O completion event for this channel is freed.
+ *      0:        The I/O completion event for this channel is freed.
  *                      chnl_obj is no longer valid.
  */
-extern dsp_status chnl_close(struct chnl_object *chnl_obj);
+extern int chnl_close(struct chnl_object *chnl_obj);
 
 /*
  *  ======== chnl_create ========
@@ -59,26 +59,26 @@ extern dsp_status chnl_close(struct chnl_object *chnl_obj);
  *      pMgrAttrs->irq_shared:     TRUE if the IRQ is shareable.
  *      pMgrAttrs->word_size:   DSP Word size in equivalent PC bytes..
  *  Returns:
- *      DSP_SOK:                Success;
+ *      0:                Success;
  *      -EFAULT:            hdev_obj is invalid.
  *      -EINVAL:        max_channels is 0.
  *      -ENOMEM:            Insufficient memory for requested resources.
- *      CHNL_E_ISR:             Unable to plug channel ISR for configured IRQ.
- *      CHNL_E_MAXCHANNELS:     This manager cannot handle this many channels.
+ *      -EIO:             Unable to plug channel ISR for configured IRQ.
+ *      -ECHRNG:     This manager cannot handle this many channels.
  *      CHNL_E_INVALIDIRQ:      Invalid IRQ number. Must be 0 <= birq <= 15.
- *      CHNL_E_INVALIDWORDSIZE: Invalid DSP word size.  Must be > 0.
- *      CHNL_E_INVALIDMEMBASE:  Invalid base address for DSP communications.
- *      CHNL_E_MGREXISTS:       Channel manager already exists for this device.
+ *      -EINVAL: Invalid DSP word size.  Must be > 0.
+ *      -EINVAL:  Invalid base address for DSP communications.
+ *      -EEXIST:       Channel manager already exists for this device.
  *  Requires:
  *      chnl_init(void) called.
  *      phChnlMgr != NULL.
  *      pMgrAttrs != NULL.
  *  Ensures:
- *      DSP_SOK:                Subsequent calls to chnl_create() for the same
+ *      0:                Subsequent calls to chnl_create() for the same
  *                              board without an intervening call to
  *                              chnl_destroy() will fail.
  */
-extern dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
+extern int chnl_create(OUT struct chnl_mgr **phChnlMgr,
 			      struct dev_object *hdev_obj,
 			      IN CONST struct chnl_mgrattrs *pMgrAttrs);
 
@@ -89,17 +89,17 @@ extern dsp_status chnl_create(OUT struct chnl_mgr **phChnlMgr,
  *  Parameters:
  *      hchnl_mgr:           Channel manager object.
  *  Returns:
- *      DSP_SOK:            Success.
+ *      0:            Success.
  *      -EFAULT:        hchnl_mgr was invalid.
  *  Requires:
  *      chnl_init(void) called.
  *  Ensures:
- *      DSP_SOK:            Cancels I/O on each open channel.
+ *      0:            Cancels I/O on each open channel.
  *                          Closes each open channel.
  *                          chnl_create may subsequently be called for the
  *                          same board.
  */
-extern dsp_status chnl_destroy(struct chnl_mgr *hchnl_mgr);
+extern int chnl_destroy(struct chnl_mgr *hchnl_mgr);
 
 /*
  *  ======== chnl_exit ========

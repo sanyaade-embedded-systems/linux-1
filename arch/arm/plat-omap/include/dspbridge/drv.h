@@ -170,18 +170,18 @@ struct process_context {
  *  Parameters:
  *      phDrvObject:    Location to store created DRV Object handle.
  *  Returns:
- *      DSP_SOK:        Sucess
+ *      0:        Sucess
  *      -ENOMEM:    Failed in Memory allocation
  *      -EPERM:      General Failure
  *  Requires:
  *      DRV Initialized (refs > 0 )
  *      phDrvObject != NULL.
  *  Ensures:
- *      DSP_SOK:        - *phDrvObject is a valid DRV interface to the device.
+ *      0:        - *phDrvObject is a valid DRV interface to the device.
  *                      - List of DevObject Created and Initialized.
  *                      - List of dev_node String created and intialized.
  *                      - Registry is updated with the DRV Object.
- *      !DSP_SOK:       DRV Object not created
+ *      !0:       DRV Object not created
  *  Details:
  *      There is one Driver Object for the Driver representing
  *      the driver itself. It contains the list of device
@@ -189,7 +189,7 @@ struct process_context {
  *      Also it can hold other neccessary
  *      information in its storage area.
  */
-extern dsp_status drv_create(struct drv_object **phDrvObject);
+extern int drv_create(struct drv_object **phDrvObject);
 
 /*
  *  ======== drv_destroy ========
@@ -200,7 +200,7 @@ extern dsp_status drv_create(struct drv_object **phDrvObject);
  *  Parameters:
  *      hdrv_obj:     Handle to Driver object .
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EPERM:      Failed to destroy DRV Object
  *  Requires:
  *      DRV Initialized (cRegs > 0 )
@@ -208,11 +208,11 @@ extern dsp_status drv_create(struct drv_object **phDrvObject);
  *      List of DevObject is Empty.
  *      List of DrvExt is Empty
  *  Ensures:
- *      DSP_SOK:        - DRV Object destroyed and hdrv_obj is not a valid
+ *      0:        - DRV Object destroyed and hdrv_obj is not a valid
  *                        DRV handle.
  *                      - Registry is updated with "0" as the DRV Object.
  */
-extern dsp_status drv_destroy(struct drv_object *hdrv_obj);
+extern int drv_destroy(struct drv_object *hdrv_obj);
 
 /*
  *  ======== drv_exit ========
@@ -267,13 +267,13 @@ extern u32 drv_get_first_dev_extension(void);
  *      phDevObject is not NULL
  *      Device Object List not Empty
  *  Returns:
- *      DSP_SOK:        Success
+ *      0:        Success
  *      -EPERM:      Failed to Get the Dev Object
  *  Ensures:
- *      DSP_SOK:        *phDevObject != NULL
+ *      0:        *phDevObject != NULL
  *      -EPERM:      *phDevObject = NULL
  */
-extern dsp_status drv_get_dev_object(u32 index,
+extern int drv_get_dev_object(u32 index,
 				     struct drv_object *hdrv_obj,
 				     struct dev_object **phDevObject);
 
@@ -319,7 +319,7 @@ extern u32 drv_get_next_dev_extension(u32 hDevExtension);
  *  Requires:
  *  Ensures:
  */
-extern dsp_status drv_init(void);
+extern int drv_init(void);
 
 /*
  *  ======== drv_insert_dev_object ========
@@ -329,15 +329,15 @@ extern dsp_status drv_init(void);
  *      hdrv_obj:     Handle to DrvObject
  *      hdev_obj:     Handle to DeviceObject to insert.
  *  Returns:
- *      DSP_SOK:        If successful.
+ *      0:        If successful.
  *      -EPERM:      General Failure:
  *  Requires:
  *      hdrv_obj != NULL and Valid DRV Handle.
  *      hdev_obj != NULL.
  *  Ensures:
- *      DSP_SOK:        Device Object is inserted and the List is not empty.
+ *      0:        Device Object is inserted and the List is not empty.
  */
-extern dsp_status drv_insert_dev_object(struct drv_object *hdrv_obj,
+extern int drv_insert_dev_object(struct drv_object *hdrv_obj,
 					struct dev_object *hdev_obj);
 
 /*
@@ -349,7 +349,7 @@ extern dsp_status drv_insert_dev_object(struct drv_object *hdrv_obj,
  *      hdrv_obj:     Handle to DrvObject
  *      hdev_obj:     Handle to DevObject to Remove
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EPERM:      Unable to find dev_obj.
  *  Requires:
  *      hdrv_obj != NULL and a Valid DRV Handle.
@@ -358,7 +358,7 @@ extern dsp_status drv_insert_dev_object(struct drv_object *hdrv_obj,
  *  Ensures:
  *      List either does not exist (NULL), or is not empty if it does exist.
  */
-extern dsp_status drv_remove_dev_object(struct drv_object *hdrv_obj,
+extern int drv_remove_dev_object(struct drv_object *hdrv_obj,
 					struct dev_object *hdev_obj);
 
 /*
@@ -378,7 +378,7 @@ extern dsp_status drv_remove_dev_object(struct drv_object *hdrv_obj,
  *      Resource structure is stored in the registry which will be
  *      later used by the CFG module.
  */
-extern dsp_status drv_request_resources(IN u32 dw_context,
+extern int drv_request_resources(IN u32 dw_context,
 					OUT u32 *pDevNodeString);
 
 /*
@@ -395,10 +395,10 @@ extern dsp_status drv_request_resources(IN u32 dw_context,
  *      The Resources are released based on Bus type.
  *      Resource structure is deleted from the registry
  */
-extern dsp_status drv_release_resources(IN u32 dw_context,
+extern int drv_release_resources(IN u32 dw_context,
 					struct drv_object *hdrv_obj);
 
-dsp_status drv_request_bridge_res_dsp(void **phost_resources);
+int drv_request_bridge_res_dsp(void **phost_resources);
 
 #ifdef CONFIG_BRIDGE_RECOVERY
 void bridge_recover_schedule(void);

@@ -38,19 +38,19 @@
  *      pMgrAttrs->irq_shared:     TRUE if the IRQ is shareable.
  *      pMgrAttrs->word_size:   DSP Word size in equivalent PC bytes..
  *  Returns:
- *      DSP_SOK:                Success;
+ *      0:                Success;
  *      -ENOMEM:            Insufficient memory for requested resources.
- *      CHNL_E_ISR:             Unable to plug channel ISR for configured IRQ.
+ *      -EIO:             Unable to plug channel ISR for configured IRQ.
  *      CHNL_E_INVALIDIRQ:      Invalid IRQ number. Must be 0 <= birq <= 15.
- *      CHNL_E_INVALIDWORDSIZE: Invalid DSP word size.  Must be > 0.
- *      CHNL_E_INVALIDMEMBASE:  Invalid base address for DSP communications.
+ *      -EINVAL: Invalid DSP word size.  Must be > 0.
+ *      -EINVAL:  Invalid base address for DSP communications.
  *  Requires:
  *      io_init(void) called.
  *      phIOMgr != NULL.
  *      pMgrAttrs != NULL.
  *  Ensures:
  */
-extern dsp_status io_create(OUT struct io_mgr **phIOMgr,
+extern int io_create(OUT struct io_mgr **phIOMgr,
 			    struct dev_object *hdev_obj,
 			    IN CONST struct io_attrs *pMgrAttrs);
 
@@ -61,13 +61,13 @@ extern dsp_status io_create(OUT struct io_mgr **phIOMgr,
  *  Parameters:
  *      hio_mgr:         IOmanager object.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    hio_mgr was invalid.
  *  Requires:
  *      io_init(void) called.
  *  Ensures:
  */
-extern dsp_status io_destroy(struct io_mgr *hio_mgr);
+extern int io_destroy(struct io_mgr *hio_mgr);
 
 /*
  *  ======== io_exit ========
@@ -104,12 +104,12 @@ extern bool io_init(void);
  *  Parameters:
  *      hio_mgr:         IOmanager object.
  *  Returns:
- *      DSP_SOK:        Success.
+ *      0:        Success.
  *      -EFAULT:    hio_mgr was invalid.
  *  Requires:
  *      io_init(void) called.
  *  Ensures:
  */
-extern dsp_status io_on_loaded(struct io_mgr *hio_mgr);
+extern int io_on_loaded(struct io_mgr *hio_mgr);
 
 #endif /* CHNL_ */
