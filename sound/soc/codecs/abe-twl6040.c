@@ -1225,7 +1225,7 @@ static int abe_mm_hw_params(struct snd_pcm_substream *substream,
 	if (!substream->stream)
 		abe_connect_cbpr_dmareq_port(MM_DL_PORT, &format, ABE_CBPR0_IDX, &dma_sink);
 	else
-		abe_connect_cbpr_dmareq_port(MM_UL_PORT, &format, ABE_CBPR3_IDX, &dma_sink);
+		abe_connect_cbpr_dmareq_port(MM_UL2_PORT, &format, ABE_CBPR4_IDX, &dma_sink);
 
 	return 0;
 }
@@ -1254,14 +1254,14 @@ static int abe_mm_trigger(struct snd_pcm_substream *substream,
 		if (!substream->stream)
 			abe_enable_data_transfer(MM_DL_PORT);
 		else
-			abe_enable_data_transfer(MM_UL_PORT);
+			abe_enable_data_transfer(MM_UL2_PORT);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		if (!substream->stream)
 			abe_disable_data_transfer(MM_DL_PORT);
 		else
-			abe_disable_data_transfer(MM_UL_PORT);
+			abe_disable_data_transfer(MM_UL2_PORT);
 		break;
 	default:
 		break;
