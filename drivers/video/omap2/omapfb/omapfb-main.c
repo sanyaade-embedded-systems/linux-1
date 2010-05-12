@@ -1216,6 +1216,11 @@ static int omapfb_blank(int blank, struct fb_info *fbi)
 	int do_update = 0;
 	int r = 0;
 
+	if (display == NULL) {
+		printk(KERN_ERR "omapfb_blank: fb2display returned NULL\n");
+		return -EINVAL;
+	}
+
 	omapfb_lock(fbdev);
 
 	switch (blank) {
