@@ -558,6 +558,8 @@ static int omap_dss_probe(struct platform_device *pdev)
 			goto fail0;
 		}
 #endif
+	}
+	if (!cpu_is_omap24xx()) {
 #ifdef CONFIG_OMAP2_DSS_DSI
 		r = dsi_init(pdev);
 		if (r) {
