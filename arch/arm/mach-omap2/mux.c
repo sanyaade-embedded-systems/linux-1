@@ -478,7 +478,7 @@ int __init omap_mux_init_signal(char *muxname, int val)
 static inline void omap_mux_decode(struct seq_file *s, u16 val)
 {
 	char *flags[OMAP_MUX_MAX_NR_FLAGS];
-	char mode[14];
+	char mode[15];
 	int i = -1;
 
 	sprintf(mode, "OMAP_MUX_MODE%d", val & 0x7);
