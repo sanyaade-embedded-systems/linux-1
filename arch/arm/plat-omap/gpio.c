@@ -2078,12 +2078,6 @@ static int __init omap_gpio_drv_reg(void)
 }
 postcore_initcall(omap_gpio_drv_reg);
 
-/* TODO: Remove omap_gpio_init() and its usage from board files */
-int __init omap_gpio_init(void)
-{
-	return 0;
-}
-
 static int __init omap_gpio_sysinit(void)
 {
 	int ret = 0;

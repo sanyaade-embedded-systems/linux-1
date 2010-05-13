@@ -152,7 +152,6 @@ struct omap_gpio_platform_data {
 	struct omap_gpio_dev_attr *gpio_attr;
 };
 
-extern int omap_gpio_init(void);	/* Call from board init only */
 extern void omap2_gpio_prepare_for_retention(void);
 extern void omap2_gpio_resume_after_retention(void);
 extern void omap_set_gpio_debounce(int gpio, int enable);
