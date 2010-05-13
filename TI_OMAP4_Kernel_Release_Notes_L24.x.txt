@@ -58,6 +58,7 @@ To select the default configuration for U-Boot type:
 To build the U-Boot image type:
 	# make CROSS_COMPILE=arm-none-linux-gnueabi-
 
+Add mkimage path to the PATH variable (for uImage building).
 
 3.2.2 Compiling X-loader (for booting from external/removable MMC)
 
@@ -94,6 +95,9 @@ needed tool chain. Refer to section 5 for tool chain information.
 
 The default configuration file for OMAP 4430 is present at
 arch/arm/configs/omap_4430sdp_defconfig.
+
+Prerequisite: See section 3.2.1, and ensure this:
+Add mkimage path to the PATH variable (for uImage building).
 
 To work with the default configuration file, run following commands:
 	# make ARCH=arm CROSS_COMPILE=arm-none-linux-gnueabi-
