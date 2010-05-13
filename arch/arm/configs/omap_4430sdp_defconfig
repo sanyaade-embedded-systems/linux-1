@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.33.2
-# Sat May  8 11:34:32 2010
+# Thu May 13 12:54:40 2010
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -261,6 +261,7 @@ CONFIG_OMAP_PM_NOOP=y
 # CONFIG_TIWLAN_SDIO is not set
 CONFIG_MACH_OMAP_4430SDP=y
 CONFIG_ERRATA_OMAP4_AXI2OCP=y
+
 #
 # Processor Type
 #
