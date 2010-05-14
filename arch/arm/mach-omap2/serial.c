@@ -25,12 +25,9 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-
-#ifdef CONFIG_SERIAL_8250_CONSOLE
 #include <linux/serial_8250.h>
-#endif
 
-#ifdef CONFIG_SERIAL_OMAP_CONSOLE
+#ifdef CONFIG_SERIAL_OMAP
 #include <plat/omap-serial.h>
 #endif
 
@@ -488,8 +485,11 @@ void omap_uart_enable_irqs(int enable)
 
 	list_for_each_entry(uart, &uart_list, node) {
 		if (enable)
-			ret = request_irq(uart->irq, omap_uart_interrupt,
-				IRQF_SHARED, "serial idle", (void *)uart);
+			ret = request_threaded_irq(uart->irq, NULL,
+						   omap_uart_interrupt,
+						   IRQF_SHARED,
+						   "serial idle",
+						   (void *)uart);
 		else
 			free_irq(uart->irq, (void *)uart);
 	}
@@ -534,11 +534,11 @@ DEVICE_ATTR(sleep_timeout, 0644, sleep_timeout_show, sleep_timeout_store);
 #define DEV_CREATE_FILE(dev, attr) WARN_ON(device_create_file(dev, attr))
 #else
 static inline void omap_uart_idle_init(struct omap_uart_state *uart) {}
+static void omap_uart_block_sleep(struct omap_uart_state *uart) {}
 #define DEV_CREATE_FILE(dev, attr)
 #endif /* CONFIG_PM */
 
-
-#ifdef CONFIG_SERIAL_8250_CONSOLE
+#ifndef CONFIG_SERIAL_OMAP
 /*
  * Override the default 8250 read handler: mem_serial_in()
  * Empty RX fifo read causes an abort on omap3630 and omap4
@@ -583,7 +583,7 @@ void __init omap_serial_early_init(void)
 		struct omap_uart_state *uart;
 
 		snprintf(oh_name, MAX_UART_HWMOD_NAME_LEN,
-			 "uart%d_hwmod", i + 1);
+			 "uart%d", i + 1);
 		oh = omap_hwmod_lookup(oh_name);
 		if (!oh)
 			break;
@@ -630,14 +630,13 @@ void __init omap_serial_init_port(int port)
 	void *pdata = NULL;
 	u32 pdata_size = 0;
 	char *name;
-#ifdef CONFIG_SERIAL_8250_CONSOLE
+#ifndef CONFIG_SERIAL_OMAP
 	struct plat_serial8250_port ports[2] = {
 		{},
 		{.flags = 0},
 	};
 	struct plat_serial8250_port *p = &ports[0];
-#endif
-#ifdef CONFIG_SERIAL_OMAP_CONSOLE
+#else
 	struct omap_uart_port_info omap_up;
 #endif
 
@@ -652,7 +651,7 @@ void __init omap_serial_init_port(int port)
 
 	oh = uart->oh;
 	uart->dma_enabled = 0;
-#ifdef CONFIG_SERIAL_8250_CONSOLE
+#ifndef CONFIG_SERIAL_OMAP
 	name = "serial8250";
 
 	/*
@@ -675,7 +674,6 @@ void __init omap_serial_init_port(int port)
 	p->irqflags = IRQF_SHARED;
 	p->private_data = uart;
 
-#if 0
 	/*
 	 * omap44xx: Never read empty UART fifo
 	 * omap3xxx: Never read empty UART fifo on UARTs
@@ -691,13 +689,12 @@ void __init omap_serial_init_port(int port)
 		p->serial_in = serial_in_override;
 		p->serial_out = serial_out_override;
 	}
-#endif
 
 	pdata = &ports[0];
 	pdata_size = 2 * sizeof(struct plat_serial8250_port);
-#endif
-#ifdef CONFIG_SERIAL_OMAP_CONSOLE
-	name = "omap-hsuart";
+#else
+
+	name = DRIVER_NAME;
 
 	omap_up.dma_enabled = uart->dma_enabled;
 	omap_up.uartclk = OMAP24XX_BASE_BAUD * 16;
