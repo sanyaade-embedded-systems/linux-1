@@ -96,7 +96,7 @@ struct powerdomain;
 struct powerdomain {
 	const char *name;
 	const struct omap_chip_id omap_chip;
-	const s16 prcm_offs;
+	const s32 prcm_offs;
 	const u8 pwrsts;
 	const u8 pwrsts_logic_ret;
 	const u8 flags;

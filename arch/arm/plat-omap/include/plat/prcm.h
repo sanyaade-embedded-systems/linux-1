@@ -34,13 +34,13 @@ int omap2_cm_wait_idlest(void __iomem *reg, u32 mask, u8 idlest,
 void omap3_prcm_save_context(void);
 void omap3_prcm_restore_context(void);
 
-u32 prm_read_mod_reg(s16 module, u16 idx);
-void prm_write_mod_reg(u32 val, s16 module, u16 idx);
-u32 prm_rmw_mod_reg_bits(u32 mask, u32 bits, s16 module, s16 idx);
-u32 prm_read_mod_bits_shift(s16 domain, s16 idx, u32 mask);
-u32 cm_read_mod_reg(s16 module, u16 idx);
-void cm_write_mod_reg(u32 val, s16 module, u16 idx);
-u32 cm_rmw_mod_reg_bits(u32 mask, u32 bits, s16 module, s16 idx);
+u32 prm_read_mod_reg(s32 module, u16 idx);
+void prm_write_mod_reg(u32 val, s32 module, u16 idx);
+u32 prm_rmw_mod_reg_bits(u32 mask, u32 bits, s32 module, s16 idx);
+u32 prm_read_mod_bits_shift(s32 domain, s16 idx, u32 mask);
+u32 cm_read_mod_reg(s32 module, u16 idx);
+void cm_write_mod_reg(u32 val, s32 module, u16 idx);
+u32 cm_rmw_mod_reg_bits(u32 mask, u32 bits, s32 module, s16 idx);
 
 #endif
 

@@ -165,33 +165,33 @@ void omap_prcm_arch_reset(char mode, const char *cmd)
 						 OMAP4_RM_RSTCTRL);
 }
 
-static inline u32 __omap_prcm_read(void __iomem *base, s16 module, u16 reg)
+static inline u32 __omap_prcm_read(void __iomem *base, s32 module, u16 reg)
 {
 	BUG_ON(!base);
 	return __raw_readl(base + module + reg);
 }
 
 static inline void __omap_prcm_write(u32 value, void __iomem *base,
-						s16 module, u16 reg)
+						s32 module, u16 reg)
 {
 	BUG_ON(!base);
 	__raw_writel(value, base + module + reg);
 }
 
 /* Read a register in a PRM module */
-u32 prm_read_mod_reg(s16 module, u16 idx)
+u32 prm_read_mod_reg(s32 module, u16 idx)
 {
 	return __omap_prcm_read(prm_base, module, idx);
 }
 
 /* Write into a register in a PRM module */
-void prm_write_mod_reg(u32 val, s16 module, u16 idx)
+void prm_write_mod_reg(u32 val, s32 module, u16 idx)
 {
 	__omap_prcm_write(val, prm_base, module, idx);
 }
 
 /* Read-modify-write a register in a PRM module. Caller must lock */
-u32 prm_rmw_mod_reg_bits(u32 mask, u32 bits, s16 module, s16 idx)
+u32 prm_rmw_mod_reg_bits(u32 mask, u32 bits, s32 module, s16 idx)
 {
 	u32 v;
 
@@ -204,7 +204,7 @@ u32 prm_rmw_mod_reg_bits(u32 mask, u32 bits, s16 module, s16 idx)
 }
 
 /* Read a PRM register, AND it, and shift the result down to bit 0 */
-u32 prm_read_mod_bits_shift(s16 domain, s16 idx, u32 mask)
+u32 prm_read_mod_bits_shift(s32 domain, s16 idx, u32 mask)
 {
 	u32 v;
 
@@ -216,19 +216,19 @@ u32 prm_read_mod_bits_shift(s16 domain, s16 idx, u32 mask)
 }
 
 /* Read a register in a CM module */
-u32 cm_read_mod_reg(s16 module, u16 idx)
+u32 cm_read_mod_reg(s32 module, u16 idx)
 {
 	return __omap_prcm_read(cm_base, module, idx);
 }
 
 /* Write into a register in a CM module */
-void cm_write_mod_reg(u32 val, s16 module, u16 idx)
+void cm_write_mod_reg(u32 val, s32 module, u16 idx)
 {
 	__omap_prcm_write(val, cm_base, module, idx);
 }
 
 /* Read-modify-write a register in a CM module. Caller must lock */
-u32 cm_rmw_mod_reg_bits(u32 mask, u32 bits, s16 module, s16 idx)
+u32 cm_rmw_mod_reg_bits(u32 mask, u32 bits, s32 module, s16 idx)
 {
 	u32 v;
 
