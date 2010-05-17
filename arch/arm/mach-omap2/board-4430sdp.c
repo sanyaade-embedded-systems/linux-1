@@ -337,6 +337,10 @@ static int sdp4430_taal_enable(struct omap_dss_device *dssdev)
 	twl_i2c_write_u8(0xBE, 0x30, 0x92);
 #endif
 
+	twl_i2c_write_u8(TWL_MODULE_PWM, 0xFF, 0x03);
+	twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, 0x04);
+	twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, 0x92);
+
 	gpio_request(27, "dsi1_bl_gpio"); /*DSI1_GPIO_27*/
 	gpio_direction_output(27, 1);
 	mdelay(120);
