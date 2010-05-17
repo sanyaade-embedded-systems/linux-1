@@ -66,6 +66,8 @@
 #define TAAL_ESD_CHECK_PERIOD	msecs_to_jiffies(5000)
 
 static int _taal_enable_te(struct omap_dss_device *dssdev, bool enable);
+static int taal_update(struct omap_dss_device *dssdev,
+						u16 x, u16 y, u16 w, u16 h);
 
 struct taal_data {
 	struct mutex lock;
@@ -759,6 +761,10 @@ static int taal_enable(struct omap_dss_device *dssdev)
 
 	mutex_unlock(&td->lock);
 
+	/* auto update for OMAP4 */
+	if (cpu_is_omap44xx())
+		taal_update(dssdev, 0, 0, 864, 480);
+
 	return 0;
 err:
 	dev_dbg(&dssdev->dev, "enable failed\n");
@@ -837,6 +843,9 @@ static void taal_framedone_cb(int err, void *data)
 	struct omap_dss_device *dssdev = data;
 	dev_dbg(&dssdev->dev, "framedone, err %d\n", err);
 	dsi_bus_unlock();
+	/* auto update for OMAP4 */
+	if (cpu_is_omap44xx())
+		taal_update(dssdev, 0, 0, 864, 480);
 }
 
 static int taal_update(struct omap_dss_device *dssdev,
@@ -863,8 +872,13 @@ static int taal_update(struct omap_dss_device *dssdev,
 	if (r)
 		goto err;
 
-	r = omap_dsi_update(dssdev, TCH, x, y, w, h,
-			taal_framedone_cb, dssdev);
+	/* We use VC(1) for VideoPort Data and VC(0) for L4 data */
+	if (cpu_is_omap44xx())
+		r = omap_dsi_update(dssdev, 1, x, y, w, h,
+				taal_framedone_cb, dssdev);
+	else
+		r = omap_dsi_update(dssdev, TCH, x, y, w, h,
+				taal_framedone_cb, dssdev);
 	if (r)
 		goto err;
 
