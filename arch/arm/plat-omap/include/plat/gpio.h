@@ -28,6 +28,7 @@
 
 #include <linux/io.h>
 #include <mach/irqs.h>
+#include <linux/platform_device.h>
 
 #define OMAP1_MPUIO_BASE		0xfffb5000
 #define OMAP1_MPUIO_VBASE		OMAP1_MPUIO_BASE
@@ -136,6 +137,20 @@
 #define OMAP_GPIO_IRQ(nr)	(OMAP_GPIO_IS_MPUIO(nr) ? \
 				 IH_MPUIO_BASE + ((nr) & 0x0f) : \
 				 IH_GPIO_BASE + (nr))
+
+struct omap_gpio_dev_attr {
+	int gpio_bank_count;
+	int gpio_bank_bits;
+	bool dbck_flag;
+	bool fck_flag;
+	bool arm_gpio_ck_flag;
+};
+
+struct omap_gpio_platform_data {
+	u16 virtual_irq_start;
+	int method;
+	struct omap_gpio_dev_attr *gpio_attr;
+};
 
 extern int omap_gpio_init(void);	/* Call from board init only */
 extern void omap2_gpio_prepare_for_retention(void);
