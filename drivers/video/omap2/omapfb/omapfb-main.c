@@ -2210,9 +2210,11 @@ static int omapfb_probe(struct platform_device *pdev)
 			if (dssdrv->set_update_mode)
 				dssdrv->set_update_mode(def_display,
 						OMAP_DSS_UPDATE_MANUAL);
-
-			dssdrv->get_resolution(def_display, &w, &h);
-			def_display->driver->update(def_display, 0, 0, w, h);
+			/* don't call panel update for OMAP4 */
+			if (!cpu_is_omap44xx()) {
+				dssdrv->get_resolution(def_display, &w, &h);
+				def_display->driver->update(def_display, 0, 0, w, h);
+			}
 		} else {
 			if (dssdrv->set_update_mode)
 				dssdrv->set_update_mode(def_display,
