@@ -502,10 +502,12 @@ static int taal_probe(struct omap_dss_device *dssdev)
 
 	dev_dbg(&dssdev->dev, "probe\n");
 
-	dssdev->panel.config = OMAP_DSS_LCD_TFT;
+	dssdev->panel.config = OMAP_DSS_LCD_TFT |
+		OMAP_DSS_LCD_ONOFF | OMAP_DSS_LCD_RF;
 	dssdev->panel.timings = taal_panel_timings;
 	dssdev->ctrl.pixel_size = 24;
-
+	dssdev->panel.acbi = 0;
+	dssdev->panel.acb = 0;
 	td = kzalloc(sizeof(*td), GFP_KERNEL);
 	if (!td) {
 		r = -ENOMEM;
