@@ -269,7 +269,12 @@ void dss_select_dispc_clk_source(enum dss_clk_source clk_src)
 
 	b = clk_src == DSS_SRC_DSS1_ALWON_FCLK ? 0 : 1;
 
-	REG_FLD_MOD(DSS_CONTROL, b, 0, 0);	/* DISPC_CLK_SWITCH */
+	if (!cpu_is_omap44xx()) {
+		REG_FLD_MOD(DSS_CONTROL, b, 0, 0);	/* DISPC_CLK_SWITCH */
+	} else {
+		REG_FLD_MOD(DSS_CONTROL, b, 9, 8);	/* FCK_CLK_SWITCH */
+		REG_FLD_MOD(DSS_CONTROL, b, 0, 0);	/* LCD1_CLK_SWITCH */
+	}
 
 	dss.dispc_clk_source = clk_src;
 }
