@@ -106,6 +106,7 @@ static int flg_720  = VIDEO_720_DISABLE;
 struct rsz_params isp_rsz_params;
 int rsz_configured;
 int rsz_allocated;
+static int vrfb_configured;
 
 static u16 omap_vout_rsz_filter_4_tap_high_quality[] = {
 	0x0000, 0x0100, 0x0000, 0x0000,
@@ -1295,6 +1296,8 @@ static int omap_vout_release(struct file *file)
 		flg_720 = VIDEO_720_DISABLE;
 	}
 
+	vrfb_configured = 0;
+
 	/* Free all buffers */
 	omap_vout_free_allbuffers(vout);
 	videobuf_mmap_free(q);
@@ -1930,6 +1933,7 @@ static int vidioc_qbuf(struct file *file, void *fh,
 	struct videobuf_queue *q = &vout->vbq;
 	int ret, k, t;
 	struct omapvideo_info *ovid = &vout->vid_info;
+	unsigned int count;
 
 	if ((V4L2_BUF_TYPE_VIDEO_OUTPUT != buffer->type) ||
 			(buffer->index >= vout->buffer_allocated) ||
@@ -2016,6 +2020,16 @@ static int vidioc_qbuf(struct file *file, void *fh,
 			rsz_configured = 1;
 		}
 	}
+
+	/* setup the vrfb so that the first frames are also setup
+	* correctly in the vrfb
+	*/
+	if (vrfb_configured == 0) {
+		count = vout->buffer_allocated;
+		omap_vout_vrfb_buffer_setup(vout, &count, 0);
+		vrfb_configured = 1;
+	}
+
 
 	ret = videobuf_qbuf(q, buffer);
 	return ret;
@@ -2217,6 +2231,7 @@ static int vidioc_streamoff(struct file *file, void *fh,
 	}
 
 	INIT_LIST_HEAD(&vout->dma_queue);
+	vrfb_configured = 0;
 	videobuf_streamoff(&vout->vbq);
 	videobuf_queue_cancel(&vout->vbq);
 
