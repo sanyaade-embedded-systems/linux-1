@@ -119,7 +119,7 @@ static const struct clksel_rate div_1_0_rates[] = {
 };
 
 static const struct clksel_rate div_1_1_rates[] = {
-	{ .div = 1, .val = 1, .flags = RATE_IN_4430 },
+	{ .div = 1, .val = 1, .flags = RATE_IN_4430 | DEFAULT_RATE },
 	{ .div = 0 },
 };
 
