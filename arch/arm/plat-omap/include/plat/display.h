@@ -42,6 +42,17 @@
 #define DISPC_IRQ_SYNC_LOST		(1 << 14)
 #define DISPC_IRQ_SYNC_LOST_DIGIT	(1 << 15)
 #define DISPC_IRQ_WAKEUP		(1 << 16)
+#define DISPC_IRQ_SYNC_LOST_2  (1 << 17)
+#define DISPC_IRQ_VSYNC2               (1 << 18)
+#define DISPC_IRQ_VID3_END_WIN         (1 << 19)
+#define DISPC_IRQ_VID3_FIFO_UNDERFLOW  (1 << 20)
+					/* VID3_BUF_UNDERFLOW*/
+#define DISPC_IRQ_ACBIAS_COUNT_STAT2   (1 << 21)
+#define DISPC_IRQ_FRAMEDONE2           (1 << 22)
+#define DISPC_IRQ_FRAMEDONE_WB         (1 << 23)
+#define DISPC_IRQ_FRAMEDONE_DIG                (1 << 24) /* FRAMEDONE_TV*/
+#define DISPC_IRQ_WB_BUF_OVERFLOW      (1 << 25)
+
 
 struct omap_dss_device;
 struct omap_overlay_manager;
@@ -467,6 +478,7 @@ struct omap_dss_device {
 	struct omap_overlay_manager *manager;
 
 	enum omap_dss_display_state state;
+	enum omap_channel channel;
 
 	/* platform specific  */
 	int (*platform_enable)(struct omap_dss_device *dssdev);

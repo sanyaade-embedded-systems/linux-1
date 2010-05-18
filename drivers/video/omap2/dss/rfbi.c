@@ -311,7 +311,7 @@ void rfbi_transfer_area(u16 width, u16 height,
 
 	DSSDBG("rfbi_transfer_area %dx%d\n", width, height);
 
-	dispc_set_lcd_size(width, height);
+	dispc_set_lcd_size(OMAP_DSS_CHANNEL_LCD, width, height);
 
 	dispc_enable_channel(OMAP_DSS_CHANNEL_LCD, true);
 
@@ -1018,11 +1018,14 @@ int omapdss_rfbi_display_enable(struct omap_dss_device *dssdev)
 		goto err1;
 	}
 
-	dispc_set_lcd_display_type(OMAP_DSS_LCD_DISPLAY_TFT);
+	dispc_set_lcd_display_type(OMAP_DSS_CHANNEL_LCD,
+					OMAP_DSS_LCD_DISPLAY_TFT);
 
-	dispc_set_parallel_interface_mode(OMAP_DSS_PARALLELMODE_RFBI);
+	dispc_set_parallel_interface_mode(OMAP_DSS_CHANNEL_LCD,
+					OMAP_DSS_PARALLELMODE_RFBI);
 
-	dispc_set_tft_data_lines(dssdev->ctrl.pixel_size);
+	dispc_set_tft_data_lines(OMAP_DSS_CHANNEL_LCD,
+					dssdev->ctrl.pixel_size);
 
 	rfbi_configure(dssdev->phy.rfbi.channel,
 			       dssdev->ctrl.pixel_size,
