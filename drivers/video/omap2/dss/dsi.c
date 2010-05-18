@@ -813,7 +813,7 @@ static int dsi_calc_clock_rates(struct dsi_clock_info *cinfo)
 		 * with DSS2_FCK source also */
 		cinfo->highfreq = 0;
 	} else {
-		cinfo->clkin = dispc_pclk_rate();
+		cinfo->clkin = dispc_pclk_rate(OMAP_DSS_CHANNEL_LCD);
 
 		if (cinfo->clkin < 32000000)
 			cinfo->highfreq = 0;
@@ -1229,8 +1229,8 @@ void dsi_dump_clocks(struct seq_file *s)
 
 	seq_printf(s,	"VP_CLK\t\t%lu\n"
 			"VP_PCLK\t\t%lu\n",
-			dispc_lclk_rate(),
-			dispc_pclk_rate());
+			dispc_lclk_rate(OMAP_DSS_CHANNEL_LCD),
+			dispc_pclk_rate(OMAP_DSS_CHANNEL_LCD));
 
 	enable_clocks(0);
 }
@@ -3066,7 +3066,7 @@ int omap_dsi_prepare_update(struct omap_dss_device *dssdev,
 
 	if (dssdev->manager->caps & OMAP_DSS_OVL_MGR_CAP_DISPC) {
 		dss_setup_partial_planes(dssdev, x, y, w, h);
-		dispc_set_lcd_size(*w, *h);
+		dispc_set_lcd_size(OMAP_DSS_CHANNEL_LCD, *w, *h);
 	}
 
 	return 0;
@@ -3114,12 +3114,14 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 		return r;
 	}
 
-	dispc_set_lcd_display_type(OMAP_DSS_LCD_DISPLAY_TFT);
+	dispc_set_lcd_display_type(OMAP_DSS_CHANNEL_LCD,
+					OMAP_DSS_LCD_DISPLAY_TFT);
 
-	dispc_set_parallel_interface_mode(OMAP_DSS_PARALLELMODE_DSI);
+	dispc_set_parallel_interface_mode(OMAP_DSS_CHANNEL_LCD,
+					OMAP_DSS_PARALLELMODE_DSI);
 	dispc_enable_fifohandcheck(1);
 
-	dispc_set_tft_data_lines(dssdev->ctrl.pixel_size);
+	dispc_set_tft_data_lines(OMAP_DSS_CHANNEL_LCD, dssdev->ctrl.pixel_size);
 
 	if (cpu_is_omap44xx())
 		dispc_set_pol_freq(dssdev->panel.config,
@@ -3148,7 +3150,7 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 			.vbp		= 0,
 		};
 
-		dispc_set_lcd_timings(&timings);
+		dispc_set_lcd_timings(OMAP_DSS_CHANNEL_LCD, &timings);
 	}
 
 	return 0;
