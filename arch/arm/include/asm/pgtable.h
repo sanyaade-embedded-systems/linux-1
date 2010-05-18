@@ -278,21 +278,9 @@ extern struct page *empty_zero_page;
 
 #define set_pte_ext(ptep,pte,ext) cpu_set_pte_ext(ptep,pte,ext)
 
-#ifndef CONFIG_SMP
 #define set_pte_at(mm,addr,ptep,pteval) do { \
 	set_pte_ext(ptep, pteval, (addr) >= TASK_SIZE ? 0 : PTE_EXT_NG); \
  } while (0)
-#else
-/*
- * The L_PTE_EXEC attribute is later be set in update_mmu_cache() to avoid a
- * race with SMP systems executing from the new mapping before the cache
- * flushing took place.
- */
-#define set_pte_at(mm, addr, ptep, pteval) do { \
-	set_pte_ext(ptep, __pte(pte_val(pteval) & ~L_PTE_EXEC), \
-		    (addr) >= TASK_SIZE ? 0 : PTE_EXT_NG); \
- } while (0)
-#endif
 
 /*
  * The following only work if pte_present() is true.
