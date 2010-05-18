@@ -46,6 +46,7 @@ void omap_mcbsp_write(struct omap_mcbsp *mcbsp, u16 reg, u32 val)
 		__raw_writel(val, mcbsp->io_base + reg);
 	}
 }
+EXPORT_SYMBOL(omap_mcbsp_write);
 
 int omap_mcbsp_read(struct omap_mcbsp *mcbsp, u16 reg, bool from_cache)
 {
@@ -60,6 +61,7 @@ int omap_mcbsp_read(struct omap_mcbsp *mcbsp, u16 reg, bool from_cache)
 				((u32 *)mcbsp->reg_cache)[reg / sizeof(u32)];
 	}
 }
+EXPORT_SYMBOL(omap_mcbsp_read);
 
 #ifdef CONFIG_ARCH_OMAP3
 void omap_mcbsp_st_write(struct omap_mcbsp *mcbsp, u16 reg, u32 val)
