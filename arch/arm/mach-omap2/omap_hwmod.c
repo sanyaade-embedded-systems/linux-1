@@ -908,7 +908,9 @@ static int _enable(struct omap_hwmod *oh)
 
 	/* XXX mux balls */
 
+#if 0
 	_add_initiator_dep(oh, mpu_oh);
+#endif
 	_enable_clocks(oh);
 
 	r = _wait_target_ready(oh);
@@ -949,7 +951,9 @@ static int _idle(struct omap_hwmod *oh)
 
 	if (oh->class->sysc)
 		_sysc_idle(oh);
+#if 0
 	_del_initiator_dep(oh, mpu_oh);
+#endif
 	_disable_clocks(oh);
 
 	oh->_state = _HWMOD_STATE_IDLE;
@@ -1544,7 +1548,10 @@ struct powerdomain *omap_hwmod_get_pwrdm(struct omap_hwmod *oh)
 int omap_hwmod_add_initiator_dep(struct omap_hwmod *oh,
 				 struct omap_hwmod *init_oh)
 {
+#if 0
 	return _add_initiator_dep(oh, init_oh);
+#endif
+	return 0;
 }
 
 /*
@@ -1569,7 +1576,10 @@ int omap_hwmod_add_initiator_dep(struct omap_hwmod *oh,
 int omap_hwmod_del_initiator_dep(struct omap_hwmod *oh,
 				 struct omap_hwmod *init_oh)
 {
+#if 0
 	return _del_initiator_dep(oh, init_oh);
+#endif
+	return 0;
 }
 
 /**
