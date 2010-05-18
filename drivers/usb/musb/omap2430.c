@@ -235,7 +235,7 @@ int __init musb_platform_init(struct musb *musb, void *board_data)
 		l |= AUTOIDLE;		/* enable auto idle */
 	musb_writel(musb->mregs, OTG_SYSCONFIG, l);
 
-	l = omap_readl(OTG_INTERFSEL);
+	l = musb_readl(musb->mregs, OTG_INTERFSEL);
 
 	if (data->interface_type == MUSB_INTERFACE_UTMI) {
 		/* OMAP4 uses Internal PHY GS70 which uses UTMI interface */
@@ -245,7 +245,7 @@ int __init musb_platform_init(struct musb *musb, void *board_data)
 		l |= ULPI_12PIN;
 	}
 
-	omap_writel(l, OTG_INTERFSEL);
+	musb_writel(musb->mregs, OTG_INTERFSEL, l);
 
 	pr_debug("HS USB OTG: revision 0x%x, sysconfig 0x%02x, "
 			"sysstatus 0x%x, intrfsel 0x%x, simenable  0x%x\n",
