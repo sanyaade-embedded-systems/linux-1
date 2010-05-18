@@ -58,12 +58,14 @@ enum omap_display_type {
 enum omap_plane {
 	OMAP_DSS_GFX	= 0,
 	OMAP_DSS_VIDEO1	= 1,
-	OMAP_DSS_VIDEO2	= 2
+	OMAP_DSS_VIDEO2	= 2,
+	OMAP_DSS_VIDEO3 = 3,
 };
 
 enum omap_channel {
 	OMAP_DSS_CHANNEL_LCD	= 0,
 	OMAP_DSS_CHANNEL_DIGIT	= 1,
+	OMAP_DSS_CHANNEL_LCD2   = 2,
 };
 
 enum omap_color_mode {
@@ -112,11 +114,14 @@ enum omap_color_mode {
 		OMAP_DSS_COLOR_RGB24P | OMAP_DSS_COLOR_YUV2 |
 		OMAP_DSS_COLOR_UYVY | OMAP_DSS_COLOR_ARGB32 |
 		OMAP_DSS_COLOR_RGBA32 | OMAP_DSS_COLOR_RGBX32,
+
+	OMAP_DSS_COLOR_VID3_OMAP3 = OMAP_DSS_COLOR_VID2_OMAP3,
 };
 
 enum omap_lcd_display_type {
 	OMAP_DSS_LCD_DISPLAY_STN,
 	OMAP_DSS_LCD_DISPLAY_TFT,
+	OMAP_DSS_OVL_MGR_LCD2,
 };
 
 enum omap_dss_load_mode {
