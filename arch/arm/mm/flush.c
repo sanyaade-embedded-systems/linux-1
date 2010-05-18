@@ -245,7 +245,7 @@ void flush_dcache_page(struct page *page)
 
 	if (!cache_ops_need_broadcast() &&
 	    !PageHighMem(page) && mapping && !mapping_mapped(mapping))
-		set_bit(PG_dcache_dirty, &page->flags);
+		clear_bit(PG_dcache_clean, &page->flags);
 	else {
 		__flush_dcache_page(mapping, page);
 		if (mapping && cache_is_vivt())
