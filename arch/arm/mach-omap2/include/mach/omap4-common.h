@@ -15,8 +15,11 @@
 
 /*
  * wfi used in low power code.
+ * opcode is used instead of instruction since not
+ * all compilers understand the isntruction
  */
-#define do_wfi()	__asm__ __volatile__ ("wfi" : : : "memory")
+#define do_wfi()			\
+	__asm__ __volatile__ (".word	0xe320f003" : : : "memory")
 
 #ifdef CONFIG_CACHE_L2X0
 extern void __iomem *l2cache_base;
