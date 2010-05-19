@@ -40,6 +40,7 @@
 
 #include <plat/control.h>
 #include <plat/gpmc-smc91x.h>
+#include <plat/mmc.h>
 
 #include <mach/board-sdp.h>
 
@@ -354,11 +355,13 @@ static struct omap2_hsmmc_info mmc[] = {
 		 * so the SIM card isn't used; else 4 bits.
 		 */
 		.wires		= 8,
+		.cd_type	= GPIO,
 		.gpio_wp	= 4,
 	},
 	{
 		.mmc		= 2,
 		.wires		= 8,
+		.cd_type	= GPIO,
 		.gpio_wp	= 7,
 	},
 	{}	/* Terminator */

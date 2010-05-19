@@ -23,6 +23,7 @@
 
 #include <plat/common.h>
 #include <plat/usb.h>
+#include <plat/mmc.h>
 
 #include "mux.h"
 #include "hsmmc.h"
@@ -156,6 +157,7 @@ static struct omap2_hsmmc_info mmc[] __initdata = {
 		.name		= "external",
 		.mmc		= 1,
 		.wires		= 4,
+		.cd_type	= GPIO,
 		.gpio_wp	= -EINVAL,
 		.power_saving	= true,
 	},
@@ -164,6 +166,7 @@ static struct omap2_hsmmc_info mmc[] __initdata = {
 		.mmc		= 2,
 		.wires		= 8,
 		.gpio_cd	= -EINVAL,
+		.cd_type	= GPIO,
 		.gpio_wp	= -EINVAL,
 		.nonremovable	= true,
 		.power_saving	= true,

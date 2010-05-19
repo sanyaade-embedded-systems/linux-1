@@ -41,6 +41,7 @@
 #include <plat/mcspi.h>
 #include <plat/usb.h>
 #include <plat/display.h>
+#include <plat/mmc.h>
 
 #include "mux.h"
 #include "sdram-micron-mt46h32m32lf-6.h"
@@ -232,6 +233,7 @@ static struct omap2_hsmmc_info omap3pandora_mmc[] = {
 		.mmc		= 1,
 		.wires		= 4,
 		.gpio_cd	= -EINVAL,
+		.cd_type	= GPIO,
 		.gpio_wp	= 126,
 		.ext_clock	= 0,
 	},
@@ -239,6 +241,7 @@ static struct omap2_hsmmc_info omap3pandora_mmc[] = {
 		.mmc		= 2,
 		.wires		= 4,
 		.gpio_cd	= -EINVAL,
+		.cd_type	= GPIO,
 		.gpio_wp	= 127,
 		.ext_clock	= 1,
 		.transceiver	= true,
@@ -247,6 +250,7 @@ static struct omap2_hsmmc_info omap3pandora_mmc[] = {
 		.mmc		= 3,
 		.wires		= 4,
 		.gpio_cd	= -EINVAL,
+		.cd_type	= GPIO,
 		.gpio_wp	= -EINVAL,
 	},
 	{}	/* Terminator */

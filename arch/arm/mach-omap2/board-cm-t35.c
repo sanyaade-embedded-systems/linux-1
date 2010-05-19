@@ -255,6 +255,7 @@ static inline void cm_t35_init_nand(void) {}
 #include <linux/spi/ads7846.h>
 
 #include <plat/mcspi.h>
+#include <plat/mmc.h>
 
 static struct omap2_mcspi_device_config ads7846_mcspi_config = {
 	.turbo_mode	= 0,
@@ -598,6 +599,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.mmc		= 1,
 		.wires		= 4,
 		.gpio_cd	= -EINVAL,
+		.cd_type	= GPIO,
 		.gpio_wp	= -EINVAL,
 
 	},
@@ -606,6 +608,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.wires		= 4,
 		.transceiver	= 1,
 		.gpio_cd	= -EINVAL,
+		.cd_type	= GPIO,
 		.gpio_wp	= -EINVAL,
 		.ocr_mask	= 0x00100000,	/* 3.3V */
 	},

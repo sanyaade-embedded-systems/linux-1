@@ -30,6 +30,7 @@
 #include <plat/usb.h>
 #include <plat/display.h>
 #include <plat/onenand.h>
+#include <plat/mmc.h>
 
 #include "mux.h"
 #include "hsmmc.h"
@@ -250,12 +251,14 @@ static struct omap2_hsmmc_info mmc[] = {
 		.mmc		= 1,
 		.wires		= 4,
 		.gpio_cd	= -EINVAL,
+		.cd_type	= GPIO,
 		.gpio_wp	= -EINVAL,
 	},
 	{
 		.mmc		= 2,
 		.wires		= 4,
 		.gpio_cd	= -EINVAL,
+		.cd_type	= GPIO,
 		.gpio_wp	= -EINVAL,
 	},
 	{}      /* Terminator */
