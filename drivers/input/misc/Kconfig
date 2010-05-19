@@ -340,9 +340,8 @@ config INPUT_PCAP
 	  To compile this driver as a module, choose M here: the
 	  module will be called pcap_keys.
 
-config SENSORS_SFH7741
-	tristate "Proximity sensor"
-	default y
+config INPUT_SFH7741
+	tristate "SFH7741 Proximity sensor"
 	help
 	  Say Y here if you want to use proximity sensor sfh7741.
 
