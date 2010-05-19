@@ -255,6 +255,7 @@ static int sfh7741_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sfh7741_drvdata *ddata = platform_get_drvdata(pdev);
+	int error;
 
 	error = gpio_direction_output(ddata->gpio_en , 0);
 	if (error < 0) {
@@ -268,6 +269,7 @@ static int sfh7741_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sfh7741_drvdata *ddata = platform_get_drvdata(pdev);
+	int error;
 
 	error = gpio_direction_output(ddata->gpio_en , 1);
 	if (error < 0) {
