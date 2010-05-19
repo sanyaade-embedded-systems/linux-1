@@ -380,6 +380,10 @@ void omap2_clk_disable_unused(struct clk *clk)
 {
 	u32 regval32, v;
 
+	/* FIXME: Remove this when EMIF driver is ready */
+	if (cpu_is_omap44xx() && (clk->flags & ENABLE_ON_INIT))
+		return;
+
 	v = (clk->flags & INVERT_ENABLE) ? (1 << clk->enable_bit) : 0;
 
 	regval32 = __raw_readl(clk->enable_reg);
