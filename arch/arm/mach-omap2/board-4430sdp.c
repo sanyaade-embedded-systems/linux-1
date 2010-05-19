@@ -341,6 +341,7 @@ static struct omap2_hsmmc_info mmc[] = {
 	{
 		.mmc		= 1,
 		.wires		= 8,
+		.cd_type	= NON_GPIO,
 		.gpio_wp	= -EINVAL,
 	},
 	{
@@ -371,10 +372,14 @@ static int omap4_twl6030_hsmmc_late_init(struct device *dev)
 				struct platform_device, dev);
 	struct omap_mmc_platform_data *pdata = dev->platform_data;
 
-	/* Setting MMC1 Card detect Irq */
-	if (pdev->id == 0)
+	/* MMC1 Card detect Configuration */
+	if (pdev->id == 0) {
+		ret = omap4_hsmmc1_card_detect_config();
+		if (ret < 0)
+			pr_err("Unable to configure Card detect for MMC1\n");
 		pdata->slots[0].card_detect_irq = TWL6030_IRQ_BASE +
 						MMCDETECT_INTR_OFFSET;
+	}
 	return ret;
 }
 

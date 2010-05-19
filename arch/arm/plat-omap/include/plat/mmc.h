@@ -14,6 +14,7 @@
 #include <linux/types.h>
 #include <linux/device.h>
 #include <linux/mmc/host.h>
+#include <linux/i2c/twl.h>
 
 #include <plat/board.h>
 

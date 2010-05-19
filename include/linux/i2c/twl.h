@@ -141,6 +141,15 @@
 #define TWL6030_CHARGER_CTRL_INT_MASK 	0x10
 #define TWL6030_CHARGER_FAULT_INT_MASK 	0x60
 
+#define TWL6030_MMCCTRL			0xEE
+#define VMMC_AUTO_OFF			(0x1 << 3)
+#define SW_FC				(0x1 << 2)
+#define STS_MMC				0x1
+
+#define TWL6030_CFG_INPUT_PUPD3		0xF2
+#define MMC_PU				(0x1 << 3)
+#define MMC_PD				(0x1 << 2)
+
 
 #define TWL4030_CLASS_ID 		0x4030
 #define TWL6030_CLASS_ID 		0x6030
@@ -172,6 +181,44 @@ int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 
 int twl6030_interrupt_unmask(u8 bit_mask, u8 offset);
 int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
+
+/* MMC1 Controller on OMAP4 uses Phoenix Irq for Card detect */
+int twl6030_mmc_card_detect(int host_id, int slot);
+
+/* Configuring Card Detect for MMC1 */
+static inline int omap4_hsmmc1_card_detect_config(void)
+{
+	int res = -1;
+	u8 reg_val = 0;
+
+	/* Unmasking the Card detect Interrupt line for MMC1 from Phoenix */
+	if (twl_class_is_6030()) {
+		twl6030_interrupt_unmask(TWL6030_MMCDETECT_INT_MASK,
+							REG_INT_MSK_LINE_B);
+		twl6030_interrupt_unmask(TWL6030_MMCDETECT_INT_MASK,
+							REG_INT_MSK_STS_B);
+	}
+
+	/*
+	 * Intially Configuring MMC_CTRL for receving interrupts &
+	 * Card status on TWL6030 for MMC1
+	 */
+	res = twl_i2c_read_u8(TWL6030_MODULE_ID0, &reg_val, TWL6030_MMCCTRL);
+	if (res < 0)
+		return res;
+	reg_val &= ~VMMC_AUTO_OFF;
+	reg_val |= SW_FC;
+	twl_i2c_write_u8(TWL6030_MODULE_ID0, reg_val, TWL6030_MMCCTRL);
+
+	res = twl_i2c_read_u8(TWL6030_MODULE_ID0, &reg_val,
+						TWL6030_CFG_INPUT_PUPD3);
+	if (res < 0)
+		return res;
+	reg_val &= ~(MMC_PU | MMC_PD);
+	twl_i2c_write_u8(TWL6030_MODULE_ID0, reg_val,
+						TWL6030_CFG_INPUT_PUPD3);
+	return res;
+}
 
 /*----------------------------------------------------------------------*/
 
