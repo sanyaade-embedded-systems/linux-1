@@ -199,6 +199,12 @@ static struct spi_board_info sdp4430_spi_board_info[] __initdata = {
 		.max_speed_hz           = 24000000,
 		.irq                    = ETH_KS8851_IRQ,
 	},
+	{
+		.modalias		= "spitst",
+		.bus_num		= 4,
+		.chip_select		= 0,
+		.max_speed_hz		= 15000000,
+	},
 };
 
 static int omap_ethernet_init(void)
