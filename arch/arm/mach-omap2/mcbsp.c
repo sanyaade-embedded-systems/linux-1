@@ -26,8 +26,8 @@
 #include <plat/mcbsp.h>
 #include <plat/dma.h>
 
-#define OMAP_MCBSP_READ(base, reg) \
-			omap_mcbsp_read(base, OMAP_MCBSP_REG_##reg, 0)
+#define OMAP_MCBSP_READ(mcbsp, reg) \
+			omap_mcbsp_read(mcbsp, OMAP_MCBSP_REG_##reg, 0)
 #define OMAP_MCBSP_WRITE(base, reg, val) \
 			omap_mcbsp_write(base, OMAP_MCBSP_REG_##reg, val)
 struct omap_mcbsp_reg_cfg mcbsp_cfg = {0};
@@ -251,8 +251,8 @@ void omap2_mcbsp_config(unsigned int id,
 	void __iomem *io_base;
 	mcbsp = id_to_mcbsp_ptr(id);
 	io_base = mcbsp->io_base;
-	OMAP_MCBSP_WRITE(io_base, XCCR, config->xccr);
-	OMAP_MCBSP_WRITE(io_base, RCCR, config->rccr);
+	OMAP_MCBSP_WRITE(mcbsp, XCCR, config->xccr);
+	OMAP_MCBSP_WRITE(mcbsp, RCCR, config->rccr);
 }
 
 static void omap2_mcbsp_rx_dma_callback(int lch, u16 ch_status, void *data)
@@ -265,8 +265,8 @@ static void omap2_mcbsp_rx_dma_callback(int lch, u16 ch_status, void *data)
 	if ((mcbsp_dma_rx->auto_reset & OMAP_MCBSP_AUTO_RRST)
 		&& (omap_dma_chain_status(mcbsp_dma_rx->dma_rx_lch) ==
 						 OMAP_DMA_CHAIN_INACTIVE))
-		OMAP_MCBSP_WRITE(io_base, SPCR1,
-			OMAP_MCBSP_READ(io_base, SPCR1) & (~RRST));
+		OMAP_MCBSP_WRITE(mcbsp_dma_rx, SPCR1,
+			OMAP_MCBSP_READ(mcbsp_dma_rx, SPCR1) & (~RRST));
 
 	if (mcbsp_dma_rx->rx_callback != NULL)
 		mcbsp_dma_rx->rx_callback(ch_status, mcbsp_dma_rx->rx_cb_arg);
@@ -283,8 +283,8 @@ static void omap2_mcbsp_tx_dma_callback(int lch, u16 ch_status, void *data)
 	if ((mcbsp_dma_tx->auto_reset & OMAP_MCBSP_AUTO_XRST)
 		&& (omap_dma_chain_status(mcbsp_dma_tx->dma_tx_lch) ==
 						 OMAP_DMA_CHAIN_INACTIVE))
-		OMAP_MCBSP_WRITE(io_base, SPCR2,
-			OMAP_MCBSP_READ(io_base, SPCR2) & (~XRST));
+		OMAP_MCBSP_WRITE(mcbsp_dma_tx, SPCR2,
+			OMAP_MCBSP_READ(mcbsp_dma_tx, SPCR2) & (~XRST));
 
 	if (mcbsp_dma_tx->tx_callback != NULL)
 		mcbsp_dma_tx->tx_callback(ch_status, mcbsp_dma_tx->tx_cb_arg);
@@ -303,15 +303,15 @@ void omap2_mcbsp_set_srg_fsg(unsigned int id, u8 state)
 	io_base = mcbsp->io_base;
 
 	if (state == OMAP_MCBSP_DISABLE_FSG_SRG) {
-		OMAP_MCBSP_WRITE(io_base, SPCR2,
-			OMAP_MCBSP_READ(io_base, SPCR2) & (~GRST));
-		OMAP_MCBSP_WRITE(io_base, SPCR2,
-			OMAP_MCBSP_READ(io_base, SPCR2) & (~FRST));
+		OMAP_MCBSP_WRITE(mcbsp, SPCR2,
+			OMAP_MCBSP_READ(mcbsp, SPCR2) & (~GRST));
+		OMAP_MCBSP_WRITE(mcbsp, SPCR2,
+			OMAP_MCBSP_READ(mcbsp, SPCR2) & (~FRST));
 	} else {
-		OMAP_MCBSP_WRITE(io_base, SPCR2,
-			OMAP_MCBSP_READ(io_base, SPCR2) | GRST);
-		OMAP_MCBSP_WRITE(io_base, SPCR2,
-			OMAP_MCBSP_READ(io_base, SPCR2) | FRST);
+		OMAP_MCBSP_WRITE(mcbsp, SPCR2,
+			OMAP_MCBSP_READ(mcbsp, SPCR2) | GRST);
+		OMAP_MCBSP_WRITE(mcbsp, SPCR2,
+			OMAP_MCBSP_READ(mcbsp, SPCR2) | FRST);
 	}
 	return;
 }
@@ -337,8 +337,8 @@ int omap2_mcbsp_stop_datatx(unsigned int id)
 			return -EINVAL;
 	}
 	mcbsp->tx_dma_chain_state = 0;
-	OMAP_MCBSP_WRITE(io_base, SPCR2,
-		OMAP_MCBSP_READ(io_base, SPCR2) & (~XRST));
+	OMAP_MCBSP_WRITE(mcbsp, SPCR2,
+		OMAP_MCBSP_READ(mcbsp, SPCR2) & (~XRST));
 
 	if (!mcbsp->rx_dma_chain_state)
 		omap2_mcbsp_set_srg_fsg(id, OMAP_MCBSP_DISABLE_FSG_SRG);
@@ -367,8 +367,8 @@ int omap2_mcbsp_stop_datarx(u32 id)
 		if (omap_stop_dma_chain_transfers(mcbsp->dma_rx_lch) != 0)
 			return -EINVAL;
 	}
-	OMAP_MCBSP_WRITE(io_base, SPCR1,
-		OMAP_MCBSP_READ(io_base, SPCR1) & (~RRST));
+	OMAP_MCBSP_WRITE(mcbsp, SPCR1,
+		OMAP_MCBSP_READ(mcbsp, SPCR1) & (~RRST));
 
 	mcbsp->rx_dma_chain_state = 0;
 	if (!mcbsp->tx_dma_chain_state)
@@ -479,11 +479,11 @@ int omap2_mcbsp_set_xrst(unsigned int id, u8 state)
 	io_base = mcbsp->io_base;
 
 	if (state == OMAP_MCBSP_XRST_DISABLE)
-		OMAP_MCBSP_WRITE(io_base, SPCR2,
-		      OMAP_MCBSP_READ(io_base, SPCR2) & (~XRST));
+		OMAP_MCBSP_WRITE(mcbsp, SPCR2,
+		      OMAP_MCBSP_READ(mcbsp, SPCR2) & (~XRST));
 	else
-		OMAP_MCBSP_WRITE(io_base, SPCR2,
-			OMAP_MCBSP_READ(io_base, SPCR2) | XRST);
+		OMAP_MCBSP_WRITE(mcbsp, SPCR2,
+			OMAP_MCBSP_READ(mcbsp, SPCR2) | XRST);
 	udelay(10);
 
 	return 0;
@@ -507,11 +507,11 @@ int omap2_mcbsp_set_rrst(unsigned int id, u8 state)
 	io_base = mcbsp->io_base;
 
 	if (state == OMAP_MCBSP_RRST_DISABLE)
-		OMAP_MCBSP_WRITE(io_base, SPCR1,
-			OMAP_MCBSP_READ(io_base, SPCR1) & (~RRST));
+		OMAP_MCBSP_WRITE(mcbsp, SPCR1,
+			OMAP_MCBSP_READ(mcbsp, SPCR1) & (~RRST));
 	else
-		OMAP_MCBSP_WRITE(io_base, SPCR1,
-			OMAP_MCBSP_READ(io_base, SPCR1) | RRST);
+		OMAP_MCBSP_WRITE(mcbsp, SPCR1,
+			OMAP_MCBSP_READ(mcbsp, SPCR1) | RRST);
 	udelay(10);
 	return 0;
 }
@@ -736,8 +736,8 @@ int omap2_mcbsp_receive_data(unsigned int id, void *cbdata,
 	if ((mcbsp->auto_reset & OMAP_MCBSP_AUTO_RRST) &&
 		(omap_dma_chain_status(mcbsp->dma_rx_lch)
 				== OMAP_DMA_CHAIN_INACTIVE)) {
-	OMAP_MCBSP_WRITE(io_base, SPCR1,
-			OMAP_MCBSP_READ(io_base, SPCR1) & (~RRST));
+	OMAP_MCBSP_WRITE(mcbsp, SPCR1,
+			OMAP_MCBSP_READ(mcbsp, SPCR1) & (~RRST));
 		enable_rx = 1;
 	}
 
@@ -781,8 +781,8 @@ int omap2_mcbsp_receive_data(unsigned int id, void *cbdata,
 	if (enable_rx &&
 		(omap_dma_chain_status(mcbsp->dma_rx_lch)
 				== OMAP_DMA_CHAIN_ACTIVE))
-		OMAP_MCBSP_WRITE(io_base, SPCR1,
-			OMAP_MCBSP_READ(io_base, SPCR1) | RRST);
+		OMAP_MCBSP_WRITE(mcbsp, SPCR1,
+			OMAP_MCBSP_READ(mcbsp, SPCR1) | RRST);
 
 	return 0;
 }
@@ -818,8 +818,8 @@ int omap2_mcbsp_send_data(unsigned int id, void *cbdata,
 	if ((mcbsp->auto_reset & OMAP_MCBSP_AUTO_XRST) &&
 			(omap_dma_chain_status(mcbsp->dma_tx_lch)
 				== OMAP_DMA_CHAIN_INACTIVE)) {
-		OMAP_MCBSP_WRITE(io_base, SPCR2,
-			OMAP_MCBSP_READ(io_base, SPCR2) & (~XRST));
+		OMAP_MCBSP_WRITE(mcbsp, SPCR2,
+			OMAP_MCBSP_READ(mcbsp, SPCR2) & (~XRST));
 		enable_tx = 1;
 	}
 	/*
@@ -862,8 +862,8 @@ int omap2_mcbsp_send_data(unsigned int id, void *cbdata,
 	if (enable_tx &&
 		(omap_dma_chain_status(mcbsp->dma_tx_lch)
 		== OMAP_DMA_CHAIN_ACTIVE))
-		OMAP_MCBSP_WRITE(io_base, SPCR2,
-			OMAP_MCBSP_READ(io_base, SPCR2) | XRST);
+		OMAP_MCBSP_WRITE(mcbsp, SPCR2,
+			OMAP_MCBSP_READ(mcbsp, SPCR2) | XRST);
 
 	return 0;
 }
@@ -1009,10 +1009,10 @@ void omap2_mcbsp_set_srg_cfg_param(unsigned int id, int interface_mode,
 	else if (param->sync_mode == OMAP_MCBSP_SRG_RUNNING)
 		mcbsp_cfg->srgr2 = mcbsp_cfg->srgr2 | (GSYNC);
 
-	mcbsp_cfg->xccr = OMAP_MCBSP_READ(io_base, XCCR);
+	mcbsp_cfg->xccr = OMAP_MCBSP_READ(mcbsp, XCCR);
 	if (param->dlb)
 		mcbsp_cfg->xccr = mcbsp_cfg->xccr | (DILB);
-	mcbsp_cfg->rccr = OMAP_MCBSP_READ(io_base, RCCR);
+	mcbsp_cfg->rccr = OMAP_MCBSP_READ(mcbsp, RCCR);
 
 	return;
 	}
