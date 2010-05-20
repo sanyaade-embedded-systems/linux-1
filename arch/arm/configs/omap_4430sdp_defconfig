@@ -1175,6 +1175,7 @@ CONFIG_CRYPTO_HW=y
 
 #Sensors
 CONFIG_INPUT_SFH7741=y
+CONFIG_INPUT_CMA3000_I2C=y
 
 #
 # Library routines
