@@ -1901,10 +1901,10 @@ musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
 #ifdef CONFIG_USB_MUSB_HDRC_HCD
 	if (cpu_is_omap44xx()) {
 		/* Program CFG_LDO_PD2 register and set VUSB bit */
-		twl_i2c_write_u8(TWL4030_MODULE_INTBR , 0x1, CFG_LDO_PD2);
+		twl_i2c_write_u8(TWL6030_MODULE_ID0 , 0x1, CFG_LDO_PD2);
 
 		/* Program MISC2 register and set bit VUSB_IN_VBAT */
-		twl_i2c_write_u8(TWL4030_MODULE_INTBR , 0x10, MISC2);
+		twl_i2c_write_u8(TWL6030_MODULE_ID0 , 0x10, MISC2);
 
 		/*
 		 * Program the VUSB_CFG_VOLTAGE register to set the VUSB
@@ -1954,7 +1954,7 @@ musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
 	if (cpu_is_omap44xx()) {
 		twl_i2c_write_u8(TWL_MODULE_PM_RECEIVER, 0x21,
 						VUSB_CFG_STATE);
-		twl_i2c_write_u8(TWL4030_MODULE_INTBR , 0x10,
+		twl_i2c_write_u8(TWL6030_MODULE_ID0 , 0x10,
 						MISC2);
 		omap_writel(0x00000015, 0x4A00233C);
 	}
