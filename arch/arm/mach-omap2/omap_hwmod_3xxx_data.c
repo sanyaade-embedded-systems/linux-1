@@ -22,6 +22,7 @@
 #include <plat/i2c.h>
 #include <plat/serial.h>
 
+#include "dmtimers.h"
 #include "omap_hwmod_common_data.h"
 
 #include "prm-regbits-34xx.h"
@@ -96,6 +97,19 @@ static struct omap_hwmod omap3xxx_i2c3_hwmod;
 static struct omap_hwmod omap3xxx_uart1_hwmod;
 static struct omap_hwmod omap3xxx_uart2_hwmod;
 static struct omap_hwmod omap3xxx_uart3_hwmod;
+static struct omap_hwmod omap3xxx_gptimer1_hwmod;
+static struct omap_hwmod omap3xxx_gptimer2_hwmod;
+static struct omap_hwmod omap3xxx_gptimer3_hwmod;
+static struct omap_hwmod omap3xxx_gptimer4_hwmod;
+static struct omap_hwmod omap3xxx_gptimer5_hwmod;
+static struct omap_hwmod omap3xxx_gptimer6_hwmod;
+static struct omap_hwmod omap3xxx_gptimer7_hwmod;
+static struct omap_hwmod omap3xxx_gptimer8_hwmod;
+static struct omap_hwmod omap3xxx_gptimer9_hwmod;
+static struct omap_hwmod omap3xxx_gptimer10_hwmod;
+static struct omap_hwmod omap3xxx_gptimer11_hwmod;
+static struct omap_hwmod omap3xxx_gptimer12_hwmod;
+
 
 /* L4_CORE -> L4_WKUP interface */
 static struct omap_hwmod_ocp_if omap3xxx_l4_core__l4_wkup = {
@@ -348,9 +362,69 @@ static struct omap_hwmod_ocp_if omap3_l4_per__uart3 = {
 	.user		= OCP_USER_MPU | OCP_USER_SDMA,
 };
 
+/*
+ * GPTIMER10 interface data
+ */
+static struct omap_hwmod_addr_space omap3xxx_gptimer10_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER10_BASE,
+		.pa_end		= OMAP34XX_GPTIMER10_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER10 <- L4_CORE interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_core__gptimer10 = {
+	.master		= &omap3xxx_l4_core_hwmod,
+	.slave		= &omap3xxx_gptimer10_hwmod,
+	.clk		= "gpt10_ick",
+	.addr		= omap3xxx_gptimer10_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer10_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer10_masters[] = {
+	&omap3xxx_l4_core__gptimer10,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer10_slaves[] = {
+	&omap3xxx_l4_core__gptimer10,
+};
+
+/*
+ * GPTIMER11 interface data
+ */
+static struct omap_hwmod_addr_space omap3xxx_gptimer11_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER11_BASE,
+		.pa_end		= OMAP34XX_GPTIMER11_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER11 <- L4_CORE interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_core__gptimer11 = {
+	.master		= &omap3xxx_l4_core_hwmod,
+	.slave		= &omap3xxx_gptimer11_hwmod,
+	.clk		= "gpt11_ick",
+	.addr		= omap3xxx_gptimer11_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer11_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer11_masters[] = {
+	&omap3xxx_l4_core__gptimer11,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer11_slaves[] = {
+	&omap3xxx_l4_core__gptimer11,
+};
+
 /* Slave interfaces on the L4_CORE interconnect */
 static struct omap_hwmod_ocp_if *omap3xxx_l4_core_slaves[] = {
 	&omap3xxx_l3__l4_core,
+	&omap3xxx_l4_core__gptimer10,
+	&omap3xxx_l4_core__gptimer11,
 };
 
 /* Master interfaces on the L4_CORE interconnect */
@@ -372,6 +446,243 @@ static struct omap_hwmod omap3xxx_l4_core_hwmod = {
 	.slaves		= omap3xxx_l4_core_slaves,
 	.slaves_cnt	= ARRAY_SIZE(omap3xxx_l4_core_slaves),
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER2 interface data
+ */
+static struct omap_hwmod_addr_space omap3xxx_gptimer2_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER2_BASE,
+		.pa_end		= OMAP34XX_GPTIMER2_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER2 <- L4_PER interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_per__gptimer2 = {
+	.master		= &omap3xxx_l4_per_hwmod,
+	.slave		= &omap3xxx_gptimer2_hwmod,
+	.clk		= "gpt2_ick",
+	.addr		= omap3xxx_gptimer2_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer2_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer2_masters[] = {
+	&omap3xxx_l4_per__gptimer2,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer2_slaves[] = {
+	&omap3xxx_l4_per__gptimer2,
+};
+
+/*
+ * GPTIMER3 interface data
+ */
+static struct omap_hwmod_addr_space omap3xxx_gptimer3_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER3_BASE,
+		.pa_end		= OMAP34XX_GPTIMER3_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER3 <- L4_PER interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_per__gptimer3 = {
+	.master		= &omap3xxx_l4_per_hwmod,
+	.slave		= &omap3xxx_gptimer3_hwmod,
+	.clk		= "gpt3_ick",
+	.addr		= omap3xxx_gptimer3_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer3_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer3_masters[] = {
+	&omap3xxx_l4_per__gptimer3,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer3_slaves[] = {
+	&omap3xxx_l4_per__gptimer3,
+};
+
+/*
+ * GPTIMER4 interface data
+ */
+static struct omap_hwmod_addr_space omap3xxx_gptimer4_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER4_BASE,
+		.pa_end		= OMAP34XX_GPTIMER4_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER4 <- L4_PER interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_per__gptimer4 = {
+	.master		= &omap3xxx_l4_per_hwmod,
+	.slave		= &omap3xxx_gptimer4_hwmod,
+	.clk		= "gpt4_ick",
+	.addr		= omap3xxx_gptimer4_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer4_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer4_masters[] = {
+	&omap3xxx_l4_per__gptimer4,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer4_slaves[] = {
+	&omap3xxx_l4_per__gptimer4,
+};
+
+
+/*
+ * GPTIMER5 interface data
+ */
+static struct omap_hwmod_addr_space omap3xxx_gptimer5_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER5_BASE,
+		.pa_end		= OMAP34XX_GPTIMER5_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER5 <- L4_PER interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_per__gptimer5 = {
+	.master		= &omap3xxx_l4_per_hwmod,
+	.slave		= &omap3xxx_gptimer5_hwmod,
+	.clk		= "gpt5_ick",
+	.addr		= omap3xxx_gptimer5_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer5_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer5_masters[] = {
+	&omap3xxx_l4_per__gptimer5,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer5_slaves[] = {
+	&omap3xxx_l4_per__gptimer5,
+};
+
+/*
+ * GPTIMER6 interface data
+ */
+
+static struct omap_hwmod_addr_space omap3xxx_gptimer6_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER6_BASE,
+		.pa_end		= OMAP34XX_GPTIMER6_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER6 <- L4_PER interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_per__gptimer6 = {
+	.master		= &omap3xxx_l4_per_hwmod,
+	.slave		= &omap3xxx_gptimer6_hwmod,
+	.clk		= "gpt6_ick",
+	.addr		= omap3xxx_gptimer6_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer6_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer6_masters[] = {
+	&omap3xxx_l4_per__gptimer6,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer6_slaves[] = {
+	&omap3xxx_l4_per__gptimer6,
+};
+
+/*
+ * GPTIMER7 interface data
+ */
+
+static struct omap_hwmod_addr_space omap3xxx_gptimer7_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER7_BASE,
+		.pa_end		= OMAP34XX_GPTIMER7_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER7 <- L4_PER interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_per__gptimer7 = {
+	.master		= &omap3xxx_l4_per_hwmod,
+	.slave		= &omap3xxx_gptimer7_hwmod,
+	.clk		= "gpt7_ick",
+	.addr		= omap3xxx_gptimer7_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer7_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer7_masters[] = {
+	&omap3xxx_l4_per__gptimer7,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer7_slaves[] = {
+	&omap3xxx_l4_per__gptimer7,
+};
+
+/*
+ * GPTIMER8 interface data
+ */
+
+static struct omap_hwmod_addr_space omap3xxx_gptimer8_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER8_BASE,
+		.pa_end		= OMAP34XX_GPTIMER8_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER8 <- L4_PER interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_per__gptimer8 = {
+	.master		= &omap3xxx_l4_per_hwmod,
+	.slave		= &omap3xxx_gptimer8_hwmod,
+	.clk		= "gpt8_ick",
+	.addr		= omap3xxx_gptimer8_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer8_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer8_masters[] = {
+	&omap3xxx_l4_per__gptimer8,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer8_slaves[] = {
+	&omap3xxx_l4_per__gptimer8,
+};
+
+/*
+ * GPTIMER9 interface data
+ */
+
+static struct omap_hwmod_addr_space omap3xxx_gptimer9_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER9_BASE,
+		.pa_end		= OMAP34XX_GPTIMER9_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER9 <- L4_PER interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_per__gptimer9 = {
+	.master		= &omap3xxx_l4_per_hwmod,
+	.slave		= &omap3xxx_gptimer9_hwmod,
+	.clk		= "gpt9_ick",
+	.addr		= omap3xxx_gptimer9_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer9_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer9_masters[] = {
+	&omap3xxx_l4_per__gptimer9,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer9_slaves[] = {
+	&omap3xxx_l4_per__gptimer9,
 };
 
 /* Slave interfaces on the L4_PER interconnect */
@@ -401,10 +712,70 @@ static struct omap_hwmod omap3xxx_l4_per_hwmod = {
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
 };
 
+/*
+ * GPTIMER1 interface data
+ */
+static struct omap_hwmod_addr_space omap3xxx_gptimer1_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER1_BASE,
+		.pa_end		= OMAP34XX_GPTIMER1_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER1 <- L4_WKUP interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_wkup__gptimer1 = {
+	.master		= &omap3xxx_l4_wkup_hwmod,
+	.slave		= &omap3xxx_gptimer1_hwmod,
+	.clk		= "gpt1_ick",
+	.addr		= omap3xxx_gptimer1_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer1_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer1_masters[] = {
+	&omap3xxx_l4_wkup__gptimer1,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer1_slaves[] = {
+	&omap3xxx_l4_wkup__gptimer1,
+};
+
+/*
+ * GPTIMER12 interface data
+ */
+static struct omap_hwmod_addr_space omap3xxx_gptimer12_addrs[] = {
+	{
+		.pa_start	= OMAP34XX_GPTIMER12_BASE,
+		.pa_end		= OMAP34XX_GPTIMER12_BASE + SZ_1K - 1,
+		.flags		= ADDR_TYPE_RT
+	},
+};
+
+/* GPTIMER12 <- L4_WKUP interface */
+static struct omap_hwmod_ocp_if omap3xxx_l4_wkup__gptimer12 = {
+	.master		= &omap3xxx_l4_wkup_hwmod,
+	.slave		= &omap3xxx_gptimer12_hwmod,
+	.clk		= "gpt12_ick",
+	.addr		= omap3xxx_gptimer12_addrs,
+	.addr_cnt	= ARRAY_SIZE(omap3xxx_gptimer12_addrs),
+	.user		= OCP_USER_MPU | OCP_USER_SDMA,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer12_masters[] = {
+	&omap3xxx_l4_wkup__gptimer12,
+};
+
+static struct omap_hwmod_ocp_if *omap3xxx_gptimer12_slaves[] = {
+	&omap3xxx_l4_wkup__gptimer12,
+};
+
 /* Slave interfaces on the L4_WKUP interconnect */
 static struct omap_hwmod_ocp_if *omap3xxx_l4_wkup_slaves[] = {
 	&omap3xxx_l4_core__l4_wkup,
 	&omap3xxx_l4_wkup__gpio1,
+	&omap3xxx_l4_wkup__gptimer1,
+	&omap3xxx_l4_wkup__gptimer12,
 };
 
 /* Master interfaces on the L4_WKUP interconnect */
@@ -779,6 +1150,14 @@ static struct omap_hwmod_opt_clk gpio6_opt_clks[] = {
 
 static struct omap_hwmod_ocp_if *omap3xxx_gpio6_slaves[] = {
 	&omap3xxx_l4_per__gpio6,
+	&omap3xxx_l4_per__gptimer2,
+	&omap3xxx_l4_per__gptimer3,
+	&omap3xxx_l4_per__gptimer4,
+	&omap3xxx_l4_per__gptimer5,
+	&omap3xxx_l4_per__gptimer6,
+	&omap3xxx_l4_per__gptimer7,
+	&omap3xxx_l4_per__gptimer8,
+	&omap3xxx_l4_per__gptimer9,
 };
 
 static struct omap_hwmod omap3xxx_gpio6_hwmod = {
@@ -947,6 +1326,348 @@ static struct omap_hwmod omap3xxx_i2c3_hwmod = {
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430),
 };
 
+/*
+ * GPTIMER1 (GPTIMER1)
+ */
+static struct omap_hwmod_class_sysconfig gptimer_sysc = {
+	.rev_offs	= 0x0000,
+	.sysc_offs	= 0x0010,
+	.syss_offs	= 0x0014,
+	.sysc_flags	= (SYSC_HAS_SIDLEMODE |
+			   SYSC_HAS_ENAWAKEUP | SYSC_HAS_SOFTRESET |
+			   SYSC_HAS_AUTOIDLE),
+	.idlemodes	= (SIDLE_FORCE | SIDLE_NO | SIDLE_SMART),
+	.sysc_fields    = &omap_hwmod_sysc_type1,
+};
+
+static struct omap_hwmod_class gptimer_class = {
+	.name = "gptimer",
+	.sysc = &gptimer_sysc,
+};
+
+static struct omap_hwmod_irq_info omap3xxx_gptimer1_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER1, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer1_hwmod = {
+	.name		= "gptimer1",
+	.mpu_irqs	= omap3xxx_gptimer1_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer1_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt1_fck",
+/*	.prcm		= {
+	.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer1_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer1_masters),
+	.slaves		= omap3xxx_gptimer1_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer1_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER2 (GPTIMER2)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer2_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER2, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer2_hwmod = {
+	.name		= "gptimer2",
+	.mpu_irqs	= omap3xxx_gptimer2_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer2_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt2_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer2_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer2_masters),
+	.slaves		= omap3xxx_gptimer2_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer2_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER3 (GPTIMER3)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer3_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER3, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer3_hwmod = {
+	.name		= "gptimer3",
+	.mpu_irqs	= omap3xxx_gptimer3_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer3_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt3_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer3_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer3_masters),
+	.slaves		= omap3xxx_gptimer3_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer3_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER4 (GPTIMER4)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer4_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER4, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer4_hwmod = {
+	.name		= "gptimer4",
+	.mpu_irqs	= omap3xxx_gptimer4_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer4_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt4_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer4_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer4_masters),
+	.slaves		= omap3xxx_gptimer4_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer4_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER5 (GPTIMER5)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer5_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER5, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer5_hwmod = {
+	.name		= "gptimer5",
+	.mpu_irqs	= omap3xxx_gptimer5_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer5_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt5_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer5_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer5_masters),
+	.slaves		= omap3xxx_gptimer5_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer5_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER6 (GPTIMER6)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer6_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER6, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer6_hwmod = {
+	.name		= "gptimer6",
+	.mpu_irqs	= omap3xxx_gptimer6_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer6_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt6_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer6_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer6_masters),
+	.slaves		= omap3xxx_gptimer6_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer6_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER7 (GPTIMER7)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer7_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER7, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer7_hwmod = {
+	.name		= "gptimer7",
+	.mpu_irqs	= omap3xxx_gptimer7_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer7_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt7_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer7_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer7_masters),
+	.slaves		= omap3xxx_gptimer7_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer7_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER8 (GPTIMER8)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer8_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER8, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer8_hwmod = {
+	.name		= "gptimer8",
+	.mpu_irqs	= omap3xxx_gptimer8_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer8_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt8_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer8_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer8_masters),
+	.slaves		= omap3xxx_gptimer8_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer8_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER9 (GPTIMER9)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer9_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER9, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer9_hwmod = {
+	.name		= "gptimer9",
+	.mpu_irqs	= omap3xxx_gptimer9_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer9_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt9_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer9_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer9_masters),
+	.slaves		= omap3xxx_gptimer9_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer9_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+
+/*
+ * GPTIMER10 (GPTIMER10)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer10_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER10, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer10_hwmod = {
+	.name		= "gptimer10",
+	.mpu_irqs	= omap3xxx_gptimer10_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer10_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt10_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer10_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer10_masters),
+	.slaves		= omap3xxx_gptimer10_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer10_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+
+/*
+ * GPTIMER11 (GPTIMER11)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer11_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER11, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer11_hwmod = {
+	.name		= "gptimer11",
+	.mpu_irqs	= omap3xxx_gptimer11_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer11_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt11_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer11_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer11_masters),
+	.slaves		= omap3xxx_gptimer11_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer11_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
+/*
+ * GPTIMER12 (GPTIMER12)
+ */
+static struct omap_hwmod_irq_info omap3xxx_gptimer12_mpu_irqs[] = {
+	{ .irq = INT_24XX_GPTIMER12, },
+};
+
+static struct omap_hwmod omap3xxx_gptimer12_hwmod = {
+	.name		= "gptimer12",
+	.mpu_irqs	= omap3xxx_gptimer12_mpu_irqs,
+	.mpu_irqs_cnt	= ARRAY_SIZE(omap3xxx_gptimer12_mpu_irqs),
+	.sdma_chs	= NULL,
+	.main_clk	= "gpt12_fck",
+/*	.prcm		= {
+		.omap2 = {
+			.prcm_reg_id = XXX_PRCM_REG_ID,
+			.prcm_reg_bit = XXX_PRCM_REG_BIT
+		},
+	},*/
+	.masters	= omap3xxx_gptimer12_masters,
+	.masters_cnt	= ARRAY_SIZE(omap3xxx_gptimer12_masters),
+	.slaves		= omap3xxx_gptimer12_slaves,
+	.slaves_cnt	= ARRAY_SIZE(omap3xxx_gptimer12_slaves),
+	.class		= &gptimer_class,
+	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP3430)
+};
+
 static __initdata struct omap_hwmod *omap3xxx_hwmods[] = {
 	&omap3xxx_l3_hwmod,
 	&omap3xxx_l4_core_hwmod,
@@ -965,6 +1686,18 @@ static __initdata struct omap_hwmod *omap3xxx_hwmods[] = {
 	&omap3xxx_uart1_hwmod,
 	&omap3xxx_uart2_hwmod,
 	&omap3xxx_uart3_hwmod,
+	&omap3xxx_gptimer1_hwmod,
+	&omap3xxx_gptimer2_hwmod,
+	&omap3xxx_gptimer3_hwmod,
+	&omap3xxx_gptimer4_hwmod,
+	&omap3xxx_gptimer5_hwmod,
+	&omap3xxx_gptimer6_hwmod,
+	&omap3xxx_gptimer7_hwmod,
+	&omap3xxx_gptimer8_hwmod,
+	&omap3xxx_gptimer9_hwmod,
+	&omap3xxx_gptimer10_hwmod,
+	&omap3xxx_gptimer11_hwmod,
+	&omap3xxx_gptimer12_hwmod,
 	NULL,
 };
 
