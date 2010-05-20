@@ -261,6 +261,9 @@ void omap2_clk_disable(struct clk *clk)
 	if (clk->usecount > 0)
 		return;
 
+	if (cpu_is_omap44xx())
+		return;
+
 	pr_debug("clock: %s: disabling in hardware\n", clk->name);
 
 	clk->ops->disable(clk);

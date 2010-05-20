@@ -524,8 +524,6 @@ static int _disable_clocks(struct omap_hwmod *oh)
 
 	pr_debug("omap_hwmod: %s: disabling clocks\n", oh->name);
 
-	return 0;
-
 	if (oh->_clk)
 		clk_disable(oh->_clk);
 
