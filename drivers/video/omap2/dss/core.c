@@ -415,7 +415,8 @@ static void dss_debug_dump_clocks(struct seq_file *s)
 	dss_dump_clocks(s);
 	dispc_dump_clocks(s);
 #ifdef CONFIG_OMAP2_DSS_DSI
-	dsi_dump_clocks(s);
+	dsi_dump_clocks(DSI1, s);
+	dsi_dump_clocks(DSI2, s);
 #endif
 }
 
@@ -566,6 +567,13 @@ static int omap_dss_probe(struct platform_device *pdev)
 			DSSERR("Failed to initialize DSI\n");
 			goto fail0;
 		}
+		if (cpu_is_omap44xx()) {
+			r = dsi2_init(pdev);
+			if (r) {
+				DSSERR("Failed to initialize DSI2\n");
+				goto fail0;
+			}
+		}
 #endif
 	}
 
@@ -615,12 +623,15 @@ static int omap_dss_remove(struct platform_device *pdev)
 #ifdef CONFIG_OMAP2_DSS_RFBI
 	rfbi_exit();
 #endif
-	if (cpu_is_omap34xx()) {
+	if (!cpu_is_omap24xx()) {
 #ifdef CONFIG_OMAP2_DSS_DSI
 		dsi_exit();
+		if (cpu_is_omap44xx())
+			dsi2_exit();
 #endif
 #ifdef CONFIG_OMAP2_DSS_SDI
-		sdi_exit();
+		if (cpu_is_omap34xx())
+			sdi_exit();
 #endif
 	}
 
