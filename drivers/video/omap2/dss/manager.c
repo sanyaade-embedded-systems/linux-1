@@ -509,11 +509,14 @@ static int dss_mgr_wait_for_vsync(struct omap_overlay_manager *mgr)
 	unsigned long timeout = msecs_to_jiffies(500);
 	u32 irq;
 
-	if (mgr->device->type == OMAP_DISPLAY_TYPE_VENC)
+	if (mgr->device->type == OMAP_DISPLAY_TYPE_VENC) {
 		irq = DISPC_IRQ_EVSYNC_ODD;
-	else
-		irq = DISPC_IRQ_VSYNC;
-
+	} else {
+		if (mgr->device->channel == OMAP_DSS_CHANNEL_LCD)
+			irq = DISPC_IRQ_VSYNC;
+		else
+			irq = DISPC_IRQ_VSYNC2;
+	}
 	return omap_dispc_wait_for_irq_interruptible_timeout(irq, timeout);
 }
 
@@ -1447,7 +1450,7 @@ int dss_init_overlay_managers(struct platform_device *pdev)
 			mgr->supported_displays = OMAP_DISPLAY_TYPE_VENC;
 			break;
 		case 2:
-			mgr->name = "lcd2";
+			mgr->name = "2lcd";
 			mgr->id = OMAP_DSS_CHANNEL_LCD2;
 			mgr->supported_displays =
 				OMAP_DISPLAY_TYPE_DBI | OMAP_DISPLAY_TYPE_SDI |
