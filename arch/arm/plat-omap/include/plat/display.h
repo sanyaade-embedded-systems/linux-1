@@ -132,7 +132,6 @@ enum omap_color_mode {
 enum omap_lcd_display_type {
 	OMAP_DSS_LCD_DISPLAY_STN,
 	OMAP_DSS_LCD_DISPLAY_TFT,
-	OMAP_DSS_OVL_MGR_LCD2,
 };
 
 enum omap_dss_load_mode {
@@ -189,6 +188,7 @@ enum omap_dss_display_state {
 enum omap_dss_overlay_managers {
 	OMAP_DSS_OVL_MGR_LCD,
 	OMAP_DSS_OVL_MGR_TV,
+	OMAP_DSS_OVL_MGR_LCD2,
 };
 
 enum omap_dss_rotation_type {
