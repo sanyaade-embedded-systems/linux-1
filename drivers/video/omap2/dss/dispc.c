@@ -1052,6 +1052,7 @@ static void _dispc_set_channel_out(enum omap_plane plane,
 {
 	int shift;
 	u32 val;
+	int chan = 0, chan2 = 0;
 
 	switch (plane) {
 	case OMAP_DSS_GFX:
@@ -1068,7 +1069,30 @@ static void _dispc_set_channel_out(enum omap_plane plane,
 	}
 
 	val = dispc_read_reg(dispc_reg_att[plane]);
-	val = FLD_MOD(val, channel, shift, shift);
+	if (cpu_is_omap44xx()) {
+		switch (channel) {
+
+		case OMAP_DSS_CHANNEL_LCD:
+			chan = 0;
+			chan2 = 0;
+			break;
+		case OMAP_DSS_CHANNEL_DIGIT:
+			chan = 1;
+			chan2 = 0;
+			break;
+		case OMAP_DSS_CHANNEL_LCD2:
+			chan = 0;
+			chan2 = 1;
+			break;
+		default:
+			BUG();
+		}
+
+		val = FLD_MOD(val, chan, shift, shift);
+		val = FLD_MOD(val, chan2, 31, 30);
+	} else {
+		val = FLD_MOD(val, channel, shift, shift);
+	}
 	dispc_write_reg(dispc_reg_att[plane], val);
 }
 
@@ -1132,7 +1156,10 @@ void dispc_set_lcd_size(enum omap_channel channel, u16 width, u16 height)
 	BUG_ON((width > (1 << 11)) || (height > (1 << 11)));
 	val = FLD_VAL(height - 1, 26, 16) | FLD_VAL(width - 1, 10, 0);
 	enable_clocks(1);
-	dispc_write_reg(DISPC_SIZE_LCD, val);
+	if (OMAP_DSS_CHANNEL_LCD2 == channel)
+		dispc_write_reg(DISPC_SIZE_LCD2, val);
+	else
+		dispc_write_reg(DISPC_SIZE_LCD, val);
 	enable_clocks(0);
 }
 
@@ -2061,7 +2088,8 @@ bool dispc_is_channel_enabled(enum omap_channel channel)
 
 void dispc_enable_channel(enum omap_channel channel, bool enable)
 {
-	if (channel == OMAP_DSS_CHANNEL_LCD)
+	if (channel == OMAP_DSS_CHANNEL_LCD ||
+		channel == OMAP_DSS_CHANNEL_LCD2)
 		dispc_enable_lcd_out(channel, enable);
 	else if (channel == OMAP_DSS_CHANNEL_DIGIT)
 		dispc_enable_digit_out(enable);
@@ -2843,26 +2871,31 @@ int dispc_calc_clock_rates(unsigned long dispc_fclk_rate,
 	return 0;
 }
 
-int dispc_set_clock_div(struct dispc_clock_info *cinfo)
+int dispc_set_clock_div(enum omap_channel channel,
+	struct dispc_clock_info *cinfo)
 {
 	DSSDBG("lck = %lu (%u)\n", cinfo->lck, cinfo->lck_div);
 	DSSDBG("pck = %lu (%u)\n", cinfo->pck, cinfo->pck_div);
 
-	dispc_set_lcd_divisor(OMAP_DSS_CHANNEL_LCD, cinfo->lck_div,
+	dispc_set_lcd_divisor(channel, cinfo->lck_div,
 							cinfo->pck_div);
 
 	return 0;
 }
 
-int dispc_get_clock_div(struct dispc_clock_info *cinfo)
+int dispc_get_clock_div(enum omap_channel channel,
+	struct dispc_clock_info *cinfo)
 {
 	unsigned long fck;
 
 	fck = dispc_fclk_rate();
-
-	cinfo->lck_div = REG_GET(DISPC_DIVISOR, 23, 16);
-	cinfo->pck_div = REG_GET(DISPC_DIVISOR, 7, 0);
-
+	if (OMAP_DSS_CHANNEL_LCD2 == channel) {
+		cinfo->lck_div = REG_GET(DISPC_DIVISOR2, 23, 16);
+		cinfo->pck_div = REG_GET(DISPC_DIVISOR2, 7, 0);
+	} else {
+		cinfo->lck_div = REG_GET(DISPC_DIVISOR, 23, 16);
+		cinfo->pck_div = REG_GET(DISPC_DIVISOR, 7, 0);
+	}
 	cinfo->lck = fck / cinfo->lck_div;
 	cinfo->pck = cinfo->lck / cinfo->pck_div;
 
