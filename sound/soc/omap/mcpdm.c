@@ -429,7 +429,7 @@ static int __devinit omap_mcpdm_probe(struct platform_device *pdev)
 
 	mcpdm->irq = platform_get_irq(pdev, 0);
 
-	mcpdm->clk = clk_get(&pdev->dev, "pdm_ck");
+	mcpdm->clk = clk_get(&pdev->dev, "pdm_fck");
 	if (IS_ERR(mcpdm->clk)) {
 		ret = PTR_ERR(mcpdm->clk);
 		dev_err(&pdev->dev, "unable to get pdm_ck: %d\n", ret);
