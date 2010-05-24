@@ -612,6 +612,9 @@ static struct i2c_board_info __initdata sdp4430_i2c_3_boardinfo[] = {
 		I2C_BOARD_INFO("tm12xx_ts_secondary", 0x4b),
 		.platform_data = &tm12xx_platform_data[1],
 	},
+	{
+		I2C_BOARD_INFO("bh1780", 0x29),
+	},
 };
 
 static struct i2c_board_info __initdata sdp4430_i2c_4_boardinfo[] = {
