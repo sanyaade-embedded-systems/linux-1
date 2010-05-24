@@ -42,12 +42,12 @@ void *heap_alloc(void *hphandle, u32 size, u32 align)
 }
 
 /*
- * ======== heap_free ========
+ * ======== free_heap ========
  *  Purpose:
  *  This will frees a block of memory allocated
  *  rom heap
  */
-int heap_free(void *hphandle, void *block, u32 size)
+int free_heap(void *hphandle, void *block, u32 size)
 {
 	struct heap_object *obj = NULL;
 	s32 retval  = 0;

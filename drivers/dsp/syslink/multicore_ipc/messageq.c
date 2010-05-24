@@ -1012,7 +1012,7 @@ int messageq_free(messageq_msg msg)
 	}
 
 	heap = messageq_state.heaps[msg->heap_id];
-	heap_free(heap, msg, msg->msg_size);
+	free_heap(heap, msg, msg->msg_size);
 
 exit:
 	if (status < 0) {

@@ -74,7 +74,7 @@ void *heap_alloc(void *handle, u32 size, u32 align);
 /*
  *  Frees the block to this Heap
  */
-int heap_free(void *handle, void *block, u32 size);
+int free_heap(void *handle, void *block, u32 size);
 
 /*
  * Get heap statistics
