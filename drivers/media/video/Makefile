@@ -170,6 +170,8 @@ obj-$(CONFIG_VIDEO_IR_I2C)  += ir-kbd-i2c.o
 obj-$(CONFIG_DMM_OMAP)  += dmm/
 obj-$(CONFIG_TILER_OMAP)  += tiler/
 
+obj-$(CONFIG_ARCH_OMAP)	+= omap/
+
 EXTRA_CFLAGS += -Idrivers/media/dvb/dvb-core
 EXTRA_CFLAGS += -Idrivers/media/dvb/frontends
 EXTRA_CFLAGS += -Idrivers/media/common/tuners
