@@ -32,3 +32,4 @@ obj-y				+= eeprom/
 obj-y				+= cb710/
 obj-$(CONFIG_VMWARE_BALLOON)	+= vmware_balloon.o
 obj-$(CONFIG_SENSORS_BH1780)	+= bh1780gli.o
+obj-y				+= ti-st/
