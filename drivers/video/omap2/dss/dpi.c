@@ -58,7 +58,7 @@ static int dpi_set_dsi_clk(bool is_tft, unsigned long pck_req,
 
 	dss_select_dispc_clk_source(DSS_SRC_DSI1_PLL_FCLK);
 
-	r = dispc_set_clock_div(&dispc_cinfo);
+	r = dispc_set_clock_div(OMAP_DSS_CHANNEL_LCD, &dispc_cinfo);
 	if (r)
 		return r;
 
@@ -84,7 +84,7 @@ static int dpi_set_dispc_clk(bool is_tft, unsigned long pck_req,
 	if (r)
 		return r;
 
-	r = dispc_set_clock_div(&dispc_cinfo);
+	r = dispc_set_clock_div(OMAP_DSS_CHANNEL_LCD, &dispc_cinfo);
 	if (r)
 		return r;
 
