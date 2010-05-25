@@ -209,6 +209,14 @@ static int __init sdp4430_soc_init(void)
 	if (ret)
 		goto err;
 
+	ret = snd_soc_dai_set_sysclk(sdp4430_dai[0].codec_dai,
+				TWL6040_SYSCLK_SEL_HPPLL, 38400000,
+				SND_SOC_CLOCK_IN);
+	if (ret) {
+		printk(KERN_ERR "can't set codec system clock\n");
+		goto err;
+	}
+
 	/* Codec starts in HP mode */
 	twl6040_power_mode = 1;
 
