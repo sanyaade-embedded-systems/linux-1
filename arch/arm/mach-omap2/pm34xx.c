@@ -405,8 +405,6 @@ void omap_sram_idle(void)
 	u32 sdrc_pwr = 0;
 	int per_state_modified = 0;
 	u32 fclk_status = 0;
-	u32 prm_ldo_abb_ctrl;
-	int bypass = 0;
 
 	if (!_omap_sram_idle)
 		return;
@@ -446,19 +444,6 @@ void omap_sram_idle(void)
 		return;
 	}
 
-	if (cpu_is_omap3630()) {
-		/* Check SLEEP_RBB_SEL if ABB_LDO should be bypassed */
-		prm_ldo_abb_ctrl = prm_read_mod_reg(OMAP3430_GR_MOD,
-			OMAP3630_PRM_LDO_ABB_CTRL);
-		prm_ldo_abb_ctrl &= OMAP3630_SLEEP_RBB_SEL;
-		if (!(prm_ldo_abb_ctrl)) {
-			prm_clear_mod_reg_bits(OMAP3630_SR2_EN, OMAP3430_GR_MOD,
-				OMAP3630_PRM_LDO_ABB_CTRL);
-			bypass = 1;
-		} else
-			prm_set_mod_reg_bits(OMAP3630_SR2_EN, OMAP3430_GR_MOD,
-				OMAP3630_PRM_LDO_ABB_CTRL);
-	}
 	pwrdm_pre_transition();
 
 	/* NEON control */
@@ -702,10 +687,6 @@ void omap_sram_idle(void)
 
 	pwrdm_post_transition();
 
-	/* If ABO_LDO was Bypassed Enable it back.*/
-	if (bypass)
-		prm_set_mod_reg_bits(OMAP3630_SR2_EN, OMAP3430_GR_MOD,
-			OMAP3630_PRM_LDO_ABB_CTRL);
 
 	omap2_clkdm_allow_idle(mpu_pwrdm->pwrdm_clkdms[0]);
 }
