@@ -385,8 +385,6 @@ static struct omap_dss_device sdp4430_lcd_device = {
 
 static struct omap_dss_device *sdp4430_dss_devices[] = {
 	&sdp4430_lcd_device,
-	&sdp4430_keypad_device,
-	&sdp4430_proximity_device,
 };
 
 static struct omap_dss_board_info sdp4430_dss_data = {
@@ -405,6 +403,8 @@ static struct platform_device sdp4430_dss_device = {
 
 static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_dss_device,
+	&sdp4430_keypad_device,
+	&sdp4430_proximity_device,
 };
 
 static struct omap_lcd_config sdp4430_lcd_config __initdata = {
