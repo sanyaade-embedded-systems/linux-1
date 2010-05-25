@@ -2224,7 +2224,8 @@ static int vidioc_streamon(struct file *file, void *fh,
 		+ vout->cropped_uv_offset;
 
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-		DISPC_IRQ_EVSYNC_ODD;
+			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE |
+			DISPC_IRQ_FRAMEDONE2 | DISPC_IRQ_VSYNC2;
 
 	omap_dispc_register_isr(omap_vout_isr, vout, mask);
 
@@ -2273,7 +2274,8 @@ static int vidioc_streamoff(struct file *file, void *fh,
 
 	vout->streaming = 0;
 	mask = DISPC_IRQ_VSYNC | DISPC_IRQ_EVSYNC_EVEN |
-		DISPC_IRQ_EVSYNC_ODD;
+			DISPC_IRQ_EVSYNC_ODD | DISPC_IRQ_FRAMEDONE |
+			DISPC_IRQ_FRAMEDONE2 | DISPC_IRQ_VSYNC2;
 
 	omap_dispc_unregister_isr(omap_vout_isr, vout, mask);
 
@@ -2874,7 +2876,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 	struct omapvideo_info *ovid;
 	struct omap_dss_device *cur_display;
 	struct omap_vout_device *vout = (struct omap_vout_device *)arg;
-
+	int irq = 0;
 	if (!vout->streaming)
 		return;
 
@@ -2885,42 +2887,25 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 		return;
 	cur_display = ovl->manager->device;
 
+	if (cur_display->channel == OMAP_DSS_CHANNEL_LCD)
+		irq = DISPC_IRQ_FRAMEDONE;
+	else if (cur_display->channel == OMAP_DSS_CHANNEL_LCD2)
+		irq = DISPC_IRQ_FRAMEDONE2;
 	spin_lock(&vout->vbq_lock);
 	do_gettimeofday(&timevalue);
-	if (cur_display->type == OMAP_DISPLAY_TYPE_DPI) {
-		if (!(irqstatus & DISPC_IRQ_VSYNC))
-			goto vout_isr_err;
+	switch (cur_display->type) {
 
-		if (!vout->first_int && (vout->cur_frm != vout->next_frm)) {
-			vout->cur_frm->ts = timevalue;
-			vout->cur_frm->state = VIDEOBUF_DONE;
-			wake_up_interruptible(&vout->cur_frm->done);
-			vout->cur_frm = vout->next_frm;
-		}
-		vout->first_int = 0;
-		if (list_empty(&vout->dma_queue))
-			goto vout_isr_err;
+	case OMAP_DISPLAY_TYPE_DSI:
+			if (!(irqstatus & irq))
+				goto vout_isr_err;
+			break;
 
-		vout->next_frm = list_entry(vout->dma_queue.next,
-				struct videobuf_buffer, queue);
-		list_del(&vout->next_frm->queue);
+	case OMAP_DISPLAY_TYPE_DPI:
+			if (!(irqstatus & (DISPC_IRQ_VSYNC | DISPC_IRQ_VSYNC2)))
+				goto vout_isr_err;
+			break;
 
-		vout->next_frm->state = VIDEOBUF_ACTIVE;
-
-		addr = (unsigned long) vout->queued_buf_addr[vout->next_frm->i]
-			+ vout->cropped_offset;
-
-		/* First save the configuration in ovelray structure */
-		ret = omapvid_init(vout, addr, uv_addr);
-		if (ret)
-			printk(KERN_ERR VOUT_NAME
-					"failed to set overlay info\n");
-		/* Enable the pipeline and set the Go bit */
-		ret = omapvid_apply_changes(vout);
-		if (ret)
-			printk(KERN_ERR VOUT_NAME "failed to change mode\n");
-	} else {
-
+	case OMAP_DISPLAY_TYPE_VENC:
 		if (vout->first_int) {
 			vout->first_int = 0;
 			goto vout_isr_err;
@@ -2931,7 +2916,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 			fid = 0;
 		else
 			goto vout_isr_err;
-
+		fid = 1;
 		vout->field_id ^= 1;
 		if (fid != vout->field_id) {
 			if (0 == fid)
@@ -2942,16 +2927,34 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 		if (0 == fid) {
 			if (vout->cur_frm == vout->next_frm)
 				goto vout_isr_err;
-
 			vout->cur_frm->ts = timevalue;
 			vout->cur_frm->state = VIDEOBUF_DONE;
 			wake_up_interruptible(&vout->cur_frm->done);
 			vout->cur_frm = vout->next_frm;
+			goto vout_isr_err;
 		} else if (1 == fid) {
 			if (list_empty(&vout->dma_queue) ||
-					(vout->cur_frm != vout->next_frm))
+			    (vout->cur_frm != vout->next_frm)) {
 				goto vout_isr_err;
+			}
+			goto venc;
+		}
 
+	default:
+		goto vout_isr_err;
+	}
+	if (!vout->first_int && (vout->cur_frm != vout->next_frm)) {
+		vout->cur_frm->ts = timevalue;
+		vout->cur_frm->state = VIDEOBUF_DONE;
+		wake_up_interruptible(&vout->cur_frm->done);
+		vout->cur_frm = vout->next_frm;
+		}
+
+	vout->first_int = 0;
+	if (list_empty(&vout->dma_queue))
+		goto vout_isr_err;
+
+venc:
 			vout->next_frm = list_entry(vout->dma_queue.next,
 					struct videobuf_buffer, queue);
 			list_del(&vout->next_frm->queue);
@@ -2960,6 +2963,10 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 			addr = (unsigned long)
 				vout->queued_buf_addr[vout->next_frm->i] +
 				vout->cropped_offset;
+			uv_addr = (unsigned long)vout->queued_buf_uv_addr[
+								vout->next_frm->i]
+					+ vout->cropped_uv_offset;
+
 			/* First save the configuration in ovelray structure */
 			ret = omapvid_init(vout, addr, uv_addr);
 			if (ret)
@@ -2970,9 +2977,6 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 			if (ret)
 				printk(KERN_ERR VOUT_NAME
 						"failed to change mode\n");
-		}
-
-	}
 
 vout_isr_err:
 	spin_unlock(&vout->vbq_lock);
