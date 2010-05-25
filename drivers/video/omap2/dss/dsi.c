@@ -3124,7 +3124,7 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 	dispc_set_tft_data_lines(OMAP_DSS_CHANNEL_LCD, dssdev->ctrl.pixel_size);
 
 	if (cpu_is_omap44xx())
-		dispc_set_pol_freq(dssdev->panel.config,
+		dispc_set_pol_freq(OMAP_DSS_CHANNEL_LCD, dssdev->panel.config,
 			dssdev->panel.acbi, dssdev->panel.acb);
 
 	if (cpu_is_omap44xx()) {
@@ -3139,7 +3139,7 @@ static int dsi_display_init_dispc(struct omap_dss_device *dssdev)
 			.y_res	= 480,
 		};
 
-		dispc_set_lcd_timings(&timings);
+		dispc_set_lcd_timings(OMAP_DSS_CHANNEL_LCD, &timings);
 	} else {
 		struct omap_video_timings timings = {
 			.hsw		= 1,
@@ -3203,7 +3203,7 @@ static int dsi_configure_dispc_clocks(struct omap_dss_device *dssdev)
 		return r;
 	}
 
-	r = dispc_set_clock_div(&dispc_cinfo);
+	r = dispc_set_clock_div(dssdev->channel, &dispc_cinfo);
 	if (r) {
 		DSSERR("Failed to set dispc clocks\n");
 		return r;

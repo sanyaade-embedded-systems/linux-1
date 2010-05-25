@@ -83,7 +83,7 @@ int omapdss_sdi_display_enable(struct omap_dss_device *dssdev)
 				&dss_cinfo, &dispc_cinfo);
 	} else {
 		r = dss_get_clock_div(&dss_cinfo);
-		r = dispc_get_clock_div(&dispc_cinfo);
+		r = dispc_get_clock_div(OMAP_DSS_CHANNEL_LCD, &dispc_cinfo);
 	}
 
 	if (r)
