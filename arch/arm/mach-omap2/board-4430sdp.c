@@ -323,36 +323,59 @@ static struct tm12xx_ts_platform_data tm12xx_platform_data[] = {
 /* Begin Synaptic Touchscreen TM-01217 */
 static int sdp4430_taal_enable(struct omap_dss_device *dssdev)
 {
-	gpio_request(102, "dsi1_en_gpio");/* DSI1_GPIO_102*/
-	gpio_direction_output(102, 0);
-	mdelay(500);
-	gpio_set_value(102, 1);
-	mdelay(500);
-	gpio_set_value(102, 0);
-	mdelay(500);
-	gpio_set_value(102, 1);
-#if 0
-	twl_i2c_write_u8(0xBD, 0xFF, 0x03);
-	twl_i2c_write_u8(0xBD, 0x7F, 0x04);
-	twl_i2c_write_u8(0xBE, 0x30, 0x92);
-#endif
+	if (dssdev->channel == OMAP_DSS_CHANNEL_LCD) {
+		gpio_request(102, "dsi1_en_gpio");	/* DSI1_GPIO_102*/
+		gpio_direction_output(102, 0);
+		mdelay(500);
+		gpio_set_value(102, 1);
+		mdelay(500);
+		gpio_set_value(102, 0);
+		mdelay(500);
+		gpio_set_value(102, 1);
 
-	twl_i2c_write_u8(TWL_MODULE_PWM, 0xFF, 0x03);
-	twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, 0x04);
-	twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, 0x92);
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0xFF, 0x03);
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, 0x04);
+		twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, 0x92);
 
-	gpio_request(27, "dsi1_bl_gpio"); /*DSI1_GPIO_27*/
-	gpio_direction_output(27, 1);
-	mdelay(120);
-	gpio_set_value(27, 0);
-	mdelay(120);
+		gpio_request(27, "dsi1_bl_gpio");	/*DSI1_GPIO_27*/
+		gpio_direction_output(27, 1);
+		mdelay(120);
+		gpio_set_value(27, 0);
+		mdelay(120);
+		gpio_set_value(27, 1);
+	} else {
+		gpio_request(104, "dsi2_en_gpio");	/* DSI2_GPIO_104 */
+		gpio_direction_output(104, 0);
+		mdelay(500);
+		gpio_set_value(104, 1);
+		mdelay(500);
+		gpio_set_value(104, 0);
+		mdelay(500);
+		gpio_set_value(104, 1);
+
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0xFF, 0x03);
+		twl_i2c_write_u8(TWL_MODULE_PWM, 0x7F, 0x04);
+		twl_i2c_write_u8(TWL6030_MODULE_ID1, 0x30, 0x92);
+
+		gpio_request(59, "dsi2_bl_gpio");	/* DSI2_GPIO_59 */
+		gpio_direction_output(59, 1);
+		mdelay(120);
+		gpio_set_value(59, 0);
+		mdelay(120);
+		gpio_set_value(59, 1);
+	}
 	return 0;
 }
 
 static void sdp4430_taal_disable(struct omap_dss_device *dssdev)
 {
-	gpio_set_value(102 /*DSI1_GPIO_102*/, 1);
-	gpio_set_value(27 /*DSI1_GPIO_27*/, 0);
+	if (dssdev->channel == OMAP_DSS_CHANNEL_LCD) {
+		gpio_set_value(102, 1);	/*DSI1_GPIO_102*/
+		gpio_set_value(27, 0);	/*DSI1_GPIO_27*/
+	} else {
+		gpio_set_value(104, 1);	/* DSI2_GPIO_104 */
+		gpio_set_value(59, 0);	/* DSI2_GPIO_59 */
+	}
 }
 
 static struct omap_dss_device sdp4430_lcd_device = {
@@ -381,10 +404,41 @@ static struct omap_dss_device sdp4430_lcd_device = {
 	},
 	.platform_enable	=	sdp4430_taal_enable,
 	.platform_disable	=	sdp4430_taal_disable,
+	.channel			=	OMAP_DSS_CHANNEL_LCD,
 };
+
+static struct omap_dss_device sdp4430_lcd2_device = {
+	.name			= "2lcd",
+	.driver_name		= "taal2",
+	.type			= OMAP_DISPLAY_TYPE_DSI,
+	.reset_gpio		= 102,
+	.phy.dsi		= {
+		.clk_lane	= 1,
+		.clk_pol	= 0,
+		.data1_lane	= 2,
+		.data1_pol	= 0,
+		.data2_lane	= 3,
+		.data2_pol	= 0,
+		.ext_te		= false,
+		.ext_te_gpio	= 103,
+		.div		= {
+			.lck_div	= 1,
+			.pck_div	= 6,
+			.regm		= 200,
+			.regn		= 19,
+			.regm3		= 4,
+			.regm4		= 5,
+			.lp_clk_div	= 6,
+		},
+	},
+	.platform_enable	=	sdp4430_taal_enable,
+	.platform_disable	=	sdp4430_taal_disable,
+	.channel			=	OMAP_DSS_CHANNEL_LCD2,
+ };
 
 static struct omap_dss_device *sdp4430_dss_devices[] = {
 	&sdp4430_lcd_device,
+	&sdp4430_lcd2_device,
 };
 
 static struct omap_dss_board_info sdp4430_dss_data = {
