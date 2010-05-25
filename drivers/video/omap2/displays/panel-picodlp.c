@@ -412,12 +412,21 @@ static int picoDLP_panel_enable(struct omap_dss_device *dssdev)
 {
 	int r = 0;
 	printk("pico DLP init is called ");
+	if (dssdev->state != OMAP_DSS_DISPLAY_DISABLED) {
+		r = -EINVAL;
+		return r;
+	}
 	if (dssdev->platform_enable) {
 		r = dssdev->platform_enable(dssdev);
 		if (r)
 			return r;
 	}
-
+	r = omapdss_dpi_display_enable(dssdev);
+	if (r) {
+		dev_err(&dssdev->dev, "failed to enable DPI\n");
+		return r;
+	}
+	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 	display_control_reg	= dispc_base;
 	/* Specify the Display Controller Logic Clock Divisor*/
 	modify_pico_register(display_control_reg + DSI_DIV2, 0xFF |
@@ -454,10 +463,70 @@ static int picoDLP_panel_remove(struct omap_dss_device *dssdev)
 
 static int picoDLP_panel_disable(struct omap_dss_device *dssdev)
 {
+	int r = 0;
 	/* Turn of DLP Power */
+	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE) {
+		r = -EINVAL;
+		return r;
+	}
+
+		omapdss_dpi_display_disable(dssdev);
+
+		if (dssdev->platform_disable)
+		dssdev->platform_disable(dssdev);
+
+		dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
+
+	return 0;
+}
+
+static int picoDLP_panel_suspend(struct omap_dss_device *dssdev)
+{
+	int r = 0;
+	/* Turn of DLP Power */
+	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE) {
+		r = -EINVAL;
+		return r;
+	}
+
+	omapdss_dpi_display_disable(dssdev);
+
 	if (dssdev->platform_disable)
 		dssdev->platform_disable(dssdev);
+
+	dssdev->state = OMAP_DSS_DISPLAY_SUSPENDED;
+
 	return 0;
+}
+
+static int picoDLP_panel_resume(struct omap_dss_device *dssdev)
+{
+	int r = 0;
+	printk("pico DLP resume is called ");
+	if (dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED) {
+		r = -EINVAL;
+		return r;
+	}
+	if (dssdev->platform_enable) {
+		r = dssdev->platform_enable(dssdev);
+		if (r)
+			return r;
+	}
+	r = omapdss_dpi_display_enable(dssdev);
+	if (r) {
+		dev_err(&dssdev->dev, "failed to enable DPI\n");
+		return r;
+	}
+	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
+	display_control_reg	= dispc_base;
+	/* Specify the Display Controller Logic Clock Divisor*/
+	modify_pico_register(display_control_reg + DSI_DIV2, 0xFF |
+			(0XFF << DSI_DIV_LCD), (1 << DSI_DIV_LCD) | (4 << DSI_DIV_PCD));
+	/* LCD output Enabled */
+	modify_pico_register(display_control_reg + DSI_CONTROL2, (1<<11), 0x00000000);
+	pico_i2c_initialize();
+	return 0;
+
 }
 
 static struct omap_dss_driver picoDLP_driver = {
@@ -466,6 +535,8 @@ static struct omap_dss_driver picoDLP_driver = {
 	.enable		= picoDLP_panel_enable,
 	.disable	= picoDLP_panel_disable,
 	.get_resolution	= pico_get_resolution,
+	.suspend	= picoDLP_panel_suspend,
+	.resume		= picoDLP_panel_resume,
 	.driver         = {
 		.name   = "picoDLP_panel",
 	.owner  = THIS_MODULE,
