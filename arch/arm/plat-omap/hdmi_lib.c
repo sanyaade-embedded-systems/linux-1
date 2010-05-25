@@ -23,6 +23,7 @@
  * 				cleanup 2/08/10
  * MythriPk <mythripk@ti.com>	Apr 2010 Modified to read extended EDID partition
  *				and handle checksum with and without extension
+ *				May 2010 Added support for Hot Plug Detect.
  *
  */
 
@@ -61,12 +62,15 @@
 #define HDMI_CORE_SYS__DEV_REV					0x10ul
 #define HDMI_CORE_SYS__SRST						0x14ul
 #define HDMI_CORE_CTRL1							0x20ul
+#define HDMI_CORE_SYS__SYS_STAT					0x24ul
 #define HDMI_CORE_SYS__VID_ACEN					0x124ul
 #define HDMI_CORE_SYS__VID_MODE					0x128ul
+#define HDMI_CORE_SYS__INTR_STATE				0x1C0ul
 #define HDMI_CORE_SYS__INTR1					0x1C4ul
 #define HDMI_CORE_SYS__INTR2					0x1C8ul
 #define HDMI_CORE_SYS__INTR3					0x1CCul
 #define HDMI_CORE_SYS__INTR4					0x1D0ul
+#define HDMI_CORE_SYS__UMASK1					0x1D4ul
 #define HDMI_CORE_SYS__TMDS_CTRL				0x208ul
 #define HDMI_CORE_CTRL1_VEN__FOLLOWVSYNC		0x1ul
 #define HDMI_CORE_CTRL1_HEN__FOLLOWHSYNC		0x1ul
@@ -186,6 +190,8 @@ static struct {
 	void __iomem *base_wp;       /*2*/
 	struct mutex hdmi_lock;
 } hdmi;
+
+int count = 0, count_hpd = 0;
 
 static inline void hdmi_write_reg(u32 base, u16 idx, u32 val)
 {
@@ -402,8 +408,8 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 	}
 
 	i = 0;
-	while (FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1
-			| FLD_GET(hdmi_read_reg(ins, sts), 2, 2) == 0) {
+	while ((FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1
+			| FLD_GET(hdmi_read_reg(ins, sts), 2, 2) == 0) && i < 256) {
 		if (FLD_GET(hdmi_read_reg(ins,
 			sts), 2, 2) == 0) {
 			/* FIFO not empty */
@@ -430,8 +436,6 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 	for (i = 0 ; i < 256 ; i++)
 		edid_backup[i] = pEDID[i];
 
-	hdmi_get_image_format();
-	hdmi_get_audio_format();
 #ifdef DEBUG_EDID
 	DBG("Header:\n");
 	for (i = 0x00; i < 0x08; i++)
@@ -853,8 +857,8 @@ static void hdmi_w1_init(struct hdmi_video_timing *t_p,
 	pIrqVectorEnable->pllRecal = 0;
 	pIrqVectorEnable->pllUnlock = 0;
 	pIrqVectorEnable->pllLock = 0;
-	pIrqVectorEnable->phyDisconnect = 0;
-	pIrqVectorEnable->phyConnect = 0;
+	pIrqVectorEnable->phyDisconnect = 1;
+	pIrqVectorEnable->phyConnect = 1;
 	pIrqVectorEnable->phyShort5v = 0;
 	pIrqVectorEnable->videoEndFrame = 0;
 	pIrqVectorEnable->videoVsync = 0;
@@ -862,7 +866,7 @@ static void hdmi_w1_init(struct hdmi_video_timing *t_p,
 	pIrqVectorEnable->fifoOverflow = 0;
 	pIrqVectorEnable->fifoUnderflow = 0;
 	pIrqVectorEnable->ocpTimeOut = 0;
-	pIrqVectorEnable->core = 0;
+	pIrqVectorEnable->core = 1;
 
 	audio_fmt->stereo_channel_enable = HDMI_STEREO_ONECHANNELS;
 	audio_fmt->audio_channel_location = HDMI_CEA_CODE_03;
@@ -1295,6 +1299,78 @@ void dump_regs(void){
 	DBG("Core PB_CTR2 packet buf = 0x%x\r\n", hdmi_read_reg(HDMI_WP, 0x9fcul));
 }
 
+int hdmi_set_irqs(void)
+{
+	u32 r = 0 , hpd = 0;
+	struct hdmi_irq_vector pIrqVectorEnable;
+
+	pIrqVectorEnable.pllRecal = 0;
+	pIrqVectorEnable.phyShort5v = 0;
+	pIrqVectorEnable.videoEndFrame = 0;
+	pIrqVectorEnable.videoVsync = 0;
+	pIrqVectorEnable.fifoSampleRequest = 0;
+	pIrqVectorEnable.fifoOverflow = 0;
+	pIrqVectorEnable.fifoUnderflow = 0;
+	pIrqVectorEnable.ocpTimeOut = 0;
+	pIrqVectorEnable.pllUnlock = 1;
+	pIrqVectorEnable.pllLock = 1;
+	pIrqVectorEnable.phyDisconnect = 1;
+	pIrqVectorEnable.phyConnect = 1;
+	pIrqVectorEnable.core = 1;
+
+	hdmi_w1_irq_enable(&pIrqVectorEnable);
+
+	r = hdmi_read_reg(HDMI_WP, HDMI_WP_IRQENABLE_SET);
+	DBG("Irqenable %x \n", r);
+	hpd = hdmi_read_reg(HDMI_CORE_SYS, HDMI_CORE_SYS__UMASK1);
+	DBG("%x hpd\n", hpd);
+	return 0;
+}
+
+/* Interrupt handler*/
+void HDMI_W1_HPD_handler(int *r)
+{
+	u32 val, intr, enabled, set;
+	mdelay(30);
+	val = hdmi_read_reg(HDMI_WP, HDMI_WP_IRQSTATUS);
+	DBG("%x hdmi_wp_irqstatus\n", val);
+	mdelay(30);
+	set = 0;
+	set = hdmi_read_reg(HDMI_CORE_SYS, HDMI_CORE_SYS__SYS_STAT);
+	DBG("%x hdmi_core_sys_sys_stat\n", set);
+	mdelay(30);
+	hdmi_write_reg(HDMI_WP, HDMI_WP_IRQSTATUS, val);
+	/* flush posted write */
+	hdmi_read_reg(HDMI_WP, HDMI_WP_IRQSTATUS);
+	mdelay(30);
+	*r = 0;
+	if ((count == 0) && ((val & 0x02000000) == 0x02000000) &&
+		((set & 0x00000002) != 0x00000002)) {
+		*r = 2;
+		DBG("First interrupt physical attach but not HPD");
+		count_hpd = 0;
+	}
+	count++;
+	hdmi_set_irqs();
+	DBG("%d count and count_hpd %d", count, count_hpd);
+	if ((set & 0x00000002) == 0x00000002) {
+		if (count_hpd == 0) {
+			*r = 4;
+			count_hpd++;
+			goto end;
+		} else
+			*r = 1;
+		DBG("HPD is set you can read edid");
+	}
+	if (((val & 0x04000000) == 0x04000000) && ((set & 0x00000002) != 0x00000002)) {
+		*r = 3;
+		count = 0;
+		count_hpd = 0;
+	}
+	intr =  hdmi_read_reg(HDMI_CORE_SYS, HDMI_CORE_SYS__INTR1);
+	DBG("%x hdmi_core_sys_sys_intr\n", intr);
+	end: /*Do nothing*/;
+}
 
 
 /* wrapper functions to be used until L24.5 release*/
@@ -1397,3 +1473,4 @@ int DSS_HDMI_CONFIG(HDMI_Timing_t timings, u32 video_format,
 	err = hdmi_lib_enable(&data);
 	return err;
 }
+
