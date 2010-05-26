@@ -100,6 +100,7 @@
 #include <linux/io.h>
 #include <linux/i2c/twl.h>
 #include <linux/delay.h>
+#include <linux/gpio.h>
 
 #ifdef	CONFIG_ARM
 #include <mach/hardware.h>
@@ -1933,12 +1934,23 @@ musb_init_controller(struct device *dev, int nIrq, void __iomem *ctrl)
 		/* Delay supply of VBUS. This fixes bootup enumeration issue */
 		mdelay(500);
 
-		/*
-		 * Start driving VBUS. Set OPA_MODE bit in CHARGERUSB_CTRL1
-		 * register. This enables boost mode.
-		 */
-		twl_i2c_write_u8(TWL_MODULE_MAIN_CHARGE , 0x40,
-							CHARGERUSB_CTRL1);
+		/* ES1.0 Panda board has a hardware issue with MUSB VBUS */
+		if (!machine_is_omap4_panda()) {
+
+			/* Start driving VBUS. Set OPA_MODE bit in CHARGERUSB_CTRL1
+			 * register. This enables boost mode.
+			 */
+			twl_i2c_write_u8(TWL_MODULE_MAIN_CHARGE , 0x40,
+					CHARGERUSB_CTRL1);
+		}
+		else {
+#define HUB_GPIO_1 1
+
+			/* enable power to hub */
+			gpio_request(HUB_GPIO_1 , "hub_gpio_1");
+			gpio_direction_output(HUB_GPIO_1, 0);
+			gpio_set_value(HUB_GPIO_1, 1);
+		}
 	}
 		break;
 #else
