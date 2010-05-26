@@ -25,6 +25,7 @@
 #include <sound/pcm.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
+#include <sound/jack.h>
 
 #include <asm/mach-types.h>
 #include <plat/hardware.h>
@@ -42,6 +43,7 @@
 #endif
 
 static int twl6040_power_mode;
+static struct snd_soc_card snd_soc_sdp4430;
 
 static int sdp4430_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
@@ -105,6 +107,21 @@ static struct snd_soc_ops sdp4430_voice_ops = {
 	.hw_params = sdp4430_voice_hw_params,
 };
 #endif
+
+/* Headset jack */
+static struct snd_soc_jack hs_jack;
+
+/*Headset jack detection DAPM pins */
+static struct snd_soc_jack_pin hs_jack_pins[] = {
+	{
+		.pin = "Headset Mic",
+		.mask = SND_JACK_MICROPHONE,
+	},
+	{
+		.pin = "Headset Stereophone",
+		.mask = SND_JACK_HEADPHONE,
+	},
+};
 
 static int sdp4430_get_power_mode(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -188,14 +205,27 @@ static int sdp4430_twl6040_init(struct snd_soc_codec *codec)
 	/* SDP4430 connected pins */
 	snd_soc_dapm_enable_pin(codec, "Ext Mic");
 	snd_soc_dapm_enable_pin(codec, "Ext Spk");
-	snd_soc_dapm_enable_pin(codec, "Headset Mic");
-	snd_soc_dapm_enable_pin(codec, "Headset Stereophone");
+	snd_soc_dapm_disable_pin(codec, "Headset Mic");
+	snd_soc_dapm_disable_pin(codec, "Headset Stereophone");
 
 	/* TWL6040 not connected pins */
 	snd_soc_dapm_nc_pin(codec, "AFML");
 	snd_soc_dapm_nc_pin(codec, "AFMR");
 
 	ret = snd_soc_dapm_sync(codec);
+	if (ret)
+		return ret;
+
+	/*Headset jack detection */
+	ret = snd_soc_jack_new(&snd_soc_sdp4430, "Headset Jack",
+				SND_JACK_HEADSET, &hs_jack);
+	if (ret)
+		return ret;
+
+	ret = snd_soc_jack_add_pins(&hs_jack, ARRAY_SIZE(hs_jack_pins),
+				hs_jack_pins);
+
+	twl6040_hs_jack_detect(codec, &hs_jack, SND_JACK_HEADSET);
 
 	return ret;
 }
