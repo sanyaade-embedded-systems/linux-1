@@ -2840,6 +2840,7 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 	if (ret)
 		goto probe_err2;
 
+#if 0 /* Auto update feature not available */
 	for (i = 0; i < vid_dev->num_displays; i++) {
 		struct omap_dss_device *display = vid_dev->displays[i];
 
@@ -2848,6 +2849,7 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 					display->panel.timings.x_res,
 					display->panel.timings.y_res);
 	}
+#endif
 	return 0;
 
 probe_err2:
