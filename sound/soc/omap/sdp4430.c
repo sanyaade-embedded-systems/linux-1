@@ -68,6 +68,8 @@ static int sdp4430_hw_params(struct snd_pcm_substream *substream,
 		printk(KERN_ERR "can't set codec system clock\n");
 		return ret;
 	}
+
+	return 0;
 }
 
 static struct snd_soc_ops sdp4430_ops = {
