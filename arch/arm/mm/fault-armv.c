@@ -172,18 +172,11 @@ void update_mmu_cache(struct vm_area_struct *vma, unsigned long addr,
 	mapping = page_mapping(page);
 	if (!test_and_set_bit(PG_dcache_clean, &page->flags))
 		__flush_dcache_page(mapping, page);
-	if (!mapping)
-		return;
-
-	if (cache_is_vivt())
-		make_coherent(mapping, vma, addr, ptep, pfn);
-	else if (vma->vm_flags & VM_EXEC) {
-		__flush_icache_all();
-#ifdef CONFIG_SMP
-		set_pte_ext(ptep, __pte(pte_val(*ptep) | L_PTE_EXEC),
-			    addr >= TASK_SIZE ? 0 : PTE_EXT_NG);
-		flush_tlb_page(vma, addr);
-#endif
+	if (mapping) {
+		if (cache_is_vivt())
+			make_coherent(mapping, vma, addr, ptep, pfn);
+		else if (vma->vm_flags & VM_EXEC)
+			__flush_icache_all();
 	}
 }
 
