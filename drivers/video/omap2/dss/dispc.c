@@ -1300,9 +1300,12 @@ void dispc_setup_plane_fifo(enum omap_plane plane, u32 low, u32 high)
 	if (cpu_is_omap24xx())
 		dispc_write_reg(ftrs_reg[plane],
 				FLD_VAL(high, 24, 16) | FLD_VAL(low, 8, 0));
-	else
+	else if (cpu_is_omap34xx())
 		dispc_write_reg(ftrs_reg[plane],
-				FLD_VAL(high, 27, 16) | FLD_VAL(low, 11, 0));
+					FLD_VAL(high, 27, 16) | FLD_VAL(low, 11, 0));
+	else /* cpu is omap44xx */
+		dispc_write_reg(ftrs_reg[plane],
+					FLD_VAL(high, 31, 16) | FLD_VAL(low, 15, 0));
 
 	enable_clocks(0);
 }
@@ -2829,10 +2832,12 @@ bool dispc_alpha_blending_enabled(enum omap_channel ch)
 bool dispc_trans_key_enabled(enum omap_channel ch)
 {
 	bool enabled;
+	BUG_ON(ch == OMAP_DSS_CHANNEL_LCD2);
 
 	enable_clocks(1);
 	if (ch == OMAP_DSS_CHANNEL_LCD2)
 		enabled = REG_GET(DISPC_CONFIG2, 10, 10);
+	else
 	if (ch == OMAP_DSS_CHANNEL_LCD)
 		enabled = REG_GET(DISPC_CONFIG, 10, 10);
 	else if (ch == OMAP_DSS_CHANNEL_DIGIT)
