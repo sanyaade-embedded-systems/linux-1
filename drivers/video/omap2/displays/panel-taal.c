@@ -1269,7 +1269,7 @@ err:
 static int taal_set_update_mode(struct omap_dss_device *dssdev,
 		enum omap_dss_update_mode mode)
 {
-	if (mode != OMAP_DSS_UPDATE_MANUAL)
+	if (mode != OMAP_DSS_UPDATE_AUTO)
 		return -EINVAL;
 	return 0;
 }
@@ -1277,7 +1277,7 @@ static int taal_set_update_mode(struct omap_dss_device *dssdev,
 static enum omap_dss_update_mode taal_get_update_mode(
 		struct omap_dss_device *dssdev)
 {
-	return OMAP_DSS_UPDATE_MANUAL;
+	return OMAP_DSS_UPDATE_AUTO;
 }
 
 static struct omap_dss_driver taal_driver = {
