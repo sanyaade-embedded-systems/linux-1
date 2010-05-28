@@ -20,6 +20,7 @@
 #include <linux/usb/otg.h>
 #include <linux/i2c/twl.h>
 #include <linux/i2c/cma3000.h>
+#include <linux/i2c/bq2415x.h>
 #include <linux/regulator/machine.h>
 #include <linux/spi/spi.h>
 #include <linux/interrupt.h>
@@ -600,6 +601,11 @@ static struct twl4030_platform_data sdp4430_twldata = {
 	.bci            = &sdp4430_bci_data,
 };
 
+static struct bq2415x_platform_data sdp4430_bqdata = {
+	.max_charger_voltagemA = 4200,
+	.max_charger_currentmA = 1550,
+};
+
 static struct cma3000_platform_data cma3000_platform_data = {
 	.fuzz_x = 25,
 	.fuzz_y = 25,
@@ -618,6 +624,10 @@ static struct i2c_board_info __initdata sdp4430_i2c_boardinfo[] = {
 		.flags = I2C_CLIENT_WAKE,
 		.irq = OMAP44XX_IRQ_SYS_1N,
 		.platform_data = &sdp4430_twldata,
+	},
+	{
+		I2C_BOARD_INFO("bq24156", 0x6a),
+		.platform_data = &sdp4430_bqdata,
 	},
 };
 
