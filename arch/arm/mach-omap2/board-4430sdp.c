@@ -330,10 +330,19 @@ static struct platform_device sdp4430_lcd_device = {
 	.id		= -1,
 };
 
+/* wl128x BT, FM, GPS connectivity chip */
+static int gpios[] = {55, -1, -1};
+static struct platform_device wl128x_device = {
+	.name           = "kim",
+	.id             = -1,
+	.dev.platform_data = &gpios,
+};
+
 static struct platform_device *sdp4430_devices[] __initdata = {
 	&sdp4430_lcd_device,
 	&sdp4430_keypad_device,
 	&sdp4430_proximity_device,
+	&wl128x_device,
 };
 
 static struct omap_lcd_config sdp4430_lcd_config __initdata = {
