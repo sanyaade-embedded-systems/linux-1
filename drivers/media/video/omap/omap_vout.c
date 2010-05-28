@@ -1413,6 +1413,7 @@ static int omap_vout_mmap(struct file *file, struct vm_area_struct *vma)
 		size -= PAGE_SIZE;
 	}
 #else /* Tiler remapping */
+	pos = (void *) dmabuf->bus_addr;
 	/* get line width */
 	/* for NV12, Y buffer is 1bpp*/
 	if (OMAP_DSS_COLOR_NV12 == vout->dss_mode) {
