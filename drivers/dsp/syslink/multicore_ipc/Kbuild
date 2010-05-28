@@ -1,0 +1,31 @@
+libsyslink_ipc = nameserver.o \
+nameserver_ioctl.o heap.o heapbuf.o heapbuf_ioctl.o \
+gatepeterson.o gatepeterson_ioctl.o sharedregion.o sharedregion_ioctl.o \
+nameserver_remote.o nameserver_remotenotify.o listmp_sharedmemory.o \
+listmp.o listmp_sharedmemory_ioctl.o messageq.o messageq_ioctl.o \
+messageq_transportshm.o messageq_transportshm_ioctl.o \
+nameserver_remotenotify_ioctl.o sysmgr.o sysmgr_ioctl.o \
+sysmemmgr.o sysmemmgr_ioctl.o platformcfg.o platform.o ipc_ioctl.o ipc_drv.o
+
+libsyslink_platform = multiproc.o multiproc_ioctl.o platform_mem.o \
+syslink_platform_drv.o
+
+obj-$(CONFIG_MPU_SYSLINK_IPC)        += syslink_ipc.o
+syslink_ipc-objs = $(libservices) $(libsyslink_ipc)
+
+obj-$(CONFIG_MPU_SYSLINK_PLATFORM)        += syslink_platform.o
+syslink_platform-objs = $(libservices) $(libsyslink_platform)
+
+ccflags-y += -Wno-strict-prototypes
+
+#Machine dependent
+ccflags-y += -D_TI_ -D_DB_TIOMAP -DTMS32060 \
+                -DTICFG_PROC_VER -DTICFG_EVM_TYPE -DCHNL_SMCLASS \
+                -DCHNL_MESSAGES -DUSE_LEVEL_1_MACROS  \
+                -DCONFIG_DISABLE_BRIDGE_PM -DDSP_TRACEBUF_DISABLED
+
+#Header files
+ccflags-y += -Iarch/arm/plat-omap/include
+ccflags-y += -Iarch/arm/plat-omap/include/syslink
+ccflags-y += -Iarch/arm/plat-omap/include/dspbridge
+
