@@ -19,9 +19,11 @@
 #include <linux/gpio.h>
 #include <linux/usb/otg.h>
 #include <linux/i2c/twl.h>
+#include <linux/i2c/cma3000.h>
 #include <linux/regulator/machine.h>
 #include <linux/spi/spi.h>
 #include <linux/input.h>
+#include <linux/interrupt.h>
 #include <linux/input/matrix_keypad.h>
 #include <linux/input/sfh7741.h>
 
@@ -67,6 +69,8 @@ static struct platform_device sdp4430_proximity_device = {
 		.platform_data = &omap_sfh7741_data,
 	},
 };
+
+#define OMAP4_CMA3000ACCL_GPIO		186
 
 static int sdp4430_keymap[] = {
 	KEY(0, 0, KEY_E),
@@ -774,6 +778,17 @@ static struct regulator_init_data sdp4430_vusb = {
 	},
 };
 
+static struct twl4030_codec_data twl6040_codec = {
+#ifdef CONFIG_OMAP4_AUDIO_PWRON
+	.audpwron_gpio  = 127,
+#else
+	/* provide GPIO number above the valid value
+	 * to mean there is no GPIO connected. */
+	.audpwron_gpio  = 1024,
+	.naudint_irq    = OMAP44XX_IRQ_SYS_2N,
+#endif
+};
+
 static struct twl4030_platform_data sdp4430_twldata = {
 	.irq_base	= TWL6030_IRQ_BASE,
 	.irq_end	= TWL6030_IRQ_END,
@@ -789,6 +804,21 @@ static struct twl4030_platform_data sdp4430_twldata = {
 	.vaux1		= &sdp4430_vaux1,
 	.vaux2		= &sdp4430_vaux2,
 	.vaux3		= &sdp4430_vaux3,
+
+	/* children */
+	.codec		= &twl6040_codec,
+};
+
+static struct cma3000_platform_data cma3000_platform_data = {
+	.fuzz_x = 25,
+	.fuzz_y = 25,
+	.fuzz_z = 25,
+	.g_range = CMARANGE_8G,
+	.mode = CMAMODE_MOTDET,
+	.mdthr = 0x8,
+	.mdfftmr = 0x33,
+	.ffthr = 0x8,
+	.irqflags = IRQF_TRIGGER_HIGH,
 };
 
 static struct pico_platform_data picodlp_platform_data[] = {
@@ -822,6 +852,17 @@ static struct i2c_board_info __initdata sdp4430_i2c_3_boardinfo[] = {
 		I2C_BOARD_INFO("tm12xx_ts_secondary", 0x4b),
 		.platform_data = &tm12xx_platform_data[1],
 	},
+	{
+		I2C_BOARD_INFO("bh1780", 0x29),
+	},
+};
+
+static struct i2c_board_info __initdata sdp4430_i2c_4_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("cma3000_accl", 0x1c),
+		.platform_data = &cma3000_platform_data,
+		.irq = OMAP_GPIO_IRQ(OMAP4_CMA3000ACCL_GPIO),
+	},
 };
 
 static int __init omap4_i2c_init(void)
@@ -833,7 +874,8 @@ static int __init omap4_i2c_init(void)
 				ARRAY_SIZE(sdp4430_i2c_2_boardinfo));
 	omap_register_i2c_bus(3, 400, sdp4430_i2c_3_boardinfo,
 				ARRAY_SIZE(sdp4430_i2c_3_boardinfo));
-	omap_register_i2c_bus(4, 400, NULL, 0);
+	omap_register_i2c_bus(4, 400, sdp4430_i2c_4_boardinfo,
+				ARRAY_SIZE(sdp4430_i2c_4_boardinfo));
 	return 0;
 }
 
@@ -897,6 +939,15 @@ static void __init omap4_display_init(void)
 	dsimux = __raw_readl(phymux_base+0x618);
 }
 
+static void omap_cma3000accl_init(void)
+{
+	if (gpio_request(OMAP4_CMA3000ACCL_GPIO, "Accelerometer") < 0) {
+		pr_err("Accelerometer GPIO request failed\n");
+		return;
+	}
+	gpio_direction_input(OMAP4_CMA3000ACCL_GPIO);
+}
+
 static void __init omap_4430sdp_init(void)
 {
 	int status;
@@ -923,6 +974,7 @@ static void __init omap_4430sdp_init(void)
 				ARRAY_SIZE(sdp4430_spi_board_info));
 	}
 	omap_sfh7741prox_init();
+	omap_cma3000accl_init();
 }
 
 static void __init omap_4430sdp_map_io(void)

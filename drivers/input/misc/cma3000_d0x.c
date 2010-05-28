@@ -1,7 +1,7 @@
 /*
  * cma3000_d0x.c
  * VTI CMA3000_D0x Accelerometer driver
- * 	Supports I2C/SPI interfaces
+ *	Supports I2C/SPI interfaces
  *
  * Copyright (C) 2010 Texas Instruments
  * Author: Hemanth V <hemanthv@ti.com>
@@ -42,8 +42,9 @@
 
 #define CMA3000_RANGE2G    (1 << 7)
 #define CMA3000_RANGE8G    (0 << 7)
-#define CMA3000_MODEMASK    (7 << 1)
-#define CMA3000_GRANGEMASK  (1 << 7)
+#define CMA3000_BUSI2C     (0 << 4)
+#define CMA3000_MODEMASK   (7 << 1)
+#define CMA3000_GRANGEMASK (1 << 7)
 
 #define CMA3000_STATUS_PERR    1
 #define CMA3000_INTSTATUS_FFDET (1 << 2)
@@ -56,40 +57,42 @@
 
 
 /*
- * Bit weights in mg for each of the seven bits,
- * eight bit is the sign bit
+ * Bit weights in mg for bit 0, other bits need
+ * multipy factor 2^n. Eight bit is the sign bit.
  */
-static int bit_to_2g[7] = {18, 36, 71, 143, 286, 571, 1142};
-static int bit_to_8g[7] = {71, 143, 286, 571, 1142, 2286, 4571};
+#define BIT_TO_2G  18
+#define BIT_TO_8G  71
 
 /*
  * Conversion for each of the eight modes to g, depending
- * on G range i.e 2G or 8G
+ * on G range i.e 2G or 8G. Some modes always operate in
+ * 8G.
  */
 
-static int *mode_to_mg[8][2] = {
-	{NULL, NULL },
-	{bit_to_8g, bit_to_2g},
-	{bit_to_8g, bit_to_2g},
-	{bit_to_8g, bit_to_8g},
-	{bit_to_8g, bit_to_8g},
-	{bit_to_8g, bit_to_2g},
-	{bit_to_8g, bit_to_2g},
-	{NULL, NULL },
+static int mode_to_mg[8][2] = {
+	{0, 0},
+	{BIT_TO_8G, BIT_TO_2G},
+	{BIT_TO_8G, BIT_TO_2G},
+	{BIT_TO_8G, BIT_TO_8G},
+	{BIT_TO_8G, BIT_TO_8G},
+	{BIT_TO_8G, BIT_TO_2G},
+	{BIT_TO_8G, BIT_TO_2G},
+	{0, 0},
 };
 
 static ssize_t cma3000_show_attr_mode(struct device *dev,
 				     struct device_attribute *attr,
 				     char *buf)
 {
-	ssize_t ret = 0;
 	uint8_t mode;
 	struct platform_device *pdev = to_platform_device(dev);
 	struct cma3000_accl_data *data = platform_get_drvdata(pdev);
 
 	mode = cma3000_read(data, CMA3000_CTRL, "ctrl");
-	ret = sprintf(buf, "%d\n", (mode & CMA3000_MODEMASK) >> 1);
-	return ret;
+	if (mode < 0)
+		return mode;
+
+	return sprintf(buf, "%d\n", (mode & CMA3000_MODEMASK) >> 1);
 }
 
 static ssize_t cma3000_store_attr_mode(struct device *dev,
@@ -104,36 +107,49 @@ static ssize_t cma3000_store_attr_mode(struct device *dev,
 
 	error = strict_strtoul(buf, 0, &val);
 	if (error)
-		return error;
+		goto err_op3_failed;
 
-	if (val < CMAMODE_DEFAULT || val > CMAMODE_POFF)
-		return -EINVAL;
+	if (val < CMAMODE_DEFAULT || val > CMAMODE_POFF) {
+		error = -EINVAL;
+		goto err_op3_failed;
+	}
 
 	mutex_lock(&data->mutex);
 	val &= (CMA3000_MODEMASK >> 1);
 	ctrl = cma3000_read(data, CMA3000_CTRL, "ctrl");
+	if (ctrl < 0) {
+		error = ctrl;
+		goto err_op2_failed;
+	}
+
 	ctrl &= ~CMA3000_MODEMASK;
 	ctrl |= (val << 1);
-
 	data->pdata.mode = val;
-
 	disable_irq(data->client->irq);
-	cma3000_set(data, CMA3000_CTRL, ctrl, "ctrl");
+
+	error = cma3000_set(data, CMA3000_CTRL, ctrl, "ctrl");
+	if (error < 0)
+		goto err_op1_failed;
 
 	/* Settling time delay required after mode change */
 	msleep(CMA3000_SETDELAY);
 
 	enable_irq(data->client->irq);
 	mutex_unlock(&data->mutex);
-
 	return count;
+
+err_op1_failed:
+	enable_irq(data->client->irq);
+err_op2_failed:
+	mutex_unlock(&data->mutex);
+err_op3_failed:
+	return error;
 }
 
 static ssize_t cma3000_show_attr_grange(struct device *dev,
 				       struct device_attribute *attr,
 				       char *buf)
 {
-	ssize_t ret = 0;
 	uint8_t mode;
 	int g_range;
 
@@ -141,10 +157,11 @@ static ssize_t cma3000_show_attr_grange(struct device *dev,
 	struct cma3000_accl_data *data = platform_get_drvdata(pdev);
 
 	mode = cma3000_read(data, CMA3000_CTRL, "ctrl");
-	g_range = (mode & CMA3000_GRANGEMASK) ? CMARANGE_2G : CMARANGE_8G;
-	ret = sprintf(buf, "%d\n", g_range);
+	if (mode < 0)
+		return mode;
 
-	return ret;
+	g_range = (mode & CMA3000_GRANGEMASK) ? CMARANGE_2G : CMARANGE_8G;
+	return sprintf(buf, "%d\n", g_range);
 }
 
 static ssize_t cma3000_store_attr_grange(struct device *dev,
@@ -159,10 +176,15 @@ static ssize_t cma3000_store_attr_grange(struct device *dev,
 
 	error = strict_strtoul(buf, 0, &val);
 	if (error)
-		return error;
+		goto err_op3_failed;
 
 	mutex_lock(&data->mutex);
 	ctrl = cma3000_read(data, CMA3000_CTRL, "ctrl");
+	if (ctrl < 0) {
+		error = ctrl;
+		goto err_op2_failed;
+	}
+
 	ctrl &= ~CMA3000_GRANGEMASK;
 
 	if (val == CMARANGE_2G) {
@@ -173,7 +195,7 @@ static ssize_t cma3000_store_attr_grange(struct device *dev,
 		data->pdata.g_range = CMARANGE_8G;
 	} else {
 		error = -EINVAL;
-		goto err_op_failed;
+		goto err_op2_failed;
 	}
 
 	g_range = data->pdata.g_range;
@@ -182,7 +204,9 @@ static ssize_t cma3000_store_attr_grange(struct device *dev,
 	fuzz_z = data->pdata.fuzz_z;
 
 	disable_irq(data->client->irq);
-	cma3000_set(data, CMA3000_CTRL, ctrl, "ctrl");
+	error = cma3000_set(data, CMA3000_CTRL, ctrl, "ctrl");
+	if (error < 0)
+		goto err_op1_failed;
 
 	input_set_abs_params(data->input_dev, ABS_X, -g_range,
 				g_range, fuzz_x, 0);
@@ -193,11 +217,13 @@ static ssize_t cma3000_store_attr_grange(struct device *dev,
 
 	enable_irq(data->client->irq);
 	mutex_unlock(&data->mutex);
-
 	return count;
 
-err_op_failed:
+err_op1_failed:
+	enable_irq(data->client->irq);
+err_op2_failed:
 	mutex_unlock(&data->mutex);
+err_op3_failed:
 	return error;
 }
 
@@ -205,16 +231,15 @@ static ssize_t cma3000_show_attr_mdthr(struct device *dev,
 				      struct device_attribute *attr,
 				      char *buf)
 {
-	ssize_t ret = 0;
 	uint8_t mode;
-
 	struct platform_device *pdev = to_platform_device(dev);
 	struct cma3000_accl_data *data = platform_get_drvdata(pdev);
 
 	mode = cma3000_read(data, CMA3000_MDTHR, "mdthr");
-	ret = sprintf(buf, "%d\n", mode);
+	if (mode < 0)
+		return mode;
 
-	return ret;
+	return sprintf(buf, "%d\n", mode);
 }
 
 static ssize_t cma3000_store_attr_mdthr(struct device *dev,
@@ -232,29 +257,32 @@ static ssize_t cma3000_store_attr_mdthr(struct device *dev,
 
 	mutex_lock(&data->mutex);
 	data->pdata.mdthr = val;
-
 	disable_irq(data->client->irq);
-	cma3000_set(data, CMA3000_MDTHR, val, "mdthr");
+	error = cma3000_set(data, CMA3000_MDTHR, val, "mdthr");
 	enable_irq(data->client->irq);
 	mutex_unlock(&data->mutex);
 
-	return count;
+	/* If there was error during write, return error */
+	if (error < 0)
+		return error;
+	else
+		return count;
 }
 
 static ssize_t cma3000_show_attr_mdfftmr(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
-	ssize_t ret = 0;
 	uint8_t mode;
 
 	struct platform_device *pdev = to_platform_device(dev);
 	struct cma3000_accl_data *data = platform_get_drvdata(pdev);
 
 	mode = cma3000_read(data, CMA3000_MDFFTMR, "mdfftmr");
-	ret = sprintf(buf, "%d\n", mode);
+	if (mode < 0)
+		return mode;
 
-	return ret;
+	return sprintf(buf, "%d\n", mode);
 }
 
 static ssize_t cma3000_store_attr_mdfftmr(struct device *dev,
@@ -272,29 +300,32 @@ static ssize_t cma3000_store_attr_mdfftmr(struct device *dev,
 
 	mutex_lock(&data->mutex);
 	data->pdata.mdfftmr = val;
-
 	disable_irq(data->client->irq);
-	cma3000_set(data, CMA3000_MDFFTMR, val, "mdthr");
+	error = cma3000_set(data, CMA3000_MDFFTMR, val, "mdthr");
 	enable_irq(data->client->irq);
 	mutex_unlock(&data->mutex);
 
-	return count;
+	/* If there was error during write, return error */
+	if (error < 0)
+		return error;
+	else
+		return count;
 }
 
 static ssize_t cma3000_show_attr_ffthr(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
 {
-	ssize_t ret = 0;
 	uint8_t mode;
 
 	struct platform_device *pdev = to_platform_device(dev);
 	struct cma3000_accl_data *data = platform_get_drvdata(pdev);
 
 	mode = cma3000_read(data, CMA3000_FFTHR, "ffthr");
-	ret = sprintf(buf, "%d\n", mode);
+	if (mode < 0)
+		return mode;
 
-	return ret;
+	return sprintf(buf, "%d\n", mode);
 }
 
 static ssize_t cma3000_store_attr_ffthr(struct device *dev,
@@ -312,13 +343,16 @@ static ssize_t cma3000_store_attr_ffthr(struct device *dev,
 
 	mutex_lock(&data->mutex);
 	data->pdata.ffthr = val;
-
 	disable_irq(data->client->irq);
-	cma3000_set(data, CMA3000_FFTHR, val, "mdthr");
+	error = cma3000_set(data, CMA3000_FFTHR, val, "mdthr");
 	enable_irq(data->client->irq);
 	mutex_unlock(&data->mutex);
 
-	return count;
+	/* If there was error during write, return error */
+	if (error < 0)
+		return error;
+	else
+		return count;
 }
 
 static DEVICE_ATTR(mode, S_IWUSR | S_IRUGO,
@@ -350,47 +384,13 @@ static struct attribute_group cma3000_attr_group = {
 	.attrs = cma_attrs,
 };
 
-static void cma3000_create_sysfs(struct cma3000_accl_data *data)
-{
-	int ret;
-	ret = sysfs_create_group(&data->client->dev.kobj, &cma3000_attr_group);
-	if (ret)
-		dev_err(&data->client->dev,
-			"failed to create sysfs entries\n");
-
-}
-
-static void cma3000_remove_sysfs(struct cma3000_accl_data *data)
-{
-	sysfs_remove_group(&data->client->dev.kobj, &cma3000_attr_group);
-}
-
 static void decode_mg(struct cma3000_accl_data *data, int *datax,
 				int *datay, int *dataz)
 {
-	int i, tmpx = 0, tmpy = 0, tmpz = 0;
-
-	for (i = 0; i < 7; ++i) {
-		tmpx += (((*datax) & BIT(i)) >> i) * (data->bit_to_mg[i]);
-		tmpy += (((*datay) & BIT(i)) >> i) * (data->bit_to_mg[i]);
-		tmpz += (((*dataz) & BIT(i)) >> i) * (data->bit_to_mg[i]);
-
-	}
-
-	if ((*datax) & BIT(7))
-		*datax = -tmpx;
-	else
-		*datax = tmpx;
-
-	if ((*datay) & BIT(7))
-		*datay = -tmpy;
-	else
-		*datay = tmpy;
-
-	if ((*dataz) & BIT(7))
-		*dataz = -tmpz;
-	else
-		*dataz = tmpz;
+	/* Data in 2's complement, convert to mg */
+	*datax = (((s8)(*datax)) * (data->bit_to_mg));
+	*datay = (((s8)(*datay)) * (data->bit_to_mg));
+	*dataz = (((s8)(*dataz)) * (data->bit_to_mg));
 }
 
 static irqreturn_t cma3000_thread_irq(int irq, void *dev_id)
@@ -400,6 +400,8 @@ static irqreturn_t cma3000_thread_irq(int irq, void *dev_id)
 	u8 ctrl, mode, range, intr_status;
 
 	intr_status = cma3000_read(data, CMA3000_INTSTATUS, "interrupt status");
+	if (intr_status < 0)
+		return IRQ_NONE;
 
 	/* Check if free fall is detected, report immediately */
 	if (intr_status & CMA3000_INTSTATUS_FFDET) {
@@ -409,12 +411,8 @@ static irqreturn_t cma3000_thread_irq(int irq, void *dev_id)
 		input_report_abs(data->input_dev, ABS_MISC, 0);
 	}
 
-
-	/* Delay required between each read for interrupt clearing */
 	datax = cma3000_read(data, CMA3000_DOUTX, "X");
-	udelay(CMA3000_INTDELAY);
 	datay = cma3000_read(data, CMA3000_DOUTY, "Y");
-	udelay(CMA3000_INTDELAY);
 	dataz = cma3000_read(data, CMA3000_DOUTZ, "Z");
 
 	ctrl = cma3000_read(data, CMA3000_CTRL, "ctrl");
@@ -424,7 +422,7 @@ static irqreturn_t cma3000_thread_irq(int irq, void *dev_id)
 	data->bit_to_mg = mode_to_mg[mode][range];
 
 	/* Interrupt not for this device */
-	if (data->bit_to_mg == NULL)
+	if (data->bit_to_mg == 0)
 		return IRQ_NONE;
 
 	/* Decode register values to milli g */
@@ -451,12 +449,15 @@ static int cma3000_reset(struct cma3000_accl_data *data)
 	mdelay(10);
 
 	ret = cma3000_read(data, CMA3000_STATUS, "Status");
-	if ((ret < 0) || (ret & CMA3000_STATUS_PERR)) {
+	if (ret < 0) {
 		dev_err(&data->client->dev, "Reset failed\n");
+		return ret;
+	} else if (ret & CMA3000_STATUS_PERR) {
+		dev_err(&data->client->dev, "Parity Error\n");
 		return -EIO;
+	} else {
+		return 0;
 	}
-
-	return 0;
 }
 
 int cma3000_poweron(struct cma3000_accl_data *data)
@@ -487,7 +488,9 @@ int cma3000_poweron(struct cma3000_accl_data *data)
 		ctrl = (mode << 1) | CMA3000_RANGE8G;
 		data->pdata.g_range = CMARANGE_8G;
 	}
-
+#ifdef CONFIG_INPUT_CMA3000_I2C
+	ctrl |= CMA3000_BUSI2C;
+#endif
 
 	cma3000_set(data, CMA3000_MDTHR, mdthr, "Motion Detect Threshold");
 	cma3000_set(data, CMA3000_MDFFTMR, mdfftmr, "Time register");
@@ -517,7 +520,7 @@ int cma3000_init(struct cma3000_accl_data *data)
 	uint32_t irqflags;
 
 	if (data->client->dev.platform_data == NULL) {
-		dev_err(&data->client->dev, "platform data not found \n");
+		dev_err(&data->client->dev, "platform data not found\n");
 		goto err_op2_failed;
 	}
 
@@ -593,8 +596,12 @@ int cma3000_init(struct cma3000_accl_data *data)
 		}
 	}
 
-	cma3000_create_sysfs(data);
-
+	ret = sysfs_create_group(&data->client->dev.kobj, &cma3000_attr_group);
+	if (ret) {
+		dev_err(&data->client->dev,
+			"failed to create sysfs entries\n");
+		goto err_op1_failed;
+	}
 	return 0;
 
 err_op1_failed:
@@ -621,7 +628,6 @@ int cma3000_exit(struct cma3000_accl_data *data)
 	mutex_destroy(&data->mutex);
 	input_unregister_device(data->input_dev);
 	input_free_device(data->input_dev);
-	cma3000_remove_sysfs(data);
-
+	sysfs_remove_group(&data->client->dev.kobj, &cma3000_attr_group);
 	return ret;
 }

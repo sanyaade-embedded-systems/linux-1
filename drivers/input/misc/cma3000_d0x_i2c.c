@@ -20,6 +20,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/i2c/cma3000.h>
 #include "cma3000_d0x.h"
@@ -119,7 +120,6 @@ static struct i2c_driver cma3000_accl_driver = {
 
 static int __init cma3000_accl_init(void)
 {
-
 	return i2c_add_driver(&cma3000_accl_driver);
 }
 
