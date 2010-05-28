@@ -1480,6 +1480,10 @@ static int dsi_complexio_power(enum omap_dsi_index ix,
 	/* PWR_CMD */
 	REG_FLD_MOD(ix, DSI_COMPLEXIO_CFG1, state, 28, 27);
 
+	if (cpu_is_omap44xx())
+		/*bit 30 has to be set to 1 to GO in omap4*/
+		REG_FLD_MOD(ix, DSI_COMPLEXIO_CFG1, 1, 30, 30);
+
 	/* PWR_STATUS */
 	while (FLD_GET(dsi_read_reg(ix, DSI_COMPLEXIO_CFG1), 26, 25) != state) {
 		if (++t > 1000) {
@@ -1630,6 +1634,9 @@ static int dsi_complexio_init(struct omap_dss_device *dssdev)
 
 	/* CIO_CLK_ICG, enable L3 clk to CIO */
 	REG_FLD_MOD(ix, DSI_CLK_CTRL, 1, 14, 14);
+
+	if (cpu_is_omap44xx())
+		REG_FLD_MOD(ix, DSI_CLK_CTRL, 1, 13, 13);
 
 	/* A dummy read using the SCP interface to any DSIPHY register is
 	 * required after DSIPHY reset to complete the reset of the DSI complex
