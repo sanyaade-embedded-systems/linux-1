@@ -1434,6 +1434,7 @@ static int abe_tones_trigger(struct snd_pcm_substream *substream,
 static struct snd_soc_dai_ops abe_tones_dai_ops = {
 	.startup	= abe_mm_startup,
 	.hw_params	= abe_tones_hw_params,
+	.shutdown       = abe_mm_shutdown,
 	.trigger	= abe_tones_trigger,
 	.set_sysclk	= twl6040_set_dai_sysclk,
 };
