@@ -161,6 +161,7 @@ static const struct snd_soc_dapm_widget sdp4430_twl6040_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
 	SND_SOC_DAPM_HP("Headset Stereophone", NULL),
 	SND_SOC_DAPM_SPK("Earphone Spk", NULL),
+	SND_SOC_DAPM_INPUT("Aux/FM Stereo In"),
 };
 
 static const struct snd_soc_dapm_route audio_map[] = {
@@ -183,6 +184,10 @@ static const struct snd_soc_dapm_route audio_map[] = {
 
 	/* Earphone speaker */
 	{"Earphone Spk", NULL, "EP"},
+
+	/* Aux/FM Stereo In: AFML, AFMR */
+	{"AFML", NULL, "Aux/FM Stereo In"},
+	{"AFMR", NULL, "Aux/FM Stereo In"},
 };
 
 static int sdp4430_twl6040_init(struct snd_soc_codec *codec)
@@ -207,12 +212,10 @@ static int sdp4430_twl6040_init(struct snd_soc_codec *codec)
 	/* SDP4430 connected pins */
 	snd_soc_dapm_enable_pin(codec, "Ext Mic");
 	snd_soc_dapm_enable_pin(codec, "Ext Spk");
+	snd_soc_dapm_enable_pin(codec, "AFML");
+	snd_soc_dapm_enable_pin(codec, "AFMR");
 	snd_soc_dapm_disable_pin(codec, "Headset Mic");
 	snd_soc_dapm_disable_pin(codec, "Headset Stereophone");
-
-	/* TWL6040 not connected pins */
-	snd_soc_dapm_nc_pin(codec, "AFML");
-	snd_soc_dapm_nc_pin(codec, "AFMR");
 
 	ret = snd_soc_dapm_sync(codec);
 	if (ret)
