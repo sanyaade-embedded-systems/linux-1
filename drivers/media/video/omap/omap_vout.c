@@ -86,9 +86,13 @@ enum dma_channel_state {
 #define QQVGA_HEIGHT		120
 
 /* Max Resolution supported by the driver */
+#ifdef CONFIG_ARCH_OMAP4
+#define VID_MAX_WIDTH		2048	/* Largest width */
+#define VID_MAX_HEIGHT		2048	/* Largest height */
+#else
 #define VID_MAX_WIDTH		1280	/* Largest width */
 #define VID_MAX_HEIGHT		720	/* Largest height */
-
+#endif
 /* Mimimum requirement is 2x2 for DSS */
 #define VID_MIN_WIDTH		2
 #define VID_MIN_HEIGHT		2
@@ -2663,11 +2667,17 @@ static int __init omap_vout_create_video_devices(struct platform_device *pdev)
 		vid_dev->vouts[k] = vout;
 		vout->vid_dev = vid_dev;
 		/* Select video2 if only 1 overlay is controlled by V4L2 */
-		if (pdev->num_resources == 1)
-			vout->vid_info.overlays[0] = vid_dev->overlays[k + 2];
-		else
+		if (cpu_is_omap44xx()) {
+			if (pdev->num_resources == 1)
+				vout->vid_info.overlays[0] = vid_dev->overlays[k + 2];
+			else
 			/* Else select video1 and video2 one by one. */
-			vout->vid_info.overlays[0] = vid_dev->overlays[k + 1];
+				vout->vid_info.overlays[0] = vid_dev->overlays[k + 1];
+		} else {
+			vout->vid_info.overlays[0] =
+				vid_dev->overlays[
+					k + (4 - pdev->num_resources)];
+		}
 		vout->vid_info.num_overlays = 1;
 		vout->vid_info.id = k + 1;
 		vid_dev->num_videos++;
@@ -2753,6 +2763,7 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 	struct omap_dss_device *dssdev = NULL;
 	struct omap_dss_device *def_display;
 	struct omap2video_device *vid_dev = NULL;
+	int num_vid_channels;
 
 	if (pdev->num_resources == 0) {
 		dev_err(&pdev->dev, "probed for an unknown device\n");
@@ -2786,7 +2797,9 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 	/* Get the Video1 overlay and video2 overlay.
 	 * Setup the Display attached to that overlays
 	 */
-	for (i = 1; i < 3; i++) {
+	num_vid_channels = (cpu_is_omap44xx()) ? 3 : 2;
+
+	for (i = 1; i < num_vid_channels + 1; i++) {
 		ovl = omap_dss_get_overlay(i);
 		if (ovl->manager && ovl->manager->device) {
 			def_display = ovl->manager->device;
