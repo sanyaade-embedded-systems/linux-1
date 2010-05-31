@@ -3087,6 +3087,12 @@ static void dsi_framedone_timeout_work_callback(struct work_struct *work)
 	/* SIDLEMODE back to smart-idle */
 	dispc_enable_sidle();
 
+	if (cpu_is_omap44xx()) {
+		/* Ensures recovery of DISPC after a failed lcd_enable*/
+		dispc_enable_lcd_out(OMAP_DSS_CHANNEL_LCD, 0);
+		dsi_reset_tx_fifo(DSI1, 0);
+	}
+
 	if (dsi1.te_enabled) {
 		/* enable LP_RX_TO again after the TE */
 		REG_FLD_MOD(DSI1, DSI_TIMING2, 1, 15, 15); /* LP_RX_TO */
@@ -3128,6 +3134,12 @@ static void dsi2_framedone_timeout_work_callback(struct work_struct *work)
 
 	/* SIDLEMODE back to smart-idle */
 	dispc_enable_sidle();
+
+	if (cpu_is_omap44xx()) {
+		/* Ensures recovery of DISPC after a failed lcd_enable*/
+		dispc_enable_lcd_out(OMAP_DSS_CHANNEL_LCD2, 0);
+		dsi_reset_tx_fifo(DSI2, 0);
+	}
 
 	if (dsi2.te_enabled) {
 		/* enable LP_RX_TO again after the TE */
