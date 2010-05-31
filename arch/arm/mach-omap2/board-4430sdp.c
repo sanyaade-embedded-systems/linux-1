@@ -22,9 +22,7 @@
 #include <linux/i2c/cma3000.h>
 #include <linux/regulator/machine.h>
 #include <linux/spi/spi.h>
-#include <linux/input.h>
 #include <linux/interrupt.h>
-#include <linux/input/matrix_keypad.h>
 #include <linux/input/sfh7741.h>
 
 #include <mach/hardware.h>
@@ -44,6 +42,7 @@
 #include <plat/omap_hwmod.h>
 #include <plat/syntm12xx.h>
 #include <plat/mmc.h>
+#include <plat/omap4-keypad.h>
 #include "hsmmc.h"
 
 #define ETH_KS8851_IRQ			34
@@ -151,10 +150,10 @@ static struct matrix_keymap_data sdp4430_keymap_data = {
 	.keymap_size		= ARRAY_SIZE(sdp4430_keymap),
 };
 
-static struct matrix_keypad_platform_data sdp4430_keypad_data = {
+static struct omap4_keypad_platform_data sdp4430_keypad_data = {
 	.keymap_data		= &sdp4430_keymap_data,
-	.num_row_gpios		= 8,
-	.num_col_gpios		= 8,
+	.rows			= 8,
+	.cols			= 8,
 	.device_enable		= omap_device_enable,
 	.device_shutdown	= omap_device_shutdown,
 	.device_idle		= omap_device_idle,
@@ -176,12 +175,11 @@ struct omap_device_pm_latency omap_keyboard_latency[] = {
 	},
 };
 
-struct omap_device *od;
-
 static int __init sdp4430_keypad_init(void)
 {
 	struct omap_hwmod *oh;
-	struct matrix_keypad_platform_data *pdata;
+	struct omap_device *od;
+	struct omap4_keypad_platform_data *pdata;
 
 	unsigned int length = 0, id = 0;
 	int hw_mod_name_len = 16;
@@ -196,7 +194,7 @@ static int __init sdp4430_keypad_init(void)
 		return -EIO;
 	}
 
-	pdata = kzalloc(sizeof(struct matrix_keypad_platform_data), GFP_KERNEL);
+	pdata = kzalloc(sizeof(struct omap4_keypad_platform_data), GFP_KERNEL);
 	if (!pdata) {
 		WARN(1, "Keyboard pdata memory allocation failed\n");
 		return -ENOMEM;
@@ -523,9 +521,17 @@ static struct omap_dss_device sdp4430_picoDLP_device = {
 	.channel			= OMAP_DSS_CHANNEL_LCD2,
 };
 
+/* wl128x BT, FM, GPS connectivity chip */
+static int gpios[] = {55, -1, -1};
+static struct platform_device wl128x_device = {
+	.name           = "kim",
+	.id             = -1,
+	.dev.platform_data = &gpios,
+};
+
 static struct omap_dss_device *sdp4430_dss_devices[] = {
-	&sdp4430_lcd_device,
-	&sdp4430_lcd2_device,
+        &sdp4430_lcd_device,
+        &sdp4430_lcd2_device,
 #ifdef CONFIG_OMAP2_DSS_HDMI
 	&sdp4430_hdmi_device,
 #endif
@@ -549,9 +555,10 @@ static struct platform_device sdp4430_dss_device = {
 };
 
 static struct platform_device *sdp4430_devices[] __initdata = {
-	&sdp4430_dss_device,
-	&sdp4430_keypad_device,
-	&sdp4430_proximity_device,
+        &sdp4430_dss_devices,
+        &sdp4430_keypad_device,
+        &sdp4430_proximity_device,
+        &wl128x_device,
 };
 
 static struct omap_lcd_config sdp4430_lcd_config __initdata = {
@@ -633,9 +640,14 @@ static int omap4_twl6030_hsmmc_late_init(struct device *dev)
 
 static __init void omap4_twl6030_hsmmc_set_late_init(struct device *dev)
 {
-	struct omap_mmc_platform_data *pdata = dev->platform_data;
+	struct omap_mmc_platform_data *pdata;
 
-	pdata->init =	omap4_twl6030_hsmmc_late_init;
+	/* dev can be null if CONFIG_MMC_OMAP_HS is not set */
+	if (!dev)
+		return;
+
+	pdata = dev->platform_data;
+	pdata->init = omap4_twl6030_hsmmc_late_init;
 }
 
 static int __init omap4_twl6030_hsmmc_init(struct omap2_hsmmc_info *controllers)
@@ -854,6 +866,7 @@ static struct i2c_board_info __initdata sdp4430_i2c_3_boardinfo[] = {
 	},
 	{
 		I2C_BOARD_INFO("bh1780", 0x29),
+		I2C_BOARD_INFO("lm75", 0x48),
 	},
 };
 
