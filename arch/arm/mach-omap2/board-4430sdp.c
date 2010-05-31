@@ -20,6 +20,7 @@
 #include <linux/usb/otg.h>
 #include <linux/i2c/twl.h>
 #include <linux/i2c/cma3000.h>
+#include <linux/i2c/bq2415x.h>
 #include <linux/regulator/machine.h>
 #include <linux/spi/spi.h>
 #include <linux/interrupt.h>
@@ -609,14 +610,16 @@ static struct omap2_hsmmc_info mmc[] = {
 	{}	/* Terminator */
 };
 
+static struct regulator_consumer_supply sdp4430_vaux_supply[] = {
+	{
+		.supply = "vmmc",
+		.dev_name = "mmci-omap-hs.1",
+	},
+};
 static struct regulator_consumer_supply sdp4430_vmmc_supply[] = {
 	{
 		.supply = "vmmc",
 		.dev_name = "mmci-omap-hs.0",
-	},
-	{
-		.supply = "vmmc",
-		.dev_name = "mmci-omap-hs.1",
 	},
 };
 
@@ -672,6 +675,8 @@ static struct regulator_init_data sdp4430_vaux1 = {
 					| REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
+	.num_consumer_supplies  = 1,
+	.consumer_supplies      = sdp4430_vaux_supply,
 };
 
 static struct regulator_init_data sdp4430_vaux2 = {
@@ -712,7 +717,7 @@ static struct regulator_init_data sdp4430_vmmc = {
 					| REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies  = 2,
+	.num_consumer_supplies  = 1,
 	.consumer_supplies      = sdp4430_vmmc_supply,
 };
 
@@ -801,6 +806,18 @@ static struct twl4030_codec_data twl6040_codec = {
 #endif
 };
 
+static struct twl4030_madc_platform_data sdp4430_gpadc_data = {
+	.irq_line	= 1,
+};
+
+static struct twl4030_bci_platform_data sdp4430_bci_data = {
+	.monitoring_interval		= 10,
+	.max_charger_currentmA		= 1500,
+	.max_charger_voltagemV		= 4560,
+	.max_bat_voltagemV		= 4200,
+	.low_bat_voltagemV		= 3300,
+};
+
 static struct twl4030_platform_data sdp4430_twldata = {
 	.irq_base	= TWL6030_IRQ_BASE,
 	.irq_end	= TWL6030_IRQ_END,
@@ -819,6 +836,13 @@ static struct twl4030_platform_data sdp4430_twldata = {
 
 	/* children */
 	.codec		= &twl6040_codec,
+	.madc           = &sdp4430_gpadc_data,
+	.bci            = &sdp4430_bci_data,
+};
+
+static struct bq2415x_platform_data sdp4430_bqdata = {
+	.max_charger_voltagemA = 4200,
+	.max_charger_currentmA = 1550,
 };
 
 static struct cma3000_platform_data cma3000_platform_data = {
@@ -846,6 +870,10 @@ static struct i2c_board_info __initdata sdp4430_i2c_boardinfo[] = {
 		.irq = OMAP44XX_IRQ_SYS_1N,
 		.platform_data = &sdp4430_twldata,
 	},
+	{
+		I2C_BOARD_INFO("bq24156", 0x6a),
+		.platform_data = &sdp4430_bqdata,
+	},
 };
 
 static struct i2c_board_info __initdata sdp4430_i2c_2_boardinfo[] = {
@@ -866,7 +894,9 @@ static struct i2c_board_info __initdata sdp4430_i2c_3_boardinfo[] = {
 	},
 	{
 		I2C_BOARD_INFO("bh1780", 0x29),
-		I2C_BOARD_INFO("lm75", 0x48),
+	},
+	{
+		I2C_BOARD_INFO("tmp105", 0x48),
 	},
 };
 

@@ -81,7 +81,9 @@
 #define TWL_MODULE_PM_RECEIVER	TWL4030_MODULE_PM_RECEIVER
 #define TWL_MODULE_RTC		TWL4030_MODULE_RTC
 #define TWL_MODULE_PWM		TWL4030_MODULE_PWM0
+#define TWL6030_MODULE_CHARGER	TWL4030_MODULE_MAIN_CHARGE
 
+#define TWL6030_MODULE_GASGAUGE 0x0B
 #define TWL6030_MODULE_ID0	0x0D
 #define TWL6030_MODULE_ID1	0x0E
 #define TWL6030_MODULE_ID2	0x0F
@@ -91,6 +93,7 @@
 #define BCI_INTR_OFFSET		2
 #define MADC_INTR_OFFSET	3
 #define USB_INTR_OFFSET		4
+#define CHARGERFAULT_INTR_OFFSET 5
 #define BCI_PRES_INTR_OFFSET	9
 #define USB_PRES_INTR_OFFSET	10
 #define RTC_INTR_OFFSET		11
@@ -107,6 +110,7 @@
 #define GASGAUGE_INTR_OFFSET	17
 #define USBOTG_INTR_OFFSET	4
 #define CHARGER_INTR_OFFSET	2
+#define GPADCSW_INTR_OFFSET	1
 #define RSV_INTR_OFFSET		0
 
 /* INT register offsets */
@@ -181,6 +185,11 @@ int twl_i2c_read(u8 mod_no, u8 *value, u8 reg, unsigned num_bytes);
 
 int twl6030_interrupt_unmask(u8 bit_mask, u8 offset);
 int twl6030_interrupt_mask(u8 bit_mask, u8 offset);
+
+int twl6030_register_notifier(struct notifier_block *nb,
+				unsigned int events);
+int twl6030_unregister_notifier(struct notifier_block *nb,
+				unsigned int events);
 
 /* MMC1 Controller on OMAP4 uses Phoenix Irq for Card detect */
 int twl6030_mmc_card_detect(int host_id, int slot);
@@ -509,6 +518,15 @@ struct twl4030_clock_init_data {
 struct twl4030_bci_platform_data {
 	int *battery_tmp_tbl;
 	unsigned int tblsize;
+
+	unsigned int monitoring_interval;
+
+	unsigned int max_charger_currentmA;
+	unsigned int max_charger_voltagemV;
+	unsigned int termination_currentmA;
+
+	unsigned int max_bat_voltagemV;
+	unsigned int low_bat_voltagemV;
 };
 
 /* TWL4030_GPIO_MAX (18) GPIOs, with interrupts */
