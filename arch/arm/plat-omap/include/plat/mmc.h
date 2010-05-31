@@ -15,8 +15,10 @@
 #include <linux/device.h>
 #include <linux/mmc/host.h>
 #include <linux/i2c/twl.h>
+#include <linux/platform_device.h>
 
 #include <plat/board.h>
+#include <plat/omap_hwmod.h>
 
 #define OMAP15XX_NR_MMC		1
 #define OMAP16XX_NR_MMC		2
@@ -51,6 +53,7 @@
 #define MMC_INTERNAL_XCVR		(1 << 0)
 #define MMC_SUPPORTS_EXTERNAL_XCVR	(1 << 1)
 
+
 struct mmc_dev_attr {
 	u8 flags;
 };
@@ -82,6 +85,9 @@ struct omap_mmc_platform_data {
 	int (*get_context_loss_count)(struct device *dev);
 
 	u64 dma_mask;
+
+	/* integration attributes from the omap_hwmod layer */
+	struct mmc_dev_attr *dev_attr;
 
 	struct omap_mmc_slot_data {
 
