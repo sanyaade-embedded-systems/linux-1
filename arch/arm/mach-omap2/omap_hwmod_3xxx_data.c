@@ -1763,7 +1763,7 @@ static struct omap_hwmod_ocp_if *omap3xxx_mmc1_slaves[] = {
 };
 
 static struct omap_hwmod omap3xxx_mmc1_hwmod = {
-	.name		= "mmc1_hwmod",
+	.name		= "mmc1",
 	.mpu_irqs	= mmc1_mpu_irqs,
 	.mpu_irqs_cnt	= ARRAY_SIZE(mmc1_mpu_irqs),
 	.sdma_chs	= mmc1_sdma_chs,
@@ -1808,7 +1808,7 @@ static struct omap_hwmod_ocp_if *omap3xxx_mmc2_slaves[] = {
 };
 
 static struct omap_hwmod omap3xxx_mmc2_hwmod = {
-	.name		= "mmc2_hwmod",
+	.name		= "mmc2",
 	.mpu_irqs	= mmc2_mpu_irqs,
 	.mpu_irqs_cnt	= ARRAY_SIZE(mmc2_mpu_irqs),
 	.sdma_chs	= mmc2_sdma_chs,
@@ -1851,7 +1851,7 @@ static struct omap_hwmod_ocp_if *omap3xxx_mmc3_slaves[] = {
 };
 
 static struct omap_hwmod omap3xxx_mmc3_hwmod = {
-	.name		= "mmc3_hwmod",
+	.name		= "mmc3",
 	.mpu_irqs	= mmc3_mpu_irqs,
 	.mpu_irqs_cnt	= ARRAY_SIZE(mmc3_mpu_irqs),
 	.sdma_chs	= mmc3_sdma_chs,
