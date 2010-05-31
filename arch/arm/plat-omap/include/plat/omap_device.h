@@ -68,11 +68,15 @@ struct omap_device {
 	struct omap_device_pm_latency	*pm_lats;
 	u32				dev_wakeup_lat;
 	u32				_dev_wakeup_lat_limit;
+	u32                             flags;
 	u8				pm_lats_cnt;
 	s8				pm_lat_level;
 	u8				hwmods_cnt;
 	u8				_state;
 };
+
+/* flags for struct omap_device */
+#define OMAP_DEVICE_NO_BUS_SUSPEND     BIT(0)
 
 /* Device driver interface (call via platform_data fn ptrs) */
 
@@ -142,6 +146,7 @@ struct omap_device_pm_latency {
 	u32 flags;
 };
 
+/* flags for struct omap_device_pm_latency */
 #define OMAP_DEVICE_LATENCY_AUTO_ADJUST BIT(1)
 
 /* Get omap_device pointer from platform_device pointer */
