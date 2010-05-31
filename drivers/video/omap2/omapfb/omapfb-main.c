@@ -1054,8 +1054,8 @@ static int omapfb_pan_display(struct fb_var_screeninfo *var,
 	fbi->var = new_var;
 
 	r = omapfb_apply_changes(fbi, 0);
-
-	if (display && display->driver->update)
+	/* don't call panel update for OMAP4 */
+	if (!cpu_is_omap44xx() && display && display->driver->update)
 		display->driver->update(display, 0, 0, var->xres, var->yres);
 
 	return r;
