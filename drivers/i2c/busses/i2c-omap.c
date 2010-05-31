@@ -42,6 +42,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/slab.h>
+#include <linux/pm_runtime.h>
 
 #include <plat/i2c.h>
 
@@ -271,8 +272,11 @@ static void omap_i2c_unidle(struct omap_i2c_dev *dev)
 	pdev = container_of(dev->dev, struct platform_device, dev);
 	pdata = pdev->dev.platform_data;
 
+	pm_runtime_get_sync(&pdev->dev);
+#ifndef CONFIG_PM_RUNTIME
 	if (pdata->device_enable)
 		pdata->device_enable(pdev);
+#endif
 
 	if (cpu_is_omap34xx()) {
 		omap_i2c_write_reg(dev, OMAP_I2C_CON_REG, 0);
@@ -320,8 +324,13 @@ static void omap_i2c_idle(struct omap_i2c_dev *dev)
 		omap_i2c_read_reg(dev, OMAP_I2C_STAT_REG);
 	}
 	dev->idle = 1;
+
+	pm_runtime_put_sync(&pdev->dev);
+#ifndef CONFIG_PM_RUNTIME
 	if (pdata->device_idle)
 		pdata->device_idle(pdev);
+#endif
+
 }
 
 static int omap_i2c_init(struct omap_i2c_dev *dev)
@@ -974,6 +983,7 @@ omap_i2c_probe(struct platform_device *pdev)
 	else
 		dev->regs = (u8 *) reg_map;
 
+	pm_runtime_enable(&pdev->dev);
 	omap_i2c_unidle(dev);
 
 	dev->rev = omap_i2c_read_reg(dev, OMAP_I2C_REV_REG) & 0xff;
