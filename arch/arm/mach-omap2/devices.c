@@ -736,7 +736,7 @@ void __init omap2_init_mmc(struct omap_mmc_platform_data **mmc_data,
 		int idx = i - 1;
 
 		l = snprintf(oh_name, MAX_OMAP_MMC_HWMOD_NAME_LEN,
-			     "mmc%d_hwmod", i);
+			     "mmc%d", i);
 		WARN(l >= MAX_OMAP_MMC_HWMOD_NAME_LEN,
 		     "String buffer overflow in MMC%d device setup\n", i);
 		oh = omap_hwmod_lookup(oh_name);

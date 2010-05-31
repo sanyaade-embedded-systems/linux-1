@@ -23,6 +23,7 @@
 #include <plat/omap_hwmod.h>
 #include <plat/cpu.h>
 #include <plat/gpio.h>
+#include <plat/mmc.h>
 
 #include "omap_hwmod_common_data.h"
 
@@ -2902,6 +2903,10 @@ static struct omap_hwmod_class omap44xx_mmc_hwmod_class = {
 };
 
 /* mmc1 */
+static struct mmc_dev_attr mmc1_dev_attr = {
+	.flags = MMC_SUPPORT_18V_3V,
+};
+
 static struct omap_hwmod_irq_info omap44xx_mmc1_irqs[] = {
 	{ .irq = 83 + OMAP44XX_IRQ_GIC_START },
 };
@@ -2956,10 +2961,15 @@ static struct omap_hwmod omap44xx_mmc1_hwmod = {
 	.slaves_cnt	= ARRAY_SIZE(omap44xx_mmc1_slaves),
 	.masters	= omap44xx_mmc1_masters,
 	.masters_cnt	= ARRAY_SIZE(omap44xx_mmc1_masters),
+	.dev_attr	= &mmc1_dev_attr,
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
 };
 
 /* mmc2 */
+static struct mmc_dev_attr mmc2_dev_attr = {
+	.flags = MMC_SUPPORT_18V,
+};
+
 static struct omap_hwmod_irq_info omap44xx_mmc2_irqs[] = {
 	{ .irq = 86 + OMAP44XX_IRQ_GIC_START },
 };
@@ -3014,6 +3024,7 @@ static struct omap_hwmod omap44xx_mmc2_hwmod = {
 	.slaves_cnt	= ARRAY_SIZE(omap44xx_mmc2_slaves),
 	.masters	= omap44xx_mmc2_masters,
 	.masters_cnt	= ARRAY_SIZE(omap44xx_mmc2_masters),
+	.dev_attr	= &mmc2_dev_attr,
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
 };
 
