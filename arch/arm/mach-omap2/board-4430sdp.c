@@ -384,19 +384,44 @@ static struct omap2_hsmmc_info mmc[] = {
 		.nonremovable   = true,
 		.power_saving   = true,
 	},
+#if 1
+	{
+		.mmc            = 3,
+		.wires          = -EINVAL,
+		.gpio_cd        = -EINVAL,
+		.gpio_wp        = -EINVAL,
+	},
+	{
+		.mmc            = 4,
+		.wires          = -EINVAL,
+		.gpio_cd        = -EINVAL,
+		.gpio_wp        = -EINVAL,
+	},
+#endif
+	{
+		.mmc            = 5,
+		.wires          = 8,
+		.gpio_cd        = -EINVAL,
+		.gpio_wp        = 4,
+	},
 	{}	/* Terminator */
+};
+
+static struct regulator_consumer_supply sdp4430_vmmc_supply[] = {
+	{
+		.supply = "vmmc",
+		.dev_name = "mmci-omap-hs.0",
+	},
+	{
+		.supply = "vmmc",
+		.dev_name = "mmci-omap-hs.5",
+	},
 };
 
 static struct regulator_consumer_supply sdp4430_vaux_supply[] = {
 	{
 		.supply = "vmmc",
 		.dev_name = "mmci-omap-hs.1",
-	},
-};
-static struct regulator_consumer_supply sdp4430_vmmc_supply[] = {
-	{
-		.supply = "vmmc",
-		.dev_name = "mmci-omap-hs.0",
 	},
 };
 
@@ -494,7 +519,7 @@ static struct regulator_init_data sdp4430_vmmc = {
 					| REGULATOR_CHANGE_MODE
 					| REGULATOR_CHANGE_STATUS,
 	},
-	.num_consumer_supplies  = 1,
+	.num_consumer_supplies  = 2,
 	.consumer_supplies      = sdp4430_vmmc_supply,
 };
 
