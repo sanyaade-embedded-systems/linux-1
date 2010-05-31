@@ -374,6 +374,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.wires		= 8,
 		.cd_type	= NON_GPIO,
 		.gpio_wp	= -EINVAL,
+		.power_saving   = true,
 	},
 	{
 		.mmc		= 2,
@@ -381,6 +382,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
 		.nonremovable   = true,
+		.power_saving   = true,
 	},
 	{}	/* Terminator */
 };
