@@ -368,10 +368,10 @@ int ispresizer_try_pipeline(struct isp_res_device *isp_res,
 	rsz = (pipe->rsz_crop.height * 256) / pipe->rsz_out_h;
 
 	if (rsz > MID_RESIZE_VALUE) {
-		rsz = ((pipe->rsz_crop.height - 7) * 256) /
-		      (pipe->rsz_out_h - 1);
 		if (pipe->rsz_out_w > max_out_7tap)
 			pipe->rsz_out_w = max_out_7tap;
+		rsz = (((pipe->rsz_crop.height - 7) * 256) - 32 - (64 * sph)) /
+			(pipe->rsz_out_h - 1);
 		if (rsz > MAXIMUM_RESIZE_VALUE) {
 			rsz = MAXIMUM_RESIZE_VALUE;
 			pipe->rsz_out_h =
@@ -384,8 +384,8 @@ int ispresizer_try_pipeline(struct isp_res_device *isp_res,
 			(((64 * sph) + ((pipe->rsz_out_h - 1) * rsz) + 32)
 			 / 256) + 7;
 	} else {
-		rsz = ((pipe->rsz_crop.height - 4) * 256) /
-		      (pipe->rsz_out_h - 1);
+		rsz = (((pipe->rsz_crop.height - 4) * 256) - 16 - (32 * sph)) /
+			(pipe->rsz_out_h - 1);
 		if (rsz < MINIMUM_RESIZE_VALUE) {
 			rsz = MINIMUM_RESIZE_VALUE;
 			pipe->rsz_out_h =
@@ -408,8 +408,8 @@ int ispresizer_try_pipeline(struct isp_res_device *isp_res,
 	rsz = (pipe->rsz_crop.width * 256) / pipe->rsz_out_w;
 
 	if (rsz > MID_RESIZE_VALUE) {
-		rsz = ((pipe->rsz_crop.width - 7) * 256) /
-		      (pipe->rsz_out_w - 1);
+		rsz = (((pipe->rsz_crop.width - 7) * 256) - 32 - (64 * sph)) /
+			(pipe->rsz_out_w - 1);
 		if (rsz > MAXIMUM_RESIZE_VALUE) {
 			rsz = MAXIMUM_RESIZE_VALUE;
 			pipe->rsz_out_w =
@@ -423,8 +423,8 @@ int ispresizer_try_pipeline(struct isp_res_device *isp_res,
 			(((64 * sph) + ((pipe->rsz_out_w - 1) * rsz) + 32)
 			 / 256) + 7;
 	} else {
-		rsz = ((pipe->rsz_crop.width - 7) * 256) /
-		      (pipe->rsz_out_w - 1);
+		rsz = (((pipe->rsz_crop.width - 7) * 256) - 16 - (32 * sph)) /
+			(pipe->rsz_out_w - 1);
 		if (rsz < MINIMUM_RESIZE_VALUE) {
 			rsz = MINIMUM_RESIZE_VALUE;
 			pipe->rsz_out_w =
