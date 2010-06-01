@@ -84,6 +84,11 @@ bool omap_dss_check_wb(struct writeback_cache_data *wb, int overlayId, int manag
 		case OMAP_WB_TV_MANAGER:
 			if (managerId == OMAP_DSS_CHANNEL_DIGIT)
 				result = true;
+		case OMAP_WB_OVERLAY0:
+		case OMAP_WB_OVERLAY1:
+		case OMAP_WB_OVERLAY2:
+		case OMAP_WB_OVERLAY3:
+				break;
 		}
 	}
 
@@ -131,7 +136,7 @@ static void omap_dss_wb_get_info(struct omap_writeback *wb,
 }
 
 
-struct omap_writeack *omap_dss_get_wb(int num)
+struct omap_writeback *omap_dss_get_wb(int num)
 {
 	int i = 0;
 	struct omap_writeback *wb;
@@ -145,7 +150,7 @@ struct omap_writeack *omap_dss_get_wb(int num)
 }
 
 
-static void omap_dss_add_wb(struct omap_writeback *wb)
+static __attribute__ ((unused)) void omap_dss_add_wb(struct omap_writeback *wb)
 {
 	list_add_tail(&wb->list, &wb_list);
 }
@@ -153,17 +158,15 @@ static void omap_dss_add_wb(struct omap_writeback *wb)
 
 void dss_init_writeback(struct platform_device *pdev)
 {
-	int i, r;
-
+	int r;
+	struct omap_writeback *wb;
 	INIT_LIST_HEAD(&wb_list);
 
-
-		struct omap_writeback *wb;
 		wb = kzalloc(sizeof(*wb), GFP_KERNEL);
 
 		BUG_ON(wb == NULL);
 
-		wb->check_wb = &omap_dss_check_wb;
+		wb->check_wb = &dss_check_wb;
 		wb->set_wb_info = &omap_dss_wb_set_info;
 		wb->get_wb_info = &omap_dss_wb_get_info;
 		mutex_init(&wb->lock);

@@ -979,6 +979,10 @@ static int configure_dispc(void)
 			case OMAP_WB_OVERLAY3:
 				dispc_enable_plane(wb->source - 3, 1);
 				break;
+			case OMAP_WB_LCD_1_MANAGER:
+			case OMAP_WB_LCD_2_MANAGER:
+			case OMAP_WB_TV_MANAGER:
+				;/*Do nothing As of now as we dont support Manager yet with WB*/
 			}
 			dispc_go_wb();
 			wb->shadow_dirty = false;
@@ -1421,7 +1425,7 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 }
 
 int count_wb_manager = 0;
-int wb_irq_handler()
+void wb_irq_handler(void *data, u32 mask)
 {
 	count_wb_manager++;
 	DSSDBG("Framedone wb count = %d", count_wb_manager);
@@ -1522,9 +1526,9 @@ int omap_dss_wb_apply(struct omap_overlay_manager *mgr, struct omap_writeback *w
 		DSSDBG("dss_mgr_apply %d", wbc->enabled);
 		/* Configure Write-back - check for connect with this overlay*/
 		if ((wbc->enabled) &&
-			(omap_dss_check_wb(wb, ovl->id , ovl->manager->id))) {
+			(omap_dss_check_wb(wbc, ovl->id , ovl->manager->id))) {
 
-			DSSDBG("dss_mgr_apply paddr = 0x%x", wb->info.paddr);
+			DSSDBG("dss_mgr_apply paddr = %lx", wb->info.paddr);
 			for (j = 0 ; j < 1 ; j++) {
 				if (!wb->enabled) {
 					if (wbc->enabled) {
