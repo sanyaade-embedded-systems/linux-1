@@ -556,7 +556,7 @@ static struct platform_device sdp4430_dss_device = {
 };
 
 static struct platform_device *sdp4430_devices[] __initdata = {
-        &sdp4430_dss_devices,
+        &sdp4430_dss_device,
         &sdp4430_keypad_device,
         &sdp4430_proximity_device,
         &wl128x_device,
