@@ -143,7 +143,8 @@ static int omap_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
 	}
 	omap_hdmi_dai_dma_params.packet_size = 0x20;
 
-	cpu_dai->dma_data = &omap_hdmi_dai_dma_params;
+	snd_soc_dai_set_dma_data(cpu_dai, substream,
+				 &omap_hdmi_dai_dma_params);
 
 	return err;
 }
