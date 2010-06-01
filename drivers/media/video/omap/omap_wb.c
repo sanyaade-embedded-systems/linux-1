@@ -72,7 +72,7 @@ int	omap_dss_wb_apply(struct omap_overlay_manager *mgr, struct omap_writeback *w
 int omap_setup_wb(struct omap_wb_device *wb_device, u32 addr, u32 uv_addr)
 {
 	struct omap_writeback *wb;
-	struct omap_overlay_manager *mgr;
+	struct omap_overlay_manager *mgr = NULL;
 	struct omap_writeback_info wb_info;
 	int r = 0;
 	int i = 0;
@@ -159,7 +159,6 @@ static int vidioc_s_fmt_vid_wb(struct file *file, void *fh,
 {
 	struct omap_wb_device *wb = fh;
 	int bpp;
-	int r;
 
 	if (wb->streaming)
 		return -EBUSY;
@@ -329,7 +328,6 @@ static int vidioc_streamon(struct file *file, void *fh,
 	struct videobuf_queue *q = &wb->vbq;
 	u32 addr = 0, uv_addr = 0;
 	int r = 0;
-	int t;
 	u32 mask = 0;
 
 	mutex_lock(&wb->lock);
@@ -382,7 +380,6 @@ static int vidioc_streamoff(struct file *file, void *fh,
 			enum v4l2_buf_type i)
 {
 	struct omap_wb_device *wb = fh;
-	int t, r = 0;
 	u32 mask = 0;
 
 	if (!wb->streaming)
@@ -740,7 +737,7 @@ static int omap_wb_mmap(struct file *file, struct vm_area_struct *vma)
 
 	dmabuf = videobuf_to_dma(q->bufs[i]);
 
-	pos = dmabuf->bus_addr;
+	pos = (void *) dmabuf->bus_addr;
 	/* get line width */
 	/* for NV12, Y buffer is 1bpp*/
 
@@ -805,7 +802,7 @@ static int omap_wb_release(struct file *file)
 
 	struct omap_wb_device *wb = file->private_data;
 	struct videobuf_queue *q;
-	unsigned int r;
+	unsigned int r = 0;
 
 	v4l2_dbg(1, debug_wb, &wb->wb_dev->v4l2_dev, "Entering %s\n", __func__);
 
@@ -893,7 +890,7 @@ static int __init omap_wb_setup_video_data(struct omap_wb_device *wb)
 {
 	struct v4l2_pix_format *pix;
 	struct video_device *vfd;
-	struct v4l2_control *control;
+
 	/* set the default pix */
 	pix = &wb->pix;
 
@@ -1054,7 +1051,7 @@ static int omap_wb_remove(struct platform_device *pdev)
 
 static int __init omap_wb_probe(struct platform_device *pdev)
 {
-	int r = 0, i;
+	int r = 0;
 	struct omap2wb_device *wb_dev = NULL;
 
 	if (pdev->num_resources == 0) {
