@@ -2199,7 +2199,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	unsigned int field_offset = 0;
 	u8 orientation = 0;
 	struct tiler_view_orient orient;
-	unsigned long r, mir_x = 0, mir_y = 0;
+	unsigned long mir_x = 0, mir_y = 0;
 	unsigned long tiler_width, tiler_height;
 
 	if (paddr == 0)
@@ -4133,10 +4133,10 @@ int dispc_setup_plane(enum omap_plane plane,
 /* Writeback*/
 int dispc_setup_wb(struct writeback_cache_data *wb)
 {
-	bool enabled = wb->enabled;
 	unsigned long mir_x, mir_y;
 	unsigned long tiler_width, tiler_height;
 	u8 orientation = 0, rotation = 0, mirror = 0 ;
+	int ch_width, ch_height, out_ch_width, out_ch_height, scale_x, scale_y;
 	struct tiler_view_orient orient;
 	u32 paddr = wb->paddr;
 	u32 puv_addr = wb->puv_addr; /* relevant for NV12 format only */
@@ -4146,9 +4146,7 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	u16 height = wb->input_height;
 
 	enum omap_color_mode color_mode = wb->color_mode;  /* output color */
-	enum omap_writeback_capturemode capturemode = wb->capturemode;
 
-	enum omap_burst_size burst_size = wb->burst_size;
 	u32 fifo_low = wb->fifo_low;
 	u32 fifo_high = wb->fifo_high;
 	enum omap_writeback_source			source = wb->source;
@@ -4164,7 +4162,7 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	u16 frame_height = height;
 
 	DSSDBG("dispc_setup_wb");
-	DSSDBG("Input_plane = %d, maxds = %d", input_plane, maxdownscale);
+	DSSDBG("Maxds = %d", maxdownscale);
 	DSSDBG("out_width, width = %d, %d", (int) out_width, (int) width);
 	DSSDBG("out_height, height = %d, %d", (int) out_height, (int) height);
 
@@ -4261,12 +4259,12 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 			tiler_width = width;
 		}
 
-		paddr = tiler_reorient_topleft(tiler_get_natural_addr(paddr),
+		paddr = tiler_reorient_topleft(tiler_get_natural_addr((void *)paddr),
 				orient, tiler_width, tiler_height);
 
 		if (puv_addr)
 			puv_addr = tiler_reorient_topleft(
-					tiler_get_natural_addr(puv_addr),
+					tiler_get_natural_addr((void *)puv_addr),
 					orient, tiler_width/2, tiler_height/2);
 			DSSDBG(
 				"rotated addresses: 0x%0x, 0x%0x\n",
@@ -4290,16 +4288,16 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 
 	DSSDBG("%dx%d -> %p,%p %dx%d\n",
 	       width, height,
-	       paddr, puv_addr, out_width, out_height);
+	       (void *)paddr, (void *)puv_addr, out_width, out_height);
 
 	_dispc_set_pic_size(plane, width, height);
 	dispc_setup_plane_fifo(plane, fifo_low, fifo_high);
 
 	/* non interlaced */
-	int ch_width = width;
-	int ch_height = height;
-	int out_ch_width = out_width;
-	int out_ch_height = out_height;
+	ch_width = width;
+	ch_height = height;
+	out_ch_width = out_width;
+	out_ch_height = out_height;
 
 	/* account for output color decimation */
 	switch (color_mode) {
@@ -4324,8 +4322,8 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	}
 
 	/* we must scale NV12 format */
-	int scale_x = width != out_width || ch_width != out_ch_width;
-	int scale_y = height != out_height || ch_height != out_ch_height;
+	scale_x = width != out_width || ch_width != out_ch_width;
+	scale_y = height != out_height || ch_height != out_ch_height;
 	_dispc_set_scaling(plane, width, height,
 			   out_width, out_height,
 			   0, three_taps, false, scale_x, scale_y);
