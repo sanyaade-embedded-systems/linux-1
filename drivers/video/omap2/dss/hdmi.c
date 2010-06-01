@@ -132,7 +132,7 @@ static struct {
 static struct hdmi_cm {
 	int code;
 	int mode;
-} ;
+};
 struct omap_video_timings edid_timings;
 
 static inline void hdmi_write_reg(u32 base, u16 idx, u32 val)
@@ -413,6 +413,7 @@ static int hdmi_phy_init(u32 w1,
 
 	count = 0;
 	while (count++ < 1000)
+		;
 
 	return 0;
 }
@@ -430,6 +431,7 @@ static int hdmi_phy_off(u32 name)
 
 	count = 0;
 	while (count++ < 200)
+		;
 
 	return 0;
 }
@@ -695,7 +697,7 @@ err:
 	return r;
 }
 
-int hdmi_min_enable()
+int hdmi_min_enable(void)
 {
 	int r;
 	DSSDBG("hdmi_min_enable");
@@ -707,7 +709,7 @@ int hdmi_min_enable()
 	return 0;
 }
 
-static irqreturn_t hdmi_irq_handler()
+static irqreturn_t hdmi_irq_handler(int irq, void *arg)
 {
 	int r = 0;
 	struct omap_dss_device *dssdev = NULL;
@@ -830,7 +832,7 @@ static int hdmi_enable_hpd(struct omap_dss_device *dssdev)
 
 	hdmi_gpio_config(1);
 	hpd_mode = 1;
-	r = hdmi_min_enable(dssdev);
+	r = hdmi_min_enable();
 	if (r) {
 		DSSERR("failed to power on device\n");
 		goto err;
@@ -1000,7 +1002,7 @@ static struct hdmi_cm hdmi_get_code(struct omap_video_timings *timing)
 	return cm;
 }
 
-static int hdmi_get_edid(struct omap_dss_device *dssdev)
+static void hdmi_get_edid(struct omap_dss_device *dssdev)
 {
 	u8 i = 0, flag = 0;
 	int count, offset, effective_addrs;
@@ -1071,7 +1073,7 @@ static int hdmi_get_edid(struct omap_dss_device *dssdev)
 	}
 	hdmi_get_image_format();
 	hdmi_get_audio_format();
-	return 0;
+
 }
 void show_horz_vert_timing_info(u8 *edid)
 {
@@ -1201,7 +1203,6 @@ static int hdmi_read_edid(struct omap_video_timings *dp)
 	hdmi.ti.verticalFrontPorch = tp->vfp;
 	hdmi.ti.verticalSyncPulse = tp->vsw;
 
-err:
 	return r;
 }
 

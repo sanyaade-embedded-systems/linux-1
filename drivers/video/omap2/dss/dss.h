@@ -341,6 +341,7 @@ void dispc_lcd_enable_signal_polarity(bool act_high);
 void dispc_lcd_enable_signal(bool enable);
 void dispc_pck_free_enable(bool enable);
 void dispc_enable_fifohandcheck(bool enable);
+void dispc_enable_lcd_out(enum omap_channel channel, bool enable);
 
 void dispc_set_lcd_size(enum omap_channel channel, u16 width, u16 height);
 void dispc_set_digit_size(u16 width, u16 height);

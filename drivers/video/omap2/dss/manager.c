@@ -512,14 +512,22 @@ static int dss_mgr_wait_for_vsync(struct omap_overlay_manager *mgr)
 	unsigned long timeout = msecs_to_jiffies(500);
 	u32 irq;
 
-	if (mgr->device->type == OMAP_DISPLAY_TYPE_VENC) {
+	if (mgr->device->type == OMAP_DISPLAY_TYPE_VENC)
 		irq = DISPC_IRQ_EVSYNC_ODD;
-	} else {
-		if (mgr->device->channel == OMAP_DSS_CHANNEL_LCD)
+	else if (mgr->device->type == OMAP_DISPLAY_TYPE_HDMI)
+		irq = DISPC_IRQ_EVSYNC_EVEN;
+	else if ((mgr->device->type == OMAP_DISPLAY_TYPE_DSI)
+			&& (mgr->device->channel == OMAP_DSS_CHANNEL_LCD))
+		irq = DISPC_IRQ_FRAMEDONE;
+	else if ((mgr->device->type == OMAP_DISPLAY_TYPE_DSI)
+			&& (mgr->device->channel == OMAP_DSS_CHANNEL_LCD2))
+		irq = DISPC_IRQ_FRAMEDONE2;
+	else if ((mgr->device->type == OMAP_DISPLAY_TYPE_DPI)
+			&& (mgr->device->channel == OMAP_DSS_CHANNEL_LCD))
 			irq = DISPC_IRQ_VSYNC;
-		else
+	else if ((mgr->device->type == OMAP_DISPLAY_TYPE_DPI)
+			&& (mgr->device->channel == OMAP_DSS_CHANNEL_LCD2))
 			irq = DISPC_IRQ_VSYNC2;
-	}
 	return omap_dispc_wait_for_irq_interruptible_timeout(irq, timeout);
 }
 
@@ -971,6 +979,10 @@ static int configure_dispc(void)
 			case OMAP_WB_OVERLAY3:
 				dispc_enable_plane(wb->source - 3, 1);
 				break;
+			case OMAP_WB_LCD_1_MANAGER:
+			case OMAP_WB_LCD_2_MANAGER:
+			case OMAP_WB_TV_MANAGER:
+				;/*Do nothing As of now as we dont support Manager yet with WB*/
 			}
 			dispc_go_wb();
 			wb->shadow_dirty = false;
@@ -1413,7 +1425,7 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 }
 
 int count_wb_manager = 0;
-int wb_irq_handler()
+void wb_irq_handler(void *data, u32 mask)
 {
 	count_wb_manager++;
 	DSSDBG("Framedone wb count = %d", count_wb_manager);
@@ -1431,7 +1443,7 @@ int omap_dss_wb_apply(struct omap_overlay_manager *mgr, struct omap_writeback *w
 	int r;
 	struct writeback_cache_data *wbc;
 
-	DSSDBG("omap_dss_mgr_apply(%s)\n", mgr->name);
+	DSSDBG("omap_dss_wb_apply(%s)\n", mgr->name);
 
 	spin_lock_irqsave(&dss_cache.lock, flags);
 
@@ -1511,12 +1523,19 @@ int omap_dss_wb_apply(struct omap_overlay_manager *mgr, struct omap_writeback *w
 		++num_planes_enabled;
 		wbc = &dss_cache.writeback_cache;
 
-		DSSDBG("dss_mgr_apply %d", wbc->enabled);
+		if (!wb->first_time) {
+			DSSDBG("entered wb_first time\n");
+			wbc->enabled = true;
+			wbc->source = wb->info.source;
+			wbc->source_type = wb->info.source_type;
+			wb->first_time = true;
+		}
+		DSSDBG("dss_wb_apply %d\n", wbc->enabled);
 		/* Configure Write-back - check for connect with this overlay*/
 		if ((wbc->enabled) &&
-			(omap_dss_check_wb(wb, ovl->id , ovl->manager->id))) {
+			(omap_dss_check_wb(wbc, ovl->id , ovl->manager->id))) {
 
-			DSSDBG("dss_mgr_apply paddr = 0x%x", wb->info.paddr);
+			DSSDBG("dss_mgr_apply paddr = %lx", wb->info.paddr);
 			for (j = 0 ; j < 1 ; j++) {
 				if (!wb->enabled) {
 					if (wbc->enabled) {

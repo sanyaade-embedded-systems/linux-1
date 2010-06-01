@@ -46,7 +46,7 @@
 #define DISPC_BASE		0x58001000
 #endif
 
-#define DISPC_SZ_REGS			SZ_1K
+#define DISPC_SZ_REGS			SZ_16K
 
 struct dispc_reg { u16 idx; };
 extern void __iomem  *dispc_base;
@@ -376,6 +376,214 @@ void dispc_save_context(void)
 
 	SR(GFX_PRELOAD);
 
+	if (cpu_is_omap44xx()) {
+		SR(DIVISOR1);
+	SR(GLOBAL_BUFFER);
+	SR(CONTROL2);
+	SR(DEFAULT_COLOR2);
+	SR(TRANS_COLOR2);
+	SR(CPR2_COEF_B);
+	SR(CPR2_COEF_G);
+	SR(CPR2_COEF_R);
+	SR(DATA2_CYCLE1);
+	SR(DATA2_CYCLE2);
+	SR(DATA2_CYCLE3);
+	SR(SIZE_LCD2);
+	SR(TIMING_H2);
+	SR(TIMING_V2);
+	SR(POL_FREQ2);
+	SR(DIVISOR2);
+
+	SR(CONFIG2);
+
+	/**** VID3 ****/;
+
+	SR(VID_V3_WB_ACCU0(0));
+	SR(VID_V3_WB_ACCU1(0));
+	SR(VID_V3_WB_BA0(0));
+	SR(VID_V3_WB_BA1(0));
+
+	SR(VID_V3_WB_FIR_COEF_H(0, 0));
+	SR(VID_V3_WB_FIR_COEF_H(0, 1));
+	SR(VID_V3_WB_FIR_COEF_H(0, 2));
+	SR(VID_V3_WB_FIR_COEF_H(0, 3));
+	SR(VID_V3_WB_FIR_COEF_H(0, 4));
+	SR(VID_V3_WB_FIR_COEF_H(0, 5));
+	SR(VID_V3_WB_FIR_COEF_H(0, 6));
+	SR(VID_V3_WB_FIR_COEF_H(0, 7));
+
+	SR(VID_V3_WB_FIR_COEF_HV(0, 0));
+	SR(VID_V3_WB_FIR_COEF_HV(0, 1));
+	SR(VID_V3_WB_FIR_COEF_HV(0, 2));
+	SR(VID_V3_WB_FIR_COEF_HV(0, 3));
+	SR(VID_V3_WB_FIR_COEF_HV(0, 4));
+	SR(VID_V3_WB_FIR_COEF_HV(0, 5));
+	SR(VID_V3_WB_FIR_COEF_HV(0, 6));
+	SR(VID_V3_WB_FIR_COEF_HV(0, 7));
+
+	SR(VID_V3_WB_FIR_COEF_V(0, 0));
+	SR(VID_V3_WB_FIR_COEF_V(0, 1));
+	SR(VID_V3_WB_FIR_COEF_V(0, 2));
+	SR(VID_V3_WB_FIR_COEF_V(0, 3));
+	SR(VID_V3_WB_FIR_COEF_V(0, 4));
+	SR(VID_V3_WB_FIR_COEF_V(0, 5));
+	SR(VID_V3_WB_FIR_COEF_V(0, 6));
+	SR(VID_V3_WB_FIR_COEF_V(0, 7));
+
+	SR(VID_V3_WB_ATTRIBUTES(0));
+	SR(VID_V3_WB_CONV_COEF(0, 0));
+	SR(VID_V3_WB_CONV_COEF(0, 1));
+	SR(VID_V3_WB_CONV_COEF(0, 2));
+	SR(VID_V3_WB_CONV_COEF(0, 3));
+	SR(VID_V3_WB_CONV_COEF(0, 4));
+	SR(VID_V3_WB_CONV_COEF(0, 5));
+	SR(VID_V3_WB_CONV_COEF(0, 6));
+	SR(VID_V3_WB_CONV_COEF(0, 7));
+
+	SR(VID_V3_WB_BUF_SIZE_STATUS(0));
+	SR(VID_V3_WB_BUF_THRESHOLD(0));
+	SR(VID_V3_WB_FIR(0));
+	SR(VID_V3_WB_PICTURE_SIZE(0));
+	SR(VID_V3_WB_PIXEL_INC(0));
+	SR(VID_VID3_POSITION);
+	SR(VID_VID3_PRELOAD);
+
+	SR(VID_V3_WB_ROW_INC(0));
+	SR(VID_V3_WB_SIZE(0));
+	SR(VID_V3_WB_FIR2(0));
+	SR(VID_V3_WB_ACCU2_0(0));
+	SR(VID_V3_WB_ACCU2_1(0));
+
+	SR(VID_V3_WB_FIR_COEF_H2(0, 0));
+	SR(VID_V3_WB_FIR_COEF_H2(0, 1));
+	SR(VID_V3_WB_FIR_COEF_H2(0, 2));
+	SR(VID_V3_WB_FIR_COEF_H2(0, 3));
+	SR(VID_V3_WB_FIR_COEF_H2(0, 4));
+	SR(VID_V3_WB_FIR_COEF_H2(0, 5));
+	SR(VID_V3_WB_FIR_COEF_H2(0, 6));
+	SR(VID_V3_WB_FIR_COEF_H2(0, 7));
+
+	SR(VID_V3_WB_FIR_COEF_HV2(0, 0));
+	SR(VID_V3_WB_FIR_COEF_HV2(0, 1));
+	SR(VID_V3_WB_FIR_COEF_HV2(0, 2));
+	SR(VID_V3_WB_FIR_COEF_HV2(0, 3));
+	SR(VID_V3_WB_FIR_COEF_HV2(0, 4));
+	SR(VID_V3_WB_FIR_COEF_HV2(0, 5));
+	SR(VID_V3_WB_FIR_COEF_HV2(0, 6));
+	SR(VID_V3_WB_FIR_COEF_HV2(0, 7));
+
+	SR(VID_V3_WB_FIR_COEF_V2(0, 0));
+	SR(VID_V3_WB_FIR_COEF_V2(0, 1));
+	SR(VID_V3_WB_FIR_COEF_V2(0, 2));
+	SR(VID_V3_WB_FIR_COEF_V2(0, 3));
+	SR(VID_V3_WB_FIR_COEF_V2(0, 4));
+	SR(VID_V3_WB_FIR_COEF_V2(0, 5));
+	SR(VID_V3_WB_FIR_COEF_V2(0, 6));
+	SR(VID_V3_WB_FIR_COEF_V2(0, 7));
+
+	/******* WB Registers *********/;
+
+	SR(VID_V3_WB_ACCU0(1));
+	SR(VID_V3_WB_ACCU1(1));
+	SR(VID_V3_WB_BA0(1));
+	SR(VID_V3_WB_BA1(1));
+
+	SR(VID_V3_WB_FIR_COEF_H(1, 0));
+	SR(VID_V3_WB_FIR_COEF_H(1, 1));
+	SR(VID_V3_WB_FIR_COEF_H(1, 2));
+	SR(VID_V3_WB_FIR_COEF_H(1, 3));
+	SR(VID_V3_WB_FIR_COEF_H(1, 4));
+	SR(VID_V3_WB_FIR_COEF_H(1, 5));
+	SR(VID_V3_WB_FIR_COEF_H(1, 6));
+	SR(VID_V3_WB_FIR_COEF_H(1, 7));
+
+	SR(VID_V3_WB_FIR_COEF_HV(1, 0));
+	SR(VID_V3_WB_FIR_COEF_HV(1, 1));
+	SR(VID_V3_WB_FIR_COEF_HV(1, 2));
+	SR(VID_V3_WB_FIR_COEF_HV(1, 3));
+	SR(VID_V3_WB_FIR_COEF_HV(1, 4));
+	SR(VID_V3_WB_FIR_COEF_HV(1, 5));
+	SR(VID_V3_WB_FIR_COEF_HV(1, 6));
+	SR(VID_V3_WB_FIR_COEF_HV(1, 7));
+
+	SR(VID_V3_WB_FIR_COEF_V(1, 0));
+	SR(VID_V3_WB_FIR_COEF_V(1, 1));
+	SR(VID_V3_WB_FIR_COEF_V(1, 2));
+	SR(VID_V3_WB_FIR_COEF_V(1, 3));
+	SR(VID_V3_WB_FIR_COEF_V(1, 4));
+	SR(VID_V3_WB_FIR_COEF_V(1, 5));
+	SR(VID_V3_WB_FIR_COEF_V(1, 6));
+	SR(VID_V3_WB_FIR_COEF_V(1, 7));
+
+	SR(VID_V3_WB_ATTRIBUTES(1));
+	SR(VID_V3_WB_CONV_COEF(1, 0));
+	SR(VID_V3_WB_CONV_COEF(1, 1));
+	SR(VID_V3_WB_CONV_COEF(1, 2));
+	SR(VID_V3_WB_CONV_COEF(1, 3));
+	SR(VID_V3_WB_CONV_COEF(1, 4));
+	SR(VID_V3_WB_CONV_COEF(1, 5));
+	SR(VID_V3_WB_CONV_COEF(1, 6));
+	SR(VID_V3_WB_CONV_COEF(1, 7));
+
+	SR(VID_V3_WB_BUF_SIZE_STATUS(1));
+	SR(VID_V3_WB_BUF_THRESHOLD(1));
+	SR(VID_V3_WB_FIR(1));
+	SR(VID_V3_WB_PICTURE_SIZE(1));
+	SR(VID_V3_WB_PIXEL_INC(1));
+	SR(VID_VID3_POSITION);
+	SR(VID_VID3_PRELOAD);
+
+	SR(VID_V3_WB_ROW_INC(1));
+	SR(VID_V3_WB_SIZE(1));
+	SR(VID_V3_WB_FIR2(1));
+	SR(VID_V3_WB_ACCU2_0(1));
+	SR(VID_V3_WB_ACCU2_1(1));
+
+	SR(VID_V3_WB_FIR_COEF_H2(1, 0));
+	SR(VID_V3_WB_FIR_COEF_H2(1, 1));
+	SR(VID_V3_WB_FIR_COEF_H2(1, 2));
+	SR(VID_V3_WB_FIR_COEF_H2(1, 3));
+	SR(VID_V3_WB_FIR_COEF_H2(1, 4));
+	SR(VID_V3_WB_FIR_COEF_H2(1, 5));
+	SR(VID_V3_WB_FIR_COEF_H2(1, 6));
+	SR(VID_V3_WB_FIR_COEF_H2(1, 7));
+
+	SR(VID_V3_WB_FIR_COEF_HV2(1, 0));
+	SR(VID_V3_WB_FIR_COEF_HV2(1, 1));
+	SR(VID_V3_WB_FIR_COEF_HV2(1, 2));
+	SR(VID_V3_WB_FIR_COEF_HV2(1, 3));
+	SR(VID_V3_WB_FIR_COEF_HV2(1, 4));
+	SR(VID_V3_WB_FIR_COEF_HV2(1, 5));
+	SR(VID_V3_WB_FIR_COEF_HV2(1, 6));
+	SR(VID_V3_WB_FIR_COEF_HV2(1, 7));
+
+	SR(VID_V3_WB_FIR_COEF_V2(1, 0));
+	SR(VID_V3_WB_FIR_COEF_V2(1, 1));
+	SR(VID_V3_WB_FIR_COEF_V2(1, 2));
+	SR(VID_V3_WB_FIR_COEF_V2(1, 3));
+	SR(VID_V3_WB_FIR_COEF_V2(1, 4));
+	SR(VID_V3_WB_FIR_COEF_V2(1, 5));
+	SR(VID_V3_WB_FIR_COEF_V2(1, 6));
+	SR(VID_V3_WB_FIR_COEF_V2(1, 7));
+
+	SR(VID_BA_UV0(0));
+	SR(VID_BA_UV0(1));
+
+	SR(VID_BA_UV1(0));
+	SR(VID_BA_UV1(1));
+
+	SR(VID_ATTRIBUTES2(0));
+	SR(VID_ATTRIBUTES2(1));
+	SR(VID_ATTRIBUTES2(2));
+	SR(VID_ATTRIBUTES2(3));
+
+	SR(GAMMA_TABLE(0));
+	SR(GAMMA_TABLE(1));
+	SR(GAMMA_TABLE(2));
+	SR(GAMMA_TABLE(3));
+
+	}
+
 	/* VID1 */
 	SR(VID_BA0(0));
 	SR(VID_BA1(0));
@@ -493,6 +701,214 @@ void dispc_restore_context(void)
 	RR(GLOBAL_ALPHA);
 	RR(SIZE_DIG);
 	RR(SIZE_LCD);
+
+	if (cpu_is_omap44xx()) {
+		RR(DIVISOR1);
+	RR(GLOBAL_BUFFER);
+	RR(CONTROL2);
+	RR(DEFAULT_COLOR2);
+	RR(TRANS_COLOR2);
+	RR(CPR2_COEF_B);
+	RR(CPR2_COEF_G);
+	RR(CPR2_COEF_R);
+	RR(DATA2_CYCLE1);
+	RR(DATA2_CYCLE2);
+	RR(DATA2_CYCLE3);
+	RR(SIZE_LCD2);
+	RR(TIMING_H2);
+	RR(TIMING_V2);
+	RR(POL_FREQ2);
+	RR(DIVISOR2);
+
+	RR(CONFIG2);
+
+	/**** VID3 ****/;
+
+	RR(VID_V3_WB_ACCU0(0));
+	RR(VID_V3_WB_ACCU1(0));
+	RR(VID_V3_WB_BA0(0));
+	RR(VID_V3_WB_BA1(0));
+
+	RR(VID_V3_WB_FIR_COEF_H(0, 0));
+	RR(VID_V3_WB_FIR_COEF_H(0, 1));
+	RR(VID_V3_WB_FIR_COEF_H(0, 2));
+	RR(VID_V3_WB_FIR_COEF_H(0, 3));
+	RR(VID_V3_WB_FIR_COEF_H(0, 4));
+	RR(VID_V3_WB_FIR_COEF_H(0, 5));
+	RR(VID_V3_WB_FIR_COEF_H(0, 6));
+	RR(VID_V3_WB_FIR_COEF_H(0, 7));
+
+	RR(VID_V3_WB_FIR_COEF_HV(0, 0));
+	RR(VID_V3_WB_FIR_COEF_HV(0, 1));
+	RR(VID_V3_WB_FIR_COEF_HV(0, 2));
+	RR(VID_V3_WB_FIR_COEF_HV(0, 3));
+	RR(VID_V3_WB_FIR_COEF_HV(0, 4));
+	RR(VID_V3_WB_FIR_COEF_HV(0, 5));
+	RR(VID_V3_WB_FIR_COEF_HV(0, 6));
+	RR(VID_V3_WB_FIR_COEF_HV(0, 7));
+
+	RR(VID_V3_WB_FIR_COEF_V(0, 0));
+	RR(VID_V3_WB_FIR_COEF_V(0, 1));
+	RR(VID_V3_WB_FIR_COEF_V(0, 2));
+	RR(VID_V3_WB_FIR_COEF_V(0, 3));
+	RR(VID_V3_WB_FIR_COEF_V(0, 4));
+	RR(VID_V3_WB_FIR_COEF_V(0, 5));
+	RR(VID_V3_WB_FIR_COEF_V(0, 6));
+	RR(VID_V3_WB_FIR_COEF_V(0, 7));
+
+	RR(VID_V3_WB_ATTRIBUTES(0));
+	RR(VID_V3_WB_CONV_COEF(0, 0));
+	RR(VID_V3_WB_CONV_COEF(0, 1));
+	RR(VID_V3_WB_CONV_COEF(0, 2));
+	RR(VID_V3_WB_CONV_COEF(0, 3));
+	RR(VID_V3_WB_CONV_COEF(0, 4));
+	RR(VID_V3_WB_CONV_COEF(0, 5));
+	RR(VID_V3_WB_CONV_COEF(0, 6));
+	RR(VID_V3_WB_CONV_COEF(0, 7));
+
+	RR(VID_V3_WB_BUF_SIZE_STATUS(0));
+	RR(VID_V3_WB_BUF_THRESHOLD(0));
+	RR(VID_V3_WB_FIR(0));
+	RR(VID_V3_WB_PICTURE_SIZE(0));
+	RR(VID_V3_WB_PIXEL_INC(0));
+	RR(VID_VID3_POSITION);
+	RR(VID_VID3_PRELOAD);
+
+	RR(VID_V3_WB_ROW_INC(0));
+	RR(VID_V3_WB_SIZE(0));
+	RR(VID_V3_WB_FIR2(0));
+	RR(VID_V3_WB_ACCU2_0(0));
+	RR(VID_V3_WB_ACCU2_1(0));
+
+	RR(VID_V3_WB_FIR_COEF_H2(0, 0));
+	RR(VID_V3_WB_FIR_COEF_H2(0, 1));
+	RR(VID_V3_WB_FIR_COEF_H2(0, 2));
+	RR(VID_V3_WB_FIR_COEF_H2(0, 3));
+	RR(VID_V3_WB_FIR_COEF_H2(0, 4));
+	RR(VID_V3_WB_FIR_COEF_H2(0, 5));
+	RR(VID_V3_WB_FIR_COEF_H2(0, 6));
+	RR(VID_V3_WB_FIR_COEF_H2(0, 7));
+
+	RR(VID_V3_WB_FIR_COEF_HV2(0, 0));
+	RR(VID_V3_WB_FIR_COEF_HV2(0, 1));
+	RR(VID_V3_WB_FIR_COEF_HV2(0, 2));
+	RR(VID_V3_WB_FIR_COEF_HV2(0, 3));
+	RR(VID_V3_WB_FIR_COEF_HV2(0, 4));
+	RR(VID_V3_WB_FIR_COEF_HV2(0, 5));
+	RR(VID_V3_WB_FIR_COEF_HV2(0, 6));
+	RR(VID_V3_WB_FIR_COEF_HV2(0, 7));
+
+	RR(VID_V3_WB_FIR_COEF_V2(0, 0));
+	RR(VID_V3_WB_FIR_COEF_V2(0, 1));
+	RR(VID_V3_WB_FIR_COEF_V2(0, 2));
+	RR(VID_V3_WB_FIR_COEF_V2(0, 3));
+	RR(VID_V3_WB_FIR_COEF_V2(0, 4));
+	RR(VID_V3_WB_FIR_COEF_V2(0, 5));
+	RR(VID_V3_WB_FIR_COEF_V2(0, 6));
+	RR(VID_V3_WB_FIR_COEF_V2(0, 7));
+
+	/******* WB Registers *********/;
+
+	RR(VID_V3_WB_ACCU0(1));
+	RR(VID_V3_WB_ACCU1(1));
+	RR(VID_V3_WB_BA0(1));
+	RR(VID_V3_WB_BA1(1));
+
+	RR(VID_V3_WB_FIR_COEF_H(1, 0));
+	RR(VID_V3_WB_FIR_COEF_H(1, 1));
+	RR(VID_V3_WB_FIR_COEF_H(1, 2));
+	RR(VID_V3_WB_FIR_COEF_H(1, 3));
+	RR(VID_V3_WB_FIR_COEF_H(1, 4));
+	RR(VID_V3_WB_FIR_COEF_H(1, 5));
+	RR(VID_V3_WB_FIR_COEF_H(1, 6));
+	RR(VID_V3_WB_FIR_COEF_H(1, 7));
+
+	RR(VID_V3_WB_FIR_COEF_HV(1, 0));
+	RR(VID_V3_WB_FIR_COEF_HV(1, 1));
+	RR(VID_V3_WB_FIR_COEF_HV(1, 2));
+	RR(VID_V3_WB_FIR_COEF_HV(1, 3));
+	RR(VID_V3_WB_FIR_COEF_HV(1, 4));
+	RR(VID_V3_WB_FIR_COEF_HV(1, 5));
+	RR(VID_V3_WB_FIR_COEF_HV(1, 6));
+	RR(VID_V3_WB_FIR_COEF_HV(1, 7));
+
+	RR(VID_V3_WB_FIR_COEF_V(1, 0));
+	RR(VID_V3_WB_FIR_COEF_V(1, 1));
+	RR(VID_V3_WB_FIR_COEF_V(1, 2));
+	RR(VID_V3_WB_FIR_COEF_V(1, 3));
+	RR(VID_V3_WB_FIR_COEF_V(1, 4));
+	RR(VID_V3_WB_FIR_COEF_V(1, 5));
+	RR(VID_V3_WB_FIR_COEF_V(1, 6));
+	RR(VID_V3_WB_FIR_COEF_V(1, 7));
+
+	RR(VID_V3_WB_ATTRIBUTES(1));
+	RR(VID_V3_WB_CONV_COEF(1, 0));
+	RR(VID_V3_WB_CONV_COEF(1, 1));
+	RR(VID_V3_WB_CONV_COEF(1, 2));
+	RR(VID_V3_WB_CONV_COEF(1, 3));
+	RR(VID_V3_WB_CONV_COEF(1, 4));
+	RR(VID_V3_WB_CONV_COEF(1, 5));
+	RR(VID_V3_WB_CONV_COEF(1, 6));
+	RR(VID_V3_WB_CONV_COEF(1, 7));
+
+	RR(VID_V3_WB_BUF_SIZE_STATUS(1));
+	RR(VID_V3_WB_BUF_THRESHOLD(1));
+	RR(VID_V3_WB_FIR(1));
+	RR(VID_V3_WB_PICTURE_SIZE(1));
+	RR(VID_V3_WB_PIXEL_INC(1));
+	RR(VID_VID3_POSITION);
+	RR(VID_VID3_PRELOAD);
+
+	RR(VID_V3_WB_ROW_INC(1));
+	RR(VID_V3_WB_SIZE(1));
+	RR(VID_V3_WB_FIR2(1));
+	RR(VID_V3_WB_ACCU2_0(1));
+	RR(VID_V3_WB_ACCU2_1(1));
+
+	RR(VID_V3_WB_FIR_COEF_H2(1, 0));
+	RR(VID_V3_WB_FIR_COEF_H2(1, 1));
+	RR(VID_V3_WB_FIR_COEF_H2(1, 2));
+	RR(VID_V3_WB_FIR_COEF_H2(1, 3));
+	RR(VID_V3_WB_FIR_COEF_H2(1, 4));
+	RR(VID_V3_WB_FIR_COEF_H2(1, 5));
+	RR(VID_V3_WB_FIR_COEF_H2(1, 6));
+	RR(VID_V3_WB_FIR_COEF_H2(1, 7));
+
+	RR(VID_V3_WB_FIR_COEF_HV2(1, 0));
+	RR(VID_V3_WB_FIR_COEF_HV2(1, 1));
+	RR(VID_V3_WB_FIR_COEF_HV2(1, 2));
+	RR(VID_V3_WB_FIR_COEF_HV2(1, 3));
+	RR(VID_V3_WB_FIR_COEF_HV2(1, 4));
+	RR(VID_V3_WB_FIR_COEF_HV2(1, 5));
+	RR(VID_V3_WB_FIR_COEF_HV2(1, 6));
+	RR(VID_V3_WB_FIR_COEF_HV2(1, 7));
+
+	RR(VID_V3_WB_FIR_COEF_V2(1, 0));
+	RR(VID_V3_WB_FIR_COEF_V2(1, 1));
+	RR(VID_V3_WB_FIR_COEF_V2(1, 2));
+	RR(VID_V3_WB_FIR_COEF_V2(1, 3));
+	RR(VID_V3_WB_FIR_COEF_V2(1, 4));
+	RR(VID_V3_WB_FIR_COEF_V2(1, 5));
+	RR(VID_V3_WB_FIR_COEF_V2(1, 6));
+	RR(VID_V3_WB_FIR_COEF_V2(1, 7));
+
+	RR(VID_BA_UV0(0));
+	RR(VID_BA_UV0(1));
+
+	RR(VID_BA_UV1(0));
+	RR(VID_BA_UV1(1));
+
+	RR(VID_ATTRIBUTES2(0));
+	RR(VID_ATTRIBUTES2(1));
+	RR(VID_ATTRIBUTES2(2));
+	RR(VID_ATTRIBUTES2(3));
+
+	RR(GAMMA_TABLE(0));
+	RR(GAMMA_TABLE(1));
+	RR(GAMMA_TABLE(2));
+	RR(GAMMA_TABLE(3));
+
+	}
 
 	RR(GFX_BA0);
 	RR(GFX_BA1);
@@ -1300,9 +1716,12 @@ void dispc_setup_plane_fifo(enum omap_plane plane, u32 low, u32 high)
 	if (cpu_is_omap24xx())
 		dispc_write_reg(ftrs_reg[plane],
 				FLD_VAL(high, 24, 16) | FLD_VAL(low, 8, 0));
-	else
+	else if (cpu_is_omap34xx())
 		dispc_write_reg(ftrs_reg[plane],
-				FLD_VAL(high, 27, 16) | FLD_VAL(low, 11, 0));
+					FLD_VAL(high, 27, 16) | FLD_VAL(low, 11, 0));
+	else /* cpu is omap44xx */
+		dispc_write_reg(ftrs_reg[plane],
+					FLD_VAL(high, 31, 16) | FLD_VAL(low, 15, 0));
 
 	enable_clocks(0);
 }
@@ -1869,8 +2288,7 @@ static s32 pixinc(int pixels, u8 ps)
 		return;
 	}
 
-	printk(KERN_INFO
-		" colormode: %d, rotation: %d, ps: %d, width: %d,"
+	DSSDBG(" colormode: %d, rotation: %d, ps: %d, width: %d,"
 		" height: %d, row_inc:%d\n",
 		color_mode, rotation, ps, width, height, *row_inc);
 
@@ -2197,7 +2615,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	unsigned int field_offset = 0;
 	u8 orientation = 0;
 	struct tiler_view_orient orient;
-	unsigned long r, mir_x = 0, mir_y = 0;
+	unsigned long mir_x = 0, mir_y = 0;
 	unsigned long tiler_width, tiler_height;
 
 	if (paddr == 0)
@@ -2273,7 +2691,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 		case OMAP_DSS_COLOR_XRGB15:
 			if (cpu_is_omap24xx())
 				return -EINVAL;
-			if (plane == OMAP_DSS_VIDEO1)
+			if (!cpu_is_omap44xx() && plane == OMAP_DSS_VIDEO1)
 				return -EINVAL;
 			break;
 
@@ -2368,7 +2786,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 		orient.x_invert ^= mir_x;
 		orient.y_invert ^= mir_y;
 
-		printk(KERN_INFO "RYX = %d %d %d\n", orient.rotate_90,
+		DSSDBG("RYX = %d %d %d\n", orient.rotate_90,
 				orient.x_invert, orient.y_invert);
 
 		if (orient.rotate_90 & 1) {
@@ -2378,7 +2796,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 			tiler_height = height;
 			tiler_width = width;
 		}
-		printk(KERN_INFO "w, h = %ld %ld\n", tiler_width, tiler_height);
+		DSSDBG("w, h = %ld %ld\n", tiler_width, tiler_height);
 
 		paddr = tiler_reorient_topleft(tiler_get_natural_addr((void *)paddr),
 				orient, tiler_width, tiler_height);
@@ -2387,8 +2805,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 			puv_addr = tiler_reorient_topleft(
 					tiler_get_natural_addr((void *)puv_addr),
 					orient, tiler_width/2, tiler_height/2);
-			printk(KERN_INFO
-				"rotated addresses: 0x%0x, 0x%0x\n",
+			DSSDBG("rotated addresses: 0x%0x, 0x%0x\n",
 						paddr, puv_addr);
 			/* set BURSTTYPE if rotation is non-zero */
 			REG_FLD_MOD(dispc_reg_att[plane], 0x1, 29, 29);
@@ -2508,7 +2925,7 @@ static void _enable_lcd_out(enum omap_channel channel, bool enable)
 		REG_FLD_MOD(DISPC_CONTROL, enable ? 1 : 0, 0, 0);
 }
 
-static void dispc_enable_lcd_out(enum omap_channel channel, bool enable)
+void dispc_enable_lcd_out(enum omap_channel channel, bool enable)
 {
 	struct completion frame_done_completion;
 	bool is_on;
@@ -2831,10 +3248,12 @@ bool dispc_alpha_blending_enabled(enum omap_channel ch)
 bool dispc_trans_key_enabled(enum omap_channel ch)
 {
 	bool enabled;
+	BUG_ON(ch == OMAP_DSS_CHANNEL_LCD2);
 
 	enable_clocks(1);
 	if (ch == OMAP_DSS_CHANNEL_LCD2)
 		enabled = REG_GET(DISPC_CONFIG2, 10, 10);
+	else
 	if (ch == OMAP_DSS_CHANNEL_LCD)
 		enabled = REG_GET(DISPC_CONFIG, 10, 10);
 	else if (ch == OMAP_DSS_CHANNEL_DIGIT)
@@ -4130,10 +4549,10 @@ int dispc_setup_plane(enum omap_plane plane,
 /* Writeback*/
 int dispc_setup_wb(struct writeback_cache_data *wb)
 {
-	bool enabled = wb->enabled;
 	unsigned long mir_x, mir_y;
 	unsigned long tiler_width, tiler_height;
 	u8 orientation = 0, rotation = 0, mirror = 0 ;
+	int ch_width, ch_height, out_ch_width, out_ch_height, scale_x, scale_y;
 	struct tiler_view_orient orient;
 	u32 paddr = wb->paddr;
 	u32 puv_addr = wb->puv_addr; /* relevant for NV12 format only */
@@ -4143,9 +4562,7 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	u16 height = wb->input_height;
 
 	enum omap_color_mode color_mode = wb->color_mode;  /* output color */
-	enum omap_writeback_capturemode capturemode = wb->capturemode;
 
-	enum omap_burst_size burst_size = wb->burst_size;
 	u32 fifo_low = wb->fifo_low;
 	u32 fifo_high = wb->fifo_high;
 	enum omap_writeback_source			source = wb->source;
@@ -4161,7 +4578,7 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	u16 frame_height = height;
 
 	DSSDBG("dispc_setup_wb");
-	DSSDBG("Input_plane = %d, maxds = %d", input_plane, maxdownscale);
+	DSSDBG("Maxds = %d", maxdownscale);
 	DSSDBG("out_width, width = %d, %d", (int) out_width, (int) width);
 	DSSDBG("out_height, height = %d, %d", (int) out_height, (int) height);
 
@@ -4258,12 +4675,12 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 			tiler_width = width;
 		}
 
-		paddr = tiler_reorient_topleft(tiler_get_natural_addr(paddr),
+		paddr = tiler_reorient_topleft(tiler_get_natural_addr((void *)paddr),
 				orient, tiler_width, tiler_height);
 
 		if (puv_addr)
 			puv_addr = tiler_reorient_topleft(
-					tiler_get_natural_addr(puv_addr),
+					tiler_get_natural_addr((void *)puv_addr),
 					orient, tiler_width/2, tiler_height/2);
 			DSSDBG(
 				"rotated addresses: 0x%0x, 0x%0x\n",
@@ -4287,16 +4704,16 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 
 	DSSDBG("%dx%d -> %p,%p %dx%d\n",
 	       width, height,
-	       paddr, puv_addr, out_width, out_height);
+	       (void *)paddr, (void *)puv_addr, out_width, out_height);
 
 	_dispc_set_pic_size(plane, width, height);
 	dispc_setup_plane_fifo(plane, fifo_low, fifo_high);
 
 	/* non interlaced */
-	int ch_width = width;
-	int ch_height = height;
-	int out_ch_width = out_width;
-	int out_ch_height = out_height;
+	ch_width = width;
+	ch_height = height;
+	out_ch_width = out_width;
+	out_ch_height = out_height;
 
 	/* account for output color decimation */
 	switch (color_mode) {
@@ -4321,8 +4738,8 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	}
 
 	/* we must scale NV12 format */
-	int scale_x = width != out_width || ch_width != out_ch_width;
-	int scale_y = height != out_height || ch_height != out_ch_height;
+	scale_x = width != out_width || ch_width != out_ch_width;
+	scale_y = height != out_height || ch_height != out_ch_height;
 	_dispc_set_scaling(plane, width, height,
 			   out_width, out_height,
 			   0, three_taps, false, scale_x, scale_y);
@@ -4356,7 +4773,7 @@ void dispc_go_wb(void)
 		goto end;
 	}
 	REG_FLD_MOD(DISPC_CONTROL2, 1, 6, 6);
-    printk("dispc_go_wb");
+    DSSDBG("dispc_go_wb\n");
 end:
 	enable_clocks(0);
 }

@@ -288,6 +288,9 @@ static int taal_bl_update_status(struct backlight_device *dev)
 	int level;
 	enum omap_dsi_index ix;
 
+	if (cpu_is_omap44xx())
+		return;
+
 	ix = (dssdev->channel == OMAP_DSS_CHANNEL_LCD) ? DSI1 : DSI2;
 
 	if (dev->props.fb_blank == FB_BLANK_UNBLANK &&
@@ -820,6 +823,8 @@ static int taal_suspend(struct omap_dss_device *dssdev)
 	struct taal_data *td = dev_get_drvdata(&dssdev->dev);
 	int r;
 
+	if (cpu_is_omap44xx())
+		return;
 	dev_dbg(&dssdev->dev, "suspend\n");
 
 	mutex_lock(&td->lock);
@@ -844,6 +849,9 @@ static int taal_resume(struct omap_dss_device *dssdev)
 {
 	struct taal_data *td = dev_get_drvdata(&dssdev->dev);
 	int r;
+
+	if (cpu_is_omap44xx())
+		return;
 
 	dev_dbg(&dssdev->dev, "resume\n");
 

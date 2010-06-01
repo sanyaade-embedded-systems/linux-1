@@ -129,7 +129,9 @@ enum omap_color_mode {
 		OMAP_DSS_COLOR_RGBX24_32_ALGN | OMAP_DSS_COLOR_XRGB15 |
 		OMAP_DSS_COLOR_RGB12U | OMAP_DSS_COLOR_RGB16 |
 		OMAP_DSS_COLOR_RGB24U | OMAP_DSS_COLOR_RGB24P |
-		OMAP_DSS_COLOR_YUV2 | OMAP_DSS_COLOR_UYVY,
+		OMAP_DSS_COLOR_YUV2 | OMAP_DSS_COLOR_UYVY |
+		OMAP_DSS_COLOR_ARGB32 | OMAP_DSS_COLOR_RGBA32 |
+		OMAP_DSS_COLOR_RGBX32,
 
 	OMAP_DSS_COLOR_VID2_OMAP3 =
 		OMAP_DSS_COLOR_NV12 | OMAP_DSS_COLOR_RGBA12 |
@@ -487,14 +489,14 @@ struct omap_writeback {
 	struct list_head list;
 	bool								enabled;
 	bool								info_dirty;
-
+	bool								first_time;
 	/* mutex to control access to wb data */
 	struct mutex lock;
 	struct omap_writeback_info info;
-	bool (*check_wb)(int overlayId, int managerId);
+	bool (*check_wb)(struct omap_writeback *wb);
 
-	int (*set_wb_info)(struct omap_writeback *wb);
-	void (*get_wb_info)(struct omap_writeback *wb);
+	int (*set_wb_info)(struct omap_writeback *wb, struct omap_writeback_info *info);
+	void (*get_wb_info)(struct omap_writeback *wb, struct omap_writeback_info *info);
 
 };
 
@@ -672,6 +674,7 @@ struct omap_overlay_manager *omap_dss_get_overlay_manager(int num);
 
 int omap_dss_get_num_overlays(void);
 struct omap_overlay *omap_dss_get_overlay(int num);
+struct omap_writeback *omap_dss_get_wb(int num);
 
 void omapdss_default_get_resolution(struct omap_dss_device *dssdev,
 		u16 *xres, u16 *yres);
