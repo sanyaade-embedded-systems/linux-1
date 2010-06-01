@@ -449,12 +449,11 @@ static int sdp4430_panel_enable_hdmi(struct omap_dss_device *dssdev)
 	return 0;
 }
 
-static int sdp4430_panel_disable_hdmi(struct omap_dss_device *dssdev)
+static void sdp4430_panel_disable_hdmi(struct omap_dss_device *dssdev)
 {
 	gpio_set_value(HDMI_GPIO_60, 1);
 	gpio_set_value(HDMI_GPIO_41, 1);
 
-	return 0;
 }
 
 static __attribute__ ((unused)) void __init sdp4430_hdmi_init(void)
@@ -501,12 +500,11 @@ static int sdp4430_panel_enable_pico_DLP(struct omap_dss_device *dssdev)
 	return 0;
 }
 
-static int sdp4430_panel_disable_pico_DLP(struct omap_dss_device *dssdev)
+static void sdp4430_panel_disable_pico_DLP(struct omap_dss_device *dssdev)
 {
 	gpio_set_value(DLP_4430_GPIO_40, 0);
 	gpio_set_value(DLP_4430_GPIO_45, 0);
 
-	return 0;
 }
 
 static struct omap_dss_device sdp4430_picoDLP_device = {
