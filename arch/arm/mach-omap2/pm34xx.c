@@ -527,10 +527,14 @@ void omap_sram_idle(void)
 				cm_read_mod_reg(OMAP3430ES2_SGX_MOD, CM_FCLKEN) |
 				cm_read_mod_reg(OMAP3430ES2_USBHOST_MOD, CM_FCLKEN);
 		if (!fclk_status) {
+#ifndef CONFIG_OMAP_SMARTREFLEX_CLASS1P5
 			if ((mpu_next_state <= PWRDM_POWER_RET) && (iva_next_state <= PWRDM_POWER_RET))
 				omap_smartreflex_disable(SR1, 1);
+#endif
 			if (core_next_state <= PWRDM_POWER_RET) {
+#ifndef CONFIG_OMAP_SMARTREFLEX_CLASS1P5
 				omap_smartreflex_disable(SR2, 1);
+#endif
 				if (cpu_is_omap3630())
 					program_vdd2_opp_3630();
 				else if (cpu_is_omap3430())
@@ -703,8 +707,10 @@ void omap_sram_idle(void)
 	 * retention or off
 	 */
 	if (!fclk_status) {
+#ifndef CONFIG_OMAP_SMARTREFLEX_CLASS1P5
 		if (mpu_next_state <= PWRDM_POWER_RET)
 			omap_smartreflex_enable(SR1);
+#endif		
 		if (core_next_state <= PWRDM_POWER_RET) {
 			cm_rmw_mod_reg_bits(OMAP3430_AUTO_CORE_DPLL_MASK,
 						0x0, PLL_MOD, CM_AUTOIDLE);
@@ -712,7 +718,9 @@ void omap_sram_idle(void)
 				reprogram_vdd2_opp_3630();
 			else if (cpu_is_omap3430())
 				reprogram_vdd2_opp_3430();
+#ifndef CONFIG_OMAP_SMARTREFLEX_CLASS1P5
 			omap_smartreflex_enable(SR2);
+#endif
 		}
 	}
 

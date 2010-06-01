@@ -456,12 +456,15 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 			omap_voltage_scale(res, vt, vc);
 		}
 	}
+
 	if (!sr_class1p5)
 		omap_smartreflex_enable(res);
+#ifdef CONFIG_OMAP_SMARTREFLEX_CLASS1P5
 	else if (!oppl[target_level - 1].sr_adjust_vsel) {
 		sr_recalibrate(res, oppl, target_level);
 		sr_timer_init();
 	}
+#endif
 	return ret;
 }
 
