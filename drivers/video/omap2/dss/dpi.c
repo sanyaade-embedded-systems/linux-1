@@ -111,8 +111,8 @@ static int dpi_set_dispc_clk(int lcd_channel_ix, bool is_tft, unsigned long pck_
 static int dpi_set_mode(struct omap_dss_device *dssdev)
 {
 	struct omap_video_timings *t = &dssdev->panel.timings;
-	int lck_div, pck_div;
-	unsigned long fck;
+	int lck_div = 0, pck_div = 0;
+	unsigned long fck = 0;
 	unsigned long pck;
 	bool is_tft;
 	int r = 0, lcd_channel_ix = 0;
@@ -157,8 +157,8 @@ static int dpi_set_mode(struct omap_dss_device *dssdev)
 	else
 		dispc_set_lcd_timings(OMAP_DSS_CHANNEL_LCD, t);
 
-err1:
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
+err1:
 	dsi_pll_uninit(lcd_channel_ix);
 #endif
 err0:
@@ -210,7 +210,7 @@ static void dpi_start_auto_update(struct omap_dss_device *dssdev)
 int omapdss_dpi_display_enable(struct omap_dss_device *dssdev)
 {
 	int r;
-	int val, lcd_channel_ix = 1;
+	int lcd_channel_ix = 1;
 
 	if (dssdev->channel == OMAP_DSS_CHANNEL_LCD2) {
 		printk("Lcd channel index 1");
