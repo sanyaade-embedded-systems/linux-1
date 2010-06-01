@@ -327,7 +327,7 @@ int ispresizer_try_pipeline(struct isp_res_device *isp_res,
 {
 	struct device *dev = to_device(isp_res);
 
-	u32 rsz, rsz_7, rsz_4;
+	u32 rsz;
 	u32 sph;
 	int max_in_otf, max_out_7tap;
 
@@ -365,24 +365,11 @@ int ispresizer_try_pipeline(struct isp_res_device *isp_res,
 
 	pipe->rsz_out_h &= 0xfffffffe;
 	sph = DEFAULTSTPHASE;
-
-	rsz_7 = ((pipe->rsz_crop.height - 7) * 256) / (pipe->rsz_out_h - 1);
-	rsz_4 = ((pipe->rsz_crop.height - 4) * 256) / (pipe->rsz_out_h - 1);
-
 	rsz = (pipe->rsz_crop.height * 256) / pipe->rsz_out_h;
 
-	if (rsz <= MID_RESIZE_VALUE) {
-		rsz = rsz_4;
-		if (rsz < MINIMUM_RESIZE_VALUE) {
-			rsz = MINIMUM_RESIZE_VALUE;
-			pipe->rsz_out_h =
-				(((pipe->rsz_crop.height - 4) * 256) / rsz) + 1;
-			dev_dbg(dev,
-				"resizer: %s: using height %d instead\n",
-				__func__, pipe->rsz_out_h);
-		}
-	} else {
-		rsz = rsz_7;
+	if (rsz > MID_RESIZE_VALUE) {
+		rsz = ((pipe->rsz_crop.height - 7) * 256) /
+		      (pipe->rsz_out_h - 1);
 		if (pipe->rsz_out_w > max_out_7tap)
 			pipe->rsz_out_w = max_out_7tap;
 		if (rsz > MAXIMUM_RESIZE_VALUE) {
@@ -393,13 +380,20 @@ int ispresizer_try_pipeline(struct isp_res_device *isp_res,
 				"resizer: %s: using height %d instead\n",
 				__func__, pipe->rsz_out_h);
 		}
-	}
-
-	if (rsz > MID_RESIZE_VALUE) {
 		pipe->rsz_crop.height =
 			(((64 * sph) + ((pipe->rsz_out_h - 1) * rsz) + 32)
 			 / 256) + 7;
 	} else {
+		rsz = ((pipe->rsz_crop.height - 4) * 256) /
+		      (pipe->rsz_out_h - 1);
+		if (rsz < MINIMUM_RESIZE_VALUE) {
+			rsz = MINIMUM_RESIZE_VALUE;
+			pipe->rsz_out_h =
+				(((pipe->rsz_crop.height - 4) * 256) / rsz) + 1;
+			dev_dbg(dev,
+				"resizer: %s: using height %d instead\n",
+				__func__, pipe->rsz_out_h);
+		}
 		pipe->rsz_crop.height =
 			(((32 * sph) + ((pipe->rsz_out_h - 1) * rsz) + 16)
 			 / 256) + 4;
@@ -411,13 +405,11 @@ int ispresizer_try_pipeline(struct isp_res_device *isp_res,
 
 	pipe->rsz_out_w &= 0xfffffff0;
 	sph = DEFAULTSTPHASE;
-
-	rsz_7 = ((pipe->rsz_crop.width - 7) * 256) / (pipe->rsz_out_w - 1);
-	rsz_4 = ((pipe->rsz_crop.width - 4) * 256) / (pipe->rsz_out_w - 1);
-
 	rsz = (pipe->rsz_crop.width * 256) / pipe->rsz_out_w;
+
 	if (rsz > MID_RESIZE_VALUE) {
-		rsz = rsz_7;
+		rsz = ((pipe->rsz_crop.width - 7) * 256) /
+		      (pipe->rsz_out_w - 1);
 		if (rsz > MAXIMUM_RESIZE_VALUE) {
 			rsz = MAXIMUM_RESIZE_VALUE;
 			pipe->rsz_out_w =
@@ -427,25 +419,21 @@ int ispresizer_try_pipeline(struct isp_res_device *isp_res,
 				"resizer: %s: using width %d instead\n",
 				__func__, pipe->rsz_out_w);
 		}
+		pipe->rsz_crop.width =
+			(((64 * sph) + ((pipe->rsz_out_w - 1) * rsz) + 32)
+			 / 256) + 7;
 	} else {
-		rsz = rsz_4;
+		rsz = ((pipe->rsz_crop.width - 7) * 256) /
+		      (pipe->rsz_out_w - 1);
 		if (rsz < MINIMUM_RESIZE_VALUE) {
 			rsz = MINIMUM_RESIZE_VALUE;
 			pipe->rsz_out_w =
-				(((pipe->rsz_crop.width - 4) * 256) / rsz) + 1;
+				(((pipe->rsz_crop.width - 7) * 256) / rsz) + 1;
 			pipe->rsz_out_w = (pipe->rsz_out_w + 0xf) & 0xfffffff0;
 			dev_dbg(dev,
 				"resizer: %s: using width %d instead\n",
 				__func__, pipe->rsz_out_w);
 		}
-	}
-
-	/* Recalculate input based on TRM equations */
-	if (rsz > MID_RESIZE_VALUE) {
-		pipe->rsz_crop.width =
-			(((64 * sph) + ((pipe->rsz_out_w - 1) * rsz) + 32)
-			 / 256) + 7;
-	} else {
 		pipe->rsz_crop.width =
 			(((32 * sph) + ((pipe->rsz_out_w - 1) * rsz) + 16)
 			 / 256) + 7;
