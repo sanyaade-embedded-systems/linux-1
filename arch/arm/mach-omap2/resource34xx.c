@@ -370,6 +370,7 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 {
 	int i, ret = 0, raise;
 	unsigned long freq;
+	u8 fbb_enabled = false;
 
 	/* See if have a freq associated, if not, invalid opp */
 	ret = opp_to_freq(&freq, opp_type, target_level);
@@ -390,34 +391,24 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 	 * PRM_LDO_ABB_SETUP.SR2EN if it is to be bypassed for
 	 * slow OPP.
 	 */
-	if (cpu_is_omap3630()) {
-		if (res == VDD1_OPP) {
-			switch (target_level) {
-			case VDD1_OPP4:
-				prm_rmw_mod_reg_bits(OMAP3630_SR2_WT_CNT_MASK,
-				sr2_wt_cnt_val, OMAP3430_GR_MOD,
-				OMAP3630_PRM_LDO_ABB_CTRL);
-				prm_rmw_mod_reg_bits(OMAP3630_OPP_SEL, 0x1,
-				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_SETUP);
-				prm_set_mod_reg_bits(OMAP3630_SR2_EN,
-				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
-					break;
-			case VDD1_OPP1:
-			case VDD1_OPP2:
-			case VDD1_OPP3:
-				prm_rmw_mod_reg_bits(OMAP3630_OPP_SEL, 0x3,
-				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_SETUP);
-				prm_clear_mod_reg_bits(OMAP3630_SR2_EN,
-				OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
-					break;
-				}
-			}
-	}
 	for (i = 0; i < 2; i++) {
-		if (i == raise)
+		if (i == raise) {
+			if (cpu_is_omap3630()) {
+				if ((raise == 1) && (res == VDD1_OPP) &&
+					(target_level >= VDD1_OPP4))
+					enable_fbb();
+					fbb_enabled = true;
+			}
+
 			ret = program_opp_freq(res, target_level,
 					current_level);
-		else {
+			if (cpu_is_omap3630()) {
+				if ((raise == 0) && (res == VDD1_OPP) &&
+					(target_level < VDD1_OPP4) && (fbb_enabled == true))
+					disable_fbb();
+					fbb_enabled = false;
+			}
+		} else {
 			u8 vc, vt;
 			struct omap_opp *oppx;
 			unsigned long uvdc;

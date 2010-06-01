@@ -1350,6 +1350,24 @@ int omap3_get_min_vdd2_opp(void)
 }
 EXPORT_SYMBOL(omap3_get_min_vdd2_opp);
 
+void enable_fbb()
+{
+	prm_rmw_mod_reg_bits(OMAP3630_SR2_WT_CNT_MASK,
+		sr2_wt_cnt_val, OMAP3430_GR_MOD,
+		OMAP3630_PRM_LDO_ABB_CTRL);
+	prm_rmw_mod_reg_bits(OMAP3630_OPP_SEL, 0x1,
+		OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_SETUP);
+	prm_set_mod_reg_bits(OMAP3630_SR2_EN,
+		OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
+}
+
+void disable_fbb()
+{
+	prm_rmw_mod_reg_bits(OMAP3630_OPP_SEL, 0x3,
+		OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_SETUP);
+	prm_clear_mod_reg_bits(OMAP3630_SR2_EN,
+		OMAP3430_GR_MOD, OMAP3630_PRM_LDO_ABB_CTRL);
+}
 
 static int __init pwrdms_setup(struct powerdomain *pwrdm, void *unused)
 {
