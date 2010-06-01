@@ -17,6 +17,7 @@
 #include <plat/control.h>
 #include <plat/mmc.h>
 #include <plat/omap-pm.h>
+#include <plat/omap_device.h>
 
 #include "hsmmc.h"
 
@@ -30,7 +31,7 @@ static u16 control_mmc1;
 
 static struct hsmmc_controller {
 	char				name[HSMMC_NAME_LEN + 1];
-} hsmmc[OMAP34XX_NR_MMC];
+} hsmmc[OMAP44XX_NR_MMC];
 
 #if defined(CONFIG_ARCH_OMAP3) && defined(CONFIG_PM)
 
@@ -194,7 +195,7 @@ static void hsmmc23_before_set_reg(struct device *dev, int slot,
 	}
 }
 
-static struct omap_mmc_platform_data *hsmmc_data[OMAP34XX_NR_MMC] __initdata;
+static struct omap_mmc_platform_data *hsmmc_data[OMAP44XX_NR_MMC] __initdata;
 
 void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 {
@@ -202,6 +203,7 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 	int nr_hsmmc = ARRAY_SIZE(hsmmc_data);
 	int i;
 	u32 reg;
+	int controller_cnt = 0;
 
 	if (!cpu_is_omap44xx()) {
 		if (cpu_is_omap2430()) {
@@ -237,6 +239,8 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 			pr_debug("MMC%d: already configured\n", c->mmc);
 			continue;
 		}
+
+		controller_cnt++;
 
 		mmc = kzalloc(sizeof(struct omap_mmc_platform_data),
 			      GFP_KERNEL);
@@ -319,6 +323,12 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 			mmc->slots[0].before_set_reg = hsmmc23_before_set_reg;
 			mmc->slots[0].after_set_reg = NULL;
 			break;
+		case 4:
+		case 5:
+			/* TODO Update required */
+			mmc->slots[0].before_set_reg = NULL;
+			mmc->slots[0].after_set_reg = NULL;
+			break;
 		default:
 			pr_err("MMC%d configuration not supported!\n", c->mmc);
 			kfree(mmc);
@@ -327,7 +337,7 @@ void __init omap2_hsmmc_init(struct omap2_hsmmc_info *controllers)
 		hsmmc_data[c->mmc - 1] = mmc;
 	}
 
-	omap2_init_mmc(hsmmc_data, OMAP34XX_NR_MMC);
+	omap2_init_mmc(hsmmc_data, controller_cnt);
 
 	/* pass the device nodes back to board setup code */
 	for (c = controllers; c->mmc; c++) {

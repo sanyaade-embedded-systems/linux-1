@@ -1027,6 +1027,12 @@ static int _setup(struct omap_hwmod *oh)
 
 	oh->_state = _HWMOD_STATE_INITIALIZED;
 
+	/* if IDLEST values are not set, use module defaults */
+	if (!oh->prcm.omap2.idlest_reg_id)
+		oh->prcm.omap2.idlest_reg_id = oh->prcm.omap2.prcm_reg_id;
+	if (!oh->prcm.omap2.idlest_idle_bit)
+		oh->prcm.omap2.idlest_idle_bit = oh->prcm.omap2.module_bit;
+
 	r = _enable(oh);
 	if (r) {
 		pr_warning("omap_hwmod: %s: cannot be enabled (%d)\n",
