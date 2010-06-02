@@ -20,6 +20,10 @@
 #include <plat/board.h>
 #include <plat/omap_hwmod.h>
 
+#ifdef CONFIG_TIWLAN_SDIO
+#include <linux/mmc/card.h>
+#endif
+
 #define OMAP15XX_NR_MMC		1
 #define OMAP16XX_NR_MMC		2
 #define OMAP1_MMC_SIZE		0x080
@@ -54,6 +58,13 @@
 #define MMC_SUPPORT_3V			(1 << 1)
 #define MMC_SUPPORT_18V_3V		(1 << 2)
 
+#ifdef CONFIG_TIWLAN_SDIO
+struct embedded_sdio_data {
+struct sdio_cis cis;
+struct sdio_embedded_func *funcs;
+unsigned int quirks;
+};
+#endif
 
 struct mmc_dev_attr {
 	u8 flags;
@@ -155,6 +166,13 @@ struct omap_mmc_platform_data {
 		int (*card_detect)(struct device *dev, int slot);
 
 		unsigned int ban_openended:1;
+
+#ifdef CONFIG_TIWLAN_SDIO
+                struct embedded_sdio_data *embedded_sdio;
+                int (*register_status_notify)
+                        (void (*callback)(int card_present, void *dev_id),
+                        void *dev_id);
+#endif
 
 	} slots[OMAP_MMC_MAX_SLOTS];
 };
