@@ -90,6 +90,8 @@ struct power_state {
 	struct list_head node;
 };
 
+struct power_state *per_pwrst;
+
 static LIST_HEAD(pwrst_list);
 
 static void (*_omap_sram_idle)(u32 *addr, int save_state);
@@ -97,8 +99,12 @@ static void (*_omap_sram_idle)(u32 *addr, int save_state);
 static int (*_omap_save_secure_sram)(u32 *addr);
 
 static struct powerdomain *mpu_pwrdm, *neon_pwrdm;
-static struct powerdomain *core_pwrdm, *per_pwrdm;
+static struct powerdomain *core_pwrdm, *per_pwrdm, *wkup_pwrdm;
 static struct powerdomain *cam_pwrdm, *iva2_pwrdm;
+
+#define PER_WAKEUP_ERRATA_XYZ (1 << 0)
+static u16 pm34xx_errata;
+#define IS_PM34XX_ERRATA(id) (pm34xx_errata & (id))
 
 static inline void omap3_per_save_context(void)
 {
@@ -459,16 +465,38 @@ void omap_sram_idle(void)
 	core_next_state = pwrdm_read_next_pwrst(core_pwrdm);
 	core_logic_state = pwrdm_read_next_logic_pwrst(core_pwrdm);
 
-	if (per_next_state < PWRDM_POWER_ON) {
-		omap_uart_prepare_idle(2, per_next_state);
-		omap2_gpio_prepare_for_idle(per_next_state);
-		if (per_next_state == PWRDM_POWER_OFF) {
-			if (core_next_state == PWRDM_POWER_ON) {
+	if (IS_PM34XX_ERRATA(PER_WAKEUP_ERRATA_XYZ)) {
+
+		per_next_state = per_pwrst->next_state;
+
+		if (per_next_state == PWRDM_POWER_OFF)
+			if (core_next_state != PWRDM_POWER_OFF)
 				per_next_state = PWRDM_POWER_RET;
-				pwrdm_set_next_pwrst(per_pwrdm, per_next_state);
-				per_state_modified = 1;
-			} else
+
+		if (per_next_state < PWRDM_POWER_ON) {
+			omap_uart_prepare_idle(2, per_next_state);
+			omap2_gpio_prepare_for_idle(per_next_state);
+
+			pwrdm_set_next_pwrst(per_pwrdm, per_next_state);
+			if (per_next_state == PWRDM_POWER_OFF) {
+				pwrdm_add_sleepdep(mpu_pwrdm, per_pwrdm);
 				omap3_per_save_context();
+			}
+		}
+
+	} else {
+		if (per_next_state < PWRDM_POWER_ON) {
+			omap_uart_prepare_idle(2, per_next_state);
+			omap2_gpio_prepare_for_idle(per_next_state);
+			if (per_next_state == PWRDM_POWER_OFF) {
+				if (core_next_state == PWRDM_POWER_ON) {
+					per_next_state = PWRDM_POWER_RET;
+					pwrdm_set_next_pwrst(per_pwrdm,
+								per_next_state);
+					per_state_modified = 1;
+				} else
+					omap3_per_save_context();
+			}
 		}
 	}
 
@@ -548,6 +576,21 @@ void omap_sram_idle(void)
 		omap3_enable_io_chain();
 	}
 	omap3_intc_prepare_idle();
+
+	if (IS_PM34XX_ERRATA(PER_WAKEUP_ERRATA_XYZ)) {
+		u32 coreprev_state = prm_read_mod_reg(CORE_MOD, PM_PREPWSTST);
+		u32 perprev_state =  prm_read_mod_reg(OMAP3430_PER_MOD,
+				PM_PREPWSTST);
+		if ((coreprev_state == 0x3) && (perprev_state == 0x0)) {
+				pr_err("Entering the corner case...WA2\n");
+				/*
+				 * We dont seem to have a real recovery
+				 * other than reset
+				 */
+				BUG();
+				/* let wdt Reset the device???????? - eoww */
+		}
+	}
 
 	/*
 	* On EMU/HS devices ROM code restores a SRDC value
@@ -674,8 +717,16 @@ void omap_sram_idle(void)
 		}
 		omap2_gpio_resume_after_idle();
 		omap_uart_resume_idle(2);
-		if (per_state_modified)
-			pwrdm_set_next_pwrst(per_pwrdm, PWRDM_POWER_OFF);
+
+		if (IS_PM34XX_ERRATA(PER_WAKEUP_ERRATA_XYZ)) {
+			if (per_next_state == PWRDM_POWER_OFF) {
+				pwrdm_set_next_pwrst(per_pwrdm,
+							PWRDM_POWER_RET);
+				pwrdm_del_sleepdep(mpu_pwrdm, per_pwrdm);
+			}
+		} else if (per_state_modified)
+				pwrdm_set_next_pwrst(per_pwrdm,
+							PWRDM_POWER_OFF);
 	}
 
 	/* Disable IO-PAD and IO-CHAIN wakeup */
@@ -1218,6 +1269,10 @@ void omap3_pm_off_mode_enable(int enable)
 	list_for_each_entry(pwrst, &pwrst_list, node) {
 		if (strcmp("iva2_pwrdm", pwrst->pwrdm->name)) {
 			pwrst->next_state = state;
+		if (IS_PM34XX_ERRATA(PER_WAKEUP_ERRATA_XYZ))
+			if ((state == PWRDM_POWER_OFF) &&
+				(!strcmp("per_pwrdm", pwrst->pwrdm->name)))
+				continue;
 			if (strcmp("mpu_pwrdm", pwrst->pwrdm->name))
 				set_pwrdm_state(pwrst->pwrdm, state);
 		}
@@ -1343,6 +1398,14 @@ void omap_push_sram_idle(void)
 				save_secure_ram_context_sz);
 }
 
+void pm_errata_configure(void)
+{
+	if (cpu_is_omap343x() || (cpu_is_omap3630() &&
+			(omap_rev() <= OMAP3630_REV_ES1_1))) {
+		pm34xx_errata |= PER_WAKEUP_ERRATA_XYZ;
+	}
+}
+
 static int __init omap3_pm_init(void)
 {
 	struct power_state *pwrst, *tmp;
@@ -1361,6 +1424,8 @@ static int __init omap3_pm_init(void)
 
 	if (!cpu_is_omap34xx())
 		return -ENODEV;
+
+	pm_errata_configure();
 
 	printk(KERN_ERR "Power Management for TI OMAP3.\n");
 
@@ -1395,6 +1460,7 @@ static int __init omap3_pm_init(void)
 	core_pwrdm = pwrdm_lookup("core_pwrdm");
 	cam_pwrdm = pwrdm_lookup("cam_pwrdm");
 	iva2_pwrdm = pwrdm_lookup("iva2_pwrdm");
+	wkup_pwrdm = pwrdm_lookup("wkup_pwrdm");
 
 	omap_push_sram_idle();
 #ifdef CONFIG_SUSPEND
@@ -1412,6 +1478,12 @@ static int __init omap3_pm_init(void)
 	 * http://marc.info/?l=linux-omap&m=121852150710062&w=2
 	*/
 	pwrdm_add_wkdep(per_pwrdm, core_pwrdm);
+
+	if (IS_PM34XX_ERRATA(PER_WAKEUP_ERRATA_XYZ)) {
+		/* Allow per to wakeup the system */
+		if (cpu_is_omap34xx())
+			pwrdm_add_wkdep(per_pwrdm, wkup_pwrdm);
+		}
 
 	if (omap_type() != OMAP2_DEVICE_TYPE_GP) {
 		omap3_secure_ram_storage =
@@ -1433,6 +1505,14 @@ static int __init omap3_pm_init(void)
 
 	pm_dbg_regset_init(1);
 	pm_dbg_regset_init(2);
+
+	if (IS_PM34XX_ERRATA(PER_WAKEUP_ERRATA_XYZ)) {
+		/* Store the address of per pwrst */
+		list_for_each_entry(pwrst, &pwrst_list, node) {
+			if ((strcmp("per_pwrdm", pwrst->pwrdm->name) == 0))
+				per_pwrst =  pwrst;
+		}
+	}
 
 	omap3_save_scratchpad_contents();
 err1:
