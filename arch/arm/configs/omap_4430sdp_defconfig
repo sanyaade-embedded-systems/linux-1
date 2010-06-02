@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Tue Jun  1 16:56:27 2010
+# Wed Jun  2 15:00:51 2010
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -260,6 +260,8 @@ CONFIG_OMAP_PM_NOOP=y
 #
 # OMAP Board Type
 #
+# CONFIG_WIFI_CONTROL_FUNC is not set
+# CONFIG_TIWLAN_SDIO is not set
 CONFIG_MACH_OMAP_4430SDP=y
 CONFIG_ERRATA_OMAP4_AXI2OCP=y
 
