@@ -251,7 +251,7 @@ static struct dsi_struct
 	struct dsi_update_region update_region;
 
 	bool te_enabled;
-
+	bool use_ext_te;
 	struct work_struct framedone_work;
 	void (*framedone_callback)(int, void *);
 	void *framedone_data;
@@ -2985,6 +2985,7 @@ static void dsi_update_screen_dispc(struct omap_dss_device *dssdev,
 	struct dsi_struct *p_dsi;
 	enum omap_dsi_index ix;
 	unsigned channel;
+	bool use_te_trigger;
 	/* line buffer is 1024 x 24bits */
 	/* XXX: for some reason using full buffer size causes considerable TX
 	 * slowdown with update sizes that fill the whole buffer */
@@ -2994,6 +2995,8 @@ static void dsi_update_screen_dispc(struct omap_dss_device *dssdev,
 	p_dsi = (ix == DSI1) ? &dsi1 : &dsi2;
 
 	channel = p_dsi->update_channel;
+
+	use_te_trigger = p_dsi->te_enabled && !p_dsi->use_ext_te;
 
 	DSSDBG("dsi_update_screen_dispc(%d,%d %dx%d)\n",
 			x, y, w, h);
@@ -3024,7 +3027,7 @@ static void dsi_update_screen_dispc(struct omap_dss_device *dssdev,
 	dsi_vc_write_long_header(ix, channel, DSI_DT_DCS_LONG_WRITE,
 			packet_len, 0);
 
-	if (p_dsi->te_enabled)
+	if (use_te_trigger)
 		l = FLD_MOD(l, 1, 30, 30); /* TE_EN */
 	else
 		l = FLD_MOD(l, 1, 31, 31); /* TE_START */
@@ -3045,7 +3048,7 @@ static void dsi_update_screen_dispc(struct omap_dss_device *dssdev,
 
 	dss_start_update(dssdev);
 
-	if (p_dsi->te_enabled) {
+	if (use_te_trigger) {
 		/* disable LP_RX_TO, so that we can receive TE.  Time to wait
 		 * for TE is longer than the timer allows */
 		REG_FLD_MOD(ix, DSI_TIMING2, 0, 15, 15); /* LP_RX_TO */
@@ -3087,11 +3090,9 @@ static void dsi_framedone_timeout_work_callback(struct work_struct *work)
 	/* SIDLEMODE back to smart-idle */
 	dispc_enable_sidle();
 
-	if (cpu_is_omap44xx()) {
+	if (cpu_is_omap44xx())
 		/* Ensures recovery of DISPC after a failed lcd_enable*/
 		dispc_enable_lcd_out(OMAP_DSS_CHANNEL_LCD, 0);
-		dsi_reset_tx_fifo(DSI1, 0);
-	}
 
 	if (dsi1.te_enabled) {
 		/* enable LP_RX_TO again after the TE */
@@ -3135,11 +3136,9 @@ static void dsi2_framedone_timeout_work_callback(struct work_struct *work)
 	/* SIDLEMODE back to smart-idle */
 	dispc_enable_sidle();
 
-	if (cpu_is_omap44xx()) {
+	if (cpu_is_omap44xx())
 		/* Ensures recovery of DISPC after a failed lcd_enable*/
 		dispc_enable_lcd_out(OMAP_DSS_CHANNEL_LCD2, 0);
-		dsi_reset_tx_fifo(DSI2, 0);
-	}
 
 	if (dsi2.te_enabled) {
 		/* enable LP_RX_TO again after the TE */
@@ -3197,7 +3196,10 @@ static void dsi_handle_framedone(enum omap_dsi_index ix)
 	int r;
 	int channel;
 	struct dsi_struct *p_dsi;
+	bool use_te_trigger;
 	p_dsi = (ix == DSI1) ? &dsi1 : &dsi2;
+
+	use_te_trigger = p_dsi->te_enabled && !p_dsi->use_ext_te;
 
 	if (!cpu_is_omap44xx())
 		channel = p_dsi->update_channel;
@@ -3206,7 +3208,7 @@ static void dsi_handle_framedone(enum omap_dsi_index ix)
 
 	DSSDBG("FRAMEDONE\n");
 
-	if (p_dsi->te_enabled) {
+	if (use_te_trigger) {
 		/* enable LP_RX_TO again after the TE */
 		REG_FLD_MOD(ix, DSI_TIMING2, 1, 15, 15); /* LP_RX_TO */
 	}
@@ -3610,6 +3612,8 @@ int omapdss_dsi_display_enable(struct omap_dss_device *dssdev)
 	r = dsi_display_init_dsi(dssdev);
 	if (r)
 		goto err2;
+
+	p_dsi->use_ext_te = dssdev->phy.dsi.ext_te;
 
 	mutex_unlock(&p_dsi->lock);
 

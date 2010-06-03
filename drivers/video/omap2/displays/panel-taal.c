@@ -365,6 +365,15 @@ static irqreturn_t taal_te_isr(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t taal_te_isr2(int irq, void *data)
+{
+	struct omap_dss_device *dssdev = data;
+	struct taal_data *td = dev_get_drvdata(&dssdev->dev);
+	complete_all(&td->te_completion);
+
+	return IRQ_HANDLED;
+}
+
 static ssize_t taal_num_errors_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -543,6 +552,7 @@ static int taal_probe(struct omap_dss_device *dssdev)
 		r = -ENOMEM;
 		goto err1;
 	}
+
 	INIT_DELAYED_WORK_DEFERRABLE(&td->esd_work, taal_esd_work);
 
 	dev_set_drvdata(&dssdev->dev, td);
@@ -582,6 +592,22 @@ static int taal_probe(struct omap_dss_device *dssdev)
 
 	if (dssdev->phy.dsi.ext_te) {
 		int gpio = dssdev->phy.dsi.ext_te_gpio;
+		void __iomem *phymux_base = NULL;
+		int val;
+
+		phymux_base = ioremap(0x4A100000, 0x1000);
+
+		if (dssdev->channel == OMAP_DSS_CHANNEL_LCD) {
+			val = __raw_readl(phymux_base + 0x90);
+			val = val & 0xFFFFFFE0;
+			val = val | 0x11B;
+			__raw_writel(val, phymux_base + 0x90);
+		} else {
+			val = __raw_readl(phymux_base + 0x94);
+			val = val & 0xFFFFFFE0;
+			val = val | 0x11B;
+			__raw_writel(val, phymux_base + 0x94);
+		}
 
 		r = gpio_request(gpio, "taal irq");
 		if (r) {
@@ -591,10 +617,15 @@ static int taal_probe(struct omap_dss_device *dssdev)
 
 		gpio_direction_input(gpio);
 
-		r = request_irq(gpio_to_irq(gpio), taal_te_isr,
+		if (dssdev->channel == OMAP_DSS_CHANNEL_LCD) {
+			r = request_irq(gpio_to_irq(gpio), taal_te_isr,
+					IRQF_DISABLED | IRQF_TRIGGER_RISING,
+					"taal vsync", dssdev);
+		} else {
+			r = request_irq(gpio_to_irq(gpio), taal_te_isr2,
 				IRQF_DISABLED | IRQF_TRIGGER_RISING,
-				"taal vsync", dssdev);
-
+				"taal vsync2", dssdev);
+		}
 		if (r) {
 			dev_err(&dssdev->dev, "IRQ request failed\n");
 			gpio_free(gpio);
@@ -604,6 +635,7 @@ static int taal_probe(struct omap_dss_device *dssdev)
 		init_completion(&td->te_completion);
 
 		td->use_ext_te = true;
+		iounmap(phymux_base);
 	}
 
 	r = sysfs_create_group(&dssdev->dev.kobj, &taal_attr_group);
@@ -712,7 +744,7 @@ static int taal_power_on(struct omap_dss_device *dssdev)
 	if (r)
 		goto err;
 
-#ifdef TAAL_USE_ESD_CHECK
+#if TAAL_USE_ESD_CHECK
 	queue_delayed_work(td->esd_wq, &td->esd_work, TAAL_ESD_CHECK_PERIOD);
 #endif
 
@@ -873,6 +905,24 @@ err:
 	return r;
 }
 
+static int taal_wait_te(struct omap_dss_device *dssdev)
+{
+	struct taal_data *td = dev_get_drvdata(&dssdev->dev);
+	long wait = msecs_to_jiffies(500);
+
+	if (!td->use_ext_te || !td->te_enabled)
+		return 0;
+
+	INIT_COMPLETION(td->te_completion);
+	wait = wait_for_completion_timeout(&td->te_completion, wait);
+	if (wait == 0) {
+		dev_err(&dssdev->dev, "timeout waiting TE\n");
+		return -ETIME;
+	}
+
+	return 0;
+}
+
 static void taal_framedone_cb(int err, void *data)
 {
 	struct omap_dss_device *dssdev = data;
@@ -913,6 +963,9 @@ static int taal_update(struct omap_dss_device *dssdev,
 	r = taal_set_update_window(ix, x, y, w, h);
 	if (r)
 		goto err;
+
+	if (dssdev->phy.dsi.ext_te)
+		dssdev->driver->wait_for_te(dssdev);
 
 	/* We use VC(1) for VideoPort Data and VC(0) for L4 data */
 	if (cpu_is_omap44xx())
@@ -1308,7 +1361,7 @@ static struct omap_dss_driver taal_driver = {
 
 	.enable_te	= taal_enable_te,
 	.get_te		= taal_get_te,
-
+	.wait_for_te	= taal_wait_te,
 	.set_rotate	= taal_rotate,
 	.get_rotate	= taal_get_rotate,
 	.set_mirror	= taal_mirror,
@@ -1344,7 +1397,7 @@ static struct omap_dss_driver taal2_driver = {
 
 	.enable_te	= taal_enable_te,
 	.get_te		= taal_get_te,
-
+	.wait_for_te	= taal_wait_te,
 	.set_rotate	= taal_rotate,
 	.get_rotate	= taal_get_rotate,
 	.set_mirror	= taal_mirror,
