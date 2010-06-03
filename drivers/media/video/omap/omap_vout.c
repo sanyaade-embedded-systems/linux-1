@@ -2693,7 +2693,7 @@ static int __init omap_vout_create_video_devices(struct platform_device *pdev)
 		vid_dev->vouts[k] = vout;
 		vout->vid_dev = vid_dev;
 		/* Select video2 if only 1 overlay is controlled by V4L2 */
-		if (cpu_is_omap44xx()) {
+		if (!cpu_is_omap44xx()) {
 			if (pdev->num_resources == 1)
 				vout->vid_info.overlays[0] = vid_dev->overlays[k + 2];
 			else
