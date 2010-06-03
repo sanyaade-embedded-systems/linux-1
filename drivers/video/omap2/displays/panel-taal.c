@@ -65,6 +65,10 @@
 /* #define TAAL_USE_ESD_CHECK */
 #define TAAL_ESD_CHECK_PERIOD	msecs_to_jiffies(5000)
 
+static bool dsi_te_sync = 1;
+module_param_named(dsi_te_sync, dsi_te_sync, bool, 0644);
+MODULE_PARM_DESC(dsi_te_sync, "enable/disable tearing");
+
 static int _taal_enable_te(struct omap_dss_device *dssdev, bool enable);
 static int taal_update(struct omap_dss_device *dssdev,
 						u16 x, u16 y, u16 w, u16 h);
@@ -964,7 +968,7 @@ static int taal_update(struct omap_dss_device *dssdev,
 	if (r)
 		goto err;
 
-	if (dssdev->phy.dsi.ext_te)
+	if (dsi_te_sync && dssdev->phy.dsi.ext_te)
 		dssdev->driver->wait_for_te(dssdev);
 
 	/* We use VC(1) for VideoPort Data and VC(0) for L4 data */
