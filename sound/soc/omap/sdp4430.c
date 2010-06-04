@@ -320,7 +320,7 @@ static int __init sdp4430_soc_init(void)
 {
 	int ret;
 
-	if (!machine_is_omap_4430sdp()) {
+	if (!machine_is_omap_4430sdp() && !machine_is_omap4_panda()) {
 		pr_debug("Not SDP4430!\n");
 		return -ENODEV;
 	}

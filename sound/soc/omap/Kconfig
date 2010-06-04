@@ -94,7 +94,7 @@ config SND_OMAP_SOC_SDP3430
 
 config SND_OMAP_SOC_SDP4430
 	tristate "SoC Audio support for Texas Instruments SDP4430"
-	depends on TWL4030_CORE && SND_OMAP_SOC && MACH_OMAP_4430SDP
+	depends on TWL4030_CORE && SND_OMAP_SOC && (MACH_OMAP_4430SDP || MACH_OMAP4_PANDA)
 	select SND_OMAP_SOC_ABE
 	select SND_SOC_ABE_TWL6040
 	select SND_OMAP_SOC_MCBSP
@@ -110,7 +110,7 @@ config SND_OMAP_SOC_HDMI
 
 config SND_OMAP_VOICE_TEST
 	tristate "SoC Audio support for test Voice Call"
-	depends on TWL4030_CORE && SND_OMAP_SOC && MACH_OMAP_4430SDP
+	depends on TWL4030_CORE && SND_OMAP_SOC && (MACH_OMAP_4430SDP || MACH_OMAP4_PANDA)
 	help
 	 Say Y if you want to test modem voice call
 
