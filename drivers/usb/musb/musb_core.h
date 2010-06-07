@@ -475,6 +475,10 @@ struct musb_csr_regs {
 
 struct musb_context_registers {
 
+	void __iomem *musb_base;
+	u8 dyn_fifo;
+	u8 is_host_enabled;
+
 #if defined(CONFIG_ARCH_OMAP34XX) || defined(CONFIG_ARCH_OMAP2430)
 	u32 otg_sysconfig, otg_forcestandby;
 #endif

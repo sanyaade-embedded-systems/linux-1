@@ -53,6 +53,8 @@
 #include "sdrc.h"
 #include "omap3-opp.h"
 
+extern void musb_context_save_restore(int);
+
 #ifdef CONFIG_SUSPEND
 static suspend_state_t suspend_state = PM_SUSPEND_ON;
 static inline bool is_suspending(void)
@@ -553,6 +555,8 @@ void omap_sram_idle(void)
 					     OMAP3_PRM_VOLTCTRL_OFFSET);
 			omap3_core_save_context(PWRDM_POWER_OFF);
 			omap3_prcm_save_context();
+			/* Save MUSB context */
+			musb_context_save_restore(1);
 		} else if ((core_next_state == PWRDM_POWER_RET) &&
 				(core_logic_state == PWRDM_POWER_OFF)) {
 			/* Disable DPLL4 autoidle bit so that register
@@ -651,6 +655,8 @@ void omap_sram_idle(void)
 			if (core_prev_state == PWRDM_POWER_OFF) {
 				omap3_prcm_restore_context();
 				omap2_sms_restore_context();
+				/* Restore MUSB context */
+				musb_context_save_restore(0);
 			}
 			omap3_sram_restore_context();
 			/*

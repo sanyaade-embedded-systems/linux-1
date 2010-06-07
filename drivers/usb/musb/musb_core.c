@@ -107,6 +107,7 @@
 
 #include "musb_core.h"
 
+static struct musb_context_registers musb_context;
 
 #ifdef CONFIG_ARCH_DAVINCI
 #include "davinci.h"
@@ -796,6 +797,11 @@ static irqreturn_t musb_stage2_irq(struct musb *musb, u8 int_usb,
 		case OTG_STATE_B_PERIPHERAL:
 		case OTG_STATE_B_IDLE:
 			musb_g_disconnect(musb);
+			/*
+			 * Enable FORCESTANDBY to disable the module
+			 * on a disconnection.
+			 */
+			omap_writel(1, 0x480AB414);
 			break;
 #endif	/* GADGET */
 		default:
@@ -1327,10 +1333,13 @@ static int __init musb_core_init(u16 musb_type, struct musb *musb)
 	/* log core options (read using indexed model) */
 	reg = musb_read_configdata(mbase);
 
+	musb_context.dyn_fifo = 0;
+
 	strcpy(aInfo, (reg & MUSB_CONFIGDATA_UTMIDW) ? "UTMI-16" : "UTMI-8");
 	if (reg & MUSB_CONFIGDATA_DYNFIFO) {
 		strcat(aInfo, ", dyn FIFOs");
 		musb->dyn_fifo = true;
+		musb_context.dyn_fifo = 1;
 	}
 	if (reg & MUSB_CONFIGDATA_MPRXE) {
 		strcat(aInfo, ", bulk combine");
@@ -2027,6 +2036,7 @@ bad_config:
 	/* host side needs more setup */
 	if (is_host_enabled(musb)) {
 		struct usb_hcd	*hcd = musb_to_hcd(musb);
+		musb_context.is_host_enabled = 1;
 
 		otg_set_host(musb->xceiv, &hcd->self);
 
@@ -2058,6 +2068,7 @@ bad_config:
 
 	} else /* peripheral is enabled */ {
 		MUSB_DEV_MODE(musb);
+		musb_context.is_host_enabled = 0;
 		musb->xceiv->default_a = 0;
 		musb->xceiv->state = OTG_STATE_B_IDLE;
 
@@ -2117,6 +2128,7 @@ fail:
 static u64	*orig_dma_mask;
 #endif
 
+static struct musb_context_registers musb_context;
 static int __init musb_probe(struct platform_device *pdev)
 {
 	struct device	*dev = &pdev->dev;
@@ -2129,6 +2141,7 @@ static int __init musb_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	base = ioremap(iomem->start, iomem->end - iomem->start + 1);
+	musb_context.musb_base  = base;
 	if (!base) {
 		dev_err(dev, "ioremap failed\n");
 		return -ENOMEM;
@@ -2167,14 +2180,12 @@ static int __devexit musb_remove(struct platform_device *pdev)
 
 #ifdef	CONFIG_PM
 
-static struct musb_context_registers musb_context;
-
-void musb_save_context(struct musb *musb)
+void musb_save_context(void)
 {
 	int i;
-	void __iomem *musb_base = musb->mregs;
+	void __iomem *musb_base = musb_context.musb_base;
 
-	if (is_host_enabled(musb)) {
+	if (musb_context.is_host_enabled) {
 		musb_context.frame = musb_readw(musb_base, MUSB_FRAME);
 		musb_context.testmode = musb_readb(musb_base, MUSB_TESTMODE);
 	}
@@ -2196,7 +2207,7 @@ void musb_save_context(struct musb *musb)
 		musb_context.index_regs[i].rxcsr =
 			musb_readw(musb_base, 0x10 + MUSB_RXCSR);
 
-		if (musb->dyn_fifo) {
+		if (musb_context.dyn_fifo) {
 			musb_context.index_regs[i].txfifoadd =
 					musb_read_txfifoadd(musb_base);
 			musb_context.index_regs[i].rxfifoadd =
@@ -2206,7 +2217,7 @@ void musb_save_context(struct musb *musb)
 			musb_context.index_regs[i].rxfifosz =
 					musb_read_rxfifosz(musb_base);
 		}
-		if (is_host_enabled(musb)) {
+		if (musb_context.is_host_enabled) {
 			musb_context.index_regs[i].txtype =
 				musb_readb(musb_base, 0x10 + MUSB_TXTYPE);
 			musb_context.index_regs[i].txinterval =
@@ -2236,16 +2247,17 @@ void musb_save_context(struct musb *musb)
 
 	musb_platform_save_context(&musb_context);
 }
+EXPORT_SYMBOL(musb_save_context);
 
-void musb_restore_context(struct musb *musb)
+void musb_restore_context(void)
 {
 	int i;
-	void __iomem *musb_base = musb->mregs;
+	void __iomem *musb_base = musb_context.musb_base;
 	void __iomem *ep_target_regs;
 
 	musb_platform_restore_context(&musb_context);
 
-	if (is_host_enabled(musb)) {
+	if (musb_context.is_host_enabled) {
 		musb_writew(musb_base, MUSB_FRAME, musb_context.frame);
 		musb_writeb(musb_base, MUSB_TESTMODE, musb_context.testmode);
 	}
@@ -2266,7 +2278,7 @@ void musb_restore_context(struct musb *musb)
 		musb_writew(musb_base, 0x10 + MUSB_RXCSR,
 			musb_context.index_regs[i].rxcsr);
 
-		if (musb->dyn_fifo) {
+		if (musb_context.dyn_fifo) {
 			musb_write_txfifosz(musb_base,
 				musb_context.index_regs[i].txfifosz);
 			musb_write_rxfifosz(musb_base,
@@ -2277,7 +2289,7 @@ void musb_restore_context(struct musb *musb)
 				musb_context.index_regs[i].rxfifoadd);
 		}
 
-		if (is_host_enabled(musb)) {
+		if (musb_context.is_host_enabled) {
 			musb_writeb(musb_base, 0x10 + MUSB_TXTYPE,
 				musb_context.index_regs[i].txtype);
 			musb_writeb(musb_base, 0x10 + MUSB_TXINTERVAL,
@@ -2308,6 +2320,7 @@ void musb_restore_context(struct musb *musb)
 
 	musb_writeb(musb_base, MUSB_INDEX, musb_context.index);
 }
+EXPORT_SYMBOL(musb_restore_context);
 
 static int musb_suspend(struct device *dev)
 {
@@ -2330,7 +2343,7 @@ static int musb_suspend(struct device *dev)
 		 */
 	}
 
-	musb_save_context(musb);
+	musb_save_context();
 
 	if (musb->set_clock)
 		musb->set_clock(musb->clock, 0);
@@ -2353,7 +2366,7 @@ static int musb_resume_noirq(struct device *dev)
 	else
 		clk_enable(musb->clock);
 
-	musb_restore_context(musb);
+	musb_restore_context();
 
 	/* for static cmos like DaVinci, register values were preserved
 	 * unless for some reason the whole soc powered down or the USB

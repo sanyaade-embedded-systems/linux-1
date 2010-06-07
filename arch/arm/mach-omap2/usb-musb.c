@@ -38,6 +38,11 @@
 #define OTG_SYSSTATUS     0x408
 #define OTG_SYSS_RESETDONE BIT(0)
 
+#define OTG_FORCESTDBY 	0x414
+
+extern void musb_save_context(void);
+extern void musb_restore_context(void);
+
 static struct platform_device dummy_pdev = {
 	.dev = {
 		.bus = &platform_bus_type,
@@ -220,6 +225,19 @@ void __init usb_musb_init(void)
 
 	usb_musb_pm_init();
 }
+
+void musb_context_save_restore(int flag)
+{
+	if (flag) {
+		musb_save_context();
+	} else {
+		musb_restore_context();
+		/* Disable FORCESTANDBY */
+		__raw_writel(0, otg_base + OTG_FORCESTDBY);
+	}
+
+}
+EXPORT_SYMBOL(musb_context_save_restore);
 
 #else
 void __init usb_musb_init(void)
