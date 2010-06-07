@@ -560,7 +560,7 @@ static irqreturn_t musb_stage0_irq(struct musb *musb, u8 int_usb,
 			musb_set_vbus(musb, 0);
 		handled = IRQ_HANDLED;
 	}
-
+#endif
 
 	if (int_usb & MUSB_INTR_SUSPEND) {
 		DBG(1, "SUSPEND (%s) devctl %02x power %02x\n",
@@ -623,7 +623,7 @@ static irqreturn_t musb_stage0_irq(struct musb *musb, u8 int_usb,
 			break;
 		}
 	}
-
+#ifdef CONFIG_USB_MUSB_HDRC_HCD
 	if (int_usb & MUSB_INTR_CONNECT) {
 		struct usb_hcd *hcd = musb_to_hcd(musb);
 		void __iomem *mbase = musb->mregs;
