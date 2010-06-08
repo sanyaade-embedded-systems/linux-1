@@ -35,7 +35,6 @@
 #define SMARTREFLEX_NAME_LEN	24
 #define SR_DISABLE_TIMEOUT	200
 
-static int sys_volt_margin;
 struct omap_sr {
 	int			srid;
 	int			is_sr_reset;
@@ -403,47 +402,6 @@ u32 cal_test_nvalue(u32 sennval, u32 senpval)
 		(rnsenp << NVALUERECIPROCAL_RNSENP_SHIFT) |
 		(rnsenn << NVALUERECIPROCAL_RNSENN_SHIFT);
 }
-
-
-static void sr_calculate_rg(u32 rfuse, u32 gain_fuse, int delta_nt,
-				u32 *rnsen, u32 *sengain)
-{
-	u32  nadj;
-	nadj = ((1 << (gain_fuse + 8)) / rfuse) + delta_nt;
-	cal_reciprocal(nadj, sengain, rnsen);
-}
-
-u32 cal_opp_nvalue(u32 efuse_nval)
-{
-	u32 sen_pgain_fuse, sen_ngain_fuse, sen_prn_fuse, sen_nrn_fuse;
-	u32 sen_nrn, sen_ngain, sen_prn, sen_pgain;
-	int  delta_n = 3 * sys_volt_margin;
-	int  delta_p = (26 * sys_volt_margin)/10;
-	sen_pgain_fuse = (efuse_nval & 0x00F00000) >>
-			NVALUERECIPROCAL_SENPGAIN_SHIFT;
-	sen_ngain_fuse = (efuse_nval & 0x000F0000) >>
-			NVALUERECIPROCAL_SENNGAIN_SHIFT;
-	sen_prn_fuse = (efuse_nval & 0x0000FF00) >>
-			NVALUERECIPROCAL_RNSENP_SHIFT;
-	sen_nrn_fuse = (efuse_nval & 0x000000FF) >>
-			NVALUERECIPROCAL_RNSENN_SHIFT;
-	sr_calculate_rg(sen_nrn_fuse, sen_ngain_fuse, delta_n, &sen_nrn,
-					&sen_ngain);
-	sr_calculate_rg(sen_prn_fuse, sen_pgain_fuse, delta_p, &sen_prn,
-					&sen_pgain);
-	return  (sen_pgain <<  NVALUERECIPROCAL_SENPGAIN_SHIFT) |
-		(sen_ngain << NVALUERECIPROCAL_SENNGAIN_SHIFT)
-		| (sen_prn << NVALUERECIPROCAL_RNSENP_SHIFT) |
-		(sen_nrn << NVALUERECIPROCAL_RNSENN_SHIFT);
-
-}
-/* To get System voltage Margin from Bootargs*/
-static int __init get_sys_volt_margin(char *s)
-{
-	get_option(&s, &sys_volt_margin);
-	return 1;
-}
-__setup("sys_volt_margin=", get_sys_volt_margin);
 
 /**
 * sr_enable : Enables the smartreflex module.

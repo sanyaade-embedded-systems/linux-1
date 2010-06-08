@@ -239,7 +239,6 @@ void omap_sr_register_class(struct omap_smartreflex_class_data *class_data);
 /**
  * API that board file can use if needed to calculate the N target values
  */
-u32 cal_opp_nvalue(u32 efuse_nval);
 u32 cal_test_nvalue(u32 sennval, u32 senpval);
 #else
 static inline void omap_smartreflex_enable(int srid) {}

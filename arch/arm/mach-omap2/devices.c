@@ -761,54 +761,14 @@ struct omap_device_pm_latency omap_sr_latency[] = {
 static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 						int sr_id)
 {
-	if (cpu_is_omap3630()) {
-		if (sr_id == SR1) {
-			/* TODO: When opp framework come into picture use
-			 * appropriate API's to find out number of opp's.
-			 */
-			sr_data->no_opp = 4;
-			sr_data->sr_nvalue =
-					kzalloc(sizeof(sr_data->sr_nvalue) *
-					sr_data->no_opp , GFP_KERNEL);
-			if (!sr_data->sr_nvalue)
-				return;
-
-			sr_data->senn_mod = 0x1;
-			sr_data->senp_mod = 0x1;
-			sr_data->sr_nvalue[3] = cal_opp_nvalue(omap_ctrl_readl(
-					OMAP36XX_CONTROL_FUSE_OPP1G_VDD1));
-			sr_data->sr_nvalue[2] = cal_opp_nvalue(omap_ctrl_readl(
-					OMAP36XX_CONTROL_FUSE_OPP130_VDD1));
-			sr_data->sr_nvalue[1] =  cal_opp_nvalue(omap_ctrl_readl(
-					OMAP36XX_CONTROL_FUSE_OPP100_VDD1));
-			sr_data->sr_nvalue[0] = cal_opp_nvalue(omap_ctrl_readl(
-					OMAP36XX_CONTROL_FUSE_OPP50_VDD1));
-		} else if (sr_id == SR2) {
-			/* TODO: When opp framework come into picture use
-			 * appropriate API's to find out number of opp's.
-			 */
-			sr_data->no_opp = 2;
-			sr_data->sr_nvalue =
-				kzalloc(sizeof(sr_data->sr_nvalue) *
-				sr_data->no_opp , GFP_KERNEL);
-			if (!sr_data->sr_nvalue)
-				return;
-
-			sr_data->senn_mod = 0x1;
-			sr_data->senp_mod = 0x1;
-			sr_data->sr_nvalue[1] = cal_opp_nvalue(omap_ctrl_readl(
-					OMAP36XX_CONTROL_FUSE_OPP100_VDD2));
-			sr_data->sr_nvalue[0] =  cal_opp_nvalue(omap_ctrl_readl(
-					OMAP36XX_CONTROL_FUSE_OPP50_VDD2));
-			}
-	} else if (cpu_is_omap343x()) {
+	if (cpu_is_omap343x()) {
 		if (sr_id == SR1) {
 			/* TODO: When opp framework come into picture use
 			 * appropriate API's to find out number of opp's.
 			 */
 			sr_data->no_opp = 5;
 			sr_data->sr_nvalue =
-					kzalloc(sizeof(sr_data->sr_nvalue) *
+				kzalloc(sizeof(sr_data->sr_nvalue) *
 					sr_data->no_opp , GFP_KERNEL);
 			if (!sr_data->sr_nvalue)
 				return;
@@ -839,8 +799,6 @@ static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 			sr_data->sr_nvalue =
 				kzalloc(sizeof(sr_data->sr_nvalue) *
 				sr_data->no_opp , GFP_KERNEL);
-			if (!sr_data->sr_nvalue)
-				return;
 
 			sr_data->senn_mod =
 				(omap_ctrl_readl(OMAP343X_CONTROL_FUSE_SR) &
@@ -858,7 +816,7 @@ static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 					OMAP343X_CONTROL_FUSE_OPP1_VDD2);
 		}
 	}
-	/*TODO: OMAP4 Support*/
+	/*TODO: Add 3630/OMAP4 support */
 
 }
 
@@ -940,8 +898,8 @@ static void __init omap36xx_sr_testing_nvalues(
 		sr_data->senn_mod = 0x1;
 
 		/* OMAP3630 nvalues for each VDD2 opp */
-		sr_data->sr_nvalue[0] = 0x898beb;
 		sr_data->sr_nvalue[1] = 0x9a8cee;
+		sr_data->sr_nvalue[0] = 0x898beb;
 	}
 
 }
@@ -956,8 +914,8 @@ static void __init sr_set_nvalues(struct omap_smartreflex_data *sr_data,
 			omap36xx_sr_testing_nvalues(sr_data, srid);
 	} else
 		sr_read_efuse(sr_data, srid);
-
 }
+
 static void __init omap_init_smartreflex(void)
 {
 	int i = 0;
