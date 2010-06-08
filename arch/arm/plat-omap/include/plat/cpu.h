@@ -492,6 +492,7 @@ IS_OMAP_TYPE(3517, 0x3517)
 #define OMAP_3630		0x3630
 #define OMAP_3630_800	0x3630800
 #define OMAP_3630_1000	0x36301000
+#define OMAP_3630_1300	0x36301300
 
 int omap_chip_is(struct omap_chip_id oci);
 void omap2_check_revision(void);
