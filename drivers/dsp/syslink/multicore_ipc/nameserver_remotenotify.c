@@ -484,13 +484,13 @@ int nameserver_remotenotify_get(void *rhandle,
 			value_len);
 
 	obj->msg[offset]->request_status = false;
-	obj->msg[offset]->request = 0;
-	obj->msg[offset]->response = 0;
 	retval = value_len;
 
 inval_len_error:
 notify_error:
 request_error:
+	obj->msg[offset]->request = 0;
+	obj->msg[offset]->response = 0;
 	gatepeterson_leave(obj->params.gate, key);
 exit:
 	return retval;
