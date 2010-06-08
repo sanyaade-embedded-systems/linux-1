@@ -236,6 +236,9 @@ void sr_disable(int srid);
  */
 void omap_sr_register_class(struct omap_smartreflex_class_data *class_data);
 
+void sr_calculate_rg(u32 rfuse, u32 gain_fuse, u32 *rnsen,
+						u32 *sengain);
+u32 cal_opp_nvalue(u32 efuse_nval);
 /**
  * API that board file can use if needed to calculate the N target values
  */

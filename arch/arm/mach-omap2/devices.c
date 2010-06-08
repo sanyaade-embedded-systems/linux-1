@@ -761,7 +761,41 @@ struct omap_device_pm_latency omap_sr_latency[] = {
 static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 						int sr_id)
 {
-	if (cpu_is_omap343x()) {
+	if (cpu_is_omap3630()) {
+		if (sr_id == SR1) {
+			/* TODO: When opp framework come into picture use
+			 * appropriate API's to find out number of opp's.
+			 */
+			sr_data->no_opp = 4;
+			sr_data->sr_nvalue =
+					kzalloc(sizeof(sr_data->sr_nvalue) *
+					sr_data->no_opp , GFP_KERNEL);
+			sr_data->senn_mod = 0x1;
+			sr_data->senp_mod = 0x1;
+			sr_data->sr_nvalue[3] = cal_opp_nvalue(omap_ctrl_readl(
+					OMAP36XX_CONTROL_FUSE_OPP1G_VDD1));
+			sr_data->sr_nvalue[2] = cal_opp_nvalue(omap_ctrl_readl(
+					OMAP36XX_CONTROL_FUSE_OPP130_VDD1));
+			sr_data->sr_nvalue[1] =  cal_opp_nvalue(omap_ctrl_readl(
+					OMAP36XX_CONTROL_FUSE_OPP100_VDD1));
+			sr_data->sr_nvalue[0] = cal_opp_nvalue(omap_ctrl_readl(
+					OMAP36XX_CONTROL_FUSE_OPP50_VDD1));
+		} else if (sr_id == SR2) {
+			/* TODO: When opp framework come into picture use
+			 * appropriate API's to find out number of opp's.
+			 */
+			sr_data->no_opp = 2;
+			sr_data->sr_nvalue =
+				kzalloc(sizeof(sr_data->sr_nvalue) *
+				sr_data->no_opp , GFP_KERNEL);
+			sr_data->senn_mod = 0x1;
+			sr_data->senp_mod = 0x1;
+			sr_data->sr_nvalue[1] = cal_opp_nvalue(omap_ctrl_readl(
+					OMAP36XX_CONTROL_FUSE_OPP100_VDD2));
+			sr_data->sr_nvalue[0] =  cal_opp_nvalue(omap_ctrl_readl(
+					OMAP36XX_CONTROL_FUSE_OPP50_VDD2));
+			}
+	} else if (cpu_is_omap343x()) {
 		if (sr_id == SR1) {
 			/* TODO: When opp framework come into picture use
 			 * appropriate API's to find out number of opp's.
@@ -816,8 +850,6 @@ static void __init sr_read_efuse(struct omap_smartreflex_data *sr_data,
 					OMAP343X_CONTROL_FUSE_OPP1_VDD2);
 		}
 	}
-	/*TODO: Add 3630/OMAP4 support */
-
 }
 
 /* Hard coded nvalues for testing purposes, may cause device to hang! */

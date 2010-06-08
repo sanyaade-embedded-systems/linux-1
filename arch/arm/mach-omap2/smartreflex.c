@@ -403,6 +403,38 @@ u32 cal_test_nvalue(u32 sennval, u32 senpval)
 		(rnsenn << NVALUERECIPROCAL_RNSENN_SHIFT);
 }
 
+
+void sr_calculate_rg(u32 rfuse, u32 gain_fuse, u32 *rnsen,
+						u32 *sengain)
+{
+	u32  nadj;
+	nadj = ((1 << (gain_fuse + 8)) / rfuse);
+	cal_reciprocal(nadj, sengain, rnsen);
+}
+
+u32 cal_opp_nvalue(u32 efuse_nval)
+{
+	u32 sen_pgain_fuse, sen_ngain_fuse, sen_prn_fuse, sen_nrn_fuse;
+	u32 sen_nrn, sen_ngain, sen_prn, sen_pgain;
+	sen_pgain_fuse = (efuse_nval & 0x00F00000) >>
+			NVALUERECIPROCAL_SENPGAIN_SHIFT;
+	sen_ngain_fuse = (efuse_nval & 0x000F0000) >>
+			NVALUERECIPROCAL_SENNGAIN_SHIFT;
+	sen_prn_fuse = (efuse_nval & 0x0000FF00) >>
+			NVALUERECIPROCAL_RNSENP_SHIFT;
+	sen_nrn_fuse = (efuse_nval & 0x000000FF) >>
+			NVALUERECIPROCAL_RNSENN_SHIFT;
+	sr_calculate_rg(sen_nrn_fuse, sen_ngain_fuse, &sen_nrn,
+					&sen_ngain);
+	sr_calculate_rg(sen_prn_fuse, sen_pgain_fuse, &sen_prn,
+					&sen_pgain);
+	return  (sen_pgain <<  NVALUERECIPROCAL_SENPGAIN_SHIFT) |
+		(sen_ngain << NVALUERECIPROCAL_SENNGAIN_SHIFT)
+		| (sen_prn << NVALUERECIPROCAL_RNSENP_SHIFT) |
+		(sen_nrn << NVALUERECIPROCAL_RNSENN_SHIFT);
+
+}
+
 /**
 * sr_enable : Enables the smartreflex module.
 * @srid - The id of the sr module to be enabled.
