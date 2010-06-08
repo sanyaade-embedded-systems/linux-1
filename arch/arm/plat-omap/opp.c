@@ -150,6 +150,35 @@ struct omap_opp *opp_find_freq_exact(enum opp_t opp_type,
 	return OPP_TERM(oppl) ? ERR_PTR(-ENOENT) : oppl;
 }
 
+int volt_opp(enum opp_t opp_type, unsigned long u_volt)
+
+{
+	struct omap_opp *oppl;
+	struct omap_opp *oppl_next;
+	int id;
+	if (unlikely(opp_type >= OPP_TYPES_MAX)) {
+		pr_err("%s: Invalid parameters being passed\n", __func__);
+	return ERR_PTR(-EINVAL);
+	}
+	oppl = _opp_list[opp_type];
+	oppl_next = oppl++;
+	if (!oppl)
+		return ERR_PTR(-ENOENT);
+	while (!OPP_TERM(oppl)) {
+		if (oppl_next->u_volt) {
+			if (oppl->u_volt <= u_volt && oppl_next->u_volt > u_volt
+						&& oppl->enabled)
+					break;
+		} else {
+			break;
+		}
+		oppl = oppl_next ;
+		oppl_next++;
+	}
+	id = oppl->opp_id;
+	return id;
+}
+
 struct omap_opp *opp_find_freq_ceil(enum opp_t opp_type, unsigned long *freq)
 {
 	struct omap_opp *oppl;

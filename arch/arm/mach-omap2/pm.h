@@ -26,6 +26,9 @@ extern int omap3_can_sleep(void);
 extern int set_pwrdm_state(struct powerdomain *pwrdm, u32 state);
 extern int omap3_idle_init(void);
 extern void vfp_pm_save_context(void);
+extern int volt_opp(enum opp_t opp_type, unsigned long u_volt);
+extern int get_vdd2_opp_volt(u8 vsel);
+extern int get_vdd1_opp_volt(u8 vsel);
 
 struct cpuidle_params {
 	u8  valid;

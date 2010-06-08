@@ -657,6 +657,24 @@ int get_vdd2_opp(void)
 
 	return curr_vdd2_opp;
 }
+int get_vdd1_opp_volt(u8 vsel)
+{
+	u8 opp_id;
+	unsigned long uvolt;
+	uvolt = omap_twl_vsel_to_uv(vsel);
+	opp_id = volt_opp(OPP_MPU, uvolt);
+	return opp_id;
+}
+
+int get_vdd2_opp_volt(u8 vsel)
+{
+	u8 opp_id;
+	unsigned long uvolt;
+	uvolt = omap_twl_vsel_to_uv(vsel);
+	opp_id = volt_opp(OPP_L3, uvolt);
+	return opp_id;
+}
+
 
 static struct omap_opp *c_vdd2_opp;
 int program_vdd2_opp_3430()
