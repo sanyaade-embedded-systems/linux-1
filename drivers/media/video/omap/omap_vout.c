@@ -2857,7 +2857,7 @@ static int __init omap_vout_probe(struct platform_device *pdev)
 							OMAP_DSS_UPDATE_AUTO);
 #else	/* MANUAL_UPDATE */
 				if (dssdrv->enable_te)
-					dssdrv->enable_te(def_display, 0);
+					dssdrv->enable_te(def_display, 1);
 				if (dssdrv->set_update_mode)
 					dssdrv->set_update_mode(def_display,
 							OMAP_DSS_UPDATE_MANUAL);
@@ -2928,6 +2928,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 	struct omap_dss_device *cur_display;
 	struct omap_vout_device *vout = (struct omap_vout_device *)arg;
 	int irq = 0;
+	u32 flags;
 #if !(CONFIG_OMAP2_DSS_HDMI)
 	u32 fid;
 #endif
@@ -2950,7 +2951,7 @@ void omap_vout_isr(void *arg, unsigned int irqstatus)
 		irq = DISPC_IRQ_FRAMEDONE;
 	else if (cur_display->channel == OMAP_DSS_CHANNEL_LCD2)
 		irq = DISPC_IRQ_FRAMEDONE2;
-	spin_lock(&vout->vbq_lock);
+	spin_lock_irqsave(&vout->vbq_lock, flags);
 	do_gettimeofday(&timevalue);
 
 	if (vout->wb_enabled &&
@@ -3067,7 +3068,7 @@ venc:
 #endif
 
 vout_isr_err:
-	spin_unlock(&vout->vbq_lock);
+	spin_unlock_irqrestore(&vout->vbq_lock, flags);
 }
 
 static void omap_vout_cleanup_device(struct omap_vout_device *vout)

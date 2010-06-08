@@ -619,6 +619,7 @@ struct omap_dss_driver {
 	int (*enable_te)(struct omap_dss_device *dssdev, bool enable);
 	int (*get_te)(struct omap_dss_device *dssdev);
 
+	int (*wait_for_te)(struct omap_dss_device *dssdev);
 	u8 (*get_rotate)(struct omap_dss_device *dssdev);
 	int (*set_rotate)(struct omap_dss_device *dssdev, u8 rotate);
 
