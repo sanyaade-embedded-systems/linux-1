@@ -191,6 +191,33 @@ static void __init init_voltagecontroller(void)
 	pm_dbg_regset_init(2);
 }
 
+static u32 get_errorgain(int opp_id)
+
+{
+	u32 errorgain;
+	switch (opp_id) {
+	case VDD1_OPP1:
+		errorgain =
+		OMAP36XX_VP_CONFIG_ERRORGAIN_OPP1;
+			break;
+	case VDD1_OPP2:
+		errorgain =
+		OMAP36XX_VP_CONFIG_ERRORGAIN_OPP2;
+			break;
+	case VDD1_OPP3:
+		errorgain =
+		OMAP36XX_VP_CONFIG_ERRORGAIN_OPP3;
+			break;
+	case VDD1_OPP4:
+		errorgain =
+		OMAP36XX_VP_CONFIG_ERRORGAIN_OPP4;
+			break;
+	default:
+		printk(KERN_ALERT "ERROR");
+	}
+	return  errorgain;
+}
+
 static void vp_latch_vsel(int vp_id)
 {
 	u32 vsel, vpconfig;
@@ -275,9 +302,11 @@ static void __init vp_reg_offs_configure(int vp_id)
 {
 	struct clk *sys_ck;
 	u32 sys_clk_speed, timeout_val;
+	int opp_id;
 
 	if (cpu_is_omap34xx()) {
 		if (vp_id == VP1) {
+			opp_id = get_vdd1_opp();
 			vp_reg[vp_id].vp_vonfig_reg =
 					OMAP3430_PRM_VP1_CONFIG;
 			vp_reg[vp_id].vp_vstepmin_reg =
@@ -293,10 +322,15 @@ static void __init vp_reg_offs_configure(int vp_id)
 			/* OMAP3430 has error gain varying btw higher and
 			 * lower opp's
 			 */
-			vp_reg[vp_id].vp_errorgain = (((get_vdd1_opp() > 2) ?
+			if (cpu_is_omap3630()) {
+				vp_reg[vp_id].vp_errorgain = get_errorgain
+					(opp_id) << OMAP3430_ERRORGAIN_SHIFT;
+			} else {
+				vp_reg[vp_id].vp_errorgain = (((opp_id > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
+			}
 			vp_reg[vp_id].vp_vddmin = (OMAP3_VP1_VLIMITTO_VDDMIN <<
 					OMAP3430_VDDMIN_SHIFT);
 			vp_reg[vp_id].vp_vddmax = (OMAP3_VP1_VLIMITTO_VDDMAX <<
@@ -304,6 +338,7 @@ static void __init vp_reg_offs_configure(int vp_id)
 			vp_reg[vp_id].vp_tranxdone_status =
 					OMAP3430_VP1_TRANXDONE_ST;
 		} else if (vp_id == VP2) {
+			opp_id = get_vdd2_opp();
 			vp_reg[vp_id].vp_vonfig_reg =
 					OMAP3430_PRM_VP2_CONFIG;
 			vp_reg[vp_id].vp_vstepmin_reg =
@@ -319,10 +354,15 @@ static void __init vp_reg_offs_configure(int vp_id)
 			/* OMAP3430 has error gain varying btw higher and
 			 * lower opp's
 			 */
-			vp_reg[vp_id].vp_errorgain = (((get_vdd2_opp() > 2) ?
+			if (cpu_is_omap3630()) {
+				vp_reg[vp_id].vp_errorgain = get_errorgain
+					(opp_id) << OMAP3430_ERRORGAIN_SHIFT;
+			} else {
+				vp_reg[vp_id].vp_errorgain = (((opp_id > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
+			}
 			vp_reg[vp_id].vp_vddmin = (OMAP3_VP2_VLIMITTO_VDDMIN <<
 					OMAP3430_VDDMIN_SHIFT);
 			vp_reg[vp_id].vp_vddmax = (OMAP3_VP2_VLIMITTO_VDDMAX <<
@@ -375,6 +415,7 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 	u32 smps_steps = 0, smps_delay = 0;
 	int timeout = 0;
 	u32 abb_tranxdone_st;
+	int opp_id;
 
 	if (!((vdd == VDD1_OPP) || (vdd == VDD2_OPP))) {
 		pr_warning("Wrong vdd id passed to vp forceupdate\n");
@@ -388,11 +429,16 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 	/* OMAP3430 has errorgain varying btw higher and lower opp's */
 	if (cpu_is_omap34xx()) {
 		if (vdd == VDD1_OPP) {
-			vp_reg[vdd].vp_errorgain = (((get_vdd1_opp_volt
-							(target_vsel) > 2) ?
+			opp_id = get_vdd1_opp_volt(target_vsel);
+			if (cpu_is_omap3630()) {
+				vp_reg[vdd].vp_errorgain = get_errorgain(opp_id)
+						 << OMAP3430_ERRORGAIN_SHIFT;
+			} else {
+				vp_reg[vdd].vp_errorgain = (((opp_id > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
+			}
 			voltage_modify_reg(vc_reg.vc_cmdval0_reg,
 					VC_CMD_ON_MASK,
 					(target_vsel << VC_CMD_ON_SHIFT));
@@ -400,11 +446,16 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 			voltage_modify_reg(vc_reg.vc_cmdval1_reg,
 					VC_CMD_ON_MASK,
 					(target_vsel << VC_CMD_ON_SHIFT));
-			vp_reg[vdd].vp_errorgain = (((get_vdd2_opp_volt
-							(target_vsel) > 2) ?
+			opp_id = get_vdd2_opp_volt(target_vsel);
+			if (cpu_is_omap3630()) {
+				vp_reg[vdd].vp_errorgain = get_errorgain
+					(opp_id) << OMAP3430_ERRORGAIN_SHIFT ;
+			} else {
+				vp_reg[vdd].vp_errorgain = (((opp_id > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
+			}
 		}
 	}
 
@@ -537,28 +588,35 @@ static int vc_bypass_scale_voltage(u32 vdd, u8 target_vsel, u8 current_vsel)
 	u32 loop_cnt = 0, retries_cnt = 0;
 	u32 smps_steps = 0;
 	u32 smps_delay = 0;
+	int opp_id;
 
 	smps_steps = abs(target_vsel - current_vsel);
 
 	if (vdd == VDD1_OPP) {
+		opp_id = (get_vdd1_opp_volt(target_vsel));
 		voltage_modify_reg(vc_reg.vc_cmdval0_reg, VC_CMD_ON_MASK,
 				(target_vsel << VC_CMD_ON_SHIFT));
 		reg_addr = R_VDD1_SR_CONTROL;
 		/* OMAP3430 has errorgain varying btw higher and lower opp's */
-		if (cpu_is_omap34xx())
-			vp_reg[vdd].vp_errorgain = (((get_vdd1_opp_volt
-							(target_vsel) > 2) ?
+		if (cpu_is_omap3630())
+			vp_reg[vdd].vp_errorgain = get_errorgain(opp_id) <<
+				OMAP3430_ERRORGAIN_SHIFT;
+		else if (cpu_is_omap34xx())
+			vp_reg[vdd].vp_errorgain = (((opp_id > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
 	} else if (vdd == VDD2_OPP) {
+		opp_id = get_vdd2_opp_volt(target_vsel);
 		voltage_modify_reg(vc_reg.vc_cmdval1_reg, VC_CMD_ON_MASK,
 				(target_vsel << VC_CMD_ON_SHIFT));
 		reg_addr = R_VDD2_SR_CONTROL;
 		/* OMAP3430 has errorgain varying btw higher and lower opp's */
-		if (cpu_is_omap34xx())
-			vp_reg[vdd].vp_errorgain = (((get_vdd2_opp_volt
-							(target_vsel) > 2) ?
+		if (cpu_is_omap3630())
+			vp_reg[vdd].vp_errorgain = get_errorgain(opp_id) <<
+					OMAP3430_ERRORGAIN_SHIFT;
+		else if (cpu_is_omap34xx())
+			vp_reg[vdd].vp_errorgain = (((opp_id > 2) ?
 					(OMAP3_VP_CONFIG_ERRORGAIN_HIGHOPP) :
 					(OMAP3_VP_CONFIG_ERRORGAIN_LOWOPP)) <<
 					OMAP3430_ERRORGAIN_SHIFT);
