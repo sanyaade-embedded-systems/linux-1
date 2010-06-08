@@ -1235,6 +1235,10 @@ static int do_read(struct fsg_dev *fsg)
 
 
 /*-------------------------------------------------------------------------*/
+static int ignore_scsi_fua_bit;
+module_param_named(ignore_fua_bit, ignore_scsi_fua_bit, bool,
+		S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(ignore_fua_bit, "ignore_fua_bit.Default = 0");
 
 static int do_write(struct fsg_dev *fsg)
 {
@@ -1272,7 +1276,7 @@ static int do_write(struct fsg_dev *fsg)
 			curlun->sense_data = SS_INVALID_FIELD_IN_CDB;
 			return -EINVAL;
 		}
-		if (fsg->cmnd[1] & 0x08) {	// FUA
+		if ((fsg->cmnd[1] & 0x08) && !ignore_scsi_fua_bit) { /* FUA */
 			spin_lock(&curlun->filp->f_lock);
 			curlun->filp->f_flags |= O_DSYNC;
 			spin_unlock(&curlun->filp->f_lock);
