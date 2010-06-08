@@ -227,6 +227,7 @@ void init_opp(struct shared_resource *resp)
 	int ret;
 	u8 opp_id;
 	resp->no_of_users = 0;
+	unsigned long freq = 0;
 
 	/* Initialize the current level of the OPP resource
 	* to the  opp set by u-boot.
@@ -238,6 +239,7 @@ void init_opp(struct shared_resource *resp)
 		ret = freq_to_opp(&opp_id, OPP_MPU, dpll1_clk->rate);
 		BUG_ON(ret); /* TBD Cleanup handling */
 		curr_vdd1_opp = opp_id;
+		resp->max_level = RES_PERFORMANCE_DEFAULTLEVEL;
 	} else if (strcmp(resp->name, "vdd2_opp") == 0) {
 		vdd2_resp = resp;
 		dpll3_clk = clk_get(NULL, "dpll3_m2_ck");
@@ -245,6 +247,11 @@ void init_opp(struct shared_resource *resp)
 		ret = freq_to_opp(&opp_id, OPP_L3, l3_clk->rate);
 		BUG_ON(ret); /* TBD Cleanup handling */
 		curr_vdd2_opp = opp_id;
+	} else if (strcmp(resp->name, "vdd1_max") == 0) {
+		freq = ULONG_MAX;
+		opp_find_freq_floor(OPP_MPU, &freq);
+		ret = freq_to_opp(&resp->max_level, OPP_MPU, freq);
+		BUG_ON(ret); /* TBD Cleanup handling */
 	}
 	resp->curr_level = opp_id;
 	return;
@@ -504,6 +511,9 @@ int set_opp(struct shared_resource *resp, u32 target_level)
 	unsigned long l3_freq;
 
 	if (resp == vdd1_resp) {
+		if ((resp->max_level != 0) && (target_level > resp->max_level))
+			target_level = resp->max_level;
+
 		if (target_level < MAX_VDD2_OPP)
 			resource_release("vdd2_opp", &vdd2_dev);
 
@@ -565,6 +575,7 @@ int validate_opp(struct shared_resource *resp, u32 target_level)
 		return opp_to_freq(&x, OPP_MPU, target_level);
 	else if (strcmp(resp->name, "dsp_freq") == 0)
 		return opp_to_freq(&x, OPP_DSP, target_level);
+
 	return 0;
 }
 

@@ -20,6 +20,8 @@
 #include "powerdomain.h"
 #include <plat/opp.h>
 
+extern unsigned short get_opp_id(struct omap_opp *opp_freq_table,
+				unsigned long freq);
 /*
  * agent_id values for use with omap_pm_set_min_bus_tput():
  *
@@ -215,6 +217,22 @@ const struct omap_opp *omap_pm_dsp_get_opp_table(void);
  * target OPP ID; hence, this interface.  No return value.
  */
 void omap_pm_dsp_set_min_opp(u8 opp_id);
+
+/**
+ * omap_pm_set_max_dsp_freq - receive the max freq for DSP
+ * @dsp_maxfreq: max freq DSP can scale to
+ *
+ * If the dsp_maxfreq requested is greater than 65 MHz,
+ * set the max constraint on VDD1 can scale to 1G. Today, SRF only sets
+ * constraint in terms of min constraint. This feature is added for
+ * some usecase which requires the system to scale to a particular max
+ * limit, and needs the max limit to be set dynamically.
+ * However, once the max limit is lowered, it doesn't ignore any requests
+ * beyond that but honors those request and once the constraint
+ * is removed it will fall back to that level considering the current request
+ * on the resource.
+ */
+void omap_pm_set_max_dsp_freq(unsigned long dsp_maxfreq);
 
 /**
  * omap_pm_dsp_get_opp - report the current DSP OPP ID

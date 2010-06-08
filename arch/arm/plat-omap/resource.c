@@ -105,9 +105,20 @@ static int update_resource_level(struct shared_resource *resp)
 	struct users_list *user;
 	unsigned long target_level;
 	int ret;
+	u8 max_level;
 
 	/* Regenerate the target_value for the resource */
-	if (resp->flags & RES_TYPE_PERFORMANCE) {
+	if (resp->flags == RES_TYPE_VDD1_MAX) {
+		max_level = resp->max_level;
+		list_for_each_entry(user, &resp->users_list, node)
+			if (user->level < max_level)
+				max_level = user->level;
+
+		resp = resource_lookup("vdd1_opp");
+		resp->max_level = max_level;
+		ret = update_resource_level(resp);
+		return ret;
+	 } else if (resp->flags == RES_TYPE_PERFORMANCE) {
 		target_level = RES_PERFORMANCE_DEFAULTLEVEL;
 		list_for_each_entry(user, &resp->users_list, node)
 			if (user->level > target_level)

@@ -19,6 +19,7 @@
 #include <linux/cpufreq.h>
 #include <linux/device.h>
 #include <linux/module.h>
+#include <linux/err.h>
 
 #include <plat/omap-pm.h>
 #include <plat/powerdomain.h>
@@ -27,6 +28,10 @@
 
 #define LAT_RES_POSTAMBLE "_latency"
 #define MAX_LATENCY_RES_NAME 30
+
+/* If MPU @ 1G3 is enabled DSP frequncy is limited to 65 MHz */
+#define MPU_FREQ_1G		1000000000
+#define MAX_DSPFREQ_1G3MPU	65000000
 
 /**
  * get_lat_res_name - gets the latency resource name given a power domain name
@@ -183,6 +188,31 @@ const struct omap_opp *omap_pm_dsp_get_opp_table(void)
 
 	return NULL;
 }
+
+static struct device dummy_vdd1_dev;
+
+void omap_pm_set_max_dsp_freq(unsigned long dsp_maxfreq)
+{
+	struct omap_opp *opp;
+	u8 vdd1_maxopp;
+	unsigned long maxfreq = MPU_FREQ_1G;
+
+	pr_debug("OMAP PM: requests constraint for max DSP Frequency\n");
+
+	if (dsp_maxfreq > MAX_DSPFREQ_1G3MPU) {
+		opp = opp_find_freq_ceil(OPP_MPU, &maxfreq);
+		if (IS_ERR(opp)) {
+			printk(KERN_ERR "\nOMAP PM: could not find opp struct");
+			return;
+		}
+
+		vdd1_maxopp = opp_get_opp_id(opp);
+
+		resource_request("vdd1_max", &dummy_vdd1_dev, vdd1_maxopp);
+	} else
+		resource_request("vdd1_max", &dummy_vdd1_dev, 0);
+}
+EXPORT_SYMBOL(omap_pm_set_max_dsp_freq);
 
 void omap_pm_dsp_set_min_opp(u8 opp_id)
 {

@@ -32,6 +32,7 @@
 /* Types of resources */
 #define RES_TYPE_PERFORMANCE	0x1
 #define RES_TYPE_LATENCY	0x2
+#define RES_TYPE_VDD1_MAX	0x3
 
 struct shared_resource_ops; /* forward declaration */
 
@@ -47,6 +48,7 @@ struct shared_resource {
 	u8 no_of_users;
 	/* Current level of this resource */
 	u32 curr_level;
+	u8 max_level;
 	/* Used to store any resource specific data */
 	void  *resource_data;
 	/* List of all the current users for this resource */
