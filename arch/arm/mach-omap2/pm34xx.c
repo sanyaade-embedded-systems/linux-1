@@ -528,12 +528,15 @@ void omap_sram_idle(void)
 				cm_rmw_mod_reg_bits(OMAP3430_AUTO_CORE_DPLL_MASK,
 							0x1, PLL_MOD, CM_AUTOIDLE);
 			}
-		} else if ((core_next_state == PWRDM_POWER_RET) &&
-				(core_logic_state == PWRDM_POWER_OFF)) {
-		pwrdm_set_logic_retst(core_pwrdm, PWRDM_POWER_RET);
-		pwrdm_set_mem_retst(core_pwrdm, 0, PWRDM_POWER_RET);
-		pwrdm_set_mem_retst(core_pwrdm, 1, PWRDM_POWER_RET);
-		core_logic_state = PWRDM_POWER_RET;
+		} else if (((core_next_state == PWRDM_POWER_RET) &&
+				(core_logic_state == PWRDM_POWER_OFF)) ||
+				(core_next_state == PWRDM_POWER_OFF)) {
+			pwrdm_set_logic_retst(core_pwrdm, PWRDM_POWER_RET);
+			pwrdm_set_mem_retst(core_pwrdm, 0, PWRDM_POWER_RET);
+			pwrdm_set_mem_retst(core_pwrdm, 1, PWRDM_POWER_RET);
+			pwrdm_set_next_pwrst(core_pwrdm, PWRDM_POWER_RET);
+			core_logic_state = PWRDM_POWER_RET;
+			core_next_state = PWRDM_POWER_RET;
 		}
 	}
 
