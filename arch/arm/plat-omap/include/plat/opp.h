@@ -49,6 +49,7 @@ struct omap_opp_def {
 	bool enabled;
 	unsigned long freq;
 	unsigned long u_volt;
+	u8 sr_adjust_vsel;
 };
 
 /*
@@ -56,15 +57,23 @@ struct omap_opp_def {
  * to point at the end of a terminator of a list of OPPs,
  * use OMAP_OPP_DEF(0, 0, 0)
  */
-#define OMAP_OPP_DEF(_enabled, _freq, _uv)	\
+#define OMAP_OPP_DEF(_enabled, _freq, _uv, _adjvsel)	\
 {						\
 	.enabled	= _enabled,		\
 	.freq		= _freq,		\
 	.u_volt		= _uv,			\
+	.sr_adjust_vsel = _adjvsel		\
 }
 
 #ifdef CONFIG_CPU_FREQ
-struct omap_opp;
+struct omap_opp {
+	bool enabled;
+	unsigned long rate;
+	unsigned long u_volt;
+	u8 opp_id;
+	u8 sr_adjust_vsel;
+};
+extern struct omap_opp *_opp_list[OPP_TYPES_MAX];
 
 /**
  * opp_get_voltage() - Gets the voltage corresponding to an opp

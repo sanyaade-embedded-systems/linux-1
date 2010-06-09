@@ -28,78 +28,78 @@
 
 static struct omap_opp_def __initdata omap34xx_mpu_rate_table[] = {
 	/* OPP1 */
-	OMAP_OPP_DEF(true, 125000000, 975000),
+	OMAP_OPP_DEF(true, 125000000, 975000, 0x0),
 	/* OPP2 */
-	OMAP_OPP_DEF(true, 250000000, 1075000),
+	OMAP_OPP_DEF(true, 250000000, 1075000, 0x0),
 	/* OPP3 */
-	OMAP_OPP_DEF(true, 500000000, 1200000),
+	OMAP_OPP_DEF(true, 500000000, 1200000, 0x0),
 	/* OPP4 */
-	OMAP_OPP_DEF(true, 550000000, 1270000),
+	OMAP_OPP_DEF(true, 550000000, 1270000, 0x0),
 	/* OPP5 */
-	OMAP_OPP_DEF(true, 600000000, 1350000),
+	OMAP_OPP_DEF(true, 600000000, 1350000, 0x0),
 	/* Terminator */
-	OMAP_OPP_DEF(0, 0, 0)
+	OMAP_OPP_DEF(0, 0, 0, 0)
 };
 
 static struct omap_opp_def __initdata omap34xx_l3_rate_table[] = {
 	/* OPP1 */
-	OMAP_OPP_DEF(false, 0, 975000),
+	OMAP_OPP_DEF(false, 0, 975000, 0x0),
 	/* OPP2 */
-	OMAP_OPP_DEF(true, 83000000, 1050000),
+	OMAP_OPP_DEF(true, 83000000, 1050000, 0x0),
 	/* OPP3 */
-	OMAP_OPP_DEF(true, 166000000, 1150000),
+	OMAP_OPP_DEF(true, 166000000, 1150000, 0x0),
 	/* Terminator */
-	OMAP_OPP_DEF(0, 0, 0)
+	OMAP_OPP_DEF(0, 0, 0, 0)
 };
 
 static struct omap_opp_def __initdata omap34xx_dsp_rate_table[] = {
 	/* OPP1 */
-	OMAP_OPP_DEF(true, 90000000, 975000),
+	OMAP_OPP_DEF(true, 90000000, 975000, 0x0),
 	/* OPP2 */
-	OMAP_OPP_DEF(true, 180000000, 1075000),
+	OMAP_OPP_DEF(true, 180000000, 1075000, 0x0),
 	/* OPP3 */
-	OMAP_OPP_DEF(true, 360000000, 1200000),
+	OMAP_OPP_DEF(true, 360000000, 1200000, 0x0),
 	/* OPP4 */
-	OMAP_OPP_DEF(true, 400000000, 1270000),
+	OMAP_OPP_DEF(true, 400000000, 1270000, 0x0),
 	/* OPP5 */
-	OMAP_OPP_DEF(true, 430000000, 1350000),
+	OMAP_OPP_DEF(true, 430000000, 1350000, 0x0),
 	/* Terminator */
-	OMAP_OPP_DEF(0, 0, 0)
+	OMAP_OPP_DEF(0, 0, 0, 0)
 };
 
 static struct omap_opp_def __initdata omap36xx_mpu_rate_table[] = {
 	/* OPP1 - OPP50 */
-	OMAP_OPP_DEF(true,  300000000, 930000),
+	OMAP_OPP_DEF(true,  300000000, 930000, 0x0),
 	/* OPP2 - OPP100 */
-	OMAP_OPP_DEF(true,  600000000, 1100000),
+	OMAP_OPP_DEF(true,  600000000, 1100000, 0x0),
 	/* OPP3 - OPP-Turbo */
-	OMAP_OPP_DEF(false, 800000000, 1260000),
+	OMAP_OPP_DEF(false, 800000000, 1260000, 0x0),
 	/* OPP4 - OPP-SB */
-	OMAP_OPP_DEF(false, 1000000000, 1350000),
+	OMAP_OPP_DEF(false, 1000000000, 1350000, 0x0),
 	/* Terminator */
-	OMAP_OPP_DEF(0, 0, 0)
+	OMAP_OPP_DEF(0, 0, 0, 0)
 };
 
 static struct omap_opp_def __initdata omap36xx_l3_rate_table[] = {
 	/* OPP1 - OPP50 */
-	OMAP_OPP_DEF(true, 100000000, 930000),
+	OMAP_OPP_DEF(true, 100000000, 930000, 0x0),
 	/* OPP2 - OPP100, OPP-Turbo, OPP-SB */
-	OMAP_OPP_DEF(true, 200000000, 1137500),
+	OMAP_OPP_DEF(true, 200000000, 1137500, 0x0),
 	/* Terminator */
-	OMAP_OPP_DEF(0, 0, 0)
+	OMAP_OPP_DEF(0, 0, 0, 0)
 };
 
 static struct omap_opp_def __initdata omap36xx_dsp_rate_table[] = {
 	/* OPP1 - OPP50 */
-	OMAP_OPP_DEF(true,  260000000, 930000),
+	OMAP_OPP_DEF(true,  260000000, 930000, 0x0),
 	/* OPP2 - OPP100 */
-	OMAP_OPP_DEF(true,  520000000, 1100000),
+	OMAP_OPP_DEF(true,  520000000, 1100000, 0x0),
 	/* OPP3 - OPP-Turbo */
-	OMAP_OPP_DEF(false, 660000000, 1260000),
+	OMAP_OPP_DEF(false, 660000000, 1260000, 0x0),
 	/* OPP4 - OPP-SB */
-	OMAP_OPP_DEF(false, 800000000, 1350000),
+	OMAP_OPP_DEF(false, 800000000, 1350000, 0x0),
 	/* Terminator */
-	OMAP_OPP_DEF(0, 0, 0)
+	OMAP_OPP_DEF(0, 0, 0, 0)
 };
 
 void __init omap3_pm_init_opp_table(void)

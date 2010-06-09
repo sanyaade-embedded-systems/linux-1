@@ -31,19 +31,20 @@
  * Due to legacy reasons, this structure is currently exposed and
  * will soon be removed elsewhere and will only be used as a handle
  * from the OPP internal referencing mechanism
- */
 struct omap_opp {
 	bool enabled;
 	unsigned long rate;
 	unsigned long u_volt;
 	u8 opp_id;
+	u8 sr_adjust_vsel;
 };
+*/
 
 /*
  * This maintains pointers to the start of each OPP array.
  */
 
-static struct omap_opp *_opp_list[OPP_TYPES_MAX];
+struct omap_opp *_opp_list[OPP_TYPES_MAX];
 /*
  * DEPRECATED: Meant to detect end of opp array
  * This is meant to help co-exist with current SRF etc
@@ -247,6 +248,7 @@ static void omap_opp_populate(struct omap_opp *opp,
 	opp->rate = opp_def->freq;
 	opp->enabled = opp_def->enabled;
 	opp->u_volt = opp_def->u_volt;
+	opp->sr_adjust_vsel = opp_def->sr_adjust_vsel;
 }
 
 int opp_add(enum opp_t opp_type, const struct omap_opp_def *opp_def)
