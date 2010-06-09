@@ -187,7 +187,7 @@ While using a filesystem from MMC or eMMC, you may use params such as:
 'root=/dev/mmcblk1p2 rw rootdelay=1'. The rootdelay is required because
 removable cards may take a few seconds to be detected.
 
-Also note that 'root=/dev/mmcblkXp2' where "x" means 1 or 2 depending if you
+Also note that 'root=/dev/mmcblkXp2' where "x" means 0 or 1 depending if you
 use MMC as default this should be 0 or eMMC should be 1.
 
 While using a filesystem via NFS, you may use params such as:
