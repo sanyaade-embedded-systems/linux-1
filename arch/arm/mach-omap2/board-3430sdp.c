@@ -837,7 +837,7 @@ static struct ehci_hcd_omap_platform_data ehci_pdata __initconst = {
 	.reset_gpio_port[2]  = -EINVAL
 };
 
-static const struct ohci_hcd_omap_platform_data ohci_pdata __initconst = {
+static struct ohci_hcd_omap_platform_data ohci_pdata __initconst = {
 	.port_mode[0] = OMAP_OHCI_PORT_MODE_UNUSED,
 	.port_mode[1] = OMAP_OHCI_PORT_MODE_UNUSED,
 	.port_mode[2] = OMAP_OHCI_PORT_MODE_PHY_3PIN_DATSE0,
