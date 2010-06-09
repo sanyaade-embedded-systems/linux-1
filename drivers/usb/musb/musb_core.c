@@ -262,6 +262,7 @@ void musb_load_testpacket(struct musb *musb)
 	musb_ep_select(musb->mregs, 0);
 	musb_write_fifo(musb->control_ep,
 			sizeof(musb_test_packet), musb_test_packet);
+	musb_writeb(musb->mregs, MUSB_TESTMODE, MUSB_TEST_PACKET);
 	musb_writew(regs, MUSB_CSR0, MUSB_CSR0_TXPKTRDY);
 }
 

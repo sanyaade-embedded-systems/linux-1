@@ -34,7 +34,6 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/sched.h>
-#include <linux/slab.h>
 #include <linux/init.h>
 #include <linux/list.h>
 #include <linux/kobject.h>
@@ -132,15 +131,15 @@ static int musb_regdump_show(struct seq_file *s, void *unused)
 		switch (musb_regmap[i].size) {
 		case 8:
 			seq_printf(s, "%-12s: %02x\n", musb_regmap[i].name,
-					musb_readb(musb->mregs, musb_regmap[i].offset));
+				musb_readb(musb->mregs, musb_regmap[i].offset));
 			break;
 		case 16:
 			seq_printf(s, "%-12s: %04x\n", musb_regmap[i].name,
-					musb_readw(musb->mregs, musb_regmap[i].offset));
+				musb_readw(musb->mregs, musb_regmap[i].offset));
 			break;
 		case 32:
 			seq_printf(s, "%-12s: %08x\n", musb_regmap[i].name,
-					musb_readl(musb->mregs, musb_regmap[i].offset));
+				musb_readl(musb->mregs, musb_regmap[i].offset));
 			break;
 		}
 	}
@@ -212,34 +211,31 @@ static ssize_t musb_test_mode_write(struct file *file,
 
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
 		return -EFAULT;
-
-	if (!strncmp(buf, "force host", 9))
-		test = MUSB_TEST_FORCE_HOST;
-
-	if (!strncmp(buf, "fifo access", 11))
-		test = MUSB_TEST_FIFO_ACCESS;
-
-	if (!strncmp(buf, "force full-speed", 15))
-		test = MUSB_TEST_FORCE_FS;
-
-	if (!strncmp(buf, "force high-speed", 15))
-		test = MUSB_TEST_FORCE_HS;
-
 	if (!strncmp(buf, "test packet", 10)) {
-		test = MUSB_TEST_PACKET;
 		musb_load_testpacket(musb);
+	} else {
+		if (!strncmp(buf, "force host", 9))
+			test = MUSB_TEST_FORCE_HOST;
+
+		if (!strncmp(buf, "fifo access", 11))
+			test = MUSB_TEST_FIFO_ACCESS;
+
+		if (!strncmp(buf, "force full-speed", 15))
+			test = MUSB_TEST_FORCE_FS;
+
+		if (!strncmp(buf, "force high-speed", 15))
+			test = MUSB_TEST_FORCE_HS;
+
+		if (!strncmp(buf, "test K", 6))
+			test = MUSB_TEST_K;
+
+		if (!strncmp(buf, "test J", 6))
+			test = MUSB_TEST_J;
+
+		if (!strncmp(buf, "test SE0 NAK", 12))
+			test = MUSB_TEST_SE0_NAK;
+			musb_writeb(musb->mregs, MUSB_TESTMODE, test);
 	}
-
-	if (!strncmp(buf, "test K", 6))
-		test = MUSB_TEST_K;
-
-	if (!strncmp(buf, "test J", 6))
-		test = MUSB_TEST_J;
-
-	if (!strncmp(buf, "test SE0 NAK", 12))
-		test = MUSB_TEST_SE0_NAK;
-
-	musb_writeb(musb->mregs, MUSB_TESTMODE, test);
 
 	return count;
 }
