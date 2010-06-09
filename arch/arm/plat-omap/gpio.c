@@ -299,6 +299,9 @@ static struct gpio_bank gpio_bank_34xx[6] = {
 #define OMAP34XX_PAD_IN_PU_GPIO 0x11c
 #define OMAP34XX_PAD_IN_PD_GPIO 0x10c
 
+#define OMAP3630_OFFMODE_PAD_DATAOUT0	0x0304
+#define OMAP3630_OFFMODE_PAD_DATAOUT1	0x0B04
+
 struct omap3_gpio_regs {
 	u32 sysconfig;
 	u32 irqenable1;
@@ -2313,12 +2316,23 @@ void omap_gpio_save_context(void)
 			/* save current padconf setting */
 			pad->save = omap_ctrl_readw(offset);
 			out = gpio_context[i].dataout;
-			if (out & pin)
-				/* High: PU + input */
-				conf = OMAP34XX_PAD_IN_PU_GPIO;
-			else
-				/* Low: PD + input */
-				conf = OMAP34XX_PAD_IN_PD_GPIO;
+
+			if (cpu_is_omap3630()) {
+				if (out & pin)
+					/* High: OFFMODE + DATAOUT0 */
+					conf = OMAP3630_OFFMODE_PAD_DATAOUT1;
+				else
+					/* Low: OFFMODE + DATAOUT1 */
+					conf = OMAP3630_OFFMODE_PAD_DATAOUT0;
+			} else {
+				if (out & pin)
+					/* High: PU + input */
+					conf = OMAP34XX_PAD_IN_PU_GPIO;
+				else
+					/* Low: PD + input */
+					conf = OMAP34XX_PAD_IN_PD_GPIO;
+			}
+
 			/* Set PAD to GPIO + input */
 			omap_ctrl_writew(conf, offset);
 			/* Set GPIO to input */
