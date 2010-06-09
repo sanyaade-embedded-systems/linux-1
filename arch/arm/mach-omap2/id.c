@@ -454,9 +454,6 @@ int  omap3_get_omap3630_version(char *str)
 		case 36301000:
 			omap_revision_id = OMAP_3630_1000;
 			break;
-		case 36301300:
-			omap_revision_id = OMAP_3630_1300;
-			break;
 		default:
 			pr_err("OMAP revision unknown, please fix!\n");
 			return 1;
