@@ -4118,7 +4118,7 @@ static struct omap_hwmod_ocp_if *omap44xx_timer10_slaves[] = {
 };
 
 static struct omap_hwmod omap44xx_timer10_hwmod = {
-	.name		= "gpt10",
+	.name		= "timer10",
 	.class		= &omap44xx_timer_1ms_hwmod_class,
 	.mpu_irqs	= omap44xx_timer10_irqs,
 	.mpu_irqs_cnt	= ARRAY_SIZE(omap44xx_timer10_irqs),
