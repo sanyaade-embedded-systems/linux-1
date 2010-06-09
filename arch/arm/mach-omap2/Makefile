@@ -42,6 +42,7 @@ obj-$(CONFIG_ARCH_OMAP3)		+= pm34xx.o sleep34xx.o cpuidle34xx.o voltage.o
 obj-$(CONFIG_PM_DEBUG)			+= pm-debug.o
 obj-$(CONFIG_OMAP_SMARTREFLEX)		+= smartreflex.o
 obj-$(CONFIG_OMAP_SMARTREFLEX_CLASS3)	+= smartreflex-class3.o
+obj-$(CONFIG_OMAP_SMARTREFLEX_CLASS1P5)+= smartreflex-class1p5.o
 endif
 
 # CPU Frequency

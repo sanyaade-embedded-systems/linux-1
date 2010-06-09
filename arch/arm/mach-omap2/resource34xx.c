@@ -28,6 +28,7 @@
 #include <plat/opp_twl_tps.h>
 #include <plat/io.h>
 #include <plat/omap-pm.h>
+#include <plat/opp.h>
 
 #include "smartreflex.h"
 #include "resource34xx.h"
@@ -44,6 +45,13 @@
 #endif
 
 extern u32 sr2_wt_cnt_val;
+
+#ifdef CONFIG_OMAP_SMARTREFLEX_CLASS1P5
+u8 sr_class1p5 = 1;
+#else
+/* use default of 0 */
+u8 sr_class1p5;
+#endif
 
 
 /**
@@ -378,6 +386,8 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 	int i, ret = 0, raise;
 	unsigned long freq;
 	u8 fbb_enabled = false;
+	struct omap_opp *oppl;
+	oppl = _opp_list[opp_type];
 
 	/* See if have a freq associated, if not, invalid opp */
 	ret = opp_to_freq(&freq, opp_type, target_level);
@@ -388,8 +398,8 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 		raise = 1;
 	else
 		raise = 0;
-
-	omap_smartreflex_disable(res, 0);
+	if (!sr_class1p5)
+		omap_smartreflex_disable(res, 0);
 
 	/*
 	 * Select the fast/slow OPP (PRM_LDO_ABB_CTRL.OPP_SEL)
@@ -434,13 +444,23 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 			BUG_ON(IS_ERR(oppx));
 			uvdc = opp_get_voltage(oppx);
 			vc = omap_twl_uv_to_vsel(uvdc);
+			/* if use class 1.5, decide on which voltage to use */
+			if (sr_class1p5) {
+				vt = (oppl[target_level - 1].sr_adjust_vsel) ?
+				oppl[target_level - 1].sr_adjust_vsel : vt;
+				vc = (oppl[current_level - 1].sr_adjust_vsel) ?
+				oppl[current_level - 1].sr_adjust_vsel : vc;
+			}
 
 			/* ok to scale.. */
 			omap_voltage_scale(res, vt, vc);
 		}
 	}
-	omap_smartreflex_enable(res);
-
+	if (!sr_class1p5)
+		omap_smartreflex_enable(res);
+	else if (!oppl[target_level - 1].sr_adjust_vsel) {
+		sr_recalibrate(res, oppl, target_level);
+	}
 	return ret;
 }
 

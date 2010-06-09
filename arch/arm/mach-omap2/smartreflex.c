@@ -31,7 +31,11 @@
 #include <plat/omap_device.h>
 
 #include "smartreflex.h"
+#include "prm.h"
 
+#define SR_CLASS1P5_LOOP_US    100
+#define MAX_STABILIZATION_COUNT 100
+#define MAX_LOOP_COUNT         (MAX_STABILIZATION_COUNT * 5)
 #define SMARTREFLEX_NAME_LEN	24
 #define SR_DISABLE_TIMEOUT	200
 
@@ -260,7 +264,8 @@ static void sr_configure(struct omap_sr *sr)
 	sr_write_reg(sr, SRCONFIG, sr_config);
 
 	if ((sr_class->class_type == SR_CLASS3) || (sr_class->class_type ==
-		SR_CLASS2 && sr_class->mod_use == SR_USE_ERROR_MOD)) {
+		SR_CLASS2 && sr_class->mod_use == SR_USE_ERROR_MOD) ||
+			(sr_class->class_type == SR_CLASS1P5)) {
 		/**
 		* SR settings if using the ERROR module inside Smartreflex.
 		* SR CLASS 3 by default uses only the ERROR module where as
@@ -350,7 +355,9 @@ static void sr_start_vddautocomap(int srid)
 		return;
 
 	sr->is_autocomp_active = 1;
-	if (!sr_class->enable(srid)) {
+	if (sr_class1p5) {
+		sr->is_autocomp_active = 1;
+	} else if (!sr_class->enable(sr->srid)) {
 		sr->is_autocomp_active = 0;
 		sr_clk_disable(sr);
 	}
@@ -607,6 +614,9 @@ void omap_smartreflex_enable(int srid)
 		pr_warning("smartreflex class driver not registered\n");
 		return;
 	}
+	if (sr_class1p5)
+		sr->is_autocomp_active = 1;
+
 	if (sr->is_autocomp_active == 1) {
 		if (!sr_class->enable(srid))
 			sr_clk_disable(sr);
@@ -646,6 +656,58 @@ void omap_smartreflex_disable(int srid, int is_volt_reset)
 	}
 }
 
+void sr_recalibrate(int res,  struct omap_opp *oppl, int target_level)
+{
+	u32 max_loop_count = MAX_LOOP_COUNT;
+	u32 exit_loop_on = 0;
+	u8 new_v = 0;
+	u8 high_v = 0;
+	u16 prm_vp_volt_offset;
+	prm_vp_volt_offset = ((res == 1) ? OMAP3_PRM_VP1_VOLTAGE_OFFSET
+				: OMAP3_PRM_VP2_VOLTAGE_OFFSET);
+	/* Start Smart reflex */
+	omap_smartreflex_enable(res);
+	/* We need to wait for SR to stabilize before we start sampling */
+	mdelay((MAX_STABILIZATION_COUNT * SR_CLASS1P5_LOOP_US)/1000);
+
+	/* Ready for recalibration */
+	while (max_loop_count) {
+		new_v = prm_read_mod_reg(OMAP3430_GR_MOD,
+				prm_vp_volt_offset);
+
+		/* handle oscillations */
+		if (new_v != high_v) {
+			high_v = (high_v < new_v) ? new_v : high_v;
+			exit_loop_on = MAX_STABILIZATION_COUNT;
+		}
+		/* wait for one more stabilization loop for us to sample */
+		udelay(SR_CLASS1P5_LOOP_US);
+
+		max_loop_count--;
+		exit_loop_on--;
+		/* Stabilization achieved.. quit */
+		if (!exit_loop_on)
+			break;
+	}
+	/*
+	 * bad case where we are oscillating.. flag it,
+	 * but continue with higher v
+	 */
+	if (!max_loop_count && exit_loop_on) {
+		pr_err("%d:%d exited with voltages 0x%02x 0x%02x\n",
+			 res, target_level, new_v, high_v);
+	}
+	/* Stop Smart reflex */
+	omap_smartreflex_disable(res, 0);
+
+	oppl[target_level  - 1].sr_adjust_vsel  = high_v;
+
+	pr_debug("Calibrate:Exit  [vdd%d: opp%d] %02x loops=[%d,%d]\n",
+		res, target_level, high_v,
+		max_loop_count, exit_loop_on);
+
+}
+
 /**
  * omap_sr_register_class : API to register a smartreflex class parameters.
  * @class_data - The structure containing various sr class specific data.
@@ -668,10 +730,11 @@ void omap_sr_register_class(struct omap_smartreflex_class_data *class_data)
 	}
 
 	if ((class_data->class_type != SR_CLASS2) &&
-			(class_data->class_type != SR_CLASS3)) {
-		pr_warning("SR Class type passed is invalid. So cannot \
+		(class_data->class_type != SR_CLASS3) &&
+			(class_data->class_type != SR_CLASS1P5)) {
+			pr_warning("SR Class type passed is invalid. So cannot \
 				register the class structure\n");
-		return;
+			return;
 	}
 
 	if ((class_data->class_type == SR_CLASS2) &&
@@ -725,10 +788,13 @@ static int omap_sr_autocomp_show(void *data, u64 *val)
 static int omap_sr_autocomp_store(void *data, u64 val)
 {
 	struct omap_sr *sr_info = (struct omap_sr *) data;
-	if (val == 0)
-		sr_stop_vddautocomap(sr_info->srid);
-	else
-		sr_start_vddautocomap(sr_info->srid);
+	if (!sr_class1p5) {
+		if (val == 0)
+			sr_stop_vddautocomap(sr_info->srid);
+		else
+			sr_start_vddautocomap(sr_info->srid);
+	}
+
 	return 0;
 }
 
@@ -748,7 +814,11 @@ static int __devinit omap_smartreflex_probe(struct platform_device *pdev)
 	sr_info->pdev = pdev;
 	sr_info->srid = pdev->id + 1;
 	sr_info->is_sr_reset = 1,
-	sr_info->is_autocomp_active = 0;
+#ifdef CONFIG_OMAP_SMARTREFLEX_CLASS1P5
+	sr_info->is_autocomp_active	= 1,
+#else
+	sr_info->is_autocomp_active	= 0,
+#endif
 	sr_info->clk_length = 0;
 	sr_info->srbase_addr = odev->hwmods[0]->_rt_va;
 	if (odev->hwmods[0]->mpu_irqs)

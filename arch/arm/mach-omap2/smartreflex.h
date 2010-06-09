@@ -151,7 +151,7 @@
 #else
 #define SR_TESTING_NVALUES 	0
 #endif
-
+extern u8 sr_class1p5;
 extern struct dentry *pm_dbg_main_dir;
 #ifdef CONFIG_OMAP_SMARTREFLEX
 /**
@@ -160,8 +160,9 @@ extern struct dentry *pm_dbg_main_dir;
  * Should be used to populate the class_type field of the
  * omap_smartreflex_class_data structure.
  */
-#define SR_CLASS2	0x1
-#define SR_CLASS3	0x2
+#define SR_CLASS1P5	0x1
+#define SR_CLASS2       0x2
+#define SR_CLASS3	0x3
 
 /**
  * CLASS2 SR can use either the MINMAXAVG module or the ERROR module
@@ -235,6 +236,7 @@ void sr_disable(int srid);
  * API to register the smartreflex class driver with the smartreflex driver
  */
 void omap_sr_register_class(struct omap_smartreflex_class_data *class_data);
+void sr_recalibrate(int res,  struct omap_opp *oppl, int target_level);
 
 void sr_calculate_rg(u32 rfuse, u32 gain_fuse, u32 *rnsen,
 						u32 *sengain);

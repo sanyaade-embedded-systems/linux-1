@@ -40,6 +40,7 @@
 #include <plat/dmtimer.h>
 #include <plat/usb.h>
 #include <plat/resource.h>
+#include <plat/opp.h>
 
 #include <asm/tlbflush.h>
 
@@ -1292,6 +1293,73 @@ void omap3_pm_off_mode_enable(int enable)
 		}
 	}
 }
+
+#ifdef CONFIG_OMAP_SMARTREFLEX_CLASS1P5
+struct omap_opp *mpu_opps;
+struct omap_opp *l3_opps;
+
+static void sr_class1p5_reset_calib(void)
+{
+	int num_mpu_opps =  opp_get_opp_count(OPP_MPU);
+	int num_l3_opps = opp_get_opp_count(OPP_L3);
+	int i;
+	mpu_opps = _opp_list[OPP_MPU];
+	l3_opps = _opp_list[OPP_L3];
+	for (i = 0; i < num_mpu_opps; i++)
+		if (mpu_opps[i].rate)
+			mpu_opps[i].sr_adjust_vsel = 0;
+	for (i = 0; i < num_l3_opps; i++)
+		if (l3_opps[i].rate)
+			l3_opps[i].sr_adjust_vsel = 0;
+}
+
+static ssize_t sr_adjust_vsel_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	int num_mpu_opps = opp_get_opp_count(OPP_MPU);
+	int num_l3_opps = opp_get_opp_count(OPP_L3);
+	mpu_opps = _opp_list[OPP_MPU];
+	l3_opps = _opp_list[OPP_L3];
+	int i;
+	char *tbuf = buf;
+	tbuf += sprintf(tbuf, "oppid:\t[nominal v]\t[calib v]\n");
+	for (i = 0; i < num_mpu_opps; i++)
+		if (mpu_opps[i].rate)
+			tbuf += sprintf(tbuf, "mpu %d:\t0x%0ld\t\t0x%02x\n", i,
+					mpu_opps[i].u_volt,
+					mpu_opps[i].sr_adjust_vsel);
+	for (i = 0; i < num_l3_opps; i++)
+		if (l3_opps[i].rate)
+			tbuf += sprintf(tbuf, "l3 %d:\t0x%0ld\t\t0x%02x\n", i,
+					l3_opps[i].u_volt,
+					l3_opps[i].sr_adjust_vsel);
+	return tbuf - buf;
+}
+
+static ssize_t sr_adjust_vsel_store(struct kobject *kobj,
+		struct kobj_attribute *attr, const char *buf, size_t n)
+{
+	unsigned short value;
+	if ((sscanf(buf, "%hu", &value) > 1) || value) {
+		pr_err("%s: Invalid value %d\n", __func__, value);
+		return -EINVAL;
+	}
+	/* reset the calibrated voltages which are enabled */
+	sr_class1p5_reset_calib();
+	return n;
+}
+
+static struct kobj_attribute sr_adjust_vsel_attr =
+	__ATTR(sr_adjust_vsel, 0644, sr_adjust_vsel_show, sr_adjust_vsel_store);
+
+static int __init omap_sr_adjust_vsel_init(void)
+{
+	if (sysfs_create_file(power_kobj, &sr_adjust_vsel_attr.attr))
+		pr_warning("sr_adjust_vsel: sysfs_create_file failed\n");
+	return 0;
+}
+late_initcall(omap_sr_adjust_vsel_init);
+#endif
 
 int omap3_pm_get_suspend_state(struct powerdomain *pwrdm)
 {
