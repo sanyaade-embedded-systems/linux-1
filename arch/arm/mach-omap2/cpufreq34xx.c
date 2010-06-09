@@ -76,6 +76,8 @@ static struct omap_opp_def __initdata omap36xx_mpu_rate_table[] = {
 	OMAP_OPP_DEF(false, 800000000, 1260000, 0x0),
 	/* OPP4 - OPP-SB */
 	OMAP_OPP_DEF(false, 1000000000, 1350000, 0x0),
+	/* OPP5 - OPP-1G3 */
+	OMAP_OPP_DEF(false, 1300000000, 1350000, 0x0),
 	/* Terminator */
 	OMAP_OPP_DEF(0, 0, 0, 0)
 };
@@ -98,6 +100,8 @@ static struct omap_opp_def __initdata omap36xx_dsp_rate_table[] = {
 	OMAP_OPP_DEF(false, 660000000, 1260000, 0x0),
 	/* OPP4 - OPP-SB */
 	OMAP_OPP_DEF(false, 800000000, 1350000, 0x0),
+	/* OPP5 - OPP-1G3 */
+	OMAP_OPP_DEF(false, 65000000, 1350000, 0x0),
 	/* Terminator */
 	OMAP_OPP_DEF(0, 0, 0, 0)
 };
@@ -126,6 +130,14 @@ void __init omap3_pm_init_opp_table(void)
 	case OMAP_3630_800:
 		omap36xx_mpu_rate_table[2].enabled = true;
 		omap36xx_dsp_rate_table[2].enabled = true;
+		break;
+	case OMAP_3630_1300:
+		omap36xx_mpu_rate_table[2].enabled = true;
+		omap36xx_dsp_rate_table[2].enabled = true;
+		omap36xx_mpu_rate_table[3].enabled = true;
+		omap36xx_dsp_rate_table[3].enabled = true;
+		omap36xx_mpu_rate_table[4].enabled = true;
+		omap36xx_dsp_rate_table[4].enabled = true;
 		break;
 	case OMAP_3630_1000:
 	default:

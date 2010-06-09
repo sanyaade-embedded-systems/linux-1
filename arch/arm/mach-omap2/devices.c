@@ -903,7 +903,7 @@ static void __init omap36xx_sr_testing_nvalues(
 			struct omap_smartreflex_data *sr_data, int srid)
 {
 	if (srid == SR1) {
-		sr_data->no_opp = 4;
+		sr_data->no_opp = 5;
 		sr_data->sr_nvalue = kzalloc(sizeof(sr_data->sr_nvalue) *
 						sr_data->no_opp , GFP_KERNEL);
 		if (!sr_data->sr_nvalue)
@@ -913,6 +913,7 @@ static void __init omap36xx_sr_testing_nvalues(
 		sr_data->senn_mod = 0x1;
 
 		/* OMAP3630 nvalues for each VDD1 opp */
+		sr_data->sr_nvalue[4] = 0;
 		sr_data->sr_nvalue[3] = 0;
 		sr_data->sr_nvalue[2] = 0xaac5a8;
 		sr_data->sr_nvalue[1] = 0x999b83;
