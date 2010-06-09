@@ -50,6 +50,18 @@ config USB_ULPI
 
 	  The only chip currently supported is NXP's ISP1504
 
+config ISP1301_HOST
+	tristate "Philips ISP1301 in Host mode with OMAP3 OHCI"
+	depends on I2C
+	help
+	  If you say yes here you get support for the Philips ISP1301
+	  USB-On-The-Go transceiver working with the OMAP3 OHCI controller.
+	  The ISP1301 is used in boards like the OMAP 3430SDP development
+	  boards for Texas Instruments OMAP3 processors.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called isp1301-host.
+
 config TWL4030_USB
 	tristate "TWL4030 USB Transceiver Driver"
 	depends on TWL4030_CORE && REGULATOR_TWL4030
