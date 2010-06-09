@@ -756,6 +756,9 @@ static struct twl4030_platform_data sdp3430_twldata = {
 	.vpll2		= &sdp3430_vpll2,
 };
 
+#define ISP1301_I2C_ADDR1	0x2C
+#define ISP1301_I2C_ADDR2	0x2D
+
 static struct i2c_board_info __initdata sdp3430_i2c_boardinfo[] = {
 	{
 		I2C_BOARD_INFO("twl4030", 0x48),
@@ -784,6 +787,12 @@ static struct i2c_board_info __initdata sdp3430_i2c_boardinfo_2[] = {
 		.platform_data = &sdp3430_ov3640_platform_data,
 	},
 #endif
+	{
+		I2C_BOARD_INFO("isp1301_host", ISP1301_I2C_ADDR1),
+	},
+	{
+		I2C_BOARD_INFO("isp1301_host", ISP1301_I2C_ADDR2),
+	},
 };
 
 static int __init omap3430_i2c_init(void)
@@ -792,7 +801,7 @@ static int __init omap3430_i2c_init(void)
 	omap_register_i2c_bus(1, 2600, sdp3430_i2c_boardinfo,
 			ARRAY_SIZE(sdp3430_i2c_boardinfo));
 	/* i2c2 on camera connector (for sensor control) and optional isp1301 */
-	omap_register_i2c_bus(2, 400, sdp3430_i2c_boardinfo_2,
+	omap_register_i2c_bus(2, 100, sdp3430_i2c_boardinfo_2,
 			ARRAY_SIZE(sdp3430_i2c_boardinfo_2));
 	/* i2c3 on display connector (for DVI, tfp410) */
 	omap_register_i2c_bus(3, 400, NULL, 0);
