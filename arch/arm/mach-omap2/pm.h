@@ -31,6 +31,7 @@ extern int get_vdd2_opp_volt(u8 vsel);
 extern int get_vdd1_opp_volt(u8 vsel);
 extern void enable_fbb();
 extern void disable_fbb();
+void sr_timer_init(void);
 
 struct cpuidle_params {
 	u8  valid;

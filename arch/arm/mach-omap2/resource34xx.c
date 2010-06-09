@@ -460,6 +460,7 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 		omap_smartreflex_enable(res);
 	else if (!oppl[target_level - 1].sr_adjust_vsel) {
 		sr_recalibrate(res, oppl, target_level);
+		sr_timer_init();
 	}
 	return ret;
 }

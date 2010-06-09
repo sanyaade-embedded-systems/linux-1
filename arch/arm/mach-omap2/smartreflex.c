@@ -39,6 +39,10 @@
 #define SMARTREFLEX_NAME_LEN	24
 #define SR_DISABLE_TIMEOUT	200
 
+struct workqueue_struct *workqueue;
+struct work_struct work;
+extern void custom_task(struct work_struct *unused);
+
 struct omap_sr {
 	int			srid;
 	int			is_sr_reset;
@@ -888,7 +892,13 @@ static int __init sr_init(void)
 {
 	int ret = 0;
 	u8 RdReg;
-
+	if (workqueue == NULL) {
+		workqueue = create_workqueue("srque");
+		if (workqueue == NULL) {
+			printk(KERN_ERR "unable to start srque\n");
+			return;
+		}
+	}
 	/* TODO . Find an appropriate place for this */
 	/* Enable SR on T2 */
 	ret = twl_i2c_read_u8(TWL4030_MODULE_PM_RECEIVER, &RdReg,

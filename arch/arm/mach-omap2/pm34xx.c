@@ -27,6 +27,7 @@
 #include <linux/gpio.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/workqueue.h>
 
 #include <plat/sram.h>
 #include <plat/clockdomain.h>
@@ -83,6 +84,12 @@ u32 enable_oswr;
 u32 wakeup_timer_seconds;
 u32 voltage_off_while_idle;
 u32 sr2_wt_cnt_val;
+
+struct timer_list sr_timer;
+unsigned long timeout;
+unsigned long sr_delay = 1;
+extern struct work_struct work;
+extern struct workqueue_struct *workqueue;
 
 struct power_state {
 	struct powerdomain *pwrdm;
@@ -1359,6 +1366,41 @@ static int __init omap_sr_adjust_vsel_init(void)
 	return 0;
 }
 late_initcall(omap_sr_adjust_vsel_init);
+
+void custom_task(struct work_struct *unused)
+{
+	int vdd1_opp, vdd2_opp;
+	mpu_opps = _opp_list[OPP_MPU];
+	l3_opps = _opp_list[OPP_L3];
+	vdd1_opp = get_vdd1_opp();
+	vdd2_opp = get_vdd2_opp();
+	sr_recalibrate(VDD1_OPP, mpu_opps, vdd1_opp);
+	sr_recalibrate(VDD2_OPP, l3_opps, vdd2_opp);
+}
+
+static void sr_timer_call(void)
+{
+	sr_class1p5_reset_calib();
+	INIT_WORK(&work, custom_task);
+	queue_work(workqueue, &work);
+	schedule_work(&work);
+	mod_timer(&sr_timer, timeout);
+}
+
+void sr_timer_init(void)
+{
+	struct timespec time_in_sec;
+	unsigned long sr_delay_sec = 0;
+	sr_delay_sec = sr_delay * 86400;
+	time_in_sec.tv_sec = sr_delay_sec;
+	time_in_sec.tv_nsec = 0;
+	timeout = timespec_to_jiffies(&time_in_sec);
+	init_timer(&sr_timer);
+	sr_timer.function = sr_timer_call;
+	sr_timer.expires = jiffies + timeout;
+	add_timer(&sr_timer);
+}
+
 #endif
 
 int omap3_pm_get_suspend_state(struct powerdomain *pwrdm)
