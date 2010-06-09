@@ -62,7 +62,7 @@ struct omap_sr {
 
 /* sr_list contains all the instances of smartreflex module */
 static LIST_HEAD(sr_list);
-
+int sys_volt_margin;
 static struct omap_smartreflex_class_data *sr_class;
 
 #define SR_REGADDR(offs)	(sr->srbase_addr + offset)
@@ -626,6 +626,15 @@ void omap_smartreflex_enable(int srid)
 			sr_clk_disable(sr);
 	}
 }
+/* To get System voltage Margin from Bootargs*/
+static int __init get_sys_volt_margin(char *str)
+{
+       get_option(&str, &sys_volt_margin);
+       return 1;
+}
+__setup("sys_volt_margin=", get_sys_volt_margin);
+
+
 
 /**
  * omap_smartreflex_enable : API to disable SR clocks and to call into the
@@ -704,7 +713,9 @@ void sr_recalibrate(int res,  struct omap_opp *oppl, int target_level)
 	/* Stop Smart reflex */
 	omap_smartreflex_disable(res, 0);
 
-	oppl[target_level  - 1].sr_adjust_vsel  = high_v;
+	oppl[target_level - 1].sr_adjust_vsel  = omap_twl_uv_to_vsel
+			(omap_twl_vsel_to_uv(high_v) + sys_volt_margin * 1000);
+
 
 	pr_debug("Calibrate:Exit  [vdd%d: opp%d] %02x loops=[%d,%d]\n",
 		res, target_level, high_v,
