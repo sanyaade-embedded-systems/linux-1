@@ -1457,6 +1457,11 @@ static int musb_gadget_wakeup(struct usb_gadget *gadget)
 		goto done;
 	case OTG_STATE_B_IDLE:
 		/* Start SRP ... OTG not required. */
+
+		/* Resume the PHY to be able to initiate SRP */
+		if (musb->xceiv->set_suspend)
+			musb->xceiv->set_suspend(musb->xceiv, 0);
+
 		devctl = musb_readb(mregs, MUSB_DEVCTL);
 		DBG(2, "Sending SRP: devctl: %02x\n", devctl);
 		devctl |= MUSB_DEVCTL_SESSION;
