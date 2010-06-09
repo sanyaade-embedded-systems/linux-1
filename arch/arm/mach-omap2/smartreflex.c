@@ -373,7 +373,7 @@ static int sr_stop_vddautocomap(int srid)
 
 	if (sr->is_autocomp_active == 1) {
 		if (!sr->is_sr_reset) {
-			sr_class->disable(srid);
+			sr_class->disable(srid, 1);
 			sr_clk_disable(sr);
 		}
 		sr->is_autocomp_active = 0;
@@ -622,7 +622,7 @@ void omap_smartreflex_enable(int srid)
  * a particular smartreflex module. This API will in turn call
  * into the registered smartreflex class disable API.
  */
-void omap_smartreflex_disable(int srid)
+void omap_smartreflex_disable(int srid, int is_volt_reset)
 {
 	struct omap_sr *sr = _sr_lookup(srid);
 
@@ -639,7 +639,7 @@ void omap_smartreflex_disable(int srid)
 
 	if (sr->is_autocomp_active == 1) {
 		if (!sr->is_sr_reset) {
-			sr_class->disable(srid);
+			sr_class->disable(srid, is_volt_reset);
 			/* Disable SR clk */
 			sr_clk_disable(sr);
 		}

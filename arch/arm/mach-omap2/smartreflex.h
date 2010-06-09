@@ -189,7 +189,7 @@ extern struct dentry *pm_dbg_main_dir;
  */
 struct omap_smartreflex_class_data {
 	int (*enable)(int sr_id);
-	int (*disable)(int sr_id);
+	int (*disable)(int sr_id, int is_volt_reset);
 	int (*notify)(int sr_id, u32 status);
 	u8 notify_flags;
 	u8 class_type;
@@ -223,7 +223,7 @@ struct omap_smartreflex_data {
  * do anything.
  */
 void omap_smartreflex_enable(int srid);
-void omap_smartreflex_disable(int srid);
+void omap_smartreflex_disable(int srid, int is_volt_reset);
 
 /**
  * Smartreflex driver hooks to be called from Smartreflex class driver

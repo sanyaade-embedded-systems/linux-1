@@ -389,7 +389,7 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 	else
 		raise = 0;
 
-	omap_smartreflex_disable(res);
+	omap_smartreflex_disable(res, 0);
 
 	/*
 	 * Select the fast/slow OPP (PRM_LDO_ABB_CTRL.OPP_SEL)

@@ -521,9 +521,9 @@ void omap_sram_idle(void)
 				cm_read_mod_reg(OMAP3430ES2_USBHOST_MOD, CM_FCLKEN);
 		if (!fclk_status) {
 			if ((mpu_next_state <= PWRDM_POWER_RET) && (iva_next_state <= PWRDM_POWER_RET))
-				omap_smartreflex_disable(SR1);
+				omap_smartreflex_disable(SR1, 1);
 			if (core_next_state <= PWRDM_POWER_RET) {
-				omap_smartreflex_disable(SR2);
+				omap_smartreflex_disable(SR2, 1);
 				if (cpu_is_omap3630())
 					program_vdd2_opp_3630();
 				else if (cpu_is_omap3430())

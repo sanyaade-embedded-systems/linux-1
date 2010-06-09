@@ -27,7 +27,7 @@ int sr_class3_enable(int id)
 	return sr_enable(id, target_opp_no);
 }
 
-int sr_class3_disable(int id)
+int sr_class3_disable(int id, int is_volt_reset)
 {
 	int target_opp_no = 0;
 	if (id == SR1)
@@ -36,6 +36,7 @@ int sr_class3_disable(int id)
 		target_opp_no = get_vdd2_opp();
 	omap_voltageprocessor_disable(id);
 	sr_disable(id);
+	if  (is_volt_reset)
 	omap_reset_voltage(id);
 	return true;
 }
