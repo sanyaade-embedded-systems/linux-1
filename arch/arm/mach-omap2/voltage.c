@@ -212,6 +212,10 @@ static u32 get_errorgain(int opp_id)
 		errorgain =
 		OMAP36XX_VP_CONFIG_ERRORGAIN_OPP4;
 			break;
+	case VDD1_OPP5:
+		errorgain =
+		OMAP36XX_VP_CONFIG_ERRORGAIN_OPP4;
+			break;
 	default:
 		printk(KERN_ALERT "ERROR");
 	}
