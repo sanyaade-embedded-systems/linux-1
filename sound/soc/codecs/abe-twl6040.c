@@ -1292,6 +1292,9 @@ static int abe_mm_trigger(struct snd_pcm_substream *substream,
 	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
 	struct twl6040_data *priv = codec->private_data;
+	unsigned int snd_reg_shadow;
+
+	snd_reg_shadow = twl6040_read_reg_cache(codec, TWL6040_REG_SHADOW);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -1306,9 +1309,24 @@ static int abe_mm_trigger(struct snd_pcm_substream *substream,
 			return -EPERM;
 		}
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x08) == 0x08)
+				abe_write_mixer(MIXDL1, GAIN_M6dB, RAMP_0MS, MIX_DL1_INPUT_MM_DL);
+
+			if ((snd_reg_shadow & 0x80) == 0x80)
+				abe_write_mixer(MIXDL2, GAIN_M6dB, RAMP_0MS, MIX_DL2_INPUT_MM_DL);
+		}
 		break;
+
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x08) == 0x08)
+				abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_MM_DL);
+
+			if ((snd_reg_shadow & 0x80) == 0x80)
+				abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_0MS, MIX_DL2_INPUT_MM_DL);
+		}
 		break;
 	default:
 		break;
@@ -1421,6 +1439,9 @@ static int abe_tones_trigger(struct snd_pcm_substream *substream,
 	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
 	struct twl6040_data *priv = codec->private_data;
+	unsigned int snd_reg_shadow;
+
+	snd_reg_shadow = twl6040_read_reg_cache(codec, TWL6040_REG_SHADOW);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -1434,8 +1455,25 @@ static int abe_tones_trigger(struct snd_pcm_substream *substream,
 				priv->sysclk);
 			return -EPERM;
 		}
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x01) == 0x01)
+				abe_write_mixer(MIXDL1, GAIN_M6dB, RAMP_0MS, MIX_DL1_INPUT_TONES);
+
+			if ((snd_reg_shadow & 0x10) == 0x10)
+				abe_write_mixer(MIXDL2, GAIN_M6dB, RAMP_0MS, MIX_DL2_INPUT_TONES);
+		}
 		break;
+
 	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x01) == 0x01)
+				abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_TONES);
+
+			if ((snd_reg_shadow & 0x10) == 0x10)
+				abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_0MS, MIX_DL2_INPUT_TONES);
+		}
 		break;
 	default:
 		break;
@@ -1626,6 +1664,9 @@ static int abe_voice_trigger(struct snd_pcm_substream *substream,
 	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
 	struct twl6040_data *priv = codec->private_data;
+	unsigned int snd_reg_shadow;
+
+	snd_reg_shadow = twl6040_read_reg_cache(codec, TWL6040_REG_SHADOW);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -1639,8 +1680,25 @@ static int abe_voice_trigger(struct snd_pcm_substream *substream,
 				priv->sysclk);
 			return -EPERM;
 		}
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x02) == 0x02)
+				abe_write_mixer(MIXDL1, GAIN_M6dB, RAMP_0MS, MIX_DL1_INPUT_VX_DL);
+
+			if ((snd_reg_shadow & 0x20) == 0x20)
+				abe_write_mixer(MIXDL1, GAIN_M6dB, RAMP_0MS, MIX_DL2_INPUT_VX_DL);
+		}
 		break;
+
 	case SNDRV_PCM_TRIGGER_STOP:
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x02) == 0x02)
+				abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_VX_DL);
+
+			if ((snd_reg_shadow & 0x20) == 0x20)
+				abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_0MS, MIX_DL2_INPUT_VX_DL);
+		}
 		break;
 	default:
 		break;
