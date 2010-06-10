@@ -26,11 +26,22 @@
 #include <linux/serial_core.h>
 
 #include <asm/irq.h>
+#include "../../arch/arm/mach-omap2/mux.h"
+#include <plat/control.h>
 #include <plat/dma.h>
 #include <plat/dmtimer.h>
 #include <plat/omap-serial.h>
 
 static struct uart_omap_port *ui[OMAP_MAX_HSUART_PORTS];
+
+/* If set to true then wakeup by CTS for UART1/2
+ * will be enabled by default,
+ * But if the client device connected to UART
+ * needs to enable or disable the CTS feature based
+ * on its requirement then the exported interface
+ * omap_uart_cts_wakeup can be used by the client device.
+ */
+#define OMAP_UART_WAKEUP_ON_CTS false
 
 /* Forward declaration of functions */
 static void uart_tx_dma_callback(int lch, u16 ch_status, void *data);
@@ -157,6 +168,12 @@ static void serial_omap_stop_rx(struct uart_port *port)
 	up->ier &= ~UART_IER_RLSI;
 	up->port.read_status_mask &= ~UART_LSR_DR;
 	serial_out(up, UART_IER, up->ier);
+#if OMAP_UART_WAKEUP_ON_CTS
+	/* Disable the UART CTS wakeup for UART1,UART2 */
+	if (!port->suspended && (up->pdev->id == 1 ||
+			up->pdev->id == 2))
+		omap_uart_cts_wakeup(up->pdev->id - 1, 0);
+#endif
 }
 
 static inline void receive_chars(struct uart_omap_port *up, int *status)
@@ -441,6 +458,11 @@ static int serial_omap_startup(struct uart_port *port)
 	unsigned long flags;
 	int irq_flags = 0;
 	int retval;
+
+#if OMAP_UART_WAKEUP_ON_CTS
+	if (up->pdev->id == 1 || up->pdev->id == 2)
+		omap_uart_cts_wakeup(up->pdev->id - 1, 1);
+#endif
 
 	if (up->port.flags & UPF_SHARE_IRQ)
 		irq_flags |= IRQF_SHARED;
@@ -828,8 +850,8 @@ serial_omap_pm(struct uart_port *port, unsigned int state,
 	dev_dbg(up->port.dev, "serial_omap_pm+%d\n", up->pdev->id);
 	serial_omap_uart_check_clk(up->pdev->id - 1);
 
-	efr = serial_in(up, UART_EFR);
 	serial_out(up, UART_LCR, 0xBF);
+	efr = serial_in(up, UART_EFR);
 	serial_out(up, UART_EFR, efr | UART_EFR_ECB);
 	serial_out(up, UART_LCR, 0);
 
@@ -1326,6 +1348,106 @@ void __exit serial_omap_exit(void)
 	uart_unregister_driver(&serial_omap_reg);
 }
 
+int omap_uart_cts_wakeup(int uart_no, int state)
+{
+	unsigned char lcr, efr;
+	struct uart_omap_port *up = ui[uart_no];
+	u32 padconf_cts;
+	u16 v;
+
+	/* Only UART1 and UART2 support CTS wakeup */
+	if (unlikely(uart_no < 0 || uart_no > 1)) {
+		printk(KERN_INFO "\n [%s] Bad uart id %d \n",
+					__func__, uart_no);
+		return -EPERM;
+	}
+
+	if (state) {
+		/*
+		 * Enable the CTS for io pad wakeup
+		 */
+		switch (uart_no) {
+		/* UART1 */
+		case 0:
+			printk(KERN_INFO "\n Enabling CTS wakeup for UART1 \n");
+			padconf_cts = 0x180;
+			v = omap_ctrl_readw(padconf_cts);
+			break;
+		/* UART2 */
+		case 1:
+			printk(KERN_INFO "\n Enabling CTS wakeup for UART2 \n");
+			padconf_cts = 0x174;
+			v = omap_ctrl_readw(padconf_cts);
+			break;
+		default:
+			printk(KERN_ERR
+			"\n Wakeup on Uart%d is not supported\n", uart_no);
+			return -EPERM;
+		}
+
+		v |= (OMAP_PIN_OFF_WAKEUPENABLE | OMAP_PIN_OFF_INPUT_PULLDOWN |
+			OMAP_PIN_OFF_OUTPUT_HIGH | OMAP_PULL_UP |
+			OMAP_MUX_MODE0);
+
+		omap_ctrl_writew(v, padconf_cts);
+
+		/*
+		 * Enable the CTS for module level wakeup
+		 */
+		lcr = serial_in(up, UART_LCR);
+		serial_out(up, UART_LCR, 0xbf);
+		efr = serial_in(up, UART_EFR);
+		serial_out(up, UART_EFR, efr | UART_EFR_ECB);
+		serial_out(up, UART_LCR, lcr);
+		serial_out(up, UART_OMAP_WER,
+				serial_in(up, UART_OMAP_WER) | 0x1);
+		serial_out(up, UART_LCR, 0xbf);
+		serial_out(up, UART_EFR, efr);
+		serial_out(up, UART_LCR, lcr);
+
+	} else {
+		/*
+		 * Disable the CTS capability for io pad wakeup
+		 */
+		switch (uart_no) {
+		case 0:
+			padconf_cts = 0x180;
+			v = omap_ctrl_readw(padconf_cts);
+			break;
+		case 1:
+			padconf_cts = 0x174;
+			v = omap_ctrl_readw(padconf_cts);
+			break;
+		default:
+			printk(KERN_ERR
+			"Wakeup on Uart%d is not supported\n", uart_no);
+			return -EPERM;
+		}
+
+		v &= (u32)(~(OMAP_WAKEUP_EN | OMAP_OFF_PULL_EN |
+				OMAP_OFF_EN | OMAP_OFFOUT_EN));
+
+		omap_ctrl_writew(v, padconf_cts);
+
+		/*
+		 * Disable the CTS for module level wakeup
+		 */
+		lcr = serial_in(up, UART_LCR);
+		serial_out(up, UART_LCR, 0xbf);
+		efr = serial_in(up, UART_EFR);
+		serial_out(up, UART_EFR, efr | UART_EFR_ECB);
+		serial_out(up, UART_LCR, lcr);
+
+		/* TBD:Do we really want to disable
+		 * module wake up for this in WER
+		 */
+		serial_out(up, UART_LCR, 0xbf);
+		serial_out(up, UART_EFR, efr);
+		serial_out(up, UART_LCR, lcr);
+	}
+	return 0;
+}
+EXPORT_SYMBOL(omap_uart_cts_wakeup);
 /**
  * omap_uart_active() - Check if any ports managed by this
  * driver are currently busy.
