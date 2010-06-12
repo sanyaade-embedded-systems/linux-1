@@ -259,6 +259,16 @@ int __init musb_platform_init(struct musb *musb)
 void musb_platform_save_context(struct musb_context_registers
 		*musb_context)
 {
+	/*
+	 * This sequence *must* be followed for the PM code to work
+	 * correctly. The sequence is taken from old L23.x code
+	 */
+	omap_writel(0, OTG_FORCESTDBY);
+	omap_writel(omap_readl(OTG_SYSCONFIG) & ~(3 << 12), OTG_SYSCONFIG);
+	omap_writel(omap_readl(OTG_SYSCONFIG) & ~(1 << 0), OTG_SYSCONFIG);
+	omap_writel(omap_readl(OTG_SYSCONFIG) & ~(3 << 3), OTG_SYSCONFIG);
+	omap_writel(1, OTG_FORCESTDBY);
+
 	musb_context->otg_sysconfig = omap_readl(OTG_SYSCONFIG);
 	musb_context->otg_forcestandby = omap_readl(OTG_FORCESTDBY);
 }
@@ -266,8 +276,16 @@ void musb_platform_save_context(struct musb_context_registers
 void musb_platform_restore_context(struct musb_context_registers
 		*musb_context)
 {
-	omap_writel(musb_context->otg_sysconfig, OTG_SYSCONFIG);
-	omap_writel(musb_context->otg_forcestandby, OTG_FORCESTDBY);
+	/*
+	 * This sequence *must* be followed for the PM code to work
+	 * correctly. The sequence is taken from old L23.x code
+	 */
+	omap_writel(0, OTG_FORCESTDBY);
+	omap_writel(omap_readl(OTG_SYSCONFIG) & ~(3 << 12), OTG_SYSCONFIG);
+	omap_writel(omap_readl(OTG_SYSCONFIG) | (2 << 12), OTG_SYSCONFIG);
+	omap_writel(omap_readl(OTG_SYSCONFIG) & ~(1 << 0), OTG_SYSCONFIG);
+	omap_writel(omap_readl(OTG_SYSCONFIG) & ~(3 << 3), OTG_SYSCONFIG);
+	omap_writel(omap_readl(OTG_SYSCONFIG) | (2 << 3), OTG_SYSCONFIG);
 }
 #endif
 
