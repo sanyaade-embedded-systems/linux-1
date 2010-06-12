@@ -421,7 +421,6 @@ void omap_sram_idle(void)
 	u32 sdrc_pwr = 0;
 	int per_state_modified = 0;
 	u32 fclk_status = 0;
-	u32 voltctrl;
 
 	if (!_omap_sram_idle)
 		return;
@@ -555,9 +554,8 @@ void omap_sram_idle(void)
 		omap_uart_prepare_idle(0, core_next_state & core_logic_state);
 		omap_uart_prepare_idle(1, core_next_state & core_logic_state);
 		if (core_next_state == PWRDM_POWER_OFF) {
-			voltctrl = OMAP3430_AUTO_OFF;
-			if (cpu_is_omap3630())
-				voltctrl |= OMAP3630_PAD_OFFMODE_OVR;
+			u32 voltctrl = OMAP3430_AUTO_OFF;
+
 			if (voltage_off_while_idle)
 				voltctrl |= OMAP3430_SEL_OFF;
 			prm_set_mod_reg_bits(voltctrl,
@@ -685,6 +683,18 @@ void omap_sram_idle(void)
 		}
 		omap_uart_resume_idle(0);
 		omap_uart_resume_idle(1);
+		if (core_next_state == PWRDM_POWER_OFF) {
+			u32 voltctrl = OMAP3430_AUTO_OFF;
+
+			if (voltage_off_while_idle)
+				voltctrl |= OMAP3430_SEL_OFF;
+			prm_clear_mod_reg_bits(voltctrl,
+					       OMAP3430_GR_MOD,
+					       OMAP3_PRM_VOLTCTRL_OFFSET);
+		} else if (core_next_state == PWRDM_POWER_RET)
+			prm_clear_mod_reg_bits(OMAP3430_AUTO_RET,
+						OMAP3430_GR_MOD,
+						OMAP3_PRM_VOLTCTRL_OFFSET);
 	}
 	omap3_intc_resume_idle();
 
@@ -735,21 +745,6 @@ void omap_sram_idle(void)
 				pwrdm_set_next_pwrst(per_pwrdm,
 							PWRDM_POWER_OFF);
 	}
-
-
-	if (core_next_state == PWRDM_POWER_OFF) {
-		voltctrl = OMAP3430_AUTO_OFF;
-		if (cpu_is_omap3630())
-			voltctrl |= OMAP3630_PAD_OFFMODE_OVR;
-		if (voltage_off_while_idle)
-			voltctrl |= OMAP3430_SEL_OFF;
-		prm_clear_mod_reg_bits(voltctrl,
-				       OMAP3430_GR_MOD,
-				       OMAP3_PRM_VOLTCTRL_OFFSET);
-	} else if (core_next_state == PWRDM_POWER_RET)
-		prm_clear_mod_reg_bits(OMAP3430_AUTO_RET,
-					OMAP3430_GR_MOD,
-					OMAP3_PRM_VOLTCTRL_OFFSET);
 
 	/* Disable IO-PAD and IO-CHAIN wakeup */
 	if (core_next_state < PWRDM_POWER_ON) {

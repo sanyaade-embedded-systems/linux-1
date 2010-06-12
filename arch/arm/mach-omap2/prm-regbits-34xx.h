@@ -521,7 +521,6 @@
 #define OMAP3430_GLOBAL_COLD_RST			(1 << 0)
 
 /* PRM_VOLTCTRL */
-#define OMAP3630_PAD_OFFMODE_OVR			(1 << 8)
 #define OMAP3430_SEL_VMODE				(1 << 4)
 #define OMAP3430_SEL_OFF				(1 << 3)
 #define OMAP3430_AUTO_OFF				(1 << 2)
