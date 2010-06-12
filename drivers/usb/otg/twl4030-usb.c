@@ -36,7 +36,11 @@
 #include <linux/i2c/twl.h>
 #include <linux/regulator/consumer.h>
 #include <linux/err.h>
+#include <plat/omap-pm.h>
 
+#define C6 (11500)
+
+#define C9 (40000)
 
 /* Register defines */
 
@@ -598,10 +602,13 @@ static irqreturn_t twl4030_usb_irq(int irq, void *_twl)
 		 * USB_LINK_VBUS state.  musb_hdrc won't care until it
 		 * starts to handle softconnect right.
 		 */
-		if (status == USB_LINK_NONE)
+		if (status == USB_LINK_NONE) {
 			twl4030_phy_suspend(twl, 0);
-		else
+			omap_pm_set_max_sdma_lat(twl->dev, C9);
+		} else {
+			omap_pm_set_max_sdma_lat(twl->dev, C6);
 			twl4030_phy_resume(twl);
+		}
 
 		twl4030charger_usb_en(status == USB_LINK_VBUS);
 	}
