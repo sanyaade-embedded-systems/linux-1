@@ -86,7 +86,9 @@ static void __init usb_musb_pm_init(void)
 
 void usb_musb_disable_autoidle(void)
 {
-	__raw_writel(0, otg_base + OTG_SYSCONFIG);
+	/* OMAP3430 errata 1.164. Not applicable for 3630 */
+	if (cpu_is_omap34xx())
+		__raw_writel(0, otg_base + OTG_SYSCONFIG);
 }
 
 #ifdef CONFIG_USB_MUSB_SOC
