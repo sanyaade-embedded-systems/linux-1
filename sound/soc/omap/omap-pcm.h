@@ -32,7 +32,6 @@ struct omap_pcm_dma_data {
 	int		sync_mode;	/* DMA sync mode */
 	int		xfer_size;	/* DMA Transfer size */
 	int		dma_word_size;	/* DMA word size 32/16 */
-	void (*set_threshold)(struct snd_pcm_substream *substream);
 };
 
 extern struct snd_soc_platform omap_soc_platform;

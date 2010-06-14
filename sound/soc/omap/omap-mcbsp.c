@@ -289,8 +289,6 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	} else if (cpu_is_omap343x()) {
 		dma = omap24xx_dma_reqs[bus_id][substream->stream];
 		port = omap34xx_mcbsp_port[bus_id][substream->stream];
-		omap_mcbsp_dai_dma_params[id][substream->stream].set_threshold =
-						omap_mcbsp_set_threshold;
 		if (format == SND_SOC_DAIFMT_I2S_1PHASE)
 			xfer_size = omap34xx_mcbsp_thresholds[bus_id]
 				[substream->stream];

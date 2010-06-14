@@ -236,10 +236,6 @@ static int omap_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		prtd->period_index = 0;
-		/* Configure McBSP internal buffer usage */
-		if (dma_data->set_threshold)
-			dma_data->set_threshold(substream);
-
 		omap_start_dma(prtd->dma_ch);
 		break;
 
