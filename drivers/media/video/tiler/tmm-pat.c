@@ -32,7 +32,7 @@
 #define DMM_PAGE 0x1000
 
 /* Max pages in free page stack */
-#define PAGE_CAP (256 * 128)
+#define PAGE_CAP (256 * 40)
 
 /* Number of pages currently allocated */
 static unsigned long count;
@@ -195,7 +195,6 @@ static u32 *tmm_pat_get_pages(struct tmm *tmm, s32 n)
 		mutex_lock(&pvt->mtx);
 		pos = NULL;
 		q = NULL;
-		m = NULL;
 
 		/*
 		 * remove one mem struct from the free list and
@@ -203,17 +202,16 @@ static u32 *tmm_pat_get_pages(struct tmm *tmm, s32 n)
 		 */
 		list_for_each_safe(pos, q, &pvt->free_list.list) {
 			m = list_entry(pos, struct mem, list);
+			f->mem[i] = m;
 			list_del(pos);
 			break;
 		}
 		mutex_unlock(&pvt->mtx);
 
-		if (m != NULL) {
-			f->mem[i] = m;
+		if (m != NULL)
 			f->pa[i] = m->pa;
-		} else {
+		else
 			goto cleanup;
-		}
 	}
 
 	mutex_lock(&pvt->mtx);
