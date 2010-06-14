@@ -80,6 +80,10 @@ static int zoom2_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
+	/* Use external clock for mcBSP2 */
+	ret = snd_soc_dai_set_sysclk(cpu_dai, OMAP_MCBSP_SYSCLK_CLKS_EXT,
+			0, SND_SOC_CLOCK_OUT);
+
 	return 0;
 }
 
