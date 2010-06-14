@@ -85,6 +85,9 @@ int ipu_timer_list[NUM_IPU_TIMERS] = {
 
 struct omap_dm_timer *p_gpt;
 struct clk *p_i2c_clk;
+struct sms *rcb_table;
+void *ipu_pm_notifydrv_handle;
+struct pm_event *pm_event;
 
 /** ============================================================================
  *  Forward declarations of internal functions
@@ -221,7 +224,7 @@ void ipu_pm_callback(short int procId,
 
 	/* send the ACK to DUCATI*/
 	return_val = notify_sendevent(
-				platform_notifydrv_handle,
+				ipu_pm_notifydrv_handle,
 				SYS_M3,/*DUCATI_PROC*/
 				PM_RESOURCE,/*PWR_MGMT_EVENT*/
 				payload,
@@ -280,7 +283,7 @@ int ipu_pm_notifications(enum pm_event_type event_type)
 		pm_msg.fields.parm = PM_SUCCESS;
 		/* send the ACK to DUCATI*/
 		return_val = notify_sendevent(
-				platform_notifydrv_handle,
+				ipu_pm_notifydrv_handle,
 				SYS_M3,/*DUCATI_PROC*/
 				PM_NOTIFICATION,/*PWR_MGMT_EVENT*/
 				(unsigned int)pm_msg.whole,
@@ -301,7 +304,7 @@ int ipu_pm_notifications(enum pm_event_type event_type)
 		pm_msg.fields.parm = PM_SUCCESS;
 		/* send the ACK to DUCATI*/
 		return_val = notify_sendevent(
-				platform_notifydrv_handle,
+				ipu_pm_notifydrv_handle,
 				SYS_M3,/*DUCATI_PROC*/
 				PM_NOTIFICATION,/*PWR_MGMT_EVENT*/
 				(unsigned int)pm_msg.whole,
@@ -322,7 +325,7 @@ int ipu_pm_notifications(enum pm_event_type event_type)
 		pm_msg.fields.parm = PM_SUCCESS;
 		/* send the ACK to DUCATI*/
 		return_val = notify_sendevent(
-				platform_notifydrv_handle,
+				ipu_pm_notifydrv_handle,
 				SYS_M3,/*DUCATI_PROC*/
 				PM_NOTIFICATION,/*PWR_MGMT_EVENT*/
 				(unsigned int)pm_msg.whole,
@@ -342,6 +345,53 @@ int ipu_pm_notifications(enum pm_event_type event_type)
 	return pm_ack;
 }
 EXPORT_SYMBOL(ipu_pm_notifications);
+
+/*
+  Function for setup ipu_pm module
+ *
+ */
+int ipu_pm_setup(void *notify_driver_handle)
+{
+	u32 i = 0;
+	ipu_pm_notifydrv_handle = notify_driver_handle;
+	/* Get the shared RCB */
+	rcb_table = (struct sms *) ioremap(PM_SHM_BASE_ADDR,
+		sizeof(struct sms));
+
+	pm_event = kzalloc(sizeof(struct pm_event) * NUMBER_PM_EVENTS,
+				GFP_KERNEL);
+
+	/* Each event has it own sem */
+	for (i = 0; i < NUMBER_PM_EVENTS; i++) {
+		pm_event[i].sem_handle = kzalloc(sizeof(struct semaphore),
+						GFP_KERNEL);
+		sema_init(pm_event[i].sem_handle, 0);
+		pm_event[i].event_type = i;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(ipu_pm_setup);
+
+/*
+  Function for finish ipu_pm module
+ *
+ */
+int ipu_pm_finish()
+{
+	u32 i = 0;
+	/* Release the shared RCB */
+	for (i = 0; i < NUMBER_PM_EVENTS; i++) {
+		kfree(pm_event[i].sem_handle);
+		pm_event[i].event_type = 0;
+	}
+	kfree(pm_event);
+	pm_event = NULL;
+	iounmap(rcb_table);
+	rcb_table = NULL;
+	ipu_pm_notifydrv_handle = NULL;
+	return 0;
+}
+EXPORT_SYMBOL(ipu_pm_finish);
 
 /*
   Function for get sdma channels from PRCM
@@ -517,4 +567,6 @@ inline void ipu_pm_rel_i2c_bus(unsigned rcb_num)
 	rcb_p->mod_base_addr = 0;
 	pm_i2c_bus_counter--;
 }
+
+MODULE_LICENSE("GPL");
 

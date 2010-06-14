@@ -233,9 +233,6 @@
  */
 void *platform_notifydrv_handle;
 
-struct pm_event *pm_event;
-struct sms *rcb_table;
-
 /* Handles for SysM3 */
 void *platform_nsrn_gate_handle_sysm3;
 void *platform_nsrn_handle_sysm3;
@@ -982,22 +979,8 @@ void platform_start_callback(void *arg)
 				goto pm_register_fail;
 			}
 
-			/* Get the shared RCB */
-			rcb_table = (struct sms *) ioremap(PM_SHM_BASE_ADDR,
-				sizeof(struct sms));
+			ipu_pm_setup(platform_notifydrv_handle);
 
-			pm_event =
-				kzalloc(sizeof(struct pm_event)
-				* NUMBER_PM_EVENTS, GFP_KERNEL);
-
-			/* Each event has it own sem */
-			for (i = 0; i < NUMBER_PM_EVENTS; i++) {
-				pm_event[i].sem_handle =
-					kzalloc(sizeof(struct semaphore),
-						GFP_KERNEL);
-				sema_init(pm_event[i].sem_handle, 0);
-				pm_event[i].event_type = i;
-			}
 		}
 		/* END PM */
 
@@ -1334,7 +1317,6 @@ void platform_stop_callback(void *arg)
 	u16 proc_id = (u32) arg;
 	int index = 0;
 	u32 nread = 0;
-	u32 i = 0;
 
 	if (proc_id == multiproc_get_id("SysM3"))
 		index = SMHEAP_SRINDEX_SYSM3;
@@ -1460,13 +1442,8 @@ void platform_stop_callback(void *arg)
 				(void *)NULL);
 			if (status < 0)
 				printk(KERN_INFO "ERROR UNREGISTERING PM EVENT\n");
-			for (i = 0; i < NUMBER_PM_EVENTS; i++) {
-				kfree(pm_event[i].sem_handle);
-				pm_event[i].event_type = 0;
-			}
-			kfree(pm_event);
-			/* Release the shared RCB */
-			iounmap(rcb_table);
+
+			ipu_pm_finish();
 		}
 		/* END PM */
 

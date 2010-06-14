@@ -185,10 +185,6 @@ struct rcb_block {
 
 };
 
-extern struct sms *rcb_table;
-extern void *platform_notifydrv_handle;
-extern struct pm_event *pm_event;
-
 struct sms {
 	unsigned rat;
 	struct rcb_block rcb[RCB_MAX];
@@ -213,6 +209,12 @@ void ipu_pm_notify_callback(short int procId,
 
 /* Function for send PM Notifications */
 int ipu_pm_notifications(enum pm_event_type event_type);
+
+/* Function for setup ipu_pm module */
+int ipu_pm_setup(void *notify_driver_handle);
+
+/* Function for finish ipu_pm module */
+int ipu_pm_finish(void);
 
 #endif
 
