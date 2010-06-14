@@ -30,6 +30,8 @@ struct omap_pcm_dma_data {
 	int		dma_req;	/* DMA request line */
 	unsigned long	port_addr;	/* transmit/receive register */
 	int		sync_mode;	/* DMA sync mode */
+	int		xfer_size;	/* DMA Transfer size */
+	int		dma_word_size;	/* DMA word size 32/16 */
 	void (*set_threshold)(struct snd_pcm_substream *substream);
 };
 

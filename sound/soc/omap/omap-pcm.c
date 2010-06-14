@@ -170,6 +170,16 @@ static int omap_pcm_prepare(struct snd_pcm_substream *substream)
 		dma_params.src_start		= runtime->dma_addr;
 		dma_params.dst_start		= dma_data->port_addr;
 		dma_params.dst_port		= OMAP_DMA_PORT_MPUI;
+
+		if (dma_data->dma_word_size == 32) {
+			if (dma_data->xfer_size != 0) {
+				dma_params.sync_mode = OMAP_DMA_SYNC_PACKET;
+				dma_params.dst_fi = dma_data->xfer_size;
+			} else {
+				dma_params.sync_mode = OMAP_DMA_SYNC_ELEMENT;
+			}
+			dma_params.data_type = OMAP_DMA_DATA_TYPE_S32;
+		}
 	} else {
 		dma_params.src_amode		= OMAP_DMA_AMODE_CONSTANT;
 		dma_params.dst_amode		= OMAP_DMA_AMODE_POST_INC;
@@ -177,6 +187,8 @@ static int omap_pcm_prepare(struct snd_pcm_substream *substream)
 		dma_params.src_start		= dma_data->port_addr;
 		dma_params.dst_start		= runtime->dma_addr;
 		dma_params.src_port		= OMAP_DMA_PORT_MPUI;
+		if (dma_data->dma_word_size == 32)
+			dma_params.data_type	= OMAP_DMA_DATA_TYPE_S32;
 	}
 	/*
 	 * Set DMA transfer frame size equal to ALSA period size and frame
@@ -184,7 +196,12 @@ static int omap_pcm_prepare(struct snd_pcm_substream *substream)
 	 * we can transfer the whole ALSA buffer with single DMA transfer but
 	 * still can get an interrupt at each period bounary
 	 */
-	dma_params.elem_count	= snd_pcm_lib_period_bytes(substream) / 2;
+
+	if (dma_data->dma_word_size == 32)
+		dma_params.elem_count = runtime->period_size;
+	else
+		dma_params.elem_count = snd_pcm_lib_period_bytes(substream) / 2;
+
 	dma_params.frame_count	= runtime->periods;
 	omap_set_dma_params(prtd->dma_ch, &dma_params);
 
