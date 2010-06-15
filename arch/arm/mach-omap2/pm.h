@@ -29,8 +29,9 @@ extern void vfp_pm_save_context(void);
 extern int volt_opp(enum opp_t opp_type, unsigned long u_volt);
 extern int get_vdd2_opp_volt(u8 vsel);
 extern int get_vdd1_opp_volt(u8 vsel);
-extern void enable_fbb();
-extern void disable_fbb();
+extern void enable_fbb(void);
+extern void disable_fbb(void);
+void sr_reschedule_timer(void);
 void sr_timer_init(void);
 
 struct cpuidle_params {

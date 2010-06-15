@@ -53,6 +53,7 @@ u8 sr_class1p5 = 1;
 u8 sr_class1p5;
 #endif
 
+extern struct timer_list sr_timer;
 
 /**
  * init_latency - Initializes the mpu/core latency resource.
@@ -175,7 +176,7 @@ static struct clk *dpll1_clk, *dpll2_clk, *dpll3_clk;
 static struct clk *l3_clk;
 static int curr_vdd1_opp;
 static int curr_vdd2_opp;
-static DEFINE_MUTEX(dvfs_mutex);
+DEFINE_MUTEX(dvfs_mutex);
 
 /**
  * opp_to_freq - convert OPPID to frequency (DEPRECATED)
@@ -462,7 +463,7 @@ static int program_opp(int res, enum opp_t opp_type, int target_level,
 #ifdef CONFIG_OMAP_SMARTREFLEX_CLASS1P5
 	else if (!oppl[target_level - 1].sr_adjust_vsel) {
 		sr_recalibrate(res, oppl, target_level);
-		sr_timer_init();
+		sr_reschedule_timer();
 	}
 #endif
 	return ret;

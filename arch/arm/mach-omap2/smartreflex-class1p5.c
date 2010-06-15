@@ -40,6 +40,7 @@ struct omap_smartreflex_class_data class1p5_data = {
 static int __init sr_class1p5_init(void)
 {
 	omap_sr_register_class(&class1p5_data);
+	sr_timer_init();
 	return 0;
 }
 late_initcall(sr_class1p5_init);

@@ -77,6 +77,7 @@ static inline bool is_suspending(void)
 /* 3630 specific Bits */
 #define OMAP3630_EFUSE_CNTRL		0x48002A8C
 #define ABO_LDO_TRANXDONE_TIMEOUT	100
+#define SECONDS_PER_DAY (60*60*24)
 
 u32 enable_off_mode;
 u32 sleep_while_idle;
@@ -90,6 +91,7 @@ unsigned long timeout;
 unsigned long sr_delay = 1;
 extern struct work_struct work;
 extern struct workqueue_struct *workqueue;
+extern struct mutex dvfs_mutex;
 
 struct power_state {
 	struct powerdomain *pwrdm;
@@ -1374,27 +1376,39 @@ void custom_task(struct work_struct *unused)
 	int vdd1_opp, vdd2_opp;
 	mpu_opps = _opp_list[OPP_MPU];
 	l3_opps = _opp_list[OPP_L3];
+	mutex_lock(&dvfs_mutex);
 	vdd1_opp = get_vdd1_opp();
 	vdd2_opp = get_vdd2_opp();
+	sr_class1p5_reset_calib();
 	sr_recalibrate(VDD1_OPP, mpu_opps, vdd1_opp);
 	sr_recalibrate(VDD2_OPP, l3_opps, vdd2_opp);
+	mutex_unlock(&dvfs_mutex);
 }
 
 static void sr_timer_call(void)
 {
-	sr_class1p5_reset_calib();
+	struct timespec time_in_sec;
 	INIT_WORK(&work, custom_task);
 	queue_work(workqueue, &work);
 	schedule_work(&work);
-	mod_timer(&sr_timer, timeout);
+	time_in_sec.tv_sec = sr_delay * SECONDS_PER_DAY;
+	time_in_sec.tv_nsec = 0;
+	timeout = timespec_to_jiffies(&time_in_sec);
+	mod_timer(&sr_timer, jiffies+timeout);
 }
 
+void sr_reschedule_timer()
+{
+	struct timespec time_in_sec;
+	time_in_sec.tv_sec = sr_delay * SECONDS_PER_DAY;
+	time_in_sec.tv_nsec = 0;
+	timeout = timespec_to_jiffies(&time_in_sec);
+	mod_timer(&sr_timer, jiffies+timeout);
+}
 void sr_timer_init(void)
 {
 	struct timespec time_in_sec;
-	unsigned long sr_delay_sec = 0;
-	sr_delay_sec = sr_delay * 86400;
-	time_in_sec.tv_sec = sr_delay_sec;
+	time_in_sec.tv_sec = sr_delay * SECONDS_PER_DAY;
 	time_in_sec.tv_nsec = 0;
 	timeout = timespec_to_jiffies(&time_in_sec);
 	init_timer(&sr_timer);
