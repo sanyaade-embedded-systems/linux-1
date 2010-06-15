@@ -353,7 +353,7 @@ static inline irqreturn_t serial_omap_irq(int irq, void *dev_id)
 
 	spin_lock_irqsave(&up->port.lock, flags);
 	lsr = serial_in(up, UART_LSR);
-	if (iir & UART_IER_RLSI) {
+	if (iir & UART_IIR_RLSI) {
 		if (!up->use_dma) {
 			if (lsr & UART_LSR_DR)
 				receive_chars(up, &lsr);
@@ -917,6 +917,7 @@ serial_omap_console_write(struct console *co, const char *s,
 	struct uart_omap_port *up = serial_omap_console_ports[co->index];
 	unsigned int ier;
 
+	spin_lock(&up->port.lock);
 	/*
 	 * First save the IER then disable the interrupts
 	 */
@@ -940,6 +941,8 @@ serial_omap_console_write(struct console *co, const char *s,
 	 */
 	if (up->msr_saved_flags)
 		check_modem_status(up);
+
+	spin_unlock(&up->port.lock);
 }
 
 static int __init
