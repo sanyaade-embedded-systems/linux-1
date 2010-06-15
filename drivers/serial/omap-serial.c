@@ -353,7 +353,7 @@ static inline irqreturn_t serial_omap_irq(int irq, void *dev_id)
 
 	spin_lock_irqsave(&up->port.lock, flags);
 	lsr = serial_in(up, UART_LSR);
-	if (iir & UART_IER_RLSI) {
+	if (iir & UART_IIR_RLSI) {
 		if (!up->use_dma) {
 			if (lsr & UART_LSR_DR)
 				receive_chars(up, &lsr);
