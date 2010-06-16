@@ -751,8 +751,8 @@ static int soc_pcm_hw_free(struct snd_pcm_substream *substream)
 	mutex_lock(&pcm_mutex);
 
 	/* apply codec digital mute */
-	if (!codec->active)
-		snd_soc_dai_digital_mute(codec_dai, 1);
+	/* Codec to take of no active stream */
+	snd_soc_dai_digital_mute(codec_dai, 1);
 
 	/* free any machine hw params */
 	if (machine->ops && machine->ops->hw_free)
