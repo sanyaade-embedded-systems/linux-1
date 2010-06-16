@@ -1361,9 +1361,35 @@ static void abe_mm_shutdown(struct snd_pcm_substream *substream,
 		pdata->device_idle(pdev);
 }
 
+static int twl6040_mute(struct snd_soc_dai *dai, int mute)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct twl6040_data *priv = codec->private_data;
+
+	int hs_gain, hf_gain;
+
+	hf_gain = twl6040_read_reg_cache(codec, TWL6040_REG_HFRGAIN);
+	hs_gain = twl6040_read_reg_cache(codec, TWL6040_REG_HSGAIN);
+
+	if (mute) {
+		if (priv->mcpdm_dl_enable == 1) {
+			twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, 0x1D, TWL6040_REG_HFRGAIN);
+			twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, 0x1D, TWL6040_REG_HFLGAIN);
+			twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, 0xFF, TWL6040_REG_HSGAIN);
+		}
+	} else {
+		twl6040_write(codec, TWL6040_REG_HFRGAIN, hf_gain);
+		twl6040_write(codec, TWL6040_REG_HFLGAIN, hf_gain);
+		twl6040_write(codec, TWL6040_REG_HSGAIN, hs_gain);
+	}
+
+	return 0;
+}
+
 static struct snd_soc_dai_ops abe_mm_dai_ops = {
 	.startup	= abe_mm_startup,
 	.hw_params	= abe_mm_hw_params,
+	.digital_mute	= twl6040_mute,
 	.shutdown	= abe_mm_shutdown,
 	.trigger	= abe_mm_trigger,
 	.set_sysclk	= twl6040_set_dai_sysclk,
@@ -1506,6 +1532,7 @@ static void abe_tones_shutdown(struct snd_pcm_substream *substream,
 static struct snd_soc_dai_ops abe_tones_dai_ops = {
 	.startup	= abe_mm_startup,
 	.hw_params	= abe_tones_hw_params,
+	.digital_mute   = twl6040_mute,
 	.shutdown       = abe_tones_shutdown,
 	.trigger	= abe_tones_trigger,
 	.set_sysclk	= twl6040_set_dai_sysclk,
@@ -1735,6 +1762,7 @@ static void abe_voice_shutdown(struct snd_pcm_substream *substream,
 static struct snd_soc_dai_ops abe_voice_dai_ops = {
 	.startup	= abe_voice_startup,
 	.hw_params	= abe_voice_hw_params,
+	.digital_mute	= twl6040_mute,
 	.shutdown	= abe_voice_shutdown,
 	.trigger	= abe_voice_trigger,
 	.set_sysclk	= twl6040_set_dai_sysclk,
