@@ -177,7 +177,7 @@ static void synaptics_ts_work_func(struct work_struct *work)
 					for (a = 0; a < 2; a++) {
 						int p = buf[base + 1];
 						p |= (uint16_t)(buf[base] & 0x1f)
-										<< 8;
+									<< 8;
 						if (ts->flags & flip_flag)
 							p = ts->max[a] - p;
 						if (ts->flags & SYNAPTICS_SNAP_TO_INACTIVE_EDGE) {
@@ -265,7 +265,8 @@ static void synaptics_ts_work_func(struct work_struct *work)
 static enum hrtimer_restart synaptics_ts_timer_func(struct hrtimer *timer)
 {
 	struct synaptics_ts_data *ts = container_of(timer,
-						struct synaptics_ts_data, timer);
+						    struct synaptics_ts_data,
+						    timer);
 	/* printk("synaptics_ts_timer_func\n"); */
 
 	queue_work(synaptics_wq, &ts->work);
@@ -427,7 +428,8 @@ static int synaptics_ts_probe(
 	}
 	printk(KERN_INFO "synaptics_ts_probe: interrupt enable %x\n", ret);
 
-	ret = i2c_smbus_write_byte_data(ts->client, 0xf1, 0); /* disable interrupt */
+	/* disable interrupt */
+	ret = i2c_smbus_write_byte_data(ts->client, 0xf1, 0);
 	if (ret < 0) {
 		printk(KERN_ERR "i2c_smbus_write_byte_data failed\n");
 		goto err_detect_failed;
@@ -454,7 +456,8 @@ static int synaptics_ts_probe(
 	/* page select = 0x10 */
 	ret = i2c_smbus_write_byte_data(ts->client, 0xff, 0x10);
 	if (ret < 0) {
-		printk(KERN_ERR "i2c_smbus_write_byte_data failed for page select\n");
+		printk(KERN_ERR "i2c_smbus_write_byte_data failed for page"
+				" select\n");
 		goto err_detect_failed;
 	}
 	ret = i2c_smbus_read_word_data(ts->client, 0x02);
@@ -469,17 +472,20 @@ static int synaptics_ts_probe(
 		printk(KERN_ERR "i2c_smbus_read_word_data failed\n");
 		goto err_detect_failed;
 	}
-	ts->max[0] = max_x = (ret >> 8 & 0xff) | ((ret & 0x1f) << 8);
+	max_x = (ret >> 8 & 0xff) | ((ret & 0x1f) << 8);
+	ts->max[0] = max_x;
 	ret = i2c_smbus_read_word_data(ts->client, 0x06);
 	if (ret < 0) {
 		printk(KERN_ERR "i2c_smbus_read_word_data failed\n");
 		goto err_detect_failed;
 	}
-	ts->max[1] = max_y = (ret >> 8 & 0xff) | ((ret & 0x1f) << 8);
+	max_y = (ret >> 8 & 0xff) | ((ret & 0x1f) << 8);
+	ts->max[1] = max_y;
 	if (ts->flags & SYNAPTICS_SWAP_XY)
 		swap(max_x, max_y);
 
-	ret = synaptics_init_panel(ts); /* will also switch back to page 0x04 */
+	/* will also switch back to page 0x04 */
+	ret = synaptics_init_panel(ts);
 	if (ret < 0) {
 		printk(KERN_ERR "synaptics_init_panel failed\n");
 		goto err_detect_failed;
@@ -513,42 +519,59 @@ static int synaptics_ts_probe(
 	fuzz_x = fuzz_x * max_x / 0x10000;
 	fuzz_y = fuzz_y * max_y / 0x10000;
 	ts->snap_down[!!(ts->flags & SYNAPTICS_SWAP_XY)] = -inactive_area_left;
-	ts->snap_up[!!(ts->flags & SYNAPTICS_SWAP_XY)] = max_x + inactive_area_right;
+	ts->snap_up[!!(ts->flags & SYNAPTICS_SWAP_XY)] = max_x +
+							 inactive_area_right;
 	ts->snap_down[!(ts->flags & SYNAPTICS_SWAP_XY)] = -inactive_area_top;
-	ts->snap_up[!(ts->flags & SYNAPTICS_SWAP_XY)] = max_y + inactive_area_bottom;
+	ts->snap_up[!(ts->flags & SYNAPTICS_SWAP_XY)] = max_y +
+							inactive_area_bottom;
 	ts->snap_down_on[!!(ts->flags & SYNAPTICS_SWAP_XY)] = snap_left_on;
 	ts->snap_down_off[!!(ts->flags & SYNAPTICS_SWAP_XY)] = snap_left_off;
-	ts->snap_up_on[!!(ts->flags & SYNAPTICS_SWAP_XY)] = max_x - snap_right_on;
-	ts->snap_up_off[!!(ts->flags & SYNAPTICS_SWAP_XY)] = max_x - snap_right_off;
+	ts->snap_up_on[!!(ts->flags & SYNAPTICS_SWAP_XY)] = max_x -
+							    snap_right_on;
+	ts->snap_up_off[!!(ts->flags & SYNAPTICS_SWAP_XY)] = max_x -
+							     snap_right_off;
 	ts->snap_down_on[!(ts->flags & SYNAPTICS_SWAP_XY)] = snap_top_on;
 	ts->snap_down_off[!(ts->flags & SYNAPTICS_SWAP_XY)] = snap_top_off;
-	ts->snap_up_on[!(ts->flags & SYNAPTICS_SWAP_XY)] = max_y - snap_bottom_on;
-	ts->snap_up_off[!(ts->flags & SYNAPTICS_SWAP_XY)] = max_y - snap_bottom_off;
-	printk(KERN_INFO "synaptics_ts_probe: max_x %d, max_y %d\n", max_x, max_y);
-	printk(KERN_INFO "synaptics_ts_probe: inactive_x %d %d, inactive_y %d %d\n",
+	ts->snap_up_on[!(ts->flags & SYNAPTICS_SWAP_XY)] = max_y -
+							   snap_bottom_on;
+	ts->snap_up_off[!(ts->flags & SYNAPTICS_SWAP_XY)] = max_y -
+							    snap_bottom_off;
+	printk(KERN_INFO "synaptics_ts_probe: max_x %d, max_y %d\n",
+			 max_x, max_y);
+	printk(KERN_INFO "synaptics_ts_probe: inactive_x %d %d,"
+			" inactive_y %d %d\n",
 			inactive_area_left, inactive_area_right,
 			inactive_area_top, inactive_area_bottom);
 	printk(KERN_INFO "synaptics_ts_probe: "
 			"snap_x %d-%d %d-%d, snap_y %d-%d %d-%d\n",
 			snap_left_on, snap_left_off,
 			snap_right_on, snap_right_off,
-			snap_top_on, snap_top_off, snap_bottom_on, snap_bottom_off);
+			snap_top_on, snap_top_off, snap_bottom_on,
+			snap_bottom_off);
 	input_set_abs_params(ts->input_dev, ABS_X,
-			-inactive_area_left, max_x + inactive_area_right, fuzz_x, 0);
+			     -inactive_area_left, max_x + inactive_area_right,
+			     fuzz_x, 0);
 	input_set_abs_params(ts->input_dev, ABS_Y,
-			-inactive_area_top, max_y + inactive_area_bottom, fuzz_y, 0);
+			     -inactive_area_top, max_y + inactive_area_bottom,
+			     fuzz_y, 0);
 	input_set_abs_params(ts->input_dev, ABS_PRESSURE, 0, 255, fuzz_p, 0);
 	input_set_abs_params(ts->input_dev, ABS_TOOL_WIDTH, 0, 15, fuzz_w, 0);
 	input_set_abs_params(ts->input_dev, ABS_HAT0X,
-			-inactive_area_left, max_x + inactive_area_right, fuzz_x, 0);
+			     -inactive_area_left, max_x + inactive_area_right,
+			     fuzz_x, 0);
 	input_set_abs_params(ts->input_dev, ABS_HAT0Y,
-			-inactive_area_top, max_y + inactive_area_bottom, fuzz_y, 0);
+			     -inactive_area_top, max_y + inactive_area_bottom,
+			     fuzz_y, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X,
-			-inactive_area_left, max_x + inactive_area_right, fuzz_x, 0);
+			     -inactive_area_left, max_x + inactive_area_right,
+			     fuzz_x, 0);
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_Y,
-			-inactive_area_top, max_y + inactive_area_bottom, fuzz_y, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 255, fuzz_p, 0);
-	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 15, fuzz_w, 0);
+			     -inactive_area_top, max_y + inactive_area_bottom,
+			     fuzz_y, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0, 255,
+			     fuzz_p, 0);
+	input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR, 0, 15,
+			     fuzz_w, 0);
 	/* ts->input_dev->name = ts->keypad_info->name; */
 	ret = input_register_device(ts->input_dev);
 	if (ret) {
@@ -586,8 +609,10 @@ static int synaptics_ts_probe(
 	register_early_suspend(&ts->early_suspend);
 #endif
 
-	printk(KERN_INFO "synaptics_ts_probe: Start touchscreen %s in %s mode\n",
-			ts->input_dev->name, ts->use_irq ? "interrupt" : "polling");
+	printk(KERN_INFO "synaptics_ts_probe: Start touchscreen %s in %s"
+			 " mode\n",
+			 ts->input_dev->name,
+			 ts->use_irq ? "interrupt" : "polling");
 
 	return 0;
 
@@ -629,10 +654,14 @@ static int synaptics_ts_suspend(struct i2c_client *client, pm_message_t mesg)
 		disable_irq(client->irq);
 	else
 		hrtimer_cancel(&ts->timer);
+
+	/* if work was pending disable-count is now 2 */
 	ret = cancel_work_sync(&ts->work);
-	if (ret && ts->use_irq) /* if work was pending disable-count is now 2 */
+	if (ret && ts->use_irq)
 		enable_irq(client->irq);
-	ret = i2c_smbus_write_byte_data(ts->client, 0xf1, 0); /* disable interrupt */
+
+	/* disable interrupt */
+	ret = i2c_smbus_write_byte_data(ts->client, 0xf1, 0);
 	if (ret < 0)
 		printk(KERN_ERR "synaptics_ts_suspend: "
 				"i2c_smbus_write_byte_data failed\n");
