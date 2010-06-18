@@ -434,6 +434,11 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 	if (cpu_is_omap34xx()) {
 		if (vdd == VDD1_OPP) {
 			opp_id = get_vdd1_opp_volt(target_vsel);
+			if (opp_id < 0) {
+				pr_err("No VDD1 OPP related to target vsel "
+					"(%d)\n", target_vsel);
+				return false;
+			}
 			if (cpu_is_omap3630()) {
 				vp_reg[vdd].vp_errorgain = get_errorgain(opp_id)
 						 << OMAP3430_ERRORGAIN_SHIFT;
@@ -447,10 +452,15 @@ static int vp_forceupdate_scale_voltage(u32 vdd, u8 target_vsel,
 					VC_CMD_ON_MASK,
 					(target_vsel << VC_CMD_ON_SHIFT));
 		} else if (vdd == VDD2_OPP) {
+			opp_id = get_vdd2_opp_volt(target_vsel);
+			if (opp_id < 0) {
+				pr_err("No VDD2 OPP related to target vsel "
+					"(%d)\n", target_vsel);
+				return false;
+			}
 			voltage_modify_reg(vc_reg.vc_cmdval1_reg,
 					VC_CMD_ON_MASK,
 					(target_vsel << VC_CMD_ON_SHIFT));
-			opp_id = get_vdd2_opp_volt(target_vsel);
 			if (cpu_is_omap3630()) {
 				vp_reg[vdd].vp_errorgain = get_errorgain
 					(opp_id) << OMAP3430_ERRORGAIN_SHIFT ;
@@ -598,6 +608,11 @@ static int vc_bypass_scale_voltage(u32 vdd, u8 target_vsel, u8 current_vsel)
 
 	if (vdd == VDD1_OPP) {
 		opp_id = (get_vdd1_opp_volt(target_vsel));
+		if (opp_id < 0) {
+			pr_err("No VDD1 OPP related to target vsel (%d)\n",
+				target_vsel);
+			return false;
+		}
 		voltage_modify_reg(vc_reg.vc_cmdval0_reg, VC_CMD_ON_MASK,
 				(target_vsel << VC_CMD_ON_SHIFT));
 		reg_addr = R_VDD1_SR_CONTROL;
@@ -612,6 +627,11 @@ static int vc_bypass_scale_voltage(u32 vdd, u8 target_vsel, u8 current_vsel)
 					OMAP3430_ERRORGAIN_SHIFT);
 	} else if (vdd == VDD2_OPP) {
 		opp_id = get_vdd2_opp_volt(target_vsel);
+		if (opp_id < 0) {
+			pr_err("No VDD2 OPP related to target vsel (%d)\n",
+				target_vsel);
+			return false;
+		}
 		voltage_modify_reg(vc_reg.vc_cmdval1_reg, VC_CMD_ON_MASK,
 				(target_vsel << VC_CMD_ON_SHIFT));
 		reg_addr = R_VDD2_SR_CONTROL;
