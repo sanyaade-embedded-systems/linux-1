@@ -194,7 +194,7 @@ static void __init init_voltagecontroller(void)
 static u32 get_errorgain(int opp_id)
 
 {
-	u32 errorgain;
+	u32 errorgain = 0;
 	switch (opp_id) {
 	case VDD1_OPP1:
 		errorgain =
@@ -217,7 +217,7 @@ static u32 get_errorgain(int opp_id)
 		OMAP36XX_VP_CONFIG_ERRORGAIN_OPP4;
 			break;
 	default:
-		printk(KERN_ALERT "ERROR");
+		printk(KERN_ALERT "%s: Invalid opp_id value: %d\n", __func__, opp_id);
 	}
 	return  errorgain;
 }
