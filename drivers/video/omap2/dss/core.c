@@ -129,31 +129,6 @@ static void restore_all_ctx(void)
 }
 
 /* CLOCKS */
-static void core_dump_clocks(struct seq_file *s)
-{
-	int i;
-	struct clk *clocks[5] = {
-		core.dss_ick,
-		core.dss1_fck,
-		core.dss2_fck,
-		core.dss_54m_fck,
-		core.dss_96m_fck
-	};
-
-	seq_printf(s, "- CORE -\n");
-
-	seq_printf(s, "internal clk count\t\t%u\n", core.num_clks_enabled);
-
-	for (i = 0; i < 5; i++) {
-		if (!clocks[i])
-			continue;
-		seq_printf(s, "%-15s\t%lu\t%d\n",
-				clocks[i]->name,
-				clk_get_rate(clocks[i]),
-				clocks[i]->usecount);
-	}
-}
-
 static int dss_get_clock(struct clk **clock, const char *clk_name)
 {
 	struct clk *clk;
@@ -356,6 +331,31 @@ static void dss_clk_disable_all(void)
 
 /* DEBUGFS */
 #if defined(CONFIG_DEBUG_FS) && defined(CONFIG_OMAP2_DSS_DEBUG_SUPPORT)
+static void core_dump_clocks(struct seq_file *s)
+{
+	int i;
+	struct clk *clocks[5] = {
+		core.dss_ick,
+		core.dss1_fck,
+		core.dss2_fck,
+		core.dss_54m_fck,
+		core.dss_96m_fck
+	};
+
+	seq_printf(s, "- CORE -\n");
+
+	seq_printf(s, "internal clk count\t\t%u\n", core.num_clks_enabled);
+
+	for (i = 0; i < 5; i++) {
+		if (!clocks[i])
+			continue;
+		seq_printf(s, "%-15s\t%lu\t%d\n",
+				clocks[i]->name,
+				clk_get_rate(clocks[i]),
+				clocks[i]->usecount);
+	}
+}
+
 static void dss_debug_dump_clocks(struct seq_file *s)
 {
 	core_dump_clocks(s);
