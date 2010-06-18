@@ -80,7 +80,7 @@ static int nec_8048_bl_get_brightness(struct backlight_device *bl)
 	return 0;
 }
 
-static const struct backlight_ops nec_8048_bl_ops = {
+static struct backlight_ops nec_8048_bl_ops = {
 	.get_brightness = nec_8048_bl_get_brightness,
 	.update_status  = nec_8048_bl_update_status,
 };
