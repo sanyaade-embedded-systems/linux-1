@@ -907,7 +907,7 @@ static int __init sr_init(void)
 		workqueue = create_workqueue("srque");
 		if (workqueue == NULL) {
 			printk(KERN_ERR "unable to start srque\n");
-			return;
+			return -EINVAL;
 		}
 	}
 	/* TODO . Find an appropriate place for this */

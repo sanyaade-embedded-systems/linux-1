@@ -12,6 +12,7 @@
 #define __ARCH_ARM_MACH_OMAP2_PM_H
 
 #include <plat/powerdomain.h>
+#include <plat/opp.h>
 
 extern u32 enable_off_mode;
 extern u32 sleep_while_idle;

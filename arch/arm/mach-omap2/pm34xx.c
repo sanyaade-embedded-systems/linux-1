@@ -1329,10 +1329,11 @@ static ssize_t sr_adjust_vsel_show(struct kobject *kobj,
 {
 	int num_mpu_opps = opp_get_opp_count(OPP_MPU);
 	int num_l3_opps = opp_get_opp_count(OPP_L3);
-	mpu_opps = _opp_list[OPP_MPU];
-	l3_opps = _opp_list[OPP_L3];
 	int i;
 	char *tbuf = buf;
+
+	mpu_opps = _opp_list[OPP_MPU];
+	l3_opps = _opp_list[OPP_L3];
 	tbuf += sprintf(tbuf, "oppid:\t[nominal v]\t[calib v]\n");
 	for (i = 0; i < num_mpu_opps; i++)
 		if (mpu_opps[i].rate)
@@ -1385,7 +1386,7 @@ void custom_task(struct work_struct *unused)
 	mutex_unlock(&dvfs_mutex);
 }
 
-static void sr_timer_call(void)
+static void sr_timer_call(unsigned long dummy)
 {
 	struct timespec time_in_sec;
 	INIT_WORK(&work, custom_task);

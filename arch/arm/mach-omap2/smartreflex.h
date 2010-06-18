@@ -14,6 +14,7 @@
  * published by the Free Software Foundation.
  */
 #include <linux/platform_device.h>
+#include <plat/opp.h>
 
 /* SR Modules */
 #define SR1		1
