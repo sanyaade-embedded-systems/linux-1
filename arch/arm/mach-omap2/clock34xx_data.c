@@ -3456,7 +3456,7 @@ int __init omap2_clk_init(void)
 		/* For 3630: override clkops_omap2_dflt_wait for the
 		 * clocks affected from PWRDN reset bug when DPLL4 is
 		 * configured to output 192MHz on M2 path */
-		if (omap_rev() == OMAP3630_REV_ES1_0) {
+		if (omap_rev() >= OMAP3630_REV_ES1_0) {
 			dpll3_m3x2_ck.ops =
 			  &clkops_omap3_pwrdn_with_hsdiv_wait_restore;
 			dpll4_m2x2_ck.ops =
