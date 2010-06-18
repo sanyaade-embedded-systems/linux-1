@@ -235,8 +235,9 @@ void init_opp(struct shared_resource *resp)
 {
 	int ret;
 	u8 opp_id;
-	resp->no_of_users = 0;
 	unsigned long freq = 0;
+
+	resp->no_of_users = 0;
 
 	/* Initialize the current level of the OPP resource
 	* to the  opp set by u-boot.
@@ -533,7 +534,6 @@ int resource_set_opp_level(int res, u32 target_level, int flags)
 int set_opp(struct shared_resource *resp, u32 target_level)
 {
 	int ret = -EINVAL;
-	unsigned long l3_freq;
 
 	if (resp == vdd1_resp) {
 		if ((resp->max_level != 0) && (target_level > resp->max_level))
