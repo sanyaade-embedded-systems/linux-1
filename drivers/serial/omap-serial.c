@@ -41,7 +41,7 @@ static struct uart_omap_port *ui[OMAP_MAX_HSUART_PORTS];
  * on its requirement then the exported interface
  * omap_uart_cts_wakeup can be used by the client device.
  */
-#define OMAP_UART_WAKEUP_ON_CTS false
+#define OMAP_UART_WAKEUP_ON_CTS 0
 
 /* Forward declaration of functions */
 static void uart_tx_dma_callback(int lch, u16 ch_status, void *data);
