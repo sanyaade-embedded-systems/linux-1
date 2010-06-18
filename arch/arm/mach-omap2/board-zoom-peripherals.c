@@ -543,7 +543,7 @@ static void enable_board_wakeup_source(void)
 }
 
 #ifdef CONFIG_WLAN_1273
-void wlan_1273_reset()
+static void wlan_1273_reset(void)
 {
 	if (gpio_request(OMAP_ZOOM3_WIFI_PMENA_GPIO, NULL) != 0)
 		pr_err("GPIO 101 request failed\n");
