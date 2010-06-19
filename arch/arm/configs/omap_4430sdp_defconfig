@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.34
-# Wed Jun  2 15:00:51 2010
+# Fri Jun 18 19:42:44 2010
 #
 CONFIG_ARM=y
 CONFIG_SYS_SUPPORTS_APM_EMULATION=y
@@ -1165,7 +1165,6 @@ CONFIG_SND_OMAP_SOC_HDMI=y
 CONFIG_SND_SOC_I2C_AND_SPI=y
 # CONFIG_SND_SOC_ALL_CODECS is not set
 CONFIG_SND_SOC_ABE_TWL6040=y
-CONFIG_SND_OMAP_SOC_MCPDM=y
 # CONFIG_SOUND_PRIME is not set
 # CONFIG_HID_SUPPORT is not set
 CONFIG_USB_SUPPORT=y
