@@ -66,6 +66,8 @@ struct twl6040_data {
 	struct snd_pcm_hw_constraint_list *sysclk_constraints;
 	struct completion ready;
 	int configure;
+	int mcpdm_dl_enable;
+	int mcpdm_ul_enable;
 	struct clk *clk;
 };
 
@@ -298,8 +300,8 @@ static void abe_init_chip(struct snd_soc_codec *codec,
 	if (pdata->device_enable)
 		pdata->device_enable(pdev);
 
-	abe_load_fw();
 	abe_reset_hal();
+	abe_load_fw();
 	/* Config OPP 100 for now */
 	abe_set_opp_processing(OPP);
 	/* "tick" of the audio engine */
@@ -1267,10 +1269,18 @@ static int abe_mm_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	format.f = rate;
-	if (!substream->stream)
+	if (!substream->stream) {
 		abe_connect_cbpr_dmareq_port(MM_DL_PORT, &format, ABE_CBPR0_IDX, &dma_sink);
-	else
+		abe_enable_data_transfer(MM_DL_PORT);
+		if (!priv->mcpdm_dl_enable++) {
+			abe_enable_data_transfer(PDM_DL_PORT);
+		}
+	} else {
 		abe_connect_cbpr_dmareq_port(MM_UL2_PORT, &format, ABE_CBPR4_IDX, &dma_sink);
+		abe_enable_data_transfer(MM_UL2_PORT);
+		if (!priv->mcpdm_ul_enable++)
+			abe_enable_data_transfer(PDM_UL_PORT);
+	}
 
 	return 0;
 }
@@ -1282,6 +1292,9 @@ static int abe_mm_trigger(struct snd_pcm_substream *substream,
 	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
 	struct twl6040_data *priv = codec->private_data;
+	unsigned int snd_reg_shadow;
+
+	snd_reg_shadow = twl6040_read_reg_cache(codec, TWL6040_REG_SHADOW);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -1296,17 +1309,24 @@ static int abe_mm_trigger(struct snd_pcm_substream *substream,
 			return -EPERM;
 		}
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-		if (!substream->stream)
-			abe_enable_data_transfer(MM_DL_PORT);
-		else
-			abe_enable_data_transfer(MM_UL2_PORT);
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x08) == 0x08)
+				abe_write_mixer(MIXDL1, GAIN_M6dB, RAMP_0MS, MIX_DL1_INPUT_MM_DL);
+
+			if ((snd_reg_shadow & 0x80) == 0x80)
+				abe_write_mixer(MIXDL2, GAIN_M6dB, RAMP_0MS, MIX_DL2_INPUT_MM_DL);
+		}
 		break;
+
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-		if (!substream->stream)
-			abe_disable_data_transfer(MM_DL_PORT);
-		else
-			abe_disable_data_transfer(MM_UL2_PORT);
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x08) == 0x08)
+				abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_MM_DL);
+
+			if ((snd_reg_shadow & 0x80) == 0x80)
+				abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_0MS, MIX_DL2_INPUT_MM_DL);
+		}
 		break;
 	default:
 		break;
@@ -1326,13 +1346,50 @@ static void abe_mm_shutdown(struct snd_pcm_substream *substream,
 	struct platform_device *pdev = container_of(codec->dev,
 					struct platform_device, dev);
 
+        if (!substream->stream) {
+                abe_disable_data_transfer(MM_DL_PORT);
+		if (!--priv->mcpdm_dl_enable) {
+	                abe_disable_data_transfer(PDM_DL_PORT);
+		}
+        } else {
+                abe_disable_data_transfer(MM_UL2_PORT);
+		if (!--priv->mcpdm_ul_enable)
+	                abe_disable_data_transfer(PDM_UL_PORT);
+        }
+
 	if(!--priv->configure && pdata->device_idle)
 		pdata->device_idle(pdev);
+}
+
+static int twl6040_mute(struct snd_soc_dai *dai, int mute)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct twl6040_data *priv = codec->private_data;
+
+	int hs_gain, hf_gain;
+
+	hf_gain = twl6040_read_reg_cache(codec, TWL6040_REG_HFRGAIN);
+	hs_gain = twl6040_read_reg_cache(codec, TWL6040_REG_HSGAIN);
+
+	if (mute) {
+		if (priv->mcpdm_dl_enable == 1) {
+			twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, 0x1D, TWL6040_REG_HFRGAIN);
+			twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, 0x1D, TWL6040_REG_HFLGAIN);
+			twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, 0xFF, TWL6040_REG_HSGAIN);
+		}
+	} else {
+		twl6040_write(codec, TWL6040_REG_HFRGAIN, hf_gain);
+		twl6040_write(codec, TWL6040_REG_HFLGAIN, hf_gain);
+		twl6040_write(codec, TWL6040_REG_HSGAIN, hs_gain);
+	}
+
+	return 0;
 }
 
 static struct snd_soc_dai_ops abe_mm_dai_ops = {
 	.startup	= abe_mm_startup,
 	.hw_params	= abe_mm_hw_params,
+	.digital_mute	= twl6040_mute,
 	.shutdown	= abe_mm_shutdown,
 	.trigger	= abe_mm_trigger,
 	.set_sysclk	= twl6040_set_dai_sysclk,
@@ -1390,9 +1447,13 @@ static int abe_tones_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	format.f = rate;
-	if (!substream->stream)
+	if (!substream->stream) {
 		abe_connect_cbpr_dmareq_port(TONES_DL_PORT, &format,
 							ABE_CBPR5_IDX, &dma_sink);
+		abe_enable_data_transfer(TONES_DL_PORT);
+		if (!priv->mcpdm_dl_enable++)
+			abe_enable_data_transfer(PDM_DL_PORT);
+	}
 
 	return 0;
 }
@@ -1404,6 +1465,9 @@ static int abe_tones_trigger(struct snd_pcm_substream *substream,
 	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
 	struct twl6040_data *priv = codec->private_data;
+	unsigned int snd_reg_shadow;
+
+	snd_reg_shadow = twl6040_read_reg_cache(codec, TWL6040_REG_SHADOW);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -1417,12 +1481,25 @@ static int abe_tones_trigger(struct snd_pcm_substream *substream,
 				priv->sysclk);
 			return -EPERM;
 		}
-		if (!substream->stream)
-			abe_enable_data_transfer(TONES_DL_PORT);
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x01) == 0x01)
+				abe_write_mixer(MIXDL1, GAIN_M6dB, RAMP_0MS, MIX_DL1_INPUT_TONES);
+
+			if ((snd_reg_shadow & 0x10) == 0x10)
+				abe_write_mixer(MIXDL2, GAIN_M6dB, RAMP_0MS, MIX_DL2_INPUT_TONES);
+		}
 		break;
+
 	case SNDRV_PCM_TRIGGER_STOP:
-		if (!substream->stream)
-			abe_disable_data_transfer(TONES_DL_PORT);
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x01) == 0x01)
+				abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_TONES);
+
+			if ((snd_reg_shadow & 0x10) == 0x10)
+				abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_0MS, MIX_DL2_INPUT_TONES);
+		}
 		break;
 	default:
 		break;
@@ -1431,10 +1508,32 @@ static int abe_tones_trigger(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static void abe_tones_shutdown(struct snd_pcm_substream *substream,
+                                struct snd_soc_dai *dai)
+{
+        struct snd_soc_pcm_runtime *rtd = substream->private_data;
+        struct snd_soc_device *socdev = rtd->socdev;
+        struct snd_soc_codec *codec = socdev->card->codec;
+        struct twl6040_data *priv = codec->private_data;
+        struct twl4030_codec_data *pdata = codec->dev->platform_data;
+        struct platform_device *pdev = container_of(codec->dev,
+                                        struct platform_device, dev);
+
+        if (!substream->stream) {
+                abe_disable_data_transfer(TONES_DL_PORT);
+		if (!--priv->mcpdm_dl_enable)
+	                abe_disable_data_transfer(PDM_DL_PORT);
+        }
+
+	if(!--priv->configure && pdata->device_idle)
+                pdata->device_idle(pdev);
+}
+
 static struct snd_soc_dai_ops abe_tones_dai_ops = {
 	.startup	= abe_mm_startup,
 	.hw_params	= abe_tones_hw_params,
-	.shutdown       = abe_mm_shutdown,
+	.digital_mute   = twl6040_mute,
+	.shutdown       = abe_tones_shutdown,
 	.trigger	= abe_tones_trigger,
 	.set_sysclk	= twl6040_set_dai_sysclk,
 };
@@ -1569,10 +1668,17 @@ static int abe_voice_hw_params(struct snd_pcm_substream *substream,
 	format.samp_format = MONO_RSHIFTED_16;
 	abe_connect_serial_port(VX_UL_PORT, &format, MCBSP2_TX);
 #else
-	if (!substream->stream)
+	if (!substream->stream) {
 		abe_connect_cbpr_dmareq_port(VX_DL_PORT, &format, ABE_CBPR1_IDX, &dma_sink);
-	else
+		abe_enable_data_transfer(VX_DL_PORT);
+		if (!priv->mcpdm_dl_enable++)
+			abe_enable_data_transfer(PDM_DL_PORT);
+	} else {
 		abe_connect_cbpr_dmareq_port(VX_UL_PORT, &format, ABE_CBPR2_IDX, &dma_sink);
+		abe_enable_data_transfer(VX_UL_PORT);
+		if (!priv->mcpdm_ul_enable++)
+			abe_enable_data_transfer(PDM_UL_PORT);
+	}
 #endif
 
 	return 0;
@@ -1585,6 +1691,7 @@ static int abe_voice_trigger(struct snd_pcm_substream *substream,
 	struct snd_soc_device *socdev = rtd->socdev;
 	struct snd_soc_codec *codec = socdev->card->codec;
 	struct twl6040_data *priv = codec->private_data;
+	unsigned int snd_reg_shadow;
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -1598,24 +1705,25 @@ static int abe_voice_trigger(struct snd_pcm_substream *substream,
 				priv->sysclk);
 			return -EPERM;
 		}
+	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x02) == 0x02)
+				abe_write_mixer(MIXDL1, GAIN_M6dB, RAMP_0MS, MIX_DL1_INPUT_VX_DL);
 
-		if (!substream->stream) {
-			abe_enable_data_transfer(VX_DL_PORT);
-#ifdef CONFIG_SND_OMAP_VOICE_TEST
-			abe_enable_data_transfer(PDM_DL_PORT);
-#endif
-		} else {
-			abe_enable_data_transfer(VX_UL_PORT);
-#ifdef CONFIG_SND_OMAP_VOICE_TEST
-			abe_enable_data_transfer(PDM_UL_PORT);
-#endif
+			if ((snd_reg_shadow & 0x20) == 0x20)
+				abe_write_mixer(MIXDL1, GAIN_M6dB, RAMP_0MS, MIX_DL2_INPUT_VX_DL);
 		}
 		break;
+
 	case SNDRV_PCM_TRIGGER_STOP:
-		if (!substream->stream)
-			abe_disable_data_transfer(VX_DL_PORT);
-		else
-			abe_disable_data_transfer(VX_UL_PORT);
+	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
+		if (!substream->stream){
+			if ((snd_reg_shadow & 0x02) == 0x02)
+				abe_write_mixer(MIXDL1, MUTE_GAIN, RAMP_0MS, MIX_DL1_INPUT_VX_DL);
+
+			if ((snd_reg_shadow & 0x20) == 0x20)
+				abe_write_mixer(MIXDL2, MUTE_GAIN, RAMP_0MS, MIX_DL2_INPUT_VX_DL);
+		}
 		break;
 	default:
 		break;
@@ -1624,10 +1732,36 @@ static int abe_voice_trigger(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static void abe_voice_shutdown(struct snd_pcm_substream *substream,
+                                struct snd_soc_dai *dai)
+{
+        struct snd_soc_pcm_runtime *rtd = substream->private_data;
+        struct snd_soc_device *socdev = rtd->socdev;
+        struct snd_soc_codec *codec = socdev->card->codec;
+        struct twl6040_data *priv = codec->private_data;
+        struct twl4030_codec_data *pdata = codec->dev->platform_data;
+        struct platform_device *pdev = container_of(codec->dev,
+                                        struct platform_device, dev);
+
+        if (!substream->stream) {
+                abe_disable_data_transfer(VX_DL_PORT);
+                if (!--priv->mcpdm_dl_enable)
+			abe_disable_data_transfer(PDM_DL_PORT);
+        } else {
+		abe_disable_data_transfer(VX_UL_PORT);
+		if (!--priv->mcpdm_ul_enable)
+			abe_disable_data_transfer(PDM_UL_PORT);
+	}
+
+        if(!--priv->configure && pdata->device_idle)
+                pdata->device_idle(pdev);
+}
+
 static struct snd_soc_dai_ops abe_voice_dai_ops = {
 	.startup	= abe_voice_startup,
 	.hw_params	= abe_voice_hw_params,
-	.shutdown	= abe_mm_shutdown,
+	.digital_mute	= twl6040_mute,
+	.shutdown	= abe_voice_shutdown,
 	.trigger	= abe_voice_trigger,
 	.set_sysclk	= twl6040_set_dai_sysclk,
 };
