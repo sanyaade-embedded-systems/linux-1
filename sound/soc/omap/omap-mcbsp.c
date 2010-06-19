@@ -158,7 +158,6 @@ static void omap_mcbsp_set_threshold(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->dai->cpu_dai;
 	struct omap_mcbsp_data *mcbsp_data = to_mcbsp(cpu_dai->private_data);
-	int dma_op_mode = omap_mcbsp_get_dma_op_mode(mcbsp_data->bus_id);
 	int samples;
 	int id = cpu_dai->id;
 
