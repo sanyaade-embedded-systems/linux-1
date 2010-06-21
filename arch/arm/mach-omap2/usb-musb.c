@@ -78,8 +78,8 @@ static struct platform_device musb_device = {
 	.name		= "musb_hdrc",
 	.id		= -1,
 	.dev = {
-		.dma_mask		= 0,
-		.coherent_dma_mask	= 0,
+		.dma_mask		= &musb_dmamask,
+		.coherent_dma_mask	= DMA_BIT_MASK(32),
 		.platform_data		= &musb_plat,
 	},
 	.num_resources	= ARRAY_SIZE(musb_resources),
