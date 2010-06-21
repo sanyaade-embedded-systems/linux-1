@@ -946,7 +946,7 @@ static void __init sr_set_nvalues(struct omap_smartreflex_data *sr_data,
 		else
 			sr_read_efuse(sr_data, srid);
 	} else if (cpu_is_omap3630()) {
-		if (omap_rev() == OMAP3630_REV_ES1_1)
+		if (omap_rev() >= OMAP3630_REV_ES1_1)
 			sr_read_efuse(sr_data, srid);
 		else
 			omap36xx_sr_testing_nvalues(sr_data, srid);
