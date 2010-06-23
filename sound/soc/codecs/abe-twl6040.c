@@ -1693,6 +1693,8 @@ static int abe_voice_trigger(struct snd_pcm_substream *substream,
 	struct twl6040_data *priv = codec->private_data;
 	unsigned int snd_reg_shadow;
 
+	snd_reg_shadow = twl6040_read_reg_cache(codec, TWL6040_REG_SHADOW);
+
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		/*
