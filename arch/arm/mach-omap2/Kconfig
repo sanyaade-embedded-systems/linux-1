@@ -157,6 +157,7 @@ config OMAP4_ES1
 config MACH_OMAP_4430SDP
 	bool "OMAP 4430 SDP board"
 	depends on ARCH_OMAP4
+	select HAVE_PWM
 
 config ERRATA_OMAP4_AXI2OCP
 	bool "OMAP 4430 axi2ocp errata workaround"
