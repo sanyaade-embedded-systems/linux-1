@@ -42,11 +42,9 @@
 
 struct tiler_dev {
 	struct cdev cdev;
-
-	struct blocking_notifier_head notifier;
 };
 
-static struct platform_driver tiler_driver_ldm = {
+struct platform_driver tiler_driver_ldm = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "tiler",
@@ -74,13 +72,14 @@ struct gid_info {
 	struct list_head reserved;	/* areas pre-reserved */
 	struct list_head onedim;	/* all 1D areas in this pid/gid */
 	u32 gid;			/* group ID */
+	u32 refs;			/* instances directly using this ptr */
 	struct process_info *pi;	/* parent */
 };
 
-static struct list_head blocks;
-static struct list_head procs;
-static struct list_head orphan_areas;
-static struct list_head orphan_onedim;
+struct list_head blocks;
+struct list_head procs;
+struct list_head orphan_areas;
+struct list_head orphan_onedim;
 
 struct area_info {
 	struct list_head by_gid;	/* areas in this pid/gid */
@@ -122,8 +121,6 @@ static u32 id;
 static struct mutex mtx;
 static struct tcm *tcm[TILER_FORMATS];
 static struct tmm *tmm[TILER_FORMATS];
-static u32 *dmac_va;
-static dma_addr_t dmac_pa;
 
 #define TCM(fmt)        tcm[(fmt) - TILFMT_8BIT]
 #define TCM_SS(ssptr)   TCM(TILER_GET_ACC_MODE(ssptr))
@@ -163,7 +160,8 @@ done:
 }
 
 /* allocate an reserved area of size, alignment and link it to gi */
-static struct area_info *area_new(u16 width, u16 height, u16 align,
+/* leaves mutex locked to be able to add block to area */
+static struct area_info *area_new_m(u16 width, u16 height, u16 align,
 				  struct tcm *tcm, struct gid_info *gi)
 {
 	struct area_info *ai = kmalloc(sizeof(*ai), GFP_KERNEL);
@@ -183,7 +181,6 @@ static struct area_info *area_new(u16 width, u16 height, u16 align,
 	ai->gi = gi;
 	mutex_lock(&mtx);
 	list_add_tail(&ai->by_gid, &gi->areas);
-	mutex_unlock(&mtx);
 	return ai;
 }
 
@@ -280,11 +277,11 @@ static s32 __analize_area(enum tiler_fmt fmt, u32 width, u32 height,
  * @param offs	Offset of the block (within alignment)
  * @param ai	Pointer to area info
  * @param next	Pointer to the variable where the next block
- *              will be stored.  The block should be inserted
- *              before this block.
+ *		will be stored.  The block should be inserted
+ *		before this block.
  *
  * @return the end coordinate (x1 + 1) where a block would fit,
- *         or 0 if it does not fit.
+ *	   or 0 if it does not fit.
  *
  * (must have mutex)
  */
@@ -370,10 +367,9 @@ static struct mem_info *get_2d_area(u16 w, u16 h, u16 align, u16 offs, u16 band,
 	mutex_unlock(&mtx);
 
 	/* if no area fit, reserve a new one */
-	ai = area_new(ALIGN(w + offs, max(band, align)), h,
+	ai = area_new_m(ALIGN(w + offs, max(band, align)), h,
 		      max(band, align), tcm, gi);
 	if (ai) {
-		mutex_lock(&mtx);
 		_m_add2area(mi, ai, ai->area.p0.x + offs,
 			     ai->area.p0.x + offs + w - 1,
 			     &ai->blocks);
@@ -391,8 +387,10 @@ done:
 /* (must have mutex) */
 static void _m_try_free_group(struct gid_info *gi)
 {
-	if (gi && list_empty(&gi->areas) && list_empty(&gi->onedim)) {
-		WARN_ON(!list_empty(&gi->reserved));
+	if (gi && list_empty(&gi->areas) && list_empty(&gi->onedim) &&
+	    /* also ensure noone is still using this group */
+	    !gi->refs) {
+		BUG_ON(!list_empty(&gi->reserved));
 		list_del(&gi->by_pid);
 
 		/* if group is tracking kernel objects, we may free even
@@ -572,12 +570,6 @@ static void _m_unregister_buf(struct __buf_info *_b)
 	kfree(_b);
 }
 
-static int tiler_notify_event(int event, void *data)
-{
-	return blocking_notifier_call_chain(&tiler_device->notifier,
-								event, data);
-}
-
 /**
  * Free all info kept by a process:
  *
@@ -596,14 +588,11 @@ static void _m_free_process_info(struct process_info *pi)
 	struct __buf_info *_b = NULL, *_b_ = NULL;
 	bool ai_autofreed, need2free;
 
-	if (!list_empty(&pi->bufs))
-		tiler_notify_event(TILER_DEVICE_CLOSE, NULL);
-
 	/* unregister all buffers */
 	list_for_each_entry_safe(_b, _b_, &pi->bufs, by_pid)
 		_m_unregister_buf(_b);
 
-	WARN_ON(!list_empty(&pi->bufs));
+	BUG_ON(!list_empty(&pi->bufs));
 
 	/* free all allocated blocks, and remove unreferenced ones */
 	list_for_each_entry_safe(gi, gi_, &pi->groups, by_pid) {
@@ -639,13 +628,13 @@ static void _m_free_process_info(struct process_info *pi)
 		/* if group is still alive reserved list should have been
 		   emptied as there should be no reference on those blocks */
 		if (need2free) {
-			WARN_ON(!list_empty(&gi->onedim));
-			WARN_ON(!list_empty(&gi->areas));
+			BUG_ON(!list_empty(&gi->onedim));
+			BUG_ON(!list_empty(&gi->areas));
 			_m_try_free_group(gi);
 		}
 	}
 
-	WARN_ON(!list_empty(&pi->groups));
+	BUG_ON(!list_empty(&pi->groups));
 	list_del(&pi->list);
 	kfree(pi);
 }
@@ -718,7 +707,7 @@ static struct gid_info *_m_get_gi(struct process_info *pi, u32 gid)
 	/* see if group already exist */
 	list_for_each_entry(gi, &pi->groups, by_pid) {
 		if (gi->gid == gid)
-			return gi;
+			goto done;
 	}
 
 	/* create new group */
@@ -733,6 +722,12 @@ static struct gid_info *_m_get_gi(struct process_info *pi, u32 gid)
 	gi->pi = pi;
 	gi->gid = gid;
 	list_add(&gi->by_pid, &pi->groups);
+done:
+	/*
+	 * Once area is allocated, the group info's ref count will be
+	 * decremented as the reference is no longer needed.
+	 */
+	gi->refs++;
 	return gi;
 }
 
@@ -772,6 +767,7 @@ static struct mem_info *__get_area(enum tiler_fmt fmt, u32 width, u32 height,
 	list_add(&mi->global, &blocks);
 	mi->alloced = true;
 	mi->refs++;
+	gi->refs--;
 	mutex_unlock(&mtx);
 
 	mi->sys_addr = __get_alias_addr(fmt, mi->area.p0.x, mi->area.p0.y);
@@ -787,6 +783,9 @@ static s32 tiler_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct process_info *pi = filp->private_data;
 
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+
+	/* don't allow mremap */
+	vma->vm_flags |= VM_DONTEXPAND | VM_RESERVED;
 
 	mutex_lock(&mtx);
 	list_for_each(pos, &pi->bufs) {
@@ -839,8 +838,16 @@ static s32 tiler_mmap(struct file *filp, struct vm_area_struct *vma)
 static s32 refill_pat(struct tmm *tmm, struct tcm_area *area, u32 *ptr)
 {
 	s32 res = 0;
+	s32 size = tcm_sizeof(*area) * sizeof(*ptr);
+	u32 *page;
+	dma_addr_t page_pa;
 	struct pat_area p_area = {0};
 	struct tcm_area slice, area_s;
+
+	/* must be a 16-byte aligned physical address */
+	page = dma_alloc_coherent(NULL, size, &page_pa, GFP_ATOMIC);
+	if (!page)
+		return -ENOMEM;
 
 	tcm_for_each_slice(slice, *area, area_s) {
 		p_area.x0 = slice.p0.x;
@@ -848,14 +855,16 @@ static s32 refill_pat(struct tmm *tmm, struct tcm_area *area, u32 *ptr)
 		p_area.x1 = slice.p1.x;
 		p_area.y1 = slice.p1.y;
 
-		memcpy(dmac_va, ptr, sizeof(*ptr) * tcm_sizeof(slice));
+		memcpy(page, ptr, sizeof(*ptr) * tcm_sizeof(slice));
 		ptr += tcm_sizeof(slice);
 
-		if (tmm_map(tmm, p_area, dmac_pa)) {
+		if (tmm_map(tmm, p_area, page_pa)) {
 			res = -EFAULT;
 			break;
 		}
 	}
+
+	dma_free_coherent(NULL, size, page, page_pa);
 
 	return res;
 }
@@ -893,6 +902,7 @@ static s32 map_block(enum tiler_fmt fmt, u32 width, u32 height, u32 gid,
 	mi = __get_area(fmt, width, height, 0, 0, gi);
 	if (!mi) {
 		mutex_lock(&mtx);
+		gi->refs--;
 		_m_try_free_group(gi);
 		mutex_unlock(&mtx);
 		return -ENOMEM;
@@ -960,9 +970,6 @@ static s32 map_block(enum tiler_fmt fmt, u32 width, u32 height, u32 gid,
 	}
 	up_read(&mm->mmap_sem);
 
-	/* Ensure the data reaches to main memory before PAT refill */
-	wmb();
-
 	if (refill_pat(TMM(fmt), &mi->area, mem))
 		goto fault;
 
@@ -996,7 +1003,7 @@ s32 tiler_map(enum tiler_fmt fmt, u32 width, u32 height, u32 *sys_addr,
 }
 EXPORT_SYMBOL(tiler_map);
 
-static s32 free_block(u32 sys_addr, struct process_info *pi)
+s32 free_block(u32 sys_addr, struct process_info *pi)
 {
 	struct gid_info *gi = NULL;
 	struct area_info *ai = NULL;
@@ -1062,7 +1069,7 @@ EXPORT_SYMBOL(tiler_free);
    the actual width and height of the container, so we must make a guess.  We
    do not even have enough information to get the virtual stride of the buffer,
    which is the real reason for this ioctl */
-static s32 find_block(u32 sys_addr, struct tiler_block_info *blk)
+s32 find_block(u32 sys_addr, struct tiler_block_info *blk)
 {
 	struct mem_info *i;
 	struct tcm_pt pt;
@@ -1279,7 +1286,7 @@ static s32 tiler_ioctl(struct inode *ip, struct file *filp, u32 cmd,
 	return 0x0;
 }
 
-static s32 alloc_block(enum tiler_fmt fmt, u32 width, u32 height,
+s32 alloc_block(enum tiler_fmt fmt, u32 width, u32 height,
 		   u32 align, u32 offs, u32 gid, struct process_info *pi,
 		   u32 *sys_addr)
 {
@@ -1302,6 +1309,7 @@ static s32 alloc_block(enum tiler_fmt fmt, u32 width, u32 height,
 	mi = __get_area(fmt, width, height, align, offs, gi);
 	if (!mi) {
 		mutex_lock(&mtx);
+		gi->refs--;
 		_m_try_free_group(gi);
 		mutex_unlock(&mtx);
 		return -ENOMEM;
@@ -1316,9 +1324,6 @@ static s32 alloc_block(enum tiler_fmt fmt, u32 width, u32 height,
 		mi->mem = tmm_get(TMM(fmt), mi->num_pg);
 		if (!mi->mem)
 			goto cleanup;
-
-		/* Ensure the data reaches to main memory before PAT refill */
-		wmb();
 
 		/* program PAT */
 		if (refill_pat(TMM(fmt), &mi->area, mi->mem))
@@ -1410,22 +1415,6 @@ s32 tiler_reserve(u32 n, struct tiler_buf_info *b)
 }
 EXPORT_SYMBOL(tiler_reserve);
 
-int tiler_reg_notifier(struct notifier_block *nb)
-{
-	if (!nb)
-		return -EINVAL;
-	return blocking_notifier_chain_register(&tiler_device->notifier, nb);
-}
-EXPORT_SYMBOL(tiler_reg_notifier);
-
-int tiler_unreg_notifier(struct notifier_block *nb)
-{
-	if (!nb)
-		return -EINVAL;
-	return blocking_notifier_chain_unregister(&tiler_device->notifier, nb);
-}
-EXPORT_SYMBOL(tiler_unreg_notifier);
-
 static void __exit tiler_exit(void)
 {
 	struct process_info *pi = NULL, *pi_ = NULL;
@@ -1438,15 +1427,12 @@ static void __exit tiler_exit(void)
 		_m_free_process_info(pi);
 
 	/* all lists should have cleared */
-	WARN_ON(!list_empty(&blocks));
-	WARN_ON(!list_empty(&procs));
-	WARN_ON(!list_empty(&orphan_onedim));
-	WARN_ON(!list_empty(&orphan_areas));
+	BUG_ON(!list_empty(&blocks));
+	BUG_ON(!list_empty(&procs));
+	BUG_ON(!list_empty(&orphan_onedim));
+	BUG_ON(!list_empty(&orphan_areas));
 
 	mutex_unlock(&mtx);
-
-	dma_free_coherent(NULL, TILER_WIDTH * TILER_HEIGHT * sizeof(*dmac_va),
-							dmac_va, dmac_pa);
 
 	/* close containers only once */
 	for (i = TILFMT_8BIT; i <= TILFMT_MAX; i++) {
@@ -1510,18 +1496,6 @@ static s32 __init tiler_init(void)
 	struct tcm *sita = NULL;
 	struct tmm *tmm_pat = NULL;
 
-	if (!cpu_is_omap44xx())
-		return 0;
-
-	/**
-	  * Array of physical pages for PAT programming, which must be a 16-byte
-	  * aligned physical address
-	*/
-	dmac_va = dma_alloc_coherent(NULL, TILER_WIDTH * TILER_HEIGHT *
-					sizeof(*dmac_va), &dmac_pa, GFP_ATOMIC);
-	if (!dmac_va)
-		return -ENOMEM;
-
 	/* Allocate tiler container manager (we share 1 on OMAP4) */
 	div_pt.x = TILER_WIDTH;   /* hardcoded default */
 	div_pt.y = (3 * TILER_HEIGHT) / 4;
@@ -1580,7 +1554,6 @@ static s32 __init tiler_init(void)
 	INIT_LIST_HEAD(&procs);
 	INIT_LIST_HEAD(&orphan_areas);
 	INIT_LIST_HEAD(&orphan_onedim);
-	BLOCKING_INIT_NOTIFIER_HEAD(&tiler_device->notifier);
 	id = 0xda7a000;
 
 error:
@@ -1589,8 +1562,6 @@ error:
 		kfree(tiler_device);
 		tcm_deinit(sita);
 		tmm_deinit(tmm_pat);
-		dma_free_coherent(NULL, TILER_WIDTH * TILER_HEIGHT *
-					sizeof(*dmac_va), dmac_va, dmac_pa);
 	}
 
 	return r;
