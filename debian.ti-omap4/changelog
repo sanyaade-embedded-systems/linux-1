@@ -1,3 +1,11 @@
+linux-ti-omap4 (2.6.34-901.2) maverick; urgency=low
+
+  [ Tim Gardner ]
+
+  * [Config] Fix Vcs-git entry
+
+ --  <Tim Gardner <tim.gardner@canonical.com>>  Mon, 28 Jun 2010 14:35:42 +0100
+
 linux-ti-omap4 (2.6.34-900.2+ti+panda+release0) maverick; urgency=low
 
   [ Sebastien Jan ]
