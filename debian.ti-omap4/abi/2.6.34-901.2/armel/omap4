@@ -3575,9 +3575,6 @@ EXPORT_SYMBOL vmlinux 0x00000000	scsi_unblock_requests
 EXPORT_SYMBOL vmlinux 0x00000000	scsi_unregister
 EXPORT_SYMBOL vmlinux 0x00000000	scsicam_bios_param
 EXPORT_SYMBOL vmlinux 0x00000000	scsilun_to_int
-EXPORT_SYMBOL vmlinux 0x00000000	sdp4430_wifi_power
-EXPORT_SYMBOL vmlinux 0x00000000	sdp4430_wifi_reset
-EXPORT_SYMBOL vmlinux 0x00000000	sdp4430_wifi_set_carddetect
 EXPORT_SYMBOL vmlinux 0x00000000	search_binary_handler
 EXPORT_SYMBOL vmlinux 0x00000000	secpath_dup
 EXPORT_SYMBOL vmlinux 0x00000000	secure_dccp_sequence_number
