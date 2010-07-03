@@ -1044,7 +1044,26 @@ CONFIG_RTC_DRV_TWL4030=y
 #
 # TI VLYNQ
 #
-# CONFIG_STAGING is not set
+
+CONFIG_STAGING=y
+# CONFIG_STAGING_EXCLUDE_BUILD is not set
+# CONFIG_ECHO is not set
+# CONFIG_COMEDI is not set
+# CONFIG_POHMELFS is not set
+
+#
+# RAR Register Driver
+#
+# CONFIG_RAR_REGISTER is not set
+CONFIG_IIO=y
+# CONFIG_IIO_RING_BUFFER is not set
+# CONFIG_IIO_TRIGGER is not set
+
+# Magnetometer sensors
+#
+CONFIG_SENSORS_HMC5843=y
+
+
 
 #
 # File systems
