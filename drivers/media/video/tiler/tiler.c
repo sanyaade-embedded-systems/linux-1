@@ -120,6 +120,8 @@ static u32 id;
 static struct mutex mtx;
 static struct tcm *tcm[TILER_FORMATS];
 static struct tmm *tmm[TILER_FORMATS];
+static u32 *dmac_va;
+static dma_addr_t dmac_pa;
 
 #define TCM(fmt)        tcm[(fmt) - TILFMT_8BIT]
 #define TCM_SS(ssptr)   TCM(TILER_GET_ACC_MODE(ssptr))
@@ -846,10 +848,10 @@ static s32 refill_pat(struct tmm *tmm, struct tcm_area *area, u32 *ptr)
 		p_area.x1 = slice.p1.x;
 		p_area.y1 = slice.p1.y;
 
-		memcpy(page, ptr, sizeof(*ptr) * tcm_sizeof(slice));
+		memcpy(dmac_va, ptr, sizeof(*ptr) * tcm_sizeof(slice));
 		ptr += tcm_sizeof(slice);
 
-		if (tmm_map(tmm, p_area, page_pa)) {
+		if (tmm_map(tmm, p_area, dmac_pa)) {
 			res = -EFAULT;
 			break;
 		}
@@ -1423,6 +1425,9 @@ static void __exit tiler_exit(void)
 
 	mutex_unlock(&mtx);
 
+	dma_free_coherent(NULL, TILER_WIDTH * TILER_HEIGHT * sizeof(*dmac_va),
+							dmac_va, dmac_pa);
+
 	/* close containers only once */
 	for (i = TILFMT_8BIT; i <= TILFMT_MAX; i++) {
 		/* remove identical containers (tmm is unique per tcm) */
@@ -1501,6 +1506,14 @@ static s32 __init tiler_init(void)
 	TMM_SET(TILFMT_16BIT, tmm_pat);
 	TMM_SET(TILFMT_32BIT, tmm_pat);
 	TMM_SET(TILFMT_PAGE, tmm_pat);
+
+	/* Array of physical pages for PAT programming, which must be a 16-byte
+	   aligned physical address
+	*/
+	dmac_va = dma_alloc_coherent(NULL, TILER_WIDTH * TILER_HEIGHT *
+					sizeof(*dmac_va), &dmac_pa, GFP_ATOMIC);
+	if (!dmac_va)
+		return -ENOMEM;
 
 	tiler_device = kmalloc(sizeof(*tiler_device), GFP_KERNEL);
 	if (!tiler_device || !sita || !tmm_pat) {
