@@ -677,7 +677,7 @@ static int smsc95xx_is_macaddr_param(struct usbnet *dev, u8 *dev_mac)
 		}
 	}
 
-	if (j == MAC_ADDR_LEN && !macaddr[i]) {
+	if (j == MAC_ADDR_LEN) {
 		netif_dbg(dev, ifup, dev->net, "Overriding MAC address with: "
 		"%02x:%02x:%02x:%02x:%02x:%02x\n", mtbl[0], mtbl[1], mtbl[2],
 						mtbl[3], mtbl[4], mtbl[5]);
