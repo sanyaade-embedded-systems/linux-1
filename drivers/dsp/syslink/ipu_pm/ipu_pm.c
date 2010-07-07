@@ -346,29 +346,64 @@ int ipu_pm_notifications(enum pm_event_type event_type)
 }
 EXPORT_SYMBOL(ipu_pm_notifications);
 
+static void ipu_pm_free_events(struct pm_event *pm_event)
+{
+	if (pm_event) {
+		u32 i;
+		for (i = 0; i < NUMBER_PM_EVENTS; i++) {
+			kfree(pm_event[i].sem_handle);
+			pm_event[i].sem_handle = NULL;
+			pm_event[i].event_type = 0;
+		}
+	}
+}
+
+static int ipu_pm_setup_events(struct pm_event *pm_event)
+{
+	u32 i;
+	for (i = 0; i < NUMBER_PM_EVENTS; i++) {
+		pm_event[i].sem_handle = kzalloc(sizeof(struct semaphore),
+						GFP_KERNEL);
+		if (WARN_ON(!pm_event[i].sem_handle))
+			goto error;
+		sema_init(pm_event[i].sem_handle, 0);
+		pm_event[i].event_type = i;
+	}
+
+	return 0;
+error:
+	ipu_pm_free_events(pm_event);
+	return -ENOMEM;
+}
+
 /*
   Function for setup ipu_pm module
  *
  */
 int ipu_pm_setup(void *notify_driver_handle)
 {
-	u32 i = 0;
 	ipu_pm_notifydrv_handle = notify_driver_handle;
+
 	/* Get the shared RCB */
 	rcb_table = (struct sms *) ioremap(PM_SHM_BASE_ADDR,
 		sizeof(struct sms));
+	if (WARN_ON(!rcb_table))
+		goto error;
 
 	pm_event = kzalloc(sizeof(struct pm_event) * NUMBER_PM_EVENTS,
 				GFP_KERNEL);
+	if (WARN_ON(!pm_event))
+		goto error;
 
-	/* Each event has it own sem */
-	for (i = 0; i < NUMBER_PM_EVENTS; i++) {
-		pm_event[i].sem_handle = kzalloc(sizeof(struct semaphore),
-						GFP_KERNEL);
-		sema_init(pm_event[i].sem_handle, 0);
-		pm_event[i].event_type = i;
-	}
+	if (WARN_ON(ipu_pm_setup_events(pm_event) < 0))
+		goto error;
+
 	return 0;
+
+error:
+	ipu_pm_finish();
+	return -ENOMEM;
+
 }
 EXPORT_SYMBOL(ipu_pm_setup);
 
@@ -376,20 +411,15 @@ EXPORT_SYMBOL(ipu_pm_setup);
   Function for finish ipu_pm module
  *
  */
-int ipu_pm_finish()
+void ipu_pm_finish(void)
 {
-	u32 i = 0;
-	/* Release the shared RCB */
-	for (i = 0; i < NUMBER_PM_EVENTS; i++) {
-		kfree(pm_event[i].sem_handle);
-		pm_event[i].event_type = 0;
-	}
+	ipu_pm_free_events(pm_event);
 	kfree(pm_event);
 	pm_event = NULL;
-	iounmap(rcb_table);
+	if (rcb_table)
+		iounmap(rcb_table);
 	rcb_table = NULL;
 	ipu_pm_notifydrv_handle = NULL;
-	return 0;
 }
 EXPORT_SYMBOL(ipu_pm_finish);
 

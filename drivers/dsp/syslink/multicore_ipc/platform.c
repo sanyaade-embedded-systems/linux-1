@@ -979,7 +979,8 @@ void platform_start_callback(void *arg)
 				goto pm_register_fail;
 			}
 
-			ipu_pm_setup(platform_notifydrv_handle);
+			if (ipu_pm_setup(platform_notifydrv_handle) < 0)
+				goto pm_setup_fail;
 
 		}
 		/* END PM */
@@ -1298,6 +1299,9 @@ proc_invalid_id:
 	goto exit;
 pm_register_fail:
 	printk(KERN_ERR "pm register events failed");
+	goto exit;
+pm_setup_fail:
+	printk(KERN_ERR "ipu_pm_setup() failed");
 exit:
 	return;
 }

@@ -214,7 +214,7 @@ int ipu_pm_notifications(enum pm_event_type event_type);
 int ipu_pm_setup(void *notify_driver_handle);
 
 /* Function for finish ipu_pm module */
-int ipu_pm_finish(void);
+void ipu_pm_finish(void);
 
 #endif
 
