@@ -71,4 +71,24 @@ static int __init omap_l2_cache_init(void)
 early_initcall(omap_l2_cache_init);
 #endif
 
+static struct platform_device omap4_syslink_device = {
+	.name          = "syslink_ipc",
+	.id            = -1,
+	.num_resources = 0,
+};
 
+static int __init omap4_syslink_init(void)
+{
+	int retval;
+
+	retval = platform_device_register(&omap4_syslink_device);
+
+	if (retval != 0)
+		pr_err("%s: Failed to register devices: %d\n", __func__,
+			retval);
+	else
+		pr_info("%s: Successfully registered devices\n", __func__);
+
+	return retval;
+}
+device_initcall(omap4_syslink_init);
