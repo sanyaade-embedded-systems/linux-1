@@ -47,9 +47,8 @@
 #define OMAP_MMC_MAX_SLOTS	2
 
 /* omap_hwmod integration data */
-#define MMC_SUPPORT_18V			(1 << 0)
+#define MMC_SUPPORT_18V_3V		(1 << 0)
 #define MMC_SUPPORT_3V			(1 << 1)
-#define MMC_SUPPORT_18V_3V		(1 << 2)
 
 
 struct mmc_dev_attr {
