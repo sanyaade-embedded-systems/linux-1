@@ -448,7 +448,6 @@ static struct omap2_hsmmc_info mmc[] = {
 		.mmc		= 1,
 		.wires		= 8,
 		.gpio_wp	= -EINVAL,
-		.power_saving   = true,
 	},
 	{
 		.mmc		= 2,
@@ -456,9 +455,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
 		.nonremovable   = true,
-		.power_saving   = true,
 	},
-#if 1
 	{
 		.mmc            = 3,
 		.wires          = -EINVAL,
@@ -471,7 +468,6 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_cd        = -EINVAL,
 		.gpio_wp        = -EINVAL,
 	},
-#endif
 	{
 		.mmc            = 5,
 		.wires          = 8,
