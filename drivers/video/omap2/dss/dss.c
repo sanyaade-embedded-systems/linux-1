@@ -33,7 +33,11 @@
 #include <plat/display.h>
 #include "dss.h"
 
+#ifndef CONFIG_ARCH_OMAP4
 #define DSS_BASE			0x48050000
+#else
+#define DSS_BASE			0x58000000
+#endif
 
 #define DSS_SZ_REGS			SZ_512
 
@@ -223,7 +227,13 @@ void dss_dump_clocks(struct seq_file *s)
 
 	seq_printf(s, "dpll4_ck %lu\n", dpll4_ck_rate);
 
-	seq_printf(s, "dss1_alwon_fclk = %lu / %lu * 2 = %lu\n",
+	if (cpu_is_omap3630())
+		seq_printf(s, "dss1_alwon_fclk = %lu / %lu  = %lu\n",
+			dpll4_ck_rate,
+			dpll4_ck_rate / dpll4_m4_ck_rate,
+			dss_clk_get_rate(DSS_CLK_FCK1));
+	else
+		seq_printf(s, "dss1_alwon_fclk = %lu / %lu * 2 = %lu\n",
 			dpll4_ck_rate,
 			dpll4_ck_rate / dpll4_m4_ck_rate,
 			dss_clk_get_rate(DSS_CLK_FCK1));
@@ -259,12 +269,17 @@ void dss_select_dispc_clk_source(enum dss_clk_source clk_src)
 
 	b = clk_src == DSS_SRC_DSS1_ALWON_FCLK ? 0 : 1;
 
-	REG_FLD_MOD(DSS_CONTROL, b, 0, 0);	/* DISPC_CLK_SWITCH */
+	if (!cpu_is_omap44xx()) {
+		REG_FLD_MOD(DSS_CONTROL, b, 0, 0);	/* DISPC_CLK_SWITCH */
+	} else {
+		REG_FLD_MOD(DSS_CONTROL, b, 9, 8);	/* FCK_CLK_SWITCH */
+	}
 
 	dss.dispc_clk_source = clk_src;
 }
 
-void dss_select_dsi_clk_source(enum dss_clk_source clk_src)
+void dss_select_dsi_clk_source(enum omap_dsi_index ix,
+	enum dss_clk_source clk_src)
 {
 	int b;
 
@@ -273,7 +288,14 @@ void dss_select_dsi_clk_source(enum dss_clk_source clk_src)
 
 	b = clk_src == DSS_SRC_DSS1_ALWON_FCLK ? 0 : 1;
 
-	REG_FLD_MOD(DSS_CONTROL, b, 1, 1);	/* DSI_CLK_SWITCH */
+	if (ix == DSI1) {
+		REG_FLD_MOD(DSS_CONTROL, b, 1, 1);	/* DSI_CLK_SWITCH */
+		if (cpu_is_omap44xx())
+			REG_FLD_MOD(DSS_CONTROL, b, 0, 0);	/* LCD1_CLK_SWITCH */
+	} else {
+		REG_FLD_MOD(DSS_CONTROL, b, 10, 10);	/* DSI2_CLK_SWITCH */
+		REG_FLD_MOD(DSS_CONTROL, b, 12, 12);	/* LCD2_CLK_SWITCH */
+	}
 
 	dss.dsi_clk_source = clk_src;
 }
@@ -293,7 +315,8 @@ int dss_calc_clock_rates(struct dss_clock_info *cinfo)
 {
 	unsigned long prate;
 
-	if (cinfo->fck_div > 16 || cinfo->fck_div == 0)
+	if (cinfo->fck_div > (cpu_is_omap3630() ? 32 : 16) ||
+						cinfo->fck_div == 0)
 		return -EINVAL;
 
 	prate = clk_get_rate(clk_get_parent(dss.dpll4_m4_ck));
@@ -329,7 +352,10 @@ int dss_get_clock_div(struct dss_clock_info *cinfo)
 	if (cpu_is_omap34xx()) {
 		unsigned long prate;
 		prate = clk_get_rate(clk_get_parent(dss.dpll4_m4_ck));
-		cinfo->fck_div = prate / (cinfo->fck / 2);
+		if (cpu_is_omap3630())
+			cinfo->fck_div = prate / (cinfo->fck);
+		else
+			cinfo->fck_div = prate / (cinfo->fck / 2);
 	} else {
 		cinfo->fck_div = 0;
 	}
@@ -402,10 +428,14 @@ retry:
 
 		goto found;
 	} else if (cpu_is_omap34xx()) {
-		for (fck_div = 16; fck_div > 0; --fck_div) {
+		for (fck_div = (cpu_is_omap3630() ? 32 : 16);
+					fck_div > 0; --fck_div) {
 			struct dispc_clock_info cur_dispc;
 
-			fck = prate / fck_div * 2;
+			if (cpu_is_omap3630())
+				fck = prate / fck_div;
+			else
+				fck = prate / fck_div * 2;
 
 			if (fck > DISPC_MAX_FCK)
 				continue;
@@ -480,8 +510,8 @@ static irqreturn_t dss_irq_handler_omap3(int irq, void *arg)
 	if (irqstatus & (1<<0))	/* DISPC_IRQ */
 		dispc_irq_handler();
 #ifdef CONFIG_OMAP2_DSS_DSI
-	if (irqstatus & (1<<1))	/* DSI_IRQ */
-		dsi_irq_handler();
+	if (!cpu_is_omap44xx() && (irqstatus & (1<<1)))	/* DSI_IRQ */
+		dsi_irq_handler(0, NULL);
 #endif
 
 	return IRQ_HANDLED;
@@ -529,6 +559,13 @@ void dss_set_dac_pwrdn_bgz(bool enable)
 	REG_FLD_MOD(DSS_CONTROL, enable, 5, 5);	/* DAC Power-Down Control */
 }
 
+void dss_switch_tv_hdmi(int hdmi)
+{
+	REG_FLD_MOD(DSS_CONTROL, hdmi, 15, 15);	/* 0x1 for HDMI, 0x0 TV */
+	if (hdmi)
+		REG_FLD_MOD(DSS_CONTROL, 0, 9, 8);
+}
+
 int dss_init(bool skip_init)
 {
 	int r;
@@ -570,11 +607,16 @@ int dss_init(bool skip_init)
 	REG_FLD_MOD(DSS_CONTROL, 0, 2, 2);	/* venc clock mode = normal */
 #endif
 
-	r = request_irq(INT_24XX_DSS_IRQ,
-			cpu_is_omap24xx()
-			? dss_irq_handler_omap2
-			: dss_irq_handler_omap3,
-			0, "OMAP DSS", NULL);
+	if (!cpu_is_omap44xx())
+		r = request_irq(INT_24XX_DSS_IRQ,
+				cpu_is_omap24xx()
+				? dss_irq_handler_omap2
+				: dss_irq_handler_omap3,
+				0, "OMAP DSS", NULL);
+	else
+		r = request_irq(OMAP44XX_IRQ_DSS_DISPC,
+				dss_irq_handler_omap2,
+				0, "OMAP DSS", NULL);
 
 	if (r < 0) {
 		DSSERR("omap2 dss: request_irq failed\n");
@@ -602,7 +644,8 @@ int dss_init(bool skip_init)
 	return 0;
 
 fail2:
-	free_irq(INT_24XX_DSS_IRQ, NULL);
+	if (!cpu_is_omap44xx())
+		free_irq(INT_24XX_DSS_IRQ, NULL);
 fail1:
 	iounmap(dss.base);
 fail0:
@@ -614,8 +657,8 @@ void dss_exit(void)
 	if (cpu_is_omap34xx())
 		clk_put(dss.dpll4_m4_ck);
 
-	free_irq(INT_24XX_DSS_IRQ, NULL);
-
+	if (!cpu_is_omap44xx())
+		free_irq(INT_24XX_DSS_IRQ, NULL);
 	iounmap(dss.base);
 }
 

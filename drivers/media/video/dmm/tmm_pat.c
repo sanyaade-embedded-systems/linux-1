@@ -255,6 +255,8 @@ static void tmm_pat_free_pages(struct tmm *tmm, u32 *list)
 						((struct mem *)f->mem[i])->pg);
 					count--;
 				}
+				list_add(&((struct mem *)f->mem[i])->list,
+							&pvt->free_list.list);
 			}
 			list_del(pos);
 			kfree(f->pa);
