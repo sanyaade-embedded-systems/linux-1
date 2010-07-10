@@ -104,6 +104,17 @@ static const int omap24xx_dma_reqs[][2] = {
 static const int omap24xx_dma_reqs[][2] = {};
 #endif
 
+#if defined(CONFIG_ARCH_OMAP4)
+static const int omap44xx_dma_reqs[][2] = {
+	{ OMAP44XX_DMA_MCBSP1_TX, OMAP44XX_DMA_MCBSP1_RX },
+	{ OMAP44XX_DMA_MCBSP2_TX, OMAP44XX_DMA_MCBSP2_RX },
+	{ OMAP44XX_DMA_MCBSP3_TX, OMAP44XX_DMA_MCBSP3_RX },
+	{ OMAP44XX_DMA_MCBSP4_TX, OMAP44XX_DMA_MCBSP4_RX },
+};
+#else
+static const int omap44xx_dma_reqs[][2] = {};
+#endif
+
 #if defined(CONFIG_ARCH_OMAP2420)
 static const unsigned long omap2420_mcbsp_port[][2] = {
 	{ OMAP24XX_MCBSP1_BASE + OMAP_MCBSP_REG_DXR1,
@@ -170,6 +181,21 @@ static void omap_mcbsp_set_threshold(struct snd_pcm_substream *substream)
 		omap_mcbsp_set_rx_threshold(mcbsp_data->bus_id, samples - 1);
 }
 
+#if defined(CONFIG_ARCH_OMAP4)
+static const unsigned long omap44xx_mcbsp_port[][2] = {
+	{ OMAP44XX_MCBSP1_BASE + OMAP_MCBSP_REG_DXR,
+	  OMAP44XX_MCBSP1_BASE + OMAP_MCBSP_REG_DRR },
+	{ OMAP44XX_MCBSP2_BASE + OMAP_MCBSP_REG_DXR,
+	  OMAP44XX_MCBSP2_BASE + OMAP_MCBSP_REG_DRR },
+	{ OMAP44XX_MCBSP3_BASE + OMAP_MCBSP_REG_DXR,
+	  OMAP44XX_MCBSP3_BASE + OMAP_MCBSP_REG_DRR },
+	{ OMAP44XX_MCBSP4_BASE + OMAP_MCBSP_REG_DXR,
+	  OMAP44XX_MCBSP4_BASE + OMAP_MCBSP_REG_DRR },
+};
+#else
+static const unsigned long omap44xx_mcbsp_port[][2] = {};
+#endif
+
 static int omap_mcbsp_dai_startup(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
@@ -182,7 +208,7 @@ static int omap_mcbsp_dai_startup(struct snd_pcm_substream *substream,
 	if (!cpu_dai->active)
 		err = omap_mcbsp_request(bus_id);
 
-	if (cpu_is_omap343x()) {
+	if (cpu_is_omap343x() || cpu_is_omap44xx()) {
 		int dma_op_mode = omap_mcbsp_get_dma_op_mode(bus_id);
 		int max_period;
 
@@ -287,6 +313,9 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 		if (omap_mcbsp_get_dma_op_mode(bus_id) ==
 						MCBSP_DMA_MODE_THRESHOLD)
 			sync_mode = OMAP_DMA_SYNC_FRAME;
+	} else if (cpu_is_omap44xx()) {
+		dma = omap44xx_dma_reqs[bus_id][substream->stream];
+		port = omap44xx_mcbsp_port[bus_id][substream->stream];
 	} else {
 		return -ENODEV;
 	}
@@ -295,8 +324,18 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	omap_mcbsp_dai_dma_params[id][substream->stream].dma_req = dma;
 	omap_mcbsp_dai_dma_params[id][substream->stream].port_addr = port;
 	omap_mcbsp_dai_dma_params[id][substream->stream].sync_mode = sync_mode;
-	omap_mcbsp_dai_dma_params[id][substream->stream].data_type =
-							OMAP_DMA_DATA_TYPE_S16;
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S16_LE:
+		omap_mcbsp_dai_dma_params[id][substream->stream].data_type =
+			 OMAP_DMA_DATA_TYPE_S16;
+		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		omap_mcbsp_dai_dma_params[id][substream->stream].data_type =
+			 OMAP_DMA_DATA_TYPE_S32;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	snd_soc_dai_set_dma_data(cpu_dai, substream,
 		&omap_mcbsp_dai_dma_params[id][substream->stream]);
@@ -329,6 +368,14 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 		regs->rcr1	|= RWDLEN1(OMAP_MCBSP_WORD_16);
 		regs->xcr2	|= XWDLEN2(OMAP_MCBSP_WORD_16);
 		regs->xcr1	|= XWDLEN1(OMAP_MCBSP_WORD_16);
+		break;
+	case SNDRV_PCM_FORMAT_S32_LE:
+		/* Set word lengths */
+		wlen = 32;
+		regs->rcr2	|= RWDLEN2(OMAP_MCBSP_WORD_32);
+		regs->rcr1	|= RWDLEN1(OMAP_MCBSP_WORD_32);
+		regs->xcr2	|= XWDLEN2(OMAP_MCBSP_WORD_32);
+		regs->xcr1	|= XWDLEN1(OMAP_MCBSP_WORD_32);
 		break;
 	default:
 		/* Unsupported PCM format */
@@ -389,11 +436,11 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	regs->spcr2	|= XINTM(3) | FREE;
 	regs->spcr1	|= RINTM(3);
 	/* RFIG and XFIG are not defined in 34xx */
-	if (!cpu_is_omap34xx()) {
+	if (!cpu_is_omap34xx() && !cpu_is_omap44xx()) {
 		regs->rcr2	|= RFIG;
 		regs->xcr2	|= XFIG;
 	}
-	if (cpu_is_omap2430() || cpu_is_omap34xx()) {
+	if (cpu_is_omap2430() || cpu_is_omap34xx() || cpu_is_omap44xx()) {
 		regs->xccr = DXENDLY(1) | XDMAEN | XDISABLE;
 		regs->rccr = RFULL_CYCLE | RDMAEN | RDISABLE;
 	}
@@ -582,6 +629,10 @@ static int omap_mcbsp_dai_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 		regs->srgr2	|= CLKSM;
 		break;
 	case OMAP_MCBSP_SYSCLK_CLKS_FCLK:
+		if (cpu_is_omap44xx()) {
+			regs->srgr2     |= CLKSM;
+			break;
+		}
 	case OMAP_MCBSP_SYSCLK_CLKS_EXT:
 		err = omap_mcbsp_dai_set_clks_src(mcbsp_data, clk_id);
 		break;
@@ -623,13 +674,15 @@ static struct snd_soc_dai_ops omap_mcbsp_dai_ops = {
 		.channels_min = 1,				\
 		.channels_max = 16,				\
 		.rates = OMAP_MCBSP_RATES,			\
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,		\
+		.formats = SNDRV_PCM_FMTBIT_S16_LE |		\
+			   SNDRV_PCM_FMTBIT_S32_LE,		\
 	},							\
 	.capture = {						\
 		.channels_min = 1,				\
 		.channels_max = 16,				\
 		.rates = OMAP_MCBSP_RATES,			\
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,		\
+		.formats = SNDRV_PCM_FMTBIT_S16_LE |		\
+			   SNDRV_PCM_FMTBIT_S32_LE,		\
 	},							\
 	.ops = &omap_mcbsp_dai_ops,				\
 	.private_data = &mcbsp_data[(link_id)].bus_id,		\
@@ -641,8 +694,10 @@ struct snd_soc_dai omap_mcbsp_dai[] = {
 #if NUM_LINKS >= 3
 	OMAP_MCBSP_DAI_BUILDER(2),
 #endif
-#if NUM_LINKS == 5
+#if NUM_LINKS >= 4
 	OMAP_MCBSP_DAI_BUILDER(3),
+#endif
+#if NUM_LINKS == 5
 	OMAP_MCBSP_DAI_BUILDER(4),
 #endif
 };
