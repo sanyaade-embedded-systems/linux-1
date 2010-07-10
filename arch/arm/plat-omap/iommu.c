@@ -25,6 +25,24 @@
 
 #include "iopgtable.h"
 
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/device.h>
+#include <linux/file.h>
+#include <linux/poll.h>
+
+
+#define for_each_iotlb_cr(obj, n, __i, cr)				\
+	for (__i = 0;							\
+	     (__i < (n)) && (cr = __iotlb_read_cr((obj), __i), true);	\
+	     __i++)
+#define OMAP_IOMMU_NAME "omap-iommu"
+
+static atomic_t		num_of_iommus;
+static struct class	*omap_iommu_class;
+static dev_t		omap_iommu_dev;
+
+
 /* accommodate the difference between omap1 and omap2/3 */
 static const struct iommu_functions *arch_iommu;
 
@@ -98,12 +116,7 @@ static int iommu_enable(struct iommu *obj)
 
 	if (!obj)
 		return -EINVAL;
-
-	clk_enable(obj->clk);
-
 	err = arch_iommu->enable(obj);
-
-	clk_disable(obj->clk);
 	return err;
 }
 
@@ -111,12 +124,7 @@ static void iommu_disable(struct iommu *obj)
 {
 	if (!obj)
 		return;
-
-	clk_enable(obj->clk);
-
 	arch_iommu->disable(obj);
-
-	clk_disable(obj->clk);
 }
 
 /*
@@ -171,15 +179,11 @@ static void iotlb_lock_get(struct iommu *obj, struct iotlb_lock *l)
 
 	l->base = MMU_LOCK_BASE(val);
 	l->vict = MMU_LOCK_VICT(val);
-
-	BUG_ON(l->base != 0); /* Currently no preservation is used */
 }
 
 static void iotlb_lock_set(struct iommu *obj, struct iotlb_lock *l)
 {
 	u32 val;
-
-	BUG_ON(l->base != 0); /* Currently no preservation is used */
 
 	val = (l->base << MMU_LOCK_BASE_SHIFT);
 	val |= (l->vict << MMU_LOCK_VICT_SHIFT);
@@ -214,6 +218,20 @@ static inline ssize_t iotlb_dump_cr(struct iommu *obj, struct cr_regs *cr,
 	return arch_iommu->dump_cr(obj, cr, buf);
 }
 
+/* only used for iotlb iteration in for-loop */
+static struct cr_regs __iotlb_read_cr(struct iommu *obj, int n)
+{
+	struct cr_regs cr;
+	struct iotlb_lock l;
+
+	iotlb_lock_get(obj, &l);
+	l.vict = n;
+	iotlb_lock_set(obj, &l);
+	iotlb_read_cr(obj, &cr);
+
+	return cr;
+}
+
 /**
  * load_iotlb_entry - Set an iommu tlb entry
  * @obj:	target iommu
@@ -221,7 +239,6 @@ static inline ssize_t iotlb_dump_cr(struct iommu *obj, struct cr_regs *cr,
  **/
 int load_iotlb_entry(struct iommu *obj, struct iotlb_entry *e)
 {
-	int i;
 	int err = 0;
 	struct iotlb_lock l;
 	struct cr_regs *cr;
@@ -229,40 +246,46 @@ int load_iotlb_entry(struct iommu *obj, struct iotlb_entry *e)
 	if (!obj || !obj->nr_tlb_entries || !e)
 		return -EINVAL;
 
-	clk_enable(obj->clk);
-
-	for (i = 0; i < obj->nr_tlb_entries; i++) {
-		struct cr_regs tmp;
-
-		iotlb_lock_get(obj, &l);
-		l.vict = i;
-		iotlb_lock_set(obj, &l);
-		iotlb_read_cr(obj, &tmp);
-		if (!iotlb_cr_valid(&tmp))
-			break;
-	}
-
-	if (i == obj->nr_tlb_entries) {
-		dev_dbg(obj->dev, "%s: full: no entry\n", __func__);
+	iotlb_lock_get(obj, &l);
+	if (l.base == obj->nr_tlb_entries) {
+		dev_warn(obj->dev, "%s: preserve entries full\n", __func__);
 		err = -EBUSY;
 		goto out;
 	}
+	if (!e->prsvd) {
+		int i;
+		struct cr_regs tmp;
+
+		for_each_iotlb_cr(obj, obj->nr_tlb_entries, i, tmp)
+			if (!iotlb_cr_valid(&tmp))
+				break;
+
+		if (i == obj->nr_tlb_entries) {
+			dev_dbg(obj->dev, "%s: full: no entry\n", __func__);
+			err = -EBUSY;
+			goto out;
+		}
+
+		iotlb_lock_get(obj, &l);
+	} else {
+		l.vict = l.base;
+		iotlb_lock_set(obj, &l);
+	}
 
 	cr = iotlb_alloc_cr(obj, e);
-	if (IS_ERR(cr)) {
-		clk_disable(obj->clk);
+	if (IS_ERR(cr))
 		return PTR_ERR(cr);
-	}
 
 	iotlb_load_cr(obj, cr);
 	kfree(cr);
 
+	if (e->prsvd)
+		l.base++;
 	/* increment victim for next tlb load */
 	if (++l.vict == obj->nr_tlb_entries)
-		l.vict = 0;
+		l.vict = l.base;
 	iotlb_lock_set(obj, &l);
 out:
-	clk_disable(obj->clk);
 	return err;
 }
 EXPORT_SYMBOL_GPL(load_iotlb_entry);
@@ -276,20 +299,13 @@ EXPORT_SYMBOL_GPL(load_iotlb_entry);
  **/
 void flush_iotlb_page(struct iommu *obj, u32 da)
 {
-	struct iotlb_lock l;
 	int i;
+	struct cr_regs cr;
 
-	clk_enable(obj->clk);
-
-	for (i = 0; i < obj->nr_tlb_entries; i++) {
-		struct cr_regs cr;
+	for_each_iotlb_cr(obj, obj->nr_tlb_entries, i, cr) {
 		u32 start;
 		size_t bytes;
 
-		iotlb_lock_get(obj, &l);
-		l.vict = i;
-		iotlb_lock_set(obj, &l);
-		iotlb_read_cr(obj, &cr);
 		if (!iotlb_cr_valid(&cr))
 			continue;
 
@@ -299,12 +315,9 @@ void flush_iotlb_page(struct iommu *obj, u32 da)
 		if ((start <= da) && (da < start + bytes)) {
 			dev_dbg(obj->dev, "%s: %08x<=%08x(%x)\n",
 				__func__, start, da, bytes);
-			iotlb_load_cr(obj, &cr);
 			iommu_write_reg(obj, 1, MMU_FLUSH_ENTRY);
 		}
 	}
-	clk_disable(obj->clk);
-
 	if (i == obj->nr_tlb_entries)
 		dev_dbg(obj->dev, "%s: no page for %08x\n", __func__, da);
 }
@@ -338,17 +351,27 @@ void flush_iotlb_all(struct iommu *obj)
 {
 	struct iotlb_lock l;
 
-	clk_enable(obj->clk);
-
 	l.base = 0;
 	l.vict = 0;
 	iotlb_lock_set(obj, &l);
-
 	iommu_write_reg(obj, 1, MMU_GFLUSH);
-
-	clk_disable(obj->clk);
 }
 EXPORT_SYMBOL_GPL(flush_iotlb_all);
+
+/**
+ * iommu_set_twl - enable/disable table walking logic
+ * @obj:	target iommu
+ * @on:		enable/disable
+ *
+ * Function used to enable/disable TWL. If one wants to work
+ * exclusively with locked TLB entries and receive notifications
+ * for TLB miss then call this function to disable TWL.
+ */
+void iommu_set_twl(struct iommu *obj, bool on)
+{
+	arch_iommu->set_twl(obj, on);
+}
+EXPORT_SYMBOL_GPL(iommu_set_twl);
 
 #if defined(CONFIG_OMAP_IOMMU_DEBUG_MODULE)
 
@@ -357,12 +380,7 @@ ssize_t iommu_dump_ctx(struct iommu *obj, char *buf, ssize_t bytes)
 	if (!obj || !buf)
 		return -EINVAL;
 
-	clk_enable(obj->clk);
-
 	bytes = arch_iommu->dump_ctx(obj, buf, bytes);
-
-	clk_disable(obj->clk);
-
 	return bytes;
 }
 EXPORT_SYMBOL_GPL(iommu_dump_ctx);
@@ -370,29 +388,18 @@ EXPORT_SYMBOL_GPL(iommu_dump_ctx);
 static int __dump_tlb_entries(struct iommu *obj, struct cr_regs *crs, int num)
 {
 	int i;
-	struct iotlb_lock saved, l;
+	struct iotlb_lock saved;
+	struct cr_regs tmp;
 	struct cr_regs *p = crs;
 
-	clk_enable(obj->clk);
-
 	iotlb_lock_get(obj, &saved);
-	memcpy(&l, &saved, sizeof(saved));
-
-	for (i = 0; i < num; i++) {
-		struct cr_regs tmp;
-
-		iotlb_lock_get(obj, &l);
-		l.vict = i;
-		iotlb_lock_set(obj, &l);
-		iotlb_read_cr(obj, &tmp);
+	for_each_iotlb_cr(obj, num, i, tmp) {
 		if (!iotlb_cr_valid(&tmp))
 			continue;
-
 		*p++ = tmp;
 	}
-	iotlb_lock_set(obj, &saved);
-	clk_disable(obj->clk);
 
+	iotlb_lock_set(obj, &saved);
 	return  p - crs;
 }
 
@@ -745,10 +752,7 @@ static irqreturn_t iommu_fault_handler(int irq, void *data)
 
 	if (!err)
 		return IRQ_HANDLED;
-
-	clk_enable(obj->clk);
 	stat = iommu_report_fault(obj, &da);
-	clk_disable(obj->clk);
 	if (!stat)
 		return IRQ_HANDLED;
 
@@ -787,28 +791,23 @@ struct iommu *iommu_get(const char *name)
 	int err = -ENOMEM;
 	struct device *dev;
 	struct iommu *obj;
-
 	dev = driver_find_device(&omap_iommu_driver.driver, NULL, (void *)name,
 				 device_match_by_alias);
 	if (!dev)
 		return ERR_PTR(-ENODEV);
-
 	obj = to_iommu(dev);
 
 	mutex_lock(&obj->iommu_lock);
-
 	if (obj->refcount++ == 0) {
 		err = iommu_enable(obj);
 		if (err)
 			goto err_enable;
 		flush_iotlb_all(obj);
 	}
-
 	if (!try_module_get(obj->owner))
 		goto err_module;
 
 	mutex_unlock(&obj->iommu_lock);
-
 	dev_dbg(obj->dev, "%s: %s\n", __func__, obj->name);
 	return obj;
 
@@ -844,6 +843,86 @@ void iommu_put(struct iommu *obj)
 }
 EXPORT_SYMBOL_GPL(iommu_put);
 
+struct omap_iommu_dev {
+	struct device *dev;
+	struct cdev cdev;
+	atomic_t count;
+	int state;
+	int minor;
+};
+
+static int omap_iommu_open(struct inode *inode, struct file *filp)
+{
+	int ret = 0;
+	struct iommu *obj;
+
+	obj = container_of(inode->i_cdev, struct iommu, cdev);
+	if (!obj->dev)
+		return -EINVAL;
+
+	filp->private_data = obj;
+	iommu_get(obj->name);
+
+	return ret;
+}
+
+static int omap_iommu_release(struct inode *inode, struct file *filp)
+{
+	struct iommu *obj;
+	obj = container_of(inode->i_cdev, struct iommu, cdev);
+	if (!obj->dev)
+		return -EINVAL;
+	iommu_put(obj);
+	return 0;
+}
+
+static int omap_iommu_ioctl(struct inode *inode, struct file *filp,
+				unsigned int cmd, unsigned long args)
+
+{
+	struct iommu *obj;
+	int ret = 0;
+
+	obj = filp->private_data;
+	if (!obj)
+		return -EINVAL;
+
+	if (_IOC_TYPE(cmd) != IOMMU_IOC_MAGIC)
+		return -ENOTTY;
+
+	switch (cmd) {
+	case IOMMU_IOCSETTLBENT:
+	{
+		struct iotlb_entry e;
+		int size;
+		/* FIXME: Re-visit the following check */
+		/*if (!capable(CAP_SYS_ADMIN))
+		  return -EPERM;*/
+		size = copy_from_user(&e, (void __user *)args,
+					sizeof(struct iotlb_entry));
+		if (size) {
+			ret = -EINVAL;
+			goto err_user_buf;
+		}
+		load_iotlb_entry(obj, &e);
+		break;
+	}
+	default:
+		return -ENOTTY;
+	}
+err_user_buf:
+	return ret;
+}
+
+
+static const struct file_operations omap_iommu_fops = {
+	.owner		=	THIS_MODULE,
+	.open		=	omap_iommu_open,
+	.release	=	omap_iommu_release,
+	.ioctl		=	omap_iommu_ioctl,
+};
+
+
 /*
  *	OMAP Device MMU(IOMMU) detection
  */
@@ -855,6 +934,9 @@ static int __devinit omap_iommu_probe(struct platform_device *pdev)
 	struct iommu *obj;
 	struct resource *res;
 	struct iommu_platform_data *pdata = pdev->dev.platform_data;
+	int major, minor;
+	struct device *tmpdev;
+	int ret = 0;
 
 	if (pdev->num_resources != 2)
 		return -EINVAL;
@@ -918,8 +1000,42 @@ static int __devinit omap_iommu_probe(struct platform_device *pdev)
 	BUG_ON(!IS_ALIGNED((unsigned long)obj->iopgd, IOPGD_TABLE_SIZE));
 
 	dev_info(&pdev->dev, "%s registered\n", obj->name);
+
+	major = MAJOR(omap_iommu_dev);
+	minor = atomic_read(&num_of_iommus);
+	atomic_inc(&num_of_iommus);
+
+	obj->minor = minor;
+
+	cdev_init(&obj->cdev, &omap_iommu_fops);
+	obj->cdev.owner = THIS_MODULE;
+	ret = cdev_add(&obj->cdev, MKDEV(major, minor), 1);
+	if (ret) {
+		dev_err(&pdev->dev, "%s: cdev_add failed: %d\n", __func__, ret);
+		goto err_cdev;
+	}
+
+	tmpdev = device_create(omap_iommu_class, NULL,
+				MKDEV(major, minor),
+				NULL,
+				OMAP_IOMMU_NAME "%d", minor);
+	if (IS_ERR(tmpdev)) {
+		ret = PTR_ERR(tmpdev);
+		pr_err("%s: device_create failed: %d\n", __func__, ret);
+		goto clean_cdev;
+	}
+
+	pr_info("%s initialized %s, major: %d, base-minor: %d\n",
+			OMAP_IOMMU_NAME,
+			pdata->name,
+			MAJOR(omap_iommu_dev),
+			minor);
+
 	return 0;
 
+clean_cdev:
+	cdev_del(&obj->cdev);
+err_cdev:
 err_pgd:
 	free_irq(irq, obj);
 err_irq:
@@ -937,6 +1053,10 @@ static int __devexit omap_iommu_remove(struct platform_device *pdev)
 	int irq;
 	struct resource *res;
 	struct iommu *obj = platform_get_drvdata(pdev);
+	int major = MAJOR(omap_iommu_dev);
+
+	device_destroy(omap_iommu_class, MKDEV(major, obj->minor));
+	cdev_del(&obj->cdev);
 
 	platform_set_drvdata(pdev, NULL);
 
@@ -968,11 +1088,13 @@ static void iopte_cachep_ctor(void *iopte)
 	clean_dcache_area(iopte, IOPTE_TABLE_SIZE);
 }
 
+
 static int __init omap_iommu_init(void)
 {
 	struct kmem_cache *p;
 	const unsigned long flags = SLAB_HWCACHE_ALIGN;
 	size_t align = 1 << 10; /* L2 pagetable alignement */
+	int ret, num;
 
 	p = kmem_cache_create("iopte_cache", IOPTE_TABLE_SIZE, align, flags,
 			      iopte_cachep_ctor);
@@ -980,7 +1102,28 @@ static int __init omap_iommu_init(void)
 		return -ENOMEM;
 	iopte_cachep = p;
 
+	num = iommu_get_plat_data_size();
+	ret = alloc_chrdev_region(&omap_iommu_dev, 0, num, OMAP_IOMMU_NAME);
+
+	if (ret) {
+		pr_err("%s: alloc_chrdev_region failed: %d\n", __func__, ret);
+		goto out;
+	}
+
+	omap_iommu_class = class_create(THIS_MODULE, OMAP_IOMMU_NAME);
+	if (IS_ERR(omap_iommu_class)) {
+		ret = PTR_ERR(omap_iommu_class);
+		pr_err("%s: class_create failed: %d\n", __func__, ret);
+		goto unreg_region;
+	}
+	atomic_set(&num_of_iommus, 0);
+
 	return platform_driver_register(&omap_iommu_driver);
+
+unreg_region:
+	unregister_chrdev_region(omap_iommu_dev, num);
+out:
+	return ret;
 }
 module_init(omap_iommu_init);
 
@@ -989,6 +1132,9 @@ static void __exit omap_iommu_exit(void)
 	kmem_cache_destroy(iopte_cachep);
 
 	platform_driver_unregister(&omap_iommu_driver);
+
+	if (omap_iommu_class)
+		class_destroy(omap_iommu_class);
 }
 module_exit(omap_iommu_exit);
 
