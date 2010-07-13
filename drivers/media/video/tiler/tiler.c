@@ -831,16 +831,8 @@ static s32 tiler_mmap(struct file *filp, struct vm_area_struct *vma)
 static s32 refill_pat(struct tmm *tmm, struct tcm_area *area, u32 *ptr)
 {
 	s32 res = 0;
-	s32 size = tcm_sizeof(*area) * sizeof(*ptr);
-	u32 *page;
-	dma_addr_t page_pa;
 	struct pat_area p_area = {0};
 	struct tcm_area slice, area_s;
-
-	/* must be a 16-byte aligned physical address */
-	page = dma_alloc_coherent(NULL, size, &page_pa, GFP_ATOMIC);
-	if (!page)
-		return -ENOMEM;
 
 	tcm_for_each_slice(slice, *area, area_s) {
 		p_area.x0 = slice.p0.x;
@@ -848,16 +840,14 @@ static s32 refill_pat(struct tmm *tmm, struct tcm_area *area, u32 *ptr)
 		p_area.x1 = slice.p1.x;
 		p_area.y1 = slice.p1.y;
 
-		memcpy(page, ptr, sizeof(*ptr) * tcm_sizeof(slice));
+		memcpy(dmac_va, ptr, sizeof(*ptr) * tcm_sizeof(slice));
 		ptr += tcm_sizeof(slice);
 
-		if (tmm_map(tmm, p_area, page_pa)) {
+		if (tmm_map(tmm, p_area, dmac_pa)) {
 			res = -EFAULT;
 			break;
 		}
 	}
-
-	dma_free_coherent(NULL, size, page, page_pa);
 
 	return res;
 }
