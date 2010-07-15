@@ -1959,8 +1959,11 @@ static const s8 *get_scaling_coef(int orig_size, int out_size,
 	/* ranges from 2 to 32 */
 	int two_m = 16 * orig_size / out_size;
 
-	if (orig_size > 4 * out_size || out_size > 8 * orig_size)
+	if (orig_size > 4 * out_size)
 		return fir5_zero;
+
+	if (out_size > 8 * orig_size)
+		return three_tap ? fir3_m8 : fir5_m8;
 
 	/* interlaced output needs at least M = 16 */
 	if (out_ilaced) {
@@ -2613,10 +2616,6 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	s32 pix_inc;
 	u16 frame_height = height;
 	unsigned int field_offset = 0;
-	u8 orientation = 0;
-	struct tiler_view_orient orient;
-	unsigned long mir_x = 0, mir_y = 0;
-	unsigned long tiler_width, tiler_height;
 
 	if (paddr == 0)
 		return -EINVAL;
@@ -2662,12 +2661,10 @@ static int _dispc_setup_plane(enum omap_plane plane,
 
 		unsigned long fclk = 0;
 
-		if (out_width < width / maxdownscale ||
-		   out_width > width * 8)
+		if (out_width < width / maxdownscale)
 			return -EINVAL;
 
-		if (out_height < height / maxdownscale ||
-		   out_height > height * 8)
+		if (out_height < height / maxdownscale)
 			return -EINVAL;
 
 		switch (color_mode) {
@@ -2765,28 +2762,32 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	offset1 = 0x0;
 	/* check if tiler address; else set row_inc = 1*/
 	if ((paddr >= 0x60000000) && (paddr <= 0x7fffffff)) {
+		struct tiler_view_orient orient;
+		u8 mir_x = 0, mir_y = 0;
+		unsigned long tiler_width, tiler_height;
+
 		calc_tiler_row_rotation(rotation, width, frame_height,
 						color_mode, &row_inc);
 
-		orientation = calc_tiler_orientation(rotation, (u8)mirror);
 		/* get rotated top-left coordinate
 				(if rotation is applied before mirroring) */
 		memset(&orient, 0, sizeof(orient));
+
+		if (rotation & 1)
+			rotation ^= 2;
+
 		tiler_rotate_view(&orient, rotation * 90);
+
 		if (mirror) {
-			/* Horizontal mirroring */
-			if (rotation == 1 || rotation == 3)
+			if (rotation & 1)
 				mir_x = 1;
 			else
 				mir_y = 1;
-		} else {
-			mir_x = 0;
-			mir_y = 0;
 		}
 		orient.x_invert ^= mir_x;
 		orient.y_invert ^= mir_y;
 
-		DSSDBG("RYX = %d %d %d\n", orient.rotate_90,
+		DSSDBG("RXY = %d %d %d\n", orient.rotate_90,
 				orient.x_invert, orient.y_invert);
 
 		if (orient.rotate_90 & 1) {
@@ -4643,7 +4644,10 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	REG_FLD_MOD(dispc_reg_att[input_plane], 0x1, 10, 10);
 	REG_FLD_MOD(dispc_reg_att[input_plane], 0x1, 19, 19);
 	REG_FLD_MOD(dispc_reg_att[plane], source, 18, 16);
-
+#ifdef OMAP4430_REV_ES2_0
+	/* Memory to memory mode bit is set on ES 2.0 */
+	REG_FLD_MOD(dispc_reg_att[plane], 1, 19, 19);
+#endif
 	}
 
 	pix_inc = 0x1;
