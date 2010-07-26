@@ -297,6 +297,7 @@ struct musb_hw_ep {
 	struct musb_ep		ep_in;			/* TX */
 	struct musb_ep		ep_out;			/* RX */
 #endif
+	u8		dma_completed;
 };
 
 static inline struct usb_request *next_in_request(struct musb_hw_ep *hw_ep)
@@ -482,6 +483,8 @@ struct musb {
 #endif
 
 	struct musb_hdrc_config	*config;
+	u8			rx_can_dma_queue; /* dma queue logic enable */
+	u8			tx_can_dma_queue;
 
 #ifdef MUSB_CONFIG_PROC_FS
 	struct proc_dir_entry *proc_entry;

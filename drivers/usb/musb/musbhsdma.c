@@ -542,9 +542,11 @@ static irqreturn_t dma_controller_irq(int irq, void *private_data)
 					txcsr &= ~MUSB_TXCSR_DMAMODE;
 					txcsr |=  MUSB_TXCSR_TXPKTRDY;
 					musb_writew(mbase, offset, txcsr);
+				} else {
+					musb_dma_completion(musb,
+						musb_channel->epnum,
+						musb_channel->transmit);
 				}
-				musb_dma_completion(musb, musb_channel->epnum,
-						    musb_channel->transmit);
 			}
 		}
 	}

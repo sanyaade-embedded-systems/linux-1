@@ -111,4 +111,21 @@ static inline struct urb *next_urb(struct musb_qh *qh)
 #endif
 }
 
+static inline int queue_count(struct list_head *head)
+{
+	struct list_head *queue = head;
+	int count = 0;
+
+	if (list_empty(queue))
+		return 0;
+	for (; queue->next != head; queue = queue->next) {
+		count++;
+		if (count > 2)
+			break;
+	}
+
+	return count;
+}
+extern void queue_urb_dma(struct musb *musb, struct musb_qh *qh,
+		struct urb *urb);
 #endif				/* _MUSB_HOST_H */
