@@ -205,7 +205,7 @@ static struct omap_mmc_platform_data *hsmmc_data[OMAP44XX_NR_MMC] __initdata;
 #ifdef CONFIG_TIWLAN_SDIO
 static struct sdio_embedded_func wifi_func_array[] = {
         {
-                .f_class        = SDIO_CLASS_BT_A,
+                .f_class        = SDIO_CLASS_WLAN,
                 .f_maxblksize   = 512,
         },
         {
