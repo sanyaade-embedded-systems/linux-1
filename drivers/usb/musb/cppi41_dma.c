@@ -1571,7 +1571,8 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 			 */
 			dprintk("txc(dma_cmpl)\n");
 			/* Tx completion routine callback */
-			if (can_dma_queue && (queue_cnt > 1)) {
+			if ((can_dma_queue && (queue_cnt > 1)) ||
+				(is_peripheral_active(cppi->musb))) {
 				tx_ch->end_pt->dma_completed = 1;
 				musb_dma_completion(cppi->musb, ep_num, 1);
 				tx_ch->end_pt->dma_completed = 0;
@@ -1581,7 +1582,6 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 				tx_ch->end_pt->dma_completed = 1;
 				musb_writeb(cppi->musb->mregs, MUSB_INTRUSBE, 0xff);
 			}
-
 		}
 	}
 }
