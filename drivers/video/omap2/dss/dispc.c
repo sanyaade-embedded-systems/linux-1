@@ -34,6 +34,7 @@
 
 #include <plat/sram.h>
 #include <plat/clock.h>
+#include <plat/cpu.h>
 
 #include <plat/display.h>
 
@@ -4644,10 +4645,10 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	REG_FLD_MOD(dispc_reg_att[input_plane], 0x1, 10, 10);
 	REG_FLD_MOD(dispc_reg_att[input_plane], 0x1, 19, 19);
 	REG_FLD_MOD(dispc_reg_att[plane], source, 18, 16);
-#ifdef OMAP4430_REV_ES2_0
-	/* Memory to memory mode bit is set on ES 2.0 */
-	REG_FLD_MOD(dispc_reg_att[plane], 1, 19, 19);
-#endif
+	if (omap_rev() != OMAP4430_REV_ES1_0) {
+		/* Memory to memory mode bit is set on ES 2.0 */
+		REG_FLD_MOD(dispc_reg_att[plane], 1, 19, 19);
+	}
 	}
 
 	pix_inc = 0x1;
