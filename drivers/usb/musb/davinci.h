@@ -110,4 +110,6 @@
 #ifdef CONFIG_MACH_DAVINCI_DM6467_EVM
 extern void usb_vbus_control(u8 on);
 #endif
+
+void cppi_tx_completion_backoff(struct musb *musb);
 #endif	/* __MUSB_HDRDF_H__ */
