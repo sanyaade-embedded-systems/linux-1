@@ -146,6 +146,7 @@ struct cppi41 {
 	u32 pkt_info;			/* Tx PD Packet Information field */
 	u8	tx_can_dma_queue;		/* dma queue logic */
 	u8	rx_can_dma_queue;		/* dma queue logic */
+	u8	en_bd_intr;		/* enable bd interrupt */
 	struct cppi_req_info *cppi_req_head;
 };
 
@@ -248,6 +249,7 @@ int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
 	u32 orig_buf_len, prev_size, cpkt_size;
 	void __iomem *epio = cppi_ch->end_pt->regs;
 	u16 csr = musb_readw(epio, MUSB_RXCSR);
+	u8 en_bd_intr = cppi->en_bd_intr;
 
 	/* check for whether soft bd is empty */
 	queue_cnt = queue_count(&cppi_ch->req_list);
@@ -265,6 +267,8 @@ int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
 		curr_pd->meta->bd_num = max_pd;
 		hw_desc = &curr_pd->hw_desc;
 		cpkt_size = hw_desc->orig_buf_len;
+		if (en_bd_intr)
+			cpkt_size &= ~(CPPI41_PKT_INTR_FLAG);
 
 		hw_desc = &curr_pd->hw_desc;
 		orig_buf_len = hw_desc->orig_buf_len;
@@ -279,6 +283,9 @@ int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
 			prev_size = cpkt_size;
 
 		if (max_pd++) {
+			if (en_bd_intr)
+				prev_pd->hw_desc.orig_buf_len |=
+					CPPI41_PKT_INTR_FLAG;
 			cppi41_queue_push(&cppi_ch->queue_obj,
 				prev_pd->meta->dma_addr,
 				USB_CPPI41_DESC_ALIGN, 0);
@@ -292,6 +299,8 @@ int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
 	} while (queue->next != &cppi_ch->req_list);
 
 	if (max_pd == 1) {
+		if (en_bd_intr)
+			prev_pd->hw_desc.orig_buf_len |= CPPI41_PKT_INTR_FLAG;
 		cppi41_queue_push(&cppi_ch->queue_obj, prev_pd->meta->dma_addr,
 				USB_CPPI41_DESC_ALIGN, 0);
 		prev_pd->meta->pushed = 1;
@@ -702,6 +711,7 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 	u32 length = tx_ch->req->length - tx_ch->req->curr_offset;
 	u32 pkt_size = tx_ch->req->pkt_size;
 	u8 can_dma_queue = cppi->tx_can_dma_queue;
+	u8 en_bd_intr = cppi->en_bd_intr;
 	unsigned num_pds, n, ch_num = 0;
 
 	/*
@@ -790,6 +800,8 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 			list_add_tail(&(curr_pd->list),	&(tx_ch->req_list));
 
 		dprintk("tx:push(len=%x)\n", hw_desc->orig_buf_len);
+		if (en_bd_intr)
+			hw_desc->orig_buf_len |= CPPI41_PKT_INTR_FLAG;
 		curr_pd->meta->pushed = 1;
 		cppi41_queue_push(&tx_ch->queue_obj,
 			curr_pd->meta->dma_addr,
@@ -912,6 +924,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 	u32 i, n_bd , pkt_len;
 	struct usb_gadget_driver *gadget_driver;
 	u8 can_dma_queue = cppi->rx_can_dma_queue;
+	u8 en_bd_intr = cppi->en_bd_intr;
 
 	if (is_peripheral_active(cppi->musb)) {
 		/* TODO: temporary fix for CDC/RNDIS which needs to be in
@@ -998,6 +1011,9 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 				list_add_tail(&(curr_pd->list),
 					&(rx_ch->req_list));
 				curr_pd->meta->pushed = 1;
+				if (en_bd_intr)
+					hw_desc->orig_buf_len |=
+						CPPI41_PKT_INTR_FLAG;
 				/*
 				 * Push the free Rx packet descriptor
 				 * to the free descriptor/buffer queue.
@@ -1449,8 +1465,9 @@ struct dma_controller * __init dma_controller_create(struct musb  *musb,
 	cppi->controller.channel_program = cppi41_channel_program;
 	cppi->controller.channel_abort = cppi41_channel_abort;
 
-	cppi->tx_can_dma_queue = musb->tx_can_dma_queue;
-	cppi->rx_can_dma_queue = musb->rx_can_dma_queue;
+	cppi->tx_can_dma_queue	= musb->tx_can_dma_queue;
+	cppi->rx_can_dma_queue	= musb->rx_can_dma_queue;
+	cppi->en_bd_intr	= 0;
 
 	return &cppi->controller;
 }
@@ -1617,7 +1634,8 @@ void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 		dprintk("rxc(currpd=%p,len=%d,reqlen=%d,cnt=%d)\n", curr_pd, rx_ch->channel.actual_len,
 				rx_ch->reqc->length, rx_ch->req_subcnt);
 
-		orig_buf_len = curr_pd->hw_desc.orig_buf_len;
+		orig_buf_len = curr_pd->hw_desc.orig_buf_len &
+					~CPPI41_PKT_INTR_FLAG;
 		lock = 0;
 		if (can_dma_queue) {
 			/* push rest of bds from s/w
@@ -1639,7 +1657,8 @@ void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 
 		iter_cnt++;
 
-		orig_buf_len = curr_pd->hw_desc.orig_buf_len;
+		orig_buf_len = curr_pd->hw_desc.orig_buf_len &
+					~CPPI41_PKT_INTR_FLAG;
 		/*
 		 * Return Rx PD to the software list --
 		 * this is protected by critical section
