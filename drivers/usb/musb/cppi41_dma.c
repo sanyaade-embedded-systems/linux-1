@@ -54,13 +54,10 @@ struct cppi_req_info;
 
 struct usb_pkt_meta_data {
 	dma_addr_t dma_addr;
-	u8 ch_num;
-	u8 ep_num;
 	u8 pushed;
-	u8 bd_num;
-	u8 eop;
 	struct cppi_req_info *req_info;
 	struct usb_pkt_desc *next_pd_ptr;
+	struct cppi41_channel *cppi_ch;
 };
 
 struct usb_pkt_meta_data pkt_meta_data[USB_CPPI41_MAX_PD];
@@ -264,7 +261,6 @@ int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
 	max_pd = 0;
 	curr_pd =  next_pd(queue);
 	do {
-		curr_pd->meta->bd_num = max_pd;
 		hw_desc = &curr_pd->hw_desc;
 		cpkt_size = hw_desc->orig_buf_len;
 		if (en_bd_intr)
@@ -713,6 +709,7 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 	u8 can_dma_queue = cppi->tx_can_dma_queue;
 	u8 en_bd_intr = cppi->en_bd_intr;
 	unsigned num_pds, n, ch_num = 0;
+	u8 mode = 0;
 
 	/*
 	 * Tx can use the generic RNDIS mode where we can probably fit this
@@ -722,15 +719,17 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 /*	if ((pkt_size & 0x3f) == 0 && length > pkt_size) {
 		num_pds  = 1;
 		pkt_size = length;
+	}
 */
 	if ((pkt_size & 0x3f) == 0) {
 		num_pds  = length ? 1 : 0;
-		cppi41_mode_update(tx_ch, USB_GENERIC_RNDIS_MODE);
+		mode = USB_GENERIC_RNDIS_MODE;
 	} else {
 		num_pds  = (length + pkt_size - 1) / pkt_size;
-		cppi41_mode_update(tx_ch, USB_TRANSPARENT_MODE);
+		mode = USB_TRANSPARENT_MODE;
 	}
 
+	cppi41_mode_update(tx_ch, mode);
 	/*
 	 * If length of transmit buffer is 0 or a multiple of the endpoint size,
 	 * then send the zero length packet.
@@ -777,16 +776,14 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 		hw_desc->buf_ptr = tx_ch->req->start_addr +
 				tx_ch->req->curr_offset;
 		hw_desc->buf_len = pkt_size;
-		hw_desc->orig_buf_ptr = hw_desc->buf_ptr;
-		hw_desc->orig_buf_len = hw_desc->buf_len;
+		hw_desc->orig_buf_ptr = tx_ch->req->start_addr +
+						tx_ch->req->curr_offset;
+		hw_desc->orig_buf_len = pkt_size;
 		hw_desc->next_desc_ptr = 0;
 
-		curr_pd->meta->ch_num = tx_ch->ch_num;
-		curr_pd->meta->ep_num = tx_ch->end_pt->epnum;
-
+		curr_pd->meta->cppi_ch = tx_ch;
 		tx_ch->req->curr_offset += pkt_size;
 		length -= pkt_size;
-		curr_pd->meta->eop = (length) ? 0 : 1;
 		curr_pd->meta->req_info = tx_ch->req;
 		tx_ch->req->num_bd++;
 
@@ -925,6 +922,8 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 	struct usb_gadget_driver *gadget_driver;
 	u8 can_dma_queue = cppi->rx_can_dma_queue;
 	u8 en_bd_intr = cppi->en_bd_intr;
+	int mode = -1;
+	u8 push = 1;
 
 	if (is_peripheral_active(cppi->musb)) {
 		/* TODO: temporary fix for CDC/RNDIS which needs to be in
@@ -935,7 +934,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		gadget_driver = cppi->musb->gadget_driver;
 #endif
 		if (!strcmp(gadget_driver->driver.name, "g_ether")) {
-			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
+			mode = USB_GENERIC_RNDIS_MODE;
 			pkt_len = 0;
 			if (rx_ch->req->length < max_rx_transfer_size)
 				pkt_len = rx_ch->req->length;
@@ -943,7 +942,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 				(((pkt_len/64) + 1) * 64) : pkt_len);
 		} else {
 			max_rx_transfer_size = rx_ch->req->pkt_size;
-			cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
+			mode = USB_TRANSPARENT_MODE;
 		}
 	} else {
 		/*
@@ -962,10 +961,13 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		}
 		if (list_empty(&rx_ch->req_list)) {
 			cppi41_set_ep_size(rx_ch, pkt_size);
-			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
 			cppi41_autoreq_update(rx_ch, USB_AUTOREQ_ALL_BUT_EOP);
+			mode = USB_GENERIC_RNDIS_MODE;
 		}
 	}
+
+	if (mode != -1)
+		cppi41_mode_update(rx_ch, mode);
 
 	DBG(4, "RX DMA%u, %s, maxpkt %u, addr %#x, rec'd %u/%u\n",
 	    rx_ch->ch_num, rx_ch->dma_mode ? "accelerated" : "transparent",
@@ -982,7 +984,7 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		if (curr_pd == NULL) {
 			/* Shouldn't ever happen! */
 			DBG(4, "No Rx PDs\n");
-			goto sched;
+			return 0;
 		}
 
 		pkt_len =
@@ -997,84 +999,34 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		hw_desc->buf_len = pkt_len;
 		hw_desc->next_desc_ptr = 0;
 
-		curr_pd->meta->ch_num = rx_ch->ch_num;
-		curr_pd->meta->ep_num = rx_ch->end_pt->epnum;
-
-		curr_pd->meta->eop = (length -= pkt_len) ? 0 : 1;
+		curr_pd->meta->cppi_ch = rx_ch;
 		rx_ch->req->curr_offset += pkt_len;
 		curr_pd->meta->req_info = rx_ch->req;
 		rx_ch->req->num_bd++;
 
 		curr_pd->meta->pushed = 0;
 		if (can_dma_queue) {
-			if (list_empty(&rx_ch->req_list)) {
-				list_add_tail(&(curr_pd->list),
-					&(rx_ch->req_list));
-				curr_pd->meta->pushed = 1;
-				if (en_bd_intr)
-					hw_desc->orig_buf_len |=
-						CPPI41_PKT_INTR_FLAG;
-				/*
-				 * Push the free Rx packet descriptor
-				 * to the free descriptor/buffer queue.
-				 */
-				dprintk("rx:push(len=%x)\n",
-					hw_desc->orig_buf_len);
-				cppi41_queue_push(&rx_ch->queue_obj,
-					curr_pd->meta->dma_addr,
-					USB_CPPI41_DESC_ALIGN, 0);
-				rx_ch->req_subcnt++;
-				cppi41_dma_ch_enable(&rx_ch->dma_ch_obj);
-			} else {
-				/* add prepared tx-bd to s/w queue
-				 * of dma channel */
-				list_add_tail(&(curr_pd->list),
-					&(rx_ch->req_list));
-				if (is_peripheral_active(cppi->musb)) {
-					curr_pd->meta->pushed = 1;
-					cppi41_queue_push(&rx_ch->queue_obj,
-						curr_pd->meta->dma_addr,
-						USB_CPPI41_DESC_ALIGN, 0);
-					rx_ch->req_subcnt++;
-				dprintk("rx:add to swq,push hwq(len=%x)\n",
-					hw_desc->orig_buf_len);
-				}
-			}
-		} else {
-
-			curr_pd->meta->pushed = 1;
-			rx_ch->req_subcnt++;
-			/*
-			 * Push the free Rx packet descriptor
-			 * to the free descriptor/buffer queue.
-			 */
-			dprintk("rx:push hwq (len=%x)\n", hw_desc->orig_buf_len);
-			cppi41_queue_push(&rx_ch->queue_obj,
-				curr_pd->meta->dma_addr,
-				USB_CPPI41_DESC_ALIGN, 0);
+			mode = list_empty(&rx_ch->req_list);
+			list_add_tail(&(curr_pd->list), &(rx_ch->req_list));
+			if (!mode && is_host_active(cppi->musb))
+				continue;
 		}
+
+		curr_pd->meta->pushed = 1;
+		if (en_bd_intr)
+			hw_desc->orig_buf_len |= CPPI41_PKT_INTR_FLAG;
+		/*
+		 * Push the free Rx packet descriptor
+		 * to the free descriptor/buffer queue.
+		 */
+		dprintk("rx:push(len=%x)\n", hw_desc->orig_buf_len);
+		cppi41_queue_push(&rx_ch->queue_obj, curr_pd->meta->dma_addr,
+					USB_CPPI41_DESC_ALIGN, 0);
+		rx_ch->req_subcnt++;
+		if (is_peripheral_active(cppi->musb) && !i)
+			cppi41_dma_ch_enable(&rx_ch->dma_ch_obj);
 	}
 
-sched:
-#if 0
-	/*
-	 * HCD arranged ReqPkt for the first packet.
-	 * We arrange it for all but the last one.
-	 */
-	if (!inf_dma_mode && is_host_active(cppi->musb)
-		&& rx_ch->channel.actual_len) {
-		void __iomem *epio = rx_ch->end_pt->regs;
-		u16 csr = musb_readw(epio, MUSB_RXCSR);
-
-		csr |= MUSB_RXCSR_H_REQPKT | MUSB_RXCSR_H_WZC_BITS;
-		musb_writew(epio, MUSB_RXCSR, csr);
-	}
-#endif
-#if 1
-	/* enable schedular if not enabled */
-	if (is_peripheral_active(cppi->musb) && (n_bd > 0))
-		cppi41_enable_sched_rx();
-#endif
 	return 1;
 }
 
@@ -1271,10 +1223,11 @@ static void usb_rx_ch_teardown(struct cppi41_channel *rx_ch)
 				break;
 			continue;
 		}
+
 		/* Paranoia: check if PD is from the right channel... */
-		if (curr_pd->meta->ch_num != rx_ch->ch_num) {
+		if (curr_pd->meta->cppi_ch != rx_ch) {
 			ERR("Unexpected channel %d in Rx PD\n",
-			    curr_pd->meta->ch_num);
+			    curr_pd->meta->cppi_ch->ch_num);
 			continue;
 		}
 
@@ -1489,8 +1442,8 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 {
 	struct cppi41_queue_obj tx_queue_obj;
 	unsigned long pd_addr;
-	u8 lock = 0, can_dma_queue = cppi->tx_can_dma_queue;
-	u8 iter_cnt = 0, queue_cnt = 0;
+	u8 can_dma_queue = cppi->tx_can_dma_queue;
+	u8 queue_cnt = 0;
 
 	if (cppi41_queue_init(&tx_queue_obj, usb_cppi41_info.q_mgr,
 			      usb_cppi41_info.tx_comp_q[index])) {
@@ -1502,7 +1455,6 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 	while ((pd_addr = cppi41_queue_pop(&tx_queue_obj)) != 0) {
 		struct usb_pkt_desc *curr_pd;
 		struct cppi41_channel *tx_ch;
-		u8 ch_num, ep_num;
 		u32 length;
 		curr_pd = usb_get_pd_ptr(cppi, pd_addr);
 		if (curr_pd == NULL) {
@@ -1510,12 +1462,8 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 			continue;
 		}
 
-		/* Extract the data from received packet descriptor */
-		ch_num = curr_pd->meta->ch_num;
-		ep_num = curr_pd->meta->ep_num;
 		length = curr_pd->hw_desc.buf_len;
-
-		tx_ch = &cppi->tx_cppi_ch[ch_num];
+		tx_ch = curr_pd->meta->cppi_ch;
 		tx_ch->reqc = next_cppi_req(&tx_ch->cppi_req_list);
 
 		if (curr_pd->meta->req_info != tx_ch->reqc)
@@ -1540,16 +1488,10 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 		 * Return Tx PD to the software list --
 		 * this is protected by critical section
 		 */
-		usb_put_free_pd(cppi, curr_pd);
-		lock = 0;
-		if (can_dma_queue) {
-			/* push rest of bds from s/w
-			 * bd-queue to dma queue if any
-			 */
-			curr_pd->meta->pushed = 0;
+		if (can_dma_queue)
 			list_del_init(&curr_pd->list);
-		}
-		iter_cnt++;
+
+		usb_put_free_pd(cppi, curr_pd);
 
 		if ((tx_ch->reqc->curr_offset < tx_ch->reqc->length) ||
 		    (tx_ch->reqc->transfer_mode && !tx_ch->reqc->zlp_queued)) {
@@ -1572,14 +1514,14 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 			dprintk("txc(dma_cmpl)\n");
 			/* Tx completion routine callback */
 			if ((can_dma_queue && (queue_cnt > 1)) ||
-				(is_peripheral_active(cppi->musb))) {
+				is_peripheral_active(cppi->musb)) {
 				tx_ch->end_pt->dma_completed = 1;
-				musb_dma_completion(cppi->musb, ep_num, 1);
+				musb_dma_completion(cppi->musb,
+						tx_ch->end_pt->epnum, 1);
 				tx_ch->end_pt->dma_completed = 0;
 			} else {
 				/* Confirm that the data has moved on to the bus. */
 				tx_ch->tx_complete = 1;
-				tx_ch->end_pt->dma_completed = 1;
 				musb_writeb(cppi->musb->mregs, MUSB_INTRUSBE, 0xff);
 			}
 		}
@@ -1591,8 +1533,7 @@ void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 	struct cppi41_queue_obj rx_queue_obj;
 	unsigned long pd_addr;
 	u32 orig_buf_len;
-	u8 lock = 0, num_bd, can_dma_queue = cppi->rx_can_dma_queue;
-	u8 iter_cnt = 0;
+	u8 num_bd, can_dma_queue = cppi->rx_can_dma_queue;
 
 	if (cppi41_queue_init(&rx_queue_obj, usb_cppi41_info.q_mgr,
 			      usb_cppi41_info.rx_comp_q[index])) {
@@ -1603,7 +1544,6 @@ void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 	while ((pd_addr = cppi41_queue_pop(&rx_queue_obj)) != 0) {
 		struct usb_pkt_desc *curr_pd;
 		struct cppi41_channel *rx_ch;
-		u8 ch_num, ep_num;
 		u32 length;
 
 		curr_pd = usb_get_pd_ptr(cppi, pd_addr);
@@ -1612,12 +1552,10 @@ void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 			continue;
 		}
 
-		/* Extract the data from received packet descriptor */
-		ch_num = curr_pd->meta->ch_num;
-		ep_num = curr_pd->meta->ep_num;
+		orig_buf_len = curr_pd->hw_desc.orig_buf_len &
+					~CPPI41_PKT_INTR_FLAG;
 		length = curr_pd->hw_desc.buf_len;
-
-		rx_ch = &cppi->rx_cppi_ch[ch_num];
+		rx_ch = curr_pd->meta->cppi_ch; 
 		rx_ch->reqc = next_cppi_req(&rx_ch->cppi_req_list);
 
 		if (curr_pd->meta->req_info != rx_ch->reqc)
@@ -1634,39 +1572,24 @@ void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 		dprintk("rxc(currpd=%p,len=%d,reqlen=%d,cnt=%d)\n", curr_pd, rx_ch->channel.actual_len,
 				rx_ch->reqc->length, rx_ch->req_subcnt);
 
-		orig_buf_len = curr_pd->hw_desc.orig_buf_len &
-					~CPPI41_PKT_INTR_FLAG;
-		lock = 0;
-		if (can_dma_queue) {
-			/* push rest of bds from s/w
-			 * bd-queue to dma queue if any
-			 */
-			curr_pd->meta->pushed = 0;
+		if (can_dma_queue)
 			list_del_init(&curr_pd->list);
-			if (!lock) {
-				if (rx_ch->req_subcnt == 0 &&
-					!is_peripheral_active(cppi->musb)) {
-					num_bd = cppi41_send_bd_queue(rx_ch);
 
-					if (num_bd > 1)
-						dprintk("rx: queue (%d) nbd queued\n", num_bd);
-				}
-				lock = 1;
-			}
-		}
+		/* Push any unqueued assembled BD's into the h/w queue */
+		if (can_dma_queue && !is_peripheral_active(cppi->musb) &&
+			(rx_ch->req_subcnt == 0))
+			num_bd = cppi41_send_bd_queue(rx_ch);
 
-		iter_cnt++;
+		dprintk("rx: queue (%d) nbd queued\n", num_bd);
 
-		orig_buf_len = curr_pd->hw_desc.orig_buf_len &
-					~CPPI41_PKT_INTR_FLAG;
 		/*
 		 * Return Rx PD to the software list --
 		 * this is protected by critical section
 		 */
 		usb_put_free_pd(cppi, curr_pd);
-		if (unlikely(rx_ch->channel.actual_len >= rx_ch->reqc->length ||
-			(length < orig_buf_len &&
-			(length % rx_ch->reqc->pkt_size) != 0))) {
+		if ((rx_ch->channel.actual_len >= rx_ch->reqc->length) ||
+			(length < orig_buf_len) ||
+			(length % rx_ch->reqc->pkt_size)) {
 			rx_ch->channel.status = MUSB_DMA_STATUS_FREE;
 
 			if (rx_ch->reqc->num_bd != 0)
@@ -1677,14 +1600,13 @@ void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 			usb_put_free_cppireq(cppi, rx_ch->reqc);
 			rx_ch->end_pt->dma_completed = 1;
 			/* Rx completion routine callback */
-			musb_dma_completion(cppi->musb, ep_num, 0);
+			musb_dma_completion(cppi->musb, rx_ch->end_pt->epnum, 0);
 			rx_ch->end_pt->dma_completed = 0;
 			dprintk("rxc(%d, %d, %d)\n", rx_ch->channel.actual_len,
 				iter_cnt, rx_ch->req_subcnt);
-		} else {
+		} else if (!rx_ch->reqc->num_bd) {
 			if (is_peripheral_active(cppi->musb) &&
-			((rx_ch->reqc->length -
-				rx_ch->reqc->curr_offset) > 0)) {
+			((rx_ch->reqc->length - rx_ch->reqc->curr_offset) > 0)) {
 				dprintk("next-seg-->\n");
 				cppi41_next_rx_segment(rx_ch);
 			}
