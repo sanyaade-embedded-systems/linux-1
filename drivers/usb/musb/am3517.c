@@ -38,6 +38,7 @@
 #include "cppi41.h"
 #include "cppi41_dma.h"
 
+extern void cppi41_tx_fifo_flush(struct musb  *musb);
 struct musb *g_musb;
 /*
  * AM3517 specific definitions
@@ -257,7 +258,7 @@ u32 dma_sched_table[] = {
 };
 
 /* DMA block configuration */
-static const struct cppi41_tx_ch tx_ch_info[] = {
+static struct cppi41_tx_ch tx_ch_info[] = {
 	[0] = {
 		.port_num	= 1,
 		.num_tx_queue	= 2,
@@ -339,7 +340,7 @@ struct cppi41_dma_block cppi41_dma_block[CPPI41_NUM_DMA_BLOCK] = {
 	[0] = {
 		.num_tx_ch	= 15,
 		.num_rx_ch	= 15,
-		.tx_ch_info	= tx_ch_info
+		.tx_ch_info	= &tx_ch_info[0]
 	}
 };
 EXPORT_SYMBOL(cppi41_dma_block);
@@ -647,6 +648,14 @@ static irqreturn_t am3517_interrupt(int irq, void *hci)
 		musb->int_usb =
 			(usbintr & USB_INTR_USB_MASK) >> USB_INTR_USB_SHIFT;
 	}
+
+	if (musb->int_usb & MUSB_INTR_SOF) {
+		if (is_cppi41_enabled()) {
+			cppi41_tx_fifo_flush(musb);
+			ret = IRQ_HANDLED;
+		}
+	}
+
 	/*
 	 * DRVVBUS IRQs are the only proxy we have (a very poor one!) for
 	 * AM3517's missing ID change IRQ.  We need an ID change IRQ to
@@ -810,6 +819,8 @@ int __init musb_platform_init(struct musb *musb, void *board_data)
 
 #ifdef CONFIG_USB_TI_CPPI41_DMA
 	cppi41_init(musb);
+	musb->tx_can_dma_queue = 1;
+	musb->rx_can_dma_queue = 1;
 #endif
 
 	musb->isr = am3517_interrupt;
