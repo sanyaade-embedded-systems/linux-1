@@ -1093,7 +1093,7 @@ static struct musb_fifo_cfg __initdata mode_1_cfg[] = {
 static struct musb_fifo_cfg __initdata mode_2_cfg[] = {
 { .hw_ep_num = 1, .style = FIFO_TX,   .maxpacket = 512, },
 { .hw_ep_num = 1, .style = FIFO_RX,   .maxpacket = 512, },
-{ .hw_ep_num = 2, .style = FIFO_TX,   .maxpacket = 512, },
+{ .hw_ep_num = 2, .style = FIFO_TX,   .maxpacket = 512, .mode = BUF_DOUBLE,},
 { .hw_ep_num = 2, .style = FIFO_RX,   .maxpacket = 512, },
 { .hw_ep_num = 3, .style = FIFO_RXTX, .maxpacket = 256, },
 { .hw_ep_num = 4, .style = FIFO_RXTX, .maxpacket = 256, },

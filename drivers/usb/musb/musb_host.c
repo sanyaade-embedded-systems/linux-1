@@ -355,7 +355,7 @@ static void musb_giveback(struct musb *musb, struct urb *urb, int status)
 {
 	DBG(({ int level; switch (status) {
 				case 0:
-					level = 4;
+					level = 3;
 					break;
 				/* common/boring faults */
 				case -EREMOTEIO:
@@ -449,13 +449,8 @@ static void musb_advance_schedule(struct musb *musb, struct urb *urb,
 	case USB_ENDPOINT_XFER_INT:
 		/* TODO save toggle should be for the last last urb in
 		 the queue */
-		if (can_dma_queue) {
-			q_cnt = queue_count(&(urb->ep->urb_list));
-			if (!can_dma_queue ||
-				(!is_in && can_dma_queue && q_cnt == 1) ||
-				(is_in && can_dma_queue && q_cnt == 1))
-				musb_save_toggle(qh, is_in, urb);
-		} else
+		q_cnt = queue_count(&(urb->ep->urb_list));
+		if (!can_dma_queue || (can_dma_queue && (q_cnt == 1)))
 			musb_save_toggle(qh, is_in, urb);
 		break;
 	case USB_ENDPOINT_XFER_ISOC:
@@ -515,7 +510,7 @@ static void musb_advance_schedule(struct musb *musb, struct urb *urb,
 		}
 	}
 
-	if (qh != NULL && qh->is_ready && (!can_dma_queue)) {
+	if (qh != NULL && qh->is_ready && !can_dma_queue) {
 		DBG(4, "... next ep%d %cX urb %p\n",
 		    hw_ep->epnum, is_in ? 'R' : 'T', next_urb(qh));
 		musb_start_urb(musb, is_in, qh);
@@ -796,6 +791,7 @@ void queue_urb_dma(struct musb *musb, struct musb_qh *qh, struct urb *urb)
 	}
 	dma->channel_program(channel, pkt_size, mode,
 		urb->transfer_dma + offset, len);
+	DBG(3,"Queued URB %x Length %d\n", (int)urb, len);
 }
 
 /*
@@ -1244,14 +1240,14 @@ void musb_host_tx(struct musb *musb, u8 epnum)
 	u32			status = 0;
 	void __iomem		*mbase = musb->mregs;
 	struct dma_channel	*dma;
-	u32			q_cnt = 0, cnt = 0;
 
 	musb_ep_select(mbase, epnum);
-	tx_csr = musb_readw(epio, MUSB_TXCSR);
 	qh->offset = 0;
 
 	if (hw_ep->dma_completed && musb->tx_can_dma_queue)
 		tx_csr = MUSB_TXCSR_DMAMODE;
+	else
+		tx_csr = musb_readw(epio, MUSB_TXCSR);
 
 	/* with CPPI, DMA sometimes triggers "extra" irqs */
 	if (!urb) {

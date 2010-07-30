@@ -42,7 +42,6 @@
 #else
 #define dprintk(x, ...)
 #endif
-
 /*
  * Data structure definitions
  */
@@ -144,6 +143,7 @@ struct cppi41 {
 	u8	tx_can_dma_queue;		/* dma queue logic */
 	u8	rx_can_dma_queue;		/* dma queue logic */
 	u8	en_bd_intr;		/* enable bd interrupt */
+	u8      defer_intr;		/* enable the defer interrupt */
 	struct cppi_req_info *cppi_req_head;
 };
 
@@ -236,9 +236,71 @@ static void usb_put_free_cppireq(struct cppi41 *cppi,
 	cppi->cppi_req_head = free_req;
 }
 
-int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
+static struct usb_pkt_desc *usb_get_pd_ptr(struct cppi41 *cppi,
+					   unsigned long pd_addr)
+{
+	if (pd_addr >= cppi->pd_mem_phys && pd_addr < cppi->pd_mem_phys +
+	    USB_CPPI41_MAX_PD * USB_CPPI41_DESC_ALIGN)
+		return pd_addr - cppi->pd_mem_phys + cppi->pd_mem;
+	else
+		return NULL;
+}
+int cppi41_send_bd_queue_tx(struct cppi41_channel *cppi_ch)
 {
 	struct usb_pkt_desc *curr_pd, *prev_pd = 0;
+	struct cppi41_host_pkt_desc *hw_desc;
+	int queue_cnt, max_pd = 0;
+	struct list_head *queue;
+	struct cppi41 *cppi = cppi_ch->channel.private_data;
+	u32 prev_size, cpkt_size;
+	u8 en_bd_intr = cppi->en_bd_intr;
+	u8 defer_intr = cppi->defer_intr;
+
+	/* check for whether soft bd is empty */
+	queue_cnt = queue_count(&cppi_ch->req_list);
+	if (queue_cnt == 0)
+		return 0;
+
+	dprintk("%s-s/w bd count =%d\n", cppi_ch->transmit ? "tx" : "rx",
+				queue_cnt);
+
+	queue = (struct list_head *)&cppi_ch->req_list;
+	prev_size = cpkt_size = 0;
+	max_pd = 0;
+	curr_pd =  next_pd(queue);
+	do {
+		hw_desc = &curr_pd->hw_desc;
+
+		if (max_pd++) {
+			if (en_bd_intr && !defer_intr)
+				prev_pd->hw_desc.orig_buf_len |=
+					CPPI41_PKT_INTR_FLAG;
+			cppi41_queue_push(&cppi_ch->queue_obj,
+				prev_pd->meta->dma_addr,
+				USB_CPPI41_DESC_ALIGN, 0);
+			prev_pd->meta->pushed = 1;
+			cppi_ch->req_subcnt++;
+		}
+
+		prev_pd = curr_pd;
+		queue = queue->next;
+		curr_pd = next_pd(queue);
+	} while (queue->next != &cppi_ch->req_list);
+
+	prev_pd->hw_desc.orig_buf_len |=
+		CPPI41_PKT_INTR_FLAG;
+	cppi41_queue_push(&cppi_ch->queue_obj,
+		prev_pd->meta->dma_addr,
+		USB_CPPI41_DESC_ALIGN, 0);
+	prev_pd->meta->pushed = 1;
+	cppi_ch->req_subcnt++;
+
+	return 0;
+}
+
+int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
+{
+	struct usb_pkt_desc *curr_pd, *prev_pd = 0, *last_pd = 0;
 	struct cppi41_host_pkt_desc *hw_desc;
 	int queue_cnt, max_pd = 0;
 	struct list_head *queue;
@@ -247,6 +309,7 @@ int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
 	void __iomem *epio = cppi_ch->end_pt->regs;
 	u16 csr = musb_readw(epio, MUSB_RXCSR);
 	u8 en_bd_intr = cppi->en_bd_intr;
+	u8 defer_intr = cppi->defer_intr;
 
 	/* check for whether soft bd is empty */
 	queue_cnt = queue_count(&cppi_ch->req_list);
@@ -279,9 +342,10 @@ int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
 			prev_size = cpkt_size;
 
 		if (max_pd++) {
-			if (en_bd_intr)
+			if (en_bd_intr && !defer_intr)
 				prev_pd->hw_desc.orig_buf_len |=
 					CPPI41_PKT_INTR_FLAG;
+			last_pd = prev_pd;
 			cppi41_queue_push(&cppi_ch->queue_obj,
 				prev_pd->meta->dma_addr,
 				USB_CPPI41_DESC_ALIGN, 0);
@@ -302,8 +366,12 @@ int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
 		prev_pd->meta->pushed = 1;
 		cppi_ch->req_subcnt++;
 		cppi_ch->cfg_autoreq = USB_AUTOREQ_ALL_BUT_EOP;
-	} else
+	} else {
+		if (en_bd_intr && defer_intr)
+			last_pd->hw_desc.orig_buf_len |=
+				CPPI41_PKT_INTR_FLAG;
 		cppi_ch->cfg_autoreq = USB_AUTOREQ_ALWAYS;
+	}
 
 	cppi41_autoreq_update(cppi_ch, cppi_ch->cfg_autoreq);
 
@@ -591,7 +659,7 @@ static struct dma_channel *cppi41_channel_alloc(struct dma_controller
 		rx_cfg.sop_offset = 0;
 		rx_cfg.retry_starved = 1;
 		rx_cfg.rx_queue.q_mgr = cppi_ch->src_queue.q_mgr = q_mgr;
-		rx_cfg.rx_queue.q_num = usb_cppi41_info.rx_comp_q[0];
+		rx_cfg.rx_queue.q_num = usb_cppi41_info.rx_comp_q[ch_num];
 		/* for netra ch_num]; */
 		for (i = 0; i < 4; i++)
 			rx_cfg.cfg.host_pkt.fdb_queue[i] = cppi_ch->src_queue;
@@ -710,17 +778,15 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 	u8 en_bd_intr = cppi->en_bd_intr;
 	unsigned num_pds, n, ch_num = 0;
 	u8 mode = 0;
+	u8 is_list_empty;
+	u8 defer_intr = cppi->defer_intr;
 
+	ch_num = tx_ch->ch_num;
 	/*
 	 * Tx can use the generic RNDIS mode where we can probably fit this
 	 * transfer in one PD and one IRQ.  The only time we would NOT want
 	 * to use it is when the hardware constraints prevent it...
 	 */
-/*	if ((pkt_size & 0x3f) == 0 && length > pkt_size) {
-		num_pds  = 1;
-		pkt_size = length;
-	}
-*/
 	if ((pkt_size & 0x3f) == 0) {
 		num_pds  = length ? 1 : 0;
 		mode = USB_GENERIC_RNDIS_MODE;
@@ -793,13 +859,18 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 		DBG(5, "TX PD %p: buf %08x, len %08x, pkt info %08x\n", curr_pd,
 		    hw_desc->buf_ptr, hw_desc->buf_len, hw_desc->pkt_info);
 
+		is_list_empty = list_empty(&tx_ch->req_list);
 		if (can_dma_queue)
 			list_add_tail(&(curr_pd->list),	&(tx_ch->req_list));
 
 		dprintk("tx:push(len=%x)\n", hw_desc->orig_buf_len);
+
+		if (defer_intr && !is_list_empty)
+			continue;
+
+		curr_pd->meta->pushed = 1;
 		if (en_bd_intr)
 			hw_desc->orig_buf_len |= CPPI41_PKT_INTR_FLAG;
-		curr_pd->meta->pushed = 1;
 		cppi41_queue_push(&tx_ch->queue_obj,
 			curr_pd->meta->dma_addr,
 			USB_CPPI41_DESC_ALIGN, pkt_size);
@@ -923,7 +994,6 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 	u8 can_dma_queue = cppi->rx_can_dma_queue;
 	u8 en_bd_intr = cppi->en_bd_intr;
 	int mode = -1;
-	u8 push = 1;
 
 	if (is_peripheral_active(cppi->musb)) {
 		/* TODO: temporary fix for CDC/RNDIS which needs to be in
@@ -1103,15 +1173,6 @@ static int cppi41_channel_program(struct dma_channel *channel,	u16 maxpacket,
 	return	queued > 0;
 }
 
-static struct usb_pkt_desc *usb_get_pd_ptr(struct cppi41 *cppi,
-					   unsigned long pd_addr)
-{
-	if (pd_addr >= cppi->pd_mem_phys && pd_addr < cppi->pd_mem_phys +
-	    USB_CPPI41_MAX_PD * USB_CPPI41_DESC_ALIGN)
-		return pd_addr - cppi->pd_mem_phys + cppi->pd_mem;
-	else
-		return NULL;
-}
 
 static int usb_check_teardown(struct cppi41_channel *cppi_ch,
 			      unsigned long pd_addr)
@@ -1421,6 +1482,7 @@ struct dma_controller * __init dma_controller_create(struct musb  *musb,
 	cppi->tx_can_dma_queue	= musb->tx_can_dma_queue;
 	cppi->rx_can_dma_queue	= musb->rx_can_dma_queue;
 	cppi->en_bd_intr	= 0;
+	cppi->defer_intr	= 0;
 
 	return &cppi->controller;
 }
@@ -1491,6 +1553,10 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 		if (can_dma_queue)
 			list_del_init(&curr_pd->list);
 
+		if (can_dma_queue && is_host_active(cppi->musb) &&
+			(tx_ch->req_subcnt == 0) && cppi->defer_intr)
+			cppi41_send_bd_queue_tx(tx_ch);
+
 		usb_put_free_pd(cppi, curr_pd);
 
 		if ((tx_ch->reqc->curr_offset < tx_ch->reqc->length) ||
@@ -1512,6 +1578,22 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 			 * failure with iperf.
 			 */
 			dprintk("txc(dma_cmpl)\n");
+			/*
+			 * Check whether a previous request is being processed
+			 * for fifo empty status if so complete it first and
+			 * then process current request completion.  This
+			 * scenario happens when queued dma feature is enabled.
+			 */
+			if (tx_ch->tx_complete) {
+				tx_ch->end_pt->dma_completed = 1;
+				musb_dma_completion(cppi->musb,
+						tx_ch->end_pt->epnum, 1);
+				tx_ch->end_pt->dma_completed = 0;
+				tx_ch->tx_complete = 0;
+				musb_writeb(cppi->musb->mregs, MUSB_INTRUSBE,
+						0xf7);
+			}
+			
 			/* Tx completion routine callback */
 			if ((can_dma_queue && (queue_cnt > 1)) ||
 				is_peripheral_active(cppi->musb)) {
@@ -1520,9 +1602,9 @@ void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 						tx_ch->end_pt->epnum, 1);
 				tx_ch->end_pt->dma_completed = 0;
 			} else {
-				/* Confirm that the data has moved on to the bus. */
 				tx_ch->tx_complete = 1;
-				musb_writeb(cppi->musb->mregs, MUSB_INTRUSBE, 0xff);
+				musb_writeb(cppi->musb->mregs, MUSB_INTRUSBE,
+						0xff);
 			}
 		}
 	}
@@ -1661,7 +1743,7 @@ void cppi41_tx_fifo_flush(struct musb  *musb)
 			*/
 			if (!tx_ch->end_pt) {
 				tx_ch->tx_complete = 0;
-				return;
+				continue;
 			}
 
 			epio = tx_ch->end_pt->regs;
@@ -1673,7 +1755,8 @@ void cppi41_tx_fifo_flush(struct musb  *musb)
 			else {
 				tx_ch->tx_complete = 0;
 				tx_ch->end_pt->dma_completed = 1;
-				musb_dma_completion(musb, index+1, 1);
+				musb_dma_completion(musb, tx_ch->end_pt->epnum,
+							1);
 				tx_ch->end_pt->dma_completed = 0;
 			}
 		}
