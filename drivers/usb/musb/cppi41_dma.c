@@ -46,22 +46,45 @@
 /*
  * Data structure definitions
  */
-
 /*
  * USB Packet Descriptor
  */
 struct usb_pkt_desc;
+struct cppi_req_info;
+
+struct usb_pkt_meta_data {
+	dma_addr_t dma_addr;
+	u8 ch_num;
+	u8 ep_num;
+	u8 pushed;
+	u8 bd_num;
+	u8 eop;
+	struct cppi_req_info *req_info;
+	struct usb_pkt_desc *next_pd_ptr;
+};
+
+struct usb_pkt_meta_data pkt_meta_data[USB_CPPI41_MAX_PD];
 
 struct usb_pkt_desc {
 	/* Hardware descriptor fields from this point */
 	struct cppi41_host_pkt_desc hw_desc;
-	/* Protocol specific data */
-	dma_addr_t dma_addr;
-	struct usb_pkt_desc *next_pd_ptr;
-	u8 ch_num;
-	u8 ep_num;
-	u8 eop;
+	struct list_head    list;
+	struct usb_pkt_meta_data *meta;
 };
+
+struct cppi_req_info {
+	struct list_head    list;
+	dma_addr_t start_addr;
+	u32 length;
+	u32 curr_offset;
+	u16 pkt_size;
+	u8  transfer_mode;
+	u8  zlp_queued;
+	u32 channel_actual_len;
+	u32 num_bd;
+	struct cppi_req_info *next;
+};
+struct cppi_req_info cppi_req[USB_CPPI41_MAX_PD];
 
 /**
  * struct cppi41_channel - DMA Channel Control Structure
@@ -78,23 +101,25 @@ struct cppi41_channel {
 					/* descriptor/buffer queue object */
 
 	u32 tag_info;			/* Tx PD Tag Information field */
+	/* software bd queue for dma channel */
+	struct list_head	req_list;
 
 	/* Which direction of which endpoint? */
 	struct musb_hw_ep *end_pt;
 	u8 transmit;
 	u8 ch_num;			/* Channel number of Tx/Rx 0..3 */
+	u8 tx_complete;
 
 	/* DMA mode: "transparent", RNDIS, CDC, or Generic RNDIS */
 	u8 dma_mode;
 	u8 autoreq;
 
 	/* Book keeping for the current transfer request */
-	dma_addr_t start_addr;
-	u32 length;
-	u32 curr_offset;
-	u16 pkt_size;
-	u8  transfer_mode;
-	u8  zlp_queued;
+	struct list_head	cppi_req_list;
+	struct cppi_req_info	*req;
+	struct cppi_req_info	*reqc;
+	u32 req_subcnt;
+	u32 cfg_autoreq;
 };
 
 /**
@@ -119,9 +144,49 @@ struct cppi41 {
 	struct cppi41_queue_obj queue_obj; /* Teardown completion queue */
 					/* object */
 	u32 pkt_info;			/* Tx PD Packet Information field */
+	u8	tx_can_dma_queue;		/* dma queue logic */
+	u8	rx_can_dma_queue;		/* dma queue logic */
+	struct cppi_req_info *cppi_req_head;
 };
 
+void cppi41_autoreq_update(struct cppi41_channel *rx_ch, u8 autoreq);
+void cppi41_set_ep_size(struct cppi41_channel *rx_ch, u32 pkt_size);
+
+static inline struct usb_pkt_desc *next_pd(struct list_head *head)
+{
+	if (list_empty(head))
+		return NULL;
+	return container_of(head->next, struct usb_pkt_desc, list);
+}
+
+static inline struct cppi_req_info *next_cppi_req(struct list_head *head)
+{
+	if (list_empty(head))
+		return NULL;
+	return container_of(head->next, struct cppi_req_info, list);
+}
+
 #ifdef DEBUG_CPPI_TD
+static void list_print(struct list_head *head)
+{
+	struct list_head *ptrhead = head;
+	struct usb_pkt_desc *curr_pd;
+	int count = 1;
+
+	if (list_empty(ptrhead))
+		printk(KERN_DEBUG "list is empty\n");
+	while (ptrhead->next != head) {
+		curr_pd = container_of(ptrhead->next,
+				struct usb_pkt_desc, list);
+		printk(KERN_DEBUG "%d. curr_pd(%p)\n", count,
+			curr_pd);
+		ptrhead = ptrhead->next;
+		count++;
+		if (count > 10)
+			return ;
+	}
+}
+
 static void print_pd_list(struct usb_pkt_desc *pd_pool_head)
 {
 	struct usb_pkt_desc *curr_pd = pd_pool_head;
@@ -143,16 +208,111 @@ static struct usb_pkt_desc *usb_get_free_pd(struct cppi41 *cppi)
 	struct usb_pkt_desc *free_pd = cppi->pd_pool_head;
 
 	if (free_pd != NULL) {
-		cppi->pd_pool_head = free_pd->next_pd_ptr;
-		free_pd->next_pd_ptr = NULL;
+		cppi->pd_pool_head = free_pd->meta->next_pd_ptr;
+		free_pd->meta->next_pd_ptr = NULL;
 	}
 	return free_pd;
 }
 
 static void usb_put_free_pd(struct cppi41 *cppi, struct usb_pkt_desc *free_pd)
 {
-	free_pd->next_pd_ptr = cppi->pd_pool_head;
+	free_pd->meta->next_pd_ptr = cppi->pd_pool_head;
 	cppi->pd_pool_head = free_pd;
+}
+
+static struct cppi_req_info *usb_get_free_cppireq(struct cppi41 *cppi)
+{
+	struct cppi_req_info *free_req = cppi->cppi_req_head;
+
+	if (free_req != NULL) {
+		cppi->cppi_req_head = free_req->next;
+		free_req->next = NULL;
+	}
+	return free_req;
+}
+
+static void usb_put_free_cppireq(struct cppi41 *cppi,
+		struct cppi_req_info *free_req)
+{
+	free_req->next = cppi->cppi_req_head;
+	cppi->cppi_req_head = free_req;
+}
+
+int cppi41_send_bd_queue(struct cppi41_channel *cppi_ch)
+{
+	struct usb_pkt_desc *curr_pd, *prev_pd = 0;
+	struct cppi41_host_pkt_desc *hw_desc;
+	int queue_cnt, max_pd = 0;
+	struct list_head *queue;
+	struct cppi41 *cppi = cppi_ch->channel.private_data;
+	u32 orig_buf_len, prev_size, cpkt_size;
+	void __iomem *epio = cppi_ch->end_pt->regs;
+	u16 csr = musb_readw(epio, MUSB_RXCSR);
+
+	/* check for whether soft bd is empty */
+	queue_cnt = queue_count(&cppi_ch->req_list);
+	if (queue_cnt == 0)
+		return 0;
+
+	dprintk("%s-s/w bd count =%d\n", cppi_ch->transmit ? "tx" : "rx",
+					queue_cnt);
+
+	queue = (struct list_head *)&cppi_ch->req_list;
+	prev_size = cpkt_size = 0;
+	max_pd = 0;
+	curr_pd =  next_pd(queue);
+	do {
+		curr_pd->meta->bd_num = max_pd;
+		hw_desc = &curr_pd->hw_desc;
+		cpkt_size = hw_desc->orig_buf_len;
+
+		hw_desc = &curr_pd->hw_desc;
+		orig_buf_len = hw_desc->orig_buf_len;
+		hw_desc->orig_buf_len &= ~CPPI41_PKT_INTR_FLAG;
+		/* Verify whether we can queue a bucnch of requests
+		 * that are of same size (using GRNDIS DMA mode).
+		 */
+		if (prev_size) {
+			if (cpkt_size != prev_size)
+				break;
+		} else
+			prev_size = cpkt_size;
+
+		if (max_pd++) {
+			cppi41_queue_push(&cppi_ch->queue_obj,
+				prev_pd->meta->dma_addr,
+				USB_CPPI41_DESC_ALIGN, 0);
+			prev_pd->meta->pushed = 1;
+			cppi_ch->req_subcnt++;
+		}
+
+		prev_pd = curr_pd;
+		queue = queue->next;
+		curr_pd = next_pd(queue);
+	} while (queue->next != &cppi_ch->req_list);
+
+	if (max_pd == 1) {
+		cppi41_queue_push(&cppi_ch->queue_obj, prev_pd->meta->dma_addr,
+				USB_CPPI41_DESC_ALIGN, 0);
+		prev_pd->meta->pushed = 1;
+		cppi_ch->req_subcnt++;
+		cppi_ch->cfg_autoreq = USB_AUTOREQ_ALL_BUT_EOP;
+	} else
+		cppi_ch->cfg_autoreq = USB_AUTOREQ_ALWAYS;
+
+	cppi41_autoreq_update(cppi_ch, cppi_ch->cfg_autoreq);
+
+	if (!((csr & MUSB_RXCSR_H_REQPKT) || (csr & MUSB_RXCSR_RXPKTRDY))) {
+		cppi41_set_ep_size(cppi_ch, prev_size);
+		csr |= MUSB_RXCSR_H_REQPKT | MUSB_RXCSR_H_WZC_BITS;
+		musb_writew(epio, MUSB_RXCSR, csr);
+		csr = musb_readw(epio, MUSB_RXCSR);
+	}
+
+	/* return the num of bd pushed to dma queue */
+	dprintk("Num Pd pused : %d submitcnt %d\n", max_pd - 1,
+			cppi_ch->req_subcnt);
+	return (max_pd == 1 ? max_pd : max_pd - 1);
 }
 
 /**
@@ -171,7 +331,6 @@ static int __init cppi41_controller_start(struct dma_controller *controller)
 	int i;
 
 	cppi = container_of(controller, struct cppi41, controller);
-
 	/*
 	 * TODO: We may need to check USB_CPPI41_MAX_PD here since CPPI 4.1
 	 * requires the descriptor count to be a multiple of 2 ^ 5 (i.e. 32).
@@ -223,7 +382,8 @@ static int __init cppi41_controller_start(struct dma_controller *controller)
 	curr_pd = (struct usb_pkt_desc *)cppi->pd_mem;
 	pd_addr = cppi->pd_mem_phys;
 	for (i = 0; i < USB_CPPI41_MAX_PD; i++) {
-		curr_pd->dma_addr = pd_addr;
+		curr_pd->meta = &pkt_meta_data[i];
+		curr_pd->meta->dma_addr = pd_addr;
 
 		usb_put_free_pd(cppi, curr_pd);
 		curr_pd = (struct usb_pkt_desc *)((char *)curr_pd +
@@ -231,22 +391,28 @@ static int __init cppi41_controller_start(struct dma_controller *controller)
 		pd_addr += USB_CPPI41_DESC_ALIGN;
 	}
 
+	cppi->cppi_req_head = 0;
+	for (i = 0; i < USB_CPPI41_MAX_PD; i++)
+		usb_put_free_cppireq(cppi, &cppi_req[i]);
+
 	/* Configure the Tx channels */
 	for (i = 0, cppi_ch = cppi->tx_cppi_ch;
 	     i < ARRAY_SIZE(cppi->tx_cppi_ch); ++i, ++cppi_ch) {
-		const struct cppi41_tx_ch *tx_info;
+		struct cppi41_tx_ch *tx_info;
 
 		memset(cppi_ch, 0, sizeof(struct cppi41_channel));
 		cppi_ch->transmit = 1;
 		cppi_ch->ch_num = i;
 		cppi_ch->channel.private_data = cppi;
+		INIT_LIST_HEAD(&cppi_ch->req_list);
+		INIT_LIST_HEAD(&cppi_ch->cppi_req_list);
 
 		/*
 		 * Extract the CPPI 4.1 DMA Tx channel configuration and
 		 * construct/store the Tx PD tag info field for later use...
 		 */
 		tx_info = cppi41_dma_block[usb_cppi41_info.dma_block].tx_ch_info
-			  + usb_cppi41_info.ep_dma_ch[i];
+				+ usb_cppi41_info.ep_dma_ch[i];
 		cppi_ch->src_queue = tx_info->tx_queue[0];
 		cppi_ch->tag_info = (tx_info->port_num <<
 				     CPPI41_SRC_TAG_PORT_NUM_SHIFT) |
@@ -262,12 +428,15 @@ static int __init cppi41_controller_start(struct dma_controller *controller)
 		memset(cppi_ch, 0, sizeof(struct cppi41_channel));
 		cppi_ch->ch_num = i;
 		cppi_ch->channel.private_data = cppi;
+		INIT_LIST_HEAD(&cppi_ch->req_list);
+		INIT_LIST_HEAD(&cppi_ch->cppi_req_list);
 	}
 
 	/* Construct/store Tx PD packet info field for later use */
 	cppi->pkt_info = (CPPI41_PKT_TYPE_USB << CPPI41_PKT_TYPE_SHIFT) |
 			 (CPPI41_RETURN_LINKED << CPPI41_RETURN_POLICY_SHIFT) |
-			 (usb_cppi41_info.q_mgr << CPPI41_RETURN_QMGR_SHIFT) |
+			 (usb_cppi41_info.q_mgr <<
+				CPPI41_RETURN_QMGR_SHIFT) |
 			 (usb_cppi41_info.tx_comp_q[0] <<
 			  CPPI41_RETURN_QNUM_SHIFT);
 
@@ -311,7 +480,6 @@ static int cppi41_controller_stop(struct dma_controller *controller)
 	void __iomem *reg_base;
 
 	cppi = container_of(controller, struct cppi41, controller);
-
 	/*
 	 * pop all the teardwon descriptor queued to tdQueue
 	 */
@@ -419,6 +587,7 @@ static struct dma_channel *cppi41_channel_alloc(struct dma_controller
 		rx_cfg.retry_starved = 1;
 		rx_cfg.rx_queue.q_mgr = cppi_ch->src_queue.q_mgr = q_mgr;
 		rx_cfg.rx_queue.q_num = usb_cppi41_info.rx_comp_q[0];
+		/* for netra ch_num]; */
 		for (i = 0; i < 4; i++)
 			rx_cfg.cfg.host_pkt.fdb_queue[i] = cppi_ch->src_queue;
 		cppi41_rx_ch_configure(&cppi_ch->dma_ch_obj, &rx_cfg);
@@ -493,11 +662,13 @@ static void cppi41_mode_update(struct cppi41_channel *cppi_ch, u8 mode)
 			reg_val &= ~USB_TX_MODE_MASK(ep_num);
 			reg_val |= mode << USB_TX_MODE_SHIFT(ep_num);
 			musb_writel(reg_base, USB_TX_MODE_REG, reg_val);
+			reg_val = musb_readl(reg_base, USB_TX_MODE_REG);
 		} else {
 			reg_val = musb_readl(reg_base, USB_RX_MODE_REG);
 			reg_val &= ~USB_RX_MODE_MASK(ep_num);
 			reg_val |= mode << USB_RX_MODE_SHIFT(ep_num);
 			musb_writel(reg_base, USB_RX_MODE_REG, reg_val);
+			reg_val = musb_readl(reg_base, USB_RX_MODE_REG);
 		}
 		cppi_ch->dma_mode = mode;
 	}
@@ -528,18 +699,22 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 {
 	struct cppi41 *cppi = tx_ch->channel.private_data;
 	struct usb_pkt_desc *curr_pd;
-	u32 length = tx_ch->length - tx_ch->curr_offset;
-	u32 pkt_size = tx_ch->pkt_size;
-	unsigned num_pds, n;
+	u32 length = tx_ch->req->length - tx_ch->req->curr_offset;
+	u32 pkt_size = tx_ch->req->pkt_size;
+	u8 can_dma_queue = cppi->tx_can_dma_queue;
+	unsigned num_pds, n, ch_num = 0;
 
 	/*
 	 * Tx can use the generic RNDIS mode where we can probably fit this
 	 * transfer in one PD and one IRQ.  The only time we would NOT want
 	 * to use it is when the hardware constraints prevent it...
 	 */
-	if ((pkt_size & 0x3f) == 0 && length > pkt_size) {
+/*	if ((pkt_size & 0x3f) == 0 && length > pkt_size) {
 		num_pds  = 1;
 		pkt_size = length;
+*/
+	if ((pkt_size & 0x3f) == 0) {
+		num_pds  = length ? 1 : 0;
 		cppi41_mode_update(tx_ch, USB_GENERIC_RNDIS_MODE);
 	} else {
 		num_pds  = (length + pkt_size - 1) / pkt_size;
@@ -550,13 +725,19 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 	 * If length of transmit buffer is 0 or a multiple of the endpoint size,
 	 * then send the zero length packet.
 	 */
-	if (!length || (tx_ch->transfer_mode && length % pkt_size == 0))
+	if (!length || (tx_ch->req->transfer_mode && length % pkt_size == 0))
 		num_pds++;
 
+	pkt_size = length;
 	DBG(4, "TX DMA%u, %s, maxpkt %u, %u PDs, addr %#x, len %u\n",
-	    tx_ch->ch_num, tx_ch->dma_mode ? "accelerated" : "transparent",
-	    pkt_size, num_pds, tx_ch->start_addr + tx_ch->curr_offset, length);
+		tx_ch->ch_num, tx_ch->dma_mode ? "accelerated" : "transparent",
+		pkt_size, num_pds,
+		tx_ch->req->start_addr + tx_ch->req->curr_offset, length);
 
+	if (num_pds > 1)
+		dprintk("tx: num_pds=%d\n", num_pds);
+
+	tx_ch->req->num_bd = 0;
 	for (n = 0; n < num_pds; n++) {
 		struct cppi41_host_pkt_desc *hw_desc;
 
@@ -575,57 +756,86 @@ static unsigned cppi41_next_tx_segment(struct cppi41_channel *tx_ch)
 				      CPPI41_DESC_TYPE_SHIFT) | pkt_size;
 		hw_desc->tag_info = tx_ch->tag_info;
 		hw_desc->pkt_info = cppi->pkt_info;
-
-		hw_desc->buf_ptr = tx_ch->start_addr + tx_ch->curr_offset;
+		ch_num = 0;
+		hw_desc->pkt_info =
+			(CPPI41_PKT_TYPE_USB << CPPI41_PKT_TYPE_SHIFT) |
+			(CPPI41_RETURN_LINKED << CPPI41_RETURN_POLICY_SHIFT) |
+			(usb_cppi41_info.q_mgr <<
+				CPPI41_RETURN_QMGR_SHIFT) |
+			(usb_cppi41_info.tx_comp_q[ch_num] <<
+				CPPI41_RETURN_QNUM_SHIFT);
+		hw_desc->buf_ptr = tx_ch->req->start_addr +
+				tx_ch->req->curr_offset;
 		hw_desc->buf_len = pkt_size;
+		hw_desc->orig_buf_ptr = hw_desc->buf_ptr;
+		hw_desc->orig_buf_len = hw_desc->buf_len;
 		hw_desc->next_desc_ptr = 0;
 
-		curr_pd->ch_num = tx_ch->ch_num;
-		curr_pd->ep_num = tx_ch->end_pt->epnum;
+		curr_pd->meta->ch_num = tx_ch->ch_num;
+		curr_pd->meta->ep_num = tx_ch->end_pt->epnum;
 
-		tx_ch->curr_offset += pkt_size;
+		tx_ch->req->curr_offset += pkt_size;
 		length -= pkt_size;
+		curr_pd->meta->eop = (length) ? 0 : 1;
+		curr_pd->meta->req_info = tx_ch->req;
+		tx_ch->req->num_bd++;
 
 		if (pkt_size == 0)
-			tx_ch->zlp_queued = 1;
+			tx_ch->req->zlp_queued = 1;
 
 		DBG(5, "TX PD %p: buf %08x, len %08x, pkt info %08x\n", curr_pd,
 		    hw_desc->buf_ptr, hw_desc->buf_len, hw_desc->pkt_info);
 
-		cppi41_queue_push(&tx_ch->queue_obj, curr_pd->dma_addr,
-				  USB_CPPI41_DESC_ALIGN, pkt_size);
+		if (can_dma_queue)
+			list_add_tail(&(curr_pd->list),	&(tx_ch->req_list));
+
+		dprintk("tx:push(len=%x)\n", hw_desc->orig_buf_len);
+		curr_pd->meta->pushed = 1;
+		cppi41_queue_push(&tx_ch->queue_obj,
+			curr_pd->meta->dma_addr,
+			USB_CPPI41_DESC_ALIGN, pkt_size);
+		tx_ch->req_subcnt++;
 	}
 
 	return n;
 }
 
-static void cppi41_autoreq_update(struct cppi41_channel *rx_ch, u8 autoreq)
+void cppi41_autoreq_update(struct cppi41_channel *rx_ch, u8 autoreq)
 {
 	struct cppi41 *cppi = rx_ch->channel.private_data;
 
 	if (is_host_active(cppi->musb) &&
-	    autoreq != rx_ch->autoreq) {
+		autoreq != rx_ch->autoreq) {
 		void *__iomem reg_base = cppi->musb->ctrl_base;
+
 		u32 reg_val = musb_readl(reg_base, USB_AUTOREQ_REG);
 		u8 ep_num = rx_ch->ch_num + 1;
+		u32 reg_val1;
 
 		reg_val &= ~USB_RX_AUTOREQ_MASK(ep_num);
 		reg_val |= autoreq << USB_RX_AUTOREQ_SHIFT(ep_num);
 
 		musb_writel(reg_base, USB_AUTOREQ_REG, reg_val);
 		rx_ch->autoreq = autoreq;
+		reg_val1 = musb_readl(reg_base, USB_AUTOREQ_REG);
 	}
 }
 
-static void cppi41_set_ep_size(struct cppi41_channel *rx_ch, u32 pkt_size)
+void cppi41_set_ep_size(struct cppi41_channel *rx_ch, u32 pkt_size)
 {
 	struct cppi41 *cppi = rx_ch->channel.private_data;
 	void *__iomem reg_base = cppi->musb->ctrl_base;
 	u8 ep_num = rx_ch->ch_num + 1;
+	u32 temp_size;
 
-	musb_writel(reg_base, USB_GENERIC_RNDIS_EP_SIZE_REG(ep_num), pkt_size);
+	temp_size = musb_readl(reg_base, USB_GENERIC_RNDIS_EP_SIZE_REG(ep_num));
+	if (temp_size != pkt_size) {
+		musb_writel(reg_base, USB_GENERIC_RNDIS_EP_SIZE_REG(ep_num),
+			pkt_size);
+		pkt_size = musb_readl(reg_base,
+			USB_GENERIC_RNDIS_EP_SIZE_REG(ep_num));
+	}
 }
-
 /*
  * CPPI 4.1 Rx:
  * ============
@@ -696,11 +906,12 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 	struct cppi41 *cppi = rx_ch->channel.private_data;
 	struct usb_pkt_desc *curr_pd;
 	struct cppi41_host_pkt_desc *hw_desc;
-	u32 length = rx_ch->length - rx_ch->curr_offset;
-	u32 pkt_size = rx_ch->pkt_size;
+	u32 length = rx_ch->req->length - rx_ch->req->curr_offset;
+	u32 pkt_size = rx_ch->req->pkt_size;
 	u32 max_rx_transfer_size = 128 * 1024;
 	u32 i, n_bd , pkt_len;
 	struct usb_gadget_driver *gadget_driver;
+	u8 can_dma_queue = cppi->rx_can_dma_queue;
 
 	if (is_peripheral_active(cppi->musb)) {
 		/* TODO: temporary fix for CDC/RNDIS which needs to be in
@@ -712,43 +923,46 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 #endif
 		if (!strcmp(gadget_driver->driver.name, "g_ether")) {
 			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
+			pkt_len = 0;
+			if (rx_ch->req->length < max_rx_transfer_size)
+				pkt_len = rx_ch->req->length;
+			cppi41_set_ep_size(rx_ch, pkt_len % 64 ?
+				(((pkt_len/64) + 1) * 64) : pkt_len);
 		} else {
-			max_rx_transfer_size = 512;
+			max_rx_transfer_size = rx_ch->req->pkt_size;
 			cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
 		}
-		pkt_len = 0;
-		if (rx_ch->length < max_rx_transfer_size)
-			pkt_len = rx_ch->length;
-		cppi41_set_ep_size(rx_ch, pkt_len);
 	} else {
 		/*
 		 * Rx can use the generic RNDIS mode where we can
 		 * probably fit this transfer in one PD and one IRQ
 		 * (or two with a short packet).
 		 */
-		if ((pkt_size & 0x3f) == 0 && length >= 2 * pkt_size) {
-			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
-			cppi41_autoreq_update(rx_ch, USB_AUTOREQ_ALL_BUT_EOP);
-
+		if ((pkt_size & 0x3f) == 0) {
 			if (likely(length < 0x10000))
-				pkt_size = length - length % pkt_size;
+				pkt_size = length;
 			else
 				pkt_size = 0x10000;
-			cppi41_set_ep_size(rx_ch, pkt_size);
 		} else {
-			cppi41_mode_update(rx_ch, USB_TRANSPARENT_MODE);
-			cppi41_autoreq_update(rx_ch, USB_NO_AUTOREQ);
+			max_rx_transfer_size = rx_ch->req->pkt_size;
+			pkt_size = max_rx_transfer_size;
+		}
+		if (list_empty(&rx_ch->req_list)) {
+			cppi41_set_ep_size(rx_ch, pkt_size);
+			cppi41_mode_update(rx_ch, USB_GENERIC_RNDIS_MODE);
+			cppi41_autoreq_update(rx_ch, USB_AUTOREQ_ALL_BUT_EOP);
 		}
 	}
 
 	DBG(4, "RX DMA%u, %s, maxpkt %u, addr %#x, rec'd %u/%u\n",
 	    rx_ch->ch_num, rx_ch->dma_mode ? "accelerated" : "transparent",
-	    pkt_size, rx_ch->start_addr + rx_ch->curr_offset,
-	    rx_ch->curr_offset, rx_ch->length);
+	    pkt_size, rx_ch->req->start_addr + rx_ch->req->curr_offset,
+	    rx_ch->req->curr_offset, rx_ch->req->length);
 
 	/* calculate number of bd required */
 	n_bd = (length + max_rx_transfer_size - 1)/max_rx_transfer_size;
 
+	rx_ch->req->num_bd = 0;
 	for (i = 0; i < n_bd ; ++i) {
 		/* Get Rx packet descriptor from the free pool */
 		curr_pd = usb_get_free_pd(cppi);
@@ -762,39 +976,89 @@ static unsigned cppi41_next_rx_segment(struct cppi41_channel *rx_ch)
 		(length > max_rx_transfer_size) ? max_rx_transfer_size : length;
 
 		hw_desc = &curr_pd->hw_desc;
-		hw_desc->orig_buf_ptr = rx_ch->start_addr + rx_ch->curr_offset;
+		hw_desc->orig_buf_ptr = rx_ch->req->start_addr +
+					rx_ch->req->curr_offset;
 		hw_desc->orig_buf_len = pkt_len;
+		hw_desc->buf_ptr = rx_ch->req->start_addr +
+				rx_ch->req->curr_offset;
+		hw_desc->buf_len = pkt_len;
+		hw_desc->next_desc_ptr = 0;
 
-		curr_pd->ch_num = rx_ch->ch_num;
-		curr_pd->ep_num = rx_ch->end_pt->epnum;
+		curr_pd->meta->ch_num = rx_ch->ch_num;
+		curr_pd->meta->ep_num = rx_ch->end_pt->epnum;
 
-		curr_pd->eop = (length -= pkt_len) ? 0 : 1;
-		rx_ch->curr_offset += pkt_len;
+		curr_pd->meta->eop = (length -= pkt_len) ? 0 : 1;
+		rx_ch->req->curr_offset += pkt_len;
+		curr_pd->meta->req_info = rx_ch->req;
+		rx_ch->req->num_bd++;
 
-		/*
-		 * Push the free Rx packet descriptor
-		 * to the free descriptor/buffer queue.
-		 */
-		cppi41_queue_push(&rx_ch->queue_obj, curr_pd->dma_addr,
-			USB_CPPI41_DESC_ALIGN, 0);
+		curr_pd->meta->pushed = 0;
+		if (can_dma_queue) {
+			if (list_empty(&rx_ch->req_list)) {
+				list_add_tail(&(curr_pd->list),
+					&(rx_ch->req_list));
+				curr_pd->meta->pushed = 1;
+				/*
+				 * Push the free Rx packet descriptor
+				 * to the free descriptor/buffer queue.
+				 */
+				dprintk("rx:push(len=%x)\n",
+					hw_desc->orig_buf_len);
+				cppi41_queue_push(&rx_ch->queue_obj,
+					curr_pd->meta->dma_addr,
+					USB_CPPI41_DESC_ALIGN, 0);
+				rx_ch->req_subcnt++;
+				cppi41_dma_ch_enable(&rx_ch->dma_ch_obj);
+			} else {
+				/* add prepared tx-bd to s/w queue
+				 * of dma channel */
+				list_add_tail(&(curr_pd->list),
+					&(rx_ch->req_list));
+				if (is_peripheral_active(cppi->musb)) {
+					curr_pd->meta->pushed = 1;
+					cppi41_queue_push(&rx_ch->queue_obj,
+						curr_pd->meta->dma_addr,
+						USB_CPPI41_DESC_ALIGN, 0);
+					rx_ch->req_subcnt++;
+				dprintk("rx:add to swq,push hwq(len=%x)\n",
+					hw_desc->orig_buf_len);
+				}
+			}
+		} else {
+
+			curr_pd->meta->pushed = 1;
+			rx_ch->req_subcnt++;
+			/*
+			 * Push the free Rx packet descriptor
+			 * to the free descriptor/buffer queue.
+			 */
+			dprintk("rx:push hwq (len=%x)\n", hw_desc->orig_buf_len);
+			cppi41_queue_push(&rx_ch->queue_obj,
+				curr_pd->meta->dma_addr,
+				USB_CPPI41_DESC_ALIGN, 0);
+		}
 	}
 
 sched:
+#if 0
 	/*
 	 * HCD arranged ReqPkt for the first packet.
 	 * We arrange it for all but the last one.
 	 */
-	if (is_host_active(cppi->musb) && rx_ch->channel.actual_len) {
+	if (!inf_dma_mode && is_host_active(cppi->musb)
+		&& rx_ch->channel.actual_len) {
 		void __iomem *epio = rx_ch->end_pt->regs;
 		u16 csr = musb_readw(epio, MUSB_RXCSR);
 
 		csr |= MUSB_RXCSR_H_REQPKT | MUSB_RXCSR_H_WZC_BITS;
 		musb_writew(epio, MUSB_RXCSR, csr);
 	}
-
+#endif
+#if 1
 	/* enable schedular if not enabled */
 	if (is_peripheral_active(cppi->musb) && (n_bd > 0))
 		cppi41_enable_sched_rx();
+#endif
 	return 1;
 }
 
@@ -815,9 +1079,12 @@ static int cppi41_channel_program(struct dma_channel *channel,	u16 maxpacket,
 				  u8 mode, dma_addr_t dma_addr, u32 length)
 {
 	struct cppi41_channel *cppi_ch;
+	struct cppi41 *cppi;
+	struct cppi_req_info *cppi_req;
 	unsigned queued;
 
 	cppi_ch = container_of(channel, struct cppi41_channel, channel);
+	cppi = cppi_ch->channel.private_data;
 
 	switch (channel->status) {
 	case MUSB_DMA_STATUS_BUS_ABORT:
@@ -838,16 +1105,26 @@ static int cppi41_channel_program(struct dma_channel *channel,	u16 maxpacket,
 		break;
 	}
 
-	channel->status = MUSB_DMA_STATUS_BUSY;
+	if (!cppi->tx_can_dma_queue && cppi_ch->transmit)
+		channel->status = MUSB_DMA_STATUS_BUSY;
+	if (!cppi->rx_can_dma_queue && !cppi_ch->transmit)
+		channel->status = MUSB_DMA_STATUS_BUSY;
 
 	/* Set the transfer parameters, then queue up the first segment */
-	cppi_ch->start_addr = dma_addr;
-	cppi_ch->curr_offset = 0;
-	cppi_ch->pkt_size = maxpacket;
-	cppi_ch->length = length;
-	cppi_ch->transfer_mode = mode;
-	cppi_ch->zlp_queued = 0;
-	cppi_ch->channel.actual_len = 0;
+	cppi_req = usb_get_free_cppireq(cppi);
+	if (cppi_req == NULL)
+		return 0;
+
+	cppi_req->start_addr = dma_addr;
+	cppi_req->curr_offset = 0;
+	cppi_req->pkt_size = maxpacket;
+	cppi_req->length = length;
+	cppi_req->transfer_mode = mode;
+	cppi_req->zlp_queued = 0;
+	cppi_req->channel_actual_len = 0;
+
+	list_add_tail(&(cppi_req->list), &(cppi_ch->cppi_req_list));
+	cppi_ch->req = cppi_req;
 
 	/* Tx or Rx channel? */
 	if (cppi_ch->transmit)
@@ -924,7 +1201,7 @@ static void usb_tx_ch_teardown(struct cppi41_channel *tx_ch)
 			"queue\n", pd_addr);
 
 		if (usb_check_teardown(tx_ch, pd_addr)) {
-			dprintk("Teardown Desc (%p) rcvd\n", pd_addr);
+			dprintk("Teardown Desc (%x) rcvd\n", pd_addr);
 		} else
 			ERR("Invalid PD(%08lx)popped from TearDn completion"
 				"queue\n", pd_addr);
@@ -978,11 +1255,10 @@ static void usb_rx_ch_teardown(struct cppi41_channel *rx_ch)
 				break;
 			continue;
 		}
-
 		/* Paranoia: check if PD is from the right channel... */
-		if (curr_pd->ch_num != rx_ch->ch_num) {
+		if (curr_pd->meta->ch_num != rx_ch->ch_num) {
 			ERR("Unexpected channel %d in Rx PD\n",
-			    curr_pd->ch_num);
+			    curr_pd->meta->ch_num);
 			continue;
 		}
 
@@ -995,10 +1271,10 @@ static void usb_rx_ch_teardown(struct cppi41_channel *rx_ch)
 		 */
 		usb_put_free_pd(cppi, curr_pd);
 	} while (0);
-
 	/* Now restore the default Rx completion queue... */
-	cppi41_dma_ch_default_queue(&rx_ch->dma_ch_obj, usb_cppi41_info.q_mgr,
-				    usb_cppi41_info.rx_comp_q[0]);
+	cppi41_dma_ch_default_queue(&rx_ch->dma_ch_obj,
+		usb_cppi41_info.q_mgr,
+		usb_cppi41_info.rx_comp_q[0]);
 }
 
 /*
@@ -1063,6 +1339,7 @@ static int cppi41_channel_abort(struct dma_channel *channel)
 		csr |= MUSB_TXCSR_FLUSHFIFO | MUSB_TXCSR_H_WZC_BITS;
 		musb_writew(epio, MUSB_TXCSR, csr);
 		musb_writew(epio, MUSB_TXCSR, csr);
+		cppi_ch->tx_complete = 0;
 	} else { /* Rx */
 		dprintk("Rx channel teardown, cppi_ch = %p\n", cppi_ch);
 
@@ -1125,7 +1402,17 @@ static int cppi41_channel_abort(struct dma_channel *channel)
 		 * this is protected by critical section.
 		 */
 		dprintk("Returning PD %p to the free PD list\n", curr_pd);
+		if (!list_empty(&cppi_ch->req_list))
+			list_del_init(&curr_pd->list);
 		usb_put_free_pd(cppi, curr_pd);
+		/* recycle the cppi request info */
+		cppi_ch->reqc = next_cppi_req(&cppi_ch->cppi_req_list);
+		list_del(&cppi_ch->reqc->list);
+		usb_put_free_cppireq(cppi, cppi_ch->reqc);
+		cppi_ch->req_subcnt--;
+		if (cppi_ch->req_subcnt < 0)
+			dprintk("Warning %s: invalid req_subcnt %d\n", __func__,
+				cppi_ch->req_subcnt);
 	}
 
 #ifdef DEBUG_CPPI_TD
@@ -1162,6 +1449,9 @@ struct dma_controller * __init dma_controller_create(struct musb  *musb,
 	cppi->controller.channel_program = cppi41_channel_program;
 	cppi->controller.channel_abort = cppi41_channel_abort;
 
+	cppi->tx_can_dma_queue = musb->tx_can_dma_queue;
+	cppi->rx_can_dma_queue = musb->rx_can_dma_queue;
+
 	return &cppi->controller;
 }
 
@@ -1178,11 +1468,12 @@ void dma_controller_destroy(struct dma_controller *controller)
 	/* Free the CPPI object */
 	kfree(cppi);
 }
-
-static void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
+void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 {
 	struct cppi41_queue_obj tx_queue_obj;
 	unsigned long pd_addr;
+	u8 lock = 0, can_dma_queue = cppi->tx_can_dma_queue;
+	u8 iter_cnt = 0, queue_cnt = 0;
 
 	if (cppi41_queue_init(&tx_queue_obj, usb_cppi41_info.q_mgr,
 			      usb_cppi41_info.tx_comp_q[index])) {
@@ -1196,7 +1487,6 @@ static void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 		struct cppi41_channel *tx_ch;
 		u8 ch_num, ep_num;
 		u32 length;
-
 		curr_pd = usb_get_pd_ptr(cppi, pd_addr);
 		if (curr_pd == NULL) {
 			ERR("Invalid PD popped from Tx completion queue\n");
@@ -1204,23 +1494,54 @@ static void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 		}
 
 		/* Extract the data from received packet descriptor */
-		ch_num = curr_pd->ch_num;
-		ep_num = curr_pd->ep_num;
+		ch_num = curr_pd->meta->ch_num;
+		ep_num = curr_pd->meta->ep_num;
 		length = curr_pd->hw_desc.buf_len;
 
 		tx_ch = &cppi->tx_cppi_ch[ch_num];
-		tx_ch->channel.actual_len += length;
+		tx_ch->reqc = next_cppi_req(&tx_ch->cppi_req_list);
 
+		if (curr_pd->meta->req_info != tx_ch->reqc)
+			printk("Alarm: corruption bad cppi-reqinfo!!!");
+		tx_ch->reqc->num_bd--;
+
+		tx_ch->reqc->channel_actual_len += length;
+		tx_ch->channel.actual_len = tx_ch->reqc->channel_actual_len;
+
+		queue_cnt = queue_count(&tx_ch->req_list);
+
+		if (!length)
+			tx_ch->reqc->zlp_queued = 0;
+
+		if (tx_ch->req_subcnt == 0)
+			printk("Alarm: rx-req_subcnt <=0 (%d)\n", tx_ch->req_subcnt);
+
+		tx_ch->req_subcnt--;
+
+		dprintk("txc(len=%d\n)", tx_ch->channel.actual_len);
 		/*
 		 * Return Tx PD to the software list --
 		 * this is protected by critical section
 		 */
 		usb_put_free_pd(cppi, curr_pd);
+		lock = 0;
+		if (can_dma_queue) {
+			/* push rest of bds from s/w
+			 * bd-queue to dma queue if any
+			 */
+			curr_pd->meta->pushed = 0;
+			list_del_init(&curr_pd->list);
+		}
+		iter_cnt++;
 
-		if ((tx_ch->curr_offset < tx_ch->length) ||
-		    (tx_ch->transfer_mode && !tx_ch->zlp_queued))
+		if ((tx_ch->reqc->curr_offset < tx_ch->reqc->length) ||
+		    (tx_ch->reqc->transfer_mode && !tx_ch->reqc->zlp_queued)) {
 			cppi41_next_tx_segment(tx_ch);
-		else if (tx_ch->channel.actual_len >= tx_ch->length) {
+		} else if (tx_ch->reqc->channel_actual_len >= tx_ch->reqc->length) {
+			if (tx_ch->reqc->num_bd != 0)
+				printk("Alarm:tx cppi-req bdcnt != 0 (%d)\n", tx_ch->reqc->num_bd);
+			list_del(&tx_ch->reqc->list);
+			usb_put_free_cppireq(cppi, tx_ch->reqc);
 			tx_ch->channel.status = MUSB_DMA_STATUS_FREE;
 
 			/*
@@ -1231,17 +1552,30 @@ static void usb_process_tx_queue(struct cppi41 *cppi, unsigned index)
 			 * USB functionality. So far, we have obsered
 			 * failure with iperf.
 			 */
-			udelay(20);
+			dprintk("txc(dma_cmpl)\n");
 			/* Tx completion routine callback */
-			musb_dma_completion(cppi->musb, ep_num, 1);
+			if (can_dma_queue && (queue_cnt > 1)) {
+				tx_ch->end_pt->dma_completed = 1;
+				musb_dma_completion(cppi->musb, ep_num, 1);
+				tx_ch->end_pt->dma_completed = 0;
+			} else {
+				/* Confirm that the data has moved on to the bus. */
+				tx_ch->tx_complete = 1;
+				tx_ch->end_pt->dma_completed = 1;
+				musb_writeb(cppi->musb->mregs, MUSB_INTRUSBE, 0xff);
+			}
+
 		}
 	}
 }
 
-static void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
+void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 {
 	struct cppi41_queue_obj rx_queue_obj;
 	unsigned long pd_addr;
+	u32 orig_buf_len;
+	u8 lock = 0, num_bd, can_dma_queue = cppi->rx_can_dma_queue;
+	u8 iter_cnt = 0;
 
 	if (cppi41_queue_init(&rx_queue_obj, usb_cppi41_info.q_mgr,
 			      usb_cppi41_info.rx_comp_q[index])) {
@@ -1262,39 +1596,81 @@ static void usb_process_rx_queue(struct cppi41 *cppi, unsigned index)
 		}
 
 		/* Extract the data from received packet descriptor */
-		ch_num = curr_pd->ch_num;
-		ep_num = curr_pd->ep_num;
+		ch_num = curr_pd->meta->ch_num;
+		ep_num = curr_pd->meta->ep_num;
 		length = curr_pd->hw_desc.buf_len;
 
 		rx_ch = &cppi->rx_cppi_ch[ch_num];
-		rx_ch->channel.actual_len += length;
+		rx_ch->reqc = next_cppi_req(&rx_ch->cppi_req_list);
 
-		if (curr_pd->eop) {
-			curr_pd->eop = 0;
-			/* disable the rx dma schedular */
-			if (is_peripheral_active(cppi->musb)) {
-				cppi41_disable_sched_rx();
-				musb_dma_completion(cppi->musb, ep_num, 0);
+		if (curr_pd->meta->req_info != rx_ch->reqc)
+			printk("Alarm: corrurption bad cppi-reqinfo!!!");
+		rx_ch->reqc->num_bd--;
+
+		if (rx_ch->req_subcnt == 0)
+			printk("Alarm: rx-req_subcnt <=0 (%d)\n", rx_ch->req_subcnt);
+		rx_ch->req_subcnt--;
+
+		rx_ch->reqc->channel_actual_len += length;
+		rx_ch->channel.actual_len = rx_ch->reqc->channel_actual_len;
+
+		dprintk("rxc(currpd=%p,len=%d,reqlen=%d,cnt=%d)\n", curr_pd, rx_ch->channel.actual_len,
+				rx_ch->reqc->length, rx_ch->req_subcnt);
+
+		orig_buf_len = curr_pd->hw_desc.orig_buf_len;
+		lock = 0;
+		if (can_dma_queue) {
+			/* push rest of bds from s/w
+			 * bd-queue to dma queue if any
+			 */
+			curr_pd->meta->pushed = 0;
+			list_del_init(&curr_pd->list);
+			if (!lock) {
+				if (rx_ch->req_subcnt == 0 &&
+					!is_peripheral_active(cppi->musb)) {
+					num_bd = cppi41_send_bd_queue(rx_ch);
+
+					if (num_bd > 1)
+						dprintk("rx: queue (%d) nbd queued\n", num_bd);
+				}
+				lock = 1;
 			}
 		}
 
+		iter_cnt++;
+
+		orig_buf_len = curr_pd->hw_desc.orig_buf_len;
 		/*
 		 * Return Rx PD to the software list --
 		 * this is protected by critical section
 		 */
 		usb_put_free_pd(cppi, curr_pd);
-
-		if (unlikely(rx_ch->channel.actual_len >= rx_ch->length ||
-			     length < curr_pd->hw_desc.orig_buf_len)) {
+		if (unlikely(rx_ch->channel.actual_len >= rx_ch->reqc->length ||
+			(length < orig_buf_len &&
+			(length % rx_ch->reqc->pkt_size) != 0))) {
 			rx_ch->channel.status = MUSB_DMA_STATUS_FREE;
 
+			if (rx_ch->reqc->num_bd != 0)
+				printk("Alarm:rx cppi-req bdcnt != 0 (%d)\n",
+					rx_ch->reqc->num_bd);
+
+			list_del(&rx_ch->reqc->list);
+			usb_put_free_cppireq(cppi, rx_ch->reqc);
+			rx_ch->end_pt->dma_completed = 1;
 			/* Rx completion routine callback */
 			musb_dma_completion(cppi->musb, ep_num, 0);
+			rx_ch->end_pt->dma_completed = 0;
+			dprintk("rxc(%d, %d, %d)\n", rx_ch->channel.actual_len,
+				iter_cnt, rx_ch->req_subcnt);
 		} else {
 			if (is_peripheral_active(cppi->musb) &&
-				((rx_ch->length - rx_ch->curr_offset) > 0))
+			((rx_ch->reqc->length -
+				rx_ch->reqc->curr_offset) > 0)) {
+				dprintk("next-seg-->\n");
 				cppi41_next_rx_segment(rx_ch);
+			}
 		}
+
 	}
 }
 
@@ -1320,4 +1696,48 @@ void cppi41_completion(struct musb *musb, u32 rx, u32 tx)
 	for (index = 0; tx != 0; tx >>= 1, index++)
 		if (tx & 1)
 			usb_process_tx_queue(cppi, index);
+}
+
+void cppi41_tx_fifo_flush(struct musb  *musb)
+{
+	struct cppi41_channel *tx_ch;
+	struct cppi41 *cppi;
+	unsigned index;
+	u8 sof = 0;
+
+	cppi = container_of(musb->dma_controller, struct cppi41, controller);
+
+	for (index = 0; index < USB_CPPI41_NUM_CH; index++) {
+		void __iomem *epio;
+		u16 csr;
+
+		tx_ch = &cppi->tx_cppi_ch[index];
+		if (tx_ch->tx_complete) {
+			/* Sometimes a EP can unregister from a DMA channel
+			* while the data is still in the FIFO.  Probable
+			* reason a proper abort was not called before taking
+			* such a step.  Protect against such cases.
+			*/
+			if (!tx_ch->end_pt) {
+				tx_ch->tx_complete = 0;
+				return;
+			}
+
+			epio = tx_ch->end_pt->regs;
+			csr = musb_readw(epio, MUSB_TXCSR);
+
+			if (csr & (MUSB_TXCSR_TXPKTRDY |
+				MUSB_TXCSR_FIFONOTEMPTY))
+				sof = 1;
+			else {
+				tx_ch->tx_complete = 0;
+				tx_ch->end_pt->dma_completed = 1;
+				musb_dma_completion(musb, index+1, 1);
+				tx_ch->end_pt->dma_completed = 0;
+			}
+		}
+	}
+
+	if (!sof)
+		musb_writeb(musb->mregs, MUSB_INTRUSBE, 0xf7);
 }
