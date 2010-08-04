@@ -118,10 +118,5 @@ EXPORT_SYMBOL(drm_get_platform_dev);
 
 int drm_platform_init(struct drm_driver *driver)
 {
-	return platform_driver_register(&driver->platform_driver);
-}
-
-void drm_platform_exit(struct drm_driver *driver)
-{
-	platform_driver_unregister(&driver->platform_driver);
+	return drm_get_platform_dev(driver->platform_device, driver);
 }
