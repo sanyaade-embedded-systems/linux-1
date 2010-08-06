@@ -1,4 +1,4 @@
-16 July 2010
+06 August 2010
 
 
 1.  Introduction
@@ -382,48 +382,49 @@ OMAPS00219576	Kernel build error if DEBUG support is removed from OMAP2/3/4 Disp
 OMAPS00219724   MMC: Warning seen occassionaly - kmmcd: blocked for 120 seconds
 OMAPS00219713   ADMA feature on external MMC/SD card results in kernel crash
 OMAPS00219659   u-boot regression in L24.6: not handling platforms not built with eMMC
+OMAPS00221839	MUSB (OTG) in Host mode: enumeration failure if USB device connected before blaze boot 
+OMAPS00221528	MUSB Host :- Fix the default DMA mapping of control transfer buffers 
+OMAPS00215668	MUSB driver in device mode has problems with unaligned DMA. 
+OMAPS00219671	Serial O2 driver in L24.7 causes hang in running multiple V4l2 streaming tests
+
 
 
 4.6 Open Defects
-OMAPS00219723		MMC: sometimes the order of detection of eMMC and external SD card is wrong
-OMAPS00221558		HSMMC : Copying same file twice on MMC and when run "cmp" will throw error
-OMAPS00219724		MMC: Warning seen occassionaly - kmmcd: blocked for 120 seconds
-OMAPS00219713		ADMA feature on external MMC/SD card results in kernel crash
-OMAPS00218060		omap-serial is not stable during bluetooth file transfer(sdp4430 to remote BT device) operation.
-OMAPS00218589		MCBSP: for some word lengths the transmission fails.
-OMAPS00215651 		MUSB driver in host mode has problems with unaligned DMA
-OMAPS00215668 		MUSB driver in device mode has problems with unaligned DMA.
-OMAPS00219087		MUSB:  there is no MUSB_INTR_DISCONNECT interrupt on DETACH
-OMAPS00217993		Display on Primary LCD does not wakeup when 
-			USB is active
-OMAPS00219671		serial driver issue
-OMAPS00219663		1080p to WVGA downscaling of YUYV does not work
-OMAPS00221067		omaplfb relies on the FB2OFB definition, which is not defined by the headers of the Ubuntu kernel headers
-OMAPS00220816		PicoDLP shows a junk buffer at the bottom of the frame
-OMAPS00219789		V4L2 error observed when rendering frames from Video decode testcases
-OMAPS00219388		Secondary display corruption with L24.6
-OMAPS00218554		HDMI panel shows tearing when 3 different 3D apps are executed
-OMAPS00218312		PT_FUNCTIONAL: HDMI output not working properly with a HDMI Video Capture PCI card
-OMAPS00216592		There is no way available for dynamically setting/resetting dithering bit
-OMAPS00213906		180 degree rotation of yuv format shows a bluish tinge
-OMAPS00221554		watchdog: the timeout and set not working
-OMAPS00221542 		Timers: the clock is not able to switch the test code needs to be fixed to request correct clock.
+OMAPS00219723	MMC: sometimes the order of detection of eMMC and external SD card is wrong
+OMAPS00221558	HSMMC : Copying same file twice on MMC and when run "cmp" will throw error
+OMAPS00218060	omap-serial is not stable during bluetooth file transfer(sdp4430 to remote BT device) operation.
+OMAPS00218589	MCBSP: for some word lengths the transmission fails.
+OMAPS00215651 	MUSB driver in host mode has problems with unaligned DMA
+OMAPS00219087	MUSB:  there is no MUSB_INTR_DISCONNECT interrupt on DETACH
+OMAPS00217993	Display on Primary LCD does not wakeup when USB is active
+OMAPS00219663	1080p to WVGA downscaling of YUYV does not work
+OMAPS00221067	omaplfb relies on the FB2OFB definition, which is not defined by the headers of the Ubuntu kernel headers
+OMAPS00220816	PicoDLP shows a junk buffer at the bottom of the frame
+OMAPS00219789	V4L2 error observed when rendering frames from Video decode testcases
+OMAPS00219388	Secondary display corruption with L24.6
+OMAPS00218554	HDMI panel shows tearing when 3 different 3D apps are executed
+OMAPS00218312	PT_FUNCTIONAL: HDMI output not working properly with a HDMI Video Capture PCI card
+OMAPS00216592	There is no way available for dynamically setting/resetting dithering bit
+OMAPS00213906	180 degree rotation of yuv format shows a bluish tinge
+OMAPS00221554	watchdog: the timeout and set not working
+OMAPS00221542 	Timers: the clock is not able to switch the test code needs to be fixed to request correct clock.
+OMAPS00221541	UART trasfers fails at 3.5Mbps baudrate with DMA mode.
 
 4.7 Open Change Requests
 None
 
 4.8 Rejected Defects
-OMAPS00219666		90 and 270 video rotations are interchanged (Duplicate defect)
-OMAPS00220581		L_JPEGDEC_FUNCTIONAL_001: multiple dark lines are seen when image is displayed
-OMAPS00216361		Distinguish omap v4l2 display device between omap3 and omap4 driver
-OMAPS00213840		sometimes QBUF ioctl() doesn't return in threaded application
-OMAPS00218813		60fps drops to 30fps only when 1080p-WVGA rescaling in DSS
-OMAPS00217970		Tearing effect on display in Android
-OMAPS00215672		Video DQBUF function takes more than 1s (framedone timeout) when called the first time for playing 1080p on DSI
-OMAPS00213907		With omapfb.numfb=1 in bootargs , the rest of pipelines are not given to v4l2
+OMAPS00219666	90 and 270 video rotations are interchanged (Duplicate defect)
+OMAPS00220581	L_JPEGDEC_FUNCTIONAL_001: multiple dark lines are seen when image is displayed
+OMAPS00216361	Distinguish omap v4l2 display device between omap3 and omap4 driver
+OMAPS00213840	sometimes QBUF ioctl() doesn't return in threaded application
+OMAPS00218813	60fps drops to 30fps only when 1080p-WVGA rescaling in DSS
+OMAPS00217970	Tearing effect on display in Android
+OMAPS00215672	Video DQBUF function takes more than 1s (framedone timeout) when called the first time for playing 1080p on DSI
+OMAPS00213907	With omapfb.numfb=1 in bootargs , the rest of pipelines are not given to v4l2
 
 4.9 Postponed Defects
-OMAPS00216446 Disabling "auto update" on DSI would impact the V4l2 drivers that have the ISRs hooked up for FRAMEDONE already.
+OMAPS00216446	Disabling "auto update" on DSI would impact the V4l2 drivers that have the ISRs hooked up for FRAMEDONE already.
 
 
 4.10 Limitations
