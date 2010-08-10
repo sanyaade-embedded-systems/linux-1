@@ -83,8 +83,8 @@
 
 static struct omap_mbox *ducati_mbox;
 static struct omap_mbox *tesla_mbox;
-static int notify_ducatidrv_isr(void *ntfy_msg);
-static bool notify_ducatidrv_isr_callback(void *ref_data, void* ntfy_msg);
+static int notify_shmdrv_isr(struct notifier_block *, unsigned long, void *);
+static bool notify_shmdrv_isr_callback(void *ref_data, void* ntfy_msg);
 
 
 /* Defines the notify_ducatidrv state object, which contains all
@@ -152,6 +152,10 @@ static struct notify_ducatidrv_module notify_ducatidriver_state = {
 	.def_inst_params.line_id = 0,
 	.def_inst_params.local_int_id = (u32) -1,
 	.def_inst_params.remote_int_id = (u32) -1
+};
+
+struct notifier_block ducati_notify_nb = {
+	.notifier_call = notify_shmdrv_isr,
 };
 
 /* Get the default configuration for the notify_ducatidrv module. */
@@ -225,25 +229,22 @@ int notify_ducatidrv_setup(struct notify_ducatidrv_config *cfg)
 
 	/* Initialize the maibox module for Ducati */
 	if (ducati_mbox == NULL) {
-		ducati_mbox = omap_mbox_get("mailbox-2");
+		ducati_mbox = omap_mbox_get("mailbox-2", &ducati_notify_nb);
 		if (ducati_mbox == NULL) {
 			printk(KERN_ERR "Failed in omap_mbox_get(ducati)\n");
 			status = NOTIFY_E_INVALIDSTATE;
 			goto error_mailbox_get_failed;
 		}
-		ducati_mbox->rxq->callback =
-				(int (*)(void *))notify_ducatidrv_isr;
 	}
 
 	/* Initialize the maibox module for Tesla */
 	if (!tesla_mbox) {
-		tesla_mbox = omap_mbox_get("mailbox-1");
+		tesla_mbox = omap_mbox_get("mailbox-1", &ducati_notify_nb);
 		if (!tesla_mbox) {
 			printk(KERN_ERR "Failed in omap_mbox_get(tesla)\n");
 			status = NOTIFY_E_INVALIDSTATE;
 			goto error_mailbox_get_failed;
 		}
-		tesla_mbox->rxq->callback = notify_ducatidrv_isr;
 	}
 	return 0;
 
@@ -297,11 +298,11 @@ int notify_ducatidrv_destroy(void)
 		NOTIFYDUCATIDRIVER_MAKE_MAGICSTAMP(0));
 
 	/* Finalize the maibox module for Ducati */
-	omap_mbox_put(ducati_mbox);
+	omap_mbox_put(ducati_mbox, &ducati_notify_nb);
 	ducati_mbox = NULL;
 
 	/* Finalize the maibox module for Tesla */
-	omap_mbox_put(tesla_mbox);
+	omap_mbox_put(tesla_mbox, &ducati_notify_nb);
 	tesla_mbox = NULL;
 
 exit:
@@ -1295,20 +1296,21 @@ exit:
 
 /* This function implements the interrupt service routine for the interrupt
  * received from the Ducati processor. */
-static int notify_ducatidrv_isr(void *ntfy_msg)
+static int notify_shmdrv_isr(struct notifier_block *nb, unsigned long val,
+								void *ntfy_msg)
 {
 	/* Decode the msg to identify the processor that has sent the message */
 	u32 proc_id = (u32)ntfy_msg;
 
 	/* Call the corresponding prpc_id callback */
-	notify_ducatidrv_isr_callback(notify_ducatidriver_state.driver_handles
+	notify_shmdrv_isr_callback(notify_ducatidriver_state.driver_handles
 		[proc_id][0], ntfy_msg);
 
 	return 0;
 }
-EXPORT_SYMBOL(notify_ducatidrv_isr);
+EXPORT_SYMBOL(notify_shmdrv_isr);
 
-static bool notify_ducatidrv_isr_callback(void *ref_data, void *notify_msg)
+static bool notify_shmdrv_isr_callback(void *ref_data, void *notify_msg)
 {
 	u32 payload = 0;
 	u32 i = 0;
