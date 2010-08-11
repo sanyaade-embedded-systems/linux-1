@@ -101,6 +101,11 @@ struct bio_list;
 struct fs_struct;
 struct perf_event_context;
 
+#ifdef CONFIG_X86_32
+extern int exec_shield;
+#endif
+extern int print_fatal_signals;
+
 /*
  * List of flags we want to share for kernel threads,
  * if only because they are not used by them anyway.
@@ -274,14 +279,8 @@ extern cpumask_var_t nohz_cpu_mask;
 #if defined(CONFIG_SMP) && defined(CONFIG_NO_HZ)
 extern int select_nohz_load_balancer(int cpu);
 extern int get_nohz_load_balancer(void);
-extern int nohz_ratelimit(int cpu);
 #else
 static inline int select_nohz_load_balancer(int cpu)
-{
-	return 0;
-}
-
-static inline int nohz_ratelimit(int cpu)
 {
 	return 0;
 }
@@ -394,6 +393,10 @@ extern int sysctl_max_map_count;
 extern void arch_pick_mmap_layout(struct mm_struct *mm);
 extern unsigned long
 arch_get_unmapped_area(struct file *, unsigned long, unsigned long,
+		       unsigned long, unsigned long);
+
+extern unsigned long
+arch_get_unmapped_exec_area(struct file *, unsigned long, unsigned long,
 		       unsigned long, unsigned long);
 extern unsigned long
 arch_get_unmapped_area_topdown(struct file *filp, unsigned long addr,

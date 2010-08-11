@@ -49,7 +49,7 @@ int radeon_driver_unload_kms(struct drm_device *dev)
 int radeon_driver_load_kms(struct drm_device *dev, unsigned long flags)
 {
 	struct radeon_device *rdev;
-	int r;
+	int r, acpi_status;
 
 	rdev = kzalloc(sizeof(struct radeon_device), GFP_KERNEL);
 	if (rdev == NULL) {
@@ -77,6 +77,12 @@ int radeon_driver_load_kms(struct drm_device *dev, unsigned long flags)
 		dev_err(&dev->pdev->dev, "Fatal error during GPU init\n");
 		goto out;
 	}
+
+	/* Call ACPI methods */
+	acpi_status = radeon_acpi_init(rdev);
+	if (acpi_status)
+		dev_err(&dev->pdev->dev, "Error during ACPI methods call\n");
+
 	/* Again modeset_init should fail only on fatal error
 	 * otherwise it should provide enough functionalities
 	 * for shadowfb to run
@@ -106,7 +112,9 @@ int radeon_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	info = data;
 	value_ptr = (uint32_t *)((unsigned long)info->value);
-	value = *value_ptr;
+	if (DRM_COPY_FROM_USER(&value, value_ptr, sizeof(value)))
+		return -EFAULT;
+
 	switch (info->request) {
 	case RADEON_INFO_DEVICE_ID:
 		value = dev->pci_device;
