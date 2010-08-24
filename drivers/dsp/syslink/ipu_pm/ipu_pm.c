@@ -111,6 +111,21 @@ static inline int ipu_pm_get_l3_bus(int proc_id, u32 rcb_num);
 /* Request IVA HD on behalf of an IPU client */
 static inline int ipu_pm_get_iva_hd(int proc_id, u32 rcb_num);
 
+/* Request FDIF on behalf of an IPU client */
+static inline int ipu_pm_get_fdif(int proc_id, u32 rcb_num);
+
+/* Request MPU on behalf of an IPU client */
+static inline int ipu_pm_get_mpu(int proc_id, u32 rcb_num);
+
+/* Request IPU on behalf of an IPU client */
+static inline int ipu_pm_get_ipu(int proc_id, u32 rcb_num);
+
+/* Request IVA SEQ0 on behalf of an IPU client */
+static inline int ipu_pm_get_ivaseq0(int proc_id, u32 rcb_num);
+
+/* Request IVA SEQ1 on behalf of an IPU client */
+static inline int ipu_pm_get_ivaseq1(int proc_id, u32 rcb_num);
+
 /* Request ISS on behalf of an IPU client */
 static inline int ipu_pm_get_iss(int proc_id, u32 rcb_num);
 
@@ -144,14 +159,26 @@ static inline int ipu_pm_rel_l3_bus(int proc_id, u32 rcb_num);
 /* Release IVA HD on behalf of an IPU client */
 static inline int ipu_pm_rel_iva_hd(int proc_id, u32 rcb_num);
 
+/* Release FDIF on behalf of an IPU client */
+static inline int ipu_pm_rel_fdif(int proc_id, u32 rcb_num);
+
+/* Release MPU on behalf of an IPU client */
+static inline int ipu_pm_rel_mpu(int proc_id, u32 rcb_num);
+
+/* Release IPU on behalf of an IPU client */
+static inline int ipu_pm_rel_ipu(int proc_id, u32 rcb_num);
+
+/* Release IVA SEQ0 on behalf of an IPU client */
+static inline int ipu_pm_rel_ivaseq0(int proc_id, u32 rcb_num);
+
+/* Release IVA SEQ1 on behalf of an IPU client */
+static inline int ipu_pm_rel_ivaseq1(int proc_id, u32 rcb_num);
+
 /* Release ISS on behalf of an IPU client */
 static inline int ipu_pm_rel_iss(int proc_id, u32 rcb_num);
 
-/* Request a sys m3 constraint on behalf of an IPU client */
-static inline int ipu_pm_req_cstr_sys_m3(int proc_id, u32 rcb_num);
-
-/* Request an app m3 constraint on behalf of an IPU client */
-static inline int ipu_pm_req_cstr_app_m3(int proc_id, u32 rcb_num);
+/* Request a IPU constraint on behalf of an IPU client */
+static inline int ipu_pm_req_cstr_ipu(int proc_id, u32 rcb_num);
 
 /* Request a L3 Bus constraint on behalf of an IPU client */
 static inline int ipu_pm_req_cstr_l3_bus(int proc_id, u32 rcb_num);
@@ -162,11 +189,8 @@ static inline int ipu_pm_req_cstr_iva_hd(int proc_id, u32 rcb_num);
 /* Request an ISS constraint on behalf of an IPU client */
 static inline int ipu_pm_req_cstr_iss(int proc_id, u32 rcb_num);
 
-/* Release a sys m3 constraint on behalf of an IPU client */
-static inline int ipu_pm_rel_cstr_sys_m3(int proc_id, u32 rcb_num);
-
-/* Release an app m3 constraint on behalf of an IPU client */
-static inline int ipu_pm_rel_cstr_app_m3(int proc_id, u32 rcb_num);
+/* Release a IPU constraint on behalf of an IPU client */
+static inline int ipu_pm_rel_cstr_ipu(int proc_id, u32 rcb_num);
 
 /* Release a L3 Bus constraint on behalf of an IPU client */
 static inline int ipu_pm_rel_cstr_l3_bus(int proc_id, u32 rcb_num);
@@ -222,19 +246,24 @@ static struct ipu_pm_module_object ipu_pm_state = {
 } ;
 
 static struct ipu_pm_params pm_params = {
-	.pm_gpio_counter = 0,
-	.pm_gptimer_counter = 0,
-	.pm_i2c_bus_counter = 0,
-	.pm_sdmachan_counter = 0,
-	.pm_regulator_counter = 0,
-	.pm_aux_clk_counter = 0,
+	.pm_fdif_counter = 0,
+	.pm_ipu_counter = 0,
 	.pm_sys_m3_counter = 0,
 	.pm_app_m3_counter = 0,
-	.pm_l3_bus_counter = 0,
-	.pm_iva_hd_counter = 0,
 	.pm_iss_counter = 0,
-	.shared_addr = NULL,
+	.pm_iva_hd_counter = 0,
+	.pm_ivaseq0_counter = 0,
+	.pm_ivaseq1_counter = 0,
+	.pm_l3_bus_counter = 0,
+	.pm_mpu_counter = 0,
+	.pm_sdmachan_counter = 0,
+	.pm_gptimer_counter = 0,
+	.pm_gpio_counter = 0,
+	.pm_i2c_bus_counter = 0,
+	.pm_regulator_counter = 0,
+	.pm_aux_clk_counter = 0,
 	.timeout = 10000,
+	.shared_addr = NULL,
 	.pm_num_events = NUMBER_PM_EVENTS,
 	.pm_resource_event = PM_RESOURCE,
 	.pm_notification_event = PM_NOTIFICATION,
@@ -282,8 +311,23 @@ static inline int ipu_pm_req_res(u32 res_type, u32 proc_id, u32 rcb_num)
 	case IVA_HD:
 		retval = ipu_pm_get_iva_hd(proc_id, rcb_num);
 		break;
+	case IVASEQ0:
+		retval = ipu_pm_get_ivaseq0(proc_id, rcb_num);
+		break;
+	case IVASEQ1:
+		retval = ipu_pm_get_ivaseq1(proc_id, rcb_num);
+		break;
 	case ISS:
 		retval = ipu_pm_get_iss(proc_id, rcb_num);
+		break;
+	case FDIF:
+		retval = ipu_pm_get_fdif(proc_id, rcb_num);
+		break;
+	case MPU:
+		retval = ipu_pm_get_mpu(proc_id, rcb_num);
+		break;
+	case IPU:
+		retval = ipu_pm_get_ipu(proc_id, rcb_num);
 		break;
 	default:
 		pr_err("Unsupported resource\n");
@@ -332,8 +376,23 @@ static inline int ipu_pm_rel_res(u32 res_type, u32 proc_id, u32 rcb_num)
 	case IVA_HD:
 		retval = ipu_pm_rel_iva_hd(proc_id, rcb_num);
 		break;
+	case IVASEQ0:
+		retval = ipu_pm_rel_ivaseq0(proc_id, rcb_num);
+		break;
+	case IVASEQ1:
+		retval = ipu_pm_rel_ivaseq1(proc_id, rcb_num);
+		break;
 	case ISS:
 		retval = ipu_pm_rel_iss(proc_id, rcb_num);
+		break;
+	case FDIF:
+		retval = ipu_pm_rel_fdif(proc_id, rcb_num);
+		break;
+	case MPU:
+		retval = ipu_pm_rel_mpu(proc_id, rcb_num);
+		break;
+	case IPU:
+		retval = ipu_pm_rel_ipu(proc_id, rcb_num);
 		break;
 	default:
 		pr_err("Unsupported resource\n");
@@ -352,11 +411,8 @@ static inline int ipu_pm_req_cstr(u32 res_type, u32 proc_id, u32 rcb_num)
 	int retval = PM_SUCCESS;
 
 	switch (res_type) {
-	case SYSM3:
-		retval = ipu_pm_req_cstr_sys_m3(proc_id, rcb_num);
-		break;
-	case APPM3:
-		retval = ipu_pm_req_cstr_app_m3(proc_id, rcb_num);
+	case IPU:
+		retval = ipu_pm_req_cstr_ipu(proc_id, rcb_num);
 		break;
 	case L3_BUS:
 		retval = ipu_pm_req_cstr_l3_bus(proc_id, rcb_num);
@@ -384,11 +440,8 @@ static inline int ipu_pm_rel_cstr(u32 res_type, u32 proc_id, u32 rcb_num)
 	int retval = PM_SUCCESS;
 
 	switch (res_type) {
-	case SYSM3:
-		retval = ipu_pm_rel_cstr_sys_m3(proc_id, rcb_num);
-		break;
-	case APPM3:
-		retval = ipu_pm_rel_cstr_app_m3(proc_id, rcb_num);
+	case IPU:
+		retval = ipu_pm_rel_cstr_ipu(proc_id, rcb_num);
 		break;
 	case L3_BUS:
 		retval = ipu_pm_rel_cstr_l3_bus(proc_id, rcb_num);
@@ -1167,6 +1220,193 @@ static inline int ipu_pm_get_iva_hd(int proc_id, u32 rcb_num)
 }
 
 /*
+  Request FDIF on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_get_fdif(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Request FDIF\n");
+	if (params->pm_fdif_counter)
+		return PM_UNSUPPORTED;
+
+	retval = ipu_pm_module_start(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_start( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_fdif_counter++;
+
+	return PM_SUCCESS;
+}
+
+/*
+  Request MPU on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_get_mpu(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Request MPU\n");
+	if (params->pm_mpu_counter)
+		return PM_UNSUPPORTED;
+
+	retval = ipu_pm_module_start(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_start( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_mpu_counter++;
+
+	return PM_SUCCESS;
+}
+
+/*
+  Request IPU on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_get_ipu(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Request IPU\n");
+	if (params->pm_ipu_counter)
+		return PM_UNSUPPORTED;
+
+	retval = ipu_pm_module_start(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_start( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_ipu_counter++;
+
+	return PM_SUCCESS;
+}
+
+
+
+/*
+  Request IVA SEQ0 on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_get_ivaseq0(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Request IVASEQ0\n");
+	if (params->pm_ivaseq0_counter)
+		return PM_UNSUPPORTED;
+
+	retval = ipu_pm_module_start(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_start( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_ivaseq0_counter++;
+
+	return PM_SUCCESS;
+}
+
+/*
+  Request IVA SEQ1 on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_get_ivaseq1(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Request IVASEQ1\n");
+	if (params->pm_ivaseq1_counter)
+		return PM_UNSUPPORTED;
+
+	retval = ipu_pm_module_start(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_start( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_ivaseq1_counter++;
+
+	return PM_SUCCESS;
+}
+
+/*
   Request ISS on behalf of an IPU client
  *
  */
@@ -1523,7 +1763,6 @@ static inline int ipu_pm_rel_app_m3(int proc_id, u32 rcb_num)
 	return PM_SUCCESS;
 error:
 	return PM_UNSUPPORTED;
-
 }
 
 /*
@@ -1559,7 +1798,126 @@ static inline int ipu_pm_rel_l3_bus(int proc_id, u32 rcb_num)
 	return PM_SUCCESS;
 error:
 	return PM_UNSUPPORTED;
+}
 
+/*
+  Release FDIF on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_rel_fdif(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Release FDIF\n");
+
+	if (!params->pm_fdif_counter)
+		goto error;
+
+	retval = ipu_pm_module_stop(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_stop( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_fdif_counter--;
+
+	return PM_SUCCESS;
+error:
+	return PM_UNSUPPORTED;
+}
+
+/*
+  Release MPU on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_rel_mpu(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Release MPU\n");
+
+	if (!params->pm_mpu_counter)
+		goto error;
+
+	retval = ipu_pm_module_stop(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_stop( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_mpu_counter--;
+
+	return PM_SUCCESS;
+error:
+	return PM_UNSUPPORTED;
+}
+
+/*
+  Release IPU on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_rel_ipu(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Release IPU\n");
+
+	if (!params->pm_ipu_counter)
+		goto error;
+
+	retval = ipu_pm_module_stop(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_stop( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_ipu_counter--;
+
+	return PM_SUCCESS;
+error:
+	return PM_UNSUPPORTED;
 }
 
 /*
@@ -1600,6 +1958,86 @@ static inline int ipu_pm_rel_iva_hd(int proc_id, u32 rcb_num)
 		if (retval)
 			goto error;
 	}
+
+	return PM_SUCCESS;
+error:
+	return PM_UNSUPPORTED;
+}
+
+/*
+  Release IVA SEQ0 on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_rel_ivaseq0(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Release IVASEQ0\n");
+
+	if (!params->pm_ivaseq0_counter)
+		goto error;
+
+	retval = ipu_pm_module_stop(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_stop( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_ivaseq0_counter--;
+
+	return PM_SUCCESS;
+error:
+	return PM_UNSUPPORTED;
+}
+
+/*
+  Release IVA SEQ1 on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_rel_ivaseq1(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int retval;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	pr_info("Release IVASEQ1\n");
+
+	if (!params->pm_ivaseq1_counter)
+		goto error;
+
+	retval = ipu_pm_module_stop(rcb_p->sub_type);
+	printk(KERN_ERR "@@@@ cop_module_stop( ) %s @@@@\n",
+		retval ? "Failed" : "Successful");
+	params->pm_ivaseq1_counter--;
 
 	return PM_SUCCESS;
 error:
@@ -1651,10 +2089,10 @@ error:
 }
 
 /*
-  Request a sys m3 constraint on behalf of an IPU client
+  Request a IPU constraint on behalf of an IPU client
  *
  */
-static inline int ipu_pm_req_cstr_sys_m3(int proc_id, u32 rcb_num)
+static inline int ipu_pm_req_cstr_ipu(int proc_id, u32 rcb_num)
 {
 	struct ipu_pm_object *handle;
 	struct ipu_pm_params *params;
@@ -1684,71 +2122,22 @@ static inline int ipu_pm_req_cstr_sys_m3(int proc_id, u32 rcb_num)
 	/* TODO: call the baseport APIs */
 	if (cstr_flags & PM_CSTR_PERF_MASK) {
 		perf = rcb_p->data[1];
-		pr_info("Request perfomance Cstr SYS M3:%d\n", perf);
+		pr_info("Request perfomance Cstr IPU:%d\n", perf);
 	}
 
 	if (cstr_flags & PM_CSTR_LAT_MASK) {
 		lat = rcb_p->data[2];
-		pr_info("Request latency Cstr SYS M3:%d\n", lat);
+		pr_info("Request latency Cstr IPU:%d\n", lat);
 	}
 
 	if (cstr_flags & PM_CSTR_BW_MASK) {
 		bw = rcb_p->data[3];
-		pr_info("Request bandwidth Cstr SYS M3:%d\n", bw);
+		pr_info("Request bandwidth Cstr IPU:%d\n", bw);
 	}
 
 	return PM_SUCCESS;
 }
 
-/*
-  Request an app m3 constraint on behalf of an IPU client
- *
- */
-static inline int ipu_pm_req_cstr_app_m3(int proc_id, u32 rcb_num)
-{
-	struct ipu_pm_object *handle;
-	struct ipu_pm_params *params;
-	struct rcb_block *rcb_p;
-	int perf;
-	int lat;
-	int bw;
-	u32 cstr_flags;
-
-	/* get the handle to proper ipu pm object */
-	handle = ipu_pm_get_handle(proc_id);
-	if (WARN_ON(unlikely(handle == NULL)))
-		return PM_NOT_INSTANTIATED;
-
-	params = handle->params;
-	if (WARN_ON(unlikely(params == NULL)))
-		return PM_NOT_INSTANTIATED;
-
-	/* Get pointer to the proper RCB */
-	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
-		return PM_INVAL_RCB_NUM;
-	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
-
-	/* Get the configurable constraints */
-	cstr_flags = rcb_p->data[0];
-
-	/* TODO: call the baseport APIs */
-	if (cstr_flags & PM_CSTR_PERF_MASK) {
-		perf = rcb_p->data[1];
-		pr_info("Request perfomance Cstr APP M3:%d\n", perf);
-	}
-
-	if (cstr_flags & PM_CSTR_LAT_MASK) {
-		lat = rcb_p->data[2];
-		pr_info("Request latency Cstr APP M3:%d\n", lat);
-	}
-
-	if (cstr_flags & PM_CSTR_BW_MASK) {
-		bw = rcb_p->data[3];
-		pr_info("Request bandwidth Cstr APP M3:%d\n", bw);
-	}
-
-	return PM_SUCCESS;
-}
 /*
   Request a L3 Bus constraint on behalf of an IPU client
  *
@@ -1900,10 +2289,10 @@ static inline int ipu_pm_req_cstr_iss(int proc_id, u32 rcb_num)
 }
 
 /*
-  Release a sys m3 constraint on behalf of an IPU client
+  Release a IPU constraint on behalf of an IPU client
  *
  */
-static inline int ipu_pm_rel_cstr_sys_m3(int proc_id, u32 rcb_num)
+static inline int ipu_pm_rel_cstr_ipu(int proc_id, u32 rcb_num)
 {
 	struct ipu_pm_object *handle;
 	struct ipu_pm_params *params;
@@ -1933,67 +2322,17 @@ static inline int ipu_pm_rel_cstr_sys_m3(int proc_id, u32 rcb_num)
 	/* TODO: call the baseport APIs */
 	if (cstr_flags & PM_CSTR_PERF_MASK) {
 		perf = rcb_p->data[1];
-		pr_info("Release perfomance Cstr SYS M3:%d\n", perf);
+		pr_info("Release perfomance Cstr IPU:%d\n", perf);
 	}
 
 	if (cstr_flags & PM_CSTR_LAT_MASK) {
 		lat = rcb_p->data[2];
-		pr_info("Release latency Cstr SYS M3:%d\n", lat);
+		pr_info("Release latency Cstr IPU:%d\n", lat);
 	}
 
 	if (cstr_flags & PM_CSTR_BW_MASK) {
 		bw = rcb_p->data[3];
-		pr_info("Release bandwidth Cstr SYS M3:%d\n", bw);
-	}
-
-	return PM_SUCCESS;
-}
-
-/*
-  Release an app m3 constraint on behalf of an IPU client
- *
- */
-static inline int ipu_pm_rel_cstr_app_m3(int proc_id, u32 rcb_num)
-{
-	struct ipu_pm_object *handle;
-	struct ipu_pm_params *params;
-	struct rcb_block *rcb_p;
-	int perf;
-	int lat;
-	int bw;
-	u32 cstr_flags;
-
-	/* get the handle to proper ipu pm object */
-	handle = ipu_pm_get_handle(proc_id);
-	if (WARN_ON(unlikely(handle == NULL)))
-		return PM_NOT_INSTANTIATED;
-
-	params = handle->params;
-	if (WARN_ON(unlikely(params == NULL)))
-		return PM_NOT_INSTANTIATED;
-
-	/* Get pointer to the proper RCB */
-	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
-		return PM_INVAL_RCB_NUM;
-	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
-
-	/* Get the configurable constraints */
-	cstr_flags = rcb_p->data[0];
-
-	/* TODO: call the baseport APIs */
-	if (cstr_flags & PM_CSTR_PERF_MASK) {
-		perf = rcb_p->data[1];
-		pr_info("Release perfomance Cstr APP M3:%d\n", perf);
-	}
-
-	if (cstr_flags & PM_CSTR_LAT_MASK) {
-		lat = rcb_p->data[2];
-		pr_info("Release latency Cstr APP M3:%d\n", lat);
-	}
-
-	if (cstr_flags & PM_CSTR_BW_MASK) {
-		bw = rcb_p->data[3];
-		pr_info("Release bandwidth Cstr APP M3:%d\n", bw);
+		pr_info("Release bandwidth Cstr IPU:%d\n", bw);
 	}
 
 	return PM_SUCCESS;
@@ -2462,6 +2801,24 @@ int ipu_pm_restore_ctx(int proc_id)
 }
 EXPORT_SYMBOL(ipu_pm_restore_ctx);
 
+/*
+  Function to start a module
+ *
+ */
+int ipu_pm_module_start(unsigned res_type)
+{
+	return 0;
+}
+
+/*
+  Function to stop a module
+
+ *
+ */
+int ipu_pm_module_stop(unsigned res_type)
+{
+	return 0;
+}
 
 /*
   Get the default configuration for the ipu_pm module.

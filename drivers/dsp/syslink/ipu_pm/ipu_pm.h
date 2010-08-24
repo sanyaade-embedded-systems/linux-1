@@ -222,17 +222,22 @@ enum pm_regulator_action{PM_SET_VOLTAGE,
 };
 
 enum res_type{
-	IVA_HD,
+	FDIF,
+	IPU,
+	SYSM3,
+	APPM3,
 	ISS,
+	IVA_HD,
+	IVASEQ0,
+	IVASEQ1,
+	L3_BUS,
+	MPU,
 	SDMA,
 	GP_TIMER,
 	GP_IO,
 	I2C,
 	REGULATOR,
 	AUX_CLK,
-	SYSM3,
-	APPM3,
-	L3_BUS,
 };
 
 enum pm_event_type{PM_SUSPEND,
@@ -292,17 +297,22 @@ struct pm_event {
 };
 
 struct ipu_pm_params {
+	int pm_fdif_counter;
+	int pm_ipu_counter;
+	int pm_sys_m3_counter;
+	int pm_app_m3_counter;
+	int pm_iss_counter;
+	int pm_iva_hd_counter;
+	int pm_ivaseq0_counter;
+	int pm_ivaseq1_counter;
+	int pm_l3_bus_counter;
+	int pm_mpu_counter;
+	int pm_sdmachan_counter;
 	int pm_gptimer_counter;
 	int pm_gpio_counter;
-	int pm_sdmachan_counter;
 	int pm_i2c_bus_counter;
 	int pm_regulator_counter;
 	int pm_aux_clk_counter;
-	int pm_sys_m3_counter;
-	int pm_app_m3_counter;
-	int pm_l3_bus_counter;
-	int pm_iva_hd_counter;
-	int pm_iss_counter;
 	int timeout;
 	void *shared_addr;
 	int shared_addr_size;
@@ -400,5 +410,11 @@ int ipu_pm_save_ctx(int proc_id);
 
 /* Function to restore a processor from hibernation */
 int ipu_pm_restore_ctx(int proc_id);
+
+/* Function to start a module */
+int ipu_pm_module_start(unsigned res_type);
+
+/* Function to stop a module */
+int ipu_pm_module_stop(unsigned res_type);
 
 #endif
