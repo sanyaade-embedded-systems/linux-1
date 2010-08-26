@@ -95,12 +95,6 @@ static struct notifier_block ipc_notify_nb_rproc_ducati0 = {
 
 static void ipc_recover(struct work_struct *work)
 {
-	if (piommu != NULL) {
-		iommu_unregister_notifier(piommu, &ipc_notify_nb_iommu_ducati);
-		iommu_put(piommu);
-		piommu = NULL;
-	}
-
 	if (atomic_read(&ipc_cref)) {
 		INIT_COMPLETION(ipc_comp);
 		while (!wait_for_completion_timeout(&ipc_comp,
