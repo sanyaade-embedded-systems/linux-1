@@ -39,7 +39,7 @@
 #include "../devh.h"
 #include "../../ipu_pm/ipu_pm.h"
 
-struct mutex local_gate;
+static struct mutex local_gate;
 
 struct omap_devh_runtime_info {
 	int brd_state;
@@ -53,7 +53,7 @@ enum {
 	DEVH_BRDST_ERROR,
 };
 
-struct omap_devh_platform_data *devh_get_plat_data_by_name(char *name)
+static struct omap_devh_platform_data *devh_get_plat_data_by_name(char *name)
 {
 	int i, j = devh_get_plat_data_size();
 	struct omap_devh_platform_data *pdata = devh_get_plat_data();
@@ -174,13 +174,13 @@ static int devh44xx_tesla_iommu_notifier_call(struct notifier_block *nb,
 	}
 }
 
-struct notifier_block devh_notify_nb_iommu_tesla = {
+static struct notifier_block devh_notify_nb_iommu_tesla = {
 	.notifier_call = devh44xx_tesla_iommu_notifier_call,
 };
-struct notifier_block devh_notify_nb_iommu_ducati0 = {
+static struct notifier_block devh_notify_nb_iommu_ducati0 = {
 	.notifier_call = devh44xx_sysm3_iommu_notifier_call,
 };
-struct notifier_block devh_notify_nb_iommu_ducati1 = {
+static struct notifier_block devh_notify_nb_iommu_ducati1 = {
 	.notifier_call = devh44xx_appm3_iommu_notifier_call,
 };
 
@@ -226,13 +226,13 @@ static int devh44xx_tesla_ipc_notifier_call(struct notifier_block *nb,
 	}
 }
 
-struct notifier_block devh_notify_nb_ipc_tesla = {
+static struct notifier_block devh_notify_nb_ipc_tesla = {
 	.notifier_call = devh44xx_tesla_ipc_notifier_call,
 };
-struct notifier_block devh_notify_nb_ipc_ducati1 = {
+static struct notifier_block devh_notify_nb_ipc_ducati1 = {
 	.notifier_call = devh44xx_appm3_ipc_notifier_call,
 };
-struct notifier_block devh_notify_nb_ipc_ducati0 = {
+static struct notifier_block devh_notify_nb_ipc_ducati0 = {
 	.notifier_call = devh44xx_sysm3_ipc_notifier_call,
 };
 
@@ -347,13 +347,13 @@ static int devh44xx_tesla_rproc_notifier_call(struct notifier_block *nb,
 	}
 }
 
-struct notifier_block devh_notify_nb_rproc_tesla = {
+static struct notifier_block devh_notify_nb_rproc_tesla = {
 	.notifier_call = devh44xx_tesla_rproc_notifier_call,
 };
-struct notifier_block devh_notify_nb_rproc_ducati0 = {
+static struct notifier_block devh_notify_nb_rproc_ducati0 = {
 	.notifier_call = devh44xx_sysm3_rproc_notifier_call,
 };
-struct notifier_block devh_notify_nb_rproc_ducati1 = {
+static struct notifier_block devh_notify_nb_rproc_ducati1 = {
 	.notifier_call = devh44xx_appm3_rproc_notifier_call,
 };
 
@@ -400,13 +400,13 @@ static int devh44xx_tesla_tiler_notifier_call(struct notifier_block *nb,
 	}
 }
 
-struct notifier_block devh_notify_nb_tiler_tesla = {
+static struct notifier_block devh_notify_nb_tiler_tesla = {
 	.notifier_call = devh44xx_tesla_tiler_notifier_call,
 };
-struct notifier_block devh_notify_nb_tiler_ducati0 = {
+static struct notifier_block devh_notify_nb_tiler_ducati0 = {
 	.notifier_call = devh44xx_sysm3_tiler_notifier_call,
 };
-struct notifier_block devh_notify_nb_tiler_ducati1 = {
+static struct notifier_block devh_notify_nb_tiler_ducati1 = {
 	.notifier_call = devh44xx_appm3_tiler_notifier_call,
 };
 #endif
