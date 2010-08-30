@@ -56,6 +56,12 @@ enum {
 	OMAP_RPROC_STOP,
 };
 
+/* RPROC states. */
+enum {
+	OMAP_RPROC_STOPPED,
+	OMAP_RPROC_RUNNING,
+};
+
 struct omap_rproc_platform_data {
 	struct omap_rproc_ops *ops;
 	char *name;

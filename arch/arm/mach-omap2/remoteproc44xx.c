@@ -54,6 +54,7 @@ static inline int proc44x_start(struct device *dev, u32 start_addr)
 	if (ret)
 		goto err_start;
 
+	obj->state = OMAP_RPROC_RUNNING;
 	return 0;
 
 err_start:
@@ -79,6 +80,7 @@ static inline int proc44x_stop(struct device *dev)
 				OMAP4_CM1_ABE_TIMER5_CLKCTRL_OFFSET);
 	}
 
+	obj->state = OMAP_RPROC_STOPPED;
 	return ret;
 }
 

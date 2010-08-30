@@ -163,6 +163,7 @@ static int omap_rproc_open(struct inode *inode, struct file *filp)
 
 static int omap_rproc_release(struct inode *inode, struct file *filp)
 {
+	unsigned int count;
 	struct omap_rproc_platform_data *pdata;
 	struct omap_rproc *rproc = filp->private_data;
 	if (!rproc || !rproc->dev)
@@ -170,7 +171,9 @@ static int omap_rproc_release(struct inode *inode, struct file *filp)
 
 	pdata = rproc->dev->platform_data;
 
-	atomic_dec(&rproc->count);
+	count = atomic_dec_return(&rproc->count);
+	if (!count && (rproc->state == OMAP_RPROC_RUNNING))
+		rproc_stop(rproc);
 
 	return 0;
 }
