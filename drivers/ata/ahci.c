@@ -3272,6 +3272,8 @@ static int ahci_init_one(struct platform_device *pdev)
 	/* prepare host */
 	if (hpriv->cap & HOST_CAP_NCQ) {
 		pi.flags |= ATA_FLAG_NCQ;
+
+#ifdef CONFIG_PCI
 		/* Auto-activate optimization is supposed to be supported on
 		   all AHCI controllers indicating NCQ support, but it seems
 		   to be broken at least on some NVIDIA MCP79 chipsets.
@@ -3279,6 +3281,7 @@ static int ahci_init_one(struct platform_device *pdev)
 		   issue, if any, disable AA on all NVIDIA AHCIs. */
 		if (pdev->vendor != PCI_VENDOR_ID_NVIDIA)
 			pi.flags |= ATA_FLAG_FPDMA_AA;
+#endif
 	}
 
 	if (hpriv->cap & HOST_CAP_PMP)
