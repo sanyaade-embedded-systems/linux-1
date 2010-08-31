@@ -22,10 +22,14 @@
 		(N_EXCEPTION_STACKS + DEBUG_STKSZ/EXCEPTION_STKSZ - 2)
 
 static char x86_stack_ids[][8] = {
+#if DEBUG_STACK > 0
 		[ DEBUG_STACK-1			]	= "#DB",
+#endif
 		[ NMI_STACK-1			]	= "NMI",
 		[ DOUBLEFAULT_STACK-1		]	= "#DF",
+#if STACKFAULT_STACK > 0
 		[ STACKFAULT_STACK-1		]	= "#SS",
+#endif
 		[ MCE_STACK-1			]	= "#MC",
 #if DEBUG_STKSZ > EXCEPTION_STKSZ
 		[ N_EXCEPTION_STACKS ...
@@ -125,9 +129,15 @@ fixup_bp_irq_link(unsigned long bp, unsigned long *stack,
 {
 #ifdef CONFIG_FRAME_POINTER
 	struct stack_frame *frame = (struct stack_frame *)bp;
+	unsigned long next;
 
-	if (!in_irq_stack(stack, irq_stack, irq_stack_end))
-		return (unsigned long)frame->next_frame;
+	if (!in_irq_stack(stack, irq_stack, irq_stack_end)) {
+		if (!probe_kernel_address(&frame->next_frame, next))
+			return next;
+		else
+			WARN_ONCE(1, "Perf: bad frame pointer = %p in "
+				  "callchain\n", &frame->next_frame);
+	}
 #endif
 	return bp;
 }

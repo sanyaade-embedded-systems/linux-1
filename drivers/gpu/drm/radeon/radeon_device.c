@@ -544,6 +544,7 @@ void radeon_agp_disable(struct radeon_device *rdev)
 		rdev->asic->gart_tlb_flush = &r100_pci_gart_tlb_flush;
 		rdev->asic->gart_set_page = &r100_pci_gart_set_page;
 	}
+	rdev->mc.gtt_size = radeon_gart_size * 1024 * 1024;
 }
 
 void radeon_check_arguments(struct radeon_device *rdev)
@@ -653,6 +654,14 @@ int radeon_device_init(struct radeon_device *rdev,
 	if (r)
 		return r;
 	radeon_check_arguments(rdev);
+
+	/* all of the newer IGP chips have an internal gart
+	 * However some rs4xx report as AGP, so remove that here.
+	 */
+	if ((rdev->family >= CHIP_RS400) &&
+	    (rdev->flags & RADEON_IS_IGP)) {
+		rdev->flags &= ~RADEON_IS_AGP;
+	}
 
 	if (rdev->flags & RADEON_IS_AGP && radeon_agpmode == -1) {
 		radeon_agp_disable(rdev);
@@ -780,9 +789,9 @@ int radeon_suspend_kms(struct drm_device *dev, pm_message_t state)
 		pci_disable_device(dev->pdev);
 		pci_set_power_state(dev->pdev, PCI_D3hot);
 	}
-	acquire_console_sem();
+	acquire_console_mutex();
 	fb_set_suspend(rdev->fbdev_info, 1);
-	release_console_sem();
+	release_console_mutex();
 	return 0;
 }
 
@@ -790,11 +799,11 @@ int radeon_resume_kms(struct drm_device *dev)
 {
 	struct radeon_device *rdev = dev->dev_private;
 
-	acquire_console_sem();
+	acquire_console_mutex();
 	pci_set_power_state(dev->pdev, PCI_D0);
 	pci_restore_state(dev->pdev);
 	if (pci_enable_device(dev->pdev)) {
-		release_console_sem();
+		release_console_mutex();
 		return -1;
 	}
 	pci_set_master(dev->pdev);
@@ -803,7 +812,7 @@ int radeon_resume_kms(struct drm_device *dev)
 	radeon_resume(rdev);
 	radeon_restore_bios_scratch_regs(rdev);
 	fb_set_suspend(rdev->fbdev_info, 0);
-	release_console_sem();
+	release_console_mutex();
 
 	/* reset hpd state */
 	radeon_hpd_init(rdev);

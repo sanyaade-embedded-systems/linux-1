@@ -354,11 +354,17 @@ u32 r100_get_vblank_counter(struct radeon_device *rdev, int crtc)
 		return RREG32(RADEON_CRTC2_CRNT_FRAME);
 }
 
+/* Who ever call radeon_fence_emit should call ring_lock and ask
+ * for enough space (today caller are ib schedule and buffer move) */
 void r100_fence_ring_emit(struct radeon_device *rdev,
 			  struct radeon_fence *fence)
 {
-	/* Who ever call radeon_fence_emit should call ring_lock and ask
-	 * for enough space (today caller are ib schedule and buffer move) */
+	/* We have to make sure that caches are flushed before
+	 * CPU might read something from VRAM. */
+	radeon_ring_write(rdev, PACKET0(RADEON_RB3D_DSTCACHE_CTLSTAT, 0));
+	radeon_ring_write(rdev, RADEON_RB3D_DC_FLUSH_ALL);
+	radeon_ring_write(rdev, PACKET0(RADEON_RB3D_ZCACHE_CTLSTAT, 0));
+	radeon_ring_write(rdev, RADEON_RB3D_ZC_FLUSH_ALL);
 	/* Wait until IDLE & CLEAN */
 	radeon_ring_write(rdev, PACKET0(0x1720, 0));
 	radeon_ring_write(rdev, (1 << 16) | (1 << 17));
@@ -1378,6 +1384,7 @@ static int r100_packet0_check(struct radeon_cs_parser *p,
 		case RADEON_TXFORMAT_RGB332:
 		case RADEON_TXFORMAT_Y8:
 			track->textures[i].cpp = 1;
+			track->textures[i].compress_format = R100_TRACK_COMP_NONE;
 			break;
 		case RADEON_TXFORMAT_AI88:
 		case RADEON_TXFORMAT_ARGB1555:
@@ -1389,12 +1396,14 @@ static int r100_packet0_check(struct radeon_cs_parser *p,
 		case RADEON_TXFORMAT_LDUDV655:
 		case RADEON_TXFORMAT_DUDV88:
 			track->textures[i].cpp = 2;
+			track->textures[i].compress_format = R100_TRACK_COMP_NONE;
 			break;
 		case RADEON_TXFORMAT_ARGB8888:
 		case RADEON_TXFORMAT_RGBA8888:
 		case RADEON_TXFORMAT_SHADOW32:
 		case RADEON_TXFORMAT_LDUDUV8888:
 			track->textures[i].cpp = 4;
+			track->textures[i].compress_format = R100_TRACK_COMP_NONE;
 			break;
 		case RADEON_TXFORMAT_DXT1:
 			track->textures[i].cpp = 1;
@@ -1504,6 +1513,7 @@ static int r100_packet3_check(struct radeon_cs_parser *p,
 			DRM_ERROR("PRIM_WALK must be 3 for IMMD draw\n");
 			return -EINVAL;
 		}
+		track->vtx_size = r100_get_vtx_size(radeon_get_ib_value(p, idx + 0));
 		track->vap_vf_cntl = radeon_get_ib_value(p, idx + 1);
 		track->immd_dwords = pkt->count - 1;
 		r = r100_cs_track_check(p->rdev, track);
@@ -2743,33 +2753,6 @@ static inline void r100_cs_track_texture_print(struct r100_cs_track_texture *t)
 	DRM_ERROR("compress format            %d\n", t->compress_format);
 }
 
-static int r100_cs_track_cube(struct radeon_device *rdev,
-			      struct r100_cs_track *track, unsigned idx)
-{
-	unsigned face, w, h;
-	struct radeon_bo *cube_robj;
-	unsigned long size;
-
-	for (face = 0; face < 5; face++) {
-		cube_robj = track->textures[idx].cube_info[face].robj;
-		w = track->textures[idx].cube_info[face].width;
-		h = track->textures[idx].cube_info[face].height;
-
-		size = w * h;
-		size *= track->textures[idx].cpp;
-
-		size += track->textures[idx].cube_info[face].offset;
-
-		if (size > radeon_bo_size(cube_robj)) {
-			DRM_ERROR("Cube texture offset greater than object size %lu %lu\n",
-				  size, radeon_bo_size(cube_robj));
-			r100_cs_track_texture_print(&track->textures[idx]);
-			return -1;
-		}
-	}
-	return 0;
-}
-
 static int r100_track_compress_size(int compress_format, int w, int h)
 {
 	int block_width, block_height, block_bytes;
@@ -2798,6 +2781,37 @@ static int r100_track_compress_size(int compress_format, int w, int h)
 		wblocks = min_wblocks;
 	sz = wblocks * hblocks * block_bytes;
 	return sz;
+}
+
+static int r100_cs_track_cube(struct radeon_device *rdev,
+			      struct r100_cs_track *track, unsigned idx)
+{
+	unsigned face, w, h;
+	struct radeon_bo *cube_robj;
+	unsigned long size;
+	unsigned compress_format = track->textures[idx].compress_format;
+
+	for (face = 0; face < 5; face++) {
+		cube_robj = track->textures[idx].cube_info[face].robj;
+		w = track->textures[idx].cube_info[face].width;
+		h = track->textures[idx].cube_info[face].height;
+
+		if (compress_format) {
+			size = r100_track_compress_size(compress_format, w, h);
+		} else
+			size = w * h;
+		size *= track->textures[idx].cpp;
+
+		size += track->textures[idx].cube_info[face].offset;
+
+		if (size > radeon_bo_size(cube_robj)) {
+			DRM_ERROR("Cube texture offset greater than object size %lu %lu\n",
+				  size, radeon_bo_size(cube_robj));
+			r100_cs_track_texture_print(&track->textures[idx]);
+			return -1;
+		}
+	}
+	return 0;
 }
 
 static int r100_cs_track_texture_check(struct radeon_device *rdev,
@@ -3368,7 +3382,6 @@ int r100_suspend(struct radeon_device *rdev)
 
 void r100_fini(struct radeon_device *rdev)
 {
-	r100_suspend(rdev);
 	r100_cp_fini(rdev);
 	r100_wb_fini(rdev);
 	r100_ib_fini(rdev);
@@ -3399,9 +3412,7 @@ int r100_mc_init(struct radeon_device *rdev)
 	if (rdev->flags & RADEON_IS_AGP) {
 		r = radeon_agp_init(rdev);
 		if (r) {
-			printk(KERN_WARNING "[drm] Disabling AGP\n");
-			rdev->flags &= ~RADEON_IS_AGP;
-			rdev->mc.gtt_size = radeon_gart_size * 1024 * 1024;
+			radeon_agp_disable(rdev);
 		} else {
 			rdev->mc.gtt_location = rdev->mc.agp_base;
 		}
@@ -3482,13 +3493,12 @@ int r100_init(struct radeon_device *rdev)
 	if (r) {
 		/* Somethings want wront with the accel init stop accel */
 		dev_err(rdev->dev, "Disabling GPU acceleration\n");
-		r100_suspend(rdev);
 		r100_cp_fini(rdev);
 		r100_wb_fini(rdev);
 		r100_ib_fini(rdev);
+		radeon_irq_kms_fini(rdev);
 		if (rdev->flags & RADEON_IS_PCI)
 			r100_pci_gart_fini(rdev);
-		radeon_irq_kms_fini(rdev);
 		rdev->accel_working = false;
 	}
 	return 0;

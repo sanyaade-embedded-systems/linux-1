@@ -470,10 +470,10 @@ void usb_driver_release_interface(struct usb_driver *driver,
 	if (device_is_registered(dev)) {
 		device_release_driver(dev);
 	} else {
-		down(&dev->sem);
+		mutex_lock(&dev->mutex);
 		usb_unbind_interface(dev);
 		dev->driver = NULL;
-		up(&dev->sem);
+		mutex_unlock(&dev->mutex);
 	}
 }
 EXPORT_SYMBOL_GPL(usb_driver_release_interface);
@@ -691,9 +691,6 @@ static int usb_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct usb_device *usb_dev;
 
-	/* driver is often null here; dev_dbg() would oops */
-	pr_debug("usb %s: uevent\n", dev_name(dev));
-
 	if (is_usb_device(dev)) {
 		usb_dev = to_usb_device(dev);
 	} else if (is_usb_interface(dev)) {
@@ -705,6 +702,7 @@ static int usb_uevent(struct device *dev, struct kobj_uevent_env *env)
 	}
 
 	if (usb_dev->devnum < 0) {
+		/* driver is often null here; dev_dbg() would oops */
 		pr_debug("usb %s: already deleted?\n", dev_name(dev));
 		return -ENODEV;
 	}
@@ -1257,9 +1255,8 @@ static int usb_suspend_both(struct usb_device *udev, pm_message_t msg)
 			udev->state == USB_STATE_SUSPENDED)
 		goto done;
 
-	udev->do_remote_wakeup = device_may_wakeup(&udev->dev);
-
 	if (msg.event & PM_EVENT_AUTO) {
+		udev->do_remote_wakeup = device_may_wakeup(&udev->dev);
 		status = autosuspend_check(udev, 0);
 		if (status < 0)
 			goto done;
@@ -1791,6 +1788,23 @@ int usb_external_resume_device(struct usb_device *udev, pm_message_t msg)
 	return status;
 }
 
+static void choose_wakeup(struct usb_device *udev, pm_message_t msg)
+{
+	/* Remote wakeup is needed only when we actually go to sleep.
+	 * For things like FREEZE and QUIESCE, if the device is already
+	 * autosuspended then its current wakeup setting is okay.
+	 */
+	if (msg.event == PM_EVENT_FREEZE || msg.event == PM_EVENT_QUIESCE) {
+		udev->do_remote_wakeup = 0;
+		return;
+	}
+
+	/* Allow remote wakeup if it is enabled, even if no interface drivers
+	 * actually want it.
+	 */
+	udev->do_remote_wakeup = device_may_wakeup(&udev->dev);
+}
+
 int usb_suspend(struct device *dev, pm_message_t msg)
 {
 	struct usb_device	*udev;
@@ -1810,6 +1824,7 @@ int usb_suspend(struct device *dev, pm_message_t msg)
 	}
 
 	udev->skip_sys_resume = 0;
+	choose_wakeup(udev, msg);
 	return usb_external_suspend_device(udev, msg);
 }
 

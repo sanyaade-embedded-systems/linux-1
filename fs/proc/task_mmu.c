@@ -138,8 +138,10 @@ static void *m_start(struct seq_file *m, loff_t *pos)
 	vma = NULL;
 	if ((unsigned long)l < mm->map_count) {
 		vma = mm->mmap;
-		while (l-- && vma)
+		while (l-- && vma) {
 			vma = vma->vm_next;
+			cond_resched();
+		}
 		goto out;
 	}
 
@@ -243,25 +245,6 @@ static void show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
 				} else if (vma->vm_start <= mm->start_stack &&
 					   vma->vm_end >= mm->start_stack) {
 					name = "[stack]";
-				} else {
-					unsigned long stack_start;
-					struct proc_maps_private *pmp;
-
-					pmp = m->private;
-					stack_start = pmp->task->stack_start;
-
-					if (vma->vm_start <= stack_start &&
-					    vma->vm_end >= stack_start) {
-						pad_len_spaces(m, len);
-						seq_printf(m,
-						 "[threadstack:%08lx]",
-#ifdef CONFIG_STACK_GROWSUP
-						 vma->vm_end - stack_start
-#else
-						 stack_start - vma->vm_start
-#endif
-						);
-					}
 				}
 			} else {
 				name = "[vdso]";

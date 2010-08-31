@@ -30,8 +30,6 @@
 
 #include "mm.h"
 
-DEFINE_PER_CPU(struct mmu_gather, mmu_gathers);
-
 /*
  * empty_zero_page is a special page that is used for
  * zero-initialized data and COW.
@@ -1067,4 +1065,6 @@ void setup_mm_for_reboot(char mode)
 		pmd[1] = __pmd(pmdval + (1 << (PGDIR_SHIFT - 1)));
 		flush_pmd_entry(pmd);
 	}
+
+	local_flush_tlb_all();
 }

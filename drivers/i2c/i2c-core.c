@@ -248,7 +248,7 @@ static const struct attribute_group *i2c_dev_attr_groups[] = {
 	NULL
 };
 
-const static struct dev_pm_ops i2c_device_pm_ops = {
+static const struct dev_pm_ops i2c_device_pm_ops = {
 	.suspend = i2c_device_pm_suspend,
 	.resume = i2c_device_pm_resume,
 };
@@ -843,6 +843,9 @@ int i2c_del_adapter(struct i2c_adapter *adap)
 				 adap->dev.parent);
 #endif
 
+	/* device name is gone after device_unregister */
+	dev_dbg(&adap->dev, "adapter [%s] unregistered\n", adap->name);
+
 	/* clean up the sysfs representation */
 	init_completion(&adap->dev_released);
 	device_unregister(&adap->dev);
@@ -854,8 +857,6 @@ int i2c_del_adapter(struct i2c_adapter *adap)
 	mutex_lock(&core_lock);
 	idr_remove(&i2c_adapter_idr, adap->nr);
 	mutex_unlock(&core_lock);
-
-	dev_dbg(&adap->dev, "adapter [%s] unregistered\n", adap->name);
 
 	/* Clear the device structure in case this adapter is ever going to be
 	   added again */
@@ -1209,12 +1210,23 @@ static int i2c_detect_address(struct i2c_client *temp_client,
 		return 0;
 
 	/* Make sure there is something at this address */
-	if (i2c_smbus_xfer(adapter, addr, 0, 0, 0, I2C_SMBUS_QUICK, NULL) < 0)
-		return 0;
+	if (addr == 0x73 && (adapter->class & I2C_CLASS_HWMON)) {
+		/* Special probe for FSC hwmon chips */
+		union i2c_smbus_data dummy;
 
-	/* Prevent 24RF08 corruption */
-	if ((addr & ~0x0f) == 0x50)
-		i2c_smbus_xfer(adapter, addr, 0, 0, 0, I2C_SMBUS_QUICK, NULL);
+		if (i2c_smbus_xfer(adapter, addr, 0, I2C_SMBUS_READ, 0,
+				   I2C_SMBUS_BYTE_DATA, &dummy) < 0)
+			return 0;
+	} else {
+		if (i2c_smbus_xfer(adapter, addr, 0, I2C_SMBUS_WRITE, 0,
+				   I2C_SMBUS_QUICK, NULL) < 0)
+			return 0;
+
+		/* Prevent 24RF08 corruption */
+		if ((addr & ~0x0f) == 0x50)
+			i2c_smbus_xfer(adapter, addr, 0, I2C_SMBUS_WRITE, 0,
+				       I2C_SMBUS_QUICK, NULL);
+	}
 
 	/* Finally call the custom detection function */
 	memset(&info, 0, sizeof(struct i2c_board_info));

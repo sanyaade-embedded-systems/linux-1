@@ -175,7 +175,7 @@ void rs600_gart_tlb_flush(struct radeon_device *rdev)
 	WREG32_MC(R_000100_MC_PT0_CNTL, tmp);
 
 	tmp = RREG32_MC(R_000100_MC_PT0_CNTL);
-	tmp |= S_000100_INVALIDATE_ALL_L1_TLBS(1) & S_000100_INVALIDATE_L2_CACHE(1);
+	tmp |= S_000100_INVALIDATE_ALL_L1_TLBS(1) | S_000100_INVALIDATE_L2_CACHE(1);
 	WREG32_MC(R_000100_MC_PT0_CNTL, tmp);
 
 	tmp = RREG32_MC(R_000100_MC_PT0_CNTL);
@@ -610,7 +610,6 @@ int rs600_suspend(struct radeon_device *rdev)
 
 void rs600_fini(struct radeon_device *rdev)
 {
-	rs600_suspend(rdev);
 	r100_cp_fini(rdev);
 	r100_wb_fini(rdev);
 	r100_ib_fini(rdev);
@@ -689,7 +688,6 @@ int rs600_init(struct radeon_device *rdev)
 	if (r) {
 		/* Somethings want wront with the accel init stop accel */
 		dev_err(rdev->dev, "Disabling GPU acceleration\n");
-		rs600_suspend(rdev);
 		r100_cp_fini(rdev);
 		r100_wb_fini(rdev);
 		r100_ib_fini(rdev);

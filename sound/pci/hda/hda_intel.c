@@ -125,6 +125,7 @@ MODULE_SUPPORTED_DEVICE("{{Intel, ICH6},"
 			 "{Intel, ICH9},"
 			 "{Intel, ICH10},"
 			 "{Intel, PCH},"
+			 "{Intel, CPT},"
 			 "{Intel, SCH},"
 			 "{ATI, SB450},"
 			 "{ATI, SB600},"
@@ -426,6 +427,7 @@ struct azx {
 
 	/* flags */
 	int position_fix;
+	int poll_count;
 	unsigned int running :1;
 	unsigned int initialized :1;
 	unsigned int single_cmd :1;
@@ -448,6 +450,7 @@ struct azx {
 /* driver types */
 enum {
 	AZX_DRIVER_ICH,
+	AZX_DRIVER_PCH,
 	AZX_DRIVER_SCH,
 	AZX_DRIVER_ATI,
 	AZX_DRIVER_ATIHDMI,
@@ -462,6 +465,7 @@ enum {
 
 static char *driver_short_names[] __devinitdata = {
 	[AZX_DRIVER_ICH] = "HDA Intel",
+	[AZX_DRIVER_PCH] = "HDA Intel PCH",
 	[AZX_DRIVER_SCH] = "HDA Intel MID",
 	[AZX_DRIVER_ATI] = "HDA ATI SB",
 	[AZX_DRIVER_ATIHDMI] = "HDA ATI HDMI",
@@ -506,7 +510,7 @@ static char *driver_short_names[] __devinitdata = {
 #define get_azx_dev(substream) (substream->runtime->private_data)
 
 static int azx_acquire_irq(struct azx *chip, int do_disconnect);
-
+static int azx_send_cmd(struct hda_bus *bus, unsigned int val);
 /*
  * Interface for HD codec
  */
@@ -664,11 +668,12 @@ static unsigned int azx_rirb_get_response(struct hda_bus *bus,
 {
 	struct azx *chip = bus->private_data;
 	unsigned long timeout;
+	int do_poll = 0;
 
  again:
 	timeout = jiffies + msecs_to_jiffies(1000);
 	for (;;) {
-		if (chip->polling_mode) {
+		if (chip->polling_mode || do_poll) {
 			spin_lock_irq(&chip->reg_lock);
 			azx_update_rirb(chip);
 			spin_unlock_irq(&chip->reg_lock);
@@ -676,6 +681,9 @@ static unsigned int azx_rirb_get_response(struct hda_bus *bus,
 		if (!chip->rirb.cmds[addr]) {
 			smp_rmb();
 			bus->rirb_error = 0;
+
+			if (!do_poll)
+				chip->poll_count = 0;
 			return chip->rirb.res[addr]; /* the last value */
 		}
 		if (time_after(jiffies, timeout))
@@ -687,6 +695,16 @@ static unsigned int azx_rirb_get_response(struct hda_bus *bus,
 			cond_resched();
 		}
 	}
+
+	if (!chip->polling_mode && chip->poll_count < 2) {
+		snd_printdd(SFX "azx_get_response timeout, "
+			   "polling the codec once: last cmd=0x%08x\n",
+			   chip->last_cmd[addr]);
+		do_poll = 1;
+		chip->poll_count++;
+		goto again;
+	}
+
 
 	if (!chip->polling_mode) {
 		snd_printk(KERN_WARNING SFX "azx_get_response timeout, "
@@ -1050,6 +1068,7 @@ static void azx_init_pci(struct azx *chip)
 				0x01, NVIDIA_HDA_ENABLE_COHBIT);
 		break;
 	case AZX_DRIVER_SCH:
+	case AZX_DRIVER_PCH:
 		pci_read_config_word(chip->pci, INTEL_SCH_HDA_DEVC, &snoop);
 		if (snoop & INTEL_SCH_HDA_DEVC_NOSNOOP) {
 			pci_write_config_word(chip->pci, INTEL_SCH_HDA_DEVC,
@@ -1878,6 +1897,9 @@ static int azx_position_ok(struct azx *chip, struct azx_dev *azx_dev)
 
 	if (!bdl_pos_adj[chip->dev_index])
 		return 1; /* no delayed ack */
+	if (WARN_ONCE(!azx_dev->period_bytes,
+		      "hda-intel: zero azx_dev->period_bytes"))
+		return 0; /* this shouldn't happen! */
 	if (pos % azx_dev->period_bytes > azx_dev->period_bytes / 2)
 		return 0; /* NG - it's below the period boundary */
 	return 1; /* OK, it's fine */
@@ -2043,7 +2065,7 @@ static int azx_acquire_irq(struct azx *chip, int do_disconnect)
 {
 	if (request_irq(chip->pci->irq, azx_interrupt,
 			chip->msi ? 0 : IRQF_SHARED,
-			"HDA Intel", chip)) {
+			"hda_intel", chip)) {
 		printk(KERN_ERR "hda-intel: unable to grab IRQ %d, "
 		       "disabling device\n", chip->pci->irq);
 		if (do_disconnect)
@@ -2241,11 +2263,25 @@ static int azx_dev_free(struct snd_device *device)
  * white/black-listing for position_fix
  */
 static struct snd_pci_quirk position_fix_list[] __devinitdata = {
+	SND_PCI_QUIRK(0x1025, 0x009f, "Acer Aspire 5110", POS_FIX_LPIB),
 	SND_PCI_QUIRK(0x1028, 0x01cc, "Dell D820", POS_FIX_LPIB),
 	SND_PCI_QUIRK(0x1028, 0x01de, "Dell Precision 390", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1028, 0x01f6, "Dell Latitude 131L", POS_FIX_LPIB),
 	SND_PCI_QUIRK(0x103c, 0x306d, "HP dv3", POS_FIX_LPIB),
 	SND_PCI_QUIRK(0x1043, 0x813d, "ASUS P5AD2", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1043, 0x81b3, "ASUS", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1043, 0x81e7, "ASUS M2V", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x104d, 0x9069, "Sony VPCS11V9E", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1106, 0x3288, "ASUS M2V-MX SE", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1179, 0xff10, "Toshiba A100-259", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1297, 0x3166, "Shuttle", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1458, 0xa022, "ga-ma770-ud3", POS_FIX_LPIB),
 	SND_PCI_QUIRK(0x1462, 0x1002, "MSI Wind U115", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1565, 0x820f, "Biostar Microtech", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1565, 0x8218, "Biostar Microtech", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x1849, 0x0888, "775Dual-VSTA", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x8086, 0x2503, "DG965OT AAD63733-203", POS_FIX_LPIB),
+	SND_PCI_QUIRK(0x8086, 0xd601, "eMachines T5212", POS_FIX_LPIB),
 	{}
 };
 
@@ -2332,6 +2368,10 @@ static void __devinit check_probe_mask(struct azx *chip, int dev)
  */
 static struct snd_pci_quirk msi_black_list[] __devinitdata = {
 	SND_PCI_QUIRK(0x1043, 0x81f2, "ASUS", 0), /* Athlon64 X2 + nvidia */
+	SND_PCI_QUIRK(0x1043, 0x81f6, "ASUS", 0), /* nvidia */
+	SND_PCI_QUIRK(0x1043, 0x822d, "ASUS", 0), /* Athlon64 X2 + nvidia MCP55 */
+	SND_PCI_QUIRK(0x1849, 0x0888, "ASRock", 0), /* Athlon64 X2 + nvidia */
+	SND_PCI_QUIRK(0xa0a0, 0x0575, "Aopen MZ915-M", 0), /* ICH6 */
 	{}
 };
 
@@ -2350,6 +2390,13 @@ static void __devinit check_msi(struct azx *chip)
 		       "hda_intel: msi for device %04x:%04x set to %d\n",
 		       q->subvendor, q->subdevice, q->value);
 		chip->msi = q->value;
+		return;
+	}
+
+	/* NVidia chipsets seem to cause troubles with MSI */
+	if (chip->driver_type == AZX_DRIVER_NVIDIA) {
+		printk(KERN_INFO "hda_intel: Disable MSI for Nvidia chipset\n");
+		chip->msi = 0;
 	}
 }
 
@@ -2399,6 +2446,7 @@ static int __devinit azx_create(struct snd_card *card, struct pci_dev *pci,
 	if (bdl_pos_adj[dev] < 0) {
 		switch (chip->driver_type) {
 		case AZX_DRIVER_ICH:
+		case AZX_DRIVER_PCH:
 			bdl_pos_adj[dev] = 1;
 			break;
 		default:
@@ -2677,6 +2725,9 @@ static struct pci_device_id azx_ids[] = {
 	{ PCI_DEVICE(0x8086, 0x3a6e), .driver_data = AZX_DRIVER_ICH },
 	/* PCH */
 	{ PCI_DEVICE(0x8086, 0x3b56), .driver_data = AZX_DRIVER_ICH },
+	{ PCI_DEVICE(0x8086, 0x3b57), .driver_data = AZX_DRIVER_ICH },
+	/* CPT */
+	{ PCI_DEVICE(0x8086, 0x1c20), .driver_data = AZX_DRIVER_PCH },
 	/* SCH */
 	{ PCI_DEVICE(0x8086, 0x811b), .driver_data = AZX_DRIVER_SCH },
 	/* ATI SB 450/600 */

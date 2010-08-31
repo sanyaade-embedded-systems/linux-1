@@ -980,7 +980,7 @@ static int alloc_new_range(struct dma_ops_domain *dma_dom,
 {
 	int index = dma_dom->aperture_size >> APERTURE_RANGE_SHIFT;
 	struct amd_iommu *iommu;
-	int i;
+	unsigned long i;
 
 #ifdef CONFIG_IOMMU_STRESS
 	populate = false;
@@ -1419,6 +1419,7 @@ static int __attach_device(struct device *dev,
 			   struct protection_domain *domain)
 {
 	struct iommu_dev_data *dev_data, *alias_data;
+	int ret;
 
 	dev_data   = get_dev_data(dev);
 	alias_data = get_dev_data(dev_data->alias);
@@ -1430,13 +1431,14 @@ static int __attach_device(struct device *dev,
 	spin_lock(&domain->lock);
 
 	/* Some sanity checks */
+	ret = -EBUSY;
 	if (alias_data->domain != NULL &&
 	    alias_data->domain != domain)
-		return -EBUSY;
+		goto out_unlock;
 
 	if (dev_data->domain != NULL &&
 	    dev_data->domain != domain)
-		return -EBUSY;
+		goto out_unlock;
 
 	/* Do real assignment */
 	if (dev_data->alias != dev) {
@@ -1452,10 +1454,14 @@ static int __attach_device(struct device *dev,
 
 	atomic_inc(&dev_data->bind);
 
+	ret = 0;
+
+out_unlock:
+
 	/* ready */
 	spin_unlock(&domain->lock);
 
-	return 0;
+	return ret;
 }
 
 /*
@@ -1489,11 +1495,14 @@ static void __detach_device(struct device *dev)
 {
 	struct iommu_dev_data *dev_data = get_dev_data(dev);
 	struct iommu_dev_data *alias_data;
+	struct protection_domain *domain;
 	unsigned long flags;
 
 	BUG_ON(!dev_data->domain);
 
-	spin_lock_irqsave(&dev_data->domain->lock, flags);
+	domain = dev_data->domain;
+
+	spin_lock_irqsave(&domain->lock, flags);
 
 	if (dev_data->alias != dev) {
 		alias_data = get_dev_data(dev_data->alias);
@@ -1504,13 +1513,15 @@ static void __detach_device(struct device *dev)
 	if (atomic_dec_and_test(&dev_data->bind))
 		do_detach(dev);
 
-	spin_unlock_irqrestore(&dev_data->domain->lock, flags);
+	spin_unlock_irqrestore(&domain->lock, flags);
 
 	/*
 	 * If we run in passthrough mode the device must be assigned to the
-	 * passthrough domain if it is detached from any other domain
+	 * passthrough domain if it is detached from any other domain.
+	 * Make sure we can deassign from the pt_domain itself.
 	 */
-	if (iommu_pass_through && dev_data->domain == NULL)
+	if (iommu_pass_through &&
+	    (dev_data->domain == NULL && domain != pt_domain))
 		__attach_device(dev, pt_domain);
 }
 
@@ -2218,6 +2229,12 @@ static struct dma_map_ops amd_iommu_dma_ops = {
 /*
  * The function which clues the AMD IOMMU driver into dma_ops.
  */
+
+void __init amd_iommu_init_api(void)
+{
+	register_iommu(&amd_iommu_ops);
+}
+
 int __init amd_iommu_init_dma_ops(void)
 {
 	struct amd_iommu *iommu;
@@ -2245,15 +2262,9 @@ int __init amd_iommu_init_dma_ops(void)
 
 	iommu_detected = 1;
 	swiotlb = 0;
-#ifdef CONFIG_GART_IOMMU
-	gart_iommu_aperture_disabled = 1;
-	gart_iommu_aperture = 0;
-#endif
 
 	/* Make the driver finally visible to the drivers */
 	dma_ops = &amd_iommu_dma_ops;
-
-	register_iommu(&amd_iommu_ops);
 
 	amd_iommu_stats_init();
 
@@ -2289,7 +2300,7 @@ static void cleanup_domain(struct protection_domain *domain)
 	list_for_each_entry_safe(dev_data, next, &domain->dev_list, list) {
 		struct device *dev = dev_data->dev;
 
-		do_detach(dev);
+		__detach_device(dev);
 		atomic_set(&dev_data->bind, 0);
 	}
 
@@ -2370,9 +2381,7 @@ static void amd_iommu_domain_destroy(struct iommu_domain *dom)
 
 	free_pagetable(domain);
 
-	domain_id_free(domain->id);
-
-	kfree(domain);
+	protection_domain_free(domain);
 
 	dom->priv = NULL;
 }

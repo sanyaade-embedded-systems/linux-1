@@ -610,6 +610,16 @@ cifs_find_inode(struct inode *inode, void *opaque)
 	if (CIFS_I(inode)->uniqueid != fattr->cf_uniqueid)
 		return 0;
 
+	/*
+	 * uh oh -- it's a directory. We can't use it since hardlinked dirs are
+	 * verboten. Disable serverino and return it as if it were found, the
+	 * caller can discard it, generate a uniqueid and retry the find
+	 */
+	if (S_ISDIR(inode->i_mode) && !list_empty(&inode->i_dentry)) {
+		fattr->cf_flags |= CIFS_FATTR_INO_COLLISION;
+		cifs_autodisable_serverino(CIFS_SB(inode->i_sb));
+	}
+
 	return 1;
 }
 
@@ -629,15 +639,22 @@ cifs_iget(struct super_block *sb, struct cifs_fattr *fattr)
 	unsigned long hash;
 	struct inode *inode;
 
+retry_iget5_locked:
 	cFYI(1, ("looking for uniqueid=%llu", fattr->cf_uniqueid));
 
 	/* hash down to 32-bits on 32-bit arch */
 	hash = cifs_uniqueid_to_ino_t(fattr->cf_uniqueid);
 
 	inode = iget5_locked(sb, hash, cifs_find_inode, cifs_init_inode, fattr);
-
-	/* we have fattrs in hand, update the inode */
 	if (inode) {
+		/* was there a problematic inode number collision? */
+		if (fattr->cf_flags & CIFS_FATTR_INO_COLLISION) {
+			iput(inode);
+			fattr->cf_uniqueid = iunique(sb, ROOT_I);
+			fattr->cf_flags &= ~CIFS_FATTR_INO_COLLISION;
+			goto retry_iget5_locked;
+		}
+
 		cifs_fattr_to_inode(inode, fattr);
 		if (sb->s_flags & MS_NOATIME)
 			inode->i_flags |= S_NOATIME | S_NOCMTIME;
@@ -1267,6 +1284,10 @@ cifs_do_rename(int xid, struct dentry *from_dentry, const char *fromPath,
 	if (rc == 0 || rc != -ETXTBSY)
 		return rc;
 
+	/* open-file renames don't work across directories */
+	if (to_dentry->d_parent != from_dentry->d_parent)
+		return rc;
+
 	/* open the file to be renamed -- we need DELETE perms */
 	rc = CIFSSMBOpen(xid, pTcon, fromPath, FILE_OPEN, DELETE,
 			 CREATE_NOT_DIR, &srcfid, &oplock, NULL,
@@ -1762,8 +1783,18 @@ cifs_setattr_unix(struct dentry *direntry, struct iattr *attrs)
 					CIFS_MOUNT_MAP_SPECIAL_CHR);
 	}
 
-	if (!rc)
+	if (!rc) {
 		rc = inode_setattr(inode, attrs);
+
+		/* force revalidate when any of these times are set since some
+		   of the fs types (eg ext3, fat) do not have fine enough
+		   time granularity to match protocol, and we do not have a
+		   a way (yet) to query the server fs's time granularity (and
+		   whether it rounds times down).
+		*/
+		if (!rc && (attrs->ia_valid & (ATTR_MTIME | ATTR_CTIME)))
+			cifsInode->time = 0;
+	}
 out:
 	kfree(args);
 	kfree(full_path);

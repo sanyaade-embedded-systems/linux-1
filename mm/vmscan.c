@@ -1196,7 +1196,7 @@ static unsigned long shrink_inactive_list(unsigned long max_scan,
 
 		nr_reclaimed += nr_freed;
 
-		local_irq_disable();
+		local_irq_disable_nort();
 		if (current_is_kswapd())
 			__count_vm_events(KSWAPD_STEAL, nr_freed);
 		__count_zone_vm_events(PGSTEAL, zone, nr_freed);
@@ -1920,6 +1920,9 @@ static int sleeping_prematurely(pg_data_t *pgdat, int order, long remaining)
 		struct zone *zone = pgdat->node_zones + i;
 
 		if (!populated_zone(zone))
+			continue;
+
+		if (zone_is_all_unreclaimable(zone))
 			continue;
 
 		if (!zone_watermark_ok(zone, order, high_wmark_pages(zone),

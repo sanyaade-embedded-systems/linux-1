@@ -6,6 +6,14 @@
 
 #define PGALLOC_GFP GFP_KERNEL | __GFP_NOTRACK | __GFP_REPEAT | __GFP_ZERO
 
+#ifdef CONFIG_HIGHPTE
+#define PGALLOC_USER_GFP __GFP_HIGHMEM
+#else
+#define PGALLOC_USER_GFP 0
+#endif
+
+gfp_t __userpte_alloc_gfp = PGALLOC_GFP | PGALLOC_USER_GFP;
+
 pte_t *pte_alloc_one_kernel(struct mm_struct *mm, unsigned long address)
 {
 	return (pte_t *)__get_free_page(PGALLOC_GFP);
@@ -15,15 +23,28 @@ pgtable_t pte_alloc_one(struct mm_struct *mm, unsigned long address)
 {
 	struct page *pte;
 
-#ifdef CONFIG_HIGHPTE
-	pte = alloc_pages(PGALLOC_GFP | __GFP_HIGHMEM, 0);
-#else
-	pte = alloc_pages(PGALLOC_GFP, 0);
-#endif
+	pte = alloc_pages(__userpte_alloc_gfp, 0);
 	if (pte)
 		pgtable_page_ctor(pte);
 	return pte;
 }
+
+static int __init setup_userpte(char *arg)
+{
+	if (!arg)
+		return -EINVAL;
+
+	/*
+	 * "userpte=nohigh" disables allocation of user pagetables in
+	 * high memory.
+	 */
+	if (strcmp(arg, "nohigh") == 0)
+		__userpte_alloc_gfp &= ~__GFP_HIGHMEM;
+	else
+		return -EINVAL;
+	return 0;
+}
+early_param("userpte", setup_userpte);
 
 void ___pte_free_tlb(struct mmu_gather *tlb, struct page *pte)
 {
@@ -132,6 +153,7 @@ void pud_populate(struct mm_struct *mm, pud_t *pudp, pmd_t *pmd)
 	   reserved at the pmd (PDPT) level. */
 	set_pud(pudp, __pud(__pa(pmd) | _PAGE_PRESENT));
 
+	preempt_disable();
 	/*
 	 * According to Intel App note "TLBs, Paging-Structure Caches,
 	 * and Their Invalidation", April 2007, document 317080-001,
@@ -140,6 +162,7 @@ void pud_populate(struct mm_struct *mm, pud_t *pudp, pmd_t *pmd)
 	 */
 	if (mm == current->active_mm)
 		write_cr3(read_cr3());
+	preempt_enable();
 }
 #else  /* !CONFIG_X86_PAE */
 

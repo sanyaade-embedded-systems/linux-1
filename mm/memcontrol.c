@@ -1258,13 +1258,15 @@ void mem_cgroup_update_file_mapped(struct page *page, int val)
 		goto done;
 
 	/*
-	 * Preemption is already disabled, we don't need get_cpu()
+	 * Preemption is already disabled, we don't need get_cpu(),
+	 * but that's not true for RT !
 	 */
-	cpu = smp_processor_id();
+	cpu = get_cpu();
 	stat = &mem->stat;
 	cpustat = &stat->cpustat[cpu];
 
 	__mem_cgroup_stat_add_safe(cpustat, MEM_CGROUP_STAT_FILE_MAPPED, val);
+	put_cpu();
 done:
 	unlock_page_cgroup(pc);
 }
@@ -2215,12 +2217,12 @@ int mem_cgroup_prepare_migration(struct page *page, struct mem_cgroup **ptr)
 	}
 	unlock_page_cgroup(pc);
 
+	*ptr = mem;
 	if (mem) {
-		ret = __mem_cgroup_try_charge(NULL, GFP_KERNEL, &mem, false,
+		ret = __mem_cgroup_try_charge(NULL, GFP_KERNEL, ptr, false,
 						page);
 		css_put(&mem->css);
 	}
-	*ptr = mem;
 	return ret;
 }
 
@@ -2586,7 +2588,7 @@ static int mem_cgroup_force_empty(struct mem_cgroup *mem, bool free_all)
 	if (free_all)
 		goto try_to_free;
 move_account:
-	while (mem->res.usage > 0) {
+	do {
 		ret = -EBUSY;
 		if (cgroup_task_count(cgrp) || !list_empty(&cgrp->children))
 			goto out;
@@ -2614,8 +2616,8 @@ move_account:
 		if (ret == -ENOMEM)
 			goto try_to_free;
 		cond_resched();
-	}
-	ret = 0;
+	/* "ret" should also be checked to ensure all lists are empty. */
+	} while (mem->res.usage > 0 || ret);
 out:
 	css_put(&mem->css);
 	return ret;
@@ -2648,10 +2650,7 @@ try_to_free:
 	}
 	lru_add_drain();
 	/* try move_account...there may be some *locked* pages. */
-	if (mem->res.usage)
-		goto move_account;
-	ret = 0;
-	goto out;
+	goto move_account;
 }
 
 int mem_cgroup_force_empty_write(struct cgroup *cont, unsigned int event)

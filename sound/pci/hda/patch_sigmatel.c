@@ -1539,11 +1539,9 @@ static unsigned int alienware_m17x_pin_configs[13] = {
 	0x904601b0,
 };
 
-static unsigned int intel_dg45id_pin_configs[14] = {
+static unsigned int intel_dg45id_pin_configs[13] = {
 	0x02214230, 0x02A19240, 0x01013214, 0x01014210,
-	0x01A19250, 0x01011212, 0x01016211, 0x40f000f0,
-	0x40f000f0, 0x40f000f0, 0x40f000f0, 0x014510A0,
-	0x074510B0, 0x40f000f0
+	0x01A19250, 0x01011212, 0x01016211
 };
 
 static unsigned int *stac92hd73xx_brd_tbl[STAC_92HD73XX_MODELS] = {
@@ -1602,6 +1600,10 @@ static struct snd_pci_quirk stac92hd73xx_cfg_tbl[] = {
 				"Dell Studio 1555", STAC_DELL_M6_DMIC),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x02bd,
 				"Dell Studio 1557", STAC_DELL_M6_DMIC),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x02fe,
+				"Dell Studio XPS 1645", STAC_DELL_M6_BOTH),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0413,
+				"Dell Studio 1558", STAC_DELL_M6_BOTH),
 	{} /* terminator */
 };
 
@@ -1725,6 +1727,8 @@ static struct snd_pci_quirk stac92hd71bxx_cfg_tbl[] = {
 		      "HP HDX", STAC_HP_HDX),  /* HDX16 */
 	SND_PCI_QUIRK_MASK(PCI_VENDOR_ID_HP, 0xfff0, 0x3620,
 		      "HP dv6", STAC_HP_DV5),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x3061,
+		      "HP dv6", STAC_HP_DV5), /* HP dv6-1110ax */
 	SND_PCI_QUIRK_MASK(PCI_VENDOR_ID_HP, 0xfff0, 0x7010,
 		      "HP", STAC_HP_DV5),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0233,
@@ -2066,12 +2070,12 @@ static struct snd_pci_quirk stac927x_cfg_tbl[] = {
 	SND_PCI_QUIRK_MASK(PCI_VENDOR_ID_INTEL, 0xff00, 0x2000,
 			   "Intel D965", STAC_D965_3ST),
 	/* Dell 3 stack systems */
-	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL,  0x01f7, "Dell XPS M1730", STAC_DELL_3ST),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL,  0x01dd, "Dell Dimension E520", STAC_DELL_3ST),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL,  0x01ed, "Dell     ", STAC_DELL_3ST),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL,  0x01f4, "Dell     ", STAC_DELL_3ST),
 	/* Dell 3 stack systems with verb table in BIOS */
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL,  0x01f3, "Dell Inspiron 1420", STAC_DELL_BIOS),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL,  0x01f7, "Dell XPS M1730", STAC_DELL_BIOS),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL,  0x0227, "Dell Vostro 1400  ", STAC_DELL_BIOS),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL,  0x022e, "Dell     ", STAC_DELL_BIOS),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL,  0x022f, "Dell Inspiron 1525", STAC_DELL_BIOS),
@@ -4730,6 +4734,26 @@ static void stac92xx_unsol_event(struct hda_codec *codec, unsigned int res)
 	}
 }
 
+static int hp_blike_system(u32 subsystem_id);
+
+static void set_hp_led_gpio(struct hda_codec *codec)
+{
+	struct sigmatel_spec *spec = codec->spec;
+	switch (codec->vendor_id) {
+	case 0x111d7608:
+		/* GPIO 0 */
+		spec->gpio_led = 0x01;
+		break;
+	case 0x111d7600:
+	case 0x111d7601:
+	case 0x111d7602:
+	case 0x111d7603:
+		/* GPIO 3 */
+		spec->gpio_led = 0x08;
+		break;
+	}
+}
+
 /*
  * This method searches for the mute LED GPIO configuration
  * provided as OEM string in SMBIOS. The format of that string
@@ -4741,6 +4765,14 @@ static void stac92xx_unsol_event(struct hda_codec *codec, unsigned int res)
  *
  * So, HP B-series like systems may have HP_Mute_LED_0 (current models)
  * or  HP_Mute_LED_0_3 (future models) OEM SMBIOS strings
+ *
+ *
+ * The dv-series laptops don't seem to have the HP_Mute_LED* strings in
+ * SMBIOS - at least the ones I have seen do not have them - which include
+ * my own system (HP Pavilion dv6-1110ax) and my cousin's
+ * HP Pavilion dv9500t CTO.
+ * Need more information on whether it is true across the entire series.
+ * -- kunal
  */
 static int find_mute_led_gpio(struct hda_codec *codec)
 {
@@ -4751,27 +4783,26 @@ static int find_mute_led_gpio(struct hda_codec *codec)
 		while ((dev = dmi_find_device(DMI_DEV_TYPE_OEM_STRING,
 								NULL, dev))) {
 			if (sscanf(dev->name, "HP_Mute_LED_%d_%d",
-			      &spec->gpio_led_polarity,
-			      &spec->gpio_led) == 2) {
+				  &spec->gpio_led_polarity,
+				  &spec->gpio_led) == 2) {
 				spec->gpio_led = 1 << spec->gpio_led;
 				return 1;
 			}
 			if (sscanf(dev->name, "HP_Mute_LED_%d",
-			      &spec->gpio_led_polarity) == 1) {
-				switch (codec->vendor_id) {
-				case 0x111d7608:
-					/* GPIO 0 */
-					spec->gpio_led = 0x01;
-					return 1;
-				case 0x111d7600:
-				case 0x111d7601:
-				case 0x111d7602:
-				case 0x111d7603:
-					/* GPIO 3 */
-					spec->gpio_led = 0x08;
-					return 1;
-				}
+				  &spec->gpio_led_polarity) == 1) {
+				set_hp_led_gpio(codec);
+				return 1;
 			}
+		}
+
+		/*
+		 * Fallback case - if we don't find the DMI strings,
+		 * we statically set the GPIO - if not a B-series system.
+		 */
+		if (!hp_blike_system(codec->subsystem_id)) {
+			set_hp_led_gpio(codec);
+			spec->gpio_led_polarity = 1;
+			return 1;
 		}
 	}
 	return 0;
@@ -5547,6 +5578,8 @@ again:
 	spec->num_adcs = ARRAY_SIZE(stac92hd71bxx_adc_nids);
 	spec->num_dmuxes = ARRAY_SIZE(stac92hd71bxx_dmux_nids);
 	spec->num_smuxes = stac92hd71bxx_connected_smuxes(codec, 0x1e);
+
+	snd_printdd("Found board config: %d\n", spec->board_config);
 
 	switch (spec->board_config) {
 	case STAC_HP_M4:

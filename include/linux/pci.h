@@ -756,6 +756,10 @@ pci_power_t pci_target_state(struct pci_dev *dev);
 int pci_prepare_to_sleep(struct pci_dev *dev);
 int pci_back_from_sleep(struct pci_dev *dev);
 
+/* For use by arch with custom probe code */
+void set_pcie_port_type(struct pci_dev *pdev);
+void set_pcie_hotplug_bridge(struct pci_dev *pdev);
+
 /* Functions for PCI Hotplug drivers to use */
 int pci_bus_find_capability(struct pci_bus *bus, unsigned int devfn, int cap);
 #ifdef CONFIG_HOTPLUG
@@ -954,6 +958,11 @@ static inline int pci_proc_domain(struct pci_bus *bus)
 	return 0;
 }
 #endif /* CONFIG_PCI_DOMAINS */
+
+/* some architectures require additional setup to direct VGA traffic */
+typedef int (*arch_set_vga_state_t)(struct pci_dev *pdev, bool decode,
+		      unsigned int command_bits, bool change_bridge);
+extern void pci_register_set_vga_state(arch_set_vga_state_t func);
 
 #else /* CONFIG_PCI is not enabled */
 

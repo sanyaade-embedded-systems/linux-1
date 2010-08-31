@@ -1902,8 +1902,7 @@ static void nilfs_segctor_abort_construction(struct nilfs_sc_info *sci,
 
 	list_splice_tail_init(&sci->sc_write_logs, &logs);
 	ret = nilfs_wait_on_logs(&logs);
-	if (ret)
-		nilfs_abort_logs(&logs, NULL, sci->sc_super_root, ret);
+	nilfs_abort_logs(&logs, NULL, sci->sc_super_root, ret ? : err);
 
 	list_splice_tail_init(&sci->sc_segbufs, &logs);
 	nilfs_cancel_segusage(&logs, nilfs->ns_sufile);
@@ -2829,7 +2828,7 @@ static void nilfs_segctor_destroy(struct nilfs_sc_info *sci)
 		|| sci->sc_seq_request != sci->sc_seq_done);
 	spin_unlock(&sci->sc_state_lock);
 
-	if (flag || nilfs_segctor_confirm(sci))
+	if (flag || !nilfs_segctor_confirm(sci))
 		nilfs_segctor_write_out(sci);
 
 	WARN_ON(!list_empty(&sci->sc_copied_buffers));

@@ -223,9 +223,9 @@ static void unicode_ssetup_strings(char **pbcc_area, struct cifsSesInfo *ses,
 		/* null user mount */
 		*bcc_ptr = 0;
 		*(bcc_ptr+1) = 0;
-	} else { /* 300 should be long enough for any conceivable user name */
+	} else {
 		bytes_ret = cifs_strtoUCS((__le16 *) bcc_ptr, ses->userName,
-					  300, nls_cp);
+					  MAX_USERNAME_SIZE, nls_cp);
 	}
 	bcc_ptr += 2 * bytes_ret;
 	bcc_ptr += 2; /* account for null termination */
@@ -246,11 +246,10 @@ static void ascii_ssetup_strings(char **pbcc_area, struct cifsSesInfo *ses,
 	/* copy user */
 	if (ses->userName == NULL) {
 		/* BB what about null user mounts - check that we do this BB */
-	} else { /* 300 should be long enough for any conceivable user name */
-		strncpy(bcc_ptr, ses->userName, 300);
+	} else {
+		strncpy(bcc_ptr, ses->userName, MAX_USERNAME_SIZE);
 	}
-	/* BB improve check for overflow */
-	bcc_ptr += strnlen(ses->userName, 300);
+	bcc_ptr += strnlen(ses->userName, MAX_USERNAME_SIZE);
 	*bcc_ptr = 0;
 	bcc_ptr++; /* account for null termination */
 
@@ -723,15 +722,7 @@ ssetup_ntlmssp_authenticate:
 
 		/* calculate session key */
 		setup_ntlmv2_rsp(ses, v2_sess_key, nls_cp);
-		if (first_time) /* should this be moved into common code
-				   with similar ntlmv2 path? */
-		/*   cifs_calculate_ntlmv2_mac_key(ses->server->mac_signing_key,
-				response BB FIXME, v2_sess_key); */
-
-		/* copy session key */
-
-	/*	memcpy(bcc_ptr, (char *)ntlm_session_key,LM2_SESS_KEY_SIZE);
-		bcc_ptr += LM2_SESS_KEY_SIZE; */
+		/* FIXME: calculate MAC key */
 		memcpy(bcc_ptr, (char *)v2_sess_key,
 		       sizeof(struct ntlmv2_resp));
 		bcc_ptr += sizeof(struct ntlmv2_resp);

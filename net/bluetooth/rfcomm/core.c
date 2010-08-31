@@ -252,7 +252,6 @@ static void rfcomm_session_timeout(unsigned long arg)
 	BT_DBG("session %p state %ld", s, s->state);
 
 	set_bit(RFCOMM_TIMED_OUT, &s->flags);
-	rfcomm_session_put(s);
 	rfcomm_schedule(RFCOMM_SCHED_TIMEO);
 }
 
@@ -1151,7 +1150,11 @@ static int rfcomm_recv_ua(struct rfcomm_session *s, u8 dlci)
 			break;
 
 		case BT_DISCONN:
-			rfcomm_session_put(s);
+			/* When socket is closed and we are not RFCOMM
+			 * initiator rfcomm_process_rx already calls
+			 * rfcomm_session_put() */
+			if (s->sock->sk->sk_state != BT_CLOSED)
+				rfcomm_session_put(s);
 			break;
 		}
 	}
@@ -1920,6 +1923,7 @@ static inline void rfcomm_process_sessions(void)
 		if (test_and_clear_bit(RFCOMM_TIMED_OUT, &s->flags)) {
 			s->state = BT_DISCONN;
 			rfcomm_send_disc(s, 0);
+			rfcomm_session_put(s);
 			continue;
 		}
 
@@ -2099,6 +2103,7 @@ static ssize_t rfcomm_dlc_sysfs_show(struct class *dev, char *buf)
 	struct rfcomm_session *s;
 	struct list_head *pp, *p;
 	char *str = buf;
+	int size = PAGE_SIZE;
 
 	rfcomm_lock();
 
@@ -2107,11 +2112,21 @@ static ssize_t rfcomm_dlc_sysfs_show(struct class *dev, char *buf)
 		list_for_each(pp, &s->dlcs) {
 			struct sock *sk = s->sock->sk;
 			struct rfcomm_dlc *d = list_entry(pp, struct rfcomm_dlc, list);
+			int len;
 
-			str += sprintf(str, "%s %s %ld %d %d %d %d\n",
+			len = snprintf(str, size, "%s %s %ld %d %d %d %d\n",
 					batostr(&bt_sk(sk)->src), batostr(&bt_sk(sk)->dst),
 					d->state, d->dlci, d->mtu, d->rx_credits, d->tx_credits);
+
+			size -= len;
+			if (size <= 0)
+				break;
+
+			str += len;
 		}
+
+		if (size <= 0)
+			break;
 	}
 
 	rfcomm_unlock();

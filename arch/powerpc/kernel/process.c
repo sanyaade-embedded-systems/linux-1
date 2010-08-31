@@ -304,6 +304,10 @@ struct task_struct *__switch_to(struct task_struct *prev,
 	struct thread_struct *new_thread, *old_thread;
 	unsigned long flags;
 	struct task_struct *last;
+#if defined(CONFIG_PPC64) && defined (CONFIG_PREEMPT_RT)
+	struct ppc64_tlb_batch *batch;
+	int hadbatch;
+#endif
 
 #ifdef CONFIG_SMP
 	/* avoid complexity of lazy save/restore of fpu
@@ -396,6 +400,17 @@ struct task_struct *__switch_to(struct task_struct *prev,
 		old_thread->accum_tb += (current_tb - start_tb);
 		new_thread->start_tb = current_tb;
 	}
+
+#ifdef CONFIG_PREEMPT_RT
+	batch = &__get_cpu_var(ppc64_tlb_batch);
+	if (batch->active) {
+		hadbatch = 1;
+		if (batch->index) {
+			__flush_tlb_pending(batch);
+		}
+		batch->active = 0;
+	}
+#endif /* #ifdef CONFIG_PREEMPT_RT */
 #endif
 
 	local_irq_save(flags);
@@ -413,6 +428,13 @@ struct task_struct *__switch_to(struct task_struct *prev,
 	last = _switch(old_thread, new_thread);
 
 	local_irq_restore(flags);
+
+#if defined(CONFIG_PPC64) && defined(CONFIG_PREEMPT_RT)
+	if (hadbatch) {
+		batch = &__get_cpu_var(ppc64_tlb_batch);
+		batch->active = 1;
+	}
+#endif
 
 	return last;
 }
@@ -554,18 +576,6 @@ void exit_thread(void)
 
 void flush_thread(void)
 {
-#ifdef CONFIG_PPC64
-	struct thread_info *t = current_thread_info();
-
-	if (test_ti_thread_flag(t, TIF_ABI_PENDING)) {
-		clear_ti_thread_flag(t, TIF_ABI_PENDING);
-		if (test_ti_thread_flag(t, TIF_32BIT))
-			clear_ti_thread_flag(t, TIF_32BIT);
-		else
-			set_ti_thread_flag(t, TIF_32BIT);
-	}
-#endif
-
 	discard_lazy_cpu_state();
 
 	if (current->thread.dabr) {

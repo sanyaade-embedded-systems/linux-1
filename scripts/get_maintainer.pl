@@ -74,8 +74,8 @@ my %VCS_cmds;
 my %VCS_cmds_git = (
     "execute_cmd" => \&git_execute_cmd,
     "available" => '(which("git") ne "") && (-d ".git")',
-    "find_signers_cmd" => "git log --since=\$email_git_since -- \$file",
-    "find_commit_signers_cmd" => "git log -1 \$commit",
+    "find_signers_cmd" => "git log --no-color --since=\$email_git_since -- \$file",
+    "find_commit_signers_cmd" => "git log --no-color -1 \$commit",
     "blame_range_cmd" => "git blame -l -L \$diff_start,+\$diff_length \$file",
     "blame_file_cmd" => "git blame -l \$file",
     "commit_pattern" => "^commit [0-9a-f]{40,40}",
@@ -314,6 +314,7 @@ foreach my $file (@files) {
 		if ($type eq 'X') {
 		    if (file_match_pattern($file, $value)) {
 			$exclude = 1;
+			last;
 		    }
 		}
 	    }
@@ -340,8 +341,7 @@ foreach my $file (@files) {
 	    }
 	}
 
-	$tvi += ($end - $start);
-
+	$tvi = $end + 1;
     }
 
     foreach my $line (sort {$hash{$b} <=> $hash{$a}} keys %hash) {

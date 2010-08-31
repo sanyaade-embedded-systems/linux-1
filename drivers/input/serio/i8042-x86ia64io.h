@@ -166,6 +166,13 @@ static const struct dmi_system_id __initconst i8042_dmi_noloop_table[] = {
 		},
 	},
 	{
+		/* Gigabyte Spring Peak - defines wrong chassis type */
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "GIGABYTE"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Spring Peak"),
+		},
+	},
+	{
 		.matches = {
 			DMI_MATCH(DMI_SYS_VENDOR, "Hewlett-Packard"),
 			DMI_MATCH(DMI_PRODUCT_NAME, "HP Pavilion dv9700"),
@@ -442,6 +449,13 @@ static const struct dmi_system_id __initconst i8042_dmi_reset_table[] = {
 		},
 	},
 	{
+		/* Medion Akoya E1222 */
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "MEDION"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "E122X"),
+		},
+	},
+	{
 		/* Mivvy M310 */
 		.matches = {
 			DMI_MATCH(DMI_SYS_VENDOR, "VIOOO"),
@@ -523,6 +537,13 @@ static const struct dmi_system_id __initconst i8042_dmi_laptop_table[] = {
  * have turned up in 2007 that also need this again.
  */
 static const struct dmi_system_id __initconst i8042_dmi_dritek_table[] = {
+	{
+		/* Acer Aspire 5610 */
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "Acer"),
+			DMI_MATCH(DMI_PRODUCT_NAME, "Aspire 5610"),
+		},
+	},
 	{
 		/* Acer Aspire 5630 */
 		.matches = {

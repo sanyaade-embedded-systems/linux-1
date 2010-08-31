@@ -364,11 +364,12 @@ void r300_gpu_init(struct radeon_device *rdev)
 
 	r100_hdp_reset(rdev);
 	/* FIXME: rv380 one pipes ? */
-	if ((rdev->family == CHIP_R300) || (rdev->family == CHIP_R350)) {
+	if ((rdev->family == CHIP_R300 && rdev->pdev->device != 0x4144) ||
+	    (rdev->family == CHIP_R350)) {
 		/* r300,r350 */
 		rdev->num_gb_pipes = 2;
 	} else {
-		/* rv350,rv370,rv380 */
+		/* rv350,rv370,rv380,r300 AD */
 		rdev->num_gb_pipes = 1;
 	}
 	rdev->num_z_pipes = 1;
@@ -506,11 +507,14 @@ void r300_vram_info(struct radeon_device *rdev)
 
 	/* DDR for all card after R300 & IGP */
 	rdev->mc.vram_is_ddr = true;
+
 	tmp = RREG32(RADEON_MEM_CNTL);
-	if (tmp & R300_MEM_NUM_CHANNELS_MASK) {
-		rdev->mc.vram_width = 128;
-	} else {
-		rdev->mc.vram_width = 64;
+	tmp &= R300_MEM_NUM_CHANNELS_MASK;
+	switch (tmp) {
+	case 0: rdev->mc.vram_width = 64; break;
+	case 1: rdev->mc.vram_width = 128; break;
+	case 2: rdev->mc.vram_width = 256; break;
+	default:  rdev->mc.vram_width = 128; break;
 	}
 
 	r100_vram_init_sizes(rdev);
@@ -866,6 +870,7 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 		case R300_TX_FORMAT_Y4X4:
 		case R300_TX_FORMAT_Z3Y3X2:
 			track->textures[i].cpp = 1;
+			track->textures[i].compress_format = R100_TRACK_COMP_NONE;
 			break;
 		case R300_TX_FORMAT_X16:
 		case R300_TX_FORMAT_Y8X8:
@@ -877,6 +882,7 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 		case R300_TX_FORMAT_B8G8_B8G8:
 		case R300_TX_FORMAT_G8R8_G8B8:
 			track->textures[i].cpp = 2;
+			track->textures[i].compress_format = R100_TRACK_COMP_NONE;
 			break;
 		case R300_TX_FORMAT_Y16X16:
 		case R300_TX_FORMAT_Z11Y11X10:
@@ -887,14 +893,17 @@ static int r300_packet0_check(struct radeon_cs_parser *p,
 		case R300_TX_FORMAT_FL_I32:
 		case 0x1e:
 			track->textures[i].cpp = 4;
+			track->textures[i].compress_format = R100_TRACK_COMP_NONE;
 			break;
 		case R300_TX_FORMAT_W16Z16Y16X16:
 		case R300_TX_FORMAT_FL_R16G16B16A16:
 		case R300_TX_FORMAT_FL_I32A32:
 			track->textures[i].cpp = 8;
+			track->textures[i].compress_format = R100_TRACK_COMP_NONE;
 			break;
 		case R300_TX_FORMAT_FL_R32G32B32A32:
 			track->textures[i].cpp = 16;
+			track->textures[i].compress_format = R100_TRACK_COMP_NONE;
 			break;
 		case R300_TX_FORMAT_DXT1:
 			track->textures[i].cpp = 1;
@@ -1327,7 +1336,6 @@ int r300_suspend(struct radeon_device *rdev)
 
 void r300_fini(struct radeon_device *rdev)
 {
-	r300_suspend(rdev);
 	r100_cp_fini(rdev);
 	r100_wb_fini(rdev);
 	r100_ib_fini(rdev);
@@ -1418,15 +1426,15 @@ int r300_init(struct radeon_device *rdev)
 	if (r) {
 		/* Somethings want wront with the accel init stop accel */
 		dev_err(rdev->dev, "Disabling GPU acceleration\n");
-		r300_suspend(rdev);
 		r100_cp_fini(rdev);
 		r100_wb_fini(rdev);
 		r100_ib_fini(rdev);
+		radeon_irq_kms_fini(rdev);
 		if (rdev->flags & RADEON_IS_PCIE)
 			rv370_pcie_gart_fini(rdev);
 		if (rdev->flags & RADEON_IS_PCI)
 			r100_pci_gart_fini(rdev);
-		radeon_irq_kms_fini(rdev);
+		radeon_agp_fini(rdev);
 		rdev->accel_working = false;
 	}
 	return 0;

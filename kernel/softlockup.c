@@ -20,11 +20,12 @@
 
 #include <asm/irq_regs.h>
 
-static DEFINE_SPINLOCK(print_lock);
+static DEFINE_RAW_SPINLOCK(print_lock);
 
 static DEFINE_PER_CPU(unsigned long, softlockup_touch_ts); /* touch timestamp */
 static DEFINE_PER_CPU(unsigned long, softlockup_print_ts); /* print timestamp */
 static DEFINE_PER_CPU(struct task_struct *, softlockup_watchdog);
+static DEFINE_PER_CPU(bool, softlock_touch_sync);
 
 static int __read_mostly did_panic;
 int __read_mostly softlockup_thresh = 60;
@@ -79,6 +80,12 @@ void touch_softlockup_watchdog(void)
 }
 EXPORT_SYMBOL(touch_softlockup_watchdog);
 
+void touch_softlockup_watchdog_sync(void)
+{
+	__raw_get_cpu_var(softlock_touch_sync) = true;
+	__raw_get_cpu_var(softlockup_touch_ts) = 0;
+}
+
 void touch_all_softlockup_watchdogs(void)
 {
 	int cpu;
@@ -118,6 +125,14 @@ void softlockup_tick(void)
 	}
 
 	if (touch_ts == 0) {
+		if (unlikely(per_cpu(softlock_touch_sync, this_cpu))) {
+			/*
+			 * If the time stamp was touched atomically
+			 * make sure the scheduler tick is up to date.
+			 */
+			per_cpu(softlock_touch_sync, this_cpu) = false;
+			sched_clock_tick();
+		}
 		__touch_softlockup_watchdog();
 		return;
 	}
@@ -140,16 +155,16 @@ void softlockup_tick(void)
 	 * Wake up the high-prio watchdog task twice per
 	 * threshold timespan.
 	 */
-	if (now > touch_ts + softlockup_thresh/2)
+	if (time_after(now - softlockup_thresh/2, touch_ts))
 		wake_up_process(per_cpu(softlockup_watchdog, this_cpu));
 
 	/* Warn about unreasonable delays: */
-	if (now <= (touch_ts + softlockup_thresh))
+	if (time_before_eq(now - softlockup_thresh, touch_ts))
 		return;
 
 	per_cpu(softlockup_print_ts, this_cpu) = touch_ts;
 
-	spin_lock(&print_lock);
+	raw_spin_lock(&print_lock);
 	printk(KERN_ERR "BUG: soft lockup - CPU#%d stuck for %lus! [%s:%d]\n",
 			this_cpu, now - touch_ts,
 			current->comm, task_pid_nr(current));
@@ -159,7 +174,7 @@ void softlockup_tick(void)
 		show_regs(regs);
 	else
 		dump_stack();
-	spin_unlock(&print_lock);
+	raw_spin_unlock(&print_lock);
 
 	if (softlockup_panic)
 		panic("softlockup: hung tasks");

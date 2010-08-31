@@ -1311,6 +1311,7 @@ config SYS_SUPPORTS_ZBOOT
 	select HAVE_KERNEL_GZIP
 	select HAVE_KERNEL_BZIP2
 	select HAVE_KERNEL_LZMA
+	select HAVE_KERNEL_LZO
 
 config SYS_SUPPORTS_ZBOOT_UART16550
 	bool
@@ -1931,6 +1932,19 @@ config NR_CPUS
 	  power of two.
 
 source "kernel/time/Kconfig"
+
+#
+# High Resolution sched_clock() support
+#
+
+config CPU_HAS_FIXED_C0_COUNT
+	bool
+
+config CPU_SUPPORTS_HR_SCHED_CLOCK
+	bool
+	depends on CPU_HAS_FIXED_C0_COUNT || !CPU_FREQ
+	depends on 64BIT
+	default y
 
 #
 # Timer Interrupt Frequency Configuration

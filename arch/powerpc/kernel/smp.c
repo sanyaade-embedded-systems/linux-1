@@ -541,6 +541,9 @@ int __devinit start_secondary(void *unused)
 	of_node_put(l2_cache);
 	ipi_call_unlock();
 
+	while (!cpumask_test_cpu(smp_processor_id(), cpu_active_mask))
+		cpu_relax();
+
 	local_irq_enable();
 
 	cpu_idle();
@@ -618,5 +621,17 @@ void __cpu_die(unsigned int cpu)
 {
 	if (smp_ops->cpu_die)
 		smp_ops->cpu_die(cpu);
+}
+
+static DEFINE_MUTEX(powerpc_cpu_hotplug_driver_mutex);
+
+void cpu_hotplug_driver_lock()
+{
+	mutex_lock(&powerpc_cpu_hotplug_driver_mutex);
+}
+
+void cpu_hotplug_driver_unlock()
+{
+	mutex_unlock(&powerpc_cpu_hotplug_driver_mutex);
 }
 #endif

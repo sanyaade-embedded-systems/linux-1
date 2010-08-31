@@ -1368,13 +1368,14 @@ static int l2cap_ertm_send(struct sock *sk)
 
 	while ((skb = sk->sk_send_head) && (!l2cap_tx_window_full(sk)) &&
 	       !(pi->conn_state & L2CAP_CONN_REMOTE_BUSY)) {
-		tx_skb = skb_clone(skb, GFP_ATOMIC);
 
 		if (pi->remote_max_tx &&
 				bt_cb(skb)->retries == pi->remote_max_tx) {
 			l2cap_send_disconn_req(pi->conn, sk);
 			break;
 		}
+
+		tx_skb = skb_clone(skb, GFP_ATOMIC);
 
 		bt_cb(skb)->retries++;
 
@@ -2829,6 +2830,11 @@ static inline int l2cap_config_rsp(struct l2cap_conn *conn, struct l2cap_cmd_hdr
 			int len = cmd->len - sizeof(*rsp);
 			char req[64];
 
+			if (len > sizeof(req) - sizeof(struct l2cap_conf_req)) {
+				l2cap_send_disconn_req(conn, sk);
+				goto done;
+			}
+
 			/* throw out any old stored conf requests */
 			result = L2CAP_CONF_SUCCESS;
 			len = l2cap_parse_conf_rsp(sk, rsp->data,
@@ -3518,7 +3524,6 @@ static inline int l2cap_data_channel(struct l2cap_conn *conn, u16 cid, struct sk
 	struct l2cap_pinfo *pi;
 	u16 control, len;
 	u8 tx_seq;
-	int err;
 
 	sk = l2cap_get_chan_by_scid(&conn->chan_list, cid);
 	if (!sk) {
@@ -3570,13 +3575,11 @@ static inline int l2cap_data_channel(struct l2cap_conn *conn, u16 cid, struct sk
 			goto drop;
 
 		if (__is_iframe(control))
-			err = l2cap_data_channel_iframe(sk, control, skb);
+			l2cap_data_channel_iframe(sk, control, skb);
 		else
-			err = l2cap_data_channel_sframe(sk, control, skb);
+			l2cap_data_channel_sframe(sk, control, skb);
 
-		if (!err)
-			goto done;
-		break;
+		goto done;
 
 	case L2CAP_MODE_STREAMING:
 		control = get_unaligned_le16(skb->data);
@@ -3602,7 +3605,7 @@ static inline int l2cap_data_channel(struct l2cap_conn *conn, u16 cid, struct sk
 		else
 			pi->expected_tx_seq = tx_seq + 1;
 
-		err = l2cap_sar_reassembly_sdu(sk, skb, control);
+		l2cap_sar_reassembly_sdu(sk, skb, control);
 
 		goto done;
 
@@ -3944,16 +3947,24 @@ static ssize_t l2cap_sysfs_show(struct class *dev, char *buf)
 	struct sock *sk;
 	struct hlist_node *node;
 	char *str = buf;
+	int size = PAGE_SIZE;
 
 	read_lock_bh(&l2cap_sk_list.lock);
 
 	sk_for_each(sk, node, &l2cap_sk_list.head) {
 		struct l2cap_pinfo *pi = l2cap_pi(sk);
+		int len;
 
-		str += sprintf(str, "%s %s %d %d 0x%4.4x 0x%4.4x %d %d %d\n",
+		len = snprintf(str, size, "%s %s %d %d 0x%4.4x 0x%4.4x %d %d %d\n",
 				batostr(&bt_sk(sk)->src), batostr(&bt_sk(sk)->dst),
 				sk->sk_state, __le16_to_cpu(pi->psm), pi->scid,
 				pi->dcid, pi->imtu, pi->omtu, pi->sec_level);
+
+		size -= len;
+		if (size <= 0)
+			break;
+
+		str += len;
 	}
 
 	read_unlock_bh(&l2cap_sk_list.lock);

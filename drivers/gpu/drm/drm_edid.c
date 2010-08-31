@@ -85,6 +85,8 @@ static struct edid_quirk {
 
 	/* Envision Peripherals, Inc. EN-7100e */
 	{ "EPI", 59264, EDID_QUIRK_135_CLOCK_TOO_HIGH },
+	/* Envision EN2028 */
+	{ "EPI", 8232, EDID_QUIRK_PREFER_LARGE_60 },
 
 	/* Funai Electronics PM36B */
 	{ "FCM", 13600, EDID_QUIRK_PREFER_LARGE_75 |
@@ -332,7 +334,7 @@ static struct drm_display_mode drm_dmt_modes[] = {
 		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC) },
 	/* 1024x768@85Hz */
 	{ DRM_MODE("1024x768", DRM_MODE_TYPE_DRIVER, 94500, 1024, 1072,
-		   1072, 1376, 0, 768, 769, 772, 808, 0,
+		   1168, 1376, 0, 768, 769, 772, 808, 0,
 		   DRM_MODE_FLAG_PHSYNC | DRM_MODE_FLAG_PVSYNC) },
 	/* 1152x864@75Hz */
 	{ DRM_MODE("1152x864", DRM_MODE_TYPE_DRIVER, 108000, 1152, 1216,
@@ -598,6 +600,50 @@ struct drm_display_mode *drm_mode_std(struct drm_device *dev,
 	return mode;
 }
 
+/*
+ * EDID is delightfully ambiguous about how interlaced modes are to be
+ * encoded.  Our internal representation is of frame height, but some
+ * HDTV detailed timings are encoded as field height.
+ *
+ * The format list here is from CEA, in frame size.  Technically we
+ * should be checking refresh rate too.  Whatever.
+ */
+static void
+drm_mode_do_interlace_quirk(struct drm_display_mode *mode,
+			    struct detailed_pixel_timing *pt)
+{
+	int i;
+	static const struct {
+		int w, h;
+	} cea_interlaced[] = {
+		{ 1920, 1080 },
+		{  720,  480 },
+		{ 1440,  480 },
+		{ 2880,  480 },
+		{  720,  576 },
+		{ 1440,  576 },
+		{ 2880,  576 },
+	};
+	static const int n_sizes =
+		sizeof(cea_interlaced)/sizeof(cea_interlaced[0]);
+
+	if (!(pt->misc & DRM_EDID_PT_INTERLACED))
+		return;
+
+	for (i = 0; i < n_sizes; i++) {
+		if ((mode->hdisplay == cea_interlaced[i].w) &&
+		    (mode->vdisplay == cea_interlaced[i].h / 2)) {
+			mode->vdisplay *= 2;
+			mode->vsync_start *= 2;
+			mode->vsync_end *= 2;
+			mode->vtotal *= 2;
+			mode->vtotal |= 1;
+		}
+	}
+
+	mode->flags |= DRM_MODE_FLAG_INTERLACE;
+}
+
 /**
  * drm_mode_detailed - create a new mode from an EDID detailed timing section
  * @dev: DRM device (needed to create new mode)
@@ -633,8 +679,7 @@ static struct drm_display_mode *drm_mode_detailed(struct drm_device *dev,
 		return NULL;
 	}
 	if (!(pt->misc & DRM_EDID_PT_SEPARATE_SYNC)) {
-		printk(KERN_WARNING "integrated sync not supported\n");
-		return NULL;
+		printk(KERN_WARNING "composite sync not supported\n");
 	}
 
 	/* it is incorrect if hsync/vsync width is zero */
@@ -664,15 +709,6 @@ static struct drm_display_mode *drm_mode_detailed(struct drm_device *dev,
 	mode->vsync_end = mode->vsync_start + vsync_pulse_width;
 	mode->vtotal = mode->vdisplay + vblank;
 
-	/* perform the basic check for the detailed timing */
-	if (mode->hsync_end > mode->htotal ||
-		mode->vsync_end > mode->vtotal) {
-		drm_mode_destroy(dev, mode);
-		DRM_DEBUG_KMS("Incorrect detailed timing. "
-				"Sync is beyond the blank.\n");
-		return NULL;
-	}
-
 	/* Some EDIDs have bogus h/vtotal values */
 	if (mode->hsync_end > mode->htotal)
 		mode->htotal = mode->hsync_end + 1;
@@ -681,8 +717,7 @@ static struct drm_display_mode *drm_mode_detailed(struct drm_device *dev,
 
 	drm_mode_set_name(mode);
 
-	if (pt->misc & DRM_EDID_PT_INTERLACED)
-		mode->flags |= DRM_MODE_FLAG_INTERLACE;
+	drm_mode_do_interlace_quirk(mode, pt);
 
 	if (quirks & EDID_QUIRK_DETAILED_SYNC_PP) {
 		pt->misc |= DRM_EDID_PT_HSYNC_POSITIVE | DRM_EDID_PT_VSYNC_POSITIVE;

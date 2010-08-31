@@ -269,8 +269,9 @@ static void sg_complete(struct urb *urb)
 {
 	struct usb_sg_request *io = urb->context;
 	int status = urb->status;
+	unsigned long flags;
 
-	spin_lock(&io->lock);
+	spin_lock_irqsave (&io->lock, flags);
 
 	/* In 2.5 we require hcds' endpoint queues not to progress after fault
 	 * reports, until the completion callback (this!) returns.  That lets
@@ -304,7 +305,7 @@ static void sg_complete(struct urb *urb)
 		 * unlink pending urbs so they won't rx/tx bad data.
 		 * careful: unlink can sometimes be synchronous...
 		 */
-		spin_unlock(&io->lock);
+		spin_unlock_irqrestore (&io->lock, flags);
 		for (i = 0, found = 0; i < io->entries; i++) {
 			if (!io->urbs [i] || !io->urbs [i]->dev)
 				continue;
@@ -319,7 +320,7 @@ static void sg_complete(struct urb *urb)
 			} else if (urb == io->urbs [i])
 				found = 1;
 		}
-		spin_lock(&io->lock);
+		spin_lock_irqsave (&io->lock, flags);
 	}
 	urb->dev = NULL;
 
@@ -329,7 +330,7 @@ static void sg_complete(struct urb *urb)
 	if (!io->count)
 		complete(&io->complete);
 
-	spin_unlock(&io->lock);
+	spin_unlock_irqrestore (&io->lock, flags);
 }
 
 
@@ -626,7 +627,7 @@ void usb_sg_cancel(struct usb_sg_request *io)
 		int i;
 
 		io->status = -ECONNRESET;
-		spin_unlock(&io->lock);
+		spin_unlock_irqrestore(&io->lock, flags);
 		for (i = 0; i < io->entries; i++) {
 			int retval;
 
@@ -637,7 +638,7 @@ void usb_sg_cancel(struct usb_sg_request *io)
 				dev_warn(&io->dev->dev, "%s, unlink --> %d\n",
 					__func__, retval);
 		}
-		spin_lock(&io->lock);
+		spin_lock_irqsave(&io->lock, flags);
 	}
 	spin_unlock_irqrestore(&io->lock, flags);
 }
@@ -906,11 +907,11 @@ char *usb_cache_string(struct usb_device *udev, int index)
 	if (index <= 0)
 		return NULL;
 
-	buf = kmalloc(MAX_USB_STRING_SIZE, GFP_KERNEL);
+	buf = kmalloc(MAX_USB_STRING_SIZE, GFP_NOIO);
 	if (buf) {
 		len = usb_string(udev, index, buf, MAX_USB_STRING_SIZE);
 		if (len > 0) {
-			smallbuf = kmalloc(++len, GFP_KERNEL);
+			smallbuf = kmalloc(++len, GFP_NOIO);
 			if (!smallbuf)
 				return buf;
 			memcpy(smallbuf, buf, len);
@@ -1471,7 +1472,7 @@ int usb_reset_configuration(struct usb_device *dev)
 	/* If not, reinstate the old alternate settings */
 	if (retval < 0) {
 reset_old_alts:
-		for (; i >= 0; i--) {
+		for (i--; i >= 0; i--) {
 			struct usb_interface *intf = config->interface[i];
 			struct usb_host_interface *alt;
 
@@ -1731,7 +1732,7 @@ int usb_set_configuration(struct usb_device *dev, int configuration)
 	if (cp) {
 		nintf = cp->desc.bNumInterfaces;
 		new_interfaces = kmalloc(nintf * sizeof(*new_interfaces),
-				GFP_KERNEL);
+				GFP_NOIO);
 		if (!new_interfaces) {
 			dev_err(&dev->dev, "Out of memory\n");
 			return -ENOMEM;
@@ -1740,7 +1741,7 @@ int usb_set_configuration(struct usb_device *dev, int configuration)
 		for (; n < nintf; ++n) {
 			new_interfaces[n] = kzalloc(
 					sizeof(struct usb_interface),
-					GFP_KERNEL);
+					GFP_NOIO);
 			if (!new_interfaces[n]) {
 				dev_err(&dev->dev, "Out of memory\n");
 				ret = -ENOMEM;

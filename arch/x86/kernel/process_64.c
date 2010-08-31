@@ -146,9 +146,11 @@ void cpu_idle(void)
 		}
 
 		tick_nohz_restart_sched_tick();
-		preempt_enable_no_resched();
-		schedule();
+		local_irq_disable();
+		__preempt_enable_no_resched();
+		__schedule();
 		preempt_disable();
+		local_irq_enable();
 	}
 }
 
@@ -282,12 +284,12 @@ int copy_thread(unsigned long clone_flags, unsigned long sp,
 
 	set_tsk_thread_flag(p, TIF_FORK);
 
-	p->thread.fs = me->thread.fs;
-	p->thread.gs = me->thread.gs;
 	p->thread.io_bitmap_ptr = NULL;
 
 	savesegment(gs, p->thread.gsindex);
+	p->thread.gs = p->thread.gsindex ? 0 : me->thread.gs;
 	savesegment(fs, p->thread.fsindex);
+	p->thread.fs = p->thread.fsindex ? 0 : me->thread.fs;
 	savesegment(es, p->thread.es);
 	savesegment(ds, p->thread.ds);
 
@@ -519,6 +521,18 @@ void set_personality_64bit(void)
 	   so it's not too bad. The main problem is just that
 	   32bit childs are affected again. */
 	current->personality &= ~READ_IMPLIES_EXEC;
+}
+
+void set_personality_ia32(void)
+{
+	/* inherit personality from parent */
+
+	/* Make sure to be in 32bit mode */
+	set_thread_flag(TIF_IA32);
+	current->personality |= force_personality32;
+
+	/* Prepare the first "return" to user space */
+	current_thread_info()->status |= TS_COMPAT;
 }
 
 unsigned long get_wchan(struct task_struct *p)

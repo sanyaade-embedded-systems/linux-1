@@ -3132,7 +3132,19 @@ out:
 		unmap_underlying_metadata_blocks(inode->i_sb->s_bdev,
 					newblock + max_blocks,
 					allocated - max_blocks);
+		allocated = max_blocks;
 	}
+
+	/*
+	 * If we have done fallocate with the offset that is already
+	 * delayed allocated, we would have block reservation
+	 * and quota reservation done in the delayed write path.
+	 * But fallocate would have already updated quota and block
+	 * count for this offset. So cancel these reservation
+	 */
+	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+		ext4_da_update_reserve_space(inode, allocated, 0);
+
 map_out:
 	set_buffer_mapped(bh_result);
 out1:
@@ -3368,7 +3380,16 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
 	/* previous routine could use block we allocated */
 	newblock = ext_pblock(&newex);
 	allocated = ext4_ext_get_actual_len(&newex);
+	if (allocated > max_blocks)
+		allocated = max_blocks;
 	set_buffer_new(bh_result);
+
+	/*
+	 * Update reserved blocks/metadata blocks after successful
+	 * block allocation which had been deferred till now.
+	 */
+	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+		ext4_da_update_reserve_space(inode, allocated, 1);
 
 	/*
 	 * Cache the extent and update transaction to commit on fdatasync only
@@ -3582,7 +3603,7 @@ retry:
  * Returns 0 on success.
  */
 int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
-				    loff_t len)
+				    ssize_t len)
 {
 	handle_t *handle;
 	ext4_lblk_t block;
@@ -3746,7 +3767,6 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 		__u64 start, __u64 len)
 {
 	ext4_lblk_t start_blk;
-	ext4_lblk_t len_blks;
 	int error = 0;
 
 	/* fallback to generic here if not in extents fmt */
@@ -3760,8 +3780,14 @@ int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
 	if (fieinfo->fi_flags & FIEMAP_FLAG_XATTR) {
 		error = ext4_xattr_fiemap(inode, fieinfo);
 	} else {
+		ext4_lblk_t len_blks;
+		__u64 last_blk;
+
 		start_blk = start >> inode->i_sb->s_blocksize_bits;
-		len_blks = len >> inode->i_sb->s_blocksize_bits;
+		last_blk = (start + len - 1) >> inode->i_sb->s_blocksize_bits;
+		if (last_blk >= EXT_MAX_BLOCK)
+			last_blk = EXT_MAX_BLOCK-1;
+		len_blks = ((ext4_lblk_t) last_blk) - start_blk + 1;
 
 		/*
 		 * Walk the extent tree gathering extent information.

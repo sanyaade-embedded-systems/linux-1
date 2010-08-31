@@ -2461,7 +2461,7 @@ static int iwl_setup_mac(struct iwl_priv *priv)
 		BIT(NL80211_IFTYPE_STATION) |
 		BIT(NL80211_IFTYPE_ADHOC);
 
-	hw->wiphy->flags |= WIPHY_FLAG_STRICT_REGULATORY |
+	hw->wiphy->flags |= WIPHY_FLAG_CUSTOM_REGULATORY |
 			    WIPHY_FLAG_DISABLE_BEACON_HINTS;
 
 	/*
@@ -3365,6 +3365,14 @@ static int iwl_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	 */
 	spin_lock_init(&priv->reg_lock);
 	spin_lock_init(&priv->lock);
+
+	/*
+	 * stop and reset the on-board processor just in case it is in a
+	 * strange state ... like being left stranded by a primary kernel
+	 * and this is now the kdump kernel trying to start up
+	 */
+	iwl_write32(priv, CSR_RESET, CSR_RESET_REG_FLAG_NEVO_RESET);
+
 	iwl_hw_detect(priv);
 	IWL_INFO(priv, "Detected Intel Wireless WiFi Link %s REV=0x%X\n",
 		priv->cfg->name, priv->hw_rev);

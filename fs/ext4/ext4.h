@@ -139,8 +139,8 @@ typedef struct ext4_io_end {
 	struct inode		*inode;		/* file being written to */
 	unsigned int		flag;		/* unwritten or not */
 	int			error;		/* I/O error code */
-	ext4_lblk_t		offset;		/* offset in the file */
-	size_t			size;		/* size of the extent */
+	loff_t			offset;		/* offset in the file */
+	ssize_t			size;		/* size of the extent */
 	struct work_struct	work;		/* data work queue */
 } ext4_io_end_t;
 
@@ -361,14 +361,11 @@ struct ext4_new_group_data {
 	   so set the magic i_delalloc_reserve_flag after taking the 
 	   inode allocation semaphore for */
 #define EXT4_GET_BLOCKS_DELALLOC_RESERVE	0x0004
-	/* Call ext4_da_update_reserve_space() after successfully 
-	   allocating the blocks */
-#define EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE	0x0008
 	/* caller is from the direct IO path, request to creation of an
 	unitialized extents if not allocated, split the uninitialized
 	extent if blocks has been preallocated already*/
-#define EXT4_GET_BLOCKS_DIO			0x0010
-#define EXT4_GET_BLOCKS_CONVERT			0x0020
+#define EXT4_GET_BLOCKS_DIO			0x0008
+#define EXT4_GET_BLOCKS_CONVERT			0x0010
 #define EXT4_GET_BLOCKS_DIO_CREATE_EXT		(EXT4_GET_BLOCKS_DIO|\
 					 EXT4_GET_BLOCKS_CREATE_UNINIT_EXT)
 	/* Convert extent to initialized after direct IO complete */
@@ -1443,6 +1440,8 @@ extern int ext4_block_truncate_page(handle_t *handle,
 extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
 extern qsize_t *ext4_get_reserved_space(struct inode *inode);
 extern int flush_aio_dio_completed_IO(struct inode *inode);
+extern void ext4_da_update_reserve_space(struct inode *inode,
+					int used, int quota_claim);
 /* ioctl.c */
 extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
 extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
@@ -1745,7 +1744,7 @@ extern void ext4_ext_release(struct super_block *);
 extern long ext4_fallocate(struct inode *inode, int mode, loff_t offset,
 			  loff_t len);
 extern int ext4_convert_unwritten_extents(struct inode *inode, loff_t offset,
-			  loff_t len);
+			  ssize_t len);
 extern int ext4_get_blocks(handle_t *handle, struct inode *inode,
 			   sector_t block, unsigned int max_blocks,
 			   struct buffer_head *bh, int flags);

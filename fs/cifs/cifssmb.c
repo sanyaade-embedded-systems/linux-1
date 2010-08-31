@@ -170,19 +170,19 @@ cifs_reconnect_tcon(struct cifsTconInfo *tcon, int smb_command)
 	 * need to prevent multiple threads trying to simultaneously
 	 * reconnect the same SMB session
 	 */
-	down(&ses->sesSem);
+	mutex_lock(&ses->session_mutex);
 	if (ses->need_reconnect)
 		rc = cifs_setup_session(0, ses, nls_codepage);
 
 	/* do we need to reconnect tcon? */
 	if (rc || !tcon->need_reconnect) {
-		up(&ses->sesSem);
+		mutex_unlock(&ses->session_mutex);
 		goto out;
 	}
 
 	mark_open_files_invalid(tcon);
 	rc = CIFSTCon(0, ses, tcon->treeName, tcon, nls_codepage);
-	up(&ses->sesSem);
+	mutex_unlock(&ses->session_mutex);
 	cFYI(1, ("reconnect tcon rc = %d", rc));
 
 	if (rc)
@@ -700,13 +700,13 @@ CIFSSMBLogoff(const int xid, struct cifsSesInfo *ses)
 	if (!ses || !ses->server)
 		return -EIO;
 
-	down(&ses->sesSem);
+	mutex_lock(&ses->session_mutex);
 	if (ses->need_reconnect)
 		goto session_already_dead; /* no need to send SMBlogoff if uid
 					      already closed due to reconnect */
 	rc = small_smb_init(SMB_COM_LOGOFF_ANDX, 2, NULL, (void **)&pSMB);
 	if (rc) {
-		up(&ses->sesSem);
+		mutex_unlock(&ses->session_mutex);
 		return rc;
 	}
 
@@ -721,7 +721,7 @@ CIFSSMBLogoff(const int xid, struct cifsSesInfo *ses)
 	pSMB->AndXCommand = 0xFF;
 	rc = SendReceiveNoRsp(xid, ses, (struct smb_hdr *) pSMB, 0);
 session_already_dead:
-	up(&ses->sesSem);
+	mutex_unlock(&ses->session_mutex);
 
 	/* if session dead then we do not need to do ulogoff,
 		since server closed smb session, no sense reporting
@@ -1430,6 +1430,8 @@ CIFSSMBWrite(const int xid, struct cifsTconInfo *tcon,
 	__u32 bytes_sent;
 	__u16 byte_count;
 
+	*nbytes = 0;
+
 	/* cFYI(1, ("write at %lld %d bytes", offset, count));*/
 	if (tcon->ses == NULL)
 		return -ECONNABORTED;
@@ -1512,11 +1514,18 @@ CIFSSMBWrite(const int xid, struct cifsTconInfo *tcon,
 	cifs_stats_inc(&tcon->num_writes);
 	if (rc) {
 		cFYI(1, ("Send error in write = %d", rc));
-		*nbytes = 0;
 	} else {
 		*nbytes = le16_to_cpu(pSMBr->CountHigh);
 		*nbytes = (*nbytes) << 16;
 		*nbytes += le16_to_cpu(pSMBr->Count);
+
+		/*
+		 * Mask off high 16 bits when bytes written as returned by the
+		 * server is greater than bytes requested by the client. Some
+		 * OS/2 servers are known to set incorrect CountHigh values.
+		 */
+		if (*nbytes > count)
+			*nbytes &= 0xFFFF;
 	}
 
 	cifs_buf_release(pSMB);
@@ -1605,6 +1614,14 @@ CIFSSMBWrite2(const int xid, struct cifsTconInfo *tcon,
 		*nbytes = le16_to_cpu(pSMBr->CountHigh);
 		*nbytes = (*nbytes) << 16;
 		*nbytes += le16_to_cpu(pSMBr->Count);
+
+		/*
+		 * Mask off high 16 bits when bytes written as returned by the
+		 * server is greater than bytes requested by the client. OS/2
+		 * servers are known to set incorrect CountHigh values.
+		 */
+		if (*nbytes > count)
+			*nbytes &= 0xFFFF;
 	}
 
 /*	cifs_small_buf_release(pSMB); */ /* Freed earlier now in SendReceive2 */

@@ -1862,6 +1862,7 @@ out:
 	}
 
 	if (disabled) {
+		dev_close(efx->net_dev);
 		EFX_ERR(efx, "has been disabled\n");
 		efx->state = STATE_DISABLED;
 	} else {
@@ -1885,8 +1886,7 @@ static void efx_reset_work(struct work_struct *data)
 	}
 
 	rtnl_lock();
-	if (efx_reset(efx, efx->reset_pending))
-		dev_close(efx->net_dev);
+	(void)efx_reset(efx, efx->reset_pending);
 	rtnl_unlock();
 }
 
@@ -2284,6 +2284,7 @@ static int __devinit efx_pci_probe(struct pci_dev *pci_dev,
  fail2:
 	efx_fini_struct(efx);
  fail1:
+	WARN_ON(rc > 0);
 	EFX_LOG(efx, "initialisation failed. rc=%d\n", rc);
 	free_netdev(net_dev);
 	return rc;

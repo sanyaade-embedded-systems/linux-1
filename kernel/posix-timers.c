@@ -462,6 +462,7 @@ static enum hrtimer_restart posix_timer_fn(struct hrtimer *timer)
 static struct pid *good_sigevent(sigevent_t * event)
 {
 	struct task_struct *rtn = current->group_leader;
+	int sig = event->sigev_signo;
 
 	if ((event->sigev_notify & SIGEV_THREAD_ID ) &&
 		(!(rtn = find_task_by_vpid(event->sigev_notify_thread_id)) ||
@@ -470,7 +471,8 @@ static struct pid *good_sigevent(sigevent_t * event)
 		return NULL;
 
 	if (((event->sigev_notify & ~SIGEV_THREAD_ID) != SIGEV_NONE) &&
-	    ((event->sigev_signo <= 0) || (event->sigev_signo > SIGRTMAX)))
+	    (sig <= 0 || sig > SIGRTMAX || sig_kernel_only(sig) ||
+	     sig_kernel_coredump(sig)))
 		return NULL;
 
 	return task_pid(rtn);
@@ -559,14 +561,7 @@ SYSCALL_DEFINE3(timer_create, const clockid_t, which_clock,
 	new_timer->it_id = (timer_t) new_timer_id;
 	new_timer->it_clock = which_clock;
 	new_timer->it_overrun = -1;
-	error = CLOCK_DISPATCH(which_clock, timer_create, (new_timer));
-	if (error)
-		goto out;
 
-	/*
-	 * return the timer_id now.  The next step is hard to
-	 * back out if there is an error.
-	 */
 	if (copy_to_user(created_timer_id,
 			 &new_timer_id, sizeof (new_timer_id))) {
 		error = -EFAULT;
@@ -596,6 +591,10 @@ SYSCALL_DEFINE3(timer_create, const clockid_t, which_clock,
 	new_timer->sigq->info.si_value = event.sigev_value;
 	new_timer->sigq->info.si_tid   = new_timer->it_id;
 	new_timer->sigq->info.si_code  = SI_TIMER;
+
+	error = CLOCK_DISPATCH(which_clock, timer_create, (new_timer));
+	if (error)
+		goto out;
 
 	spin_lock_irq(&current->sighand->siglock);
 	new_timer->it_signal = current->signal;
@@ -829,6 +828,7 @@ retry:
 
 	unlock_timer(timr, flag);
 	if (error == TIMER_RETRY) {
+		hrtimer_wait_for_timer(&timr->it.real.timer);
 		rtn = NULL;	// We already got the old time...
 		goto retry;
 	}
@@ -867,6 +867,7 @@ retry_delete:
 
 	if (timer_delete_hook(timer) == TIMER_RETRY) {
 		unlock_timer(timer, flags);
+		hrtimer_wait_for_timer(&timer->it.real.timer);
 		goto retry_delete;
 	}
 
@@ -896,6 +897,7 @@ retry_delete:
 
 	if (timer_delete_hook(timer) == TIMER_RETRY) {
 		unlock_timer(timer, flags);
+		hrtimer_wait_for_timer(&timer->it.real.timer);
 		goto retry_delete;
 	}
 	list_del(&timer->list);

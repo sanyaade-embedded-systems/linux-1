@@ -392,7 +392,8 @@ static int function_stat_show(struct seq_file *m, void *v)
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
 	seq_printf(m, "    ");
 	avg = rec->time;
-	do_div(avg, rec->counter);
+	if (rec->counter)
+		do_div(avg, rec->counter);
 
 	mutex_lock(&mutex);
 	trace_seq_init(&s);
@@ -1690,7 +1691,7 @@ ftrace_regex_lseek(struct file *file, loff_t offset, int origin)
 static int ftrace_match(char *str, char *regex, int len, int type)
 {
 	int matched = 0;
-	char *ptr;
+	int slen;
 
 	switch (type) {
 	case MATCH_FULL:
@@ -1706,8 +1707,8 @@ static int ftrace_match(char *str, char *regex, int len, int type)
 			matched = 1;
 		break;
 	case MATCH_END_ONLY:
-		ptr = strstr(str, regex);
-		if (ptr && (ptr[len] == 0))
+		slen = strlen(str);
+		if (slen >= len && memcmp(str + slen - len, regex, len) == 0)
 			matched = 1;
 		break;
 	}
@@ -3364,6 +3365,7 @@ void ftrace_graph_init_task(struct task_struct *t)
 {
 	/* Make sure we do not use the parent ret_stack */
 	t->ret_stack = NULL;
+	t->curr_ret_stack = -1;
 
 	if (ftrace_graph_active) {
 		struct ftrace_ret_stack *ret_stack;
@@ -3373,7 +3375,6 @@ void ftrace_graph_init_task(struct task_struct *t)
 				GFP_KERNEL);
 		if (!ret_stack)
 			return;
-		t->curr_ret_stack = -1;
 		atomic_set(&t->tracing_graph_pause, 0);
 		atomic_set(&t->trace_overrun, 0);
 		t->ftrace_timestamp = 0;

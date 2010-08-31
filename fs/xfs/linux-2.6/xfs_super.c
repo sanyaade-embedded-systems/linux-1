@@ -954,16 +954,14 @@ xfs_fs_destroy_inode(
 	ASSERT_ALWAYS(!xfs_iflags_test(ip, XFS_IRECLAIM));
 
 	/*
-	 * If we have nothing to flush with this inode then complete the
-	 * teardown now, otherwise delay the flush operation.
+	 * We always use background reclaim here because even if the
+	 * inode is clean, it still may be under IO and hence we have
+	 * to take the flush lock. The background reclaim path handles
+	 * this more efficiently than we can here, so simply let background
+	 * reclaim tear down all inodes.
 	 */
-	if (!xfs_inode_clean(ip)) {
-		xfs_inode_set_reclaim_tag(ip);
-		return;
-	}
-
 out_reclaim:
-	xfs_ireclaim(ip);
+	xfs_inode_set_reclaim_tag(ip);
 }
 
 /*
@@ -1112,7 +1110,7 @@ xfs_fs_clear_inode(
 	 * (and basically indicate what we are doing), we explicitly
 	 * re-init the iolock here.
 	 */
-	ASSERT(!rwsem_is_locked(&ip->i_iolock.mr_lock));
+	ASSERT(!anon_rwsem_is_locked(&ip->i_iolock.mr_lock));
 	mrlock_init(&ip->i_iolock, MRLOCK_BARRIER, "xfsio", ip->i_ino);
 
 	xfs_inactive(ip);
@@ -1162,6 +1160,7 @@ xfs_fs_put_super(
 
 	xfs_unmountfs(mp);
 	xfs_freesb(mp);
+	xfs_inode_shrinker_unregister(mp);
 	xfs_icsb_destroy_counters(mp);
 	xfs_close_devices(mp);
 	xfs_dmops_put(mp);
@@ -1525,6 +1524,8 @@ xfs_fs_fill_super(
 	if (error)
 		goto fail_vnrele;
 
+	xfs_inode_shrinker_register(mp);
+
 	kfree(mtpt);
 	return 0;
 
@@ -1769,6 +1770,7 @@ init_xfs_fs(void)
 		goto out_cleanup_procfs;
 
 	vfs_initquota();
+	xfs_inode_shrinker_init();
 
 	error = register_filesystem(&xfs_fs_type);
 	if (error)
@@ -1796,6 +1798,7 @@ exit_xfs_fs(void)
 {
 	vfs_exitquota();
 	unregister_filesystem(&xfs_fs_type);
+	xfs_inode_shrinker_destroy();
 	xfs_sysctl_unregister();
 	xfs_cleanup_procfs();
 	xfs_buf_terminate();

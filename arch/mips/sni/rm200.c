@@ -361,6 +361,7 @@ void sni_rm200_init_8259A(void)
 static struct irqaction sni_rm200_irq2 = {
 	.handler = no_action,
 	.name = "cascade",
+	.flags = IRQF_NODELAY,
 };
 
 static struct resource sni_rm200_pic1_resource = {
@@ -404,7 +405,7 @@ void __init sni_rm200_i8259_irqs(void)
 	if (!rm200_pic_master)
 		return;
 	rm200_pic_slave = ioremap_nocache(0x160000a0, 4);
-	if (!rm200_pic_master) {
+	if (!rm200_pic_slave) {
 		iounmap(rm200_pic_master);
 		return;
 	}

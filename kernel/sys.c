@@ -32,6 +32,7 @@
 #include <linux/getcpu.h>
 #include <linux/task_io_accounting_ops.h>
 #include <linux/seccomp.h>
+#include <linux/hardirq.h>
 #include <linux/cpu.h>
 #include <linux/ptrace.h>
 #include <linux/fs_struct.h>
@@ -222,6 +223,7 @@ SYSCALL_DEFINE2(getpriority, int, which, int, who)
 	if (which > PRIO_USER || which < PRIO_PROCESS)
 		return -EINVAL;
 
+	rcu_read_lock();
 	read_lock(&tasklist_lock);
 	switch (which) {
 		case PRIO_PROCESS:
@@ -267,6 +269,7 @@ SYSCALL_DEFINE2(getpriority, int, which, int, who)
 	}
 out_unlock:
 	read_unlock(&tasklist_lock);
+	rcu_read_unlock();
 
 	return retval;
 }
@@ -281,6 +284,15 @@ out_unlock:
  */
 void emergency_restart(void)
 {
+	/*
+	 * Call the notifier chain if we are not in an
+	 * atomic context:
+	 */
+#ifdef CONFIG_PREEMPT
+	if (!in_atomic() && !irqs_disabled())
+		blocking_notifier_call_chain(&reboot_notifier_list,
+					     SYS_RESTART, NULL);
+#endif
 	machine_emergency_restart();
 }
 EXPORT_SYMBOL_GPL(emergency_restart);

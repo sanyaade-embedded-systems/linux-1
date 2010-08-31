@@ -2863,7 +2863,7 @@ bnx2_tx_int(struct bnx2 *bp, struct bnx2_napi *bnapi, int budget)
 
 	if (unlikely(netif_tx_queue_stopped(txq)) &&
 		     (bnx2_tx_avail(bp, txr) > bp->tx_wake_thresh)) {
-		__netif_tx_lock(txq, smp_processor_id());
+		__netif_tx_lock(txq);
 		if ((netif_tx_queue_stopped(txq)) &&
 		    (bnx2_tx_avail(bp, txr) > bp->tx_wake_thresh))
 			netif_tx_wake_queue(txq);
@@ -4772,8 +4772,12 @@ bnx2_reset_chip(struct bnx2 *bp, u32 reset_code)
 		rc = bnx2_alloc_bad_rbuf(bp);
 	}
 
-	if (bp->flags & BNX2_FLAG_USING_MSIX)
+	if (bp->flags & BNX2_FLAG_USING_MSIX) {
 		bnx2_setup_msix_tbl(bp);
+		/* Prevent MSIX table reads and write from timing out */
+		REG_WR(bp, BNX2_MISC_ECO_HW_CTL,
+			BNX2_MISC_ECO_HW_CTL_LARGE_GRC_TMOUT_EN);
+	}
 
 	return rc;
 }

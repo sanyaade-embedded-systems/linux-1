@@ -340,8 +340,12 @@ int sk_receive_skb(struct sock *sk, struct sk_buff *skb, const int nested)
 		rc = sk_backlog_rcv(sk, skb);
 
 		mutex_release(&sk->sk_lock.dep_map, 1, _RET_IP_);
-	} else
-		sk_add_backlog(sk, skb);
+	} else if (sk_add_backlog(sk, skb)) {
+		bh_unlock_sock(sk);
+		atomic_inc(&sk->sk_drops);
+		goto discard_and_relse;
+	}
+
 	bh_unlock_sock(sk);
 out:
 	sock_put(sk);
@@ -1138,6 +1142,7 @@ struct sock *sk_clone(const struct sock *sk, const gfp_t priority)
 		sock_lock_init(newsk);
 		bh_lock_sock(newsk);
 		newsk->sk_backlog.head	= newsk->sk_backlog.tail = NULL;
+		newsk->sk_backlog.len = 0;
 
 		atomic_set(&newsk->sk_rmem_alloc, 0);
 		/*
@@ -1541,6 +1546,12 @@ static void __release_sock(struct sock *sk)
 
 		bh_lock_sock(sk);
 	} while ((skb = sk->sk_backlog.head) != NULL);
+
+	/*
+	 * Doing the zeroing here guarantee we can not loop forever
+	 * while a wild producer attempts to flood us.
+	 */
+	sk->sk_backlog.len = 0;
 }
 
 /**
@@ -1873,6 +1884,7 @@ void sock_init_data(struct socket *sock, struct sock *sk)
 	sk->sk_allocation	=	GFP_KERNEL;
 	sk->sk_rcvbuf		=	sysctl_rmem_default;
 	sk->sk_sndbuf		=	sysctl_wmem_default;
+	sk->sk_backlog.limit	=	sk->sk_rcvbuf << 1;
 	sk->sk_state		=	TCP_CLOSE;
 	sk_set_socket(sk, sock);
 
@@ -2123,8 +2135,9 @@ static DECLARE_BITMAP(proto_inuse_idx, PROTO_INUSE_NR);
 #ifdef CONFIG_NET_NS
 void sock_prot_inuse_add(struct net *net, struct proto *prot, int val)
 {
-	int cpu = smp_processor_id();
+	int cpu = get_cpu();
 	per_cpu_ptr(net->core.inuse, cpu)->val[prot->inuse_idx] += val;
+	put_cpu();
 }
 EXPORT_SYMBOL_GPL(sock_prot_inuse_add);
 
@@ -2170,7 +2183,9 @@ static DEFINE_PER_CPU(struct prot_inuse, prot_inuse);
 
 void sock_prot_inuse_add(struct net *net, struct proto *prot, int val)
 {
-	__get_cpu_var(prot_inuse).val[prot->inuse_idx] += val;
+	int cpu = get_cpu();
+	per_cpu(prot_inuse, cpu).val[prot->inuse_idx] += val;
+	put_cpu();
 }
 EXPORT_SYMBOL_GPL(sock_prot_inuse_add);
 

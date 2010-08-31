@@ -395,7 +395,7 @@ static void skb_release_head_state(struct sk_buff *skb)
 	secpath_put(skb->sp);
 #endif
 	if (skb->destructor) {
-		WARN_ON(in_irq());
+//		WARN_ON(in_irq());
 		skb->destructor(skb);
 	}
 #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
@@ -2729,6 +2729,7 @@ int skb_gro_receive(struct sk_buff **head, struct sk_buff *skb)
 	*NAPI_GRO_CB(nskb) = *NAPI_GRO_CB(p);
 	skb_shinfo(nskb)->frag_list = p;
 	skb_shinfo(nskb)->gso_size = pinfo->gso_size;
+	pinfo->gso_size = 0;
 	skb_header_release(p);
 	nskb->prev = p;
 

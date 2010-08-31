@@ -112,12 +112,14 @@ static int btrfs_set_acl(struct btrfs_trans_handle *trans,
 	switch (type) {
 	case ACL_TYPE_ACCESS:
 		mode = inode->i_mode;
-		ret = posix_acl_equiv_mode(acl, &mode);
-		if (ret < 0)
-			return ret;
-		ret = 0;
-		inode->i_mode = mode;
 		name = POSIX_ACL_XATTR_ACCESS;
+		if (acl) {
+			ret = posix_acl_equiv_mode(acl, &mode);
+			if (ret < 0)
+				return ret;
+			inode->i_mode = mode;
+		}
+		ret = 0;
 		break;
 	case ACL_TYPE_DEFAULT:
 		if (!S_ISDIR(inode->i_mode))
@@ -156,6 +158,9 @@ static int btrfs_xattr_acl_set(struct dentry *dentry, const char *name,
 {
 	int ret;
 	struct posix_acl *acl = NULL;
+
+	if (!is_owner_or_cap(dentry->d_inode))
+		return -EPERM;
 
 	if (value) {
 		acl = posix_acl_from_xattr(value, size);
@@ -242,6 +247,7 @@ int btrfs_init_acl(struct btrfs_trans_handle *trans,
 						    ACL_TYPE_ACCESS);
 			}
 		}
+		posix_acl_release(clone);
 	}
 failed:
 	posix_acl_release(acl);

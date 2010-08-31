@@ -205,7 +205,8 @@ static u32 ieee80211_enable_ht(struct ieee80211_sub_if_data *sdata,
 		sta = sta_info_get(local, bssid);
 		if (sta)
 			rate_control_rate_update(local, sband, sta,
-						 IEEE80211_RC_HT_CHANGED);
+						 IEEE80211_RC_HT_CHANGED,
+						 local->oper_channel_type);
 		rcu_read_unlock();
         }
 
@@ -269,12 +270,6 @@ static void ieee80211_send_assoc(struct ieee80211_sub_if_data *sdata,
 	if (wk->bss->wmm_used)
 		wmm = 1;
 
-	/* get all rates supported by the device and the AP as
-	 * some APs don't like getting a superset of their rates
-	 * in the association request (e.g. D-Link DAP 1353 in
-	 * b-only mode) */
-	rates_len = ieee80211_compatible_rates(wk->bss, sband, &rates);
-
 	if ((wk->bss->cbss.capability & WLAN_CAPABILITY_SPECTRUM_MGMT) &&
 	    (local->hw.flags & IEEE80211_HW_SPECTRUM_MGMT))
 		capab |= WLAN_CAPABILITY_SPECTRUM_MGMT;
@@ -308,6 +303,17 @@ static void ieee80211_send_assoc(struct ieee80211_sub_if_data *sdata,
 	*pos++ = WLAN_EID_SSID;
 	*pos++ = wk->ssid_len;
 	memcpy(pos, wk->ssid, wk->ssid_len);
+
+	if (wk->bss->supp_rates_len) {
+		/* get all rates supported by the device and the AP as
+		 * some APs don't like getting a superset of their rates
+		 * in the association request (e.g. D-Link DAP 1353 in
+		 * b-only mode) */
+		rates_len = ieee80211_compatible_rates(wk->bss, sband, &rates);
+	} else {
+		rates = ~0;
+		rates_len = sband->n_bitrates;
+	}
 
 	/* add all rates which were marked to be used above */
 	supp_rates_len = rates_len;
@@ -661,8 +667,11 @@ static void ieee80211_enable_ps(struct ieee80211_local *local,
 	} else {
 		if (local->hw.flags & IEEE80211_HW_PS_NULLFUNC_STACK)
 			ieee80211_send_nullfunc(local, sdata, 1);
-		conf->flags |= IEEE80211_CONF_PS;
-		ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_PS);
+
+		if (!(local->hw.flags & IEEE80211_HW_REPORTS_TX_ACK_STATUS)) {
+			conf->flags |= IEEE80211_CONF_PS;
+			ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_PS);
+		}
 	}
 }
 
@@ -753,6 +762,7 @@ void ieee80211_dynamic_ps_enable_work(struct work_struct *work)
 		container_of(work, struct ieee80211_local,
 			     dynamic_ps_enable_work);
 	struct ieee80211_sub_if_data *sdata = local->ps_sdata;
+	struct ieee80211_if_managed *ifmgd = &sdata->u.mgd;
 
 	/* can only happen when PS was just disabled anyway */
 	if (!sdata)
@@ -761,11 +771,16 @@ void ieee80211_dynamic_ps_enable_work(struct work_struct *work)
 	if (local->hw.conf.flags & IEEE80211_CONF_PS)
 		return;
 
-	if (local->hw.flags & IEEE80211_HW_PS_NULLFUNC_STACK)
+	if ((local->hw.flags & IEEE80211_HW_PS_NULLFUNC_STACK) &&
+	    (!(ifmgd->flags & IEEE80211_STA_NULLFUNC_ACKED)))
 		ieee80211_send_nullfunc(local, sdata, 1);
 
-	local->hw.conf.flags |= IEEE80211_CONF_PS;
-	ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_PS);
+	if (!(local->hw.flags & IEEE80211_HW_REPORTS_TX_ACK_STATUS) ||
+	    (ifmgd->flags & IEEE80211_STA_NULLFUNC_ACKED)) {
+		ifmgd->flags &= ~IEEE80211_STA_NULLFUNC_ACKED;
+		local->hw.conf.flags |= IEEE80211_CONF_PS;
+		ieee80211_hw_config(local, IEEE80211_CONF_CHANGE_PS);
+	}
 }
 
 void ieee80211_dynamic_ps_timer(unsigned long data)
@@ -942,7 +957,7 @@ static void ieee80211_set_associated(struct ieee80211_sub_if_data *sdata,
 	ieee80211_recalc_ps(local, -1);
 	mutex_unlock(&local->iflist_mtx);
 
-	netif_start_queue(sdata->dev);
+	netif_tx_start_all_queues(sdata->dev);
 	netif_carrier_on(sdata->dev);
 }
 
@@ -1074,7 +1089,7 @@ static void ieee80211_set_disassoc(struct ieee80211_sub_if_data *sdata,
 	 * time -- we don't want the scan code to enable queues.
 	 */
 
-	netif_stop_queue(sdata->dev);
+	netif_tx_stop_all_queues(sdata->dev);
 	netif_carrier_off(sdata->dev);
 
 	rcu_read_lock();
@@ -1963,7 +1978,9 @@ static void ieee80211_sta_rx_queued_mgmt(struct ieee80211_sub_if_data *sdata,
 			rma = ieee80211_rx_mgmt_disassoc(sdata, mgmt, skb->len);
 			break;
 		case IEEE80211_STYPE_ACTION:
-			/* XXX: differentiate, can only happen for CSA now! */
+			if (mgmt->u.action.category != WLAN_CATEGORY_SPECTRUM_MGMT)
+				break;
+
 			ieee80211_sta_process_chanswitch(sdata,
 					&mgmt->u.action.u.chan_switch.sw_elem,
 					ifmgd->associated);
@@ -2465,6 +2482,7 @@ int ieee80211_mgd_assoc(struct ieee80211_sub_if_data *sdata,
 	list_add(&wk->list, &ifmgd->work_list);
 
 	ifmgd->flags &= ~IEEE80211_STA_DISABLE_11N;
+	ifmgd->flags &= ~IEEE80211_STA_NULLFUNC_ACKED;
 
 	for (i = 0; i < req->crypto.n_ciphers_pairwise; i++)
 		if (req->crypto.ciphers_pairwise[i] == WLAN_CIPHER_SUITE_WEP40 ||

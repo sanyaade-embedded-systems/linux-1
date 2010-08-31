@@ -228,9 +228,6 @@ static void usb_release_dev(struct device *dev)
 	hcd = bus_to_hcd(udev->bus);
 
 	usb_destroy_configuration(udev);
-	/* Root hubs aren't real devices, so don't free HCD resources */
-	if (hcd->driver->free_dev && udev->parent)
-		hcd->driver->free_dev(hcd, udev);
 	usb_put_hcd(hcd);
 	kfree(udev->product);
 	kfree(udev->manufacturer);
@@ -601,7 +598,7 @@ int usb_lock_device_for_reset(struct usb_device *udev,
 			iface->condition == USB_INTERFACE_UNBOUND))
 		return -EINTR;
 
-	while (usb_trylock_device(udev) != 0) {
+	while (!usb_trylock_device(udev)) {
 
 		/* If we can't acquire the lock after waiting one second,
 		 * we're probably deadlocked */

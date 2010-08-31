@@ -670,7 +670,9 @@ struct radeon_encoder_primary_dac *radeon_combios_get_primary_dac_info(struct
 			dac = RBIOS8(dac_info + 0x3) & 0xf;
 			p_dac->ps2_pdac_adj = (bg << 8) | (dac);
 		}
-		found = 1;
+		/* if the values are all zeros, use the table */
+		if (p_dac->ps2_pdac_adj)
+			found = 1;
 	}
 
 out:
@@ -686,6 +688,9 @@ radeon_combios_get_tv_info(struct radeon_device *rdev)
 	struct drm_device *dev = rdev->ddev;
 	uint16_t tv_info;
 	enum radeon_tv_std tv_std = TV_STD_NTSC;
+
+	if (rdev->bios == NULL)
+		return tv_std;
 
 	tv_info = combios_get_table_offset(dev, COMBIOS_TV_INFO_TABLE);
 	if (tv_info) {
@@ -809,7 +814,9 @@ struct radeon_encoder_tv_dac *radeon_combios_get_tv_dac_info(struct
 			bg = RBIOS8(dac_info + 0x10) & 0xf;
 			dac = RBIOS8(dac_info + 0x11) & 0xf;
 			tv_dac->ntsc_tvdac_adj = (bg << 16) | (dac << 20);
-			found = 1;
+			/* if the values are all zeros, use the table */
+			if (tv_dac->ps2_tvdac_adj)
+				found = 1;
 		} else if (rev > 1) {
 			bg = RBIOS8(dac_info + 0xc) & 0xf;
 			dac = (RBIOS8(dac_info + 0xc) >> 4) & 0xf;
@@ -822,7 +829,9 @@ struct radeon_encoder_tv_dac *radeon_combios_get_tv_dac_info(struct
 			bg = RBIOS8(dac_info + 0xe) & 0xf;
 			dac = (RBIOS8(dac_info + 0xe) >> 4) & 0xf;
 			tv_dac->ntsc_tvdac_adj = (bg << 16) | (dac << 20);
-			found = 1;
+			/* if the values are all zeros, use the table */
+			if (tv_dac->ps2_tvdac_adj)
+				found = 1;
 		}
 		tv_dac->tv_std = radeon_combios_get_tv_info(rdev);
 	}
@@ -839,7 +848,9 @@ struct radeon_encoder_tv_dac *radeon_combios_get_tv_dac_info(struct
 				    (bg << 16) | (dac << 20);
 				tv_dac->pal_tvdac_adj = tv_dac->ps2_tvdac_adj;
 				tv_dac->ntsc_tvdac_adj = tv_dac->ps2_tvdac_adj;
-				found = 1;
+				/* if the values are all zeros, use the table */
+				if (tv_dac->ps2_tvdac_adj)
+					found = 1;
 			} else {
 				bg = RBIOS8(dac_info + 0x4) & 0xf;
 				dac = RBIOS8(dac_info + 0x5) & 0xf;
@@ -847,7 +858,9 @@ struct radeon_encoder_tv_dac *radeon_combios_get_tv_dac_info(struct
 				    (bg << 16) | (dac << 20);
 				tv_dac->pal_tvdac_adj = tv_dac->ps2_tvdac_adj;
 				tv_dac->ntsc_tvdac_adj = tv_dac->ps2_tvdac_adj;
-				found = 1;
+				/* if the values are all zeros, use the table */
+				if (tv_dac->ps2_tvdac_adj)
+					found = 1;
 			}
 		} else {
 			DRM_INFO("No TV DAC info found in BIOS\n");
@@ -968,8 +981,7 @@ struct radeon_encoder_lvds *radeon_combios_get_lvds_info(struct radeon_encoder
 			 lvds->native_mode.vdisplay);
 
 		lvds->panel_vcc_delay = RBIOS16(lcd_info + 0x2c);
-		if (lvds->panel_vcc_delay > 2000 || lvds->panel_vcc_delay < 0)
-			lvds->panel_vcc_delay = 2000;
+		lvds->panel_vcc_delay = min_t(u16, lvds->panel_vcc_delay, 2000);
 
 		lvds->panel_pwr_delay = RBIOS8(lcd_info + 0x24);
 		lvds->panel_digon_delay = RBIOS16(lcd_info + 0x38) & 0xf;

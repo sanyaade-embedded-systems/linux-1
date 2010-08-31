@@ -196,10 +196,10 @@ static void do_identify(ide_drive_t *drive, u8 cmd, u16 *id)
 	int bswap = 1;
 
 	/* local CPU only; some systems need this */
-	local_irq_save(flags);
+	local_irq_save_nort(flags);
 	/* read 512 bytes of id info */
 	hwif->tp_ops->input_data(drive, NULL, id, SECTOR_SIZE);
-	local_irq_restore(flags);
+	local_irq_restore_nort(flags);
 
 	drive->dev_flags |= IDE_DFLAG_ID_READ;
 #ifdef DEBUG
@@ -695,14 +695,8 @@ static int ide_probe_port(ide_hwif_t *hwif)
 	if (irqd)
 		disable_irq(hwif->irq);
 
-	rc = ide_port_wait_ready(hwif);
-	if (rc == -ENODEV) {
-		printk(KERN_INFO "%s: no devices on the port\n", hwif->name);
-		goto out;
-	} else if (rc == -EBUSY)
-		printk(KERN_ERR "%s: not ready before the probe\n", hwif->name);
-	else
-		rc = -ENODEV;
+	if (ide_port_wait_ready(hwif) == -EBUSY)
+		printk(KERN_DEBUG "%s: Wait for ready failed before probe !\n", hwif->name);
 
 	/*
 	 * Second drive should only exist if first drive was found,
@@ -713,7 +707,7 @@ static int ide_probe_port(ide_hwif_t *hwif)
 		if (drive->dev_flags & IDE_DFLAG_PRESENT)
 			rc = 0;
 	}
-out:
+
 	/*
 	 * Use cached IRQ number. It might be (and is...) changed by probe
 	 * code above

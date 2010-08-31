@@ -1554,6 +1554,15 @@ static inline void usb_stop_pm(struct usb_device *udev)
 
 #endif
 
+static void hub_free_dev(struct usb_device *udev)
+{
+	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+
+	/* Root hubs aren't real devices, so don't free HCD resources */
+	if (hcd->driver->free_dev && udev->parent)
+		hcd->driver->free_dev(hcd, udev);
+}
+
 /**
  * usb_disconnect - disconnect a device (usbcore-internal)
  * @pdev: pointer to device being disconnected
@@ -1623,6 +1632,8 @@ void usb_disconnect(struct usb_device **pdev)
 	spin_unlock_irq(&device_state_lock);
 
 	usb_stop_pm(udev);
+
+	hub_free_dev(udev);
 
 	put_device(&udev->dev);
 }
@@ -3191,6 +3202,7 @@ loop_disable:
 loop:
 		usb_ep0_reinit(udev);
 		release_address(udev);
+		hub_free_dev(udev);
 		usb_put_dev(udev);
 		if ((status == -ENOTCONN) || (status == -ENOTSUPP))
 			break;
@@ -3347,6 +3359,9 @@ static void hub_events(void)
 					USB_PORT_FEAT_C_SUSPEND);
 				udev = hdev->children[i-1];
 				if (udev) {
+					/* TRSMRCY = 10 msec */
+					msleep(10);
+
 					usb_lock_device(udev);
 					ret = remote_wakeup(hdev->
 							children[i-1]);
@@ -3692,19 +3707,14 @@ static int usb_reset_and_verify_device(struct usb_device *udev)
 			usb_enable_interface(udev, intf, true);
 			ret = 0;
 		} else {
-			/* We've just reset the device, so it will think alt
-			 * setting 0 is installed.  For usb_set_interface() to
-			 * work properly, we need to set the current alternate
-			 * interface setting to 0 (or the first alt setting, if
-			 * the device doesn't have alt setting 0).
+			/* Let the bandwidth allocation function know that this
+			 * device has been reset, and it will have to use
+			 * alternate setting 0 as the current alternate setting.
 			 */
-			intf->cur_altsetting =
-				usb_find_alt_setting(config, i, 0);
-			if (!intf->cur_altsetting)
-				intf->cur_altsetting =
-					&config->intf_cache[i]->altsetting[0];
+			intf->resetting_device = 1;
 			ret = usb_set_interface(udev, desc->bInterfaceNumber,
 					desc->bAlternateSetting);
+			intf->resetting_device = 0;
 		}
 		if (ret < 0) {
 			dev_err(&udev->dev, "failed to restore interface %d "

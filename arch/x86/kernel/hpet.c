@@ -34,6 +34,8 @@
  */
 unsigned long				hpet_address;
 u8					hpet_blockid; /* OS timer block num */
+u8					hpet_msi_disable;
+
 #ifdef CONFIG_PCI_MSI
 static unsigned long			hpet_num_timers;
 #endif
@@ -397,9 +399,15 @@ static int hpet_next_event(unsigned long delta,
 	 * then we might have a real hardware problem. We can not do
 	 * much about it here, but at least alert the user/admin with
 	 * a prominent warning.
+	 * An erratum on some chipsets (ICH9,..), results in comparator read
+	 * immediately following a write returning old value. Workaround
+	 * for this is to read this value second time, when first
+	 * read returns old value.
 	 */
-	WARN_ONCE(hpet_readl(HPET_Tn_CMP(timer)) != cnt,
+	if (unlikely((u32)hpet_readl(HPET_Tn_CMP(timer)) != cnt)) {
+		WARN_ONCE(hpet_readl(HPET_Tn_CMP(timer)) != cnt,
 		  KERN_WARNING "hpet: compare register read back failed.\n");
+	}
 
 	return (s32)(hpet_readl(HPET_COUNTER) - cnt) >= 0 ? -ETIME : 0;
 }
@@ -595,6 +603,9 @@ static void hpet_msi_capability_lookup(unsigned int start_timer)
 	unsigned int num_timers;
 	unsigned int num_timers_used = 0;
 	int i;
+
+	if (hpet_msi_disable)
+		return;
 
 	if (boot_cpu_has(X86_FEATURE_ARAT))
 		return;
@@ -928,6 +939,9 @@ static __init int hpet_late_init(void)
 	hpet_reserve_platform_timers(hpet_readl(HPET_ID));
 	hpet_print_config();
 
+	if (hpet_msi_disable)
+		return 0;
+
 	if (boot_cpu_has(X86_FEATURE_ARAT))
 		return 0;
 
@@ -944,7 +958,7 @@ fs_initcall(hpet_late_init);
 
 void hpet_disable(void)
 {
-	if (is_hpet_capable()) {
+	if (is_hpet_capable() && hpet_virt_address) {
 		unsigned int cfg = hpet_readl(HPET_CFG);
 
 		if (hpet_legacy_int_enabled) {

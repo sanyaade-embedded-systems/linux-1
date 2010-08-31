@@ -211,11 +211,9 @@ struct perf_event_attr {
 		__u32		wakeup_watermark; /* bytes before wakeup   */
 	};
 
-	__u32			__reserved_2;
-
-	__u64			bp_addr;
 	__u32			bp_type;
-	__u32			bp_len;
+	__u64			bp_addr;
+	__u64			bp_len;
 };
 
 /*
@@ -498,9 +496,8 @@ struct hw_perf_event {
 	atomic64_t			period_left;
 	u64				interrupts;
 
-	u64				freq_count;
-	u64				freq_interrupts;
-	u64				freq_stamp;
+	u64				freq_time_stamp;
+	u64				freq_count_stamp;
 #endif
 };
 
@@ -647,6 +644,9 @@ struct perf_event {
 	int				pending_kill;
 	int				pending_disable;
 	struct perf_pending_entry	pending;
+#ifdef CONFIG_PREEMPT_RT
+	struct perf_pending_entry	pending_softirq;
+#endif
 
 	atomic_t			event_limit;
 
@@ -755,6 +755,7 @@ extern void perf_event_exit_task(struct task_struct *child);
 extern void perf_event_free_task(struct task_struct *task);
 extern void set_perf_event_pending(void);
 extern void perf_event_do_pending(void);
+extern void perf_event_do_pending_softirq(void);
 extern void perf_event_print_debug(void);
 extern void __perf_disable(void);
 extern bool __perf_enable(void);
@@ -796,6 +797,13 @@ struct perf_sample_data {
 	struct perf_raw_record		*raw;
 };
 
+static inline
+void perf_sample_data_init(struct perf_sample_data *data, u64 addr)
+{
+	data->addr = addr;
+	data->raw  = NULL;
+}
+
 extern void perf_output_sample(struct perf_output_handle *handle,
 			       struct perf_event_header *header,
 			       struct perf_sample_data *data,
@@ -814,9 +822,14 @@ extern int perf_event_overflow(struct perf_event *event, int nmi,
  */
 static inline int is_software_event(struct perf_event *event)
 {
-	return (event->attr.type != PERF_TYPE_RAW) &&
-		(event->attr.type != PERF_TYPE_HARDWARE) &&
-		(event->attr.type != PERF_TYPE_HW_CACHE);
+	switch (event->attr.type) {
+	case PERF_TYPE_SOFTWARE:
+	case PERF_TYPE_TRACEPOINT:
+	/* for now the breakpoint stuff also works as software event */
+	case PERF_TYPE_BREAKPOINT:
+		return 1;
+	}
+	return 0;
 }
 
 extern atomic_t perf_swevent_enabled[PERF_COUNT_SW_MAX];
@@ -880,6 +893,7 @@ static inline int perf_event_init_task(struct task_struct *child)	{ return 0; }
 static inline void perf_event_exit_task(struct task_struct *child)	{ }
 static inline void perf_event_free_task(struct task_struct *task)	{ }
 static inline void perf_event_do_pending(void)				{ }
+static inline void perf_event_do_pending_softirq(void)		{ }
 static inline void perf_event_print_debug(void)				{ }
 static inline void perf_disable(void)					{ }
 static inline void perf_enable(void)					{ }

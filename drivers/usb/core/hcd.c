@@ -141,7 +141,7 @@ static const u8 usb3_rh_dev_descriptor[18] = {
 	0x09,       /*  __u8  bMaxPacketSize0; 2^9 = 512 Bytes */
 
 	0x6b, 0x1d, /*  __le16 idVendor; Linux Foundation */
-	0x02, 0x00, /*  __le16 idProduct; device 0x0002 */
+	0x03, 0x00, /*  __le16 idProduct; device 0x0003 */
 	KERNEL_VER, KERNEL_REL, /*  __le16 bcdDevice */
 
 	0x03,       /*  __u8  iManufacturer; */
@@ -1684,6 +1684,24 @@ int usb_hcd_alloc_bandwidth(struct usb_device *udev,
 		}
 	}
 	if (cur_alt && new_alt) {
+		struct usb_interface *iface = usb_ifnum_to_if(udev,
+				cur_alt->desc.bInterfaceNumber);
+
+		if (iface->resetting_device) {
+			/*
+			 * The USB core just reset the device, so the xHCI host
+			 * and the device will think alt setting 0 is installed.
+			 * However, the USB core will pass in the alternate
+			 * setting installed before the reset as cur_alt.  Dig
+			 * out the alternate setting 0 structure, or the first
+			 * alternate setting if a broken device doesn't have alt
+			 * setting 0.
+			 */
+			cur_alt = usb_altnum_to_altsetting(iface, 0);
+			if (!cur_alt)
+				cur_alt = &iface->altsetting[0];
+		}
+
 		/* Drop all the endpoints in the current alt setting */
 		for (i = 0; i < cur_alt->desc.bNumEndpoints; i++) {
 			ret = hcd->driver->drop_endpoint(hcd, udev,
@@ -1928,7 +1946,7 @@ irqreturn_t usb_hcd_irq (int irq, void *__hcd)
 	 * when the first handler doesn't use it.  So let's just
 	 * assume it's never used.
 	 */
-	local_irq_save(flags);
+	local_irq_save_nort(flags);
 
 	if (unlikely(hcd->state == HC_STATE_HALT ||
 		     !test_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags))) {
@@ -1943,7 +1961,7 @@ irqreturn_t usb_hcd_irq (int irq, void *__hcd)
 		rc = IRQ_HANDLED;
 	}
 
-	local_irq_restore(flags);
+	local_irq_restore_nort(flags);
 	return rc;
 }
 

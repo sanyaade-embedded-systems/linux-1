@@ -349,7 +349,7 @@ void show_registers(const struct pt_regs *regs)
 	printk("\n");
 }
 
-static DEFINE_SPINLOCK(die_lock);
+static DEFINE_RAW_SPINLOCK(die_lock);
 
 void __noreturn die(const char * str, const struct pt_regs * regs)
 {
@@ -359,7 +359,7 @@ void __noreturn die(const char * str, const struct pt_regs * regs)
 #endif /* CONFIG_MIPS_MT_SMTC */
 
 	console_verbose();
-	spin_lock_irq(&die_lock);
+	raw_spin_lock_irq(&die_lock);
 	bust_spinlocks(1);
 #ifdef CONFIG_MIPS_MT_SMTC
 	mips_mt_regdump(dvpret);
@@ -367,7 +367,7 @@ void __noreturn die(const char * str, const struct pt_regs * regs)
 	printk("%s[#%d]:\n", str, ++die_counter);
 	show_registers(regs);
 	add_taint(TAINT_DIE);
-	spin_unlock_irq(&die_lock);
+	raw_spin_unlock_irq(&die_lock);
 
 	if (in_interrupt())
 		panic("Fatal exception in interrupt");
@@ -1403,6 +1403,7 @@ extern void flush_tlb_handlers(void);
  * Timer interrupt
  */
 int cp0_compare_irq;
+int cp0_compare_irq_shift;
 
 /*
  * Performance counter IRQ or -1 if shared with timer
@@ -1493,12 +1494,14 @@ void __cpuinit per_cpu_trap_init(void)
 	 *  o read IntCtl.IPPCI to determine the performance counter interrupt
 	 */
 	if (cpu_has_mips_r2) {
-		cp0_compare_irq = (read_c0_intctl() >> 29) & 7;
-		cp0_perfcount_irq = (read_c0_intctl() >> 26) & 7;
+		cp0_compare_irq_shift = CAUSEB_TI - CAUSEB_IP;
+		cp0_compare_irq = (read_c0_intctl() >> INTCTLB_IPTI) & 7;
+		cp0_perfcount_irq = (read_c0_intctl() >> INTCTLB_IPPCI) & 7;
 		if (cp0_perfcount_irq == cp0_compare_irq)
 			cp0_perfcount_irq = -1;
 	} else {
 		cp0_compare_irq = CP0_LEGACY_COMPARE_IRQ;
+		cp0_compare_irq_shift = cp0_compare_irq;
 		cp0_perfcount_irq = -1;
 	}
 

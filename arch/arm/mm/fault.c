@@ -273,7 +273,7 @@ do_page_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 	 * If we're in an interrupt or have no user
 	 * context, we must not take the fault..
 	 */
-	if (in_atomic() || !mm)
+	if (in_atomic() || !mm || current->pagefault_disabled)
 		goto no_context;
 
 	/*
@@ -385,6 +385,9 @@ do_translation_fault(unsigned long addr, unsigned int fsr,
 
 	if (addr < TASK_SIZE)
 		return do_page_fault(addr, fsr, regs);
+
+	if (user_mode(regs))
+		goto bad_area;
 
 	index = pgd_index(addr);
 
