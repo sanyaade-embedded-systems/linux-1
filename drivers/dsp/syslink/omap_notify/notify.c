@@ -23,6 +23,8 @@
 #include <linux/slab.h>
 #include <asm/pgtable.h>
 
+#include "../ipu_pm/ipu_pm.h"
+
 #include <syslink/atomic_linux.h>
 #include <syslink/multiproc.h>
 #include <syslink/notify.h>
@@ -694,6 +696,15 @@ int notify_send_event(u16 proc_id, u16 line_id, u32 event_id, u32 payload,
 		status = NOTIFY_E_FAIL;
 		goto exit_unlock_mutex;
 	}
+
+#ifdef CONFIG_SYSLINK_DUCATI_PM
+	/* Maybe the proc is shutdown this functions will check and
+	 * restore if needed
+	 */
+	status = ipu_pm_restore_ctx(proc_id);
+	if (status)
+		goto exit_unlock_mutex;
+#endif
 
 	if (proc_id != multiproc_self()) {
 		status = driver_handle->fxn_table.send_event(driver_handle,
