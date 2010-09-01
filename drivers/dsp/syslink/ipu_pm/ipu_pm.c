@@ -16,12 +16,14 @@
 
 #include <generated/autoconf.h>
 #include <linux/kernel.h>
+#include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/mod_devicetable.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
+#include <linux/io.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/uaccess.h>
@@ -42,6 +44,7 @@
 #include <plat/io.h>
 #include <plat/iommu.h>
 #include <plat/mailbox.h>
+#include <plat/remoteproc.h>
 #include <plat/omap-pm.h>
 #include <linux/i2c.h>
 #include <linux/gpio.h>
@@ -65,10 +68,18 @@
 #define APP_M3 1
 #define TESLA 0
 
+#define proc_supported(proc_id) (proc_id == SYS_M3 || proc_id == APP_M3)
+
 #define LINE_ID 0
 #define NUM_SELF_PROC 2
 #define IPU_KFIFO_SIZE 16
 #define PM_VERSION 0x00020000
+
+#define SYSM3_IDLE_FLAG_PHY_ADDR 0x9E0502D8
+#define APPM3_IDLE_FLAG_PHY_ADDR 0x9E0502DC
+
+#define NUM_IDLE_CORES	((__raw_readl(appm3Idle) << 1) + \
+				(__raw_readl(sysm3Idle)))
 
 /** ============================================================================
  *  Forward declarations of internal functions
@@ -230,13 +241,15 @@ static struct ipu_pm_object *pm_handle_appm3;
 static struct ipu_pm_object *pm_handle_sysm3;
 static struct workqueue_struct *ipu_wq;
 static struct pm_qos_request_list *pm_qos_handle;
-static struct iommu *p_iommu;
-struct omap_mbox *p_mbox_1;
-struct omap_mbox *p_mbox_2;
+static struct omap_rproc *sys_rproc;
+static struct omap_rproc *app_rproc;
+static struct omap_mbox *ducati_mbox;
+static struct iommu *ducati_iommu;
+static bool first_time = 1;
+static struct omap_dm_timer *pm_gpt;
 
 /* Ducati Interrupt Capable Gptimers */
 static int ipu_timer_list[NUM_IPU_TIMERS] = {
-	GP_TIMER_3,
 	GP_TIMER_4,
 	GP_TIMER_9,
 	GP_TIMER_11};
@@ -283,6 +296,9 @@ static struct ipu_pm_params pm_params = {
 	.remote_proc_id = -1,
 	.line_id = 0
 } ;
+
+static void __iomem *sysm3Idle;
+static void __iomem *appm3Idle;
 
 /*
   Request a resource on behalf of an IPU client
@@ -600,19 +616,24 @@ void ipu_pm_notify_callback(u16 proc_id, u16 line_id, u32 event_id,
 	/* Get the payload */
 	struct ipu_pm_object *handle;
 	union message_slicer pm_msg;
+	struct ipu_pm_params *params;
+	int retval;
+
 	/* get the handle to proper ipu pm object */
 	handle = ipu_pm_get_handle(proc_id);
 	if (WARN_ON(unlikely(handle == NULL)))
 		return;
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return;
 
 	pm_msg.whole = payload;
-	if (pm_msg.fields.msg_type == PM_HIBERNATE) {
+	if (pm_msg.fields.msg_type == PM_NOTIFY_HIBERNATE) {
 		/* Remote proc requested hibernate */
 		/* Remote Proc is ready to hibernate */
-		handle->rcb_table->state_flag |=
-					REMOTE_PROC_DOWN;
-		pr_info("M3:Saving ctx(0x%x)\n", handle->rcb_table->state_flag);
-		/*TODO: reset IOMMU/SYSM3/APPM3*/
+		retval = ipu_pm_save_ctx(proc_id);
+		if (retval)
+			pr_info("Unable to stop proc %d\n", proc_id);
 	} else {
 		switch (pm_msg.fields.msg_subtype) {
 		case PM_SUSPEND:
@@ -747,10 +768,7 @@ int ipu_pm_notifications(enum pm_event_type event_type, void *data)
 				goto error;
 			else {
 				/*Remote Proc is ready to hibernate*/
-				handle->rcb_table->state_flag |=
-							REMOTE_PROC_DOWN;
-				pr_info("A9:Saving ctx ...\n");
-				/*TODO: reset IOMMU/SYSM3/APPM3*/
+				pm_ack = ipu_pm_save_ctx(proc_id);
 			}
 			break;
 		case PM_PID_DEATH:
@@ -2980,6 +2998,22 @@ exit:
 }
 
 /*
+  Function to get the ducati state flag from Share memory
+ *
+ */
+u32 ipu_pm_get_state(int proc_id)
+{
+	struct ipu_pm_object *handle;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return -EINVAL;
+
+	return handle->rcb_table->state_flag;
+}
+
+/*
   Function to get ipu pm object
  *
  */
@@ -2995,34 +3029,148 @@ struct ipu_pm_object *ipu_pm_get_handle(int proc_id)
 EXPORT_SYMBOL(ipu_pm_get_handle);
 
 /*
-  Function to restore a processor from hibernation
+  Function to save a processor context and send it to hibernate
  *
  */
 int ipu_pm_save_ctx(int proc_id)
 {
-	p_iommu = iommu_get("ducati");
-	p_mbox_1 = omap_mbox_get("mailbox-1");
-	p_mbox_2 = omap_mbox_get("mailbox-2");
-	iommu_save_ctx(p_iommu);
-	omap_mbox_save_ctx(p_mbox_1);
-	omap_mbox_save_ctx(p_mbox_2);
+	int retval = 0;
+	int flag;
+	int num_loaded_cores = 0;
+	int sys_loaded;
+	int app_loaded;
+	unsigned long timeout;
+	struct ipu_pm_object *handle;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return -EINVAL;
+
+	/* Check if the M3 was loaded */
+	sys_loaded = (ipu_pm_get_state(proc_id) & SYS_PROC_LOADED) >>
+								PROC_LD_SHIFT;
+	app_loaded = (ipu_pm_get_state(proc_id) & APP_PROC_LOADED) >>
+								PROC_LD_SHIFT;
+
+	/* Because of the current scheme, we need to check
+	 * if APPM3 is enable and we need to shut it down too
+	 * Sysm3 is the only want sending the hibernate message
+	*/
+	mutex_lock(ipu_pm_state.gate_handle);
+	if (proc_id == SYS_M3 || proc_id == APP_M3) {
+		if (!sys_loaded)
+			goto exit;
+
+		num_loaded_cores = app_loaded + sys_loaded;
+
+		flag = 1;
+		timeout = jiffies + msecs_to_jiffies(WAIT_FOR_IDLE_TIMEOUT);
+		/* Wait fot Ducati to hibernate */
+		do {
+			/* Checking if IPU is really in idle */
+			if (NUM_IDLE_CORES == num_loaded_cores) {
+				flag = 0;
+				break;
+			}
+		} while (!time_after(jiffies, timeout));
+		if (flag)
+			goto error;
+
+		/* Check for APPM3, if loaded reset first */
+		if (app_loaded) {
+			retval = rproc_stop(app_rproc);
+			if (retval)
+				goto error;
+			handle->rcb_table->state_flag |= APP_PROC_DOWN;
+		}
+		retval = rproc_stop(sys_rproc);
+		if (retval)
+			goto error;
+		handle->rcb_table->state_flag |= SYS_PROC_DOWN;
+		omap_mbox_save_ctx(ducati_mbox);
+		iommu_save_ctx(ducati_iommu);
+	} else
+		goto error;
+exit:
+	mutex_unlock(ipu_pm_state.gate_handle);
 	return 0;
+error:
+	mutex_unlock(ipu_pm_state.gate_handle);
+	pr_info("Aborting hibernation process\n");
+	return -EINVAL;
 }
 EXPORT_SYMBOL(ipu_pm_save_ctx);
 
 /*
-  Function to save a processor before hibernation
+  Function to check if a processor is shutdown
+  if shutdown then restore context else return.
  *
  */
 int ipu_pm_restore_ctx(int proc_id)
 {
-	p_iommu = iommu_get("ducati");
-	p_mbox_1 = omap_mbox_get("mailbox-1");
-	p_mbox_2 = omap_mbox_get("mailbox-2");
-	iommu_restore_ctx(p_iommu);
-	omap_mbox_restore_ctx(p_mbox_1);
-	omap_mbox_restore_ctx(p_mbox_2);
+	int retval = 0;
+	int sys_loaded;
+	int app_loaded;
+	struct ipu_pm_object *handle;
+
+	/*If feature not supported by proc, return*/
+	if (!proc_supported(proc_id))
+		return 0;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+
+	if (WARN_ON(unlikely(handle == NULL)))
+		return -EINVAL;
+
+	/* By default Ducati Hibernation is disable
+	 * enabling just the first time and if
+	 * CONFIG_SYSLINK_DUCATI_PM is defined
+	*/
+	if (first_time) {
+		handle->rcb_table->state_flag |= ENABLE_IPU_HIB;
+		handle->rcb_table->pm_flags.hibernateAllowed = 1;
+		first_time = 0;
+	}
+
+	/* Check if the M3 was loaded */
+	sys_loaded = (ipu_pm_get_state(proc_id) & SYS_PROC_LOADED) >>
+								PROC_LD_SHIFT;
+	app_loaded = (ipu_pm_get_state(proc_id) & APP_PROC_LOADED) >>
+								PROC_LD_SHIFT;
+
+	/* Because of the current scheme, we need to check
+	 * if APPM3 is enable and we need to enable it too
+	 * In both cases we should check if for both cores
+	 * and enable them if they were loaded.
+	*/
+	mutex_lock(ipu_pm_state.gate_handle);
+	if (proc_id == SYS_M3 || proc_id == APP_M3) {
+		if (!(ipu_pm_get_state(proc_id) & SYS_PROC_DOWN))
+			goto exit;
+
+		omap_mbox_restore_ctx(ducati_mbox);
+		iommu_restore_ctx(ducati_iommu);
+		retval = rproc_start(sys_rproc, NULL);
+		if (retval)
+			goto error;
+		handle->rcb_table->state_flag &= ~SYS_PROC_DOWN;
+		if (ipu_pm_get_state(proc_id) & APP_PROC_LOADED) {
+			retval = rproc_start(app_rproc, NULL);
+			if (retval)
+				goto error;
+			handle->rcb_table->state_flag &= ~APP_PROC_DOWN;
+		}
+	} else
+		goto error;
+exit:
+	mutex_unlock(ipu_pm_state.gate_handle);
 	return 0;
+error:
+	mutex_unlock(ipu_pm_state.gate_handle);
+	pr_info("Aborting restoring process\n");
+	return -EINVAL;
 }
 EXPORT_SYMBOL(ipu_pm_restore_ctx);
 
@@ -3037,7 +3185,6 @@ int ipu_pm_module_start(unsigned res_type)
 
 /*
   Function to stop a module
-
  *
  */
 int ipu_pm_module_stop(unsigned res_type)
@@ -3121,11 +3268,45 @@ int ipu_pm_setup(struct ipu_pm_config *cfg)
 	/* No proc attached yet */
 	pm_handle_appm3 = NULL;
 	pm_handle_sysm3 = NULL;
+	ducati_iommu = NULL;
+	ducati_mbox = NULL;
+	sys_rproc = NULL;
+	app_rproc = NULL;
+
+	/* Get mailbox and iommu to save/restore */
+	/* FIXME: This is not ready for Tesla */
+	ducati_mbox = omap_mbox_get("mailbox-2", NULL);
+	if (ducati_mbox == NULL) {
+		retval = -ENOMEM;
+		goto exit;
+	}
+	ducati_iommu = iommu_get("ducati");
+	if (ducati_iommu == NULL) {
+		retval = -ENOMEM;
+		goto exit;
+	}
 
 	memcpy(&ipu_pm_state.cfg, cfg, sizeof(struct ipu_pm_config));
 	ipu_pm_state.is_setup = true;
-	return retval;
 
+	sysm3Idle = ioremap(SYSM3_IDLE_FLAG_PHY_ADDR, sizeof(int));
+	if (!sysm3Idle) {
+		retval = -ENOMEM;
+		goto exit;
+	}
+
+	appm3Idle = ioremap(APPM3_IDLE_FLAG_PHY_ADDR, sizeof(int));
+
+	if (!appm3Idle) {
+		retval = -ENOMEM;
+		goto exit;
+	}
+
+	pm_gpt = omap_dm_timer_request_specific(GP_TIMER_3);
+	if (pm_gpt == NULL)
+		retval = -EINVAL;
+
+	return retval;
 exit:
 	pr_err("ipu_pm_setup failed! retval = 0x%x", retval);
 	return retval;
@@ -3158,6 +3339,21 @@ int ipu_pm_attach(u16 remote_proc_id, void *shared_addr)
 	}
 
 	retval = ipu_pm_init_transport(handle);
+
+	/* Get remote processor handle to save/restore */
+	if (remote_proc_id == SYS_M3) {
+		sys_rproc = omap_rproc_get("ducati-proc0");
+		if (sys_rproc == NULL) {
+			retval = -ENOMEM;
+			goto exit;
+		}
+	} else if (remote_proc_id == APP_M3) {
+		app_rproc = omap_rproc_get("ducati-proc1");
+		if (app_rproc == NULL) {
+			retval = -ENOMEM;
+			goto exit;
+		}
+	}
 
 	if (retval < 0)
 		goto exit;
@@ -3219,6 +3415,13 @@ int ipu_pm_detach(u16 remote_proc_id)
 
 	/* Deleting the handle based on remote_proc_id */
 	ipu_pm_delete(handle);
+	if (remote_proc_id == SYS_M3) {
+		omap_rproc_put(sys_rproc);
+		sys_rproc = NULL;
+	} else if (remote_proc_id == APP_M3) {
+		omap_rproc_put(app_rproc);
+		app_rproc = NULL;
+	}
 	return retval;
 exit:
 	pr_err("ipu_pm_detach failed handle null retval 0x%x", retval);
@@ -3265,8 +3468,14 @@ int ipu_pm_destroy(void)
 	kfree(lock);
 	/* Delete the wq for req/rel resources */
 	destroy_workqueue(ipu_wq);
-	return retval;
 
+	omap_mbox_put(ducati_mbox, NULL);
+	ducati_mbox = NULL;
+	iommu_put(ducati_iommu);
+	ducati_iommu = NULL;
+	first_time = 1;
+	omap_dm_timer_free(pm_gpt);
+	return retval;
 exit:
 	if (retval < 0) {
 		pr_err("ipu_pm_destroy failed, retval: %x\n", retval);

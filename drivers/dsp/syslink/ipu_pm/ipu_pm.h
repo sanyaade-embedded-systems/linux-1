@@ -175,8 +175,33 @@
  *  Unique module ID
  */
 #define IPU_PM_MODULEID      (0x6A6A)
+
 /* A9 state flag 0000 | 0000 Ducati internal use*/
-#define REMOTE_PROC_DOWN      0x00010000
+#define SYS_PROC_DOWN		0x00010000
+#define APP_PROC_DOWN		0x00020000
+#define ENABLE_IPU_HIB		0x00000040
+
+#define SYS_PROC_IDLING		0x00000001
+#define APP_PROC_IDLING		0x00000002
+
+#define SYS_PROC_LOADED		0x00000010
+#define APP_PROC_LOADED		0x00000020
+#define IPU_PROC_LOADED		0x00000030
+#define PROC_LD_SHIFT		4u
+
+#define IPU_PROC_IDLING		0x0000c000
+#define IPU_IDLING_SHIFT	14u
+
+#define SYS_IDLING_BIT		14
+#define APP_IDLING_BIT		15
+
+#define SYS_LOADED_BIT		4
+#define APP_LOADED_BIT		5
+
+#define ONLY_APPM3_IDLE		0x2
+#define ONLY_SYSM3_IDLE		0x1
+#define ALL_CORES_IDLE		0x3
+#define WAIT_FOR_IDLE_TIMEOUT	40u
 
 /* Macro to make a correct module magic number with refCount */
 #define IPU_PM_MAKE_MAGICSTAMP(x) ((IPU_PM_MODULEID << 12u) | (x))
@@ -260,6 +285,18 @@ union message_slicer {
 	int whole;
 };
 
+struct ipu_pm_override {
+	unsigned hibernateAllowed:1;
+	unsigned retentionAllowed:1;
+	unsigned inactiveAllowed:1;
+	unsigned cmAutostateAllowed:1;
+	unsigned deepSleepAllowed:1;
+	unsigned wfiAllowed:1;
+	unsigned idleAllowed:1;
+	unsigned reserved:24;
+	unsigned highbit:1;
+};
+
 struct rcb_block {
 	unsigned rcb_num:6;
 	unsigned msg_type:4;
@@ -287,6 +324,8 @@ struct sms {
 	unsigned pm_version;
 	unsigned gp_msg;
 	unsigned state_flag;
+	struct ipu_pm_override pm_flags;
+	unsigned hib_time;
 	struct rcb_block rcb[RCB_MAX];
 };
 
@@ -416,5 +455,8 @@ int ipu_pm_module_start(unsigned res_type);
 
 /* Function to stop a module */
 int ipu_pm_module_stop(unsigned res_type);
+
+/* Function to get ducati state flag from share memory */
+u32 ipu_pm_get_state(int proc_id);
 
 #endif
