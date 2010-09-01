@@ -1335,6 +1335,9 @@ int ipc_stop(void)
 		sharedregion_unreserve_memory(0,
 			gatemp_shared_mem_req(&gatemp_params));
 
+		/* must unreserve memory for PM before sharedregion_stop() */
+		sharedregion_unreserve_memory(0, ipu_pm_mem_req(NULL));
+
 		/* Delete heapmemmp in each sharedregion */
 		status = sharedregion_stop();
 		if (status < 0) {
@@ -1351,6 +1354,7 @@ int ipc_stop(void)
 			goto exit;
 		}
 
+		ipc_module->ipu_pm_shared_addr = NULL;
 		ipc_module->gatemp_shared_addr = NULL;
 		ipc_module->ipc_shared_addr = NULL;
 	}

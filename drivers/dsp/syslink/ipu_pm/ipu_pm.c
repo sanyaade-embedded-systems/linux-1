@@ -3358,6 +3358,10 @@ int ipu_pm_attach(u16 remote_proc_id, void *shared_addr)
 	if (retval < 0)
 		goto exit;
 
+	/* FIXME the physical address should be calculated */
+	pr_info("ipu_pm_attach at va0x%x pa0x9cf00400\n",
+			(unsigned int)shared_addr);
+
 	return retval;
 exit:
 	pr_err("ipu_pm_attach failed! retval = 0x%x", retval);
