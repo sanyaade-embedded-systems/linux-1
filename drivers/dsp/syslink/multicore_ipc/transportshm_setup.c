@@ -34,6 +34,7 @@
 #include <listmp.h>
 #include <gatemp.h>
 #include <transportshm.h>
+#include <transportshm_setup.h>
 
 /* =============================================================================
  * Structures & Enums

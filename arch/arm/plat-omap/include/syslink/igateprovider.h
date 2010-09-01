@@ -93,7 +93,7 @@ struct igateprovider_object {
  */
 static inline int *igateprovider_enter(struct igateprovider_object *handle)
 {
-	int *key = 0;
+	int *key = NULL;
 
 	if (handle != IGATEPROVIDER_NULL)
 		key = (handle->enter)((void *)handle);

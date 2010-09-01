@@ -82,7 +82,7 @@ struct heapbufmp_module_object {
 						creation parameters */
 };
 
-struct heapbufmp_module_object heapbufmp_state = {
+static struct heapbufmp_module_object heapbufmp_state = {
 	.obj_list = LIST_HEAD_INIT(heapbufmp_state.obj_list),
 	.default_cfg.max_name_len = HEAPBUFMP_MAX_NAME_LEN,
 	.default_cfg.max_runtime_entries = HEAPBUFMP_MAX_RUNTIME_ENTRIES,
@@ -359,7 +359,8 @@ EXPORT_SYMBOL(heapbufmp_params_init);
  *  used by heapbufmp is provided by the consumer of
  *  heapbufmp module
  */
-int _heapbufmp_create(void **handle_ptr, const struct heapbufmp_params *params,
+static int _heapbufmp_create(void **handle_ptr,
+				const struct heapbufmp_params *params,
 				u32 create_flag)
 {
 	s32 retval  = 0;
@@ -1446,7 +1447,7 @@ error:
  *  Slice and dice the buffer up into the correct size blocks and
  *  add to the freelist.
  */
-int heapbufmp_post_init(struct heapbufmp_object *handle)
+static int heapbufmp_post_init(struct heapbufmp_object *handle)
 {
 	s32 retval = 0;
 	char *buf = NULL;

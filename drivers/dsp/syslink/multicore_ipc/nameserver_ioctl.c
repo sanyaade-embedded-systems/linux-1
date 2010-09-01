@@ -110,8 +110,8 @@ static int nameserver_ioctl_params_init(struct nameserver_cmd_args *cargs)
 	ulong size;
 
 	nameserver_params_init(&params);
-	size = copy_to_user(cargs->args.params_init.params, &params,
-				sizeof(struct nameserver_params));
+	size = copy_to_user((void __user *)cargs->args.params_init.params,
+				&params, sizeof(struct nameserver_params));
 	if (size)
 		status = -EFAULT;
 	cargs->api_status = 0;
@@ -138,7 +138,7 @@ static int nameserver_ioctl_get_handle(struct nameserver_cmd_args *cargs)
 	}
 
 	name[cargs->args.get_handle.name_len] = '\0';
-	size = copy_from_user(name, cargs->args.get_handle.name,
+	size = copy_from_user(name, (void __user *)cargs->args.get_handle.name,
 				cargs->args.get_handle.name_len);
 	if (size) {
 		status = -EFAULT;
@@ -177,14 +177,14 @@ static int nameserver_ioctl_create(struct nameserver_cmd_args *cargs)
 	}
 
 	name[cargs->args.get_handle.name_len] = '\0';
-	size = copy_from_user(name, cargs->args.create.name,
+	size = copy_from_user(name, (void __user *)cargs->args.create.name,
 				cargs->args.create.name_len);
 	if (size) {
 		status = -EFAULT;
 		goto copy_from_usr_error;
 	}
 
-	size = copy_from_user(&params, cargs->args.create.params,
+	size = copy_from_user(&params, (void __user *)cargs->args.create.params,
 				sizeof(struct nameserver_params));
 	if (size) {
 		status = -EFAULT;
@@ -237,7 +237,7 @@ static int nameserver_ioctl_add(struct nameserver_cmd_args *cargs)
 	}
 
 	name[cargs->args.get_handle.name_len] = '\0';
-	size = copy_from_user(name, cargs->args.add.name,
+	size = copy_from_user(name, (void __user *)cargs->args.add.name,
 				cargs->args.add.name_len);
 	if (size) {
 		status = -EFAULT;
@@ -250,7 +250,7 @@ static int nameserver_ioctl_add(struct nameserver_cmd_args *cargs)
 		goto buf_alloc_error;
 	}
 
-	size = copy_from_user(buf, cargs->args.add.buf,
+	size = copy_from_user(buf, (void __user *)cargs->args.add.buf,
 					cargs->args.add.len);
 	if (size) {
 		status = -EFAULT;
@@ -295,7 +295,7 @@ static int nameserver_ioctl_add_uint32(struct nameserver_cmd_args *cargs)
 	}
 
 	name[cargs->args.get_handle.name_len] = '\0';
-	size = copy_from_user(name, cargs->args.addu32.name,
+	size = copy_from_user(name, (void __user *)cargs->args.addu32.name,
 				cargs->args.addu32.name_len);
 	if (size) {
 		status = -EFAULT;
@@ -335,7 +335,7 @@ static int nameserver_ioctl_match(struct nameserver_cmd_args *cargs)
 	}
 
 	name[cargs->args.get_handle.name_len] = '\0';
-	size = copy_from_user(name, cargs->args.match.name,
+	size = copy_from_user(name, (void __user *)cargs->args.match.name,
 				cargs->args.match.name_len);
 	if (size) {
 		status = -EFAULT;
@@ -372,7 +372,7 @@ static int nameserver_ioctl_remove(struct nameserver_cmd_args *cargs)
 	}
 
 	name[cargs->args.get_handle.name_len] = '\0';
-	size = copy_from_user(name, cargs->args.remove.name,
+	size = copy_from_user(name, (void __user *)cargs->args.remove.name,
 				cargs->args.remove.name_len);
 	if (size) {
 		status = -EFAULT;
@@ -430,7 +430,7 @@ static int nameserver_ioctl_get_local(struct nameserver_cmd_args *cargs)
 		goto value_alloc_error;
 	}
 
-	size = copy_from_user(name, cargs->args.get_local.name,
+	size = copy_from_user(name, (void __user *)cargs->args.get_local.name,
 				cargs->args.get_local.name_len);
 	if (size) {
 		status = -EFAULT;
@@ -440,7 +440,7 @@ static int nameserver_ioctl_get_local(struct nameserver_cmd_args *cargs)
 	cargs->api_status = nameserver_get_local(
 					cargs->args.get_local.handle, name,
 					value, &cargs->args.get_local.len);
-	size = copy_to_user(cargs->args.get_local.value, value,
+	size = copy_to_user((void __user *)cargs->args.get_local.value, value,
 				cargs->args.get_local.len);
 	if (size)
 		status = -EFAULT;
@@ -491,14 +491,14 @@ static int nameserver_ioctl_get(struct nameserver_cmd_args *cargs)
 		}
 	}
 
-	size = copy_from_user(name, cargs->args.get.name,
+	size = copy_from_user(name, (void __user *)cargs->args.get.name,
 				cargs->args.get.name_len);
 	if (size) {
 		status = -EFAULT;
 		goto name_from_usr_error;
 	}
 
-	status = copy_from_user(proc_id, cargs->args.get.proc_id,
+	status = copy_from_user(proc_id, (void __user *)cargs->args.get.proc_id,
 					cargs->args.get.proc_len);
 	if (size) {
 		status = -EFAULT;
@@ -507,7 +507,7 @@ static int nameserver_ioctl_get(struct nameserver_cmd_args *cargs)
 
 	cargs->api_status = nameserver_get(cargs->args.get.handle, name, value,
 					&cargs->args.get.len, proc_id);
-	size = copy_to_user(cargs->args.get.value, value,
+	size = copy_to_user((void __user *)cargs->args.get.value, value,
 				cargs->args.get.len);
 	if (size)
 		status = -EFAULT;

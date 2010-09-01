@@ -60,7 +60,7 @@ static inline void _gate_leave_system(struct gate_object *obj, int *key)
 	gate_leave_system(key);
 }
 
-struct gate_object gate_system_object = {
+static struct gate_object gate_system_object = {
 	.enter = (int *(*)(void *))_gate_enter_system,
 	.leave = (void (*)(void *, int *))_gate_leave_system,
 };

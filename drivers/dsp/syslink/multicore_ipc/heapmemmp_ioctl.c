@@ -129,8 +129,8 @@ static int heapmemmp_ioctl_params_init(struct heapmemmp_cmd_args *cargs)
 
 	heapmemmp_params_init(&params);
 	cargs->api_status = 0;
-	size = copy_to_user(cargs->args.params_init.params, &params,
-				sizeof(struct heapmemmp_params));
+	size = copy_to_user((void __user *)cargs->args.params_init.params,
+				&params, sizeof(struct heapmemmp_params));
 	if (size)
 		status = -EFAULT;
 
@@ -149,7 +149,7 @@ static int heapmemmp_ioctl_create(struct heapmemmp_cmd_args *cargs)
 	u32 size;
 	void *handle = NULL;
 
-	size = copy_from_user(&params, cargs->args.create.params,
+	size = copy_from_user(&params, (void __user *)cargs->args.create.params,
 				sizeof(struct heapmemmp_params));
 	if (size) {
 		status = -EFAULT;
@@ -165,8 +165,8 @@ static int heapmemmp_ioctl_create(struct heapmemmp_cmd_args *cargs)
 
 		params.name[cargs->args.create.name_len] = '\0';
 		size = copy_from_user(params.name,
-					cargs->args.create.params->name,
-					cargs->args.create.name_len);
+				(void __user *)cargs->args.create.params->name,
+				cargs->args.create.name_len);
 		if (size) {
 			status = -EFAULT;
 			goto name_from_usr_error;
@@ -219,7 +219,8 @@ static int heapmemmp_ioctl_open(struct heapmemmp_cmd_args *cargs)
 			goto exit;
 		}
 
-		size = copy_from_user(name, cargs->args.open.name,
+		size = copy_from_user(name,
+					(void __user *)cargs->args.open.name,
 					cargs->args.open.name_len);
 		if (size) {
 			status = -EFAULT;
@@ -277,8 +278,9 @@ static int heapmemmp_ioctl_shared_mem_req(struct heapmemmp_cmd_args *cargs)
 	ulong size;
 	u32 bytes;
 
-	size = copy_from_user(&params, cargs->args.shared_mem_req.params,
-					sizeof(struct heapmemmp_params));
+	size = copy_from_user(&params,
+			(void __user *)cargs->args.shared_mem_req.params,
+			sizeof(struct heapmemmp_params));
 	if (size) {
 		status = -EFAULT;
 		goto exit;
@@ -308,8 +310,8 @@ static int heapmemmp_ioctl_get_config(struct heapmemmp_cmd_args *cargs)
 	ulong size;
 
 	cargs->api_status = heapmemmp_get_config(&config);
-	size = copy_to_user(cargs->args.get_config.config, &config,
-					sizeof(struct heapmemmp_config));
+	size = copy_to_user((void __user *)cargs->args.get_config.config,
+				&config, sizeof(struct heapmemmp_config));
 	if (size)
 		status = -EFAULT;
 
@@ -327,7 +329,7 @@ static int heapmemmp_ioctl_setup(struct heapmemmp_cmd_args *cargs)
 	s32 status = 0;
 	ulong size;
 
-	size = copy_from_user(&config, cargs->args.setup.config,
+	size = copy_from_user(&config, (void __user *)cargs->args.setup.config,
 					sizeof(struct heapmemmp_config));
 	if (size) {
 		status = -EFAULT;
@@ -365,7 +367,7 @@ static int heapmemmp_ioctl_get_stats(struct heapmemmp_cmd_args *cargs)
 	heapmemmp_get_stats(cargs->args.get_stats.handle, &stats);
 	cargs->api_status = 0;
 
-	size = copy_to_user(cargs->args.get_stats.stats, &stats,
+	size = copy_to_user((void __user *)cargs->args.get_stats.stats, &stats,
 					sizeof(struct memory_stats));
 	if (size)
 		status = -EFAULT;
@@ -388,7 +390,8 @@ static int heapmemmp_ioctl_get_extended_stats(struct heapmemmp_cmd_args *cargs)
 								&stats);
 	cargs->api_status = 0;
 
-	size = copy_to_user(cargs->args.get_extended_stats.stats, &stats,
+	size = copy_to_user((void __user *)cargs->args.get_extended_stats.stats,
+				&stats,
 				sizeof(struct heapmemmp_extended_stats));
 	if (size)
 		status = -EFAULT;

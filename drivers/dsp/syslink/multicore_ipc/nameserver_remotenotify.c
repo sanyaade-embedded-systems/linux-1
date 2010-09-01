@@ -118,7 +118,7 @@ static struct nameserver_remotenotify_module_object
 	.gate_handle = NULL,
 	.def_cfg.notify_event_id = 1u,
 	.def_inst_params.gatemp = NULL,
-	.def_inst_params.shared_addr = 0x0,
+	.def_inst_params.shared_addr = NULL,
 };
 
 static void _nameserver_remotenotify_callback(u16 proc_id, u16 line_id,
@@ -418,7 +418,7 @@ int nameserver_remotenotify_get(void *rhandle, const char *instance_name,
 		retval = -EINVAL;
 		goto exit;
 	}
-	if (WARN_ON(unlikely(value_len == 0))) {
+	if (WARN_ON(unlikely(value_len == NULL))) {
 		retval = -EINVAL;
 		goto exit;
 	}
@@ -781,7 +781,7 @@ exit:
 	return retval;
 }
 
-void *_nameserver_remotenotify_get_handle(u16 remote_proc_id)
+static void *_nameserver_remotenotify_get_handle(u16 remote_proc_id)
 {
 	void *handle = NULL;
 

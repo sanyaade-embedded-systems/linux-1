@@ -65,7 +65,7 @@ static int mproc_ioctl_setup(struct multiproc_cmd_args *cargs)
 	ulong size;
 
 	size = copy_from_user(&config,
-				cargs->args.setup.config,
+				(void __user *)cargs->args.setup.config,
 				sizeof(struct multiproc_config));
 	if (size) {
 		status = -EFAULT;
@@ -102,8 +102,8 @@ static int mproc_ioctl_get_config(struct multiproc_cmd_args *cargs)
 	u32 size;
 
 	multiproc_get_config(&config);
-	size = copy_to_user(cargs->args.get_config.config, &config,
-				sizeof(struct multiproc_config));
+	size = copy_to_user((void __user *)cargs->args.get_config.config,
+				&config, sizeof(struct multiproc_config));
 	if (size) {
 		cargs->api_status = -EFAULT;
 		return 0;

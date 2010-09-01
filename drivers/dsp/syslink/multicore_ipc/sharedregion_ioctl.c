@@ -80,8 +80,8 @@ static int sharedregion_ioctl_get_config(struct sharedregion_cmd_args *cargs)
 	s32 size;
 
 	sharedregion_get_config(&config);
-	size = copy_to_user(cargs->args.get_config.config, &config,
-				sizeof(struct sharedregion_config));
+	size = copy_to_user((void __user *)cargs->args.get_config.config,
+			&config, sizeof(struct sharedregion_config));
 	if (size)
 		status = -EFAULT;
 
@@ -99,7 +99,7 @@ static int sharedregion_ioctl_setup(struct sharedregion_cmd_args *cargs)
 	s32 status = 0;
 	s32 size;
 
-	size = copy_from_user(&config, cargs->args.setup.config,
+	size = copy_from_user(&config, (void __user *)cargs->args.setup.config,
 				sizeof(struct sharedregion_config));
 	if (size) {
 		status = -EFAULT;
@@ -128,7 +128,7 @@ static int sharedregion_ioctl_setup(struct sharedregion_cmd_args *cargs)
 				status = -ENOMEM;
 				goto exit;
 			}
-			size = copy_to_user((void *)
+			size = copy_to_user((void __user *)
 					&(cargs->args.setup.regions[i]),
 					&region,
 					sizeof(struct sharedregion_region));
@@ -288,18 +288,20 @@ static int sharedregion_ioctl_get_region_info(
 				goto exit;
 			}
 
-			size = copy_to_user(&(cargs->args.setup.regions[i]),
-					&region,
-					sizeof(struct sharedregion_region));
+			size = copy_to_user(
+				(void __user *)&(cargs->args.setup.regions[i]),
+				&region,
+				sizeof(struct sharedregion_region));
 			if (size) {
 				status = -EFAULT;
 				goto exit;
 			}
 		} else {
 			region.entry.base = NULL;
-			size = copy_to_user(&(cargs->args.setup.regions[i]),
-					&region,
-					sizeof(struct sharedregion_region));
+			size = copy_to_user(
+				(void __user *)&(cargs->args.setup.regions[i]),
+				&region,
+				sizeof(struct sharedregion_region));
 			if (size) {
 				status = -EFAULT;
 				goto exit;

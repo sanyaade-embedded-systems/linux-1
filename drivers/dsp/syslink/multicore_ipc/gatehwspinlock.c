@@ -72,7 +72,7 @@ struct gatehwspinlock_object {
 /*
  *  Variable for holding state of the gatehwspinlock module
  */
-struct gatehwspinlock_module_object gatehwspinlock_state = {
+static struct gatehwspinlock_module_object gatehwspinlock_state = {
 	.default_cfg.default_protection	= \
 					gatehwspinlock_LOCALPROTECT_INTERRUPT,
 	.default_cfg.num_locks		= 32u,
@@ -95,7 +95,7 @@ static struct gatehwspinlock_module_object *gatehwspinlock_module =
  */
 
 /* TODO: figure these out */
-#define gate_enter_system() 0
+#define gate_enter_system() (int *)0
 #define gate_leave_system(key) {}
 
 /* =============================================================================
@@ -110,7 +110,7 @@ static struct gatehwspinlock_module_object *gatehwspinlock_module =
  */
 void gatehwspinlock_get_config(struct gatehwspinlock_config *config)
 {
-	int *key = 0;
+	int *key = NULL;
 
 	if (WARN_ON(config == NULL))
 		goto exit;
@@ -139,7 +139,7 @@ EXPORT_SYMBOL(gatehwspinlock_get_config);
 int gatehwspinlock_setup(const struct gatehwspinlock_config *config)
 {
 	struct gatehwspinlock_config tmp_cfg;
-	int *key = 0;
+	int *key = NULL;
 	struct hwspinlock *lock_handle;
 	int i;
 	s32 retval;
@@ -214,7 +214,7 @@ EXPORT_SYMBOL(gatehwspinlock_setup);
 int gatehwspinlock_destroy(void)
 {
 	s32 retval = 0;
-	int *key = 0;
+	int *key = NULL;
 	struct hwspinlock *lock_handle;
 	int i;
 
@@ -304,7 +304,7 @@ EXPORT_SYMBOL(gatehwspinlock_locks_init);
  */
 void gatehwspinlock_params_init(struct gatehwspinlock_params *params)
 {
-	int *key = 0;
+	int *key = NULL;
 
 	key = gate_enter_system();
 
@@ -362,7 +362,8 @@ void *gatehwspinlock_create(enum igatempsupport_local_protect local_protect,
 	IGATEPROVIDER_OBJECTINITIALIZER(obj, gatehwspinlock);
 
 	/* Create the local gate */
-	obj->local_gate = gatemp_create_local(local_protect);
+	obj->local_gate =
+		gatemp_create_local((enum gatemp_local_protect)local_protect);
 	if (obj->local_gate == NULL) {
 		retval = GATEHWSPINLOCK_E_FAIL;
 		goto free_obj;
@@ -441,7 +442,7 @@ int *gatehwspinlock_enter(void *gphandle)
 {
 	struct gatehwspinlock_object *obj = NULL;
 	s32 retval = 0;
-	int *key = 0;
+	int *key = NULL;
 
 	if (WARN_ON(atomic_cmpmask_and_lt(&(gatehwspinlock_module->ref_count),
 				GATEHWSPINLOCK_MAKE_MAGICSTAMP(0),
@@ -530,7 +531,7 @@ EXPORT_SYMBOL(gatehwspinlock_leave);
 /*
  *  ======== gatehwspinlock_get_resource_id ========
  */
-u32 gatehwspinlock_get_resource_id(void *handle)
+static u32 gatehwspinlock_get_resource_id(void *handle)
 {
 	struct gatehwspinlock_object *obj = NULL;
 	s32 retval = 0;

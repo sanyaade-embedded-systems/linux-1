@@ -58,7 +58,7 @@ struct heapmemmp_proc_attrs {
 struct heapmemmp_header {
     u32 *next; /* SRPtr to next header */
     u32 size; /* Size of this segment */
-} heapmemmp_header;
+};
 
 /*
  *  Structure defining attribute parameters for the heapmemmp module
@@ -84,7 +84,7 @@ struct heapmemmp_module_object {
 						creation parameters */
 };
 
-struct heapmemmp_module_object heapmemmp_state = {
+static struct heapmemmp_module_object heapmemmp_state = {
 	.obj_list = LIST_HEAD_INIT(heapmemmp_state.obj_list),
 	.default_cfg.max_name_len = HEAPMEMMP_MAX_NAME_LEN,
 	.default_cfg.max_runtime_entries = HEAPMEMMP_MAX_RUNTIME_ENTRIES,
@@ -344,7 +344,8 @@ EXPORT_SYMBOL(heapmemmp_params_init);
  *  used by heapmemmp is provided by the consumer of
  *  heapmemmp module
  */
-int _heapmemmp_create(void **handle_ptr, const struct heapmemmp_params *params,
+static int _heapmemmp_create(void **handle_ptr,
+				const struct heapmemmp_params *params,
 				u32 create_flag)
 {
 	s32 retval  = 0;
@@ -598,7 +599,7 @@ int heapmemmp_delete(void **handle_ptr)
 	struct heapmemmp_params *params = NULL;
 	struct heapmemmp_object *region_heap = NULL;
 	s32 retval = 0;
-	int *key = 0;
+	int *key = NULL;
 
 	if (atomic_cmpmask_and_lt(&(heapmemmp_module->ref_count),
 				HEAPMEMMP_MAKE_MAGICSTAMP(0),
@@ -869,7 +870,7 @@ void *heapmemmp_alloc(void *hphandle, u32 size, u32 align)
 	char *alloc_addr = NULL;
 	struct heapmemmp_object *handle = NULL;
 	struct heapmemmp_obj *obj = NULL;
-	int *key = 0;
+	int *key = NULL;
 	struct heapmemmp_header *prev_header;
 	struct heapmemmp_header *new_header;
 	struct heapmemmp_header *cur_header;
@@ -996,7 +997,7 @@ void *heapmemmp_alloc(void *hphandle, u32 size, u32 align)
 		 * obj->min_align
 		 */
 		if (((remain_size & (obj->min_align - 1)) != 0)) {
-			alloc_addr = (u32) NULL;
+			alloc_addr = NULL;
 			break;
 		}
 		/*
@@ -1118,7 +1119,7 @@ int heapmemmp_free(void *hphandle, void *addr, u32 size)
 	struct heapmemmp_object *handle = NULL;
 	s32 retval = 0;
 	struct heapmemmp_obj *obj = NULL;
-	int *key = 0;
+	int *key = NULL;
 	struct heapmemmp_header *next_header;
 	struct heapmemmp_header *new_header;
 	struct heapmemmp_header *cur_header;
@@ -1281,7 +1282,7 @@ void heapmemmp_get_stats(void *hphandle, struct memory_stats *stats)
 	struct heapmemmp_object *object = NULL;
 	struct heapmemmp_obj *obj = NULL;
 	struct heapmemmp_header *cur_header = NULL;
-	int *key = 0;
+	int *key = NULL;
 	s32 status = 0;
 
 	if (atomic_cmpmask_and_lt(&(heapmemmp_module->ref_count),
@@ -1557,7 +1558,7 @@ error:
  *  Slice and dice the buffer up into the correct size blocks and
  *  add to the freelist.
  */
-int heapmemmp_post_init(struct heapmemmp_object *handle)
+static int heapmemmp_post_init(struct heapmemmp_object *handle)
 {
 	s32 retval = 0;
 	struct heapmemmp_obj *obj = NULL;

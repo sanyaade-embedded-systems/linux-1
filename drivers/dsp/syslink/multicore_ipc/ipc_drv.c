@@ -49,12 +49,12 @@ struct ipc_device {
 	struct blocking_notifier_head	notifier;
 };
 
-struct ipc_device *ipc_device;
+static struct ipc_device *ipc_device;
 static struct class *ipc_class;
 
-s32 ipc_major = IPC_MAJOR;
-s32 ipc_minor = IPC_MINOR;
-char *ipc_name = IPC_NAME;
+static s32 ipc_major = IPC_MAJOR;
+static s32 ipc_minor = IPC_MINOR;
+static char *ipc_name = IPC_NAME;
 
 module_param(ipc_name, charp, 0);
 MODULE_PARM_DESC(ipc_name, "Device name, default = syslink_ipc");
@@ -76,8 +76,8 @@ static struct work_struct ipc_recovery_work;
 static DECLARE_COMPLETION(ipc_comp);
 static DECLARE_COMPLETION(ipc_open_comp);
 static bool recover;
-struct iommu *piommu;
-struct omap_rproc *prproc_sysm3;
+static struct iommu *piommu;
+static struct omap_rproc *prproc_sysm3;
 
 static int ipc_ducati_iommu_notifier_call(struct notifier_block *nb,
 						unsigned long val, void *v);
@@ -85,11 +85,11 @@ static int ipc_ducati_iommu_notifier_call(struct notifier_block *nb,
 static int ipc_sysm3_rproc_notifier_call(struct notifier_block *nb,
 						unsigned long val, void *v);
 
-struct notifier_block ipc_notify_nb_iommu_ducati = {
+static struct notifier_block ipc_notify_nb_iommu_ducati = {
 	.notifier_call = ipc_ducati_iommu_notifier_call,
 };
 
-struct notifier_block ipc_notify_nb_rproc_ducati0 = {
+static struct notifier_block ipc_notify_nb_rproc_ducati0 = {
 	.notifier_call = ipc_sysm3_rproc_notifier_call,
 };
 
@@ -112,7 +112,7 @@ static void ipc_recover(struct work_struct *work)
 	complete_all(&ipc_open_comp);
 }
 
-void ipc_recover_schedule(void)
+static void ipc_recover_schedule(void)
 {
 	INIT_COMPLETION(ipc_open_comp);
 	recover = true;
@@ -163,7 +163,7 @@ static int ipc_sysm3_rproc_notifier_call(struct notifier_block *nb,
  *  This function is invoked when an application
  *  opens handle to the ipc driver
  */
-int ipc_open(struct inode *inode, struct file *filp)
+static int ipc_open(struct inode *inode, struct file *filp)
 {
 	s32 retval = 0;
 	struct ipc_device *dev;
@@ -202,7 +202,7 @@ int ipc_open(struct inode *inode, struct file *filp)
  *  This function is invoked when an application
  *  closes handle to the ipc driver
  */
-int ipc_release(struct inode *inode, struct file *filp)
+static int ipc_release(struct inode *inode, struct file *filp)
 {
 	s32 retval = 0;
 	struct ipc_process_context *pr_ctxt;
@@ -239,7 +239,7 @@ err:
  *  This function  provides IO interface  to the
  *  ipc driver
  */
-int ipc_ioctl(struct inode *ip, struct file *filp, u32 cmd, ulong arg)
+static int ipc_ioctl(struct inode *ip, struct file *filp, u32 cmd, ulong arg)
 {
 	s32 retval = 0;
 	void __user *argp = (void __user *)arg;
@@ -272,7 +272,7 @@ exit:
 	return retval;
 }
 
-const struct file_operations ipc_fops = {
+static const struct file_operations ipc_fops = {
 	.open = ipc_open,
 	.release = ipc_release,
 	.ioctl = ipc_ioctl,

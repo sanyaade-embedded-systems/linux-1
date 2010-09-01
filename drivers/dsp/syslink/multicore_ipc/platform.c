@@ -564,7 +564,7 @@ static struct proc4430_mem_entry mem_entries_dsp[NUM_MEM_ENTRIES_DSP] = {
  * ======== platform_get_config =======
  *  function to get the default values for confiurations.
  */
-void
+static void
 platform_get_config(struct platform_config *config)
 {
 	int status = PLATFORM_S_SUCCESS;
@@ -650,7 +650,7 @@ exit:
  * Function to override the default configuration values.
  *
  */
-int
+static int
 platform_override_config(struct platform_config *config)
 {
 	int status = PLATFORM_S_SUCCESS;
@@ -1378,7 +1378,7 @@ platform_destroy(void)
  *  Purpose:
  *  TBD: logic would change completely in the final system.
  */
-s32 _platform_setup(void)
+static s32 _platform_setup(void)
 {
 
 	s32 status = 0;
@@ -1517,7 +1517,7 @@ exit:
  *  Purpose:
  *  Function to finalize the platform.
  */
-s32 _platform_destroy(void)
+static s32 _platform_destroy(void)
 {
 	s32 status = 0;
 	struct platform_object *handle;
@@ -1813,7 +1813,7 @@ EXPORT_SYMBOL(platform_stop_callback);
  *  ============================================================================
  */
 /* Function to read slave memory */
-int
+static int
 _platform_read_slave_memory(u16 proc_id,
 			    u32 addr,
 			    void *value,
@@ -1878,7 +1878,7 @@ exit:
 
 
 /* Function to write slave memory */
-int _platform_write_slave_memory(u16 proc_id, u32 addr, void *value,
+static int _platform_write_slave_memory(u16 proc_id, u32 addr, void *value,
 					u32 *num_bytes)
 {
 	int status = 0;

@@ -86,8 +86,8 @@ static inline int listmp_ioctl_get_config(struct listmp_cmd_args *cargs)
 	struct listmp_config config;
 
 	listmp_get_config(&config);
-	size = copy_to_user(cargs->args.get_config.config, &config,
-				sizeof(struct listmp_config));
+	size = copy_to_user((void __user *)cargs->args.get_config.config,
+				&config, sizeof(struct listmp_config));
 	if (size) {
 		retval = -EFAULT;
 		goto exit;
@@ -105,7 +105,7 @@ static inline int listmp_ioctl_setup(struct listmp_cmd_args *cargs)
 	unsigned long size;
 	struct listmp_config config;
 
-	size = copy_from_user(&config, cargs->args.setup.config,
+	size = copy_from_user(&config, (void __user *)cargs->args.setup.config,
 				sizeof(struct listmp_config));
 	if (size) {
 		retval = -EFAULT;
@@ -133,7 +133,7 @@ static inline int listmp_ioctl_params_init(struct listmp_cmd_args *cargs)
 	struct listmp_params params;
 
 	size = copy_from_user(&params,
-				cargs->args.params_init.params,
+				(void __user *)cargs->args.params_init.params,
 				sizeof(struct listmp_params));
 	if (size) {
 		retval = -EFAULT;
@@ -141,8 +141,8 @@ static inline int listmp_ioctl_params_init(struct listmp_cmd_args *cargs)
 	}
 
 	listmp_params_init(&params);
-	size = copy_to_user(cargs->args.params_init.params, &params,
-				sizeof(struct listmp_params));
+	size = copy_to_user((void __user *)cargs->args.params_init.params,
+				&params, sizeof(struct listmp_params));
 	if (size) {
 		retval = -EFAULT;
 		goto exit;
@@ -161,8 +161,8 @@ static inline int listmp_ioctl_create(struct listmp_cmd_args *cargs)
 	unsigned long size;
 	struct listmp_params params;
 
-	size = copy_from_user(&params, cargs->args.create.params,
-					sizeof(struct listmp_params));
+	size = copy_from_user(&params, (void __user *)cargs->args.create.params,
+				sizeof(struct listmp_params));
 	if (size) {
 		retval = -EFAULT;
 		goto exit;
@@ -177,8 +177,8 @@ static inline int listmp_ioctl_create(struct listmp_cmd_args *cargs)
 		}
 		/* Copy the name */
 		size = copy_from_user(params.name,
-					cargs->args.create.params->name,
-					cargs->args.create.name_len);
+				(void __user *)cargs->args.create.params->name,
+				cargs->args.create.name_len);
 		if (size) {
 			retval = -EFAULT;
 			goto free_name;
@@ -192,7 +192,7 @@ static inline int listmp_ioctl_create(struct listmp_cmd_args *cargs)
 	params.gatemp_handle = cargs->args.create.knl_gate;
 	cargs->args.create.listmp_handle = listmp_create(&params);
 
-	size = copy_to_user(cargs->args.create.params, &params,
+	size = copy_to_user((void __user *)cargs->args.create.params, &params,
 				sizeof(struct listmp_params));
 	if (!size)
 		goto free_name;
@@ -234,7 +234,8 @@ static inline int listmp_ioctl_open(struct listmp_cmd_args *cargs)
 			goto exit;
 		}
 		/* Copy the name */
-		size = copy_from_user(name, cargs->args.open.name,
+		size = copy_from_user(name,
+					(void __user *)cargs->args.open.name,
 					cargs->args.open.name_len);
 		if (size) {
 			retval = -EFAULT;
@@ -469,8 +470,9 @@ static inline int listmp_ioctl_shared_mem_req(struct listmp_cmd_args *cargs)
 	unsigned long size;
 	struct listmp_params params;
 
-	size = copy_from_user(&params, cargs->args.shared_mem_req.params,
-				sizeof(struct listmp_params));
+	size = copy_from_user(&params,
+			(void __user *)cargs->args.shared_mem_req.params,
+			sizeof(struct listmp_params));
 	if (size) {
 		retval = -EFAULT;
 		goto exit;

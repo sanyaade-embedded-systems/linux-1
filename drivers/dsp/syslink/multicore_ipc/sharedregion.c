@@ -1450,7 +1450,7 @@ error:
  * =============================================================================
  */
 /* Checks to make sure overlap does not exists. */
-int _sharedregion_check_overlap(void *base, u32 len)
+static int _sharedregion_check_overlap(void *base, u32 len)
 {
 	int retval = 0;
 	struct sharedregion_region *region = NULL;
@@ -1505,7 +1505,7 @@ error:
 }
 
 /* Return the number of offset_bits bits */
-u32 _sharedregion_get_num_offset_bits(void)
+static u32 _sharedregion_get_num_offset_bits(void)
 {
 	u32 num_entries = sharedregion_module->cfg.num_entries;
 	u32 index_bits = 0;

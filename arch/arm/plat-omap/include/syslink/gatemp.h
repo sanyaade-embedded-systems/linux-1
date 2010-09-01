@@ -182,8 +182,17 @@ void *gatemp_create(const struct gatemp_params *params);
 /* Delete a created gatemp instance */
 int gatemp_delete(void **handle_ptr);
 
+/* Query the gate */
+bool gatemp_query(int qual);
+
 /* Get the default remote gate */
 void *gatemp_get_default_remote(void);
+
+/* Get the local protect gate. */
+enum gatemp_local_protect gatemp_get_local_protect(void *obj);
+
+/* Get the remote protect gate. */
+enum gatemp_remote_protect gatemp_get_remote_protect(void *obj);
 
 /* Open a created gatemp by name */
 int gatemp_open(char *name, void **handle_ptr);

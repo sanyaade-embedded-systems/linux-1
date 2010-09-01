@@ -122,7 +122,7 @@ int platform_mem_destroy(void)
 		list_for_each_entry_safe(info, temp,
 						&platform_mem_state.map_table,
 						mem_entry) {
-			iounmap((unsigned int *) info->knl_virtual_address);
+			iounmap((void __iomem *) info->knl_virtual_address);
 			list_del(&info->mem_entry);
 			kfree(info);
 		}
@@ -190,10 +190,10 @@ int platform_mem_map(memory_map_info *map_info)
 
 	map_info->dst = 0;
 	if (map_info->is_cached == true)
-		map_info->dst = (u32) ioremap((dma_addr_t)
+		map_info->dst = (u32 __force) ioremap((dma_addr_t)
 					(map_info->src), map_info->size);
 	else
-		map_info->dst = (u32) ioremap_nocache((dma_addr_t)
+		map_info->dst = (u32 __force) ioremap_nocache((dma_addr_t)
 					(map_info->src), map_info->size);
 	if (map_info->dst == 0) {
 		retval = -EFAULT;
@@ -270,7 +270,7 @@ int platform_mem_unmap(memory_unmap_info *unmap_info)
 	if (info->ref_count == 0) {
 		list_del(&info->mem_entry);
 		kfree(info);
-		iounmap((unsigned int *) unmap_info->addr);
+		iounmap((void __iomem *) unmap_info->addr);
 	}
 	mutex_unlock(platform_mem_state.gate);
 

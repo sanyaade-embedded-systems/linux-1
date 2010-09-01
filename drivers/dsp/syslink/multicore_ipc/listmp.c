@@ -104,7 +104,7 @@ struct listmp_object{
 static struct listmp_module_object listmp_state = {
 			.default_cfg.max_runtime_entries = 32,
 			.default_cfg.max_name_len = 32,
-			.default_inst_params.shared_addr = 0,
+			.default_inst_params.shared_addr = NULL,
 			.default_inst_params.name = NULL,
 			.default_inst_params.gatemp_handle = NULL,
 			.default_inst_params.region_id = 0,

@@ -79,8 +79,8 @@ static int gatemp_ioctl_get_config(struct gatemp_cmd_args *cargs)
 	s32 size;
 
 	gatemp_get_config(&config);
-	size = copy_to_user(cargs->args.get_config.config, &config,
-				sizeof(struct gatemp_config));
+	size = copy_to_user((void __user *)cargs->args.get_config.config,
+				&config, sizeof(struct gatemp_config));
 	if (size)
 		status = -EFAULT;
 
@@ -95,7 +95,7 @@ static int gatemp_ioctl_setup(struct gatemp_cmd_args *cargs)
 	s32 status = 0;
 	s32 size;
 
-	size = copy_from_user(&config, cargs->args.setup.config,
+	size = copy_from_user(&config, (void __user *)cargs->args.setup.config,
 				sizeof(struct gatemp_config));
 	if (size) {
 		status = -EFAULT;
@@ -123,8 +123,8 @@ static int gatemp_ioctl_params_init(struct gatemp_cmd_args *cargs)
 	s32 size;
 
 	gatemp_params_init(&params);
-	size = copy_to_user(cargs->args.params_init.params, &params,
-					sizeof(struct gatemp_params));
+	size = copy_to_user((void __user *)cargs->args.params_init.params,
+				&params, sizeof(struct gatemp_params));
 	if (size)
 		status = -EFAULT;
 
@@ -140,7 +140,7 @@ static int gatemp_ioctl_create(struct gatemp_cmd_args *cargs)
 	s32 size;
 
 	cargs->api_status = -1;
-	size = copy_from_user(&params, cargs->args.create.params,
+	size = copy_from_user(&params, (void __user *)cargs->args.create.params,
 					sizeof(struct gatemp_params));
 	if (size) {
 		status = -EFAULT;
@@ -156,8 +156,8 @@ static int gatemp_ioctl_create(struct gatemp_cmd_args *cargs)
 
 		params.name[cargs->args.create.name_len] = '\0';
 		size = copy_from_user(params.name,
-					cargs->args.create.params->name,
-					cargs->args.create.name_len);
+				(void __user *)cargs->args.create.params->name,
+				cargs->args.create.name_len);
 		if (size) {
 			status = -EFAULT;
 			goto name_from_usr_error;
@@ -205,7 +205,7 @@ static int gatemp_ioctl_open(struct gatemp_cmd_args *cargs)
 
 		params.name[cargs->args.open.name_len] = '\0';
 		size = copy_from_user(params.name,
-					cargs->args.open.name,
+					(void __user *)cargs->args.open.name,
 					cargs->args.open.name_len);
 		if (size) {
 			status = -EFAULT;
@@ -254,8 +254,9 @@ static int gatemp_ioctl_shared_mem_req(struct gatemp_cmd_args *cargs)
 	s32 status = 0;
 	s32 size;
 
-	size = copy_from_user(&params, cargs->args.shared_mem_req.params,
-					sizeof(struct gatemp_params));
+	size = copy_from_user(&params,
+			(void __user *)cargs->args.shared_mem_req.params,
+			sizeof(struct gatemp_params));
 	if (size) {
 		status = -EFAULT;
 		goto exit;

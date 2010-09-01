@@ -1027,7 +1027,7 @@ int nameserver_get_local(void *handle, const char *name,
 		retval = -EINVAL;
 		goto exit;
 	}
-	if (WARN_ON(unlikely(len == 0))) {
+	if (WARN_ON(unlikely(len == NULL))) {
 		retval = -EINVAL;
 		goto exit;
 	}
@@ -1106,7 +1106,7 @@ int nameserver_get(void *handle, const char *name,
 		retval = -EINVAL;
 		goto exit;
 	}
-	if (WARN_ON(unlikely(len == 0))) {
+	if (WARN_ON(unlikely(len == NULL))) {
 		retval = -EINVAL;
 		goto exit;
 	}

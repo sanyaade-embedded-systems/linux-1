@@ -203,7 +203,7 @@ static struct gatemp_module_state gatemp_state = {
 	.default_cfg.num_resources = 32,
 	.default_cfg.max_name_len = 32,
 	.default_cfg.default_protection = GATEMP_LOCALPROTECT_INTERRUPT,
-	.def_inst_params.shared_addr = 0x0,
+	.def_inst_params.shared_addr = NULL,
 	.def_inst_params.region_id = 0x0,
 	.default_gate  = NULL
 };
@@ -501,7 +501,7 @@ void gatemp_params_init(struct gatemp_params *params)
 	params->remote_protect = GATEMP_REMOTEPROTECT_SYSTEM;
 }
 
-int gatemp_instance_init(struct gatemp_object *obj,
+static int gatemp_instance_init(struct gatemp_object *obj,
 			 const struct _gatemp_params *params)
 {
 	int *key;
@@ -528,7 +528,7 @@ int gatemp_instance_init(struct gatemp_object *obj,
 		/* all open work done here except for remote gate_handle */
 		obj->local_protect = params->local_protect;
 		obj->remote_protect = params->remote_protect;
-		obj->ns_key = 0;
+		obj->ns_key = NULL;
 		obj->num_opens = 1;
 		obj->creator_proc_id = MULTIPROC_INVALIDID;
 		obj->attrs = (struct gatemp_attrs *)params->shared_addr;
@@ -562,7 +562,7 @@ int gatemp_instance_init(struct gatemp_object *obj,
 	/* Create GateMP instance */
 	obj->local_protect = params->local_protect;
 	obj->remote_protect = params->remote_protect;
-	obj->ns_key = 0;
+	obj->ns_key = NULL;
 	obj->num_opens = 0;
 	obj->creator_proc_id = multiproc_self();
 
@@ -752,9 +752,9 @@ proxy_work:
 			custom1_params.shared_addr = obj->proxy_attrs;
 			custom1_params.region_id = obj->region_id;
 			remote_handle = gatemp_remote_custom1_proxy_create(
-						(enum gatemp_local_protect)
-						obj->local_protect,
-						&custom1_params);
+					(enum igatempsupport_local_protect)
+					obj->local_protect,
+					&custom1_params);
 			if (remote_handle == NULL)
 				retval = 7;
 
@@ -796,9 +796,9 @@ proxy_work:
 			custom2_params.shared_addr = obj->proxy_attrs;
 			custom2_params.region_id = obj->region_id;
 			remote_handle = gatemp_remote_custom2_proxy_create(
-						(enum gatemp_local_protect)
-						obj->local_protect,
-						&custom2_params);
+					(enum igatempsupport_local_protect)
+					obj->local_protect,
+					&custom2_params);
 			if (remote_handle == NULL)
 				retval = 7;
 
@@ -857,7 +857,7 @@ proxy_work:
 	return retval;
 }
 
-void gatemp_instance_finalize(struct gatemp_object *obj, int status)
+static void gatemp_instance_finalize(struct gatemp_object *obj, int status)
 {
 	int *system_key = (int *)0;
 	gatemp_remote_system_proxy_handle system_handle;
@@ -877,7 +877,7 @@ void gatemp_instance_finalize(struct gatemp_object *obj, int status)
 	}
 
 	/* Remove from NameServer */
-	if (obj->ns_key != 0) {
+	if (obj->ns_key != NULL) {
 		nameserver_remove_entry(gatemp_module->name_server,
 			obj->ns_key);
 	}
@@ -1230,18 +1230,22 @@ void *gatemp_get_default_remote(void)
 	return gatemp_module->default_gate;
 }
 
-enum gatemp_local_protect gatemp_get_local_protect(struct gatemp_object *obj)
+enum gatemp_local_protect gatemp_get_local_protect(void *obj)
 {
+	struct gatemp_object *gmp_handle = (struct gatemp_object *)obj;
+
 	WARN_ON(obj == NULL);
 
-	return obj->local_protect;
+	return gmp_handle->local_protect;
 }
 
-enum gatemp_remote_protect gatemp_get_remote_protect(struct gatemp_object *obj)
+enum gatemp_remote_protect gatemp_get_remote_protect(void *obj)
 {
+	struct gatemp_object *gmp_handle = (struct gatemp_object *)obj;
+
 	WARN_ON(obj == NULL);
 
-	return obj->remote_protect;
+	return gmp_handle->remote_protect;
 }
 
 void *gatemp_create_local(enum gatemp_local_protect local_protect)
@@ -1601,9 +1605,9 @@ int gatemp_stop(void)
  *      Internal functions
  *************************************************************************
  */
-uint gatemp_get_free_resource(u8 *in_use, int num, int start_id)
+static uint gatemp_get_free_resource(u8 *in_use, int num, int start_id)
 {
-	int *key = 0;
+	int *key = NULL;
 	bool flag = false;
 	uint resource_id;
 	void *default_gate;

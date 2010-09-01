@@ -94,11 +94,11 @@ struct gatepeterson_object {
 /*
  *  Variable for holding state of the gatepeterson module
  */
-struct gatepeterson_module_object gatepeterson_state = {
+static struct gatepeterson_module_object gatepeterson_state = {
 	.obj_list	 = LIST_HEAD_INIT(gatepeterson_state.obj_list),
 	.default_cfg.default_protection = GATEPETERSON_PROTECT_INTERRUPT,
 	.default_cfg.num_instances	= 16,
-	.def_inst_params.shared_addr	= 0x0,
+	.def_inst_params.shared_addr	= NULL,
 	.def_inst_params.resource_id	= 0x0,
 	.def_inst_params.region_id	= 0x0
 };
@@ -125,7 +125,7 @@ static bool gatepeterson_inc_refcount(const struct gatepeterson_params *params,
 #endif
 
 /* TODO: figure these out */
-#define gate_enter_system() 0
+#define gate_enter_system() (int *)0
 #define gate_leave_system(key) {}
 
 /* =============================================================================
@@ -165,7 +165,7 @@ EXPORT_SYMBOL(gatepeterson_get_config);
 int gatepeterson_setup(const struct gatepeterson_config *config)
 {
 	struct gatepeterson_config tmp_cfg;
-	int *key = 0;
+	int *key = NULL;
 	s32 retval = 0;
 
 	key = gate_enter_system();
@@ -225,7 +225,7 @@ int gatepeterson_destroy(void)
 	struct gatepeterson_object *obj = NULL, *n;
 	struct mutex *lock = NULL;
 	s32 retval = 0;
-	int *key = 0;
+	int *key = NULL;
 
 	key = gate_enter_system();
 
@@ -321,7 +321,7 @@ inline void gatepeterson_locks_init(void)
  */
 void gatepeterson_params_init(struct gatepeterson_params *params)
 {
-	int *key = 0;
+	int *key = NULL;
 
 	key = gate_enter_system();
 
@@ -343,7 +343,7 @@ exit:
 EXPORT_SYMBOL(gatepeterson_params_init);
 
 
-int gatepeterson_instance_init(struct gatepeterson_object *obj,
+static int gatepeterson_instance_init(struct gatepeterson_object *obj,
 		enum igatempsupport_local_protect local_protect,
 		const struct gatepeterson_params *params)
 {
@@ -357,7 +357,8 @@ int gatepeterson_instance_init(struct gatepeterson_object *obj,
 	}
 
 	/* Create the local gate */
-	obj->local_gate = gatemp_create_local(local_protect);
+	obj->local_gate = gatemp_create_local(
+				(enum gatemp_local_protect)local_protect);
 	obj->cache_enabled  = sharedregion_is_cache_enabled(params->region_id);
 	obj->cache_line_size =
 		sharedregion_get_cache_line_size(params->region_id);
@@ -424,7 +425,8 @@ exit:
 	return retval;
 }
 
-void gatepeterson_instance_finalize(struct gatepeterson_object *obj, int status)
+static void gatepeterson_instance_finalize(struct gatepeterson_object *obj,
+						int status)
 {
 	switch (status) {
 	/* No break here. Fall through to the next. */
@@ -681,7 +683,7 @@ int *gatepeterson_enter(void *gphandle)
 {
 	struct gatepeterson_object *obj = NULL;
 	s32 retval = 0;
-	int *key = 0;
+	int *key = NULL;
 
 	if (WARN_ON(atomic_cmpmask_and_lt(&(gatepeterson_module->ref_count),
 				GATEPETERSON_MAKE_MAGICSTAMP(0),
@@ -748,7 +750,7 @@ int *gatepeterson_enter(void *gphandle)
 	return key;
 
 exit:
-	return 0;
+	return NULL;
 }
 EXPORT_SYMBOL(gatepeterson_enter);
 

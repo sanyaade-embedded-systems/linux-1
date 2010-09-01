@@ -1547,7 +1547,7 @@ EXPORT_SYMBOL(messageq_detach);
  * =============================================================================
  */
 /* Grow the MessageQ table */
-u16 _messageq_grow(struct messageq_object *obj)
+static u16 _messageq_grow(struct messageq_object *obj)
 {
 	u16 queue_index = messageq_module->num_queues;
 	int old_size;

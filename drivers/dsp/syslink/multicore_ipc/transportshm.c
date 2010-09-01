@@ -143,7 +143,7 @@ static struct transportshm_module_object transportshm_state = {
 	.gate_handle = NULL,
 	.def_cfg.err_fxn = NULL,
 	.def_inst_params.gate = NULL,
-	.def_inst_params.shared_addr = 0x0,
+	.def_inst_params.shared_addr = NULL,
 	.def_inst_params.notify_event_id = (u32)(-1),
 	.def_inst_params.priority = MESSAGEQ_NORMALPRI
 };
@@ -861,7 +861,7 @@ exit:
  *  Purpose:
  *  Callback function registered with the Notify module.
  */
-void _transportshm_notify_fxn(u16 proc_id, u16 line_id, u32 event_no,
+static void _transportshm_notify_fxn(u16 proc_id, u16 line_id, u32 event_no,
 					uint *arg, u32 payload)
 {
 	struct transportshm_object *obj = NULL;
@@ -938,8 +938,9 @@ exit:
  *  Purpose:
  *  Internal function for create()/open()
  */
-int _transportshm_create(struct transportshm_object **handle_ptr, u16 proc_id,
-		const struct transportshm_params *params, bool create_flag)
+static int _transportshm_create(struct transportshm_object **handle_ptr,
+		u16 proc_id, const struct transportshm_params *params,
+		bool create_flag)
 {
 	int status = 0;
 	struct transportshm_object *handle = NULL;

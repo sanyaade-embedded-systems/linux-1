@@ -85,7 +85,7 @@ static inline int sysipc_ioctl_setup(struct sysipc_cmd_args *cargs)
 	unsigned long size;
 	struct ipc_config config;
 
-	size = copy_from_user(&config, cargs->args.setup.config,
+	size = copy_from_user(&config, (void __user *)cargs->args.setup.config,
 					sizeof(struct ipc_config));
 	if (size) {
 		retval = -EFAULT;
@@ -129,7 +129,7 @@ static inline int sysipc_ioctl_read_config(struct sysipc_cmd_args *cargs)
 					cargs->args.read_config.tag, cfg,
 					cargs->args.read_config.size);
 
-	size = copy_to_user(cargs->args.read_config.cfg, cfg,
+	size = copy_to_user((void __user *)cargs->args.read_config.cfg, cfg,
 					cargs->args.read_config.size);
 	if (size)
 		retval = -EFAULT;
@@ -155,7 +155,7 @@ static inline int sysipc_ioctl_write_config(struct sysipc_cmd_args *cargs)
 		goto exit;
 	}
 
-	size = copy_from_user(cfg, cargs->args.write_config.cfg,
+	size = copy_from_user(cfg, (void __user *)cargs->args.write_config.cfg,
 					cargs->args.write_config.size);
 	if (size) {
 		retval = -EFAULT;

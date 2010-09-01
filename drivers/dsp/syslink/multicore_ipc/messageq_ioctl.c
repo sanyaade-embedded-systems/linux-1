@@ -228,8 +228,8 @@ static inline int messageq_ioctl_params_init(struct messageq_cmd_args *cargs)
 	struct messageq_params params;
 
 	messageq_params_init(&params);
-	size = copy_to_user(cargs->args.params_init.params, &params,
-				sizeof(struct messageq_params));
+	size = copy_to_user((void __user *)cargs->args.params_init.params,
+				&params, sizeof(struct messageq_params));
 	if (size) {
 		retval = -EFAULT;
 		goto exit;
@@ -254,8 +254,9 @@ static inline int messageq_ioctl_create(struct messageq_cmd_args *cargs)
 	char *name = NULL;
 
 	if (cargs->args.create.params != NULL) {
-		size = copy_from_user(&params, cargs->args.create.params,
-						sizeof(struct messageq_params));
+		size = copy_from_user(&params,
+				(void __user *)cargs->args.create.params,
+				sizeof(struct messageq_params));
 		if (size) {
 			retval = -EFAULT;
 			goto exit;
@@ -269,8 +270,9 @@ static inline int messageq_ioctl_create(struct messageq_cmd_args *cargs)
 			retval = -ENOMEM;
 			goto exit;
 		}
-		size = copy_from_user(name, cargs->args.create.name,
-						cargs->args.create.name_len);
+		size = copy_from_user(name,
+					(void __user *)cargs->args.create.name,
+					cargs->args.create.name_len);
 		if (size) {
 			retval = -EFAULT;
 			goto free_name;
@@ -331,8 +333,9 @@ static inline int messageq_ioctl_open(struct messageq_cmd_args *cargs)
 			retval = -ENOMEM;
 			goto exit;
 		}
-		size = copy_from_user(name, cargs->args.open.name,
-						cargs->args.open.name_len);
+		size = copy_from_user(name,
+					(void __user *)cargs->args.open.name,
+					cargs->args.open.name_len);
 		if (size) {
 			retval = -EFAULT;
 			goto free_name;
@@ -378,8 +381,8 @@ static inline int messageq_ioctl_get_config(struct messageq_cmd_args *cargs)
 	struct messageq_config config;
 
 	messageq_get_config(&config);
-	size = copy_to_user(cargs->args.get_config.config, &config,
-				sizeof(struct messageq_config));
+	size = copy_to_user((void __user *)cargs->args.get_config.config,
+				&config, sizeof(struct messageq_config));
 	if (size) {
 		retval = -EFAULT;
 		goto exit;
@@ -401,7 +404,7 @@ static inline int messageq_ioctl_setup(struct messageq_cmd_args *cargs)
 	unsigned long size;
 	struct messageq_config config;
 
-	size = copy_from_user(&config, cargs->args.setup.config,
+	size = copy_from_user(&config, (void __user *)cargs->args.setup.config,
 					sizeof(struct messageq_config));
 	if (size) {
 		retval = -EFAULT;

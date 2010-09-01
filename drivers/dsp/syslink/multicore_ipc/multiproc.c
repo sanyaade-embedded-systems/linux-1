@@ -48,10 +48,24 @@ struct multiproc_module_object {
 
 static struct multiproc_module_object multiproc_state = {
 	.def_cfg.num_processors = 4,
-	.def_cfg.name_list[0][0] = "Tesla",
-	.def_cfg.name_list[1][0] = "AppM3",
-	.def_cfg.name_list[2][0] = "SysM3",
-	.def_cfg.name_list[3][0] = "MPU",
+	.def_cfg.name_list[0][0] = 'T',
+	.def_cfg.name_list[0][1] = 'e',
+	.def_cfg.name_list[0][2] = 's',
+	.def_cfg.name_list[0][3] = 'l',
+	.def_cfg.name_list[0][4] = 'a',
+	.def_cfg.name_list[1][0] = 'A',
+	.def_cfg.name_list[1][1] = 'p',
+	.def_cfg.name_list[1][2] = 'p',
+	.def_cfg.name_list[1][3] = 'M',
+	.def_cfg.name_list[1][4] = '3',
+	.def_cfg.name_list[2][0] = 'S',
+	.def_cfg.name_list[2][1] = 'y',
+	.def_cfg.name_list[2][2] = 's',
+	.def_cfg.name_list[2][3] = 'M',
+	.def_cfg.name_list[2][4] = '3',
+	.def_cfg.name_list[3][0] = 'M',
+	.def_cfg.name_list[3][1] = 'P',
+	.def_cfg.name_list[3][2] = 'U',
 	.def_cfg.id = 3,
 	.id = MULTIPROC_INVALIDID
 };

@@ -745,7 +745,7 @@ ipc_control(u16 proc_id, u32 cmd_id, void *arg)
 /*
  *  ======== ipc_get_master_addr ========
  */
-void *ipc_get_master_addr(u16 remote_proc_id, void *shared_addr)
+static void *ipc_get_master_addr(u16 remote_proc_id, void *shared_addr)
 {
 	u32 reserved_size = ipc_reserved_size_per_proc();
 	int slot;
@@ -772,7 +772,7 @@ void *ipc_get_master_addr(u16 remote_proc_id, void *shared_addr)
 /*
  *  ======== ipc_get_region0_reserved_size ========
  */
-u32 ipc_get_region0_reserved_size(void)
+static u32 ipc_get_region0_reserved_size(void)
 {
 	u32 reserved_size = ipc_reserved_size_per_proc();
 
@@ -785,7 +785,7 @@ u32 ipc_get_region0_reserved_size(void)
 /*
  *  ======== Ipc_getSlaveAddr ========
  */
-void *ipc_get_slave_addr(u16 remote_proc_id, void *shared_addr)
+static void *ipc_get_slave_addr(u16 remote_proc_id, void *shared_addr)
 {
 	u32 reserved_size = ipc_reserved_size_per_proc();
 	int slot;
@@ -820,7 +820,7 @@ void *ipc_get_slave_addr(u16 remote_proc_id, void *shared_addr)
  *  to let them know that its finished the process of synchronization
  *  before continuing.
  */
-int ipc_proc_sync_start(u16 remote_proc_id, void *shared_addr)
+static int ipc_proc_sync_start(u16 remote_proc_id, void *shared_addr)
 {
 #if 0
 	u32 reserved_size = ipc_reserved_size_per_proc();
@@ -925,7 +925,7 @@ exit:
  *  to let the other processors know its finished the process of
  *  synchronization.
  */
-int ipc_proc_sync_finish(u16 remote_proc_id, void *shared_addr)
+static int ipc_proc_sync_finish(u16 remote_proc_id, void *shared_addr)
 {
 #if 0
 	u32 reserved_size = ipc_reserved_size_per_proc();
@@ -1052,7 +1052,7 @@ exit:
 /*
  *  ======== ipc_reserved_size_per_proc ========
  */
-u32 ipc_reserved_size_per_proc(void)
+static u32 ipc_reserved_size_per_proc(void)
 {
 	u32 reserved_size = sizeof(struct ipc_reserved) *
 					multiproc_get_num_processors();
