@@ -177,6 +177,9 @@ static inline int ipu_pm_rel_ivaseq1(int proc_id, u32 rcb_num);
 /* Release ISS on behalf of an IPU client */
 static inline int ipu_pm_rel_iss(int proc_id, u32 rcb_num);
 
+/* Request a FDIF constraint on behalf of an IPU client */
+static inline int ipu_pm_req_cstr_fdif(int proc_id, u32 rcb_num);
+
 /* Request a IPU constraint on behalf of an IPU client */
 static inline int ipu_pm_req_cstr_ipu(int proc_id, u32 rcb_num);
 
@@ -189,6 +192,12 @@ static inline int ipu_pm_req_cstr_iva_hd(int proc_id, u32 rcb_num);
 /* Request an ISS constraint on behalf of an IPU client */
 static inline int ipu_pm_req_cstr_iss(int proc_id, u32 rcb_num);
 
+/* Request an MPU constraint on behalf of an IPU client */
+static inline int ipu_pm_req_cstr_mpu(int proc_id, u32 rcb_num);
+
+/* Release a FDFI constraint on behalf of an IPU client */
+static inline int ipu_pm_rel_cstr_fdif(int proc_id, u32 rcb_num);
+
 /* Release a IPU constraint on behalf of an IPU client */
 static inline int ipu_pm_rel_cstr_ipu(int proc_id, u32 rcb_num);
 
@@ -200,6 +209,9 @@ static inline int ipu_pm_rel_cstr_iva_hd(int proc_id, u32 rcb_num);
 
 /* Release an ISS constraint on behalf of an IPU client */
 static inline int ipu_pm_rel_cstr_iss(int proc_id, u32 rcb_num);
+
+/* Release an MPU constraint on behalf of an IPU client */
+static inline int ipu_pm_rel_cstr_mpu(int proc_id, u32 rcb_num);
 
 /** ============================================================================
  *  Globals
@@ -411,6 +423,9 @@ static inline int ipu_pm_req_cstr(u32 res_type, u32 proc_id, u32 rcb_num)
 	int retval = PM_SUCCESS;
 
 	switch (res_type) {
+	case FDIF:
+		retval = ipu_pm_req_cstr_fdif(proc_id, rcb_num);
+		break;
 	case IPU:
 		retval = ipu_pm_req_cstr_ipu(proc_id, rcb_num);
 		break;
@@ -422,6 +437,9 @@ static inline int ipu_pm_req_cstr(u32 res_type, u32 proc_id, u32 rcb_num)
 		break;
 	case ISS:
 		retval = ipu_pm_req_cstr_iss(proc_id, rcb_num);
+		break;
+	case MPU:
+		retval = ipu_pm_req_cstr_mpu(proc_id, rcb_num);
 		break;
 	default:
 		pr_err("Resource does not support constraints\n");
@@ -440,6 +458,9 @@ static inline int ipu_pm_rel_cstr(u32 res_type, u32 proc_id, u32 rcb_num)
 	int retval = PM_SUCCESS;
 
 	switch (res_type) {
+	case FDIF:
+		retval = ipu_pm_rel_cstr_fdif(proc_id, rcb_num);
+		break;
 	case IPU:
 		retval = ipu_pm_rel_cstr_ipu(proc_id, rcb_num);
 		break;
@@ -451,6 +472,9 @@ static inline int ipu_pm_rel_cstr(u32 res_type, u32 proc_id, u32 rcb_num)
 		break;
 	case ISS:
 		retval = ipu_pm_rel_cstr_iss(proc_id, rcb_num);
+		break;
+	case MPU:
+		retval = ipu_pm_rel_cstr_mpu(proc_id, rcb_num);
 		break;
 	default:
 		pr_err("Resource does not support constraints\n");
@@ -2089,6 +2113,56 @@ error:
 }
 
 /*
+  Request a FDIF constraint on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_req_cstr_fdif(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int perf;
+	int lat;
+	int bw;
+	u32 cstr_flags;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	/* Get the configurable constraints */
+	cstr_flags = rcb_p->data[0];
+
+	/* TODO: call the baseport APIs */
+	if (cstr_flags & PM_CSTR_PERF_MASK) {
+		perf = rcb_p->data[1];
+		pr_info("Request perfomance Cstr FDIF:%d\n", perf);
+	}
+
+	if (cstr_flags & PM_CSTR_LAT_MASK) {
+		lat = rcb_p->data[2];
+		pr_info("Request latency Cstr FDIF:%d\n", lat);
+	}
+
+	if (cstr_flags & PM_CSTR_BW_MASK) {
+		bw = rcb_p->data[3];
+		pr_info("Request bandwidth Cstr FDIF:%d\n", bw);
+	}
+
+	return PM_SUCCESS;
+}
+
+/*
   Request a IPU constraint on behalf of an IPU client
  *
  */
@@ -2289,6 +2363,107 @@ static inline int ipu_pm_req_cstr_iss(int proc_id, u32 rcb_num)
 }
 
 /*
+  Request an MPU constraint on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_req_cstr_mpu(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int perf;
+	int lat;
+	int bw;
+	u32 cstr_flags;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	/* Get the configurable constraints */
+	cstr_flags = rcb_p->data[0];
+
+	/* TODO: call the baseport APIs */
+	if (cstr_flags & PM_CSTR_PERF_MASK) {
+		perf = rcb_p->data[1];
+		pr_info("Request perfomance Cstr MPU:%d\n", perf);
+	}
+
+	if (cstr_flags & PM_CSTR_LAT_MASK) {
+		lat = rcb_p->data[2];
+		pr_info("Request latency Cstr MPU:%d\n", lat);
+	}
+
+	if (cstr_flags & PM_CSTR_BW_MASK) {
+		bw = rcb_p->data[3];
+		pr_info("Request bandwidth Cstr MPU:%d\n", bw);
+	}
+
+	return PM_SUCCESS;
+}
+
+
+/*
+  Release a FDIF constraint on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_rel_cstr_fdif(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int perf;
+	int lat;
+	int bw;
+	u32 cstr_flags;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	/* Get the configurable constraints */
+	cstr_flags = rcb_p->data[0];
+
+	/* TODO: call the baseport APIs */
+	if (cstr_flags & PM_CSTR_PERF_MASK) {
+		perf = rcb_p->data[1];
+		pr_info("Release perfomance Cstr FDIF:%d\n", perf);
+	}
+
+	if (cstr_flags & PM_CSTR_LAT_MASK) {
+		lat = rcb_p->data[2];
+		pr_info("Release latency Cstr FDIF:%d\n", lat);
+	}
+
+	if (cstr_flags & PM_CSTR_BW_MASK) {
+		bw = rcb_p->data[3];
+		pr_info("Release bandwidth Cstr FDIF:%d\n", bw);
+	}
+
+	return PM_SUCCESS;
+}
+
+/*
   Release a IPU constraint on behalf of an IPU client
  *
  */
@@ -2483,6 +2658,56 @@ static inline int ipu_pm_rel_cstr_iss(int proc_id, u32 rcb_num)
 	if (cstr_flags & PM_CSTR_BW_MASK) {
 		bw = rcb_p->data[3];
 		pr_info("Release bandwidth Cstr ISS:%d\n", bw);
+	}
+
+	return PM_SUCCESS;
+}
+
+/*
+  Release an MPU constraint on behalf of an IPU client
+ *
+ */
+static inline int ipu_pm_rel_cstr_mpu(int proc_id, u32 rcb_num)
+{
+	struct ipu_pm_object *handle;
+	struct ipu_pm_params *params;
+	struct rcb_block *rcb_p;
+	int perf;
+	int lat;
+	int bw;
+	u32 cstr_flags;
+
+	/* get the handle to proper ipu pm object */
+	handle = ipu_pm_get_handle(proc_id);
+	if (WARN_ON(unlikely(handle == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	params = handle->params;
+	if (WARN_ON(unlikely(params == NULL)))
+		return PM_NOT_INSTANTIATED;
+
+	/* Get pointer to the proper RCB */
+	if (WARN_ON((rcb_num < RCB_MIN) || (rcb_num > RCB_MAX)))
+		return PM_INVAL_RCB_NUM;
+	rcb_p = (struct rcb_block *)&handle->rcb_table->rcb[rcb_num];
+
+	/* Get the configurable constraints */
+	cstr_flags = rcb_p->data[0];
+
+	/* TODO: call the baseport APIs */
+	if (cstr_flags & PM_CSTR_PERF_MASK) {
+		perf = rcb_p->data[1];
+		pr_info("Release perfomance Cstr MPU:%d\n", perf);
+	}
+
+	if (cstr_flags & PM_CSTR_LAT_MASK) {
+		lat = rcb_p->data[2];
+		pr_info("Release latency Cstr MPU:%d\n", lat);
+	}
+
+	if (cstr_flags & PM_CSTR_BW_MASK) {
+		bw = rcb_p->data[3];
+		pr_info("Release bandwidth Cstr MPU:%d\n", bw);
 	}
 
 	return PM_SUCCESS;
