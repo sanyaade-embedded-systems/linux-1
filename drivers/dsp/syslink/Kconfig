@@ -70,6 +70,7 @@ config SYSLINK_USE_SYSMGR
 config SYSLINK_IOMMU_ENABLE
         bool
         select OMAP_IOMMU
+	select OMAP_USER_DMM
 	default y
 
 config SYSLINK_RECOVERY
