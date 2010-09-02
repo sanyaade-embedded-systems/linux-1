@@ -1126,7 +1126,7 @@ void notify_exec(struct notify_object *obj, u32 event_id, u32 payload)
 
 /* Function registered with notify_exec when multiple registrations are present
  * for the events. */
-void _notify_exec_many(u16 proc_id, u16 line_id, u32 event_id, uint *arg,
+static void _notify_exec_many(u16 proc_id, u16 line_id, u32 event_id, uint *arg,
 			u32 payload)
 {
 	struct notify_object *obj = (struct notify_object *)arg;

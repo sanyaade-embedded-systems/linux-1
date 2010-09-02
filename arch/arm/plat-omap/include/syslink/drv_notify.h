@@ -25,7 +25,7 @@
 
 
 /* read function for of Notify driver.*/
-int notify_drv_read(struct file *filp, char *dst, size_t size,
+int notify_drv_read(struct file *filp, char __user *dst, size_t size,
 				loff_t *offset);
 
 /* Linux driver function to map memory regions to user space. */

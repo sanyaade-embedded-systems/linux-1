@@ -145,7 +145,7 @@ struct notify_ducatidrv_object {
 
 static struct notify_ducatidrv_module notify_ducatidriver_state = {
 	.gate_handle = NULL,
-	.def_inst_params.shared_addr = 0x0,
+	.def_inst_params.shared_addr = NULL,
 	.def_inst_params.cache_enabled = false,
 	.def_inst_params.cache_line_size = 128u,
 	.def_inst_params.remote_proc_id = MULTIPROC_INVALIDID,

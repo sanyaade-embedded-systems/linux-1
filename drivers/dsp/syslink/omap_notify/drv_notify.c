@@ -88,7 +88,7 @@ struct notify_drv_module_object {
 	/* List for all user processes registered. */
 };
 
-struct notify_drv_module_object notifydrv_state = {
+static struct notify_drv_module_object notifydrv_state = {
 	.is_setup = false,
 	.open_ref_count = 0,
 	.gate_handle = NULL
@@ -152,7 +152,7 @@ static struct resource_info *find_notify_drv_resource(
 /*
  * read data from the driver
  */
-int notify_drv_read(struct file *filp, char *dst, size_t size,
+int notify_drv_read(struct file *filp, char __user *dst, size_t size,
 		loff_t *offset)
 {
 
@@ -169,7 +169,7 @@ int notify_drv_read(struct file *filp, char *dst, size_t size,
 	}
 
 	ret_val = copy_from_user((void *)&t_buf,
-				(void *)dst,
+				(void __user *)dst,
 				sizeof(struct notify_drv_event_packet));
 	if (WARN_ON(ret_val != 0))
 		ret_val = -EFAULT;
@@ -201,7 +201,7 @@ int notify_drv_read(struct file *filp, char *dst, size_t size,
 		ret_val = -EFAULT;
 		goto func_end;
 	}
-	ret_val = copy_to_user((void *)dst, u_buf,
+	ret_val = copy_to_user((void __user *)dst, u_buf,
 			sizeof(struct notify_drv_event_packet));
 	if (WARN_ON(ret_val != 0))
 		ret_val = -EFAULT;
@@ -247,7 +247,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 		struct notify_config cfg;
 
 		notify_get_config(&cfg);
-		size = copy_to_user((void *) (src_args->cfg),
+		size = copy_to_user((void __user *) (src_args->cfg),
 			(const void *) &cfg, sizeof(struct notify_config));
 		if (WARN_ON(size != 0))
 			os_status = -EFAULT;
@@ -261,7 +261,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 		struct notify_config cfg;
 
 		size = copy_from_user((void *) &cfg,
-					(const void *) (src_args->cfg),
+					(const void __user *) (src_args->cfg),
 					sizeof(struct notify_config));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -294,7 +294,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 
 		/* Copy the full args from user-side. */
 		size = copy_from_user((void *) &src_args,
-				(const void *) (args),
+				(const void __user *) (args),
 				sizeof(struct notify_cmd_args_register_event));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -335,7 +335,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 
 		/* Copy the full args from user-side. */
 		size = copy_from_user((void *) &src_args,
-				(const void *) (args),
+				(const void __user *) (args),
 				sizeof(struct notify_cmd_args_register_event));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -378,7 +378,8 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 		struct notify_cmd_args_unregister_event src_args;
 
 		/* Copy the full args from user-side. */
-		size = copy_from_user((void *)&src_args, (const void *)(args),
+		size = copy_from_user((void *)&src_args,
+			(const void __user *)(args),
 			sizeof(struct notify_cmd_args_unregister_event));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -426,7 +427,8 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 		struct notify_cmd_args_unregister_event src_args;
 
 		/* Copy the full args from user-side. */
-		size = copy_from_user((void *)&src_args, (const void *)(args),
+		size = copy_from_user((void *)&src_args,
+			(const void __user *)(args),
 			sizeof(struct notify_cmd_args_unregister_event));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -474,7 +476,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 
 		/* Copy the full args from user-side. */
 		size = copy_from_user((void *) &src_args,
-				(const void *) (args),
+				(const void __user *) (args),
 				sizeof(struct notify_cmd_args_send_event));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -492,7 +494,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 
 		/* Copy the full args from user-side. */
 		size = copy_from_user((void *) &src_args,
-				(const void *) (args),
+				(const void __user *) (args),
 				sizeof(struct notify_cmd_args_disable));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -502,7 +504,8 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 							src_args.line_id);
 
 		/* Copy the full args to user-side */
-		size = copy_to_user((void *) (args), (const void *) &src_args,
+		size = copy_to_user((void __user *) (args),
+					(const void *) &src_args,
 					sizeof(struct notify_cmd_args_disable));
 		/* This check is needed at run-time also since it depends on
 		 * run environment. It must not be optimized out. */
@@ -517,7 +520,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 
 		/* Copy the full args from user-side. */
 		size = copy_from_user((void *) &src_args,
-				(const void *)(args),
+				(const void __user *)(args),
 				sizeof(struct notify_cmd_args_restore));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -534,7 +537,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 
 		/* Copy the full args from user-side. */
 		size = copy_from_user((void *) &src_args,
-				(const void *)(args),
+				(const void __user *)(args),
 				sizeof(struct notify_cmd_args_disable_event));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -551,7 +554,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 
 		/* Copy the full args from user-side. */
 		size = copy_from_user((void *)&src_args,
-				(const void *)(args),
+				(const void __user *)(args),
 				sizeof(struct notify_cmd_args_enable_event));
 		if (WARN_ON(size != 0)) {
 			os_status = -EFAULT;
@@ -605,7 +608,8 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 		struct notify_cmd_args_attach src_args;
 		void *knl_shared_addr;
 
-		size = copy_from_user((void *) &src_args, (const void *)(args),
+		size = copy_from_user((void *) &src_args,
+					(const void __user *)(args),
 					sizeof(struct notify_cmd_args_attach));
 		if (size != 0) {
 			os_status = -EFAULT;
@@ -626,7 +630,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 		struct notify_cmd_args_detach src_args;
 
 		size = copy_from_user((void *) &src_args,
-					(const void *)(args),
+					(const void __user *)(args),
 					sizeof(struct notify_cmd_args_detach));
 		if (size != 0) {
 			os_status = -EFAULT;
@@ -643,7 +647,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 		void *knl_shared_addr;
 
 		size = copy_from_user((void *) &src_args,
-				(const void *)(args),
+				(const void __user *)(args),
 				sizeof(struct notify_cmd_args_shared_mem_req));
 		if (size != 0) {
 			os_status = -EFAULT;
@@ -665,7 +669,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 		struct notify_cmd_args_is_registered src_args;
 
 		size = copy_from_user((void *) &src_args,
-				(const void *)(args),
+				(const void __user *)(args),
 				sizeof(struct notify_cmd_args_is_registered));
 		if (size != 0) {
 			os_status = -EFAULT;
@@ -674,7 +678,7 @@ int notify_drv_ioctl(struct inode *inode, struct file *filp, u32 cmd,
 
 		src_args.is_registered = notify_is_registered(src_args.proc_id,
 						src_args.line_id);
-		size = copy_to_user((void *) (args),
+		size = copy_to_user((void __user *) (args),
 				(const void *)&src_args,
 				sizeof(struct notify_cmd_args_is_registered));
 		if (size != 0) {
@@ -698,7 +702,7 @@ func_end:
 	/* Set the status and copy the common args to user-side. */
 	common_args.api_status = status;
 	if (user == true) {
-		size = copy_to_user((void *) cmd_args,
+		size = copy_to_user((void __user *) cmd_args,
 					(const void *) &common_args,
 					sizeof(struct notify_cmd_args));
 		if (size < 0)
