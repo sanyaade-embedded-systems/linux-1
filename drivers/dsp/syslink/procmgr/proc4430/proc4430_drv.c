@@ -163,7 +163,7 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 		*/
 		proc4430_get_config(&cfg);
 
-		retval = copy_to_user((void *)(src_args->cfg),
+		retval = copy_to_user((void __user *)(src_args->cfg),
 				(const void *)&cfg,
 				sizeof(struct proc4430_config));
 		if (WARN_ON(retval < 0))
@@ -178,7 +178,7 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 		struct proc4430_config cfg;
 
 		retval = copy_from_user((void *)&cfg,
-			(const void *)(src_args->cfg),
+			(const void __user *)(src_args->cfg),
 			sizeof(struct proc4430_config));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
@@ -201,12 +201,12 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 
 		/* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-			(const void *)(args),
+			(const void __user *)(args),
 			sizeof(struct proc4430_cmd_args_params_init));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
 		proc4430_params_init(src_args.handle, &params);
-		retval = copy_to_user((void *)(src_args.params),
+		retval = copy_to_user((void __user *)(src_args.params),
 			(const void *) &params,
 			sizeof(struct proc4430_params));
 		if (WARN_ON(retval < 0))
@@ -222,12 +222,12 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 
 		/* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-				(const void *)(args),
+				(const void __user *)(args),
 				sizeof(struct proc4430_cmd_args_create));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
 		retval = copy_from_user((void *) &params,
-			(const void *)(src_args.params),
+			(const void __user *)(src_args.params),
 			sizeof(struct proc4430_params));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
@@ -238,7 +238,7 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 			if (WARN_ON(!entries))
 				goto func_exit;
 			retval = copy_from_user((void *) (entries),
-				(const void *)(params.mem_entries),
+				(const void __user *)(params.mem_entries),
 				params.num_mem_entries * \
 				sizeof(struct proc4430_mem_entry));
 			if (WARN_ON(retval < 0)) {
@@ -251,7 +251,7 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 							&params);
 		if (WARN_ON(src_args.handle == NULL))
 			goto func_exit;
-		retval = copy_to_user((void *)(args),
+		retval = copy_to_user((void __user *)(args),
 				(const void *)&src_args,
 				sizeof(struct proc4430_cmd_args_create));
 		/* Free the memory created */
@@ -266,7 +266,7 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 
 		/* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-			(const void *)(args),
+			(const void __user *)(args),
 			sizeof(struct proc4430_cmd_args_delete));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
@@ -281,13 +281,13 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 
 		/*Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-				(const void *)(args),
+				(const void __user *)(args),
 				sizeof(struct proc4430_cmd_args_open));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
 		retval = proc4430_open(&(src_args.handle),
 					src_args.proc_id);
-		retval = copy_to_user((void *)(args),
+		retval = copy_to_user((void __user *)(args),
 				(const void *)&src_args,
 			sizeof(struct proc4430_cmd_args_open));
 		WARN_ON(retval < 0);
@@ -300,7 +300,7 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 
 		/*Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-			(const void *)(args),
+			(const void __user *)(args),
 			sizeof(struct proc4430_cmd_args_close));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
@@ -318,7 +318,7 @@ static int proc4430_drv_ioctl(struct inode *inode, struct file *filp,
 func_exit:
 	/* Set the status and copy the common args to user-side. */
 	command_args.api_status = retval;
-	retval = copy_to_user((void *) cmd_args,
+	retval = copy_to_user((void __user *) cmd_args,
 		(const void *) &command_args,
 		 sizeof(struct proc_mgr_cmd_args));
 	WARN_ON(retval < 0);

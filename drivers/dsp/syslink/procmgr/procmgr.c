@@ -80,7 +80,7 @@ struct proc_mgr_object {
 	/* Configuration of memory regions */
 };
 
-struct proc_mgr_module_object proc_mgr_obj_state = {
+static struct proc_mgr_module_object proc_mgr_obj_state = {
 	.config_size = sizeof(struct proc_mgr_config),
 	.def_cfg.gate_handle = NULL,
 	.gate_handle = NULL,

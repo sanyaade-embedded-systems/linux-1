@@ -44,7 +44,7 @@ struct procmgr_dev {
 	struct cdev cdev;
 };
 
-struct platform_device	*omap_proc_dev;
+static struct platform_device	*omap_proc_dev;
 static struct platform_device	*procmgr_pdev;
 static struct procmgr_dev *procmgr_device;
 
@@ -180,7 +180,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 		*/
 		proc_mgr_get_config(&cfg);
 
-		retval = copy_to_user((void *)(src_args->cfg),
+		retval = copy_to_user((void __user *)(src_args->cfg),
 				(const void *)&cfg,
 				sizeof(struct proc_mgr_config));
 
@@ -195,7 +195,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 		struct proc_mgr_config cfg;
 
 		retval = copy_from_user((void *)&cfg,
-				(const void *)(src_args->cfg),
+				(const void __user *)(src_args->cfg),
 				sizeof(struct proc_mgr_config));
 
 		/* This check is needed at run-time also since it
@@ -226,7 +226,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		/* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-			(const void *)(args),
+			(const void __user *)(args),
 			sizeof(struct proc_mgr_cmd_args_params_init));
 
 		if (WARN_ON(retval != 0))
@@ -235,7 +235,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 			proc_mgr_params_init(src_args.handle, &params);
 
 		/* Copy only the params to user-side */
-		retval = copy_to_user((void *)(src_args.params),
+		retval = copy_to_user((void __user *)(src_args.params),
 				(const void *)&params,
 				sizeof(struct proc_mgr_params));
 		WARN_ON(retval < 0);
@@ -248,7 +248,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		/* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_create));
 
 		src_args.handle = proc_mgr_create(src_args.proc_id,
@@ -257,7 +257,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 			retval = -EFAULT;
 			goto func_exit;
 		}
-		retval = copy_to_user((void *)(args),
+		retval = copy_to_user((void __user *)(args),
 			(const void *)&src_args,
 			sizeof(struct proc_mgr_cmd_args_create));
 		WARN_ON(retval < 0);
@@ -270,7 +270,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		/* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_delete));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
@@ -285,7 +285,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		/* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_open));
 
 		if (WARN_ON(retval != 0))
@@ -298,7 +298,8 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 				&(src_args.proc_info));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
-		retval = copy_to_user((void *)(args), (const void *)&src_args,
+		retval = copy_to_user((void __user *)(args),
+				(const void *)&src_args,
 				sizeof(struct proc_mgr_cmd_args_open));
 		WARN_ON(retval);
 	}
@@ -310,7 +311,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_close));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
@@ -325,12 +326,12 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_get_attach_params));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
 		proc_mgr_get_attach_params(src_args.handle, &params);
-		retval = copy_to_user((void *)(src_args.params),
+		retval = copy_to_user((void __user *)(src_args.params),
 				(const void *)&params,
 				sizeof(struct proc_mgr_attach_params));
 		WARN_ON(retval);
@@ -344,13 +345,13 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_attach));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
 		/* Copy params from user-side. */
 		retval = copy_from_user((void *)&params,
-			(const void *)(src_args.params),
+			(const void __user *)(src_args.params),
 			sizeof(struct proc_mgr_attach_params));
 		retval = proc_mgr_attach(src_args.handle, &params);
 		if (WARN_ON(retval < 0))
@@ -360,7 +361,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 					&(src_args.proc_info));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
-		retval = copy_to_user((void *)(args),
+		retval = copy_to_user((void __user *)(args),
 			(const void *)&src_args,
 			sizeof(struct proc_mgr_cmd_args_attach));
 	}
@@ -372,7 +373,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_detach));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
@@ -389,13 +390,14 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-			(const void *)(args),
+			(const __user void *)(args),
 			sizeof(struct proc_mgr_cmd_args_get_state));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
 		procmgrstate = proc_mgr_get_state(src_args.handle);
 		src_args.proc_mgr_state = procmgrstate;
-		retval = copy_to_user((void *)(args), (const void *)&src_args,
+		retval = copy_to_user((void __user *)(args),
+			(const void *)&src_args,
 			sizeof(struct proc_mgr_cmd_args_get_state));
 		WARN_ON(retval < 0);
 	}
@@ -407,7 +409,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-			(const void *)(args),
+			(const void __user *)(args),
 			sizeof(struct proc_mgr_cmd_args_read));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
@@ -416,7 +418,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 			src_args.buffer);
 		if (WARN_ON(retval < 0))
 			goto func_exit;
-		retval = copy_to_user((void *)(args),
+		retval = copy_to_user((void __user *)(args),
 				(const void *)&src_args,
 				sizeof(struct proc_mgr_cmd_args_read));
 		WARN_ON(retval < 0);
@@ -429,7 +431,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-			(const void *)(args),
+			(const void __user *)(args),
 			sizeof(struct proc_mgr_cmd_args_write));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
@@ -438,7 +440,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 			src_args.buffer);
 		if (WARN_ON(retval < 0))
 			goto func_exit;
-		retval = copy_to_user((void *)(args),
+		retval = copy_to_user((void __user *)(args),
 			(const void *)&src_args,
 			sizeof(struct proc_mgr_cmd_args_write));
 		WARN_ON(retval < 0);
@@ -451,7 +453,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-			(const void *)(args),
+			(const void __user *)(args),
 			sizeof(struct proc_mgr_cmd_args_control));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
@@ -467,7 +469,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_translate_addr));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
@@ -476,7 +478,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 			src_args.src_addr, src_args.src_addr_type);
 		if (WARN_ON(retval < 0))
 			goto func_exit;
-		retval = copy_to_user((void *)(args),
+		retval = copy_to_user((void __user *)(args),
 			(const void *)&src_args, sizeof
 			(struct proc_mgr_cmd_args_translate_addr));
 		WARN_ON(retval < 0);
@@ -489,7 +491,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_register_notify));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
@@ -507,7 +509,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 
 		 /* Copy the full args from user-side. */
 		retval = copy_from_user((void *)&src_args,
-		(const void *)(args),
+		(const void __user *)(args),
 		sizeof(struct proc_mgr_cmd_args_get_proc_info));
 		if (WARN_ON(retval != 0))
 			goto func_exit;
@@ -520,7 +522,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 			kfree(proc_info);
 			goto func_exit;
 		}
-		retval = copy_to_user((void *)(src_args.proc_info),
+		retval = copy_to_user((void __user *)(src_args.proc_info),
 				(const void *) proc_info,
 				sizeof(struct proc_mgr_proc_info));
 		WARN_ON(retval < 0);
@@ -533,14 +535,15 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 		struct proc_mgr_cmd_args_get_virt_to_phys src_args;
 
 		retval = copy_from_user((void *)&src_args,
-			(const void *)(args),
+			(const void __user *)(args),
 			sizeof(struct proc_mgr_cmd_args_get_virt_to_phys));
 		retval = proc_mgr_virt_to_phys(src_args.handle,
 					src_args.da, (src_args.mem_entries),
 					src_args.num_of_entries);
 		if (WARN_ON(retval < 0))
 			goto func_exit;
-		retval = copy_to_user((void *)(args), (const void *)&src_args,
+		retval = copy_to_user((void __user *)(args),
+			(const void *)&src_args,
 			sizeof(struct proc_mgr_cmd_args_get_virt_to_phys));
 		WARN_ON(retval < 0);
 	}
@@ -559,14 +562,15 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 		int rev;
 		struct proc_mgr_cmd_args_cpurev src_args;
 		retval = copy_from_user((void *)&src_args,
-				(const void *)(args),
+				(const void __user *)(args),
 				sizeof(struct proc_mgr_cmd_args_cpurev));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
 
 		rev = GET_OMAP_REVISION();
 		*(src_args.cpu_rev) = rev;
-		retval = copy_to_user((void *)(args), (const void *)&src_args,
+		retval = copy_to_user((void __user *)(args),
+				(const void *)&src_args,
 				sizeof(struct proc_mgr_cmd_args_cpurev));
 		if (WARN_ON(retval < 0))
 			goto func_exit;
@@ -580,7 +584,7 @@ static int proc_mgr_drv_ioctl(struct inode *inode, struct file *filp,
 func_exit:
 	/* Set the retval and copy the common args to user-side. */
 	command_args.api_status = retval;
-	retval = copy_to_user((void *)cmd_args,
+	retval = copy_to_user((void __user *)cmd_args,
 		(const void *)&command_args, sizeof(struct proc_mgr_cmd_args));
 
 	WARN_ON(retval < 0);
