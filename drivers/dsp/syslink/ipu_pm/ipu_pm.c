@@ -955,7 +955,7 @@ static inline int ipu_pm_get_i2c_bus(int proc_id, u32 rcb_num)
 
 		/* Request resource using PRCM API */
 		p_i2c_clk = omap_clk_get_by_name(i2c_name);
-		if (p_i2c_clk == 0)
+		if (p_i2c_clk == NULL)
 			return PM_NO_I2C;
 		i2c_clk_status = clk_enable(p_i2c_clk);
 		if (i2c_clk_status != 0)
@@ -1050,7 +1050,7 @@ static inline int ipu_pm_get_regulator(int proc_id, u32 rcb_num)
 	/* Search the name of regulator based on the id and request it */
 	regulator_name = ipu_regulator_name[pm_regulator_num - 1];
 	p_regulator = regulator_get(NULL, regulator_name);
-	if (p_regulator == 0)
+	if (p_regulator == NULL)
 		return PM_NO_REGULATOR;
 
 	/* Get and store the regulator default voltage */
@@ -1112,7 +1112,8 @@ static inline int ipu_pm_get_aux_clk(int proc_id, u32 rcb_num)
 		__raw_writel(tmp, AUX_CLK_REG(pm_aux_clk_num));
 
 		/* Store the aux clk addres in the RCB */
-		rcb_p->mod_base_addr = (unsigned)AUX_CLK_REG(pm_aux_clk_num);
+		rcb_p->mod_base_addr =
+				(unsigned __force)AUX_CLK_REG(pm_aux_clk_num);
 		params->pm_aux_clk_counter++;
 	} else
 		return PM_NO_AUX_CLK;
