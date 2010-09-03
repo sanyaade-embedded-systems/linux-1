@@ -410,7 +410,7 @@ static int _heapbufmp_create(void **handle_ptr,
 		goto error;
 
 	INIT_LIST_HEAD(&obj->list_elem);
-	list_add(&heapbufmp_module->obj_list, &obj->list_elem);
+	list_add(&obj->list_elem, &heapbufmp_module->obj_list);
 	mutex_unlock(heapbufmp_module->local_lock);
 
 	if (create_flag == false) {

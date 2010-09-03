@@ -398,7 +398,7 @@ static int _heapmemmp_create(void **handle_ptr,
 		goto error;
 
 	INIT_LIST_HEAD(&obj->list_elem);
-	list_add(&heapmemmp_module->obj_list, &obj->list_elem);
+	list_add(&obj->list_elem, &heapmemmp_module->obj_list);
 	mutex_unlock(heapmemmp_module->local_lock);
 
 	if (create_flag == false) {
