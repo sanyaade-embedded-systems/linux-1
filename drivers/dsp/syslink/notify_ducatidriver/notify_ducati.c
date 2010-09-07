@@ -154,7 +154,7 @@ static struct notify_ducatidrv_module notify_ducatidriver_state = {
 	.def_inst_params.remote_int_id = (u32) -1
 };
 
-struct notifier_block ducati_notify_nb = {
+static struct notifier_block ducati_notify_nb = {
 	.notifier_call = notify_shmdrv_isr,
 };
 

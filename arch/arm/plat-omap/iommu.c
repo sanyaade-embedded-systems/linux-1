@@ -819,7 +819,7 @@ void iopgtable_clear_entry_all(struct iommu *obj)
 }
 EXPORT_SYMBOL_GPL(iopgtable_clear_entry_all);
 
-void eventfd_notification(struct iommu *obj)
+static void eventfd_notification(struct iommu *obj)
 {
 	struct iommu_event_ntfy *fd_reg;
 

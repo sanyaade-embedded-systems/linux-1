@@ -144,7 +144,7 @@ struct omap_rproc_platform_data *omap4_get_rproc_data(void)
 
 #define NR_RPROC_DEVICES ARRAY_SIZE(omap4_rproc_data)
 
-struct omap_device *omap4_rproc_pdev[NR_RPROC_DEVICES];
+static struct omap_device *omap4_rproc_pdev[NR_RPROC_DEVICES];
 
 int omap_get_num_of_remoteproc(void)
 {
