@@ -2,6 +2,7 @@
 
 menuconfig Sys_Link
 	bool "Sys_Link"
+	depends on ARCH_OMAP4
 	default y
 
 if Sys_Link
