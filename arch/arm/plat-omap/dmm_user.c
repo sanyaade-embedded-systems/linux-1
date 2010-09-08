@@ -245,6 +245,7 @@ static int omap_dmm_release(struct inode *inode, struct file *filp)
 	}
 	obj = filp->private_data;
 	flush_signals(current);
+	iommu_notify_event(obj->iovmm->iommu, IOMMU_CLOSE, NULL);
 	user_remove_resources(obj);
 	iommu_put(obj->iovmm->iommu);
 	kfree(obj);
