@@ -3080,12 +3080,12 @@ int ipu_pm_save_ctx(int proc_id)
 
 		/* Check for APPM3, if loaded reset first */
 		if (app_loaded) {
-			retval = rproc_stop(app_rproc);
+			retval = rproc_sleep(app_rproc);
 			if (retval)
 				goto error;
 			handle->rcb_table->state_flag |= APP_PROC_DOWN;
 		}
-		retval = rproc_stop(sys_rproc);
+		retval = rproc_sleep(sys_rproc);
 		if (retval)
 			goto error;
 		handle->rcb_table->state_flag |= SYS_PROC_DOWN;
@@ -3153,12 +3153,12 @@ int ipu_pm_restore_ctx(int proc_id)
 
 		omap_mbox_restore_ctx(ducati_mbox);
 		iommu_restore_ctx(ducati_iommu);
-		retval = rproc_start(sys_rproc, NULL);
+		retval = rproc_wakeup(sys_rproc);
 		if (retval)
 			goto error;
 		handle->rcb_table->state_flag &= ~SYS_PROC_DOWN;
 		if (ipu_pm_get_state(proc_id) & APP_PROC_LOADED) {
-			retval = rproc_start(app_rproc, NULL);
+			retval = rproc_wakeup(app_rproc);
 			if (retval)
 				goto error;
 			handle->rcb_table->state_flag &= ~APP_PROC_DOWN;
