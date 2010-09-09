@@ -102,6 +102,52 @@ int rproc_stop(struct omap_rproc *rproc)
 }
 EXPORT_SYMBOL_GPL(rproc_stop);
 
+int rproc_sleep(struct omap_rproc *rproc)
+{
+	int ret;
+	struct omap_rproc_platform_data *pdata;
+	if (!rproc->dev)
+		return -EINVAL;
+
+	pdata = rproc->dev->platform_data;
+	if (!pdata->ops)
+		return -EINVAL;
+
+	ret = mutex_lock_interruptible(&rproc->lock);
+	if (ret)
+		return ret;
+
+	ret = pdata->ops->sleep(rproc->dev);
+
+	mutex_unlock(&rproc->lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(rproc_sleep);
+
+int rproc_wakeup(struct omap_rproc *rproc)
+{
+	int ret;
+	struct omap_rproc_platform_data *pdata;
+
+	if (!rproc->dev)
+		return -EINVAL;
+
+	pdata = rproc->dev->platform_data;
+	if (!pdata->ops)
+		return -EINVAL;
+
+	ret = mutex_lock_interruptible(&rproc->lock);
+	if (ret)
+		return ret;
+
+	ret = pdata->ops->wakeup(rproc->dev);
+
+	mutex_unlock(&rproc->lock);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(rproc_wakeup);
 
 static inline int rproc_get_state(struct omap_rproc *rproc)
 {
@@ -172,7 +218,7 @@ static int omap_rproc_release(struct inode *inode, struct file *filp)
 	pdata = rproc->dev->platform_data;
 
 	count = atomic_dec_return(&rproc->count);
-	if (!count && (rproc->state == OMAP_RPROC_RUNNING))
+	if (!count && (rproc->state != OMAP_RPROC_STOPPED))
 		rproc_stop(rproc);
 
 	return 0;

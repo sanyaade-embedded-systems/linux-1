@@ -41,6 +41,8 @@ struct omap_rproc;
 struct omap_rproc_ops {
 	int (*start)(struct device *dev, u32 start_addr);
 	int (*stop)(struct device *dev);
+	int (*sleep)(struct device *dev);
+	int (*wakeup)(struct device *dev);
 	int (*get_state)(struct device *dev);
 };
 
@@ -60,6 +62,7 @@ enum {
 enum {
 	OMAP_RPROC_STOPPED,
 	OMAP_RPROC_RUNNING,
+	OMAP_RPROC_HIBERNATING,
 };
 
 struct omap_rproc_platform_data {
@@ -85,6 +88,8 @@ struct omap_rproc_start_args {
 
 extern int rproc_start(struct omap_rproc *rproc, const void __user *arg);
 extern int rproc_stop(struct omap_rproc *rproc);
+extern int rproc_sleep(struct omap_rproc *rproc);
+extern int rproc_wakeup(struct omap_rproc *rproc);
 
 extern int omap_rproc_register_notifier(struct omap_rproc *rproc,
 					struct notifier_block *nb);

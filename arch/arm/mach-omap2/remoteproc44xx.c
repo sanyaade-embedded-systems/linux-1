@@ -69,18 +69,71 @@ static inline int proc44x_stop(struct device *dev)
 						to_platform_device(dev));
 	int ret = 0;
 
-	ret = omap_device_shutdown(pdev);
-	if (ret)
-		dev_err(dev, "%s err 0x%x\n", __func__, ret);
+	if (obj->state == OMAP_RPROC_RUNNING) {
+		ret = omap_device_shutdown(pdev);
+		if (ret)
+			dev_err(dev, "%s err 0x%x\n", __func__, ret);
+
+		if (!strcmp(obj->name, "tesla")) {
+			dev_info(dev, "disable GPTIMER5\n");
+			cm_write_mod_reg(ABE_GPTIMER_MODULE_DISABLE,
+					OMAP4430_CM1_ABE_MOD,
+					OMAP4_CM1_ABE_TIMER5_CLKCTRL_OFFSET);
+		}
+	}
+
+	obj->state = OMAP_RPROC_STOPPED;
+	return ret;
+}
+
+static inline int proc44x_sleep(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct omap_rproc *obj = (struct omap_rproc *)platform_get_drvdata(
+						to_platform_device(dev));
+	int ret = 0;
+
+	if (obj->state == OMAP_RPROC_RUNNING) {
+		ret = omap_device_shutdown(pdev);
+		if (ret)
+			dev_err(dev, "%s err 0x%x\n", __func__, ret);
+
+		if (!strcmp(obj->name, "tesla")) {
+			dev_info(dev, "disable GPTIMER5\n");
+			cm_write_mod_reg(ABE_GPTIMER_MODULE_DISABLE,
+					OMAP4430_CM1_ABE_MOD,
+					OMAP4_CM1_ABE_TIMER5_CLKCTRL_OFFSET);
+		}
+	}
+
+	obj->state = OMAP_RPROC_HIBERNATING;
+	return ret;
+}
+
+static inline int proc44x_wakeup(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct omap_rproc *obj = (struct omap_rproc *)platform_get_drvdata(
+						to_platform_device(dev));
+	int ret = 0;
 
 	if (!strcmp(obj->name, "tesla")) {
-		dev_info(dev, "disable GPTIMER5\n");
-		cm_write_mod_reg(ABE_GPTIMER_MODULE_DISABLE,
+		dev_info(dev, "Enable GPTIMER5 for Tesla BIOS Clock\n");
+		/* Enable the GPTIMER5 clock */
+		cm_write_mod_reg(ABE_GPTIMER_MODULE_ENABLE,
 				OMAP4430_CM1_ABE_MOD,
 				OMAP4_CM1_ABE_TIMER5_CLKCTRL_OFFSET);
 	}
 
-	obj->state = OMAP_RPROC_STOPPED;
+	ret = omap_device_enable(pdev);
+	if (ret)
+		goto err_start;
+
+	obj->state = OMAP_RPROC_RUNNING;
+	return 0;
+
+err_start:
+	dev_err(dev, "%s error 0x%x\n", __func__, ret);
 	return ret;
 }
 
@@ -96,18 +149,24 @@ static inline int omap4_rproc_get_state(struct device *dev)
 static struct omap_rproc_ops omap4_ducati0_ops = {
 	.start = proc44x_start,
 	.stop = proc44x_stop,
+	.sleep = proc44x_sleep,
+	.wakeup = proc44x_wakeup,
 	.get_state = omap4_rproc_get_state,
 };
 
 static struct omap_rproc_ops omap4_ducati1_ops = {
 	.start = proc44x_start,
 	.stop = proc44x_stop,
+	.sleep = proc44x_sleep,
+	.wakeup = proc44x_wakeup,
 	.get_state = omap4_rproc_get_state,
 };
 
 static struct omap_rproc_ops omap4_tesla_ops = {
 	.start = proc44x_start,
 	.stop = proc44x_stop,
+	.sleep = proc44x_sleep,
+	.wakeup = proc44x_wakeup,
 	.get_state = omap4_rproc_get_state,
 };
 
