@@ -31,7 +31,7 @@ config  DUCATI_BASEIMAGE_PHYS_ADDR
 config  SYSLINK_DUCATI_PM
         tristate "DUCATI POWER MANAGEMENT"
         depends on SYSLINK_PROC && SYSLINK_PROC4430
-        default y
+        default n
         help
            Ducati Power Management Implementation
 
