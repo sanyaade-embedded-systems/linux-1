@@ -1,4 +1,9 @@
-linux-ti-omap4 (2.6.35-ti903.8+ti+release2) maverick; urgency=low
+linux-ti-omap4 (2.6.35-ti903.8+ti+release3) maverick; urgency=low
+
+
+ -- Sebastien JAN <s-jan@ti.com>  Tue, 14 Sep 2010 18:04:47 +0200
+
+linux-ti-omap4 (2.6.35-ti903.8) maverick; urgency=low
 
   [ Bryan Wu ]
 
