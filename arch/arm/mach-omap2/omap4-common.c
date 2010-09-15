@@ -211,6 +211,9 @@ static int __init omap_l2_cache_init(void)
 	l2cache_base = ioremap(OMAP44XX_L2CACHE_BASE, SZ_4K);
 	BUG_ON(!l2cache_base);
 
+	if (omap_rev() == OMAP4430_REV_ES2_0)
+		omap_smc1(0x109, 0x0e470000);
+
 	/* Enable PL310 L2 Cache controller */
 	omap_smc1(0x102, 0x1);
 
@@ -219,7 +222,7 @@ static int __init omap_l2_cache_init(void)
 	 * parity disabled
 	 */
 	if (omap_rev() == OMAP4430_REV_ES2_0)
-		l2x0_init(l2cache_base, 0x0e070000, 0xc0000fff);
+		l2x0_init(l2cache_base, 0x0e470000, 0xc0000fff);
 	else
 		l2x0_init(l2cache_base, 0x0e050000, 0xc0000fff);
 
