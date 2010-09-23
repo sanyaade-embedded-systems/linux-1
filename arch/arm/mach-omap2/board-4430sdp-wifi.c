@@ -25,10 +25,12 @@
 
 #include <asm/gpio.h>
 #include <asm/io.h>
+#include <asm/mach-types.h>
 #include <plat/wifi_tiwlan.h>
 
-#define SDP4430_WIFI_PMENA_GPIO	 43
-#define SDP4430_WIFI_IRQ_GPIO	 53
+#define SDP4430_WIFI_PMENA_GPIO_BLAZE	54
+#define SDP4430_WIFI_PMENA_GPIO_PANDA	43
+#define SDP4430_WIFI_IRQ_GPIO 53
 
 static int sdp4430_wifi_cd;		/* WIFI virtual 'card detect' status */
 static void (*wifi_status_cb)(int card_present, void *dev_id);
@@ -69,8 +71,12 @@ static int sdp4430_wifi_power_state;
 
 int sdp4430_wifi_power(int on)
 {
+
 	printk(KERN_WARNING"%s: %d\n", __func__, on);
-	gpio_set_value(SDP4430_WIFI_PMENA_GPIO, on);
+	if (machine_is_omap_4430sdp())
+		gpio_set_value(SDP4430_WIFI_PMENA_GPIO_BLAZE, on);
+	else
+		gpio_set_value(SDP4430_WIFI_PMENA_GPIO_PANDA, on);
 	sdp4430_wifi_power_state = on;
 	return 0;
 }
