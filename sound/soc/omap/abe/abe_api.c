@@ -35,6 +35,7 @@
 #include <linux/err.h>
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
+
 /**
  * abe_reset_hal - reset the ABE/HAL
  * @rdev: regulator source
