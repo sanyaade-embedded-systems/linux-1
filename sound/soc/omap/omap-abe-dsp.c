@@ -250,6 +250,11 @@ void abe_dsp_disable_data_transfer(int port)
 	struct platform_device *pdev = abe->pdev;
 
 	abe_disable_data_transfer(port);
+	udelay(250);
+/*
+	abe_stop_event_generator();
+	udelay(500);
+*/
 	pm_runtime_put_sync(&pdev->dev);
 }
 
