@@ -3790,6 +3790,7 @@ void dispc_dump_clocks(struct seq_file *s)
 		break;
 	case DSS_SRC_PLL2_CLK1:
 		dispc_src = "pll2_clk1";
+		break;
 	case DSS_SRC_PLL3_CLK1:
 		dispc_src = "pll3_clk1";
 		break;
@@ -3798,6 +3799,8 @@ void dispc_dump_clocks(struct seq_file *s)
 	}
 
 	seq_printf(s, "dispc fclk source = %s\n", dispc_src);
+
+	seq_printf(s, "- DISPC - LCD 1\n");
 
 	seq_printf(s, "fck\t\t%-16lu\n", dispc_fclk_rate());
 	seq_printf(s, "lck\t\t%-16lulck div\t%u\n",
@@ -3809,10 +3812,6 @@ void dispc_dump_clocks(struct seq_file *s)
 		dispc_get_lcd_divisor(OMAP_DSS_CHANNEL_LCD2, &lcd, &pcd);
 
 		seq_printf(s, "- DISPC - LCD 2\n");
-
-		seq_printf(s, "dispc fclk source = %s\n",
-			 dss_get_dispc_clk_source() == 0 ?
-			 "dss1_alwon_fclk" : "dsi1_pll_fclk");
 
 		seq_printf(s, "fck\t\t%-16lu\n", dispc_fclk_rate());
 		seq_printf(s, "lck\t\t%-16lulck div\t%u\n",
