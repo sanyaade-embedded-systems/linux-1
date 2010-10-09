@@ -1,9 +1,9 @@
-27 September 2010
+09 October 2010
 
 
 1.  Introduction
 ----------------
-This document accompanies OMAP(TM) Software Release L24.10 based on Linux 2.6.35
+This document accompanies OMAP(TM) Software Release L24.11 based on Linux 2.6.35
 on OMAP4430 SDP, Blaze and Panda boards. The document specifies details about:
 	- downloading the source code and building the images
 	- supported features
@@ -28,7 +28,7 @@ The x-loader source can be obtained via GIT from:
 
 2.3 Kernel for all boards (SDP, Blaze, Panda)
 The kernel source can be obtained via GIT from:
-  http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=shortlog;h=refs/heads/L24.10
+  http://dev.omapzoom.org/?p=integration/kernel-omap4.git;a=shortlog;h=refs/heads/L24.11
 
 Components that are supported in the release:
    X-loader, U-Boot, OS Kernel (SMP), Phoenix power IC, UART, GP Timer, GPIO, Watchdog,
@@ -271,8 +271,11 @@ echo 0 >  /sys/devices/system/cpu/cpu1/online
 
 Once CPU1 is hotplugged out, OBS signals can be used to
 verify MPU/CPU0/CPU1 transtitions.
+Alternatively debug counters can also be used from
+/debug/pm_debug/count
 
-Currently only sleep state of MPU CSWR is supported.
+The deepest sleep state supported in cpuidle is CHIP/DEVICE
+retention. The retention voltage is set to 0.83v
 
 3.5.3 System Suspend
 
@@ -281,8 +284,11 @@ To test system suspend, use the following command
 echo mem > /sys/power/state
 
 Use OBS signals to verify MPU/CPU0/CPU1 transitions.
+Alternatively use debug counters from
+/debug/pm_debug/count
 
-Currently only sleep state of MPU CSWR is supported.
+The sleep state supported in System suspend is CHIP/DEVICE
+retention. The retention voltage is set to 0.83v
 
 Please use a ramdisk inorder to test system suspend feature
 
@@ -304,7 +310,7 @@ aplay -D hd_audio file.wav
 
 4.1 New Features
 
-- Power management to achieve Core CSWR.
+- Power management to achieve CHIP retention.
 - Mainline version of u-boot.
 - SDP, Blaze and Panda supported in the same codebase of x-loader and u-boot.
 
@@ -398,79 +404,91 @@ Refer to Program schedule.
 
 4.5 Defects Fixed in This Release
 
-OMAPS00219723	MMC: sometimes the order of detection of eMMC and external SD card is wrong
-OMAPS00221981	eMMC device shall be stable at /dev/mmcblk0
-OMAPS00219502	IRQ 93 - I2C ISR not correctly handled
-OMAPS00218080	PT: Robustness: EXT2-fs (mmcblk1p1): error: ext2_lookup is generated after certain number of iterations
-OMAPS00214020	ethernet doesn't get configured with L24.4 kernel
-OMAPS00215563	Not able to wakeup from suspend state
-OMAPS00216039	L24x: Tick suppression won't work because of the LOCAL A9 timer aren't wakeup capable
-OMAPS00216037	L24x: CPUx comes out of low power mode when there is an enevt om CPUy
-OMAPS00220851	DMA test case failures - Descriptor loading and SMP
-OMAPS00219141	u-boot net root path is too short
-OMAPS00221839	MUSB (OTG) in Host mode: enumeration failure if USB device connected before blaze boot
-OMAPS00215668	MUSB driver in device mode has problems with unaligned DMA.
-OMAPS00221528	MUSB Host :- Fix the default DMA mapping of control transfer buffers
-OMAPS00221512	USB: MUSB Host: Data transfers (Write to USB disk) fails with FAT errors
-OMAPS00213825	Kernel crash when many processes have been scheduled
-OMAPS00216449	Problems are seen with NFS when 'tcp' option is not specified in bootargs.
-OMAPS00214020	ethernet doesn't get configured with L24.4 kernel
+OMAPS00222989	Random failures in the Mass storage (thumbdrive) detection by OHCI controller
+OMAPS00223646	PM Suspend last power state traces are not valid for DSS, CAM, EMU and SGX.
+OMAPS00224011	HWMOD: Smart-Reflex is broken on L24.9-pm branch (IVA-VCORE2, SR disable)
+OMAPS00224083	Kernel Hang on L24.9-pm branch with ubuntu filesystem when cpufreq is enabled
+OMAPS00224605	The USB keyboard and mouse are not working in OHCI
+OMAPS00225610	HDMI conformance: need to change video format twice to get correct video timing (custom_edid_timing)
+OMAPS00224263	HDMI hotplug detection doesn't work consistently in some TVs
+OMAPS00224153	HPD with DVI is not working properly
+OMAPS00224600	FB not resizing based on the HDMI timing update
+OMAPS00225319	No display on pandaboard
+OMAPS00224770	fbsize is not working
+OMAPS00224769	When Num of Fb = 4, doesnt return error
+OMAPS00224763	FB Replication is not working
+OMAPS00224692	Reboot fails due to crash/errors in DSS files
+OMAPS00223435	Display unblank takes to much time ~10 sec.
+OMAPS00224767	Wait For Vysnc Results in crash when suspended
+OMAPS00222834	HDMI as a default device is giving OCP errors
+OMAPS00221067	omaplfb relies on the FB2OFB definition, which is not defined by the headers of the Ubuntu kernel headers
+OMAPS00220581	L_JPEGDEC_FUNCTIONAL_001: multiple dark lines are seen when image is displayed
 OMAPS00223050	White screen on  HDMI TV
-OMAPS00223633	Display: DSI 250 ms timeout following PM Suspend
-OMAPS00219789	V4L2 error observed when rendering frames from Video decode testcases
-OMAPS00222749	With VSTAB enabled, 1080p preview fails.
-OMAPS00222908	OMAPFB is not working with TILER buffer on L24.9
+OMAPS00225816	Touch Screen Wake up fails in cpuidle with blanking and Streaming Tests
  
+
 
 
 4.6 Open Defects
 
-OMAPS00215651	MUSB driver in host mode has problems with unaligned DMA
-OMAPS00217993	Display on Primary LCD does not wakeup when USB is active
-OMAPS00218029	PT_PPM: Low USB-MS throughputs metrics for write operations
-OMAPS00220506	omap-serial driver is unstable during bluetooth file transfer stress testing.
-OMAPS00221541	UART trasfers fails at 3.5Mbps baudrate with DMA mode.
 OMAPS00222079	MMC corruption on reading when ADMA is used
-OMAPS00222347	[PT][Endurance] Transfer: PTLv1.3.8: Dxfer failed after some  iterations
-OMAPS00222789	At random times, booting is not completed and the SDP hangs.
-OMAPS00222925	USB Host - Chapter 9 control,in out test case failure
-OMAPS00222943	Key press cannot wakeup system
+OMAPS00222347	[PT][Endurance] Transfer: PTLv1.4: Dxfer failed after some  iterations
+OMAPS00223678	PT Robustness, Image Display + Data transfer : Data Transfer gives kernel panic after 450~950 iterations
+OMAPS00224802	OPROFILE option breaks power management
 OMAPS00213906	180 degree rotation of yuv format shows a bluish tinge
-OMAPS00220581	L_JPEGDEC_FUNCTIONAL_001: multiple dark lines are seen when image is displayed
-OMAPS00220816	PicoDLP shows a junk buffer at the bottom of the frame
-OMAPS00221067	omaplfb relies on the FB2OFB definition, which is not defined by the headers of the Ubuntu kernel headers
 OMAPS00223203	Writeback color conversion and upscaling is not working
-OMAPS00223301	Sync Lost is observed when hdmi settings change is done through sysfs
-OMAPS00223435	Display unblank takes to much time ~10 sec.
 OMAPS00223490	Upscaling 512*612 resolution to 1080p for formats  RGB/NV12/YUV fails
 OMAPS00223493	Support for 4/8/12/18 bpp mode is not working for framebuffer
-OMAPS00224153	HPD with DVI is not working properly
-OMAPS00224263	HDMI hotplug detection doesn't work consistently in some TVs
-OMAPS00224600	FB not resizing based on the HDMI timing update
 OMAPS00224611	DSI errors are seen while system wide suspend and resume
+OMAPS00224765	Pico Enable /Disable results in crash
+OMAPS00224766	Rotation & Mirroring not working with FB mode 16
+OMAPS00224768	Flip buffer is not working with HDMI
+OMAPS00224771	Switching back to Lcd gives "omapdss MANAGER error"
+OMAPS00224772	WB on HDMI is not working
+OMAPS00224773	flip buffer crashed with suspend/resume
+OMAPS00224777	Rotation & Mirroring not working with Interlacing
+OMAPS00224778	Interlace to progressive display not working on LCD1/2
+OMAPS00224818	If one hot plugs out one CPU and then try display blanking; then subsequently CORE CSWR is not entered
+OMAPS00225370	[DRV-LCD] Some FRAMEDONE interrupts are missed leading to video frame being played during 3*16.6ms instead of 2*16.6
+OMAPS00225548	Source and destination transparency key test cases do not give desired output
+OMAPS00225551	Display does not resume after suspend, while playing back video using ffmpeg on GUI Ubuntu FS
+OMAPS00225600	setterm binary not available to test the FB functionality
+OMAPS00225606	HDMI conformance: Bad HSYNC polarity in 480p and 576p
+OMAPS00225608	HDMI conformance: hot plug not working when the sink modify E-EDID
+OMAPS00225611	HDMI conformance: 4 blocks EDID reading is not working
+OMAPS00225809	YUV is not working higher resolutions
+OMAPS00225815	Mulitple Trails of Suspend Resume Fails with blanking
+OMAPS00225829	Interlace is not working
+OMAPS00225832	Crash is observed when pico is enabled using sysfs.
+OMAPS00225833	ES1 Bootup - Penguins dont get displayed
+OMAPS00225834	Issue in scaling 720p YUYV samples
+OMAPS00225837	Occasionally scaling results in continous error stating "omapdss DISPC error: OCP_ERR"
+OMAPS00225827   Tocuhscreen tap does not wakeup from suspend state
+
+
 
 4.7 Open Change Requests
 None
 
 4.8 Rejected Defects
 
-OMAPS00221558	HSMMC : Copying same file twice on MMC and when run "cmp" will throw error
-OMAPS00218323	PT_Adhoc:Audio Playback of a file stored in SD card, Terminal hangs while SD is removed.
-OMAPS00221850	UST OTG ( as HOST): CDC-ACM class issue
+OMAPS00224258	PT Automation: Kernel BUG message appears when doing file transfer while other MM operation is performed
+OMAPS00225607	SD fatls showing 0 bytes for image file
+OMAPS00218312	PT_FUNCTIONAL: HDMI output not working properly with a HDMI Video Capture PCI card
 OMAPS00224344	Add support for horizontal flip in DSS driver
-OMAPS00219829	PT_PPM: AV Playback: FPS numbers for Video Playback via HDMI are below validation criteria
-OMAPS00222915	HDMI driver must not periodically wake up the system to enable ESD chip detecting plug insertion
  
 
 4.9 Postponed Defects
 
-OMAPS00221726	PT_PPM: Low USB-MS throughputs metrics for read operations
 OMAPS00216446	Disabling "auto update" on DSI would impact the V4l2 drivers that have the ISRs hooked up for FRAMEDONE already.
+
+
 
 
 4.10 Limitations
 
 1) MAC address reading from ethernet EEPROM is not supported.
+2) Touchscreen not being able to wakeup from suspend if Sensor Sleep mode is enabled
 
 
 5. Tool Chain
