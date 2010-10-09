@@ -628,7 +628,10 @@ static int dss_check_state_disabled(struct device *dev, void *data)
 		return -EINVAL;
 }
 
-/* disables mainclk if all devices are suspended /disabled */
+/*
+ * Checks if all devices are suspended/disabled.
+ * Disables mainclk (DSS clocks on OMAP4) if true and do_clk_disable is true.
+ */
 int dss_mainclk_state_disable(bool do_clk_disable)
 {
 	int r;
@@ -637,8 +640,8 @@ int dss_mainclk_state_disable(bool do_clk_disable)
 	r = bus_for_each_dev(bus, NULL, NULL, dss_check_state_disabled);
 
 	if (r) {
-		/* All devices are not disabled /suspended */
-		return -EINVAL;
+		/* Some devices are not disabled/suspended */
+		return -EBUSY;
 	} else {
 		if (do_clk_disable) {
 			save_all_ctx();
@@ -648,7 +651,11 @@ int dss_mainclk_state_disable(bool do_clk_disable)
 	}
 }
 
-/* enables mainclk if all devices are suspended /disabled */
+/*
+ * enables mainclk (DSS clocks on OMAP4 if all devices are either in disabled or
+ * suspended state before calling this function.
+ * Returns 0 on success.
+ */
 int dss_mainclk_state_enable(void)
 {
 	int r;
