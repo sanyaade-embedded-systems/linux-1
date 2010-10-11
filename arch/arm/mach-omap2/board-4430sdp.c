@@ -48,6 +48,7 @@
 #include <plat/omap4-keypad.h>
 #include <plat/hwspinlock.h>
 #include <plat/nokia-dsi-panel.h>
+#include <plat/opp_twl_tps.h>
 #include "hsmmc.h"
 #include "smartreflex-class3.h"
 
@@ -1093,20 +1094,26 @@ static void enable_board_wakeup_source(void)
 	omap_writew(padconf, CONTROL_CORE_PAD1_GPMC_AD11);
 }
 
-static struct omap_volt_vc_data vc_config = {
-	.vdd0_on = 0x3a,        /* 1.35v */
-	.vdd0_onlp = 0x3a,      /* 1.35v */
-	.vdd0_ret = 0x14,       /* 0.8375v */
-	.vdd0_off = 0x01,       /* 0.6v */
-	.vdd1_on = 0x29,        /* 1.1v */
-	.vdd1_onlp = 0x29,      /* 1.1v */
-	.vdd1_ret = 0x14,       /* 0.8375v */
-	.vdd1_off = 0x01,       /* 0.6v */
-	.vdd2_on = 0x29,        /* 1.1v */
-	.vdd2_onlp = 0x29,      /* 1.1v */
-	.vdd2_ret = 0x14,       /* .8375v */
-	.vdd2_off = 0x01,       /* 0.6v */
-};
+static struct omap_volt_vc_data vc_config;
+
+/* vsel values may depend on twl6030 version */
+void setup_vc_config(void)
+{
+	vc_config.vdd0_on = omap_twl_uv_to_vsel(1350000);
+	vc_config.vdd0_onlp = omap_twl_uv_to_vsel(1350000);
+	vc_config.vdd0_ret = omap_twl_uv_to_vsel(837500);
+	vc_config.vdd0_off = omap_twl_uv_to_vsel(600000);
+
+	vc_config.vdd1_on = omap_twl_uv_to_vsel(1100000);
+	vc_config.vdd1_onlp = omap_twl_uv_to_vsel(1100000);
+	vc_config.vdd1_ret = omap_twl_uv_to_vsel(837500);
+	vc_config.vdd1_off = omap_twl_uv_to_vsel(600000);
+
+	vc_config.vdd2_on = omap_twl_uv_to_vsel(1100000);
+	vc_config.vdd2_onlp = omap_twl_uv_to_vsel(1100000);
+	vc_config.vdd2_ret = omap_twl_uv_to_vsel(837500);
+	vc_config.vdd2_off = omap_twl_uv_to_vsel(600000);
+}
 
 static void __init omap_4430sdp_init(void)
 {
@@ -1149,6 +1156,7 @@ static void __init omap_4430sdp_init(void)
 	omap_cma3000accl_init();
 	omap_display_init(&sdp4430_dss_data);
 	enable_board_wakeup_source();
+	setup_vc_config();
 	omap_voltage_init_vc(&vc_config);
 }
 
