@@ -41,7 +41,7 @@
 
 
 /*This is the structure which has all supported timing values that OMAP4 supports*/
-const struct omap_video_timings omap_hdmi_timings[31] = {
+const struct omap_video_timings omap_hdmi_timings[32] = {
 						{640, 480, 25200, 96, 16, 48, 2, 10, 33},
 						{1280, 720, 74250, 40, 440, 220, 5, 5, 20},
 						{1280, 720, 74250, 40, 110, 220, 5, 5, 20},
@@ -73,7 +73,8 @@ const struct omap_video_timings omap_hdmi_timings[31] = {
 						{1920, 1080, 148500, 44, 88, 80, 5, 4, 36},
 						{1280, 768, 68250, 32, 48, 80, 7, 3, 12},
 						{1400, 1050, 101000, 32, 48, 80, 4, 3, 23},
-						{1680, 1050, 119000, 32, 48, 80, 6, 3, 21} } ;
+						{1680, 1050, 119000, 32, 48, 80, 6, 3, 21},
+						{1280, 800, 79500, 32, 48, 80, 6, 3, 14} } ;
 
 int get_edid_timing_info(union HDMI_EDID_DTD *edid_dtd, struct omap_video_timings *timings)
 {
@@ -137,7 +138,7 @@ int get_edid_timing_info(union HDMI_EDID_DTD *edid_dtd, struct omap_video_timing
 			* support VESA timings?  My monitor at home would pick 1920x1080 				* otherwise, but that seems to not work well (monitor blanks out and 				* comes back, and picture doesn't fill full screen, but leaves a black 				* bar on left (native res is 2048x1152). However if I only consider
 			* VESA timings, it picks 1680x1050 and the picture is stable and fills 				* whole screen..
 			*/
-			for (i = 14; i < 31; i++) {
+			for (i = 14; i < 32; i++) {
 				const struct omap_video_timings *timings =
 							 &omap_hdmi_timings[i];
 				int hz, hscan, pixclock;
