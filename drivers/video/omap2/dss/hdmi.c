@@ -113,6 +113,11 @@ enum hdmi_ioctl_cmds {
 #define HDMI_TXPHY_POWER_CTRL			0x8ul
 #define HDMI_TXPHY_PAD_CFG_CTRL			0xCul
 
+struct hdmi_hvsync_pol {
+	int vsync_pol;
+	int hsync_pol;
+};
+
 /*This is the structure which has all supported timing values that OMAP4 supports*/
 const struct omap_video_timings all_timings_direct[32] = {
 						{640, 480, 25200, 96, 16, 48, 2, 10, 33},
@@ -154,6 +159,17 @@ int code_index[32] = {1, 19, 4, 2, 37, 6, 21, 20, 5, 16, 17, 29, 31, 35,
 			/* <--14 CEA 17--> vesa*/
 			4, 9, 0xE, 0x17, 0x1C, 0x27, 0x20, 0x23, 0x10, 0x2A,
 			0X2F, 0x3A, 0X51, 0X52, 0x16, 0x29, 0x39, 0x1B};
+
+/*Static mapping of the Timing values with the corresponding Vsync and Hsync polarity*/
+const struct hdmi_hvsync_pol hvpol_mapping[32] = {
+					{0, 0}, {1, 1}, {1, 1}, {0, 0},
+					{0, 0}, {0, 0}, {0, 0}, {1, 1},
+					{1, 1}, {1, 1}, {0, 0}, {0, 0},
+					{1, 1}, {0, 0}, {0, 0}, {1, 1},
+					{1, 1}, {1, 0}, {1, 0}, {1, 1},
+					{1, 1}, {1, 1}, {0, 0}, {1, 0},
+					{1, 0}, {1, 0}, {1, 1}, {1, 1},
+					{0, 1}, {0, 1}, {0, 1}, {0, 1} };
 
 /*This is revere static mapping which maps the CEA / VESA code to the corresponding timing values*/
 /* note: table is 10 entries per line to make it easier to find index.. */
@@ -205,8 +221,12 @@ static void update_cfg (struct hdmi_config *cfg, struct omap_video_timings *timi
 	cfg->vfp = timings->vfp;
 	cfg->vsw = timings->vsw;
 	cfg->pixel_clock = timings->pixel_clock;
-	cfg->v_pol = 1;      // XXX get this from EDID
-	cfg->h_pol = 1;      // XXX get this from EDID
+}
+
+static void update_cfg_pol(struct hdmi_config *cfg, int  code)
+{
+	cfg->v_pol = hvpol_mapping[code].vsync_pol;
+	cfg->h_pol = hvpol_mapping[code].hsync_pol;
 }
 
 static inline void hdmi_write_reg(u32 base, u16 idx, u32 val)
@@ -813,6 +833,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 	}
 
 	update_cfg(&hdmi.cfg, p);
+	update_cfg_pol(&hdmi.cfg, code);
 
 	code = get_timings_index();
 	dssdev->panel.timings = all_timings_direct[code];
