@@ -1195,20 +1195,13 @@ static int omapfb_mmap(struct fb_info *fbi, struct vm_area_struct *vma)
 
 	vma->vm_private_data = rg;
 	if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
-		int k = 0, p = fix->line_length;
 
 		vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
 		vma->vm_ops = &mmap_user_ops; /* &dmm_remap_vm_ops; */
 
-		/* we need to figure out the height of the block. */
-		for (k = 0; k < len; k += p) {
-			/* map each page of the line */
-			vma->vm_pgoff = off >> PAGE_SHIFT;
-			if (remap_pfn_range(vma, vma->vm_start + k,
-				off >> PAGE_SHIFT, p, vma->vm_page_prot))
-				return -EAGAIN;
-			off += 2*64*TILER_WIDTH;
-		}
+		if (tiler_mmap_blk(&ofbi->region->block, off - start,
+					vma->vm_end - vma->vm_start, vma, 0))
+			return -EAGAIN;
 	} else {
 		vma->vm_pgoff = off >> PAGE_SHIFT;
 	vma->vm_flags |= VM_IO | VM_RESERVED;
@@ -1424,7 +1417,7 @@ static void omapfb_free_fbmem(struct fb_info *fbi)
 	WARN_ON(atomic_read(&rg->map_count));
 
 	if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
-		tiler_free(rg->paddr);
+		tiler_free(&rg->block);
 	} else {
 	if (rg->paddr)
 		if (omap_vram_free(rg->paddr, rg->size))
@@ -1479,9 +1472,7 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 	struct omapfb2_mem_region *rg;
 	void __iomem *vaddr = NULL;
 	int r;
-	u16 h = 0, w = 0;
-	unsigned long pstride;
-	size_t psize;
+	struct vm_struct *area;
 
 	rg = ofbi->region;
 
@@ -1500,18 +1491,19 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 		if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
 			int err = 0xFFFFFFFF;
 			/* get width & height from line length & size */
-			w = fbi->fix.line_length /
+			rg->block.width = fbi->fix.line_length /
 				(fbi->var.bits_per_pixel >> 3);
-			h = size / fbi->fix.line_length;
+			rg->block.height = size / fbi->fix.line_length;
 			if (fbi->var.bits_per_pixel == 16)
-				err = tiler_alloc(TILFMT_16BIT, w, h,
-							(u32 *)&paddr);
+				err = tiler_alloc(&rg->block, TILFMT_16BIT,
+						PAGE_SIZE, 0);
 			else
-				err = tiler_alloc(TILFMT_32BIT, w, h,
-							(u32 *)&paddr);
+				err = tiler_alloc(&rg->block, TILFMT_32BIT,
+						PAGE_SIZE, 0);
 			if (err != 0x0)
 				return -ENOMEM;
 			r = 0;
+			paddr = rg->block.phys;
 		} else {
 		r = omap_vram_alloc(OMAP_VRAM_MEMTYPE_SDRAM, size, &paddr);
 		}
@@ -1535,13 +1527,17 @@ static int omapfb_alloc_fbmem(struct fb_info *fbi, unsigned long size,
 			return -ENOMEM;
 		}
 	} else if (ofbi->rotation_type == OMAP_DSS_ROT_TILER) {
-		pstride = tiler_stride(tiler_get_natural_addr((void *)&paddr));
-		psize = h * pstride;
-		vaddr = __arm_multi_strided_ioremap(1, &paddr, &psize,
-			&pstride, (unsigned long *) &fbi->fix.line_length,
-			MT_DEVICE_WC);
-		if (vaddr == NULL)
+		area = get_vm_area(tiler_size(&rg->block), VM_IOREMAP);
+		if (!area)
 			return -ENOMEM;
+
+		r = tiler_ioremap_blk(&rg->block, 0, tiler_size(&rg->block),
+					(u32) area->addr, MT_DEVICE_WC);
+		if (r) {
+			vunmap(area->addr);
+			return -EAGAIN;
+		}
+		vaddr = area->addr;
 
 		DBG("allocated VRAM paddr %lx, vaddr %p\n", paddr, vaddr);
 	} else if (ofbi->rotation_type == OMAP_DSS_ROT_VRFB) {
