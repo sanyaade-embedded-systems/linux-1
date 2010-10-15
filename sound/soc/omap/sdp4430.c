@@ -480,6 +480,7 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 		.num_be = ARRAY_SIZE(modem_be),
 		.fe_playback_channels = 2,
 		.fe_capture_channels = 2,
+		.no_host_io = 1,
 	},
 	{
 		.name = "SDP4430 Media LP",
