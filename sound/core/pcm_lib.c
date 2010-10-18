@@ -1895,7 +1895,7 @@ static int pcm_sanity_check(struct snd_pcm_substream *substream)
 	if (PCM_RUNTIME_CHECK(substream))
 		return -ENXIO;
 	/* TODO: consider and -EINVAL here */
-	if (substream->hw_no_host_io)
+	if (substream->hw_no_buffer)
 		snd_printd("%s: warning this PCM is host less\n", __func__);
 	runtime = substream->runtime;
 	if (snd_BUG_ON(!substream->ops->copy && !runtime->dma_area))
