@@ -1754,7 +1754,7 @@ static int aess_pcm_new(struct snd_soc_pcm_runtime *rtd)
 	struct snd_pcm *pcm = rtd->pcm;
 	int ret = 0;
 
-	if (rtd->dai_link->no_host_io)
+	if (rtd->dai_link->no_host_mode)
 		return 0;
 
 	if (!card->dev->dma_mask)
