@@ -126,6 +126,9 @@ static int __init sdp4430_wifi_init(void)
 {
 	int ret;
 
+	if (!machine_is_omap4_panda())
+		return -ENODEV;
+
 	printk(KERN_WARNING"%s: start\n", __func__);
 	ret = gpio_request(SDP4430_WIFI_IRQ_GPIO, "wifi_irq");
 	if (ret < 0) {
