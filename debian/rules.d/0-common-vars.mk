@@ -97,7 +97,7 @@ DEB_BUILD_ARCH = $(shell dpkg-architecture -qDEB_BUILD_ARCH)
 arch := $(DEB_HOST_ARCH)
 ifneq ($(arch),$(DEB_HOST_ARCH))
 	ifeq ($(arch),armel)
-		CROSS_COMPILE ?= CROSS_COMPILE=arm-linux-gnueabi-
+		CROSS_COMPILE ?= arm-linux-gnueabi-
 	endif
 endif
 
