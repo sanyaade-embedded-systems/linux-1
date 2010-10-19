@@ -25,8 +25,6 @@ EXPORT_SYMBOL drivers/cdrom/cdrom 0x00000000	register_cdrom
 EXPORT_SYMBOL drivers/cdrom/cdrom 0x00000000	unregister_cdrom
 EXPORT_SYMBOL drivers/hwmon/hwmon-vid 0x00000000	vid_from_reg
 EXPORT_SYMBOL drivers/hwmon/hwmon-vid 0x00000000	vid_which_vrm
-EXPORT_SYMBOL drivers/i2c/algos/i2c-algo-bit 0x00000000	i2c_bit_add_bus
-EXPORT_SYMBOL drivers/i2c/algos/i2c-algo-bit 0x00000000	i2c_bit_add_numbered_bus
 EXPORT_SYMBOL drivers/input/gameport/gameport 0x00000000	__gameport_register_driver
 EXPORT_SYMBOL drivers/input/gameport/gameport 0x00000000	__gameport_register_port
 EXPORT_SYMBOL drivers/input/gameport/gameport 0x00000000	gameport_close
@@ -1440,6 +1438,7 @@ EXPORT_SYMBOL vmlinux 0x00000000	abe_set_opp_processing
 EXPORT_SYMBOL vmlinux 0x00000000	abe_set_ping_pong_buffer
 EXPORT_SYMBOL vmlinux 0x00000000	abe_set_router_configuration
 EXPORT_SYMBOL vmlinux 0x00000000	abe_set_sequence_time_accuracy
+EXPORT_SYMBOL vmlinux 0x00000000	abe_stop_event_generator
 EXPORT_SYMBOL vmlinux 0x00000000	abe_unmute_gain
 EXPORT_SYMBOL vmlinux 0x00000000	abe_update_gain
 EXPORT_SYMBOL vmlinux 0x00000000	abe_write_aps
@@ -2061,12 +2060,10 @@ EXPORT_SYMBOL vmlinux 0x00000000	drm_gem_object_release
 EXPORT_SYMBOL vmlinux 0x00000000	drm_gem_vm_close
 EXPORT_SYMBOL vmlinux 0x00000000	drm_gem_vm_open
 EXPORT_SYMBOL vmlinux 0x00000000	drm_get_connector_name
-EXPORT_SYMBOL vmlinux 0x00000000	drm_get_dev
 EXPORT_SYMBOL vmlinux 0x00000000	drm_get_drawable_info
 EXPORT_SYMBOL vmlinux 0x00000000	drm_get_edid
 EXPORT_SYMBOL vmlinux 0x00000000	drm_get_encoder_name
-EXPORT_SYMBOL vmlinux 0x00000000	drm_get_resource_len
-EXPORT_SYMBOL vmlinux 0x00000000	drm_get_resource_start
+EXPORT_SYMBOL vmlinux 0x00000000	drm_get_platform_dev
 EXPORT_SYMBOL vmlinux 0x00000000	drm_getsarea
 EXPORT_SYMBOL vmlinux 0x00000000	drm_gtf_mode
 EXPORT_SYMBOL vmlinux 0x00000000	drm_gtf_mode_complex
@@ -2145,8 +2142,6 @@ EXPORT_SYMBOL vmlinux 0x00000000	drm_property_add_enum
 EXPORT_SYMBOL vmlinux 0x00000000	drm_property_create
 EXPORT_SYMBOL vmlinux 0x00000000	drm_property_destroy
 EXPORT_SYMBOL vmlinux 0x00000000	drm_put_dev
-EXPORT_SYMBOL vmlinux 0x00000000	drm_pvr_dev_add
-EXPORT_SYMBOL vmlinux 0x00000000	drm_pvr_dev_remove
 EXPORT_SYMBOL vmlinux 0x00000000	drm_read
 EXPORT_SYMBOL vmlinux 0x00000000	drm_release
 EXPORT_SYMBOL vmlinux 0x00000000	drm_rmmap
@@ -2538,6 +2533,8 @@ EXPORT_SYMBOL vmlinux 0x00000000	hwspinlock_request_specific
 EXPORT_SYMBOL vmlinux 0x00000000	hwspinlock_trylock
 EXPORT_SYMBOL vmlinux 0x00000000	hwspinlock_unlock
 EXPORT_SYMBOL vmlinux 0x00000000	i2c_add_adapter
+EXPORT_SYMBOL vmlinux 0x00000000	i2c_bit_add_bus
+EXPORT_SYMBOL vmlinux 0x00000000	i2c_bit_add_numbered_bus
 EXPORT_SYMBOL vmlinux 0x00000000	i2c_clients_command
 EXPORT_SYMBOL vmlinux 0x00000000	i2c_del_adapter
 EXPORT_SYMBOL vmlinux 0x00000000	i2c_del_driver
@@ -6113,6 +6110,8 @@ EXPORT_SYMBOL_GPL vmlinux 0x00000000	anon_transport_class_register
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	anon_transport_class_unregister
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	apply_to_page_range
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	arm_pm_restart
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	armpmu_get_max_events
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	armpmu_get_pmu_id
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	async_schedule
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	async_schedule_domain
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	async_synchronize_cookie
@@ -6559,6 +6558,8 @@ EXPORT_SYMBOL_GPL vmlinux 0x00000000	generic_drop_inode
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	generic_fh_to_dentry
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	generic_fh_to_parent
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	generic_subsys_pm_ops
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	get_cpu_idle_time_us
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	get_cpu_iowait_time_us
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	get_cpu_sysdev
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	get_current_tty
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	get_dcookie
@@ -6938,6 +6939,16 @@ EXPORT_SYMBOL_GPL vmlinux 0x00000000	pcap_adc_sync
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	pcap_set_ts_bits
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	pcap_to_irq
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	pcpu_base_addr
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_arch_fetch_caller_regs
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_event_create_kernel_counter
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_event_read_value
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_event_release_kernel
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_register_guest_info_callbacks
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_swevent_get_recursion_context
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_swevent_put_recursion_context
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_tp_event
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_trace_buf_prepare
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	perf_unregister_guest_info_callbacks
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	pid_vnr
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	platform_add_devices
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	platform_bus
