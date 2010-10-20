@@ -887,6 +887,12 @@ int omap_device_set_rate(struct device *req_dev, struct device *dev,
 	pdev = container_of(dev, struct platform_device, dev);
 	od = _find_by_pdev(pdev);
 
+	if (!strcmp(dev_name(dev), "l3_main_1.0")) {
+		pr_debug("In--> %s,reqdev %s, dev %s to %ld rate\n",
+			__func__, dev_name(req_dev), dev_name(dev), rate);
+		dump_stack();
+	}
+
 	/*
 	 * Figure out if the desired frquency lies between the
 	 * maximum and minimum possible for the particular device
