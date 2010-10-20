@@ -1028,9 +1028,11 @@ static int configure_dispc(void)
 				/* Do nothing as of now as we dont
 				 * support Manager yet with WB
 				 */
+				/*WB GO bit has to be used only in case of
+				capture mode and not in memory mode*/
+				dispc_go_wb();
 				break;
 			}
-			dispc_go_wb();
 			wb->shadow_dirty = false;
 			dispc_enable_plane(OMAP_DSS_WB, 1);
 		}
