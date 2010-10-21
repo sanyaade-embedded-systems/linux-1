@@ -362,7 +362,7 @@ static int abe_fe_hw_params(struct snd_pcm_substream *substream,
         break;
 	case ABE_FRONTEND_DAI_LP_MEDIA:
 		return 0;
-        break;
+	break;
 	case ABE_FRONTEND_DAI_MEDIA_CAPTURE:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			return -EINVAL;
