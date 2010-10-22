@@ -250,7 +250,6 @@ EXPORT_SYMBOL(abe_read_hardware_configuration);
  */
 abehal_status abe_irq_processing(void)
 {
-	u32 clear_abe_irq;
 	u32 abe_irq_dbg_write_ptr, i, cmem_src, sm_cm;
 	abe_irq_data_t IRQ_data;
 #define IrqFiFoMask ((D_McuIrqFifo_sizeof >> 2) -1)
@@ -306,6 +305,7 @@ abehal_status abe_irq_clear(void)
 	u32 clear_abe_irq = 1;
 	abe_block_copy(COPY_FROM_HOST_TO_ABE, ABE_ATC, ABE_MCU_IRQSTATUS,
 		       &clear_abe_irq, 4);
+	return 0;
 }
 EXPORT_SYMBOL(abe_irq_clear);
 
@@ -591,6 +591,28 @@ abehal_status abe_read_next_ping_pong_buffer(u32 port, u32 *p, u32 *n)
 	return 0;
 }
 EXPORT_SYMBOL(abe_read_next_ping_pong_buffer);
+abehal_status abe_read_offset_ping_pong_buffer(u32 port, u32 *n)
+{
+	u32 sio_pp_desc_address;
+	ABE_SPingPongDescriptor desc_pp;
+	/* ping_pong is only supported on MM_DL */
+	if (port != MM_DL_PORT) {
+		abe_dbg_param |= ERR_API;
+		abe_dbg_error_log(ABE_PARAMETER_ERROR);
+	}
+	/* read the port SIO descriptor and extract the current pointer
+	   address after reading the counter */
+	sio_pp_desc_address = D_PingPongDesc_ADDR;
+	abe_block_copy(COPY_FROM_ABE_TO_HOST, ABE_DMEM, sio_pp_desc_address,
+		       (u32 *) &desc_pp, sizeof(ABE_SPingPongDescriptor));
+	if ((desc_pp.counter & 0x1) == 0) {
+		*n = 24*1024/4 - desc_pp.workbuff_Samples;
+	} else {
+		*n = 2*24*1024/4 - desc_pp.workbuff_Samples;
+	}
+	return 0;
+}
+EXPORT_SYMBOL(abe_read_offset_ping_pong_buffer);
 /**
  * abe_init_ping_pong_buffer
  * @id: ABE port ID
