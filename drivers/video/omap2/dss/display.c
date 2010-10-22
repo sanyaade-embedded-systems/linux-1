@@ -672,7 +672,7 @@ int dss_mainclk_state_enable(void)
 		return -EINVAL;
 	} else {
 		r = dss_mainclk_enable();
-		if (!r)
+		if (r >= 0)
 			restore_all_ctx();
 		return 0;
 	}

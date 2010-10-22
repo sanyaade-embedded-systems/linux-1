@@ -152,7 +152,7 @@ int dss_mainclk_enable()
 
 	if (!dss.mainclk_state) {
 		ret = pm_runtime_get_sync(&dss.pdev->dev);
-		if (!ret)
+		if (ret >= 0)
 			dss.mainclk_state = true;
 	}
 
