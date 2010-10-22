@@ -327,6 +327,14 @@ static inline void da850_evm_setup_video_port(int video_sel)
 static inline void da850_evm_setup_video_port(int video_sel) { }
 #endif
 
+static struct at24_platform_data da850_evm_i2c_eeprom_info = {
+	.byte_len	= SZ_256K / 8,
+	.page_size	= 64,
+	.flags		= AT24_FLAG_ADDR16,
+	.setup		= davinci_get_mac_addr,
+	.context	= (void *)0x7f00,
+};
+
 static int da850_evm_ui_expander_setup(struct i2c_client *client, unsigned gpio,
 						unsigned ngpio, void *c)
 {
@@ -542,6 +550,10 @@ static struct tps6507x_board tps_board = {
 };
 
 static struct i2c_board_info __initdata da850_evm_i2c_devices[] = {
+	{
+		I2C_BOARD_INFO("24c256", 0x50),
+		.platform_data = &da850_evm_i2c_eeprom_info,
+	},
 	{
 		I2C_BOARD_INFO("tps6507x", 0x48),
 		.platform_data = &tps_board,
@@ -1186,8 +1198,16 @@ static __init void da850_evm_init(void)
 		pr_warning("da850_evm_init: spi1 mux setup failed: %d\n",
 				ret);
 
+	if (system_rev & 0x100) {
+		((struct flash_platform_data *)da850_spi_board_info[0] \
+		.platform_data)->type = "w25x64";
+	} else {
+		((struct flash_platform_data *)da850_spi_board_info[0] \
+		.platform_data)->type = "m25p64";
+	}
+
 	da850_init_spi1(BIT(0), da850_spi_board_info,
-			ARRAY_SIZE(da850_spi_board_info));
+		ARRAY_SIZE(da850_spi_board_info));
 
 	da850_evm_usb_init();
 

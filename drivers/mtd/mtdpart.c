@@ -465,7 +465,7 @@ static struct mtd_part *add_one_partition(struct mtd_info *master,
 	printk(KERN_NOTICE "0x%012llx-0x%012llx : \"%s\"\n", (unsigned long long)slave->offset,
 		(unsigned long long)(slave->offset + slave->mtd.size), slave->mtd.name);
 
-	if (part->setup)
+	if (part->setup && !(system_rev & 0x100))
 		part->setup(&slave->macc, (void *)part->context);
 
 	/* let's do some sanity checks */
