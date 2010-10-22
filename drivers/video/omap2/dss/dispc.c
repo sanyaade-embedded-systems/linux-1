@@ -2781,6 +2781,7 @@ int dispc_scaling_decision(u16 width, u16 height,
 			goto loop;
 
 		/* Must use 3-tap filter */
+		*three_tap = false;
 		if (!cpu_is_omap44xx())
 			*three_tap = in_width > 1024;
 		else if (omap_rev() == OMAP4430_REV_ES1_0)
@@ -2817,19 +2818,19 @@ int dispc_scaling_decision(u16 width, u16 height,
 		DSSDBG("required fclk rate = %lu Hz\n", fclk);
 		DSSDBG("current fclk rate = %lu Hz\n", fclk_max);
 
-		if (fclk > fclk_max) {
-			DSSERR("failed to set up scaling, "
-					"required fclk rate = %lu Hz, "
-					"current fclk rate = %lu Hz\n",
-					fclk, fclk_max);
+		if (fclk > fclk_max)
 			goto loop;
-		}
 		break;
 
 loop:
 		/* err if exhausted search region */
-		if (x == max_x_decim && y == max_y_decim)
+		if (x == max_x_decim && y == max_y_decim) {
+			DSSERR("failed to set up scaling, "
+					"required fclk rate = %lu Hz, "
+					"current fclk rate = %lu Hz\n",
+					fclk, fclk_max);
 			return -EINVAL;
+		}
 
 		/* get to next factor */
 		if (x == y) {
@@ -4900,7 +4901,6 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	int cconv = 0;
 	s32 row_inc;
 	s32 pix_inc;
-	u16 frame_height = height;
 
 	DSSDBG("dispc_setup_wb\n");
 	DSSDBG("Maxds = %d\n", maxdownscale);
@@ -4987,8 +4987,9 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	if ((paddr >= 0x60000000) && (paddr <= 0x7fffffff)) {
 		tiler_width = width, tiler_height = height;
 
-		calc_tiler_row_rotation(rotation, out_width, frame_height,
-						color_mode, &row_inc,
+		calc_tiler_row_rotation(rotation, out_width,
+						color_mode, 1, /* y_decim = 1 */
+						&row_inc,
 						&offset1, ilace,
 						pic_height);
 
