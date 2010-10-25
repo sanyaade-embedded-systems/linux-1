@@ -135,8 +135,7 @@ static int __init sdp4430_wifi_init(void)
 	}
 	gpio_direction_input(SDP4430_WIFI_IRQ_GPIO);
 #ifdef CONFIG_WIFI_CONTROL_FUNC
-	if (machine_is_omap4_panda())
-		ret = platform_device_register(&sdp4430_wifi_device);
+	ret = platform_device_register(&sdp4430_wifi_device);
 #endif
 out:
 	return ret;
