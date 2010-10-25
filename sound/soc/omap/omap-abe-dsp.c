@@ -38,10 +38,12 @@
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
 #include <linux/dma-mapping.h>
+#include <linux/wait.h>
 
 #include <plat/omap_hwmod.h>
 #include <plat/omap_device.h>
 #include <plat/dma.h>
+#include <linux/debugfs.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -162,6 +164,25 @@ struct abe_data {
 
 	struct snd_pcm_substream *psubs;
 
+#ifdef CONFIG_DEBUG_FS
+	/* debuging config */
+	bool dbg_blah;
+	u32 dbg_buffer_size;
+	u32 dbg_circular;
+	dma_addr_t dbg_buffer_addr;
+	wait_queue_head_t wait;
+	int dbg_reader_offset;
+	int dbg_dma_offset;
+	struct dentry *debugfs_root;
+	struct dentry *debugfs_fmt;
+	struct dentry *debugfs_size;
+	struct dentry *debugfs_data;
+	struct dentry *debugfs_circ;
+	char *dbg_buffer;
+	struct omap_pcm_dma_data *dma_data;
+	int dma_ch;
+	int dma_req;
+#endif
 };
 
 static struct abe_data *abe;
@@ -1620,6 +1641,305 @@ static int aess_set_opp_mode(void)
 
 	return 0;
 }
+#ifdef CONFIG_DEBUG_FS
+
+static int abe_dbg_get_dma_pos(struct abe_data *abe)
+{
+	return omap_get_dma_dst_pos(abe->dma_ch) - abe->dbg_buffer_addr;
+}
+
+static void abe_dbg_dma_irq(int ch, u16 stat, void *data)
+{
+
+}
+
+static int abe_dbg_start_dma(struct abe_data *abe, int circular)
+{
+	struct omap_dma_channel_params dma_params;
+	struct platform_device *pdev = abe->pdev;
+	int err;
+
+	/* TODO: start the DMA in either :-
+	 *
+	 * 1) circular buffer mode where the DMA will restart when it get to
+	 *    the end of the buffer.
+	 * 2) default mode, where DMA stops at the end of the buffer.
+	 */
+
+	abe->dma_req = OMAP44XX_DMA_ABE_REQ_7;
+	err = omap_request_dma(abe->dma_req, "ABE debug",
+			       abe_dbg_dma_irq, abe, &abe->dma_ch);
+	if (abe->dbg_circular) {
+		/*
+		 * Link channel with itself so DMA doesn't need any
+		 * reprogramming while looping the buffer
+		 */
+		omap_dma_link_lch(abe->dma_ch, abe->dma_ch);
+	}
+
+	memset(&dma_params, 0, sizeof(dma_params));
+	dma_params.data_type		= OMAP_DMA_DATA_TYPE_S32;
+	dma_params.trigger		= abe->dma_req;
+	dma_params.sync_mode		= OMAP_DMA_SYNC_FRAME;
+	dma_params.src_amode		= OMAP_DMA_AMODE_DOUBLE_IDX;
+	dma_params.dst_amode		= OMAP_DMA_AMODE_POST_INC;
+	dma_params.src_or_dst_synch	= OMAP_DMA_SRC_SYNC;
+	dma_params.src_start		= D_DEBUG_FIFO_ADDR + ABE_DMEM_BASE_ADDRESS_L3;
+	dma_params.dst_start		= abe->dbg_buffer_addr;
+	dma_params.src_port		= OMAP_DMA_PORT_MPUI;
+	dma_params.src_ei		= 1;
+	dma_params.src_fi		= 1-128;
+
+	dma_params.elem_count	= 128 >> 2; /* 128 bytes shifted into words */
+	dma_params.frame_count	= abe->dbg_buffer_size / 128;
+	omap_set_dma_params(abe->dma_ch, &dma_params);
+
+	omap_enable_dma_irq(abe->dma_ch, OMAP_DMA_FRAME_IRQ);
+	omap_set_dma_src_burst_mode(abe->dma_ch, OMAP_DMA_DATA_BURST_16);
+	omap_set_dma_dest_burst_mode(abe->dma_ch, OMAP_DMA_DATA_BURST_16);
+
+	abe->dbg_reader_offset = 0;
+
+	pm_runtime_get_sync(&pdev->dev);
+	/*abe_enable_dma_request(DEBUG_PORT);*/
+	omap_start_dma(abe->dma_ch);
+	return 0;
+}
+
+static void abe_dbg_stop_dma(struct abe_data *abe)
+{
+	struct platform_device *pdev = abe->pdev;
+
+	/*abe_disable_dma_request(DEBUG_PORT);*/
+
+	while (omap_get_dma_active_status(abe->dma_ch))
+		omap_stop_dma(abe->dma_ch);
+
+	if (abe->dbg_circular)
+		omap_dma_unlink_lch(abe->dma_ch, abe->dma_ch);
+	omap_free_dma(abe->dma_ch);
+	pm_runtime_put_sync(&pdev->dev);
+}
+
+static int abe_open_format(struct inode *inode, struct file *file)
+{
+	file->private_data = inode->i_private;
+	return 0;
+}
+
+static ssize_t abe_read_format(struct file *file, char __user *user_buf,
+			       size_t count, loff_t *ppos)
+{
+	ssize_t ret = 0;
+	struct abe_data *abe = file->private_data;
+
+	char *buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	ret = sprintf(buf, "abe: %s\n", abe->dbg_blah ? "B" : "");
+	if (ret >= 0)
+		ret = simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+
+	kfree(buf);
+	return ret;
+}
+
+static ssize_t abe_write_format(struct file *file,
+		const char __user *user_buf, size_t count, loff_t *ppos)
+{
+	char buf[32], *start = buf;
+	int buf_size;
+
+	buf_size = min(count, (sizeof(buf)-1));
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+	buf[buf_size] = 0;
+
+	while (*start == ' ')
+		start++;
+
+	/* TODO parse debug format string here */
+
+	return buf_size;
+}
+
+static int abe_open_data(struct inode *inode, struct file *file)
+{
+	struct abe_data *abe = inode->i_private;
+
+	abe->dbg_buffer = dma_alloc_writecombine(&abe->pdev->dev,
+			abe->dbg_buffer_size, &abe->dbg_buffer_addr, GFP_KERNEL);
+	if (abe->dbg_buffer == NULL)
+		return -ENOMEM;
+
+	file->private_data = inode->i_private;
+
+	abe_dbg_start_dma(abe, abe->dbg_circular);
+
+	return 0;
+}
+
+static int abe_release_data(struct inode *inode, struct file *file)
+{
+	struct abe_data *abe = inode->i_private;
+
+	abe_dbg_stop_dma(abe);
+
+	dma_free_writecombine(&abe->pdev->dev, abe->dbg_buffer_size,
+				      abe->dbg_buffer, abe->dbg_buffer_addr);
+	return 0;
+}
+
+static ssize_t abe_copy_to_user(struct abe_data *abe, char __user *user_buf,
+			       size_t count)
+{
+	/* check for reader buffer wrap */
+	if (abe->dbg_reader_offset + count > abe->dbg_buffer_size) {
+		int size = abe->dbg_buffer_size - abe->dbg_reader_offset;
+
+		/* wrap */
+		if (copy_to_user(user_buf,
+			abe->dbg_buffer + abe->dbg_reader_offset, size))
+			return -EFAULT;
+		if (copy_to_user(user_buf,
+			abe->dbg_buffer, count - size))
+			return -EFAULT;
+		abe->dbg_reader_offset = count - size;
+		return count;
+	} else {
+		/* no wrap */
+		if (copy_to_user(user_buf,
+			abe->dbg_buffer + abe->dbg_reader_offset, count))
+			return -EFAULT;
+		abe->dbg_reader_offset += count;
+		return count;
+	}
+}
+
+static ssize_t abe_read_data(struct file *file, char __user *user_buf,
+			       size_t count, loff_t *ppos)
+{
+	ssize_t ret = 0;
+	struct abe_data *abe = file->private_data;
+	DECLARE_WAITQUEUE(wait, current);
+	int dma_offset, bytes;
+
+	add_wait_queue(&abe->wait, &wait);
+	do {
+		set_current_state(TASK_INTERRUPTIBLE);
+		/* TODO: Check if really needed. Or adjust sleep delay
+		 * If not delay trace is not working */
+		msleep_interruptible(1);
+		dma_offset = abe_dbg_get_dma_pos(abe);
+
+		/* is DMA finished ? */
+		if (!abe->dbg_circular &&
+				abe->dbg_reader_offset == abe->dbg_buffer_size) {
+			break;
+		}
+
+		/* get maximum amount of debug bytes we can read */
+		if (dma_offset >= abe->dbg_reader_offset) {
+			/* dma ptr is ahead of reader */
+			bytes = dma_offset - abe->dbg_reader_offset;
+		} else {
+			/* dma ptr is behind reader */
+			bytes = dma_offset + abe->dbg_buffer_size -
+				abe->dbg_reader_offset;
+		}
+
+		if (count > bytes)
+			count = bytes;
+
+		if (count > 0) {
+			ret = abe_copy_to_user(abe, user_buf, count);
+			break;
+		}
+
+		if (file->f_flags & O_NONBLOCK) {
+			ret = -EAGAIN;
+			break;
+		}
+
+		if (signal_pending(current)) {
+			ret = -ERESTARTSYS;
+			break;
+		}
+
+		schedule();
+
+	} while (1);
+
+	__set_current_state(TASK_RUNNING);
+	remove_wait_queue(&abe->wait, &wait);
+
+	return ret;
+}
+
+static const struct file_operations abe_format_fops = {
+	.open = abe_open_format,
+	.read = abe_read_format,
+	.write = abe_write_format,
+};
+
+static const struct file_operations abe_data_fops = {
+	.open = abe_open_data,
+	.read = abe_read_data,
+	.release = abe_release_data,
+};
+
+static void abe_init_debugfs(struct abe_data *abe)
+{
+	abe->debugfs_root = debugfs_create_dir("omap4-abe", NULL);
+	if (!abe->debugfs_root) {
+		printk(KERN_WARNING "ABE: Failed to create debugfs directory\n");
+		return;
+	}
+
+	abe->debugfs_fmt = debugfs_create_file("format", 0644,
+						 abe->debugfs_root,
+						 abe, &abe_format_fops);
+	if (!abe->debugfs_fmt)
+		printk(KERN_WARNING "ABE: Failed to create format debugfs file\n");
+
+	abe->debugfs_size = debugfs_create_u32("size", 0644,
+						 abe->debugfs_root,
+						 &abe->dbg_buffer_size);
+	if (!abe->debugfs_size)
+		printk(KERN_WARNING "ABE: Failed to create buffer size debugfs file\n");
+
+	abe->debugfs_circ = debugfs_create_u32("circular", 0644,
+						 abe->debugfs_root,
+						 &abe->dbg_circular);
+	if (!abe->debugfs_size)
+		printk(KERN_WARNING "ABE: Failed to create circular mode debugfs file\n");
+
+	abe->debugfs_fmt = debugfs_create_file("debug", 0644,
+						 abe->debugfs_root,
+						 abe, &abe_data_fops);
+	if (!abe->debugfs_fmt)
+		printk(KERN_WARNING "ABE: Failed to create data debugfs file\n");
+
+	abe->dbg_buffer_size = 128 * 1024 * 2;
+	init_waitqueue_head(&abe->wait);
+}
+
+static void abe_cleanup_debugfs(struct abe_data *abe)
+{
+	debugfs_remove_recursive(abe->debugfs_root);
+}
+
+#else
+
+static inline void abe_init_debugfs(struct abe_data *abe)
+{
+}
+
+static inline void abe_cleanup_debugfs(struct abe_data *abe)
+{
+}
+#endif
 
 static int abe_probe(struct snd_soc_platform *platform)
 {
@@ -1882,8 +2202,11 @@ static int __devinit abe_engine_probe(struct platform_device *pdev)
 
 	ret = snd_soc_register_platform(&pdev->dev,
 			&omap_aess_platform);
-	if (ret == 0)
-		return 0;
+	if (ret < 0)
+		return ret;
+
+	abe_init_debugfs(abe);
+	return ret;
 
 err:
 	kfree(abe);
@@ -1894,6 +2217,7 @@ static int __devexit abe_engine_remove(struct platform_device *pdev)
 {
 	struct abe_data *priv = dev_get_drvdata(&pdev->dev);
 
+	abe_cleanup_debugfs(abe);
 	snd_soc_unregister_platform(&pdev->dev);
 	kfree(priv);
 	return 0;
