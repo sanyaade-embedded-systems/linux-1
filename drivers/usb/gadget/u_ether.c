@@ -790,15 +790,7 @@ int gether_setup(struct usb_gadget *g, u8 ethaddr[ETH_ALEN])
 		memcpy(ethaddr, dev->host_mac, ETH_ALEN);
 
 	net->netdev_ops = &eth_netdev_ops;
-
 	SET_ETHTOOL_OPS(net, &ops);
-
-	/* two kinds of host-initiated state changes:
-	 *  - iff DATA transfer is active, carrier is "on"
-	 *  - tx queueing enabled if open *and* carrier is "on"
-	 */
-	netif_stop_queue(net);
-	netif_carrier_off(net);
 
 	dev->gadget = g;
 	SET_NETDEV_DEV(net, &g->dev);
@@ -813,6 +805,13 @@ int gether_setup(struct usb_gadget *g, u8 ethaddr[ETH_ALEN])
 		INFO(dev, "HOST MAC %pM\n", dev->host_mac);
 
 		the_dev = dev;
+
+		/* two kinds of host-initiated state changes:
+		 *  - iff DATA transfer is active, carrier is "on"
+		 *  - tx queueing enabled if open *and* carrier is "on"
+		 */
+		netif_stop_queue(net);
+		netif_carrier_off(net);
 	}
 
 	return status;
