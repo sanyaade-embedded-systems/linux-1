@@ -972,6 +972,81 @@ int __init da8xx_register_sata(void)
 	return platform_device_register(&da850_ahci_device);
 }
 
+static struct resource pruss_resources[] = {
+        [0] = {
+                .start  = DA8XX_PRUSS_BASE,
+                .end    = DA8XX_PRUSS_BASE + SZ_64K - 1,
+                .flags  = IORESOURCE_MEM,
+        },
+       [1] = {
+                .start  = DA8XX_L3RAM_BASE,
+                .end    = DA8XX_L3RAM_BASE + SZ_128K - 1,
+                .flags  = IORESOURCE_MEM,
+        },
+       [2] = {
+                .start  = 0,
+                .end    = SZ_256K - 1,
+                .flags  = IORESOURCE_MEM,
+        },
+
+        [3] = {
+                .start  = IRQ_DA8XX_EVTOUT0,
+                .end    = IRQ_DA8XX_EVTOUT0,
+                .flags  = IORESOURCE_IRQ,
+        },
+        [4] = {
+                .start  = IRQ_DA8XX_EVTOUT1,
+                .end    = IRQ_DA8XX_EVTOUT1,
+                .flags  = IORESOURCE_IRQ,
+        },
+        [5] = {
+                .start  = IRQ_DA8XX_EVTOUT2,
+                .end    = IRQ_DA8XX_EVTOUT2,
+                .flags  = IORESOURCE_IRQ,
+        },
+        [6] = {
+                .start  = IRQ_DA8XX_EVTOUT3,
+                .end    = IRQ_DA8XX_EVTOUT3,
+                .flags  = IORESOURCE_IRQ,
+        },
+        [7] = {
+                .start  = IRQ_DA8XX_EVTOUT4,
+                .end    = IRQ_DA8XX_EVTOUT4,
+                .flags  = IORESOURCE_IRQ,
+        },
+        [8] = {
+                .start  = IRQ_DA8XX_EVTOUT5,
+                .end    = IRQ_DA8XX_EVTOUT5,
+                .flags  = IORESOURCE_IRQ,
+        },
+        [9] = {
+                .start  = IRQ_DA8XX_EVTOUT6,
+                .end    = IRQ_DA8XX_EVTOUT6,
+                .flags  = IORESOURCE_IRQ,
+        },
+        [10] = {
+                .start  = IRQ_DA8XX_EVTOUT7,
+                .end    = IRQ_DA8XX_EVTOUT7,
+                .flags  = IORESOURCE_IRQ,
+        },
+};
+
+static struct platform_device pruss_device = {
+	.name			= "pruss",
+        .id			= 0,
+        .num_resources		= ARRAY_SIZE(pruss_resources),
+        .resource		= pruss_resources,
+	.dev    = 	{
+		.coherent_dma_mask = 0xffffffff,
+	}
+
+};
+
+int __init da8xx_register_pruss()
+{
+        return platform_device_register(&pruss_device);
+}
+
 #define CFGCHIP2	DA8XX_SYSCFG0_VIRT(DA8XX_CFGCHIP2_REG)
 /*
  * Configure the USB PHY for DA8xx platforms.

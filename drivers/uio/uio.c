@@ -19,7 +19,6 @@
 #include <linux/device.h>
 #include <linux/mm.h>
 #include <linux/idr.h>
-#include <linux/sched.h>
 #include <linux/string.h>
 #include <linux/kobject.h>
 #include <linux/uio_driver.h>
@@ -615,8 +614,16 @@ static int uio_find_mem_index(struct vm_area_struct *vma)
 	for (mi = 0; mi < MAX_UIO_MAPS; mi++) {
 		if (idev->info->mem[mi].size == 0)
 			return -1;
+
+#ifdef  CONFIG_ARCH_DAVINCI
+		/* This is needed for low numbered addresses */
+		if ((idev->info->mem[mi].addr) >> PAGE_SHIFT == vma->vm_pgoff)
+			return mi;
+#else
 		if (vma->vm_pgoff == mi)
 			return mi;
+#endif
+
 	}
 	return -1;
 }
@@ -659,7 +666,7 @@ static int uio_vma_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	return 0;
 }
 
-static const struct vm_operations_struct uio_vm_ops = {
+static struct vm_operations_struct uio_vm_ops = {
 	.open = uio_vma_open,
 	.close = uio_vma_close,
 	.fault = uio_vma_fault,

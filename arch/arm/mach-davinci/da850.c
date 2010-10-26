@@ -237,6 +237,13 @@ static struct clk tptc2_clk = {
 	.flags		= ALWAYS_ENABLED,
 };
 
+static struct clk pruss_clk = {
+	.name		= "pruss",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC0_DMAX,
+	.flags		= ALWAYS_ENABLED,
+};
+
 static struct clk uart0_clk = {
 	.name		= "uart0",
 	.parent		= &pll0_sysclk2,
@@ -385,13 +392,37 @@ static struct clk usb20_clk = {
 	.gpsc		= 1,
 };
 
-
 static struct clk sata_clk = {
 	.name		= "ahci",
 	.parent		= &pll0_sysclk2,
 	.lpsc		= DA850_LPSC1_SATA,
 	.gpsc		= 1,
 };
+
+static struct clk ecap0_clk = {
+	.name		= "ecap0",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC1_ECAP,
+	.flags		= DA850_CLK_ASYNC3,
+	.gpsc		= 1,
+};
+
+static struct clk ecap1_clk = {
+	.name		= "ecap1",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC1_ECAP,
+	.flags		= DA850_CLK_ASYNC3,
+	.gpsc		= 1,
+};
+
+static struct clk ecap2_clk = {
+	.name		= "ecap2",
+	.parent		= &pll0_sysclk2,
+	.lpsc		= DA8XX_LPSC1_ECAP,
+	.flags		= DA850_CLK_ASYNC3,
+	.gpsc		= 1,
+};
+
 static struct clk_lookup da850_clks[] = {
 	CLK(NULL,		"ref",		&ref_clk),
 	CLK(NULL,		"pll0",		&pll0_clk),
@@ -419,6 +450,7 @@ static struct clk_lookup da850_clks[] = {
 	CLK(NULL,		"tptc1",	&tptc1_clk),
 	CLK(NULL,		"tpcc1",	&tpcc1_clk),
 	CLK(NULL,		"tptc2",	&tptc2_clk),
+	CLK(NULL,       "pruss",    &pruss_clk),
 	CLK(NULL,		"uart0",	&uart0_clk),
 	CLK(NULL,		"uart1",	&uart1_clk),
 	CLK(NULL,		"uart2",	&uart2_clk),
@@ -441,7 +473,9 @@ static struct clk_lookup da850_clks[] = {
 	CLK(NULL,		"usb11",	&usb11_clk),
 	CLK(NULL,		"usb20",	&usb20_clk),
 	CLK(NULL,		"ahci",		&sata_clk),
-
+	CLK(NULL,		"ecap0",	&ecap0_clk),
+	CLK(NULL,		"ecap1",	&ecap1_clk),
+	CLK(NULL,		"ecap2",	&ecap2_clk),
 	CLK(NULL,		NULL,		NULL),
 };
 

@@ -1067,6 +1067,9 @@ static __init void da850_evm_init(void)
 
 	platform_device_register(&da850_gpio_i2c);
 
+	/* Register PRUSS device */
+	da8xx_register_pruss();
+
 	ret = da8xx_register_watchdog();
 	if (ret)
 		pr_warning("da830_evm_init: watchdog registration failed: %d\n",

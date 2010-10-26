@@ -75,6 +75,8 @@ extern void __iomem *da8xx_syscfg1_base;
 #define DA8XX_USB0_BASE		0x01e00000
 #define DA850_SATA_BASE		0x01E18000
 #define DA850_SATA_CLK_PWRDN	0x01E2C018
+#define DA8XX_PRUSS_BASE       0x01C30000
+#define DA8XX_L3RAM_BASE       0x80000000
 
 #define PINMUX0			0x00
 #define PINMUX1			0x04
@@ -162,6 +164,7 @@ int __init da850_register_vpif_capture(struct vpif_capture_config
 
 int cppi41_init(void);
 int da8xx_register_sata(void);
+int da8xx_register_pruss(void);
 
 
 extern struct platform_device da8xx_serial_device;
