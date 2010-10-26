@@ -1793,9 +1793,7 @@ static struct snd_pcm_ops omap_aess_pcm_ops = {
 	.mmap		= aess_mmap,
 };
 
-/* TODO: MODEM doesn't need this although low power mmap() does */
 /* TODO: We need the buffer less IOCTL() to support MODEM */
-static u64 omap_pcm_dmamask = DMA_BIT_MASK(64);
 
 static struct snd_soc_platform_driver omap_aess_platform = {
 	.ops	= &omap_aess_pcm_ops,
