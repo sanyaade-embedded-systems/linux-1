@@ -793,7 +793,6 @@ enum davinci_da850_index {
 	DA850_ACLKX,
 	DA850_AFSR,
 	DA850_AFSX,
-	DA850_AHCLKR,
 	DA850_AHCLKX,
 	DA850_AMUTE,
 	DA850_AXR_15,
@@ -901,6 +900,7 @@ enum davinci_da850_index {
 	DA850_SPI1_SIMO,
 
 	/* GPIO function */
+	DA850_GPIO0_11,
 	DA850_GPIO2_6,
 	DA850_GPIO2_8,
 	DA850_GPIO2_15,
