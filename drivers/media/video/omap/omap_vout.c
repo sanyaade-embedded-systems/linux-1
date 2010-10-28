@@ -284,6 +284,11 @@ static int omap_vout_allocate_vrfb_buffers(struct omap_vout_device *vout,
 int omap_vout_try_format(struct v4l2_pix_format *pix)
 {
 	int ifmt, bpp = 0;
+	if ((pix->width > VID_MAX_WIDTH) || (pix->width < VID_MIN_WIDTH))
+		pr_debug("omapdss params:Invalid width:%d\n", pix->width);
+
+	if ((pix->height > VID_MAX_HEIGHT) || (pix->height < VID_MIN_HEIGHT))
+		pr_debug("omapdss params:Invalid heigth:%d\n", pix->height);
 
 	pix->height = clamp(pix->height, (u32)VID_MIN_HEIGHT,
 						(u32)VID_MAX_HEIGHT);
@@ -651,6 +656,8 @@ static int v4l2_rot_to_dss_rot(int v4l2_rotation,
 		*rotation = dss_rotation_0_degree;
 		break;
 	default:
+		pr_debug("omapdss params:Invalid Rotation degree:%d\n",
+				v4l2_rotation);
 		ret = -EINVAL;
 	}
 	return ret;
@@ -847,6 +854,8 @@ enum omap_color_mode video_mode_to_dss_mode(struct v4l2_pix_format *pix)
 		mode = OMAP_DSS_COLOR_RGBX32;
 		break;
 	default:
+		pr_debug("omapdss params:Invalid Pixel format:%d\n",
+				pix->pixelformat);
 		mode = -EINVAL;
 	}
 	return mode;
@@ -902,6 +911,11 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 		pixheight = vout->pix.height;
 		pixwidth = vout->pix.width;
 	}
+	if ((cropwidth > VID_MAX_WIDTH) || (cropwidth < VID_MIN_WIDTH))
+		pr_debug("omapdss params:Invalid crop width:%d\n", cropwidth);
+
+	if ((cropheight > VID_MAX_HEIGHT) || (cropheight < VID_MIN_HEIGHT))
+		pr_debug("omapdss params:Invalid crop heigth:%d\n", cropheight);
 
 	ovl->get_overlay_info(ovl, &info);
 	if (addr)
@@ -983,6 +997,15 @@ int omapvid_init(struct omap_vout_device *vout, u32 addr, u32 uv_addr)
 		outh = win->w.height;
 		posx = win->w.left;
 		posy = win->w.top;
+	if ((outw > VID_MAX_WIDTH) || (outw < VID_MIN_WIDTH))
+		pr_debug("omapdss params:Invalid o/p width:%d\n", outw);
+	if ((outh > VID_MAX_HEIGHT) || (outh < VID_MIN_HEIGHT))
+		pr_debug("omapdss params:Invalid o/p heigth:%d\n", outh);
+	if ((posx > VID_MAX_WIDTH) || (outw < -VID_MAX_WIDTH))
+		pr_debug("omapdss params:Invalid left position:%d\n", posx);
+	if ((posy > VID_MAX_HEIGHT) || (posy < -VID_MAX_HEIGHT))
+		pr_debug("omapdss params:Invalid top position:%d\n", posy);
+
 		switch (vout->rotation) {
 		case dss_rotation_90_degree:
 			/* Invert the height and width for 90
@@ -1209,7 +1232,7 @@ wb:
 		}
 
 	vout->first_int = 0;
-	if (list_empty(&vout->dma_queue)){
+	if (list_empty(&vout->dma_queue)) {
 		vout->buf_empty = true;
 		goto vout_isr_err;
 	}
@@ -2115,11 +2138,18 @@ static int vidioc_g_fmt_vid_overlay(struct file *file, void *fh,
 	win->w = vout->win.w;
 	win->field = vout->win.field;
 	win->global_alpha = vout->win.global_alpha;
+	if (win->global_alpha > 255)
+		pr_debug("omapdss params:Invalid global_alpha:%d\n",
+			win->global_alpha);
 
 	if (ovl->manager && ovl->manager->get_manager_info) {
 		ovl->manager->get_manager_info(ovl->manager, &info);
 		key_value = info.trans_key;
 	}
+	if (key_value > 0xFFFFFF)
+		pr_debug("omapdss params:Invalid chroma key value:%d\n",
+		key_value);
+
 	win->chromakey = key_value;
 	return 0;
 }
@@ -2290,6 +2320,9 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 		struct omap_overlay *ovl;
 		unsigned int  color = a->value;
 		struct omap_overlay_manager_info info;
+		if (color > 0xffffff)
+			pr_debug("omapdss params:Invalid background color:%d\n",
+				color);
 
 		ovl = vout->vid_info.overlays[0];
 
@@ -2317,6 +2350,9 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 		struct omap_overlay *ovl;
 		struct omapvideo_info *ovid;
 		unsigned int  mirror = a->value;
+		if (mirror > 1 || mirror < 0)
+			pr_debug("omapdss params:Invalid mirroring:%d\n",
+				mirror);
 
 		ovid = &vout->vid_info;
 		ovl = ovid->overlays[0];
@@ -2345,6 +2381,7 @@ static int vidioc_s_ctrl(struct file *file, void *fh, struct v4l2_control *a)
 		return 0;
 	}
 	default:
+		pr_debug("omapdss params:Invalid v4l2_control:%d\n", a->id);
 		ret = -EINVAL;
 	}
 	return ret;
