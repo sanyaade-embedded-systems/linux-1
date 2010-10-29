@@ -279,7 +279,6 @@ static ssize_t overlay_global_alpha_store(struct omap_overlay *ovl,
 	return size;
 }
 
-
 static ssize_t overlay_decim_show(u16 min, u16 max, char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "%d..%d\n", min, max);
@@ -303,13 +302,10 @@ static ssize_t overlay_decim_store(u16 *min, u16 *max,
 	char *last;
 
 	*min = *max = simple_strtoul(buf, &last, 10);
-	if (last < buf + size) {
+	if (last < buf + size && *last == '.') {
 		/* check for .. separator */
-		if (last + 2 >= buf + size ||
-		    last[0] != '.' ||
-		    last[1] != '.') {
+		if (last + 2 >= buf + size || last[1] != '.')
 			return -EINVAL;
-		}
 
 		*max = simple_strtoul(last + 2, &last, 10);
 
@@ -604,6 +600,10 @@ static int omap_dss_set_manager(struct omap_overlay *ovl,
 
 	ovl->manager = mgr;
 
+	/* do not set channel out if DSS is off */
+	if (!dss_get_mainclk_state())
+		return 0;
+
 	dss_clk_enable(DSS_CLK_ICK | DSS_CLK_FCK1);
 	/* XXX: on manual update display, in auto update mode, a bug happens
 	 * here. When an overlay is first enabled on LCD, then it's disabled,
@@ -814,7 +814,7 @@ void dss_recheck_connections(struct omap_dss_device *dssdev, bool force)
 			mgr = lcd2_mgr;
 		}
 	} else if (dssdev->type != OMAP_DISPLAY_TYPE_VENC
-		&& dssdev->type != OMAP_DISPLAY_TYPE_HDMI) {		
+		&& dssdev->type != OMAP_DISPLAY_TYPE_HDMI) {
 		if (!lcd_mgr->device || force) {
 			if (lcd_mgr->device)
 				lcd_mgr->unset_device(lcd_mgr);

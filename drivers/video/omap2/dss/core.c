@@ -147,6 +147,7 @@ static void core_dump_clocks(struct seq_file *s)
 	seq_printf(s, "- CORE -\n");
 
 	seq_printf(s, "internal clk count\t\t%u\n", core.num_clks_enabled);
+	seq_printf(s, "mainclk count\t\t%u\n", dss_get_mainclk_state());
 
 	for (i = 0; i < 5; i++) {
 		if (!clocks[i])
@@ -302,6 +303,7 @@ static void dss_clk_enable_no_ctx(enum dss_clock clks)
 {
 	unsigned num_clks = count_clk_bits(clks);
 
+	/* don't do aggressive clock cutting on OMAP4 */
 	if (cpu_is_omap44xx())
 		return;
 
@@ -328,11 +330,21 @@ void dss_clk_enable(enum dss_clock clks)
 	if (check_ctx && cpu_is_omap34xx() && dss_need_ctx_restore())
 		restore_all_ctx();
 }
-void dss_opt_clock_enable()
+
+int dss_opt_clock_enable()
 {
-	clk_enable(core.dss_ick);
-	clk_enable(core.dss1_fck);
-	clk_enable(core.dss_96m_fck);
+	int r = clk_enable(core.dss_ick);
+	if (!r) {
+		r = clk_enable(core.dss1_fck);
+		if (!r) {
+			r = clk_enable(core.dss_96m_fck);
+			if (!r)
+				return 0;
+			clk_disable(core.dss1_fck);
+		}
+		clk_disable(core.dss_ick);
+	}
+	return r;
 }
 
 void dss_opt_clock_disable()
@@ -472,8 +484,10 @@ struct regulator *dss_get_vdda_dac(void)
 static void dss_debug_dump_clocks(struct seq_file *s)
 {
 	core_dump_clocks(s);
-	dss_dump_clocks(s);
-	dispc_dump_clocks(s);
+	if (dss_get_mainclk_state()) {
+		dss_dump_clocks(s);
+		dispc_dump_clocks(s);
+	}
 #ifdef CONFIG_OMAP2_DSS_DSI
 	dsi1_dump_clocks(s);
 	dsi2_dump_clocks(s);

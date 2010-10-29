@@ -113,8 +113,13 @@ enum hdmi_ioctl_cmds {
 #define HDMI_TXPHY_POWER_CTRL			0x8ul
 #define HDMI_TXPHY_PAD_CFG_CTRL			0xCul
 
+struct hdmi_hvsync_pol {
+	int vsync_pol;
+	int hsync_pol;
+};
+
 /*This is the structure which has all supported timing values that OMAP4 supports*/
-const struct omap_video_timings all_timings_direct[31] = {
+const struct omap_video_timings all_timings_direct[32] = {
 						{640, 480, 25200, 96, 16, 48, 2, 10, 33},
 						{1280, 720, 74250, 40, 440, 220, 5, 5, 20},
 						{1280, 720, 74250, 40, 110, 220, 5, 5, 20},
@@ -133,7 +138,7 @@ const struct omap_video_timings all_timings_direct[31] = {
 						{640, 480, 25175, 96, 16, 48, 2 , 11, 31},
 						{800, 600, 40000, 128, 40, 88, 4 , 1, 23},
 						{848, 480, 33750, 112, 16, 112, 8 , 6, 23},
-						{1280, 768, 71000, 128, 64, 192, 7 , 3, 20},
+						{1280, 768, 79500, 128, 64, 192, 7 , 3, 20},
 						{1280, 800, 83500, 128, 72, 200, 6 , 3, 22},
 						{1360, 768, 85500, 112, 64, 256, 6 , 3, 18},
 						{1280, 960, 108000, 112, 96, 312, 3 , 1, 36},
@@ -146,13 +151,25 @@ const struct omap_video_timings all_timings_direct[31] = {
 						{1920, 1080, 148500, 44, 88, 80, 5, 4, 36},
 						{1280, 768, 68250, 32, 48, 80, 7, 3, 12},
 						{1400, 1050, 101000, 32, 48, 80, 4, 3, 23},
-						{1680, 1050, 119000, 32, 48, 80, 6, 3, 21} };
+						{1680, 1050, 119000, 32, 48, 80, 6, 3, 21},
+						{1280, 800, 79500, 32, 48, 80, 6, 3, 14} };
 
 /*This is a static Mapping array which maps the timing values with corresponding CEA / VESA code*/
-int code_index[31] = {1, 19, 4, 2, 37, 6, 21, 20, 5, 16, 17, 29, 31, 35,
+int code_index[32] = {1, 19, 4, 2, 37, 6, 21, 20, 5, 16, 17, 29, 31, 35,
 			/* <--14 CEA 17--> vesa*/
 			4, 9, 0xE, 0x17, 0x1C, 0x27, 0x20, 0x23, 0x10, 0x2A,
-			0X2F, 0x3A, 0X51, 0X52, 0x16, 0x29, 0x39};
+			0X2F, 0x3A, 0X51, 0X52, 0x16, 0x29, 0x39, 0x1B};
+
+/*Static mapping of the Timing values with the corresponding Vsync and Hsync polarity*/
+const struct hdmi_hvsync_pol hvpol_mapping[32] = {
+					{0, 0}, {1, 1}, {1, 1}, {0, 0},
+					{0, 0}, {0, 0}, {0, 0}, {1, 1},
+					{1, 1}, {1, 1}, {0, 0}, {0, 0},
+					{1, 1}, {0, 0}, {0, 0}, {1, 1},
+					{1, 1}, {1, 0}, {1, 0}, {1, 1},
+					{1, 1}, {1, 1}, {0, 0}, {1, 0},
+					{1, 0}, {1, 0}, {1, 1}, {1, 1},
+					{0, 1}, {0, 1}, {0, 1}, {0, 1} };
 
 /*This is revere static mapping which maps the CEA / VESA code to the corresponding timing values*/
 /* note: table is 10 entries per line to make it easier to find index.. */
@@ -166,7 +183,7 @@ int code_cea[39] = {
 int code_vesa[83] = {
 		-1, -1, -1, -1, 14, -1, -1, -1, -1, 15,
 		-1, -1, -1, -1, 16, -1, 22, -1, -1, -1,
-		-1, -1, 28, 17, -1, -1, -1, -1, 18, -1,
+		-1, -1, 28, 17, -1, -1, -1, 31, 18, -1,
 		-1, -1, 20, -1, -1, 21, -1, -1, -1, 19,
 		-1, 29, 23, -1, -1, -1, -1, 24, -1, -1,
 		-1, -1, -1, -1, -1, -1, -1, 30, 25, -1,
@@ -204,8 +221,12 @@ static void update_cfg (struct hdmi_config *cfg, struct omap_video_timings *timi
 	cfg->vfp = timings->vfp;
 	cfg->vsw = timings->vsw;
 	cfg->pixel_clock = timings->pixel_clock;
-	cfg->v_pol = 1;      // XXX get this from EDID
-	cfg->h_pol = 1;      // XXX get this from EDID
+}
+
+static void update_cfg_pol(struct hdmi_config *cfg, int  code)
+{
+	cfg->v_pol = hvpol_mapping[code].vsync_pol;
+	cfg->h_pol = hvpol_mapping[code].hsync_pol;
 }
 
 static inline void hdmi_write_reg(u32 base, u16 idx, u32 val)
@@ -812,6 +833,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 	}
 
 	update_cfg(&hdmi.cfg, p);
+	update_cfg_pol(&hdmi.cfg, code);
 
 	code = get_timings_index();
 	dssdev->panel.timings = all_timings_direct[code];
@@ -1262,7 +1284,7 @@ static struct hdmi_cm hdmi_get_code(struct omap_video_timings *timing)
 	struct hdmi_cm cm = {-1};
 	DSSDBG("hdmi_get_code");
 
-	for (i = 0; i < 31; i++) {
+	for (i = 0; i < 32; i++) {
 		temp = all_timings_direct[i];
 		if ((temp.pixel_clock == timing->pixel_clock) &&
 			(temp.x_res == timing->x_res) &&
@@ -1560,19 +1582,7 @@ static int get_edid_timing_data(struct HDMI_EDID *edid)
 
 }
 
-int nature_of_hdmi(void)
+bool is_hdmi_interlaced(void)
 {
-	if ((hdmi.mode)) {
-		switch (hdmi.code) {
-		case 5:
-		case 6:
-		case 20:
-		case 21:
-			return INTERLACED;
-		default:
-			return PROGRESSIVE;
-		}
-	}
-	return PROGRESSIVE;
+	return hdmi.cfg.interlace;
 }
-

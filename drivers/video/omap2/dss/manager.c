@@ -420,11 +420,7 @@ struct overlay_cache_data {
 	bool manual_update;
 	enum omap_overlay_zorder zorder;
 	u32 p_uv_addr; /* relevent for NV12 format only */
-	u16 pic_width; /* for ilace */
 	u16 pic_height; /* for ilace */
-	u32 ibufpdev_offset; /* for ilace buffer &
-		progressive display device offset*/
-	u16 ibufpdev_flag; /* for ilace buffer and progressive display device */
 };
 
 struct manager_cache_data {
@@ -799,6 +795,9 @@ static int configure_overlay(enum omap_plane plane)
 		}
 
 		switch (c->color_mode) {
+		case OMAP_DSS_COLOR_NV12:
+			bpp = 8;
+			break;
 		case OMAP_DSS_COLOR_RGB16:
 		case OMAP_DSS_COLOR_ARGB16:
 		case OMAP_DSS_COLOR_YUV2:
@@ -864,28 +863,13 @@ static int configure_overlay(enum omap_plane plane)
 				w -= 1;
 		}
 	}
-	if (cpu_is_omap44xx()){
-		if ((paddr >= 0x60000000) && (paddr <= 0x7fffffff)) {
-			u16 height, pic_height;
-			s32 row_inc;
-			if (c->ilace == IBUF_PDEV) {
-				height = h/2;
-				pic_height = c->pic_height/2;
 
-				calc_tiler_row_rotation(c->rotation,
-				w, height, c->color_mode, &row_inc,
-				&c->ibufpdev_offset, c->ilace, c->pic_width,
-				pic_height);
-
-				c->ibufpdev_flag = 0;
-			}
-		}
-	}
 	r = dispc_scaling_decision(w, h, outw, outh,
 			       plane, c->color_mode, c->channel,
 			       c->rotation, c->min_x_decim, c->max_x_decim,
 			       c->min_y_decim, c->max_y_decim,
 			       &x_decim, &y_decim, &three_tap);
+
 	r = r ? : dispc_setup_plane(plane,
 			paddr,
 			c->screen_width,
@@ -900,7 +884,6 @@ static int configure_overlay(enum omap_plane plane)
 			c->global_alpha,
 			c->channel,
 			c->p_uv_addr,
-			c->pic_width,
 			c->pic_height);
 
 	if (r) {
@@ -1045,9 +1028,11 @@ static int configure_dispc(void)
 				/* Do nothing as of now as we dont
 				 * support Manager yet with WB
 				 */
+				/*WB GO bit has to be used only in case of
+				capture mode and not in memory mode*/
+				dispc_go_wb();
 				break;
 			}
-			dispc_go_wb();
 			wb->shadow_dirty = false;
 			dispc_enable_plane(OMAP_DSS_WB, 1);
 		}
@@ -1298,8 +1283,8 @@ static void dss_apply_irq_handler(void *data, u32 mask)
 
 	omap_dispc_unregister_isr(dss_apply_irq_handler, NULL,
 			DISPC_IRQ_VSYNC	| DISPC_IRQ_EVSYNC_ODD |
-			DISPC_IRQ_EVSYNC_EVEN | (cpu_is_omap44xx()) ?
-			DISPC_IRQ_VSYNC2 : 0);
+			DISPC_IRQ_EVSYNC_EVEN | ((cpu_is_omap44xx()) ?
+			DISPC_IRQ_VSYNC2 : 0));
 	dss_cache.irq_enabled = false;
 
 end:
@@ -1371,7 +1356,6 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 		oc->screen_width = ovl->info.screen_width;
 		oc->width = ovl->info.width;
 		oc->height = ovl->info.height;
-		oc->pic_width = ovl->info.pic_width;
 		oc->pic_height = ovl->info.pic_height;
 		oc->color_mode = ovl->info.color_mode;
 		oc->rotation = ovl->info.rotation;
@@ -1509,7 +1493,7 @@ static int omap_dss_mgr_apply(struct omap_overlay_manager *mgr)
 		r = omap_dispc_register_isr(dss_apply_irq_handler, NULL,
 				DISPC_IRQ_VSYNC	| DISPC_IRQ_EVSYNC_ODD |
 				DISPC_IRQ_EVSYNC_EVEN |
-				(cpu_is_omap44xx()) ? DISPC_IRQ_VSYNC2 : 0);
+				((cpu_is_omap44xx()) ? DISPC_IRQ_VSYNC2 : 0));
 		dss_cache.irq_enabled = true;
 	}
 	configure_dispc();
@@ -1987,15 +1971,6 @@ void dss_uninit_overlay_managers(struct platform_device *pdev)
 int omap_dss_get_num_overlay_managers(void)
 {
 	return num_managers;
-}
-
-u16 *get_offset_cnt(int id, u32 *offset)
-{
-	struct overlay_cache_data *oc;
-	oc = &dss_cache.overlay_cache[id];
-	*offset = oc->ibufpdev_offset;
-	return &oc->ibufpdev_flag;
-
 }
 
 EXPORT_SYMBOL(omap_dss_get_num_overlay_managers);

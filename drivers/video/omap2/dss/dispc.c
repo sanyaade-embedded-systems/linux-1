@@ -202,13 +202,13 @@ void __iomem  *dispc_base;
 				       /* n=0: VID3, n=1: WB*/
 
 /* coef index i = {0, 1, 2, 3, 4, 5, 6, 7}  n=0: VID3, n=1: WB */
-#define DISPC_VID_V3_WB_FIR_COEF_H2(n, i) DISPC_REG(0x0730+(n)*0x6C+(i)*0x8)
+#define DISPC_VID_V3_WB_FIR_COEF_H2(n, i) DISPC_REG(0x0730+(n)*0x70+(i)*0x8)
 
 /* coef index i = {0, 1, 2, 3, 4, 5, 6, 7} */
-#define DISPC_VID_V3_WB_FIR_COEF_HV2(n, i) DISPC_REG(0x0734+(n)*0x6C+(i)*0x8)
+#define DISPC_VID_V3_WB_FIR_COEF_HV2(n, i) DISPC_REG(0x0734+(n)*0x70+(i)*0x8)
 
 /* coef index i = {0, 1, 2, 3, 4, 5, 6, 7} */
-#define DISPC_VID_V3_WB_FIR_COEF_V2(n, i) DISPC_REG(0x0770+(n)*0x6C+(i)*0x4)
+#define DISPC_VID_V3_WB_FIR_COEF_V2(n, i) DISPC_REG(0x0770+(n)*0x70+(i)*0x4)
 
 
 /*********End Vid3 and WB Registers ***************/
@@ -1246,7 +1246,7 @@ static void _dispc_set_scale_coef(enum omap_plane plane, const s8 *hfir,
 		      ((vfir[16] << 16) & 0xFF0000) |
 		      ((vfir[24] << 24) & 0xFF000000));
 		v = ((vfir[0] & 0xFF) | ((vfir[32] << 8) & 0xFF00));
-	
+
 		_dispc_write_firh_reg(plane, i, h);
 		_dispc_write_firhv_reg(plane, i, hv);
 		_dispc_write_firv_reg(plane, i, v);
@@ -1842,7 +1842,7 @@ static void _dispc_set_vid_accu0(enum omap_plane plane, int haccu, int vaccu)
 static void _dispc_set_vid_accu1(enum omap_plane plane, int haccu, int vaccu)
 {
 	u32 val;
-	struct dispc_reg ac1_reg[4] = { DISPC_VID_ACCU1(0),				      
+	struct dispc_reg ac1_reg[4] = { DISPC_VID_ACCU1(0),
 					DISPC_VID_ACCU1(1) };
 
 	if (cpu_is_omap44xx()){
@@ -2071,24 +2071,24 @@ static void _dispc_set_scaling(enum omap_plane plane,
 	BUG_ON(plane == OMAP_DSS_GFX);
 
 	if (scale_x) {
-		fir_hinc = 1024 * (orig_width - 1) / (out_width - 1);
+		fir_hinc = (1024 * orig_width) / out_width;
 		if (fir_hinc > 4095)
 			fir_hinc = 4095;
 		hfir = get_scaling_coef(orig_width, out_width, 0, 0, 0);
 	} else {
-		fir_hinc = 0;
-		hfir = fir5_zero;
+		fir_hinc = 1024;
+		hfir = fir3_m8;
 	}
 
 	if (scale_y) {
-		fir_vinc = 1024 * (orig_height - 1) / (out_height - 1);
+		fir_vinc = (1024 * orig_height) / out_height;
 		if (fir_vinc > 4095)
 			fir_vinc = 4095;
 		vfir = get_scaling_coef(orig_height, out_height, 0, 0,
 					three_taps);
-	} else {	
-		fir_vinc = 0;
-		vfir = fir5_zero;
+	} else {
+		fir_vinc = 1024;
+		vfir = fir3_m8;
 	}
 
 	_dispc_set_scale_coef(plane, hfir, vfir, three_taps);
@@ -2138,24 +2138,24 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 	const s8 *hfir, *vfir;
 
 	if (scale_x) {
-		fir_hinc = 1024 * (orig_width - 1) / (out_width - 1);
+		fir_hinc = (1024 * orig_width) / out_width;
 		if (fir_hinc > 4095)
 			fir_hinc = 4095;
 		hfir = get_scaling_coef(orig_width, out_width, 0, 0, 0);
 	} else {
-		fir_hinc = 0;
-		hfir = fir5_zero;
+		fir_hinc = 1024;
+		hfir = fir3_m8;
 		}
 
 	if (scale_y) {
-		fir_vinc = 1024 * (orig_height - 1) / (out_height - 1);
+		fir_vinc = (1024 * orig_height) / out_height;
 		if (fir_vinc > 4095)
 			fir_vinc = 4095;
 		vfir = get_scaling_coef(orig_height, out_height, 0,
 					ilace, three_taps);
 	} else {
-		fir_vinc = 0;
-		vfir = fir5_zero;
+		fir_vinc = 1024;
+		vfir = fir3_m8;
 		}
 
 	for (i = 0; i < 8; i++, hfir++, vfir++) {
@@ -2174,25 +2174,30 @@ static void _dispc_set_scaling_uv(enum omap_plane plane,
 		if (three_taps && v)
 			printk(KERN_ERR "three_tap v is %x\n", v);
 	}
-
-	/* set chroma resampling */
-	REG_FLD_MOD(DISPC_VID_ATTRIBUTES2(plane - 1),
-		(fir_hinc || fir_vinc) ? 1 : 0, 8, 8);
+	/* set chroma resampling. Not applicable for WB plane*/
+	if (plane != OMAP_DSS_WB)
+		REG_FLD_MOD(DISPC_VID_ATTRIBUTES2(plane - 1),
+			(fir_hinc || fir_vinc) ? 1 : 0, 8, 8);
 
 	/* set H scaling */
-	REG_FLD_MOD(dispc_reg_att[plane], fir_hinc ? 1 : 0, 6, 6);
+	REG_FLD_MOD(dispc_reg_att[plane], fir_hinc ? 1 : 0, 5, 5);
 
 	/* set V scaling */
-	REG_FLD_MOD(dispc_reg_att[plane], fir_vinc ? 1 : 0, 5, 5);
+	REG_FLD_MOD(dispc_reg_att[plane], fir_vinc ? 1 : 0, 6, 6);
 
 	_dispc_set_fir2(plane, fir_hinc, fir_vinc);
 
-	if (ilace == IBUF_IDEV) {
+	if ((ilace & OMAP_FLAG_IBUF) &&
+	    (ilace & OMAP_FLAG_IDEV)) {
 		accu0 = (-3 * fir_vinc / 4) % 1024;
 		accu1 = (-fir_vinc / 4) % 1024;
 	} else {
 		accu0 = accu1 = (-fir_vinc / 2) % 1024;
 	}
+
+	if (ilace & OMAP_FLAG_ISWAP)
+		swap(accu0, accu1);
+
 	accuh = (-fir_hinc / 2) % 1024;
 
 	_dispc_set_vid_accu2_0(plane, 0x80, 0);
@@ -2204,55 +2209,59 @@ static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 		bool mirroring, enum omap_color_mode color_mode)
 {
 	BUG_ON(plane == OMAP_DSS_WB);
-	if (!cpu_is_omap44xx()) {
-		if (color_mode == OMAP_DSS_COLOR_YUV2 ||
-				color_mode == OMAP_DSS_COLOR_UYVY) {
-			int vidrot = 0;
 
-			if (mirroring) {
-				switch (rotation) {
-				case OMAP_DSS_ROT_0:
-					vidrot = 2;
-					break;
-				case OMAP_DSS_ROT_90:
-					vidrot = 1;
-					break;
-				case OMAP_DSS_ROT_180:
-					vidrot = 0;
-					break;
-				case OMAP_DSS_ROT_270:
-					vidrot = 3;
-					break;
-				}
-			} else {
-				switch (rotation) {
-				case OMAP_DSS_ROT_0:
-					vidrot = 0;
-					break;
-				case OMAP_DSS_ROT_90:
-					vidrot = 1;
-					break;
-				case OMAP_DSS_ROT_180:
-					vidrot = 2;
-					break;
-				case OMAP_DSS_ROT_270:
-					vidrot = 3;
-					break;
-				}
+	if (color_mode == OMAP_DSS_COLOR_YUV2 ||
+			color_mode == OMAP_DSS_COLOR_UYVY) {
+		int vidrot = 0;
+
+		if (mirroring) {
+			switch (rotation) {
+			case OMAP_DSS_ROT_0:
+				vidrot = 2;
+				break;
+			case OMAP_DSS_ROT_90:
+				vidrot = 1;
+				break;
+			case OMAP_DSS_ROT_180:
+				vidrot = 0;
+				break;
+			case OMAP_DSS_ROT_270:
+				vidrot = 3;
+				break;
 			}
+		} else {
+			switch (rotation) {
+			case OMAP_DSS_ROT_0:
+				vidrot = 0;
+				break;
+			case OMAP_DSS_ROT_90:
+				vidrot = 1;
+				break;
+			case OMAP_DSS_ROT_180:
+				vidrot = 2;
+				break;
+			case OMAP_DSS_ROT_270:
+				vidrot = 3;
+				break;
+			}
+		}
 
-			REG_FLD_MOD(dispc_reg_att[plane], vidrot, 13, 12);
+		REG_FLD_MOD(dispc_reg_att[plane], vidrot, 13, 12);
 
+		if (!cpu_is_omap44xx()) {
 			if (rotation == OMAP_DSS_ROT_90 ||
 					rotation == OMAP_DSS_ROT_270)
 				REG_FLD_MOD(dispc_reg_att[plane], 0x1, 18, 18);
 			else
 				REG_FLD_MOD(dispc_reg_att[plane], 0x0, 18, 18);
-		} else {
-			REG_FLD_MOD(dispc_reg_att[plane], 0, 13, 12);
-			REG_FLD_MOD(dispc_reg_att[plane], 0, 18, 18);
 		}
-	} else if (plane != OMAP_DSS_GFX) {
+	} else {
+		REG_FLD_MOD(dispc_reg_att[plane], 0, 13, 12);
+		if (!cpu_is_omap44xx())
+			REG_FLD_MOD(dispc_reg_att[plane], 0, 18, 18);
+	}
+
+	if (plane != OMAP_DSS_GFX) {
 		if (color_mode == OMAP_DSS_COLOR_NV12) {
 			/* DOUBLESTRIDE : 0 for 90-, 270-; 1 for 0- and 180- */
 			if (rotation == 1 || rotation == 3)
@@ -2260,12 +2269,6 @@ static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 			else
 				REG_FLD_MOD(dispc_reg_att[plane], 0x1, 22, 22);
 		}
-		/* Set the rotation value for pipeline */
-		if (color_mode == OMAP_DSS_COLOR_UYVY ||
-			color_mode == OMAP_DSS_COLOR_YUV2)
-			REG_FLD_MOD(dispc_reg_att[plane], rotation, 13, 12);
-		else
-			REG_FLD_MOD(dispc_reg_att[plane], 0, 13, 12);
 	}
 }
 
@@ -2311,19 +2314,18 @@ static s32 pixinc(int pixels, u8 ps)
 		BUG();
 }
 
-void calc_tiler_row_rotation(u8 rotation,
+static void calc_tiler_row_rotation(u8 rotation,
 		u16 width,
 		enum omap_color_mode color_mode,
 		int y_decim,
 		s32 *row_inc,
 		unsigned *offset1,
 		enum device_n_buffer_type  ilace,
-		u16 pic_width,
 		u16 pic_height)
  {
 	u8 ps = 1;
 	u32 line_size = 0;
-	DSSDBG("calc_tiler_rot(%d): %d\n", rotation, width);
+	DSSDBG("calc_tiler_rot(%d): %dx%d\n", rotation, width, pic_height);
 
 	switch (color_mode) {
 	case OMAP_DSS_COLOR_RGB16:
@@ -2360,6 +2362,7 @@ void calc_tiler_row_rotation(u8 rotation,
 
 	case 1:
 	case 3:
+		/* input width/height already swapped for rotated frames */
 		line_size = (4 == ps) ? 16384 : 8192 ;
 		break;
 
@@ -2368,20 +2371,27 @@ void calc_tiler_row_rotation(u8 rotation,
 		return;
 	}
 
-	*row_inc = line_size * y_decim + 1 - (width * ps) +
-		((ilace == PBUF_IDEV) ? (line_size * y_decim) : 0);
+	/* assume TB. We worry about swapping top/bottom outside of this call */
 
-	if ((ilace == IBUF_IDEV) || (ilace == IBUF_PDEV))
+	if (ilace & OMAP_FLAG_IBUF) {
+		/* bottom half of image is the odd frame */
 		*offset1 = line_size * pic_height;
-	else if (ilace == PBUF_IDEV)
-		*offset1 = line_size;
+	} else if (ilace & OMAP_FLAG_IDEV) {
+		/* even and odd frames are interleaved */
+
+		/* offset1 is always at an odd line */
+		*offset1 = line_size * (y_decim | 1);
+		y_decim *= 2;
+	}
+	*row_inc = line_size * y_decim + 1 - (width * ps);
 
 	DSSDBG(" colormode: %d, rotation: %d, ps: %d, width: %d,"
-		" row_inc:%d\n",
-		color_mode, rotation, ps, width, *row_inc);
+		" height: %d, row_inc:%d\n",
+		color_mode, rotation, ps, width, pic_height, *row_inc);
 
 	return;
  }
+
 
 static void calc_vrfb_rotation_offset(u8 rotation, bool mirror,
 		u16 screen_width,
@@ -2702,9 +2712,10 @@ int dispc_scaling_decision(u16 width, u16 height,
 	bool can_scale = plane != OMAP_DSS_GFX;
 
 	u16 in_width, in_height;
-	unsigned long fclk = 0;
+	unsigned long fclk = 0, fclk5 = 0;
 	int min_factor, max_factor;	/* decimation search limits */
 	int x, y;			/* decimation search variables */
+	unsigned long fclk_max = dispc_fclk_rate();
 
 	/* restrict search region based on whether we can decimate */
 	if (!can_decimate_x) {
@@ -2720,9 +2731,6 @@ int dispc_scaling_decision(u16 width, u16 height,
 		if (min_y_decim > 1)
 			return -EINVAL;
 		min_y_decim = max_y_decim = 1;
-	} else {
-		if (max_y_decim > 16)
-			max_y_decim = 16;
 	}
 
 	/*
@@ -2757,8 +2765,8 @@ int dispc_scaling_decision(u16 width, u16 height,
 		    y < min_y_decim || y > max_y_decim)
 			goto loop;
 
-		in_width = width / x;
-		in_height = height / y;
+		in_width = DIV_ROUND_UP(width, x);
+		in_height = DIV_ROUND_UP(height, y);
 
 		if (in_width == out_width && in_height == out_height)
 			break;
@@ -2771,53 +2779,56 @@ int dispc_scaling_decision(u16 width, u16 height,
 			goto loop;
 
 		/* Must use 3-tap filter */
+		*three_tap = false;
 		if (!cpu_is_omap44xx())
 			*three_tap = in_width > 1024;
 		else if (omap_rev() == OMAP4430_REV_ES1_0)
 			*three_tap = in_width > 1280;
-		else
-			/* use 3-tap unless downscaling by more than 2 */
-			*three_tap = out_height * 2 >= in_height;
 
-		/* predecimation on OMAP4 still fetches the whole lines, so
-		   we multiply back the width (still closer than using width) */
-		if (*three_tap) {
-			fclk = calc_fclk(channel, in_width,
-					 in_height, out_width, out_height);
+		/* Also use 3-tap if downscaling by 2 or less */
+		*three_tap |= out_height * 2 >= in_height;
 
-			/* Try 5-tap filter if 3-tap fclk is too high*/
-			if (cpu_is_omap34xx() && in_height > out_height &&
-					fclk > dispc_fclk_rate()) {
-				printk(KERN_ERR
-					"Should use 5 tap but cannot\n");
-			}
+		/*
+		 * Predecimation on OMAP4 still fetches the whole lines
+		 * :TODO: How does it affect the required clock speed?
+		 */
+		fclk = calc_fclk(channel, in_width, in_height,
+					out_width, out_height);
+		fclk5 = *three_tap ? 0 :
+			calc_fclk_five_taps(channel, in_width, in_height,
+					out_width, out_height, color_mode);
 
-		} else {
-			fclk = calc_fclk_five_taps(channel,
-				in_width, in_height,
-				out_width, out_height, color_mode);
-		}
+		DSSDBG("%d*%d,%d*%d->%d,%d requires %lu(3T), %lu(5T) Hz\n",
+			in_width, x, in_height, y, out_width, out_height,
+			fclk, fclk5);
+
+		/* Use 3-tap if 5-tap clock requirement is too high */
+		*three_tap |= fclk5 > fclk_max;
+
+		/* for now we always use 5-tap unless 3-tap is required */
+		if (!*three_tap)
+			fclk = fclk5;
 
 		/* OMAP2/3 has a scaler size limitation */
 		if (!cpu_is_omap44xx() && in_width > (1024 << *three_tap))
 			goto loop;
 
 		DSSDBG("required fclk rate = %lu Hz\n", fclk);
-		DSSDBG("current fclk rate = %lu Hz\n", dispc_fclk_rate());
+		DSSDBG("current fclk rate = %lu Hz\n", fclk_max);
 
-		if (fclk > dispc_fclk_rate()) {
-			DSSERR("failed to set up scaling, "
-					"required fclk rate = %lu Hz, "
-					"current fclk rate = %lu Hz\n",
-					fclk, dispc_fclk_rate());
+		if (fclk > fclk_max)
 			goto loop;
-		}
 		break;
 
 loop:
 		/* err if exhausted search region */
-		if (x == max_x_decim && y == max_y_decim)
+		if (x == max_x_decim && y == max_y_decim) {
+			DSSERR("failed to set up scaling, "
+					"required fclk rate = %lu Hz, "
+					"current fclk rate = %lu Hz\n",
+					fclk, fclk_max);
 			return -EINVAL;
+		}
 
 		/* get to next factor */
 		if (x == y) {
@@ -2847,7 +2858,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 		u8 rotation, int mirror,
 		u8 global_alpha,
 		enum omap_channel channel, u32 puv_addr,
-		u16 pic_width, u16 pic_height)
+		u16 pic_height)
 {
 	bool fieldmode = 0;
 	int cconv = 0;
@@ -2862,20 +2873,22 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	if (paddr == 0)
 		return -EINVAL;
 
+	/* NOTE: fieldmode is not used on OMAP4 -> neither for predecimation */
 	if (ilace && height == out_height)
 		fieldmode = 1;
 
-	if ((ilace == IBUF_IDEV) || (ilace == IBUF_PDEV) ||
-		(ilace == PBUF_IDEV)) {
+	if (ilace != PBUF_PDEV) {
 #ifdef CONFIG_OMAP2_DSS_HDMI
+		/* HDMI output */
 		height /= 2;
 #else
+		/* VENC output */
 		if (fieldmode)
 			height /= 2;
 #endif
 		pos_y /= 2;
 		pic_height /= 2;
-		if ((ilace == IBUF_IDEV) || (ilace == PBUF_IDEV))
+		if (ilace & OMAP_FLAG_IDEV)
 			out_height /= 2;
 
 		DSSDBG("adjusting for ilace: height %d, pos_y %d, "
@@ -2883,6 +2896,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 				height, pos_y, out_height);
 	}
 
+	/* check if color format is supported */
 	if (plane == OMAP_DSS_GFX) {
 		switch (color_mode) {
 		case OMAP_DSS_COLOR_ARGB16:
@@ -2942,8 +2956,8 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	}
 
 	/* predecimate */
-	width /= x_decim;
-	height /= y_decim;
+	width = DIV_ROUND_UP(width, x_decim);
+	height = DIV_ROUND_UP(height, y_decim);
 
 	if (ilace && !fieldmode) {
 		/*
@@ -2962,83 +2976,85 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	/* Fields are independent but interleaved in memory. */
 	if (fieldmode)
 		field_offset = 1;
-	pix_inc = 0x1;
-	offset0 = 0x0;
-	offset1 = 0x0;
-	if(cpu_is_omap44xx()) {
-		/* check if tiler address; else set row_inc = 1*/
-		if ((paddr >= 0x60000000) && (paddr <= 0x7fffffff)) {
-			struct tiler_view_orient orient;
-			u8 mir_x = 0, mir_y = 0;
-			unsigned long tiler_width, tiler_height;
 
-			pix_inc = 1 + (x_decim - 1) * bpp;
-			calc_tiler_row_rotation(rotation, width * x_decim,
-						color_mode, y_decim, &row_inc, &offset1,
-						ilace, pic_width, pic_height);
+	/* default values */
+	row_inc = pix_inc = 0x1;
+	offset0 = offset1 = 0x0;
 
-			/* get rotated top-left coordinate
-					(if rotation is applied before mirroring) */
-			memset(&orient, 0, sizeof(orient));
+	if (rotation_type == OMAP_DSS_ROT_TILER) {
+		struct tiler_view_orient orient = {0};
+		unsigned long tiler_width = width, tiler_height = height;
+		u8 mir_x = 0, mir_y = 0;
+		u8 tiler_rotation = rotation;
 
+		pix_inc = 1 + (x_decim - 1) * bpp;
+		calc_tiler_row_rotation(rotation, width * x_decim,
+					color_mode, y_decim, &row_inc,
+					&offset1, ilace, pic_height);
+
+		if (ilace & OMAP_FLAG_ISWAP)
+			swap(offset0, offset1);
+
+		/* mirroring is applied before rotataion */
+		if (tiler_rotation & 1)
+			tiler_rotation ^= 2;
+
+		tiler_rotate_view(&orient, tiler_rotation * 90);
+
+		if (mirror) {
 			if (rotation & 1)
-				rotation ^= 2;
+				mir_x = 1;
+			else
+				mir_y = 1;
+		}
+		orient.x_invert ^= mir_x;
+		orient.y_invert ^= mir_y;
 
-			tiler_rotate_view(&orient, rotation * 90);
+		DSSDBG("RXY = %d %d %d\n", orient.rotate_90,
+				orient.x_invert, orient.y_invert);
 
-			if (mirror) {
-				if (rotation & 1)
-					mir_x = 1;
-				else
-					mir_y = 1;
-			}
-			orient.x_invert ^= mir_x;
-			orient.y_invert ^= mir_y;
+		if (orient.rotate_90 & 1)
+			swap(tiler_width, tiler_height);
 
-			DSSDBG("RXY = %d %d %d\n", orient.rotate_90,
-					orient.x_invert, orient.y_invert);
+		if (color_mode == OMAP_DSS_COLOR_YUV2 ||
+		    color_mode == OMAP_DSS_COLOR_UYVY)
+			tiler_width /= 2;
 
-			if (orient.rotate_90 & 1) {
-				tiler_height = width;
-				tiler_width = height;
-			} else {
-				tiler_height = height;
-				tiler_width = width;
-			}
+		DSSDBG("w, h = %ld %ld\n", tiler_width, tiler_height);
 
-			switch (color_mode) {
-			case OMAP_DSS_COLOR_YUV2:
-			case OMAP_DSS_COLOR_UYVY:
-				tiler_width /= 2;
-				break;
-			default:
-				break;
-			}
-			DSSDBG("w, h = %ld %ld\n", tiler_width, tiler_height);
-
-			paddr = tiler_reorient_topleft(tiler_get_natural_addr((void *)paddr),
+		paddr = tiler_reorient_topleft(
+					tiler_get_natural_addr((void *)paddr),
 					orient, tiler_width, tiler_height);
 
+		if (puv_addr)
+			puv_addr = tiler_reorient_topleft(
+				tiler_get_natural_addr(
+				(void *) puv_addr), orient,
+				tiler_width/2, tiler_height/2);
+
+		/*
+		 * BA1 used as temporary storage to pointer to lower
+		 * half of interlaced buffer on progressive display
+		 */
+		if ((ilace & OMAP_FLAG_IBUF) && !(ilace & OMAP_FLAG_IDEV)) {
+			dispc_write_reg(DISPC_VID_BA1(plane - 1),
+							paddr + offset1);
+			/* UV offset is 1/2 Y offset for even offsets */
 			if (puv_addr)
-				puv_addr = tiler_reorient_topleft(
-						tiler_get_natural_addr((void *)puv_addr),
-						orient, tiler_width/2, tiler_height/2);
-				DSSDBG("rotated addresses: 0x%0x, 0x%0x\n",
+				dispc_write_reg(DISPC_VID_BA_UV1(plane - 1),
+						puv_addr + offset1 / 2);
+		}
+		DSSDBG("rotated addresses: 0x%0x, 0x%0x\n",
 							paddr, puv_addr);
-				/* set BURSTTYPE if rotation is non-zero */
-				REG_FLD_MOD(dispc_reg_att[plane], 0x1, 29, 29);
-		} else
-			row_inc = 0x1;
-	}
-	if (!cpu_is_omap44xx()) {
-		row_inc = 0x1;
-		if (rotation_type == OMAP_DSS_ROT_DMA)
-			calc_dma_rotation_offset(rotation, mirror,
+		/* set BURSTTYPE if rotation is non-zero */
+		REG_FLD_MOD(dispc_reg_att[plane], 0x1, 29, 29);
+	} else if (rotation_type == OMAP_DSS_ROT_DMA) {
+		calc_dma_rotation_offset(rotation, mirror,
 				screen_width, width, frame_height, color_mode,
 				fieldmode, field_offset,
 				&offset0, &offset1, &row_inc, &pix_inc);
-		else
-			calc_vrfb_rotation_offset(rotation, mirror,
+	} else if (rotation_type == OMAP_DSS_ROT_VRFB) {
+		calc_vrfb_rotation_offset(rotation, mirror,
 				screen_width, width, frame_height, color_mode,
 				fieldmode, field_offset,
 				&offset0, &offset1, &row_inc, &pix_inc);
@@ -3959,6 +3975,70 @@ void dispc_dump_regs(struct seq_file *s)
 	DUMPREG(DISPC_VID_SIZE(1));
 	DUMPREG(DISPC_VID_ATTRIBUTES(1));
 	DUMPREG(DISPC_VID_V3_WB_ATTRIBUTES(1));
+	DUMPREG(DISPC_VID_V3_WB_ACCU0(1));
+	DUMPREG(DISPC_VID_V3_WB_ACCU1(1));
+	DUMPREG(DISPC_VID_V3_WB_BA0(1));
+	DUMPREG(DISPC_VID_V3_WB_BA1(1));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H(1, 0));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H(1, 1));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H(1, 2));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H(1, 3));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H(1, 4));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H(1, 5));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H(1, 6));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H(1, 7));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV(1, 0));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV(1, 1));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV(1, 2));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV(1, 3));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV(1, 4));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV(1, 5));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV(1, 6));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV(1, 7));
+
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H2(1, 0));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H2(1, 1));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H2(1, 2));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H2(1, 3));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H2(1, 4));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H2(1, 5));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H2(1, 6));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_H2(1, 7));
+
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV2(1, 0));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV2(1, 1));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV2(1, 2));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV2(1, 3));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV2(1, 4));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV2(1, 5));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV2(1, 6));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_HV2(1, 7));
+
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_V2(1, 0));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_V2(1, 1));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_V2(1, 2));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_V2(1, 3));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_V2(1, 4));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_V2(1, 5));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_V2(1, 6));
+	DUMPREG(DISPC_VID_V3_WB_FIR_COEF_V2(1, 7));
+
+	DUMPREG(DISPC_VID_V3_WB_BUF_SIZE_STATUS(1));
+	DUMPREG(DISPC_VID_V3_WB_BUF_THRESHOLD(1));
+	DUMPREG(DISPC_VID_V3_WB_FIR(1));
+	DUMPREG(DISPC_VID_V3_WB_PICTURE_SIZE(1));
+	DUMPREG(DISPC_VID_V3_WB_PIXEL_INC(1));
+	DUMPREG(DISPC_VID_V3_WB_ROW_INC(1));
+	DUMPREG(DISPC_VID_V3_WB_SIZE(1));
+	DUMPREG(DISPC_VID_V3_WB_FIR2(1));
+	DUMPREG(DISPC_VID_V3_WB_ACCU2_0(1));
+	DUMPREG(DISPC_VID_V3_WB_ACCU2_1(1));
+	DUMPREG(DISPC_VID_V3_WB_CONV_COEF(1, 0));
+	DUMPREG(DISPC_VID_V3_WB_CONV_COEF(1, 1));
+	DUMPREG(DISPC_VID_V3_WB_CONV_COEF(1, 2));
+	DUMPREG(DISPC_VID_V3_WB_CONV_COEF(1, 3));
+	DUMPREG(DISPC_VID_V3_WB_CONV_COEF(1, 4));
+
 	DUMPREG(DISPC_VID_FIFO_THRESHOLD(1));
 	DUMPREG(DISPC_VID_FIFO_SIZE_STATUS(1));
 	DUMPREG(DISPC_VID_ROW_INC(1));
@@ -4579,7 +4659,6 @@ static void dispc_error_worker(struct work_struct *work)
 			if (enable)
 				dssdev->driver->enable(dssdev);
 		}
-
 	}
 
 	if (errors & DISPC_IRQ_OCP_ERR) {
@@ -4678,7 +4757,7 @@ void dispc_fake_vsync_irq(enum omap_dsi_index ix)
 		DSSERR("Invalid display id for fake vsync\n");
 		return;
 	}
-	
+
 	for (i = 0; i < DISPC_MAX_NR_ISRS; i++) {
 		struct omap_dispc_isr_data *isr_data;
 		isr_data = &dispc.registered_isr[i];
@@ -4808,24 +4887,24 @@ int dispc_enable_plane(enum omap_plane plane, bool enable)
 }
 
 int dispc_setup_plane(enum omap_plane plane,
-		       u32 paddr, u16 screen_width,
-		       u16 pos_x, u16 pos_y,
-		       u16 width, u16 height,
-		       u16 out_width, u16 out_height,
-		       enum omap_color_mode color_mode,
-		       enum device_n_buffer_type ilace,
-		       int x_decim, int y_decim, bool three_tap,
-		       enum omap_dss_rotation_type rotation_type,
-		       u8 rotation, bool mirror, u8 global_alpha,
-		       enum omap_channel channel, u32 puv_addr,
-		       u16 pic_width, u16 pic_height)
+			u32 paddr, u16 screen_width,
+			u16 pos_x, u16 pos_y,
+			u16 width, u16 height,
+			u16 out_width, u16 out_height,
+			enum omap_color_mode color_mode,
+			enum device_n_buffer_type ilace,
+			int x_decim, int y_decim, bool three_tap,
+			enum omap_dss_rotation_type rotation_type,
+			u8 rotation, bool mirror, u8 global_alpha,
+			enum omap_channel channel, u32 puv_addr,
+			u16 pic_height)
 
 {
 	int r = 0;
 
 	DSSDBG("dispc_setup_plane %d, pa %x, sw %d, %d,%d, %dx%d -> %dx%d, "
-	       "ilace %d, decim %dx%d, %d-tap, cmode %x, rot %d, mir %d "
-	       "chan %d\n",
+		"ilace %d, decim %dx%d, %d-tap, cmode %x, rot %d, mir %d "
+		"chan %d\n",
 	       plane, paddr, screen_width, pos_x, pos_y,
 	       width, height,
 	       out_width, out_height,
@@ -4844,33 +4923,33 @@ int dispc_setup_plane(enum omap_plane plane,
 			   rotation, mirror,
 			   global_alpha,
 			   channel, puv_addr,
-			   pic_width, pic_height);
+			   pic_height);
 
 	enable_clocks(0);
 
 	return r;
 }
 
-void change_base_address(u32 offset, u16 *flag, int id)
+/* retrives the new adress from BA1 and puts it into BA0 */
+void change_base_address(int plane, u32 p_uv_addr)
+
 {
-       u32 val;
-       if (*flag == 0) {
-		val = dispc_read_reg(DISPC_VID_BA0(id - 1));
-		dispc_write_reg(DISPC_VID_BA0(id - 1), val+offset);
-		val = dispc_read_reg(DISPC_VID_BA_UV0(id - 1));
-		dispc_write_reg(DISPC_VID_BA_UV0(id - 1), val+offset);
-		*flag = *flag + 1;
-       }
+	u32 val;
+	val = dispc_read_reg(DISPC_VID_BA1(plane - 1));
+	dispc_write_reg(DISPC_VID_BA0(plane - 1), val);
+	if (p_uv_addr) {
+		val = dispc_read_reg(DISPC_VID_BA_UV1(plane - 1));
+		dispc_write_reg(DISPC_VID_BA_UV0(plane - 1), val);
+	}
 }
 
 /* Writeback*/
 int dispc_setup_wb(struct writeback_cache_data *wb)
 {
-	unsigned long mir_x, mir_y;
 	unsigned long tiler_width, tiler_height;
-	u8 orientation = 0, rotation = 0, mirror = 0 ;
+	u8 rotation = 0, mirror = 0 ;
 	int ch_width, ch_height, out_ch_width, out_ch_height, scale_x, scale_y;
-	struct tiler_view_orient orient;
+	struct tiler_view_orient orient = {0};
 	u32 paddr = wb->paddr;
 	u32 puv_addr = wb->puv_addr; /* relevant for NV12 format only */
 	u16 out_width = wb->width;
@@ -4880,7 +4959,7 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 
 	unsigned offset1 = 0;
 	enum device_n_buffer_type ilace = PBUF_PDEV;
-	u16 pic_width = 0, pic_height = 0;/* not required in case
+	u16 pic_height = 0;/* not required in case
 		of progressive cases */
 
 	enum omap_color_mode color_mode = wb->color_mode;  /* output color */
@@ -4981,38 +5060,37 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 
 	pix_inc = 0x1;
 	if ((paddr >= 0x60000000) && (paddr <= 0x7fffffff)) {
+		u8 mir_x = 0, mir_y = 0;
+		tiler_width = out_width, tiler_height = out_height;
+
 		calc_tiler_row_rotation(rotation, out_width,
 						color_mode, 1, /* y_decim = 1 */
 						&row_inc,
 						&offset1, ilace,
-						pic_width, pic_height);
+						pic_height);
 
-		orientation = calc_tiler_orientation(rotation, (u8)mirror);
-		/* get rotated top-left coordinate
-				(if rotation is applied before mirroring) */
-		memset(&orient, 0, sizeof(orient));
+		/* mirroring is applied before rotataion */
+		/* mirroring is applied before rotataion */
+		if (rotation & 1)
+			rotation ^= 2;
+
 		tiler_rotate_view(&orient, rotation * 90);
 
 		if (mirror) {
-			/* Horizontal mirroring */
-			if (rotation == 1 || rotation == 3)
+			if (rotation & 1)
 				mir_x = 1;
 			else
 				mir_y = 1;
-		} else {
-			mir_x = 0;
-			mir_y = 0;
 		}
 		orient.x_invert ^= mir_x;
 		orient.y_invert ^= mir_y;
 
-		if (orient.rotate_90 & 1) {
-			tiler_height = width;
-			tiler_width = height;
-		} else {
-			tiler_height = height;
-			tiler_width = width;
-		}
+		if (orient.rotate_90 & 1)
+			swap(tiler_width, tiler_height);
+
+		if (color_mode == OMAP_DSS_COLOR_YUV2 ||
+		    color_mode == OMAP_DSS_COLOR_UYVY)
+			tiler_width /= 2;
 
 		paddr = tiler_reorient_topleft(tiler_get_natural_addr((void *)paddr),
 				orient, tiler_width, tiler_height);
@@ -5021,10 +5099,11 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 			puv_addr = tiler_reorient_topleft(
 					tiler_get_natural_addr((void *)puv_addr),
 					orient, tiler_width/2, tiler_height/2);
-			DSSDBG("rotated addresses: 0x%0x, 0x%0x\n",
+
+		DSSDBG("rotated addresses: 0x%0x, 0x%0x\n",
 						paddr, puv_addr);
-			/* set BURSTTYPE if rotation is non-zero */
-			REG_FLD_MOD(dispc_reg_att[plane], 0x1, 8, 8);
+		/* set BURSTTYPE if rotation is non-zero */
+		REG_FLD_MOD(dispc_reg_att[plane], 0x1, 8, 8);
 	} else
 	row_inc = 1;
 
@@ -5036,6 +5115,12 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	if (OMAP_DSS_COLOR_NV12 == color_mode) {
 		_dispc_set_plane_ba_uv0(plane, puv_addr);
 		_dispc_set_plane_ba_uv1(plane, puv_addr);
+
+		/* DOUBLESTRIDE : 0 for 90-, 270-; 1 for 0- and 180- */
+		if (rotation == 1 || rotation == 3)
+			REG_FLD_MOD(dispc_reg_att[plane], 0x0, 22, 22);
+		else
+			REG_FLD_MOD(dispc_reg_att[plane], 0x1, 22, 22);
 	}
 	_dispc_set_row_inc(plane, row_inc);
 	_dispc_set_pix_inc(plane, pix_inc);
@@ -5080,9 +5165,9 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 			out_width, out_height,
 			0, three_taps, false, scale_x, scale_y);
 
-	if (ch_width != width) {
+	if (out_ch_width != out_width) {
 		/* this is true for YUV formats */
-		printk(KERN_ERR "scale uv set");
+		DSSDBG("scale uv set");
 		_dispc_set_scaling_uv(plane, ch_width, ch_height,
 				out_ch_width, out_ch_height, 0,
 				three_taps, false, scale_x, scale_y);
