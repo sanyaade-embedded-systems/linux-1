@@ -39,6 +39,8 @@
 static const char name[] = "musb_hdrc";
 #define MAX_OMAP_MUSB_HWMOD_NAME_LEN	16
 
+struct omap_hwmod *oh_p;
+
 static struct musb_hdrc_config musb_config = {
 	.multipoint	= 1,
 	.dyn_fifo	= 1,
@@ -136,6 +138,7 @@ void __init usb_musb_init(struct omap_musb_board_data *board_data)
 			oh->flags |= HWMOD_NO_OCP_AUTOIDLE;
 
 		musb_plat.oh = oh;
+		oh_p = oh;
 		pdata = &musb_plat;
 
 		od = omap_device_build(name, bus_id, oh, pdata,
@@ -162,7 +165,7 @@ void __init usb_musb_init(struct omap_musb_board_data *board_data)
 
 void musb_context_save_restore(enum musb_state state)
 {
-	struct omap_hwmod *oh = omap_hwmod_lookup("usb_otg_hs");
+	struct omap_hwmod *oh = oh_p;
 	struct omap_device *od = oh->od;
 	struct platform_device *pdev = &od->pdev;
 	struct device *dev = &pdev->dev;
@@ -238,6 +241,17 @@ void musb_context_save_restore(enum musb_state state)
 #else
 void __init usb_musb_init(struct omap_musb_board_data *board_data)
 {
+	int l;
+
+	if (cpu_is_omap44xx()) {
+		/* disable the optional 60M clock if enabled by romcode*/
+		l = omap_readl(0x4A009360);
+		l &= ~0x00000100;
+		omap_writel(l, 0x4A009360);
+		/*powerdown the phy*/
+		omap_writel(0x1, 0x4A002300);
+	}
+
 }
 void musb_context_save_restore(enum musb_state state)
 {
