@@ -101,6 +101,11 @@
 /* AESS VM OFFSET FOR DMEM */
 #define ABE_VM_AESS_OFFSET             0x400000
 
+/* size in bytes of debug options */
+#define ABE_DBG_FLAG1_SIZE	0
+#define ABE_DBG_FLAG2_SIZE	0
+#define ABE_DBG_FLAG3_SIZE	0
+
 /* TODO: fine tune for ping pong - buffer is 2 periods of 12k each*/
 static const struct snd_pcm_hardware omap_abe_hardware = {
 	.info			= SNDRV_PCM_INFO_MMAP |
@@ -166,18 +171,29 @@ struct abe_data {
 
 #ifdef CONFIG_DEBUG_FS
 	/* debuging config */
-	bool dbg_blah;
-	u32 dbg_buffer_size;
+
+	/* its intended we can switch on/off individual debug items */
+	u32 dbg_format1; /* TODO: match flag names here to debug format flags */
+	u32 dbg_format2;
+	u32 dbg_format3;
+
+	u32 dbg_buffer_bytes;
 	u32 dbg_circular;
+	u32 dbg_buffer_msecs;  /* size of buffer in secs */
+	u32 dbg_elem_bytes;
 	dma_addr_t dbg_buffer_addr;
 	wait_queue_head_t wait;
 	int dbg_reader_offset;
 	int dbg_dma_offset;
+	int dbg_complete;
 	struct dentry *debugfs_root;
-	struct dentry *debugfs_fmt;
+	struct dentry *debugfs_fmt1;
+	struct dentry *debugfs_fmt2;
+	struct dentry *debugfs_fmt3;
 	struct dentry *debugfs_size;
 	struct dentry *debugfs_data;
 	struct dentry *debugfs_circ;
+	struct dentry *debugfs_elem_bytes;
 	char *dbg_buffer;
 	struct omap_pcm_dma_data *dma_data;
 	int dma_ch;
@@ -1665,7 +1681,6 @@ static int abe_dbg_start_dma(struct abe_data *abe, int circular)
 	 *    the end of the buffer.
 	 * 2) default mode, where DMA stops at the end of the buffer.
 	 */
-
 	abe->dma_req = OMAP44XX_DMA_ABE_REQ_7;
 	err = omap_request_dma(abe->dma_req, "ABE debug",
 			       abe_dbg_dma_irq, abe, &abe->dma_ch);
@@ -1688,10 +1703,10 @@ static int abe_dbg_start_dma(struct abe_data *abe, int circular)
 	dma_params.dst_start		= abe->dbg_buffer_addr;
 	dma_params.src_port		= OMAP_DMA_PORT_MPUI;
 	dma_params.src_ei		= 1;
-	dma_params.src_fi		= 1-128;
+	dma_params.src_fi		= 1 - abe->dbg_elem_bytes;
 
-	dma_params.elem_count	= 128 >> 2; /* 128 bytes shifted into words */
-	dma_params.frame_count	= abe->dbg_buffer_size / 128;
+	dma_params.elem_count	= abe->dbg_elem_bytes >> 2; /* 128 bytes shifted into words */
+	dma_params.frame_count	= abe->dbg_buffer_bytes / abe->dbg_elem_bytes;
 	omap_set_dma_params(abe->dma_ch, &dma_params);
 
 	omap_enable_dma_irq(abe->dma_ch, OMAP_DMA_FRAME_IRQ);
@@ -1701,7 +1716,6 @@ static int abe_dbg_start_dma(struct abe_data *abe, int circular)
 	abe->dbg_reader_offset = 0;
 
 	pm_runtime_get_sync(&pdev->dev);
-	/*abe_enable_dma_request(DEBUG_PORT);*/
 	omap_start_dma(abe->dma_ch);
 	return 0;
 }
@@ -1709,8 +1723,6 @@ static int abe_dbg_start_dma(struct abe_data *abe, int circular)
 static void abe_dbg_stop_dma(struct abe_data *abe)
 {
 	struct platform_device *pdev = abe->pdev;
-
-	/*abe_disable_dma_request(DEBUG_PORT);*/
 
 	while (omap_get_dma_active_status(abe->dma_ch))
 		omap_stop_dma(abe->dma_ch);
@@ -1721,60 +1733,29 @@ static void abe_dbg_stop_dma(struct abe_data *abe)
 	pm_runtime_put_sync(&pdev->dev);
 }
 
-static int abe_open_format(struct inode *inode, struct file *file)
-{
-	file->private_data = inode->i_private;
-	return 0;
-}
-
-static ssize_t abe_read_format(struct file *file, char __user *user_buf,
-			       size_t count, loff_t *ppos)
-{
-	ssize_t ret = 0;
-	struct abe_data *abe = file->private_data;
-
-	char *buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	ret = sprintf(buf, "abe: %s\n", abe->dbg_blah ? "B" : "");
-	if (ret >= 0)
-		ret = simple_read_from_buffer(user_buf, count, ppos, buf, ret);
-
-	kfree(buf);
-	return ret;
-}
-
-static ssize_t abe_write_format(struct file *file,
-		const char __user *user_buf, size_t count, loff_t *ppos)
-{
-	char buf[32], *start = buf;
-	int buf_size;
-
-	buf_size = min(count, (sizeof(buf)-1));
-	if (copy_from_user(buf, user_buf, buf_size))
-		return -EFAULT;
-	buf[buf_size] = 0;
-
-	while (*start == ' ')
-		start++;
-
-	/* TODO parse debug format string here */
-
-	return buf_size;
-}
-
 static int abe_open_data(struct inode *inode, struct file *file)
 {
 	struct abe_data *abe = inode->i_private;
 
+	abe->dbg_elem_bytes = 128; /* size of debug data per tick */
+
+	if (abe->dbg_format1)
+		abe->dbg_elem_bytes += ABE_DBG_FLAG1_SIZE;
+	if (abe->dbg_format2)
+		abe->dbg_elem_bytes += ABE_DBG_FLAG2_SIZE;
+	if (abe->dbg_format3)
+		abe->dbg_elem_bytes += ABE_DBG_FLAG3_SIZE;
+
+	abe->dbg_buffer_bytes = abe->dbg_elem_bytes * 4 *
+							abe->dbg_buffer_msecs;
+
 	abe->dbg_buffer = dma_alloc_writecombine(&abe->pdev->dev,
-			abe->dbg_buffer_size, &abe->dbg_buffer_addr, GFP_KERNEL);
+			abe->dbg_buffer_bytes, &abe->dbg_buffer_addr, GFP_KERNEL);
 	if (abe->dbg_buffer == NULL)
 		return -ENOMEM;
 
 	file->private_data = inode->i_private;
-
+	abe->dbg_complete = 0;
 	abe_dbg_start_dma(abe, abe->dbg_circular);
 
 	return 0;
@@ -1786,7 +1767,7 @@ static int abe_release_data(struct inode *inode, struct file *file)
 
 	abe_dbg_stop_dma(abe);
 
-	dma_free_writecombine(&abe->pdev->dev, abe->dbg_buffer_size,
+	dma_free_writecombine(&abe->pdev->dev, abe->dbg_buffer_bytes,
 				      abe->dbg_buffer, abe->dbg_buffer_addr);
 	return 0;
 }
@@ -1795,13 +1776,20 @@ static ssize_t abe_copy_to_user(struct abe_data *abe, char __user *user_buf,
 			       size_t count)
 {
 	/* check for reader buffer wrap */
-	if (abe->dbg_reader_offset + count > abe->dbg_buffer_size) {
-		int size = abe->dbg_buffer_size - abe->dbg_reader_offset;
+	if (abe->dbg_reader_offset + count > abe->dbg_buffer_bytes) {
+		int size = abe->dbg_buffer_bytes - abe->dbg_reader_offset;
 
 		/* wrap */
 		if (copy_to_user(user_buf,
 			abe->dbg_buffer + abe->dbg_reader_offset, size))
 			return -EFAULT;
+
+		/* need to just return if non circular */
+		if (!abe->dbg_circular) {
+			abe->dbg_complete = 1;
+			return count;
+		}
+
 		if (copy_to_user(user_buf,
 			abe->dbg_buffer, count - size))
 			return -EFAULT;
@@ -1813,6 +1801,11 @@ static ssize_t abe_copy_to_user(struct abe_data *abe, char __user *user_buf,
 			abe->dbg_buffer + abe->dbg_reader_offset, count))
 			return -EFAULT;
 		abe->dbg_reader_offset += count;
+
+		if (!abe->dbg_circular &&
+				abe->dbg_reader_offset == abe->dbg_buffer_bytes)
+			abe->dbg_complete = 1;
+
 		return count;
 	}
 }
@@ -1834,10 +1827,8 @@ static ssize_t abe_read_data(struct file *file, char __user *user_buf,
 		dma_offset = abe_dbg_get_dma_pos(abe);
 
 		/* is DMA finished ? */
-		if (!abe->dbg_circular &&
-				abe->dbg_reader_offset == abe->dbg_buffer_size) {
+		if (abe->dbg_complete)
 			break;
-		}
 
 		/* get maximum amount of debug bytes we can read */
 		if (dma_offset >= abe->dbg_reader_offset) {
@@ -1845,7 +1836,7 @@ static ssize_t abe_read_data(struct file *file, char __user *user_buf,
 			bytes = dma_offset - abe->dbg_reader_offset;
 		} else {
 			/* dma ptr is behind reader */
-			bytes = dma_offset + abe->dbg_buffer_size -
+			bytes = dma_offset + abe->dbg_buffer_bytes -
 				abe->dbg_reader_offset;
 		}
 
@@ -1877,12 +1868,6 @@ static ssize_t abe_read_data(struct file *file, char __user *user_buf,
 	return ret;
 }
 
-static const struct file_operations abe_format_fops = {
-	.open = abe_open_format,
-	.read = abe_read_format,
-	.write = abe_write_format,
-};
-
 static const struct file_operations abe_data_fops = {
 	.open = abe_open_data,
 	.read = abe_read_data,
@@ -1897,31 +1882,49 @@ static void abe_init_debugfs(struct abe_data *abe)
 		return;
 	}
 
-	abe->debugfs_fmt = debugfs_create_file("format", 0644,
+	abe->debugfs_fmt1 = debugfs_create_bool("format1", 0644,
 						 abe->debugfs_root,
-						 abe, &abe_format_fops);
-	if (!abe->debugfs_fmt)
-		printk(KERN_WARNING "ABE: Failed to create format debugfs file\n");
+						 &abe->dbg_format1);
+	if (!abe->debugfs_fmt1)
+		printk(KERN_WARNING "ABE: Failed to create format1 debugfs file\n");
 
-	abe->debugfs_size = debugfs_create_u32("size", 0644,
+	abe->debugfs_fmt2 = debugfs_create_bool("format2", 0644,
 						 abe->debugfs_root,
-						 &abe->dbg_buffer_size);
+						 &abe->dbg_format2);
+	if (!abe->debugfs_fmt2)
+		printk(KERN_WARNING "ABE: Failed to create format2 debugfs file\n");
+
+	abe->debugfs_fmt3 = debugfs_create_bool("format3", 0644,
+						 abe->debugfs_root,
+						 &abe->dbg_format3);
+	if (!abe->debugfs_fmt3)
+		printk(KERN_WARNING "ABE: Failed to create format3 debugfs file\n");
+
+	abe->debugfs_elem_bytes = debugfs_create_u32("element_bytes", 0604,
+						 abe->debugfs_root,
+						 &abe->dbg_elem_bytes);
+	if (!abe->debugfs_elem_bytes)
+		printk(KERN_WARNING "ABE: Failed to create element size debugfs file\n");
+
+	abe->debugfs_size = debugfs_create_u32("msecs", 0644,
+						 abe->debugfs_root,
+						 &abe->dbg_buffer_msecs);
 	if (!abe->debugfs_size)
 		printk(KERN_WARNING "ABE: Failed to create buffer size debugfs file\n");
 
-	abe->debugfs_circ = debugfs_create_u32("circular", 0644,
+	abe->debugfs_circ = debugfs_create_bool("circular", 0644,
 						 abe->debugfs_root,
 						 &abe->dbg_circular);
 	if (!abe->debugfs_size)
 		printk(KERN_WARNING "ABE: Failed to create circular mode debugfs file\n");
 
-	abe->debugfs_fmt = debugfs_create_file("debug", 0644,
+	abe->debugfs_data = debugfs_create_file("debug", 0644,
 						 abe->debugfs_root,
 						 abe, &abe_data_fops);
-	if (!abe->debugfs_fmt)
+	if (!abe->debugfs_data)
 		printk(KERN_WARNING "ABE: Failed to create data debugfs file\n");
 
-	abe->dbg_buffer_size = 128 * 1024 * 2;
+	abe->dbg_buffer_msecs = 500;
 	init_waitqueue_head(&abe->wait);
 }
 
