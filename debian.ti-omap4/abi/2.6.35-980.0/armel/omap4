@@ -1431,16 +1431,14 @@ EXPORT_SYMBOL vmlinux 0x00000000	abe_remote_debugger_interface
 EXPORT_SYMBOL vmlinux 0x00000000	abe_reset_hal
 EXPORT_SYMBOL vmlinux 0x00000000	abe_reset_port
 EXPORT_SYMBOL vmlinux 0x00000000	abe_select_data_source
-EXPORT_SYMBOL vmlinux 0x00000000	abe_select_main_port
 EXPORT_SYMBOL vmlinux 0x00000000	abe_set_debug_trace
-EXPORT_SYMBOL vmlinux 0x00000000	abe_set_dmic_filter
 EXPORT_SYMBOL vmlinux 0x00000000	abe_set_opp_processing
 EXPORT_SYMBOL vmlinux 0x00000000	abe_set_ping_pong_buffer
 EXPORT_SYMBOL vmlinux 0x00000000	abe_set_router_configuration
 EXPORT_SYMBOL vmlinux 0x00000000	abe_set_sequence_time_accuracy
 EXPORT_SYMBOL vmlinux 0x00000000	abe_stop_event_generator
 EXPORT_SYMBOL vmlinux 0x00000000	abe_unmute_gain
-EXPORT_SYMBOL vmlinux 0x00000000	abe_update_gain
+EXPORT_SYMBOL vmlinux 0x00000000	abe_use_compensated_gain
 EXPORT_SYMBOL vmlinux 0x00000000	abe_write_aps
 EXPORT_SYMBOL vmlinux 0x00000000	abe_write_asrc
 EXPORT_SYMBOL vmlinux 0x00000000	abe_write_equalizer
@@ -2489,9 +2487,6 @@ EXPORT_SYMBOL vmlinux 0x00000000	groups_free
 EXPORT_SYMBOL vmlinux 0x00000000	half_md4_transform
 EXPORT_SYMBOL vmlinux 0x00000000	handle_sysrq
 EXPORT_SYMBOL vmlinux 0x00000000	have_submounts
-EXPORT_SYMBOL vmlinux 0x00000000	hdmi_get_audio_format
-EXPORT_SYMBOL vmlinux 0x00000000	hdmi_get_audio_video_latency
-EXPORT_SYMBOL vmlinux 0x00000000	hdmi_get_image_format
 EXPORT_SYMBOL vmlinux 0x00000000	hdmi_get_pixel_append_position
 EXPORT_SYMBOL vmlinux 0x00000000	heapbufmp_alloc
 EXPORT_SYMBOL vmlinux 0x00000000	heapbufmp_close
@@ -2770,6 +2765,7 @@ EXPORT_SYMBOL vmlinux 0x00000000	ipu_pm_detach
 EXPORT_SYMBOL vmlinux 0x00000000	ipu_pm_get_config
 EXPORT_SYMBOL vmlinux 0x00000000	ipu_pm_get_handle
 EXPORT_SYMBOL vmlinux 0x00000000	ipu_pm_mem_req
+EXPORT_SYMBOL vmlinux 0x00000000	ipu_pm_module_set_bandwidth
 EXPORT_SYMBOL vmlinux 0x00000000	ipu_pm_module_set_latency
 EXPORT_SYMBOL vmlinux 0x00000000	ipu_pm_module_set_rate
 EXPORT_SYMBOL vmlinux 0x00000000	ipu_pm_module_start
@@ -7726,6 +7722,7 @@ EXPORT_SYMBOL_GPL vmlinux 0x00000000	usb_anchor_urb
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	usb_bulk_msg
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	usb_bus_list
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	usb_bus_list_lock
+EXPORT_SYMBOL_GPL vmlinux 0x00000000	usb_bus_start_enum
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	usb_calc_bus_time
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	usb_clear_halt
 EXPORT_SYMBOL_GPL vmlinux 0x00000000	usb_control_msg
