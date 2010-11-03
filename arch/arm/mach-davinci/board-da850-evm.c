@@ -53,6 +53,8 @@
 
 #define DA850_MII_MDIO_CLKEN_PIN	GPIO_TO_PIN(2, 6)
 
+#define DA850_SD_ENABLE_PIN		GPIO_TO_PIN(0, 11)
+
 #define TVP5147_CH0		"tvp514x-0"
 #define TVP5147_CH1		"tvp514x-1"
 
@@ -284,6 +286,19 @@ static __init void da850_evm_setup_nor_nand(void)
 		if (ret)
 			pr_warning("da850_evm_init: nand mux setup failed: "
 					"%d\n", ret);
+
+		ret = davinci_cfg_reg(DA850_GPIO0_11);
+		if (ret)
+			pr_warning("da850_evm_init:GPIO(0,11) mux setup "
+					"failed\n");
+
+		ret = gpio_request(DA850_SD_ENABLE_PIN, "mmc_sd_en");
+		if (ret)
+			pr_warning("Cannot open GPIO %d\n",
+					DA850_SD_ENABLE_PIN);
+
+		/* Driver GP0[11] low for NOR to work */
+		gpio_direction_output(DA850_SD_ENABLE_PIN, 0);
 
 		ret = da8xx_pinmux_setup(da850_nor_pins);
 		if (ret)
@@ -1061,6 +1076,19 @@ static __init void da850_evm_init(void)
 				ret);
 
 	if (HAS_MMC) {
+		ret = davinci_cfg_reg(DA850_GPIO0_11);
+		if (ret)
+			pr_warning("da850_evm_init:GPIO(0,11) mux setup "
+					"failed\n");
+
+		ret = gpio_request(DA850_SD_ENABLE_PIN, "mmc_sd_en");
+		if (ret)
+			pr_warning("Cannot open GPIO %d\n",
+					DA850_SD_ENABLE_PIN);
+
+		/* Driver GP0[11] high for SD to work */
+		gpio_direction_output(DA850_SD_ENABLE_PIN, 1);
+
 		ret = da8xx_pinmux_setup(da850_mmcsd0_pins);
 		if (ret)
 			pr_warning("da850_evm_init: mmcsd0 mux setup failed:"
