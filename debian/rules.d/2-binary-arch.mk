@@ -73,12 +73,6 @@ ifeq ($(no_dumpfile),)
 	makedumpfile -g $(pkgdir)/boot/vmcoreinfo-$(abi_release)-$* \
 		-x $(builddir)/build-$*/vmlinux
 endif
-	# Generate uImage automatically out of the box
-	mkimage -A arm -O linux -T kernel -C none -a 0x80008000 \
-		-e 0x80008000 -n "Ubuntu Kernel" \
-		-d $(pkgdir)/boot/$(install_file)-$(abi_release)-$* \
-		$(pkgdir)/boot/uImage-$(abi_release)-$*
-
 
 	$(build_cd) $(kmake) $(build_O) modules_install \
 		INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=$(pkgdir)/ \
