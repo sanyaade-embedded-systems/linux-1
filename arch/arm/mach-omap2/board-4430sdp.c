@@ -1097,7 +1097,7 @@ static void enable_board_wakeup_source(void)
 static struct omap_volt_vc_data vc_config;
 
 /* vsel values may depend on twl6030 version */
-void setup_vc_config(void)
+static void setup_vc_config(void)
 {
 	vc_config.vdd0_on = omap_twl_uv_to_vsel(1350000);
 	vc_config.vdd0_onlp = omap_twl_uv_to_vsel(1350000);
