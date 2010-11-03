@@ -45,6 +45,7 @@
 #include <plat/omap_hwmod.h>
 #include <plat/mmc.h>
 #include <plat/hwspinlock.h>
+#include <plat/opp_twl_tps.h>
 #include "hsmmc.h"
 
 #define GPIO_HUB_POWER 1
@@ -562,6 +563,27 @@ error1:
 
 }
 
+static struct omap_volt_vc_data vc_config;
+
+/* vsel values may depend on twl6030 version */
+static void setup_vc_config(void)
+{
+	vc_config.vdd0_on = omap_twl_uv_to_vsel(1350000);
+	vc_config.vdd0_onlp = omap_twl_uv_to_vsel(1350000);
+	vc_config.vdd0_ret = omap_twl_uv_to_vsel(837500);
+	vc_config.vdd0_off = omap_twl_uv_to_vsel(600000);
+
+	vc_config.vdd1_on = omap_twl_uv_to_vsel(1100000);
+	vc_config.vdd1_onlp = omap_twl_uv_to_vsel(1100000);
+	vc_config.vdd1_ret = omap_twl_uv_to_vsel(837500);
+	vc_config.vdd1_off = omap_twl_uv_to_vsel(600000);
+
+	vc_config.vdd2_on = omap_twl_uv_to_vsel(1100000);
+	vc_config.vdd2_onlp = omap_twl_uv_to_vsel(1100000);
+	vc_config.vdd2_ret = omap_twl_uv_to_vsel(837500);
+	vc_config.vdd2_off = omap_twl_uv_to_vsel(600000);
+}
+
 static void __init omap_panda_init(void)
 {
 
@@ -582,6 +604,9 @@ static void __init omap_panda_init(void)
 #ifdef CONFIG_OMAP2_DSS_HDMI
 	omap_display_init(&panda_dss_data);
 #endif
+
+	setup_vc_config();
+	omap_voltage_init_vc(&vc_config);
 }
 
 static void __init omap_panda_map_io(void)
