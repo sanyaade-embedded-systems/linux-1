@@ -112,7 +112,17 @@ static struct resource sdp4430_wifi_resources[] = {
 };
 
 static struct platform_device sdp4430_wifi_device = {
-	.name           = "device_wifi",
+	.name           = "device_wifi_1283",
+	.id             = 1,
+	.num_resources  = ARRAY_SIZE(sdp4430_wifi_resources),
+	.resource       = sdp4430_wifi_resources,
+	.dev            = {
+		.platform_data = &sdp4430_wifi_control,
+	},
+};
+
+static struct platform_device panda_wifi_device = {
+	.name           = "device_wifi_1271",
 	.id             = 1,
 	.num_resources  = ARRAY_SIZE(sdp4430_wifi_resources),
 	.resource       = sdp4430_wifi_resources,
@@ -126,9 +136,6 @@ static int __init sdp4430_wifi_init(void)
 {
 	int ret;
 
-	if (!machine_is_omap4_panda())
-		return -ENODEV;
-
 	printk(KERN_WARNING"%s: start\n", __func__);
 	ret = gpio_request(SDP4430_WIFI_IRQ_GPIO, "wifi_irq");
 	if (ret < 0) {
@@ -138,7 +145,10 @@ static int __init sdp4430_wifi_init(void)
 	}
 	gpio_direction_input(SDP4430_WIFI_IRQ_GPIO);
 #ifdef CONFIG_WIFI_CONTROL_FUNC
-	ret = platform_device_register(&sdp4430_wifi_device);
+        if (machine_is_omap_4430sdp())
+               ret = platform_device_register(&sdp4430_wifi_device);
+        else
+               ret = platform_device_register(&panda_wifi_device);
 #endif
 out:
 	return ret;
