@@ -870,9 +870,10 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 	}
 
 	update_cfg(&hdmi.cfg, p);
-	update_cfg_pol(&hdmi.cfg, code);
 
 	code = get_timings_index();
+	update_cfg_pol(&hdmi.cfg, code);
+
 	dssdev->panel.timings = all_timings_direct[code];
 
 	DSSDBG("hdmi_power on x_res= %d y_res = %d", \
