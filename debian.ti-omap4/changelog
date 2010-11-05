@@ -1,3 +1,11 @@
+linux-ti-omap4 (2.6.35-980.1release2) maverick; urgency=low
+
+  [ Upstream Kernel Changes ]
+
+  * ASoC: twl6040: Remove audio interrupt workqueue
+
+ -- Sebastien JAN <s-jan@ti.com>  Fri, 05 Nov 2010 19:43:03 +0100
+
 linux-ti-omap4 (2.6.35-980.1release1) maverick; urgency=low
 
   [ Sebastien Jan ]
