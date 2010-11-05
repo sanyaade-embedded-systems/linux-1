@@ -144,7 +144,7 @@ void tiler_alloc_packed_nv12(s32 *count, u32 width, u32 height, void **y_sysptr,
 	void *buf[MAX_BUFS_TO_PACK];
 	int   n_buf, buf_w[MAX_BUFS_TO_PACK];
 
-	char packing[] = {
+	static const char packing[] = {
 		/* min(i), max(w), aligned, buffers to alloc */
 		5, 16, 0, 2,
 			/* buffer widths in a + b * w(y) + c * w(uv) */
@@ -215,7 +215,7 @@ void tiler_alloc_packed_nv12(s32 *count, u32 width, u32 height, void **y_sysptr,
 
 	while (i < *count) {
 		int n_alloc = *count - i;
-		char *p = packing;
+		char *p = (char *)packing;
 		n_buf = 0;
 
 		/* skip packings that do not apply */
