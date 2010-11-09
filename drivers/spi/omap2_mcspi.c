@@ -42,7 +42,7 @@
 #include <plat/mcspi.h>
 
 #define OMAP2_MCSPI_MAX_FREQ		48000000
-#define OMAP2_MCSPI_MAX_FIFODEPTH       64
+#define OMAP2_MCSPI_MAX_FIFODEPTH	64
 
 /* OMAP2 has 3 SPI controllers, while OMAP3/4 has 4 */
 #define OMAP2_MCSPI_MAX_CTRL 		4
@@ -114,6 +114,7 @@ struct omap2_mcspi {
 	u8			dma_mode;
 	u8			force_cs_mode;
 	u16			fifo_depth;
+	u8			burst_mode;
 	struct  device          *dev;
 };
 
@@ -296,23 +297,21 @@ static void omap2_mcspi_force_cs(struct spi_device *spi, int cs_active)
 }
 
 static int omap2_mcspi_set_txfifo(const struct spi_device *spi, int buf_size,
-					int enable)
+					int wl_bytes, int enable)
 {
-	u32 l, rw, s;
+	u32 l, rw, s, xfer_afl;
 	unsigned short revert = 0;
 	struct spi_master *master = spi->master;
 	struct omap2_mcspi *mcspi = spi_master_get_devdata(master);
+	u32 wcnt = buf_size/wl_bytes;
 
-	l = mcspi_read_cs_reg(spi, OMAP2_MCSPI_CHCONF0);
+	l = mcspi_cached_chconf0(spi);
 	s = mcspi_read_cs_reg(spi, OMAP2_MCSPI_CHCTRL0);
 
-	if (enable == 1) {
+	/* Read settings for RX FIFO */
+	xfer_afl = mcspi_read_reg(master, OMAP2_MCSPI_XFERLEVEL) & 0xff00;
 
-		/* FIFO cannot be enabled for both TX and RX
-		 * simultaneously
-		 */
-		if (l & OMAP2_MCSPI_CHCONF_FFER)
-			return -EPERM;
+	if (enable == 1) {
 
 		/* Channel needs to be disabled and enabled
 		 * for FIFO setting to take affect
@@ -324,43 +323,45 @@ static int omap2_mcspi_set_txfifo(const struct spi_device *spi, int buf_size,
 
 		if (buf_size < mcspi->fifo_depth)
 			mcspi_write_reg(master, OMAP2_MCSPI_XFERLEVEL,
-						((buf_size << 16) |
+						((wcnt << 16) |
+						(xfer_afl) |
 						(buf_size - 1) << 0));
 		else
 			mcspi_write_reg(master, OMAP2_MCSPI_XFERLEVEL,
-						((buf_size << 16) |
+						((wcnt << 16) |
+						(xfer_afl) |
 						(mcspi->fifo_depth - 1) << 0));
+	} else {
+		/* Reset register value for disable case */
+		mcspi_write_reg(master, OMAP2_MCSPI_XFERLEVEL, xfer_afl);
 	}
 
 	rw = OMAP2_MCSPI_CHCONF_FFET;
 	MOD_REG_BIT(l, rw, enable);
-	mcspi_write_cs_reg(spi, OMAP2_MCSPI_CHCONF0, l);
+	mcspi_write_chconf0(spi, l);
 
 	if (revert)
 		omap2_mcspi_set_enable(spi, 1);
 
 	return 0;
-
 }
 
 static int omap2_mcspi_set_rxfifo(const struct spi_device *spi, int buf_size,
-					int enable)
+					int wl_bytes, int enable)
 {
-	u32 l, rw, s;
+	u32 l, rw, s, xfer_ael;
 	unsigned short revert = 0;
 	struct spi_master *master = spi->master;
 	struct omap2_mcspi *mcspi = spi_master_get_devdata(master);
+	u32 wcnt = buf_size/wl_bytes;
 
-	l = mcspi_read_cs_reg(spi, OMAP2_MCSPI_CHCONF0);
+	l = mcspi_cached_chconf0(spi);
 	s = mcspi_read_cs_reg(spi, OMAP2_MCSPI_CHCTRL0);
 
-	if (enable == 1) {
+	/* Read settings for TX FIFO */
+	xfer_ael = mcspi_read_reg(master, OMAP2_MCSPI_XFERLEVEL) & 0xff;
 
-		/* FIFO cannot be enabled for both TX and RX
-		 * simultaneously
-		 */
-		if (l & OMAP2_MCSPI_CHCONF_FFET)
-			return -EPERM;
+	if (enable == 1) {
 
 		/* Channel needs to be disabled and enabled
 		 * for FIFO setting to take affect
@@ -372,23 +373,27 @@ static int omap2_mcspi_set_rxfifo(const struct spi_device *spi, int buf_size,
 
 		if (buf_size < mcspi->fifo_depth)
 			mcspi_write_reg(master, OMAP2_MCSPI_XFERLEVEL,
-						((buf_size << 16) |
-						(buf_size - 1) << 8));
+						((wcnt << 16) |
+						(buf_size - 1) << 8) |
+						 xfer_ael);
 		else
 			mcspi_write_reg(master, OMAP2_MCSPI_XFERLEVEL,
-						((buf_size << 16) |
-						(mcspi->fifo_depth - 1) << 8));
+						((wcnt << 16) |
+						(mcspi->fifo_depth - 1) << 8) |
+						 xfer_ael);
+	} else {
+		/* Reset register value for disable case */
+		mcspi_write_reg(master, OMAP2_MCSPI_XFERLEVEL, xfer_ael);
 	}
 
 	rw = OMAP2_MCSPI_CHCONF_FFER;
 	MOD_REG_BIT(l, rw, enable);
-	mcspi_write_cs_reg(spi, OMAP2_MCSPI_CHCONF0, l);
+	mcspi_write_chconf0(spi, l);
 
 	if (revert)
 		omap2_mcspi_set_enable(spi, 1);
 
 	return 0;
-
 }
 
 static void omap2_mcspi_set_master_mode(struct spi_master *master)
@@ -533,18 +538,31 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 				OMAP_DMA_AMODE_POST_INC,
 				xfer->tx_dma, 0, 0);
 
-		if (mcspi->fifo_depth != 0)
-			omap2_mcspi_set_txfifo(spi, count, 1);
+		if (mcspi->fifo_depth != 0) {
+			omap2_mcspi_set_txfifo(spi, count, bytes_per_transfer,
+						 1);
+
+			omap_set_dma_src_burst_mode(mcspi_dma->dma_tx_channel,
+						mcspi->burst_mode);
+
+			omap_set_dma_dest_burst_mode(mcspi_dma->dma_tx_channel,
+						mcspi->burst_mode);
+		}
 	}
 
 	if (rx != NULL) {
-		elements = element_count - 1;
-		if (l & OMAP2_MCSPI_CHCONF_TURBO)
-			elements--;
+
+		if (mcspi->fifo_depth == 0) {
+			elements = element_count - 1;
+			if (l & OMAP2_MCSPI_CHCONF_TURBO)
+				elements--;
+		} else {
+			elements = element_count;
+		}
 
 		omap_set_dma_transfer_params(mcspi_dma->dma_rx_channel,
-				data_type, elements, 1,
-				OMAP_DMA_SYNC_ELEMENT,
+				data_type, elements, frame_count,
+				sync_type,
 				mcspi_dma->dma_rx_sync_dev, 1);
 
 		omap_set_dma_src_params(mcspi_dma->dma_rx_channel, 0,
@@ -556,7 +574,14 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 				xfer->rx_dma, 0, 0);
 
 		if (mcspi->fifo_depth != 0) {
-			omap2_mcspi_set_rxfifo(spi, count, 1);
+			omap2_mcspi_set_rxfifo(spi, count, bytes_per_transfer,
+						 1);
+
+			omap_set_dma_src_burst_mode(mcspi_dma->dma_rx_channel,
+						mcspi->burst_mode);
+
+			omap_set_dma_dest_burst_mode(mcspi_dma->dma_rx_channel,
+						mcspi->burst_mode);
 
 			/* Dummy write required for RX only mode */
 			if (tx == NULL)
@@ -585,7 +610,8 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 		mcspi_write_reg(mcspi->master, OMAP2_MCSPI_IRQSTATUS,
 				OMAP2_MCSPI_IRQ_EOW);
 
-		omap2_mcspi_set_txfifo(spi, count, 0);
+		omap2_mcspi_set_txfifo(spi, count, bytes_per_transfer,
+					 0);
 		}
 
 		dma_unmap_single(NULL, xfer->tx_dma, count, DMA_TO_DEVICE);
@@ -595,7 +621,8 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 		wait_for_completion(&mcspi_dma->dma_rx_completion);
 
 		if (mcspi->fifo_depth != 0) {
-			omap2_mcspi_set_rxfifo(spi, count, 0);
+			omap2_mcspi_set_rxfifo(spi, count, bytes_per_transfer,
+						 0);
 
 		mcspi_write_reg(mcspi->master, OMAP2_MCSPI_IRQSTATUS,
 				OMAP2_MCSPI_IRQ_EOW);
@@ -604,6 +631,13 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 
 		dma_unmap_single(NULL, xfer->rx_dma, count, DMA_FROM_DEVICE);
 		omap2_mcspi_set_enable(spi, 0);
+
+		/*
+		 * Reading last word in PIO mode not required when FIFO is
+		 * enabled
+		 */
+		if (mcspi->fifo_depth != 0)
+			goto out;
 
 		if (l & OMAP2_MCSPI_CHCONF_TURBO) {
 
@@ -646,6 +680,8 @@ omap2_mcspi_txrx_dma(struct spi_device *spi, struct spi_transfer *xfer)
 				 (word_len <= 16) ? 2 :
 			       /* word_len <= 32 */ 4;
 		}
+
+out:
 		omap2_mcspi_set_enable(spi, 1);
 	}
 	return count;
@@ -1246,7 +1282,8 @@ static int omap2_mcspi_transfer(struct spi_device *spi, struct spi_message *m)
 		}
 
 		if (mcspi->fifo_depth != 0) {
-			if ((len % mcspi->fifo_depth) != 0)
+			if ((len > mcspi->fifo_depth) &&
+				(len % mcspi->fifo_depth) != 0)
 				return -EINVAL;
 		}
 
@@ -1364,9 +1401,16 @@ static int __init omap2_mcspi_probe(struct platform_device *pdev)
 	mcspi->force_cs_mode = pdata->force_cs_mode;
 	mcspi->regs = pdata->regs_data;
 
-	if (pdata->fifo_depth <= OMAP2_MCSPI_MAX_FIFODEPTH)
+	if (pdata->fifo_depth <= OMAP2_MCSPI_MAX_FIFODEPTH) {
 		mcspi->fifo_depth = pdata->fifo_depth;
-	else {
+
+		if (mcspi->fifo_depth >= 64)
+			mcspi->burst_mode = OMAP_DMA_DATA_BURST_16;
+		else if (mcspi->fifo_depth >= 32)
+			mcspi->burst_mode = OMAP_DMA_DATA_BURST_8;
+		else
+			mcspi->burst_mode = OMAP_DMA_DATA_BURST_4;
+	} else {
 		mcspi->fifo_depth = 0;
 		dev_dbg(&pdev->dev, "Invalid fifo depth specified\n");
 	}
