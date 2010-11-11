@@ -36,7 +36,6 @@
 #include <linux/irq.h>
 #include <linux/slab.h>
 #include <linux/pm_runtime.h>
-#include <linux/workqueue.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -48,6 +47,7 @@
 #include <plat/dma.h>
 #include <plat/mcpdm.h>
 #include <plat/mcbsp.h>
+#include <plat/omap_hwmod.h>
 #include "omap-mcpdm.h"
 #include "omap-pcm.h"
 #ifdef CONFIG_SND_OMAP_SOC_ABE_DSP
@@ -65,7 +65,6 @@ struct omap_mcpdm {
 	void __iomem *io_base;
 	u8 free;
 	int irq;
-	struct workqueue_struct *workqueue;
 	struct delayed_work delayed_work;
 #ifdef CONFIG_SND_OMAP_SOC_ABE_DSP
 	struct delayed_work delayed_abe_work;
@@ -239,7 +238,7 @@ static void omap_mcpdm_stop(struct omap_mcpdm *mcpdm, int stream)
  * Configures McPDM uplink for audio recording.
  * This function should be called before omap_mcpdm_start.
  */
-int omap_mcpdm_capture_open(struct omap_mcpdm *mcpdm,
+static int omap_mcpdm_capture_open(struct omap_mcpdm *mcpdm,
 		struct omap_mcpdm_link *uplink)
 {
 	int irq_mask = 0;
@@ -274,7 +273,7 @@ int omap_mcpdm_capture_open(struct omap_mcpdm *mcpdm,
  * Configures McPDM downlink for audio playback.
  * This function should be called before omap_mcpdm_start.
  */
-int omap_mcpdm_playback_open(struct omap_mcpdm *mcpdm,
+static int omap_mcpdm_playback_open(struct omap_mcpdm *mcpdm,
 		struct omap_mcpdm_link *downlink)
 {
 	int irq_mask = 0;
@@ -309,7 +308,7 @@ int omap_mcpdm_playback_open(struct omap_mcpdm *mcpdm,
  * Cleans McPDM uplink configuration.
  * This function should be called when the stream is closed.
  */
-int omap_mcpdm_capture_close(struct omap_mcpdm *mcpdm,
+static int omap_mcpdm_capture_close(struct omap_mcpdm *mcpdm,
 		struct omap_mcpdm_link *uplink)
 {
 	int irq_mask = 0;
@@ -331,7 +330,7 @@ int omap_mcpdm_capture_close(struct omap_mcpdm *mcpdm,
  * Cleans McPDM downlink configuration.
  * This function should be called when the stream is closed.
  */
-int omap_mcpdm_playback_close(struct omap_mcpdm *mcpdm,
+static int omap_mcpdm_playback_close(struct omap_mcpdm *mcpdm,
 		struct omap_mcpdm_link *downlink)
 {
 	int irq_mask = 0;
@@ -398,7 +397,7 @@ static irqreturn_t omap_mcpdm_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-int omap_mcpdm_request(struct omap_mcpdm *mcpdm)
+static int omap_mcpdm_request(struct omap_mcpdm *mcpdm)
 {
 	struct platform_device *pdev;
 	struct omap_mcpdm_platform_data *pdata;
@@ -454,7 +453,7 @@ err:
 	return ret;
 }
 
-void omap_mcpdm_free(struct omap_mcpdm *mcpdm)
+static void omap_mcpdm_free(struct omap_mcpdm *mcpdm)
 {
 	struct platform_device *pdev;
 	struct omap_mcpdm_platform_data *pdata;
@@ -540,7 +539,7 @@ static void omap_mcpdm_dai_shutdown(struct snd_pcm_substream *substream,
 		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 			omap_mcpdm_capture_close(mcpdm, mcpdm->uplink);
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-				queue_delayed_work(mcpdm->workqueue, &mcpdm->delayed_work,
+				schedule_delayed_work(&mcpdm->delayed_work,
 						msecs_to_jiffies(11000)); /* TODO: pdata ? */
 	}
 
@@ -603,15 +602,6 @@ static int omap_mcpdm_dai_hw_params(struct snd_pcm_substream *substream,
 	return err;
 }
 
-static int omap_mcpdm_dai_hw_free(struct snd_pcm_substream *substream,
-				  struct snd_soc_dai *dai)
-{
-	/* struct omap_mcpdm*mcpdm = snd_soc_dai_get_drvdata(dai); */
-	int err = 0;
-
-	return err;
-}
-
 static int omap_mcpdm_dai_trigger(struct snd_pcm_substream *substream,
 				  int cmd, struct snd_soc_dai *dai)
 {
@@ -642,7 +632,6 @@ static struct snd_soc_dai_ops omap_mcpdm_dai_ops = {
 	.startup	= omap_mcpdm_dai_startup,
 	.shutdown	= omap_mcpdm_dai_shutdown,
 	.hw_params	= omap_mcpdm_dai_hw_params,
-	.hw_free	= omap_mcpdm_dai_hw_free,
 	.trigger	= omap_mcpdm_dai_trigger,
 };
 
@@ -651,15 +640,17 @@ static int omap_mcpdm_abe_dai_startup(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
 	struct omap_mcpdm *mcpdm = snd_soc_dai_get_drvdata(dai);
-	int err = 0;
+	int ret;
 
-	err = omap_mcpdm_dai_startup(substream, dai);
+	ret = omap_mcpdm_dai_startup(substream, dai);
+	if (ret < 0)
+		return ret;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		mcpdm->dl_active++;
 	else
 		mcpdm->ul_active++;
-	return err;
+	return ret;
 }
 
 static void omap_mcpdm_abe_dai_shutdown(struct snd_pcm_substream *substream,
@@ -675,10 +666,13 @@ static void omap_mcpdm_abe_dai_shutdown(struct snd_pcm_substream *substream,
 		mcpdm->ul_active--;
 
 	if (!dai->active) {
-		if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
+		if (mcpdm->ul_active == 0 && substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 			omap_mcpdm_capture_close(mcpdm, mcpdm->uplink);
+			if (!mcpdm->free && !mcpdm->dl_active && !mcpdm->ul_active)
+				omap_mcpdm_free(mcpdm);
+		}
 		if (mcpdm->dl_active == 0 && substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-				queue_delayed_work(mcpdm->workqueue, &mcpdm->delayed_abe_work,
+				schedule_delayed_work(&mcpdm->delayed_abe_work,
 						msecs_to_jiffies(11000)); /* TODO: pdata ? */
 	}
 
@@ -709,45 +703,48 @@ static int omap_mcpdm_abe_dai_hw_params(struct snd_pcm_substream *substream,
 {
 	struct omap_mcpdm *mcpdm = snd_soc_dai_get_drvdata(dai);
 	int stream = substream->stream;
-	int err = 0, ctrl;
+	int ret = 0;
 
 	snd_soc_dai_set_dma_data(dai, substream,
 				 &omap_mcpdm_dai_dma_params[stream]);
 
 	spin_lock(&mcpdm->lock);
-	ctrl = omap_mcpdm_read(mcpdm, MCPDM_CTRL);
+
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		u32 ctrl = omap_mcpdm_read(mcpdm, MCPDM_CTRL);
+
+		/* make sure we stop any pre-existing shutdown */
 		cancel_delayed_work(&mcpdm->delayed_abe_work);
+
 		/* Check if McPDM is already started */
 		if ((ctrl & (PDM_DN_MASK | PDM_CMD_MASK)) == 0 ) {
 			mcpdm->downlink->channels = (PDM_DN_MASK | PDM_CMD_MASK);
-			err = omap_mcpdm_playback_open(mcpdm, &omap_mcpdm_links[0]);
+
+			ret = omap_mcpdm_playback_open(mcpdm, &omap_mcpdm_links[0]);
+			if (ret < 0)
+				goto out;
+
+			/* enable the DL port and wait 250us before starting McPDM */
 			abe_dsp_enable_data_transfer(PDM_DL_PORT);
 			udelay(250);
 			omap_mcpdm_start(mcpdm, stream);
 		}
 	} else {
-		mcpdm->uplink->channels = 0x0003;
-		err = omap_mcpdm_capture_open(mcpdm, &omap_mcpdm_links[1]);
+		mcpdm->uplink->channels = PDM_UP1_EN | PDM_UP2_EN;
+		ret = omap_mcpdm_capture_open(mcpdm, &omap_mcpdm_links[1]);
 	}
+
+out:
 	spin_unlock(&mcpdm->lock);
-
-	return err;
+	return ret;
 }
 
-static int omap_mcpdm_abe_dai_hw_free(struct snd_pcm_substream *substream,
-				  struct snd_soc_dai *dai)
-{
-	return omap_mcpdm_dai_hw_free(substream, dai);
-}
 
 static int omap_mcpdm_abe_dai_trigger(struct snd_pcm_substream *substream,
 				  int cmd, struct snd_soc_dai *dai)
 {
-
-	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		omap_mcpdm_dai_trigger(substream, cmd,  dai);
-	}
 
 	return 0;
 }
@@ -756,7 +753,6 @@ static struct snd_soc_dai_ops omap_mcpdm_abe_dai_ops = {
 	.startup	= omap_mcpdm_abe_dai_startup,
 	.shutdown	= omap_mcpdm_abe_dai_shutdown,
 	.hw_params	= omap_mcpdm_abe_dai_hw_params,
-	.hw_free	= omap_mcpdm_abe_dai_hw_free,
 	.trigger 	= omap_mcpdm_abe_dai_trigger,
 };
 #endif
@@ -831,8 +827,14 @@ static struct snd_soc_dai_driver omap_mcpdm_dai[] = {
 static __devinit int asoc_mcpdm_probe(struct platform_device *pdev)
 {
 	struct omap_mcpdm *mcpdm;
-	struct resource *res;
+	struct omap_hwmod *oh;
 	int ret = 0;
+
+	oh = omap_hwmod_lookup("omap-mcpdm-dai");
+	if (oh == NULL) {
+		dev_err(&pdev->dev, "no hwmod device found\n");
+		return -ENODEV;
+	}
 
 	mcpdm = kzalloc(sizeof(struct omap_mcpdm), GFP_KERNEL);
 	if (!mcpdm)
@@ -842,25 +844,19 @@ static __devinit int asoc_mcpdm_probe(struct platform_device *pdev)
 	mcpdm->downlink = &omap_mcpdm_links[0];
 	mcpdm->uplink = &omap_mcpdm_links[1];
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (res == NULL) {
-		dev_err(&pdev->dev, "no resource\n");
-		goto err_resource;
-	}
-
 	spin_lock_init(&mcpdm->lock);
 	mcpdm->free = 1;
 
-	mcpdm->io_base = ioremap(res->start, resource_size(res));
+	mcpdm->io_base = omap_hwmod_get_mpu_rt_va(oh);
 	if (!mcpdm->io_base) {
 		ret = -ENOMEM;
-		goto err_resource;
+		goto err;
 	}
 
 	mcpdm->irq = platform_get_irq(pdev, 0);
 	if (mcpdm->irq < 0) {
 		ret = mcpdm->irq;
-		goto err_irq;
+		goto err;
 	}
 
 	pm_runtime_enable(&pdev->dev);
@@ -871,9 +867,6 @@ static __devinit int asoc_mcpdm_probe(struct platform_device *pdev)
 	mcpdm->dl1_offset = 0x1F;
 	mcpdm->dl2_offset = 0x1F;
 
-	mcpdm->workqueue = create_singlethread_workqueue("mcpdm");
-	if (mcpdm->workqueue == NULL)
-		goto err_work;
 	INIT_DELAYED_WORK(&mcpdm->delayed_work, playback_work);
 #ifdef CONFIG_SND_OMAP_SOC_ABE_DSP
 	INIT_DELAYED_WORK(&mcpdm->delayed_abe_work, playback_abe_work);
@@ -882,11 +875,7 @@ static __devinit int asoc_mcpdm_probe(struct platform_device *pdev)
 			ARRAY_SIZE(omap_mcpdm_dai));
 	if (ret == 0)
 		return 0;
-err_work:
-	free_irq(mcpdm->irq, mcpdm);
-err_irq:
-	iounmap(mcpdm->io_base);
-err_resource:
+err:
 	kfree(mcpdm);
 	return ret;
 }
@@ -900,12 +889,10 @@ static int __devexit asoc_mcpdm_remove(struct platform_device *pdev)
 
 	snd_soc_unregister_dais(&pdev->dev, ARRAY_SIZE(omap_mcpdm_dai));
 	pm_runtime_put_sync(&pdev->dev);
-	destroy_workqueue(mcpdm->workqueue);
 #ifndef CONFIG_PM_RUNTIME
 	if (pdata->device_shutdown)
 		pdata->device_shutdown(pdev);
 #endif
-	iounmap(mcpdm->io_base);
 	free_irq(mcpdm->irq, (void *)mcpdm);
 	kfree(mcpdm);
 	return 0;

@@ -46,7 +46,6 @@
 #include "omap-abe-dsp.h"
 #include "abe/abe_main.h"
 
-#define WORKQ	0
 #define OMAP_ABE_FORMATS	(SNDRV_PCM_FMTBIT_S32_LE)
 
 /*
@@ -55,62 +54,12 @@
  *
  * TODO:
  *
- * 1) Get DAI params from HAL and pass onto DAI drivers ? (are params static ??, i.e. can I just use a table)
+ * 1) Get DAI params from HAL and pass onto DAI drivers ?
+ *    (are params static ??, i.e. can I just use a table)
  */
 
 #define NUM_ABE_FRONTENDS		7
 #define NUM_ABE_BACKENDS		11
-
-#if 0
-/* Frontend DAI Playback / Capture Support Matrix */
-static const struct {
-	int dir[2];
-} fe_stream[] = {
-	{{1, 1,},}, /* playback and capture supported on PCM0 - Multimedia*/
-	{{0, 1,},}, /* capture only supported on PCM1 - Multimedia capture */
-	{{1, 1,},}, /* playback and capture supported on PCM2 - Voice */
-	{{1, 0,},}, /* playback only supported on PCM3 - Tones */
-	{{1, 0,},}, /* playback only supported on PCM4  - Vibra */
-};
-
-/* Backend DAI Playback / Capture Support Matrix */
-static const struct {
-	const char *id;
-	int dir[2];
-} be_stream[] = {
-	{OMAP_ABE_BE_PDM_UL1, {0, 1,},}, /* capture only supported on PDM UL*/
-	{OMAP_ABE_BE_PDM_DL1, {1, 0,},}, /* playback only supported on PDM DL1 */
-	{OMAP_ABE_BE_PDM_DL2, {1, 0,},}, /* playback only supported on PDM DL2 */
-	{OMAP_ABE_BE_PDM_VIB, {1, 0,},}, /* playback only supported on PDM VIB */
-	{OMAP_ABE_BE_BT_VX, {1, 0,},}, /* playback supported on BT VX_DL */
-	{OMAP_ABE_BE_BT_VX, {0, 1,},}, /* playback and capture supported on BT VX_UL */
-	{OMAP_ABE_BE_MM_EXT0, {1, 0,},}, /* playback supported on MM EXT_DL */
-	{OMAP_ABE_BE_MM_EXT0, {0, 1,},}, /* capture supported on MM EXT_UL */
-	{OMAP_ABE_BE_DMIC0, {0, 1,},}, /* capture only supported on DMIC0 */
-	{OMAP_ABE_BE_DMIC1, {0, 1,},}, /* capture only supported on DMIC1 */
-	{OMAP_ABE_BE_DMIC2, {0, 1,},}, /* capture only supported on DMIC2 */
-};
-#endif
-
-/*
- * Playback volumes for FE PCMs the need to be muted to stop pops.
- */
-struct abe_playback_controls {
-	int dl1_vol;
-	int dl2_vol;
-	int tones1_vol;
-	int tones2_vol;
-};
-
-/*
- * Capture volumes for FE PCMs the need to be muted to stop pops.
- */
-struct abe_capture_controls {
-	int dmic1_vol;
-	int dmic2_vol;
-	int dmic3_vol;
-	int amic_vol;
-};
 
 /* logical -> physical DAI status */
 enum dai_status {
@@ -118,21 +67,7 @@ enum dai_status {
 	DAI_STARTED,
 };
 
-struct abe_frontend_dai {
-
-	/* trigger work */
-	struct work_struct work;
-	struct completion trigger_done;
-	int cmd;
-	struct snd_pcm_substream *substream;
-	union {
-		struct abe_playback_controls playback;
-		struct abe_capture_controls capture;
-	};
-};
-
 struct omap_abe_data {
-	struct abe_frontend_dai frontend[NUM_ABE_FRONTENDS][2];
 	int be_active[NUM_ABE_BACKENDS][2];
 
 	struct clk *clk;
@@ -153,31 +88,91 @@ struct omap_abe_data {
 };
 
 static struct omap_abe_data abe_data;
-static void capture_trigger(struct abe_frontend_dai *fe, int cmd);
-static void playback_trigger(struct abe_frontend_dai *fe, int cmd);
+static void capture_trigger(struct snd_pcm_substream *substream, int cmd);
+static void playback_trigger(struct snd_pcm_substream *substream, int cmd);
 
 /* frontend mutex */
 static DEFINE_MUTEX(fe_mutex);
 
 /*
  * Stream DMA parameters
- * FIXME: make this array[5][2] and put in priv data, otherwise we clobber it
- * upon opening new FEs.
  */
-static struct omap_pcm_dma_data omap_abe_dai_dma_params[] = {
+static struct omap_pcm_dma_data omap_abe_dai_dma_params[7][2] = {
+{
 	{
-		.name = "Audio Playback",
+		.name = "Media Playback",
 		.dma_req = OMAP44XX_DMA_ABE_REQ_0,
 		.data_type = OMAP_DMA_DATA_TYPE_S32,
 		.sync_mode = OMAP_DMA_SYNC_PACKET,
 	},
 	{
-		.name = "Audio Capture",
+		.name = "Media Capture1",
+		.dma_req = OMAP44XX_DMA_ABE_REQ_3,
+		.data_type = OMAP_DMA_DATA_TYPE_S32,
+		.sync_mode = OMAP_DMA_SYNC_PACKET,
+	},
+},
+{
+	{},
+	{
+		.name = "Media Capture2",
+		.dma_req = OMAP44XX_DMA_ABE_REQ_4,
+		.data_type = OMAP_DMA_DATA_TYPE_S32,
+		.sync_mode = OMAP_DMA_SYNC_PACKET,
+	},
+},
+{
+	{
+		.name = "Voice Playback",
+		.dma_req = OMAP44XX_DMA_ABE_REQ_1,
+		.data_type = OMAP_DMA_DATA_TYPE_S32,
+		.sync_mode = OMAP_DMA_SYNC_PACKET,
+	},
+	{
+		.name = "Voice Capture",
 		.dma_req = OMAP44XX_DMA_ABE_REQ_2,
 		.data_type = OMAP_DMA_DATA_TYPE_S32,
 		.sync_mode = OMAP_DMA_SYNC_PACKET,
 	},
-};
+},
+{
+	{
+		.name = "Tones Playback",
+		.dma_req = OMAP44XX_DMA_ABE_REQ_5,
+		.data_type = OMAP_DMA_DATA_TYPE_S32,
+		.sync_mode = OMAP_DMA_SYNC_PACKET,
+	},{},
+},
+{
+	{
+		.name = "Vibra Playback",
+		.dma_req = OMAP44XX_DMA_ABE_REQ_6,
+		.data_type = OMAP_DMA_DATA_TYPE_S32,
+		.sync_mode = OMAP_DMA_SYNC_PACKET,
+	},{},
+},
+{
+	{
+		.name = "MODEM Playback",
+		.dma_req = OMAP44XX_DMA_ABE_REQ_1,
+		.data_type = OMAP_DMA_DATA_TYPE_S32,
+		.sync_mode = OMAP_DMA_SYNC_PACKET,
+	},
+	{
+		.name = "MODEM Capture",
+		.dma_req = OMAP44XX_DMA_ABE_REQ_2,
+		.data_type = OMAP_DMA_DATA_TYPE_S32,
+		.sync_mode = OMAP_DMA_SYNC_PACKET,
+	},
+},
+{
+	{
+		.name = "Low Power Playback",
+		.dma_req = OMAP44XX_DMA_ABE_REQ_0,
+		.data_type = OMAP_DMA_DATA_TYPE_S32,
+		.sync_mode = OMAP_DMA_SYNC_PACKET,
+	},{},
+},};
 
 /*
  * Caller holds lock for be_active calls.
@@ -269,6 +264,8 @@ static int abe_fe_startup(struct snd_pcm_substream *substream,
 			dev_err(dai->dev, "failed to get MODEM DAI\n");
 			return ret;
 		}
+		dev_dbg(abe_data.modem_dai->dev, "%s: MODEM stream %d\n",
+				__func__, substream->stream);
 
 		ret = snd_soc_dai_startup(abe_data.modem_substream[substream->stream],
 				abe_data.modem_dai);
@@ -288,14 +285,20 @@ static int abe_fe_hw_params(struct snd_pcm_substream *substream,
 	abe_data_format_t format;
 	abe_dma_t dma_sink;
 	abe_dma_t dma_params;
-	int dma_req, ret;
+	int ret;
 
 	switch (params_channels(params)) {
 	case 1:
-		format.samp_format = MONO_MSB;
+		if (params_format(params) == SNDRV_PCM_FORMAT_S16_LE)
+			format.samp_format = MONO_RSHIFTED_16;
+		else
+			format.samp_format = MONO_MSB;
 		break;
 	case 2:
-		format.samp_format = STEREO_MSB;
+		if (params_format(params) == SNDRV_PCM_FORMAT_S16_LE)
+			format.samp_format = STEREO_16_16;
+		else
+			format.samp_format = STEREO_MSB;
 		break;
 	case 3:
 		format.samp_format = THREE_MSB;
@@ -325,24 +328,23 @@ static int abe_fe_hw_params(struct snd_pcm_substream *substream,
 
 	switch (dai->id) {
 	case ABE_FRONTEND_DAI_MEDIA:
-	case ABE_FRONTEND_DAI_LP_MEDIA:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			dma_req = OMAP44XX_DMA_ABE_REQ_0;
 			abe_connect_cbpr_dmareq_port(MM_DL_PORT, &format, ABE_CBPR0_IDX,
 					&dma_sink);
 			abe_read_port_address(MM_DL_PORT, &dma_params);
 		} else {
-			dma_req = OMAP44XX_DMA_ABE_REQ_3;
 			abe_connect_cbpr_dmareq_port(MM_UL_PORT, &format,  ABE_CBPR3_IDX,
 					&dma_sink);
 			abe_read_port_address(MM_UL_PORT, &dma_params);
 		}
         break;
+	case ABE_FRONTEND_DAI_LP_MEDIA:
+		return 0;
+	break;
 	case ABE_FRONTEND_DAI_MEDIA_CAPTURE:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 			return -EINVAL;
 		else {
-			dma_req = OMAP44XX_DMA_ABE_REQ_4;
 			abe_connect_cbpr_dmareq_port(MM_UL2_PORT, &format,  ABE_CBPR4_IDX,
 					&dma_sink);
 			abe_read_port_address(MM_UL2_PORT, &dma_params);
@@ -350,12 +352,10 @@ static int abe_fe_hw_params(struct snd_pcm_substream *substream,
         break;
 	case ABE_FRONTEND_DAI_VOICE:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			dma_req = OMAP44XX_DMA_ABE_REQ_1;
 			abe_connect_cbpr_dmareq_port(VX_DL_PORT, &format, ABE_CBPR1_IDX,
 					&dma_sink);
 			abe_read_port_address(VX_DL_PORT, &dma_params);
 		} else {
-			dma_req = OMAP44XX_DMA_ABE_REQ_2;
 			abe_connect_cbpr_dmareq_port(VX_UL_PORT, &format,  ABE_CBPR2_IDX,
 					&dma_sink);
 			abe_read_port_address(VX_UL_PORT, &dma_params);
@@ -363,7 +363,6 @@ static int abe_fe_hw_params(struct snd_pcm_substream *substream,
         break;
 	case ABE_FRONTEND_DAI_TONES:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			dma_req = OMAP44XX_DMA_ABE_REQ_5;
 			abe_connect_cbpr_dmareq_port(TONES_DL_PORT, &format, ABE_CBPR5_IDX,
 					&dma_sink);
 			abe_read_port_address(TONES_DL_PORT, &dma_params);
@@ -372,7 +371,6 @@ static int abe_fe_hw_params(struct snd_pcm_substream *substream,
         break;
 	case ABE_FRONTEND_DAI_VIBRA:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			dma_req = OMAP44XX_DMA_ABE_REQ_6;
 			abe_connect_cbpr_dmareq_port(VIB_DL_PORT, &format, ABE_CBPR6_IDX,
 					&dma_sink);
 			abe_read_port_address(VIB_DL_PORT, &dma_params);
@@ -385,16 +383,12 @@ static int abe_fe_hw_params(struct snd_pcm_substream *substream,
 		 */
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			/* Vx_DL connection to McBSP 2 ports */
-			format.f = 8000;
 			format.samp_format = STEREO_RSHIFTED_16;
-			dma_req = OMAP44XX_DMA_ABE_REQ_1;
 			abe_connect_serial_port(VX_DL_PORT, &format, MCBSP2_RX);
 			abe_read_port_address(VX_DL_PORT, &dma_params);
 		} else {
 			/* Vx_UL connection to McBSP 2 ports */
-			format.f = 8000;
 			format.samp_format = STEREO_RSHIFTED_16;
-			dma_req = OMAP44XX_DMA_ABE_REQ_2;
 			abe_connect_serial_port(VX_UL_PORT, &format, MCBSP2_TX);
 			abe_read_port_address(VX_UL_PORT, &dma_params);
 		}
@@ -402,15 +396,18 @@ static int abe_fe_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* configure frontend SDMA data */
-	omap_abe_dai_dma_params[substream->stream].dma_req = dma_req;
-	omap_abe_dai_dma_params[substream->stream].port_addr =
-					(unsigned long)dma_params.data;
-	omap_abe_dai_dma_params[substream->stream].packet_size = dma_params.iter;
+	omap_abe_dai_dma_params[dai->id][substream->stream].port_addr =
+			(unsigned long)dma_params.data;
+	omap_abe_dai_dma_params[dai->id][substream->stream].packet_size =
+			dma_params.iter;
 
 	if (dai->id == ABE_FRONTEND_DAI_MODEM) {
 		/* call hw_params on McBSP with correct DMA data */
 		snd_soc_dai_set_dma_data(abe_data.modem_dai, substream,
-				&omap_abe_dai_dma_params[substream->stream]);
+				&omap_abe_dai_dma_params[dai->id][substream->stream]);
+
+		dev_dbg(abe_data.modem_dai->dev, "%s: MODEM stream %d\n",
+				__func__, substream->stream);
 
 		ret = snd_soc_dai_hw_params(abe_data.modem_substream[substream->stream],
 				params, abe_data.modem_dai);
@@ -420,7 +417,7 @@ static int abe_fe_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	snd_soc_dai_set_dma_data(dai, substream,
-				&omap_abe_dai_dma_params[substream->stream]);
+				&omap_abe_dai_dma_params[dai->id][substream->stream]);
 
 	return 0;
 }
@@ -433,6 +430,10 @@ static int abe_fe_prepare(struct snd_pcm_substream *substream,
 	if (dai->id == ABE_FRONTEND_DAI_MODEM) {
 		ret = snd_soc_dai_prepare(abe_data.modem_substream[substream->stream],
 				abe_data.modem_dai);
+
+		dev_dbg(abe_data.modem_dai->dev, "%s: MODEM stream %d\n",
+				__func__, substream->stream);
+
 		if (ret < 0) {
 			dev_err(abe_data.modem_dai->dev, "MODEM prepare failed\n");
 			return ret;
@@ -445,8 +446,12 @@ static int abe_fe_trigger(struct snd_pcm_substream *substream,
 				  int cmd, struct snd_soc_dai *dai)
 {
 	int ret = 0;
-	//TODO: how do we sequence this with ABE ???
+
 	if (dai->id == ABE_FRONTEND_DAI_MODEM) {
+
+		dev_dbg(abe_data.modem_dai->dev, "%s: MODEM stream %d cmd %d\n",
+				__func__, substream->stream, cmd);
+
 		ret = snd_soc_dai_trigger(abe_data.modem_substream[substream->stream],
 				cmd, abe_data.modem_dai);
 		if (ret < 0) {
@@ -463,6 +468,10 @@ static int abe_fe_hw_free(struct snd_pcm_substream *substream,
 	int ret = 0;
 
 	if (dai->id == ABE_FRONTEND_DAI_MODEM) {
+
+		dev_dbg(abe_data.modem_dai->dev, "%s: MODEM stream %d\n",
+				__func__, substream->stream);
+
 		ret = snd_soc_dai_hw_free(abe_data.modem_substream[substream->stream],
 				abe_data.modem_dai);
 		if (ret < 0) {
@@ -477,10 +486,13 @@ static void abe_fe_shutdown(struct snd_pcm_substream *substream,
 				struct snd_soc_dai *dai)
 {
 
-	if (dai->id == ABE_FRONTEND_DAI_MODEM)
+	if (dai->id == ABE_FRONTEND_DAI_MODEM) {
+		dev_dbg(abe_data.modem_dai->dev, "%s: MODEM stream %d\n",
+				__func__, substream->stream);
+
 		snd_soc_dai_shutdown(abe_data.modem_substream[substream->stream],
 				abe_data.modem_dai);
-
+	}
 	//TODO: Do we need to do reset this stuff i.e. :-
 	//abe_connect_cbpr_dmareq_port(VIB_DL_PORT, &format, ABE_CBPR6_IDX,
 	//				&dma_sink);
@@ -532,31 +544,34 @@ static int omap_abe_dai_startup(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	int ret = 0, i;
+	int stream = substream->stream, ret = 0, i;
 
 	dev_dbg(dai->dev, "%s: frontend %s %d\n", __func__,
 			rtd->dai_link->name, dai->id);
 
 	mutex_lock(&fe_mutex);
 
-	/* only startup backends that are either sinks or sources to this frontend DAI */
-	for (i = 0; i < rtd->num_be[substream->stream]; i++) {
+	/* only startup BE DAIs that are either sinks or sources to this FE DAI */
+	for (i = 0; i < rtd->num_be[stream]; i++) {
+		struct snd_soc_pcm_runtime *be_rtd = rtd->be_rtd[i][stream];
 		struct snd_pcm_substream *be_substream =
-				rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream;
+			be_rtd->pcm->streams[stream].substream;
 
 		if (be_substream == NULL)
 			continue;
 
 		/* update BE ref counts */
-		be_inc_active(rtd->be_rtd[i][substream->stream], substream->stream);
+		be_inc_active(rtd->be_rtd[i][stream], stream);
 
-		if (be_is_pending(rtd->be_rtd[i][substream->stream], substream->stream)) {
+		if (be_is_pending(rtd->be_rtd[i][stream], stream)) {
+			be_rtd->current_fe = dai->id;
 			ret = snd_soc_pcm_open(be_substream);
 			if (ret < 0)
 				goto unwind;
 			dev_dbg(&rtd->dev, "%s: open %s:%d at %d act %d\n", __func__,
-				rtd->be_rtd[i][substream->stream]->dai_link->name, rtd->be_rtd[i][substream->stream]->dai_link->be_id, i,
-				abe_data.be_active[rtd->be_rtd[i][substream->stream]->dai_link->be_id][substream->stream]);
+				rtd->be_rtd[i][stream]->dai_link->name,
+				rtd->be_rtd[i][stream]->dai_link->be_id, i,
+				abe_data.be_active[rtd->be_rtd[i][stream]->dai_link->be_id][stream]);
 		}
 	}
 
@@ -575,22 +590,24 @@ static int omap_abe_dai_startup(struct snd_pcm_substream *substream,
 unwind:
 	/* disable any enabled and non active backends */
 	for (--i; i >= 0; i--) {
+		struct snd_soc_pcm_runtime *be_rtd = rtd->be_rtd[i][stream];
 		struct snd_pcm_substream *be_substream =
-				rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream;
+			be_rtd->pcm->streams[stream].substream;
 
 		if (be_substream == NULL)
 			continue;
 
-		if (be_is_pending(rtd->be_rtd[i][substream->stream], substream->stream)) {
-
+		if (be_is_pending(rtd->be_rtd[i][stream], stream)) {
+			be_rtd->current_fe = dai->id;
 			snd_soc_pcm_close(be_substream);
 
 			dev_dbg(&rtd->dev, "%s: open-err-close %s:%d at %d act %d\n", __func__,
-				rtd->be_rtd[i][substream->stream]->dai_link->name, rtd->be_rtd[i][substream->stream]->dai_link->be_id, i,
-				abe_data.be_active[rtd->be_rtd[i][substream->stream]->dai_link->be_id][substream->stream]);
+				rtd->be_rtd[i][stream]->dai_link->name,
+				rtd->be_rtd[i][stream]->dai_link->be_id, i,
+				abe_data.be_active[rtd->be_rtd[i][stream]->dai_link->be_id][stream]);
 		}
 
-		be_dec_active(rtd->be_rtd[i][substream->stream], substream->stream);
+		be_dec_active(rtd->be_rtd[i][stream], stream);
 	}
 
 	mutex_unlock(&fe_mutex);
@@ -601,36 +618,39 @@ static void omap_abe_dai_shutdown(struct snd_pcm_substream *substream,
 				    struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	int i;
+	int stream = substream->stream, i;
 
 	dev_dbg(dai->dev,"%s: frontend %s \n", __func__, rtd->dai_link->name);
 	/* only shutdown backends that are either sinks or sources to this frontend DAI */
 
 	mutex_lock(&fe_mutex);
 
-	for (i = 0; i < rtd->num_be[substream->stream]; i++) {
+	for (i = 0; i < rtd->num_be[stream]; i++) {
+		struct snd_soc_pcm_runtime *be_rtd = rtd->be_rtd[i][stream];
 		struct snd_pcm_substream *be_substream =
-			rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream;
+			be_rtd->pcm->streams[stream].substream;
 
 		if (be_substream == NULL)
 			continue;
 
 		/* close backend stream if inactive */
-		if (be_is_pending(rtd->be_rtd[i][substream->stream], substream->stream)) {
-			snd_soc_pcm_close(rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream);
+		if (be_is_pending(rtd->be_rtd[i][stream], stream)) {
+			be_rtd->current_fe = dai->id;
+			snd_soc_pcm_close(be_substream);
 
 			dev_dbg(&rtd->dev,"%s: close %s:%d at %d act %d\n", __func__,
-				rtd->be_rtd[i][substream->stream]->dai_link->name, rtd->be_rtd[i][substream->stream]->dai_link->be_id, i,
-				abe_data.be_active[rtd->be_rtd[i][substream->stream]->dai_link->be_id][substream->stream]);
+				rtd->be_rtd[i][stream]->dai_link->name,
+				rtd->be_rtd[i][stream]->dai_link->be_id, i,
+				abe_data.be_active[rtd->be_rtd[i][stream]->dai_link->be_id][stream]);
 		}
 
-		be_dec_active(rtd->be_rtd[i][substream->stream], substream->stream);
+		be_dec_active(rtd->be_rtd[i][stream], stream);
 	}
 
 	/* now shutdown the frontend */
 	abe_fe_shutdown(substream, dai);
 
-	abe_be_dapm(rtd, dai->id, substream->stream, SND_SOC_DAPM_STREAM_STOP);
+	abe_be_dapm(rtd, dai->id, stream, SND_SOC_DAPM_STREAM_STOP);
 	dev_dbg(dai->dev,"%s: frontend %s completed !\n", __func__, rtd->dai_link->name);
 	mutex_unlock(&fe_mutex);
 }
@@ -640,40 +660,52 @@ static int omap_abe_dai_hw_params(struct snd_pcm_substream *substream,
 				    struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	int i, ret;
+	int stream = substream->stream, i, ret = 0;
+	struct snd_pcm_hw_params *params_fe;
 
+	params_fe = kzalloc(sizeof(struct snd_pcm_hw_params), GFP_KERNEL);
 	dev_dbg(dai->dev,"%s: frontend %s \n", __func__, rtd->dai_link->name);
+
+	memcpy(params_fe, params, sizeof(struct snd_pcm_hw_params));
 
 	mutex_lock(&fe_mutex);
 
-	// TODO: generate our own hw params for backend DAI
-	/* only hw_params backends that are either sinks or
-	 * sources to this frontend DAI */
-	for (i = 0; i < rtd->num_be[substream->stream]; i++) {
+	for (i = 0; i < rtd->num_be[stream]; i++) {
+		struct snd_soc_pcm_runtime *be_rtd = rtd->be_rtd[i][stream];
 		struct snd_pcm_substream *be_substream =
-			rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream;
+			be_rtd->pcm->streams[stream].substream;
 
 		if (be_substream == NULL)
 			continue;
 
-		if (be_is_pending(rtd->be_rtd[i][substream->stream], substream->stream)) {
-			ret = snd_soc_pcm_hw_params(
-					rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream,
-					params);
+		if (be_is_pending(rtd->be_rtd[i][stream], stream)) {
+			be_rtd->current_fe = dai->id;
+			if (be_rtd->dai_link->be_hw_params_fixup)
+				ret = be_rtd->dai_link->be_hw_params_fixup(be_rtd, params);
 			if (ret < 0) {
-				dev_err(&rtd->dev, "%s: be hw_params failed %d\n", __func__, ret);
+				dev_err(&rtd->dev, "%s: backend hw_params fixup failed %d\n",
+										__func__, ret);
+				goto out;
+			}
+
+			ret = snd_soc_pcm_hw_params(be_substream, params);
+			if (ret < 0) {
+				dev_err(&rtd->dev, "%s: backend hw_params failed %d\n",
+						__func__, ret);
 				goto out;
 			}
 		}
 	}
 
 	/* call hw_params on the frontend */
+	memcpy(params, params_fe, sizeof(struct snd_pcm_hw_params));
 	ret = abe_fe_hw_params(substream, params, dai);
 	if (ret < 0)
 		dev_err(dai->dev,"%s: frontend hw_params failed\n", __func__);
 
 out:
 	mutex_unlock(&fe_mutex);
+	kfree(params_fe);
 	return ret;
 }
 
@@ -681,7 +713,6 @@ static int omap_abe_dai_trigger(struct snd_pcm_substream *substream,
 				  int cmd, struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct abe_frontend_dai *fe = &abe_data.frontend[dai->id][substream->stream];
 	int ret;
 
 	dev_dbg(dai->dev,"%s: frontend %s \n", __func__, rtd->dai_link->name);
@@ -693,18 +724,11 @@ static int omap_abe_dai_trigger(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
-
-	fe->cmd = cmd;
-	fe->substream = substream;
-#if WORKQ
-	/* perform the backend trigger work */
-	queue_work(abe_data.workqueue, &fe->work);
-#else
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-		playback_trigger(fe, cmd);
+		playback_trigger(substream, cmd);
 	else
-		capture_trigger(fe, cmd);
-#endif
+		capture_trigger(substream, cmd);
+
 	return 0;
 }
 
@@ -712,7 +736,7 @@ static int omap_abe_dai_prepare(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	int ret = 0, i;
+	int stream = substream->stream, ret = 0, i;
 
 	dev_dbg(dai->dev,"%s: frontend %s \n", __func__, rtd->dai_link->name);
 	/* only prepare backends that are either sinks or sources to
@@ -720,16 +744,19 @@ static int omap_abe_dai_prepare(struct snd_pcm_substream *substream,
 
 	mutex_lock(&fe_mutex);
 
-	for (i = 0; i < rtd->num_be[substream->stream]; i++) {
+	for (i = 0; i < rtd->num_be[stream]; i++) {
+		struct snd_soc_pcm_runtime *be_rtd = rtd->be_rtd[i][stream];
 		struct snd_pcm_substream *be_substream =
-			rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream;
+			be_rtd->pcm->streams[stream].substream;
 
 		if (be_substream == NULL)
 			continue;
 
 		/* prepare backend stream */
-		if (be_is_pending(rtd->be_rtd[i][substream->stream], substream->stream))
-			snd_soc_pcm_prepare(rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream);
+		if (be_is_pending(rtd->be_rtd[i][stream], stream)) {
+			be_rtd->current_fe = dai->id;
+			snd_soc_pcm_prepare(be_substream);
+		}
 	}
 
 	/* call prepare on the frontend */
@@ -737,7 +764,7 @@ static int omap_abe_dai_prepare(struct snd_pcm_substream *substream,
 	if (ret < 0)
 		dev_err(dai->dev,"%s: frontend prepare failed\n", __func__);
 
-	abe_be_dapm(rtd, dai->id, substream->stream, SND_SOC_DAPM_STREAM_START);
+	abe_be_dapm(rtd, dai->id, stream, SND_SOC_DAPM_STREAM_START);
 
 	mutex_unlock(&fe_mutex);
 	return ret;
@@ -747,13 +774,9 @@ static int omap_abe_dai_hw_free(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-//	struct abe_frontend_dai *fe = &abe_data.frontend[dai->id][substream->stream];
-	int ret = 0, i;
+	int stream = substream->stream, ret = 0, i;
 
 	dev_dbg(dai->dev,"%s: frontend %s \n", __func__, rtd->dai_link->name);
-
-	/* wait on trigger completing */
-//	wait_for_completion_timeout(&fe->trigger_done, msecs_to_jiffies(500));
 
 	mutex_lock(&fe_mutex);
 
@@ -764,15 +787,18 @@ static int omap_abe_dai_hw_free(struct snd_pcm_substream *substream,
 
 	/* only hw_params backends that are either sinks or sources
 	 * to this frontend DAI */
-	for (i = 0; i < rtd->num_be[substream->stream]; i++) {
+	for (i = 0; i < rtd->num_be[stream]; i++) {
+		struct snd_soc_pcm_runtime *be_rtd = rtd->be_rtd[i][stream];
 		struct snd_pcm_substream *be_substream =
-			rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream;
+			be_rtd->pcm->streams[stream].substream;
 
 		if (be_substream == NULL)
 			continue;
 
-		if (be_is_pending(rtd->be_rtd[i][substream->stream], substream->stream))
-			snd_soc_pcm_hw_free(rtd->be_rtd[i][substream->stream]->pcm->streams[substream->stream].substream);
+		if (be_is_pending(rtd->be_rtd[i][stream], stream)) {
+			be_rtd->current_fe = dai->id;
+			snd_soc_pcm_hw_free(be_substream);
+		}
 	}
 
 	mutex_unlock(&fe_mutex);
@@ -790,8 +816,9 @@ static struct snd_soc_dai_ops omap_abe_dai_ops = {
 };
 
 // TODO: finish this
-static void mute_be_capture(struct snd_soc_pcm_runtime *rtd)
+static void mute_be_capture(struct snd_pcm_substream *substream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_pcm_runtime *be_rtd;
 	int i;
 
@@ -817,8 +844,9 @@ static void mute_be_capture(struct snd_soc_pcm_runtime *rtd)
 }
 
 // TODO: finish this and restore correct volume levels
-static void unmute_be_capture(struct snd_soc_pcm_runtime *rtd)
+static void unmute_be_capture(struct snd_pcm_substream *substream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_pcm_runtime *be_rtd;
 	int i;
 
@@ -908,9 +936,9 @@ static void unmute_fe_playback(struct abe_frontend_dai *fe,
 	}
 }
 #endif
-static void mute_be_playback(struct abe_frontend_dai *fe)
+static void mute_be_playback(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = fe->substream->private_data;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_pcm_runtime *be_rtd;
 	int i;
 
@@ -941,9 +969,9 @@ static void mute_be_playback(struct abe_frontend_dai *fe)
 	}
 }
 
-static void unmute_be_playback(struct abe_frontend_dai *fe)
+static void unmute_be_playback(struct snd_pcm_substream *substream)
 {
-	struct snd_soc_pcm_runtime *rtd = fe->substream->private_data;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_pcm_runtime *be_rtd;
 	int i;
 
@@ -981,8 +1009,9 @@ static inline void abe_dai_enable_data_transfer(int port)
 		abe_enable_data_transfer(port);
 }
 
-static void enable_be_ports(struct snd_soc_pcm_runtime *rtd, int stream)
+static void enable_be_ports(struct snd_pcm_substream *substream, int stream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_pcm_runtime *be_rtd;
 	abe_data_format_t format;
 	int i;
@@ -1023,14 +1052,14 @@ static void enable_be_ports(struct snd_soc_pcm_runtime *rtd, int stream)
 					format.f = 8000;
 					format.samp_format = MONO_RSHIFTED_16;
 					abe_connect_serial_port(BT_VX_DL_PORT,
-								&format, MCBSP1_RX);
+								&format, MCBSP1_TX);
 					abe_dai_enable_data_transfer(BT_VX_DL_PORT);
 				} else {
 					/* BT_UL connection to McBSP 1 ports */
 					format.f = 8000;
 					format.samp_format = MONO_RSHIFTED_16;
 					abe_connect_serial_port(BT_VX_UL_PORT,
-								&format, MCBSP1_TX);
+								&format, MCBSP1_RX);
 					abe_dai_enable_data_transfer(BT_VX_UL_PORT);
 				}
 			}
@@ -1042,14 +1071,14 @@ static void enable_be_ports(struct snd_soc_pcm_runtime *rtd, int stream)
 					format.f = 48000;
 					format.samp_format = STEREO_RSHIFTED_16;
 					abe_connect_serial_port(MM_EXT_OUT_PORT,
-								&format, MCBSP2_RX);
+								&format, MCBSP2_TX);
 					abe_dai_enable_data_transfer(MM_EXT_OUT_PORT);
 				} else {
 					/* MM_EXT connection to McBSP 2 ports */
 					format.f = 48000;
 					format.samp_format = STEREO_RSHIFTED_16;
 					abe_connect_serial_port(MM_EXT_IN_PORT,
-								&format, MCBSP2_TX);
+								&format, MCBSP2_RX);
 					abe_dai_enable_data_transfer(MM_EXT_IN_PORT);
 				}
 			}
@@ -1073,18 +1102,22 @@ static void enable_be_ports(struct snd_soc_pcm_runtime *rtd, int stream)
 	}
 }
 
-static void enable_fe_ports(struct snd_soc_pcm_runtime *rtd, int stream)
+static void enable_fe_ports(struct snd_pcm_substream *substream, int stream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+
 	dev_dbg(&rtd->dev, "%s: fe ID=%d stream %d\n",
 			__func__, rtd->cpu_dai->id, stream);
 
 	switch(rtd->cpu_dai->id) {
 	case ABE_FRONTEND_DAI_MEDIA:
-	case ABE_FRONTEND_DAI_LP_MEDIA:
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK)
 			abe_enable_data_transfer(MM_DL_PORT);
 		else
 			abe_enable_data_transfer(MM_UL_PORT);
+		break;
+	case ABE_FRONTEND_DAI_LP_MEDIA:
+		abe_enable_irq_transfer(MM_DL_PORT);
 		break;
 	case ABE_FRONTEND_DAI_MEDIA_CAPTURE:
 		if (stream == SNDRV_PCM_STREAM_CAPTURE)
@@ -1115,8 +1148,9 @@ static inline void abe_dai_disable_data_transfer(int port)
 		abe_disable_data_transfer(port);
 }
 
-static void disable_be_ports(struct snd_soc_pcm_runtime *rtd, int stream)
+static void disable_be_ports(struct snd_pcm_substream *substream, int stream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_pcm_runtime *be_rtd;
 	int i;
 
@@ -1154,17 +1188,21 @@ static void disable_be_ports(struct snd_soc_pcm_runtime *rtd, int stream)
 			}
 			break;
 		case OMAP_ABE_DAI_BT_VX:
-			if (stream == SNDRV_PCM_STREAM_PLAYBACK)
-				abe_dai_disable_data_transfer(BT_VX_DL_PORT);
-			else
-				abe_dai_disable_data_transfer(BT_VX_UL_PORT);
+			if (be_is_pending(be_rtd, stream)) {
+				if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+					abe_dai_disable_data_transfer(BT_VX_DL_PORT);
+				else
+					abe_dai_disable_data_transfer(BT_VX_UL_PORT);
+			}
 			break;
 		case OMAP_ABE_DAI_MM_FM:
 		case OMAP_ABE_DAI_MODEM:
-			if (stream == SNDRV_PCM_STREAM_PLAYBACK)
-				abe_dai_disable_data_transfer(MM_EXT_OUT_PORT);
-			else
-				abe_dai_disable_data_transfer(MM_EXT_IN_PORT);
+			if (be_is_pending(be_rtd, stream)) {
+				if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+					abe_dai_disable_data_transfer(MM_EXT_OUT_PORT);
+				else
+					abe_dai_disable_data_transfer(MM_EXT_IN_PORT);
+			}
 		case OMAP_ABE_DAI_DMIC0:
 			abe_data.dmic_status[0] = DAI_STOPPED;
 			if (be_is_pending(be_rtd, stream) && dmic_ready(&abe_data))
@@ -1184,18 +1222,22 @@ static void disable_be_ports(struct snd_soc_pcm_runtime *rtd, int stream)
 	}
 }
 
-static void disable_fe_ports(struct snd_soc_pcm_runtime *rtd, int stream)
+static void disable_fe_ports(struct snd_pcm_substream *substream, int stream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+
 	dev_dbg(&rtd->dev, "%s: fe ID=%d stream %d\n",
 			__func__, rtd->cpu_dai->id, stream);
 
 	switch(rtd->cpu_dai->id) {
 	case ABE_FRONTEND_DAI_MEDIA:
-	case ABE_FRONTEND_DAI_LP_MEDIA:
 		if (stream == SNDRV_PCM_STREAM_PLAYBACK)
 			abe_disable_data_transfer(MM_DL_PORT);
 		else
 			abe_disable_data_transfer(MM_UL_PORT);
+		break;
+	case ABE_FRONTEND_DAI_LP_MEDIA:
+			abe_disable_irq_transfer(MM_DL_PORT);
 		break;
 	case ABE_FRONTEND_DAI_MEDIA_CAPTURE:
 		if (stream == SNDRV_PCM_STREAM_CAPTURE)
@@ -1220,8 +1262,9 @@ static void disable_fe_ports(struct snd_soc_pcm_runtime *rtd, int stream)
 }
 
 /* TODO: finish this */
-static void mute_fe_port(struct abe_frontend_dai *fe, struct snd_soc_pcm_runtime *rtd, int stream)
+static void mute_fe_port(struct snd_pcm_substream *substream, int stream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 
 	dev_dbg(&rtd->dev, "%s: fe ID=%d stream %d\n",
 			__func__, rtd->cpu_dai->id, stream);
@@ -1261,8 +1304,9 @@ static void mute_fe_port(struct abe_frontend_dai *fe, struct snd_soc_pcm_runtime
 }
 
 /* TODO: finish this */
-static void unmute_fe_port(struct abe_frontend_dai *fe, struct snd_soc_pcm_runtime *rtd, int stream)
+static void unmute_fe_port(struct snd_pcm_substream *substream, int stream)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 
 	dev_dbg(&rtd->dev, "%s: fe ID=%d stream %d\n",
 			__func__, rtd->cpu_dai->id, stream);
@@ -1301,220 +1345,153 @@ static void unmute_fe_port(struct abe_frontend_dai *fe, struct snd_soc_pcm_runti
 	}
 }
 
-static void trigger_be_ports(struct abe_frontend_dai *fe,
-		struct snd_soc_pcm_runtime *rtd)
+static void trigger_be_ports(struct snd_pcm_substream *substream, int cmd)
 {
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_pcm_runtime *be_rtd;
-	int i;
+	int i, stream = substream->stream;
 
-	for (i = 0; i < rtd->num_be[fe->substream->stream]; i++) {
-		be_rtd = rtd->be_rtd[i][fe->substream->stream];
+	for (i = 0; i < rtd->num_be[stream]; i++) {
+		be_rtd = rtd->be_rtd[i][stream];
+
 		dev_dbg(&rtd->dev, "%s: be ID=%d cmd %d act %d\n",
-				__func__, be_rtd->dai_link->be_id, fe->cmd,
-				abe_data.be_active[be_rtd->dai_link->be_id][fe->substream->stream]);
+				__func__, be_rtd->dai_link->be_id, cmd,
+				abe_data.be_active[be_rtd->dai_link->be_id][stream]);
 
-		if (be_is_pending(be_rtd, fe->substream->stream))
-			snd_soc_dai_trigger(fe->substream, fe->cmd, be_rtd->cpu_dai);
+		if (be_is_pending(be_rtd, stream))
+			snd_soc_dai_trigger(substream, cmd, be_rtd->cpu_dai);
 	}
 }
 
-#if WORKQ
-/* work for ABE capture frontend and backend ABE synchronisation */
-static void capture_work(struct work_struct *work)
+static void capture_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	struct abe_frontend_dai *fe =
-			container_of(work, struct abe_frontend_dai, work);
-#else
-static void capture_trigger(struct abe_frontend_dai *fe, int cmd)
-{
-#endif
-	struct snd_soc_pcm_runtime *rtd = fe->substream->private_data;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 
 	dev_dbg(&rtd->dev, "%s-start: fe ID=%d stream %d\n",
-			__func__, rtd->cpu_dai->id,fe->substream->stream);
+			__func__, rtd->cpu_dai->id, substream->stream);
 
-	switch (fe->cmd) {
+	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		/*   ALL BE GAINS set to mute */
-		mute_be_capture(rtd);
+		mute_be_capture(substream);
 
 		/* Enable ALL ABE BE ports */
-		enable_be_ports(rtd, SNDRV_PCM_STREAM_CAPTURE);
+		enable_be_ports(substream, SNDRV_PCM_STREAM_CAPTURE);
 
 		/* DAI work must be started/stopped at least 250us after ABE */
 		udelay(250);
 
 		/*  trigger ALL BE ports */
-		trigger_be_ports(fe, rtd);
+		trigger_be_ports(substream, cmd);
 
 		/* Enable Frontend sDMA  */
-		enable_fe_ports(rtd, SNDRV_PCM_STREAM_CAPTURE);
+		enable_fe_ports(substream, SNDRV_PCM_STREAM_CAPTURE);
 
 		/* Restore ABE GAINS AMIC */
-		unmute_be_capture(rtd);
-
-		init_completion(&fe->trigger_done);
+		unmute_be_capture(substream);
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		/* Enable sDMA / Enable ABE MM_UL2 */
-		enable_fe_ports(rtd, SNDRV_PCM_STREAM_CAPTURE);
+		enable_fe_ports(substream, SNDRV_PCM_STREAM_CAPTURE);
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		/* Disable sDMA / Enable ABE MM_UL2 */
-		disable_fe_ports(rtd, SNDRV_PCM_STREAM_CAPTURE);
+		disable_fe_ports(substream, SNDRV_PCM_STREAM_CAPTURE);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		/* Disable sDMA */
-		disable_fe_ports(rtd, SNDRV_PCM_STREAM_CAPTURE);
+		disable_fe_ports(substream, SNDRV_PCM_STREAM_CAPTURE);
 
-		disable_be_ports(rtd, SNDRV_PCM_STREAM_CAPTURE);
+		disable_be_ports(substream, SNDRV_PCM_STREAM_CAPTURE);
 
 		/* DAI work must be started/stopped at least 250us after ABE */
 		udelay(250);
 
 		/*  trigger ALL BE ports */
-		trigger_be_ports(fe, rtd);
-
-		//complete(&fe->trigger_done);
-		/* TODO: shutdown PDM clock */
+		trigger_be_ports(substream, cmd);
 		break;
 	default:
 		break;
 	}
 
 	dev_dbg(&rtd->dev, "%s - finish: fe ID=%d stream %d\n",
-			__func__, rtd->cpu_dai->id,fe->substream->stream);
+			__func__, rtd->cpu_dai->id, substream->stream);
 }
 
-#if WORKQ
-/* work for ABE playback frontend and backend ABE synchronisation */
-static void playback_work(struct work_struct *work)
+static void playback_trigger(struct snd_pcm_substream *substream, int cmd)
 {
-	struct abe_frontend_dai *fe =
-			container_of(work, struct abe_frontend_dai, work);
-#else
-static void playback_trigger(struct abe_frontend_dai *fe, int cmd)
-{
-#endif
-	struct snd_soc_pcm_runtime *rtd = fe->substream->private_data;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 
 	dev_dbg(&rtd->dev, "%s-start: fe ID=%d stream %d\n",
-			__func__, rtd->cpu_dai->id,fe->substream->stream);
+			__func__, rtd->cpu_dai->id, substream->stream);
 
-	switch (fe->cmd) {
+	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		/* mute splayback */
-		mute_be_playback(fe);
+		mute_be_playback(substream);
 
 		/* enabled BE ports */
-		enable_be_ports(rtd, SNDRV_PCM_STREAM_PLAYBACK);
+		enable_be_ports(substream, SNDRV_PCM_STREAM_PLAYBACK);
 
 		/* DAI work must be started/stopped at least 250us after ABE */
 		udelay(250);
 
 		/*  trigger ALL BE ports */
-		trigger_be_ports(fe, rtd);
+		trigger_be_ports(substream, cmd);
 
 		/* TODO: unmute DL1 */
-		unmute_be_playback(fe);
+		unmute_be_playback(substream);
 
 		/* Enable Frontend sDMA  */
-		enable_fe_ports(rtd, SNDRV_PCM_STREAM_PLAYBACK);
+		enable_fe_ports(substream, SNDRV_PCM_STREAM_PLAYBACK);
 
 		/* unmute ABE_MM_DL */
-		unmute_fe_port(fe, rtd, SNDRV_PCM_STREAM_PLAYBACK);
-
-		init_completion(&fe->trigger_done);
+		unmute_fe_port(substream, SNDRV_PCM_STREAM_PLAYBACK);
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		/* Enable Frontend sDMA  */
-		enable_fe_ports(rtd, SNDRV_PCM_STREAM_PLAYBACK);
+		enable_fe_ports(substream, SNDRV_PCM_STREAM_PLAYBACK);
 
 		/* unmute ABE_MM_DL */
-		unmute_fe_port(fe, rtd, SNDRV_PCM_STREAM_PLAYBACK);
+		unmute_fe_port(substream, SNDRV_PCM_STREAM_PLAYBACK);
 		break;
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		/* Enable Frontend sDMA  */
-		disable_fe_ports(rtd, SNDRV_PCM_STREAM_PLAYBACK);
+		disable_fe_ports(substream, SNDRV_PCM_STREAM_PLAYBACK);
 
 		/* mute ABE_MM_DL */
-		mute_fe_port(fe, rtd, SNDRV_PCM_STREAM_PLAYBACK);
+		mute_fe_port(substream, SNDRV_PCM_STREAM_PLAYBACK);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 		/* disable the transfer */
-		disable_fe_ports(rtd, SNDRV_PCM_STREAM_PLAYBACK);
+		disable_fe_ports(substream, SNDRV_PCM_STREAM_PLAYBACK);
 
 		/* mute ABE_MM_DL */
-		mute_fe_port(fe, rtd, SNDRV_PCM_STREAM_PLAYBACK);
+		mute_fe_port(substream, SNDRV_PCM_STREAM_PLAYBACK);
 
 		/* TODO :mute Phoenix */
 
 		/* disable our backends */
-		disable_be_ports(rtd, SNDRV_PCM_STREAM_PLAYBACK);
+		disable_be_ports(substream, SNDRV_PCM_STREAM_PLAYBACK);
 
 		/* DAI work must be started/stopped at least 250us after ABE */
 		udelay(250);
 
 		/*  trigger ALL BE ports */
-		trigger_be_ports(fe, rtd);
-	//	complete(&fe->trigger_done);
+		trigger_be_ports(substream, cmd);
 		break;
 	default:
 		break;
 	}
 
 	dev_dbg(&rtd->dev, "%s - finish: fe ID=%d stream %d\n",
-			__func__, rtd->cpu_dai->id,fe->substream->stream);
+			__func__, rtd->cpu_dai->id, substream->stream);
 }
 
 static int omap_abe_dai_probe(struct snd_soc_dai *dai)
 {
 	snd_soc_dai_set_drvdata(dai, &abe_data);
-#if WORKQ
-	/* MM */
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_MEDIA][SNDRV_PCM_STREAM_CAPTURE].work,
-		capture_work);
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_MEDIA][SNDRV_PCM_STREAM_PLAYBACK].work,
-		playback_work);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_MEDIA][SNDRV_PCM_STREAM_CAPTURE].trigger_done);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_MEDIA][SNDRV_PCM_STREAM_PLAYBACK].trigger_done);
 
-	/* MM UL */
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_MEDIA_CAPTURE][SNDRV_PCM_STREAM_CAPTURE].work,
-		capture_work);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_MEDIA_CAPTURE][SNDRV_PCM_STREAM_CAPTURE].trigger_done);
-
-	/* VX */
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_VOICE][SNDRV_PCM_STREAM_CAPTURE].work,
-		capture_work);
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_VOICE][SNDRV_PCM_STREAM_PLAYBACK].work,
-		playback_work);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_VOICE][SNDRV_PCM_STREAM_CAPTURE].trigger_done);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_VOICE][SNDRV_PCM_STREAM_PLAYBACK].trigger_done);
-
-	/* TONES */
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_TONES][SNDRV_PCM_STREAM_PLAYBACK].work,
-		playback_work);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_TONES][SNDRV_PCM_STREAM_PLAYBACK].trigger_done);
-
-	/* VIB */
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_VIBRA][SNDRV_PCM_STREAM_PLAYBACK].work,
-		playback_work);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_VIBRA][SNDRV_PCM_STREAM_PLAYBACK].trigger_done);
-
-	/* MODEM */
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_MODEM][SNDRV_PCM_STREAM_CAPTURE].work,
-		capture_work);
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_MODEM][SNDRV_PCM_STREAM_PLAYBACK].work,
-		playback_work);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_MODEM][SNDRV_PCM_STREAM_CAPTURE].trigger_done);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_MODEM][SNDRV_PCM_STREAM_PLAYBACK].trigger_done);
-
-	/* MM LP */
-	INIT_WORK(&abe_data.frontend[ABE_FRONTEND_DAI_LP_MEDIA][SNDRV_PCM_STREAM_PLAYBACK].work,
-		playback_work);
-	init_completion(&abe_data.frontend[ABE_FRONTEND_DAI_LP_MEDIA][SNDRV_PCM_STREAM_PLAYBACK].trigger_done);
-#endif
 	abe_data.workqueue = create_singlethread_workqueue("omap-abe");
 	if (abe_data.workqueue == NULL)
 		return -ENOMEM;
@@ -1606,26 +1583,27 @@ static struct snd_soc_dai_driver omap_abe_dai[] = {
 			.channels_min = 1,
 			.channels_max = 1,
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
-			.formats = OMAP_ABE_FORMATS,
+			.formats = OMAP_ABE_FORMATS | SNDRV_PCM_FMTBIT_S16_LE,
 		},
 		.capture = {
 			.stream_name = "Voice Capture",
 			.channels_min = 1,
 			.channels_max = 1,
 			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
-			.formats = OMAP_ABE_FORMATS,
+			.formats = OMAP_ABE_FORMATS | SNDRV_PCM_FMTBIT_S16_LE,
 		},
 		.ops = &omap_abe_dai_ops,
 	},
 	{	/* Low Power HiFi Playback */
 		.name = "MultiMedia1 LP",
 		.playback = {
-			.stream_name = "MultiMedia1 Playback",
+			.stream_name = "MultiMedia1 LP Playback",
 			.channels_min = 2,
 			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000,
-			.formats = OMAP_ABE_FORMATS,
+			.rates = SNDRV_PCM_RATE_44100,
+			.formats = OMAP_ABE_FORMATS | SNDRV_PCM_FMTBIT_S16_LE,
 		},
+		.ops = &omap_abe_dai_ops,
 	},
 };
 

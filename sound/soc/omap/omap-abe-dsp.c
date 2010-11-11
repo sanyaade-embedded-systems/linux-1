@@ -63,7 +63,7 @@
 // TODO: make all these into virtual registers or similar - split out by type */
 #define ABE_NUM_MIXERS		22
 #define ABE_NUM_MUXES		12
-#define ABE_NUM_WIDGETS	44	/* TODO - refine this val */
+#define ABE_NUM_WIDGETS	        46	/* TODO - refine this val */
 #define ABE_NUM_DAPM_REG		\
 	(ABE_NUM_MIXERS + ABE_NUM_MUXES + ABE_NUM_WIDGETS)
 #define ABE_WIDGET_START	(ABE_NUM_MIXERS + ABE_NUM_MUXES)
@@ -88,20 +88,32 @@
 
 #define ABE_ROUTES_UL		14
 
+/* Samples * bytes */
+#define N_SAMPLES_BYTES                (6144 * 4)
+/* Ping start offset of the DMEM */
+#define ABE_DMEM_BASE_OFFSET_MPU       0x80000
+/* Physical address of the DMEM  */
+#define ABE_DMEM_BASE_ADDRESS_MPU      0x49080000L
+/* Ping pong buffer DMEM offset  */
+#define ABE_DMEM_BASE_OFFSET_PING_PONG 0x4000
+/* AESS VM OFFSET FOR DMEM */
+#define ABE_VM_AESS_OFFSET             0x400000
+
 /* TODO: fine tune for ping pong - buffer is 2 periods of 12k each*/
 static const struct snd_pcm_hardware omap_abe_hardware = {
 	.info			= SNDRV_PCM_INFO_MMAP |
 				  SNDRV_PCM_INFO_MMAP_VALID |
 				  SNDRV_PCM_INFO_INTERLEAVED |
+				  SNDRV_PCM_INFO_BLOCK_TRANSFER |
 				  SNDRV_PCM_INFO_PAUSE |
 				  SNDRV_PCM_INFO_RESUME,
 	.formats		= SNDRV_PCM_FMTBIT_S16_LE |
 				  SNDRV_PCM_FMTBIT_S32_LE,
-	.period_bytes_min	= 12 * 1024,
-	.period_bytes_max	= 12 * 1024,
+	.period_bytes_min	= 24 * 1024,
+	.period_bytes_max	= 48 * 1024,
 	.periods_min		= 2,
 	.periods_max		= 2,
-	.buffer_bytes_max	= 12 * 1024 * 2,
+	.buffer_bytes_max	= 24 * 1024 * 2,
 };
 
 /*
@@ -145,6 +157,9 @@ struct abe_data {
 	u32 dapm[ABE_NUM_DAPM_REG];
 
 	u16 router[16];
+
+	struct snd_pcm_substream *psubs;
+
 };
 
 static struct abe_data *abe;
@@ -168,9 +183,20 @@ static int abe_dsp_write(struct snd_soc_platform *platform, unsigned int reg,
 	return 0;
 }
 
+static void abe_irq_pingpong_subroutine(void)
+{
+	u32 dst, n_bytes;
+
+	abe_read_next_ping_pong_buffer(MM_DL_PORT, &dst, &n_bytes);
+	abe_set_ping_pong_buffer(MM_DL_PORT, n_bytes);
+	snd_pcm_period_elapsed(abe->psubs);
+}
+
 static irqreturn_t abe_irq_handler(int irq, void *dev_id)
 {
 	/* TODO: handle underruns/overruns/errors */
+	abe_irq_clear();
+	abe_irq_processing();
 	return IRQ_HANDLED;
 }
 
@@ -266,59 +292,59 @@ void abe_dsp_disable_data_transfer(int port)
  * These TLV settings will need fine tuned for each individual control
  */
 
-/* Media DL1 volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(mm_dl1_tlv, -12000, 100, 3000);
+/* Media DL1 volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(mm_dl1_tlv, -9000, 100, 0);
 
-/* Media DL1 volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(tones_dl1_tlv, -12000, 100, 3000);
+/* Media DL1 volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(tones_dl1_tlv, -9000, 100, 0);
 
-/* Media DL1 volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(voice_dl1_tlv, -12000, 100, 3000);
+/* Media DL1 volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(voice_dl1_tlv, -9000, 100, 0);
 
-/* Media DL1 volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(capture_dl1_tlv, -12000, 100, 3000);
+/* Media DL1 volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(capture_dl1_tlv, -9000, 100, 0);
 
-/* Media DL2 volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(mm_dl2_tlv, -12000, 100, 3000);
+/* Media DL2 volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(mm_dl2_tlv, -9000, 100, 0);
 
-/* Media DL2 volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(tones_dl2_tlv, -12000, 100, 3000);
+/* Media DL2 volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(tones_dl2_tlv, -9000, 100, 0);
 
-/* Media DL2 volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(voice_dl2_tlv, -12000, 100, 3000);
+/* Media DL2 volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(voice_dl2_tlv, -9000, 100, 0);
 
-/* Media DL2 volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(capture_dl2_tlv, -12000, 100, 3000);
+/* Media DL2 volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(capture_dl2_tlv, -9000, 100, 0);
 
-/* SDT volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(sdt_ul_tlv, -12000, 100, 3000);
+/* SDT volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(sdt_ul_tlv, -9000, 100, 0);
 
-/* SDT volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(sdt_dl_tlv, -12000, 100, 3000);
+/* SDT volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(sdt_dl_tlv, -9000, 100, 0);
 
-/* AUDUL volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(audul_mm_tlv, -12000, 100, 3000);
+/* AUDUL volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(audul_mm_tlv, -9000, 100, 0);
 
-/* AUDUL volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(audul_tones_tlv, -12000, 100, 3000);
+/* AUDUL volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(audul_tones_tlv, -9000, 100, 0);
 
-/* AUDUL volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(audul_vx_ul_tlv, -12000, 100, 3000);
+/* AUDUL volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(audul_vx_ul_tlv, -9000, 100, 0);
 
-/* AUDUL volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(audul_vx_dl_tlv, -12000, 100, 3000);
+/* AUDUL volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(audul_vx_dl_tlv, -9000, 100, 0);
 
-/* VXREC volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(vxrec_mm_dl_tlv, -12000, 100, 3000);
+/* VXREC volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(vxrec_mm_dl_tlv, -9000, 100, 0);
 
-/* VXREC volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(vxrec_tones_tlv, -12000, 100, 3000);
+/* VXREC volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(vxrec_tones_tlv, -9000, 100, 0);
 
-/* VXREC volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(vxrec_vx_dl_tlv, -12000, 100, 3000);
+/* VXREC volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(vxrec_vx_dl_tlv, -9000, 100, 0);
 
-/* VXREC volume control from -120 to 30 dB in 1 dB steps */
-static DECLARE_TLV_DB_SCALE(vxrec_vx_ul_tlv, -12000, 100, 3000);
+/* VXREC volume control from -90 to 30 dB in 1 dB steps */
+static DECLARE_TLV_DB_SCALE(vxrec_vx_ul_tlv, -9000, 100, 0);
 
 //TODO: we have to use the shift value atm to represent register id due to current HAL
 static int dl1_put_mixer(struct snd_kcontrol *kcontrol,
@@ -551,7 +577,7 @@ static int volume_put_sdt_mixer(struct snd_kcontrol *kcontrol,
 
 	pm_runtime_get_sync(&pdev->dev);
 
-	abe_write_mixer(MIXSDT, -12000 + (ucontrol->value.integer.value[0] * 100),
+	abe_write_mixer(MIXSDT, -9000 + (ucontrol->value.integer.value[0] * 100),
 				RAMP_0MS, mc->reg);
 	pm_runtime_put_sync(&pdev->dev);
 
@@ -568,7 +594,7 @@ static int volume_put_audul_mixer(struct snd_kcontrol *kcontrol,
 	struct platform_device *pdev = abe->pdev;
 
 	pm_runtime_get_sync(&pdev->dev);
-	abe_write_mixer(MIXAUDUL, -12000 + (ucontrol->value.integer.value[0] * 100),
+	abe_write_mixer(MIXAUDUL, -9000 + (ucontrol->value.integer.value[0] * 100),
 				RAMP_0MS, mc->reg);
 	pm_runtime_put_sync(&pdev->dev);
 
@@ -584,7 +610,7 @@ static int volume_put_vxrec_mixer(struct snd_kcontrol *kcontrol,
 	struct platform_device *pdev = abe->pdev;
 
 	pm_runtime_get_sync(&pdev->dev);
-	abe_write_mixer(MIXVXREC, -12000 + (ucontrol->value.integer.value[0] * 100),
+	abe_write_mixer(MIXVXREC, -9000 + (ucontrol->value.integer.value[0] * 100),
 				RAMP_0MS, mc->reg);
 	pm_runtime_put_sync(&pdev->dev);
 
@@ -600,7 +626,7 @@ static int volume_put_dl1_mixer(struct snd_kcontrol *kcontrol,
 	struct platform_device *pdev = abe->pdev;
 
 	pm_runtime_get_sync(&pdev->dev);
-	abe_write_mixer(MIXDL1, -12000 + (ucontrol->value.integer.value[0] * 100),
+	abe_write_mixer(MIXDL1, -9000 + (ucontrol->value.integer.value[0] * 100),
 				RAMP_0MS, mc->reg);
 	pm_runtime_put_sync(&pdev->dev);
 
@@ -616,7 +642,7 @@ static int volume_put_dl2_mixer(struct snd_kcontrol *kcontrol,
 	struct platform_device *pdev = abe->pdev;
 
 	pm_runtime_get_sync(&pdev->dev);
-	abe_write_mixer(MIXDL2, -12000 + (ucontrol->value.integer.value[0] * 100),
+	abe_write_mixer(MIXDL2, -9000 + (ucontrol->value.integer.value[0] * 100),
 				RAMP_0MS, mc->reg);
 	pm_runtime_put_sync(&pdev->dev);
 
@@ -634,7 +660,7 @@ static int volume_get_dl1_mixer(struct snd_kcontrol *kcontrol,
 
 	pm_runtime_get_sync(&pdev->dev);
 	abe_read_mixer(MIXDL1, &val, mc->reg);
-	ucontrol->value.integer.value[0] = (val + 12000) / 100;
+	ucontrol->value.integer.value[0] = (val + 9000) / 100;
 	pm_runtime_put_sync(&pdev->dev);
 
 	return 0;
@@ -651,7 +677,7 @@ static int volume_get_dl2_mixer(struct snd_kcontrol *kcontrol,
 
 	pm_runtime_get_sync(&pdev->dev);
 	abe_read_mixer(MIXDL2, &val, mc->reg);
-	ucontrol->value.integer.value[0] = (val + 12000) / 100;
+	ucontrol->value.integer.value[0] = (val + 9000) / 100;
 	pm_runtime_put_sync(&pdev->dev);
 
 	return 0;
@@ -668,7 +694,7 @@ static int volume_get_audul_mixer(struct snd_kcontrol *kcontrol,
 
 	pm_runtime_get_sync(&pdev->dev);
 	abe_read_mixer(MIXAUDUL, &val, mc->reg);
-	ucontrol->value.integer.value[0] = (val + 12000) / 100;
+	ucontrol->value.integer.value[0] = (val + 9000) / 100;
 	pm_runtime_put_sync(&pdev->dev);
 
 	return 0;
@@ -685,7 +711,7 @@ static int volume_get_vxrec_mixer(struct snd_kcontrol *kcontrol,
 
 	pm_runtime_get_sync(&pdev->dev);
 	abe_read_mixer(MIXVXREC, &val, mc->reg);
-	ucontrol->value.integer.value[0] = (val + 12000) / 100;
+	ucontrol->value.integer.value[0] = (val + 9000) / 100;
 	pm_runtime_put_sync(&pdev->dev);
 
 	return 0;
@@ -702,7 +728,7 @@ static int volume_get_sdt_mixer(struct snd_kcontrol *kcontrol,
 
 	pm_runtime_get_sync(&pdev->dev);
 	abe_read_mixer(MIXSDT, &val, mc->reg);
-	ucontrol->value.integer.value[0] = (val + 12000) / 100;
+	ucontrol->value.integer.value[0] = (val + 9000) / 100;
 	pm_runtime_put_sync(&pdev->dev);
 
 	return 0;
@@ -796,46 +822,44 @@ static int abe_put_equalizer(struct snd_kcontrol *kcontrol,
 }
 
 static const char *dl1_equ_texts[] = {
-	"Flat response. Gain = 1",
-	"High-pass with 800Hz cut-off frequency. Gain = 1",
-	"High-pass with 800Hz cut-off frequency. Gain = 0.25",
-	"High-pass with 800Hz cut-off frequency. Gain = 0.1",
+	"Flat response",
+	"High-pass 0dB",
+	"High-pass -12dB",
+	"High-pass -20dB",
 };
 
 static const char *dl20_equ_texts[] = {
-	"Flat response. Gain = 1",
-	"High-pass with 800Hz cut-off frequency. Gain = 1",
-	"High-pass with 800Hz cut-off frequency. Gain = 0.25",
-	"High-pass with 800Hz cut-off frequency. Gain = 0.1",
-
+	"Flat response",
+	"High-pass 0dB",
+	"High-pass -12dB",
+	"High-pass -20dB",
 };
 
 static const char *dl21_equ_texts[] = {
-	"Flat response. Gain = 1",
-	"High-pass with 800Hz cut-off frequency. Gain = 1",
-	"High-pass with 800Hz cut-off frequency. Gain = 0.25",
-	"High-pass with 800Hz cut-off frequency. Gain = 0.1",
+	"Flat response",
+	"High-pass 0dB",
+	"High-pass -12dB",
+	"High-pass -20dB",
 };
 
 static const char *amic_equ_texts[] = {
-	"High-pass with 20kHz cut-off frequency. Gain = 1",
-	"High-pass with 20kHz cut-off frequency. Gain = 0.25",
-	"High-pass with 20kHz cut-off frequency. Gain = 0.125",
+	"High-pass 0dB",
+	"High-pass -12dB",
+	"High-pass -18dB",
 };
 
 static const char *dmic_equ_texts[] = {
-	"High-pass with 20kHz cut-off frequency. Gain = 1",
-	"High-pass with 20kHz cut-off frequency. Gain = 0.25",
-	"High-pass with 20kHz cut-off frequency. Gain = 0.125",
+	"High-pass 0dB",
+	"High-pass -12dB",
+	"High-pass -18dB",
 };
 
 static const char *sdt_equ_texts[] = {
-	"Flat response. Gain = 1",
-	"High-pass with 800Hz cut-off frequency. Gain = 1",
-	"High-pass with 800Hz cut-off frequency. Gain = 0.25",
-	"High-pass with 800Hz cut-off frequency. Gain = 0.1",
+	"Flat response",
+	"High-pass 0dB",
+	"High-pass -12dB",
+	"High-pass -20dB",
 };
-
 
 static const struct soc_enum dl1_equalizer_enum =
 	SOC_ENUM_SINGLE(EQ1, 0, NBDL1EQ_PROFILES, dl1_equ_texts);
@@ -1005,89 +1029,89 @@ static const struct snd_kcontrol_new pdm_ul1_switch_controls =
 static const struct snd_kcontrol_new abe_controls[] = {
 	/* DL1 mixer gains */
 	SOC_SINGLE_EXT_TLV("DL1 Media Playback Volume",
-		MIX_DL1_INPUT_MM_DL, 0, 149, 0,
+		MIX_DL1_INPUT_MM_DL, 0, 120, 0,
 		volume_get_dl1_mixer, volume_put_dl1_mixer, mm_dl1_tlv),
 	SOC_SINGLE_EXT_TLV("DL1 Tones Playback Volume",
-		MIX_DL1_INPUT_TONES, 0, 149, 0,
+		MIX_DL1_INPUT_TONES, 0, 120, 0,
 		volume_get_dl1_mixer, volume_put_dl1_mixer, tones_dl1_tlv),
 	SOC_SINGLE_EXT_TLV("DL1 Voice Playback Volume",
-		MIX_DL1_INPUT_VX_DL, 0, 149, 0,
+		MIX_DL1_INPUT_VX_DL, 0, 120, 0,
 		volume_get_dl1_mixer, volume_put_dl1_mixer, voice_dl1_tlv),
 	SOC_SINGLE_EXT_TLV("DL1 Capture Playback Volume",
-		MIX_DL1_INPUT_MM_UL2, 0, 149, 0,
+		MIX_DL1_INPUT_MM_UL2, 0, 120, 0,
 		volume_get_dl1_mixer, volume_put_dl1_mixer, capture_dl1_tlv),
 
 	/* DL2 mixer gains */
 	SOC_SINGLE_EXT_TLV("DL2 Media Playback Volume",
-		MIX_DL2_INPUT_MM_DL, 0, 149, 0,
+		MIX_DL2_INPUT_MM_DL, 0, 120, 0,
 		volume_get_dl2_mixer, volume_put_dl2_mixer, mm_dl2_tlv),
 	SOC_SINGLE_EXT_TLV("DL2 Tones Playback Volume",
-		MIX_DL2_INPUT_TONES, 0, 149, 0,
+		MIX_DL2_INPUT_TONES, 0, 120, 0,
 		volume_get_dl2_mixer, volume_put_dl2_mixer, tones_dl2_tlv),
 	SOC_SINGLE_EXT_TLV("DL2 Voice Playback Volume",
-		MIX_DL2_INPUT_VX_DL, 0, 149, 0,
+		MIX_DL2_INPUT_VX_DL, 0, 120, 0,
 		volume_get_dl2_mixer, volume_put_dl2_mixer, voice_dl2_tlv),
 	SOC_SINGLE_EXT_TLV("DL2 Capture Playback Volume",
-		MIX_DL2_INPUT_MM_UL2, 0, 149, 0,
+		MIX_DL2_INPUT_MM_UL2, 0, 120, 0,
 		volume_get_dl2_mixer, volume_put_dl2_mixer, capture_dl2_tlv),
 
 	/* VXREC mixer gains */
 	SOC_SINGLE_EXT_TLV("VXREC Media Volume",
-		MIX_VXREC_INPUT_MM_DL, 0, 149, 0,
+		MIX_VXREC_INPUT_MM_DL, 0, 120, 0,
 		volume_get_vxrec_mixer, volume_put_vxrec_mixer, vxrec_mm_dl_tlv),
 	SOC_SINGLE_EXT_TLV("VXREC Tones Volume",
-		MIX_VXREC_INPUT_TONES, 0, 149, 0,
+		MIX_VXREC_INPUT_TONES, 0, 120, 0,
 		volume_get_vxrec_mixer, volume_put_vxrec_mixer, vxrec_tones_tlv),
 	SOC_SINGLE_EXT_TLV("VXREC Voice DL Volume",
-		MIX_VXREC_INPUT_VX_UL, 0, 149, 0,
+		MIX_VXREC_INPUT_VX_UL, 0, 120, 0,
 		volume_get_vxrec_mixer, volume_put_vxrec_mixer, vxrec_vx_dl_tlv),
 	SOC_SINGLE_EXT_TLV("VXREC Voice UL Volume",
-		MIX_VXREC_INPUT_VX_DL, 0, 149, 0,
+		MIX_VXREC_INPUT_VX_DL, 0, 120, 0,
 		volume_get_vxrec_mixer, volume_put_vxrec_mixer, vxrec_vx_ul_tlv),
 
 	/* AUDUL mixer gains */
 	SOC_SINGLE_EXT_TLV("AUDUL Media Volume",
-		MIX_AUDUL_INPUT_MM_DL, 0, 149, 0,
+		MIX_AUDUL_INPUT_MM_DL, 0, 120, 0,
 		volume_get_audul_mixer, volume_put_audul_mixer, audul_mm_tlv),
 	SOC_SINGLE_EXT_TLV("AUDUL Tones Volume",
-		MIX_AUDUL_INPUT_TONES, 0, 149, 0,
+		MIX_AUDUL_INPUT_TONES, 0, 120, 0,
 		volume_get_audul_mixer, volume_put_audul_mixer, audul_tones_tlv),
 	SOC_SINGLE_EXT_TLV("AUDUL Voice UL Volume",
-		MIX_AUDUL_INPUT_UPLINK, 0, 149, 0,
+		MIX_AUDUL_INPUT_UPLINK, 0, 120, 0,
 		volume_get_audul_mixer, volume_put_audul_mixer, audul_vx_ul_tlv),
 	SOC_SINGLE_EXT_TLV("AUDUL Voice DL Volume",
-		MIX_AUDUL_INPUT_VX_DL, 0, 149, 0,
+		MIX_AUDUL_INPUT_VX_DL, 0, 120, 0,
 		volume_get_audul_mixer, volume_put_audul_mixer, audul_vx_dl_tlv),
 
 	/* SDT mixer gains */
 	SOC_SINGLE_EXT_TLV("SDT UL Volume",
-		MIX_SDT_INPUT_UP_MIXER, 0, 149, 0,
+		MIX_SDT_INPUT_UP_MIXER, 0, 120, 0,
 		volume_get_sdt_mixer, volume_put_sdt_mixer, sdt_ul_tlv),
 	SOC_SINGLE_EXT_TLV("SDT DL Volume",
-		MIX_SDT_INPUT_DL1_MIXER, 0, 149, 0,
+		MIX_SDT_INPUT_DL1_MIXER, 0, 120, 0,
 		volume_get_sdt_mixer, volume_put_sdt_mixer, sdt_dl_tlv),
 
-	SOC_ENUM_EXT("DL1 Equalizer Profile",
+	SOC_ENUM_EXT("DL1 Equalizer",
 			dl1_equalizer_enum ,
 			abe_get_equalizer, abe_put_equalizer),
 
-	SOC_ENUM_EXT("DL2 Left Equalizer Profile",
+	SOC_ENUM_EXT("DL2 Left Equalizer",
 			dl20_equalizer_enum ,
 			abe_get_equalizer, abe_put_equalizer),
 
-	SOC_ENUM_EXT("DL2 Right Equalizer Profile",
+	SOC_ENUM_EXT("DL2 Right Equalizer",
 			dl21_equalizer_enum ,
 			abe_get_equalizer, abe_put_equalizer),
 
-	SOC_ENUM_EXT("AMIC Equalizer Profile",
+	SOC_ENUM_EXT("AMIC Equalizer",
 			amic_equalizer_enum ,
 			abe_get_equalizer, abe_put_equalizer),
 
-	SOC_ENUM_EXT("DMIC Equalizer Profile",
+	SOC_ENUM_EXT("DMIC Equalizer",
 			dmic_equalizer_enum ,
 			abe_get_equalizer, abe_put_equalizer),
 
-	SOC_ENUM_EXT("Sidetone Equalizer Profile",
+	SOC_ENUM_EXT("Sidetone Equalizer",
 			sdt_equalizer_enum ,
 			abe_get_equalizer, abe_put_equalizer),
 };
@@ -1107,6 +1131,8 @@ static const struct snd_soc_dapm_widget abe_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_OUT("MM_UL2", "MultiMedia2 Capture", 0,
 			ABE_WIDGET(4), ABE_OPP_50, 0),
 	SND_SOC_DAPM_AIF_IN("MM_DL", " MultiMedia1 Playback", 0,
+			ABE_WIDGET(5), ABE_OPP_25, 0),
+	SND_SOC_DAPM_AIF_IN("MM_DL_LP", " MultiMedia1 LP Playback", 0,
 			ABE_WIDGET(5), ABE_OPP_25, 0),
 	SND_SOC_DAPM_AIF_IN("VIB_DL", "Vibra Playback", 0,
 			ABE_WIDGET(6), ABE_OPP_100, 0),
@@ -1231,6 +1257,9 @@ static const struct snd_soc_dapm_widget abe_dapm_widgets[] = {
 	SND_SOC_DAPM_MIXER("Voice Capture VMixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("DL1 Capture VMixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("DL2 Capture VMixer", SND_SOC_NOPM, 0, 0, NULL, 0),
+
+	/* Join our MM_DL and MM_DL_LP playback */
+	SND_SOC_DAPM_MIXER("MM_DL VMixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 
 	/* Virtual MODEM and VX_UL mixer */
 	SND_SOC_DAPM_MIXER("VX UL VMixer", SND_SOC_NOPM, 0, 0, NULL, 0),
@@ -1433,7 +1462,9 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"DL1 Mixer", "Capture", "DL1 Capture VMixer"},
 	{"DL1 Capture VMixer", NULL, "MUX_UL10"},
 	{"DL1 Capture VMixer", NULL, "MUX_UL11"},
-	{"DL1 Mixer", "Multimedia", "MM_DL"},
+	{"DL1 Mixer", "Multimedia", "MM_DL VMixer"},
+	{"MM_DL VMixer", NULL, "MM_DL"},
+	{"MM_DL VMixer", NULL, "MM_DL_LP"},
 
 	/* Sidetone Mixer */
 	{"Sidetone Mixer", "Playback", "DL1 Mixer"},
@@ -1455,18 +1486,24 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"DL2 Mixer", "Capture", "DL2 Capture VMixer"},
 	{"DL2 Capture VMixer", NULL, "MUX_UL10"},
 	{"DL2 Capture VMixer", NULL, "MUX_UL11"},
-	{"DL2 Mixer", "Multimedia", "MM_DL"},
+	{"DL2 Mixer", "Multimedia", "MM_DL VMixer"},
+	{"MM_DL VMixer", NULL, "MM_DL"},
+	{"MM_DL VMixer", NULL, "MM_DL_LP"},
 	{"PDM_DL2", NULL, "DL2 Mixer"},
 
 	/* VxREC Mixer */
 	{"Capture Mixer", "Tones", "TONES_DL"},
 	{"Capture Mixer", "Voice Playback", "VX DL VMixer"},
 	{"Capture Mixer", "Voice Capture", "VX UL VMixer"},
-	{"Capture Mixer", "Media Playback", "MM_DL"},
+	{"Capture Mixer", "Media Playback", "MM_DL VMixer"},
+	{"MM_DL VMixer", NULL, "MM_DL"},
+	{"MM_DL VMixer", NULL, "MM_DL_LP"},
 
 	/* Audio UL mixer */
 	{"Voice Capture Mixer", "Tones Playback", "TONES_DL"},
-	{"Voice Capture Mixer", "Media Playback", "MM_DL"},
+	{"Voice Capture Mixer", "Media Playback", "MM_DL VMixer"},
+	{"MM_DL VMixer", NULL, "MM_DL"},
+	{"MM_DL VMixer", NULL, "MM_DL_LP"},
 	{"Voice Capture Mixer", "Capture", "Voice Capture VMixer"},
 	{"Voice Capture VMixer", NULL, "MUX_VX0"},
 	{"Voice Capture VMixer", NULL, "MUX_VX1"},
@@ -1544,6 +1581,7 @@ static int aess_open(struct snd_pcm_substream *substream)
 
 	switch (dai->id) {
 	case ABE_FRONTEND_DAI_MODEM:
+		break;
 	case ABE_FRONTEND_DAI_LP_MEDIA:
 		snd_soc_set_runtime_hwparams(substream, &omap_abe_hardware);
 		break;
@@ -1551,25 +1589,62 @@ static int aess_open(struct snd_pcm_substream *substream)
 		break;
 	}
 
+	abe->active++;
+
 	mutex_unlock(&abe->mutex);
+	return 0;
+}
+static int abe_ping_pong_init(struct snd_pcm_hw_params *params,
+	struct snd_pcm_substream *substream)
+{
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	abe_data_format_t format;
+	u32 dst;
+
+	/*Storing substream pointer for irq*/
+	abe->psubs = substream;
+
+	format.f = params_rate(params);
+	format.samp_format = STEREO_16_16;
+
+	abe_write_event_generator(EVENT_44100);
+
+	/*Adding ping pong buffer subroutine*/
+	abe_add_subroutine(&abe_irq_pingpong_player_id,
+				(abe_subroutine2) abe_irq_pingpong_subroutine,
+				SUB_0_PARAM, (u32 *)0);
+
+	/* Connect a Ping-Pong cache-flush protocol to MM_DL port */
+	abe_connect_irq_ping_pong_port(MM_DL_PORT, &format,
+				abe_irq_pingpong_player_id,
+				N_SAMPLES_BYTES, &dst,
+				PING_PONG_WITH_MCU_IRQ);
+
+	/* Memory mapping for hw params */
+	runtime->dma_area  = abe->io_base + ABE_DMEM_BASE_OFFSET_MPU +
+				ABE_VM_AESS_OFFSET + dst;
+	runtime->dma_addr  = 0;
+	runtime->dma_bytes = N_SAMPLES_BYTES * 2;
+
 	return 0;
 }
 
 static int aess_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
-	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *dai = rtd->cpu_dai;
+	int ret = 0;
 
 	dev_dbg(&rtd->dev, "%s ID %d\n", __func__, dai->id);
 
-
 	switch (dai->id) {
 	case ABE_FRONTEND_DAI_MODEM:
+		break;
 	case ABE_FRONTEND_DAI_LP_MEDIA:
-		snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
-		runtime->dma_bytes = params_buffer_bytes(params);
+		ret = abe_ping_pong_init(params, substream);
+		if (ret < 0)
+			return ret;
 		break;
 	default:
 		break;
@@ -1617,8 +1692,6 @@ static int aess_prepare(struct snd_pcm_substream *substream)
 		udelay(250);
 		break;
 	}
-
-	abe->active++;
 
 	mutex_unlock(&abe->mutex);
 	return 0;
@@ -1677,120 +1750,69 @@ static int aess_close(struct snd_pcm_substream *substream)
 static int aess_mmap(struct snd_pcm_substream *substream,
 	struct vm_area_struct *vma)
 {
-	struct snd_pcm_runtime *runtime = substream->runtime;
-	int ret;
+	int offset, size, err;
 
 	/* TODO: we may need to check for underrun. */
+	vma->vm_flags |= VM_IO | VM_RESERVED;
+	vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
+	size = vma->vm_end - vma->vm_start;
+	offset = vma->vm_pgoff << PAGE_SHIFT;
 
-	ret = dma_mmap_writecombine(substream->pcm->card->dev, vma,
-				     runtime->dma_area,
-				     runtime->dma_addr,
-				     runtime->dma_bytes);
-	if (ret < 0)
-		return ret;
+	err = io_remap_pfn_range(vma, vma->vm_start,
+			(ABE_DMEM_BASE_ADDRESS_MPU +
+			ABE_DMEM_BASE_OFFSET_PING_PONG + offset) >> PAGE_SHIFT,
+			size, vma->vm_page_prot);
 
-	/* TODO: tell ABE we have new period. */
-	/* abe_blah(); */
+	if (err)
+		return -EAGAIN;
+
 	return 0;
 }
 
+static snd_pcm_uframes_t aess_pointer(struct snd_pcm_substream *substream)
+{
+	snd_pcm_uframes_t offset;
+	u32 pingpong;
+
+	abe_read_offset_ping_pong_buffer(MM_DL_PORT, &pingpong);
+	offset = (snd_pcm_uframes_t)pingpong;
+/*
+	if (offset >= runtime->buffer_size)
+		offset = 0;
+*/
+	return offset;
+}
+
+
 static struct snd_pcm_ops omap_aess_pcm_ops = {
-	.open = aess_open,
+	.open           = aess_open,
 	.hw_params	= aess_hw_params,
 	.prepare	= aess_prepare,
-	.close	= aess_close,
+	.close	        = aess_close,
+	.pointer	= aess_pointer,
 	.mmap		= aess_mmap,
 };
 
-/* TODO: MODEM doesn't need this although low power mmap() does */
 /* TODO: We need the buffer less IOCTL() to support MODEM */
-static u64 omap_pcm_dmamask = DMA_BIT_MASK(64);
-
-static int aess_pcm_preallocate_dma_buffer(struct snd_pcm *pcm,
-	int stream)
-{
-	struct snd_pcm_substream *substream = pcm->streams[stream].substream;
-	struct snd_dma_buffer *buf = &substream->dma_buffer;
-	size_t size = omap_abe_hardware.buffer_bytes_max;
-
-	buf->dev.type = SNDRV_DMA_TYPE_DEV;
-	buf->dev.dev = pcm->card->dev;
-	buf->private_data = NULL;
-	buf->area = dma_alloc_writecombine(pcm->card->dev, size,
-					   &buf->addr, GFP_KERNEL);
-
-	if (!buf->area)
-		return -ENOMEM;
-
-	buf->bytes = size;
-
-	return 0;
-}
-
-static void aess_pcm_free_dma_buffers(struct snd_pcm *pcm)
-{
-	struct snd_pcm_substream *substream;
-	struct snd_dma_buffer *buf;
-	int stream;
-
-	for (stream = 0; stream < 2; stream++) {
-		substream = pcm->streams[stream].substream;
-		if (!substream)
-			continue;
-
-		buf = &substream->dma_buffer;
-		if (!buf->area)
-			continue;
-
-		dma_free_writecombine(pcm->card->dev, buf->bytes,
-				      buf->area, buf->addr);
-		buf->area = NULL;
-	}
-}
-
-static int aess_pcm_new(struct snd_soc_pcm_runtime *rtd)
-{
-	struct snd_card *card = rtd->card->snd_card;
-	struct snd_pcm *pcm = rtd->pcm;
-	int ret = 0;
-
-	if (!card->dev->dma_mask)
-		card->dev->dma_mask = &omap_pcm_dmamask;
-	if (!card->dev->coherent_dma_mask)
-		card->dev->coherent_dma_mask = DMA_BIT_MASK(64);
-
-	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
-		ret = aess_pcm_preallocate_dma_buffer(pcm,
-			SNDRV_PCM_STREAM_PLAYBACK);
-		if (ret)
-			goto out;
-	}
-
-	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
-		ret = aess_pcm_preallocate_dma_buffer(pcm,
-			SNDRV_PCM_STREAM_CAPTURE);
-		if (ret)
-			goto out;
-	}
-
-out:
-	return ret;
-}
 
 static struct snd_soc_platform_driver omap_aess_platform = {
 	.ops	= &omap_aess_pcm_ops,
 	.probe = abe_probe,
 	.remove = abe_remove,
-	.pcm_new	= aess_pcm_new,
-	.pcm_free	= aess_pcm_free_dma_buffers,
 	.read = abe_dsp_read,
 	.write = abe_dsp_write,
 };
 
 static int __devinit abe_engine_probe(struct platform_device *pdev)
 {
-	struct resource *res;
+	struct omap_hwmod *oh;
 	int ret = -EINVAL, i;
+
+	oh = omap_hwmod_lookup("omap-aess-audio");
+	if (oh == NULL) {
+		dev_err(&pdev->dev, "no hwmod device found\n");
+		return -ENODEV;
+	}
 
 	abe = kzalloc(sizeof(struct abe_data), GFP_KERNEL);
 	if (abe == NULL)
@@ -1801,13 +1823,7 @@ static int __devinit abe_engine_probe(struct platform_device *pdev)
 	for (i = 0; i < ABE_ROUTES_UL + 2; i++)
 		abe->router[i] = ZERO_labelID;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (res == NULL) {
-		dev_err(&pdev->dev, "no resource\n");
-		goto err;
-	}
-
-	abe->io_base = ioremap(res->start, resource_size(res));
+	abe->io_base = omap_hwmod_get_mpu_rt_va(oh);
 	if (!abe->io_base) {
 		ret = -ENOMEM;
 		goto err;
@@ -1816,7 +1832,7 @@ static int __devinit abe_engine_probe(struct platform_device *pdev)
 	abe->irq = platform_get_irq(pdev, 0);
 	if (abe->irq < 0) {
 		ret = abe->irq;
-		goto err_irq;
+		goto err;
 	}
 
 	pm_runtime_enable(&pdev->dev);
@@ -1831,8 +1847,6 @@ static int __devinit abe_engine_probe(struct platform_device *pdev)
 	if (ret == 0)
 		return 0;
 
-err_irq:
-	iounmap(abe->io_base);
 err:
 	kfree(abe);
 	return ret;
@@ -1843,7 +1857,6 @@ static int __devexit abe_engine_remove(struct platform_device *pdev)
 	struct abe_data *priv = dev_get_drvdata(&pdev->dev);
 
 	snd_soc_unregister_platform(&pdev->dev);
-
 	kfree(priv);
 	return 0;
 }

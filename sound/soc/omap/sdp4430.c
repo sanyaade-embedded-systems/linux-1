@@ -25,6 +25,7 @@
 #include <linux/mfd/twl6040-codec.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
+#include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/jack.h>
@@ -44,6 +45,7 @@
 #endif
 
 static int twl6040_power_mode;
+static int mcbsp_cfg;
 
 static struct i2c_client *tps6130x_client;
 static struct i2c_board_info tps6130x_hwmon_info = {
@@ -72,8 +74,12 @@ static int sdp4430_mcpdm_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+	struct snd_soc_pcm_runtime *modem_rtd;
+	struct snd_pcm_substream *modem_substream[2];
 	int clk_id, freq;
-	int ret;
+	int ret = 0, fe_id;
+
+	fe_id = rtd->current_fe;
 
 	if (twl6040_power_mode) {
 		clk_id = TWL6040_SYSCLK_SEL_HPPLL;
@@ -90,6 +96,30 @@ static int sdp4430_mcpdm_hw_params(struct snd_pcm_substream *substream,
 		printk(KERN_ERR "can't set codec system clock\n");
 		return ret;
 	}
+
+	if (fe_id == ABE_FRONTEND_DAI_MODEM) {
+		if (!mcbsp_cfg) {
+			modem_substream[substream->stream] =
+				snd_soc_get_dai_substream(rtd->card,
+							OMAP_ABE_BE_MM_EXT1,
+							substream->stream);
+			if (modem_substream[substream->stream] == NULL)
+				return -ENODEV;
+
+			modem_rtd = modem_substream[substream->stream]->private_data;
+
+			/* Set cpu DAI configuration */
+			ret = snd_soc_dai_set_fmt(modem_rtd->cpu_dai,
+					  SND_SOC_DAIFMT_I2S |
+					  SND_SOC_DAIFMT_NB_NF |
+					  SND_SOC_DAIFMT_CBM_CFM);
+			mcbsp_cfg = 1;
+		}
+		if (ret < 0) {
+			printk(KERN_ERR "can't set Modem cpu DAI configuration\n");
+			return ret;
+		}
+	}
 	return ret;
 }
 
@@ -102,13 +132,24 @@ static int sdp4430_mcbsp_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	int ret;
+	int ret = 0;
+	unsigned int be_id;
 
-	/* Set cpu DAI configuration */
-	ret = snd_soc_dai_set_fmt(cpu_dai,
+        be_id = rtd->dai_link->be_id;
+
+	if (be_id == OMAP_ABE_DAI_MM_FM) {
+		/* Set cpu DAI configuration */
+		ret = snd_soc_dai_set_fmt(cpu_dai,
 				  SND_SOC_DAIFMT_I2S |
 				  SND_SOC_DAIFMT_NB_NF |
 				  SND_SOC_DAIFMT_CBM_CFM);
+	} else if (be_id == OMAP_ABE_DAI_BT_VX) {
+	        ret = snd_soc_dai_set_fmt(cpu_dai,
+                                  SND_SOC_DAIFMT_DSP_B |
+                                  SND_SOC_DAIFMT_NB_IF |
+                                  SND_SOC_DAIFMT_CBM_CFM);
+	}
+
 	if (ret < 0) {
 		printk(KERN_ERR "can't set cpu DAI configuration\n");
 		return ret;
@@ -166,6 +207,35 @@ static int sdp4430_dmic_hw_params(struct snd_pcm_substream *substream,
 static struct snd_soc_ops sdp4430_dmic_ops = {
 	.hw_params = sdp4430_dmic_hw_params,
 };
+
+static int mcbsp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+			struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *channels = hw_param_interval(params,
+                                       SNDRV_PCM_HW_PARAM_CHANNELS);
+	unsigned int be_id;
+
+        be_id = rtd->dai_link->be_id;
+
+	if (be_id == OMAP_ABE_DAI_MM_FM)
+		channels->min = 2;
+	else if (be_id == OMAP_ABE_DAI_BT_VX)
+		channels->min = 1;
+
+	snd_mask_set(&params->masks[SNDRV_PCM_HW_PARAM_FORMAT -
+	                            SNDRV_PCM_HW_PARAM_FIRST_MASK],
+	                            SNDRV_PCM_FORMAT_S16_LE);
+	return 0;
+}
+
+static int dmic_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+			struct snd_pcm_hw_params *params)
+{
+	snd_mask_set(&params->masks[SNDRV_PCM_HW_PARAM_FORMAT -
+	                            SNDRV_PCM_HW_PARAM_FIRST_MASK],
+	                            SNDRV_PCM_FORMAT_S32_LE);
+	return 0;
+}
 
 /* Headset jack */
 static struct snd_soc_jack hs_jack;
@@ -327,16 +397,14 @@ static struct snd_soc_dai_driver dai[] = {
 		.stream_name = "Playback",
 		.channels_min = 1,
 		.channels_max = 2,
-		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
-					SNDRV_PCM_RATE_48000,
+		.rates = SNDRV_PCM_RATE_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 1,
 		.channels_max = 2,
-		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
-					SNDRV_PCM_RATE_48000,
+		.rates = SNDRV_PCM_RATE_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	},
 },
@@ -393,6 +461,10 @@ static const char *modem_be[] = {
 		OMAP_ABE_BE_DMIC2,
 };
 
+static const char *mm_lp_be[] = {
+		OMAP_ABE_BE_PDM_DL1,
+};
+
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link sdp4430_dai[] = {
 
@@ -413,6 +485,7 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 		.num_be = ARRAY_SIZE(mm1_be),
 		.fe_playback_channels = 2,
 		.fe_capture_channels = 8,
+		.no_host_mode = SND_SOC_DAI_LINK_OPT_HOST,
 	},
 	{
 		.name = "SDP4430 Media Capture",
@@ -440,6 +513,7 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 		.num_be = ARRAY_SIZE(mm1_be),
 		.fe_playback_channels = 2,
 		.fe_capture_channels = 2,
+		.no_host_mode = SND_SOC_DAI_LINK_OPT_HOST,
 	},
 	{
 		.name = "SDP4430 Tones Playback",
@@ -480,18 +554,19 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 		.num_be = ARRAY_SIZE(modem_be),
 		.fe_playback_channels = 2,
 		.fe_capture_channels = 2,
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
 	},
 	{
 		.name = "SDP4430 Media LP",
 		.stream_name = "Multimedia",
 
 		/* ABE components - MM-DL (mmap) */
-		.cpu_dai_name = "MultiMedia1",
+		.cpu_dai_name = "MultiMedia1 LP",
 		.platform_name = "omap-aess-audio",
 
 		.dynamic = 1, /* BE is dynamic */
-		.supported_be = tones_be,
-		.num_be = ARRAY_SIZE(tones_be),
+		.supported_be = mm_lp_be,
+		.num_be = ARRAY_SIZE(mm_lp_be),
 		.fe_playback_channels = 2,
 	},
 #ifdef CONFIG_SND_OMAP_SOC_HDMI
@@ -634,6 +709,7 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 
 		.no_pcm = 1, /* don't create ALSA pcm for this */
 		.no_codec = 1, /* TODO: have a dummy CODEC */
+		.be_hw_params_fixup = mcbsp_be_hw_params_fixup,
 		.ops = &sdp4430_mcbsp_ops,
 		.be_id = OMAP_ABE_DAI_BT_VX,
 	},
@@ -650,6 +726,7 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 
 		.no_pcm = 1, /* don't create ALSA pcm for this */
 		.no_codec = 1, /* TODO: have a dummy CODEC */
+		.be_hw_params_fixup = mcbsp_be_hw_params_fixup,
 		.ops = &sdp4430_mcbsp_ops,
 		.be_id = OMAP_ABE_DAI_MM_FM,
 	},
@@ -666,6 +743,7 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 
 		.no_pcm = 1, /* don't create ALSA pcm for this */
 		.no_codec = 1, /* TODO: have a dummy CODEC */
+		.be_hw_params_fixup = mcbsp_be_hw_params_fixup,
 		.ops = &sdp4430_mcbsp_ops,
 		.be_id = OMAP_ABE_DAI_MODEM,
 	},
@@ -682,6 +760,7 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 		.codec_name = "dmic-codec.0",
 
 		.no_pcm = 1, /* don't create ALSA pcm for this */
+		.be_hw_params_fixup = dmic_be_hw_params_fixup,
 		.be_id = OMAP_ABE_DAI_DMIC0,
 	},
 	{
@@ -697,6 +776,7 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 		.codec_name = "dmic-codec.1",
 
 		.no_pcm = 1, /* don't create ALSA pcm for this */
+		.be_hw_params_fixup = dmic_be_hw_params_fixup,
 		.be_id = OMAP_ABE_DAI_DMIC1,
 	},
 	{
@@ -712,14 +792,15 @@ static struct snd_soc_dai_link sdp4430_dai[] = {
 		.codec_name = "dmic-codec.2",
 
 		.no_pcm = 1, /* don't create ALSA pcm for this */
+		.be_hw_params_fixup = dmic_be_hw_params_fixup,
 		.be_id = OMAP_ABE_DAI_DMIC2,
 	},
 };
 
 /* Audio machine driver */
 static struct snd_soc_card snd_soc_sdp4430 = {
-	.name = "SDP4430",
-	.long_name = "TI OMAP4 SDP4430 Board",
+	.driver_name = "OMAP4",
+	.long_name = "TI OMAP4 Board",
 	.dai_link = sdp4430_dai,
 	.num_links = ARRAY_SIZE(sdp4430_dai),
 };
@@ -736,6 +817,11 @@ static int __init sdp4430_soc_init(void)
 		return -ENODEV;
 	}
 	printk(KERN_INFO "SDP4430 SoC init\n");
+
+	if (machine_is_omap_4430sdp())
+		snd_soc_sdp4430.name = "SDP4430";
+	else if (machine_is_omap4_panda())
+		snd_soc_sdp4430.name = "Panda";
 
 	sdp4430_snd_device = platform_device_alloc("soc-audio", -1);
 	if (!sdp4430_snd_device) {

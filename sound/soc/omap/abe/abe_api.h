@@ -80,9 +80,15 @@ abehal_status abe_read_hardware_configuration(u32 *u, u32 *o,
  * for the delivery of "end of time sequenced tasks" notifications, some are
  * originated from the Ping-Pong protocols, some are generated from
  * the embedded debugger when the firmware stops on programmable break-points,
- * etc …
+ * etc
  */
 abehal_status abe_irq_processing(void);
+/**
+ * abe_irq_clear - clear ABE interrupt
+ *
+ * This subroutine is call to clear MCU Irq
+ */
+abehal_status abe_irq_clear(void);
 /**
  * abe_select_main_port - Select stynchronization port for Event generator.
  * @id: audio port name
@@ -154,6 +160,7 @@ abehal_status abe_set_ping_pong_buffer(u32 port, u32 n_bytes);
  * Tell the next base address of the next ping_pong Buffer and its size
  */
 abehal_status abe_read_next_ping_pong_buffer(u32 port, u32 *p, u32 *n);
+abehal_status abe_read_offset_ping_pong_buffer(u32 port, u32 *n);
 /**
  * abe_init_ping_pong_buffer
  * @id: ABE port ID
@@ -219,6 +226,8 @@ abehal_status abe_disable_data_transfer(u32 id);
  * enable the IO task (@f <> 0)
  */
 abehal_status abe_enable_data_transfer(u32 id);
+void abe_enable_irq_transfer(u32 id);
+void abe_disable_irq_transfer(u32 id);
 /**
  * abe_set_dmic_filter
  * @d: DMIC decimation ratio : 16/25/32/40
