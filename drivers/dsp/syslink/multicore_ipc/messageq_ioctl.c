@@ -394,6 +394,18 @@ exit:
 }
 
 /*
+ * ======== messageq_ioctl_unblock ========
+ *  Purpose:
+ *  This ioctl interface to messageq_unblock function
+ */
+static inline int messageq_ioctl_unblock(struct messageq_cmd_args *cargs)
+{
+	cargs->api_status = messageq_unblock(cargs->args.unblock.messageq_handle);
+
+	return 0;
+}
+
+/*
  * ======== messageq_ioctl_setup ========
  *  Purpose:
  *  This ioctl interface to messageq_setup function
@@ -631,6 +643,10 @@ int messageq_ioctl(struct inode *inode, struct file *filp,
 		status = messageq_ioctl_get_config(&cargs);
 		break;
 
+	case CMD_MESSAGEQ_UNBLOCK:
+		status = messageq_ioctl_unblock(&cargs);
+		break;
+
 	case CMD_MESSAGEQ_SETUP:
 		status = messageq_ioctl_setup(&cargs);
 		if (status >= 0)
@@ -714,6 +730,6 @@ int messageq_ioctl(struct inode *inode, struct file *filp,
 	return status;
 
 exit:
-	printk(KERN_ERR "messageq_ioctl failed: status = 0x%x\n", status);
+	pr_err("messageq_ioctl failed: status = 0x%x\n", status);
 	return status;
 }
