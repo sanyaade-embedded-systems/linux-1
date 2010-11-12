@@ -126,19 +126,23 @@ static struct kobj_type writeback_ktype = {
 	.default_attrs = writeback_sysfs_attrs,
 };
 
-bool omap_dss_check_wb(struct writeback_cache_data *wb, int overlayId, int managerId)
+bool omap_dss_check_wb(struct writeback_cache_data *wb, int overlayId,
+		int managerId)
 {
 	bool result = false;
+
 	DSSDBG("ovl=%d,mgr=%d,srcty=%d(%s),src=%d\n",
-	   overlayId, managerId, wb->source_type,
-	   wb->source_type == OMAP_WB_SOURCE_OVERLAY ? "OMAP_WB_SOURCE_OVERLAY" :
-	   wb->source_type == OMAP_WB_SOURCE_MANAGER ? "OMAP_WB_SOURCE_MANAGER" : "???",
-	   wb->source);
+		overlayId, managerId, wb->source_type,
+		wb->source_type == OMAP_WB_SOURCE_OVERLAY ?
+		"OMAP_WB_SOURCE_OVERLAY" :
+		wb->source_type == OMAP_WB_SOURCE_MANAGER ?
+		"OMAP_WB_SOURCE_MANAGER" : "???",
+		wb->source);
 
 	if ((wb->source_type == OMAP_WB_SOURCE_OVERLAY) &&
-				((wb->source - 3) == overlayId))
+			((wb->source - 3) == overlayId)) {
 		result = true;
-	else if (wb->source_type == OMAP_WB_SOURCE_MANAGER) {
+	} else if (wb->source_type == OMAP_WB_SOURCE_MANAGER) {
 		switch (wb->source) {
 		case OMAP_WB_LCD_1_MANAGER:
 			if (managerId == OMAP_DSS_CHANNEL_LCD)
@@ -153,20 +157,20 @@ bool omap_dss_check_wb(struct writeback_cache_data *wb, int overlayId, int manag
 		case OMAP_WB_OVERLAY1:
 		case OMAP_WB_OVERLAY2:
 		case OMAP_WB_OVERLAY3:
-				break;
+			break;
 		}
 	}
 
 	return result;
-
 }
 
 static bool dss_check_wb(struct omap_writeback *wb)
 {
 	DSSDBG("srcty=%d(%s),src=%d\n", wb->info.source_type,
-	   wb->info.source_type == OMAP_WB_SOURCE_OVERLAY ? "OMAP_WB_SOURCE_OVERLAY" :
-	   wb->info.source_type == OMAP_WB_SOURCE_MANAGER ? "OMAP_WB_SOURCE_MANAGER" : "???",
-	   wb->info.source);
+		wb->info.source_type == OMAP_WB_SOURCE_OVERLAY ?
+		"OMAP_WB_SOURCE_OVERLAY" :
+		wb->info.source_type == OMAP_WB_SOURCE_MANAGER ?
+		"OMAP_WB_SOURCE_MANAGER" : "???", wb->info.source);
 
 	return 0;
 }
@@ -222,22 +226,21 @@ void dss_init_writeback(struct platform_device *pdev)
 
 	INIT_LIST_HEAD(&wb_list);
 
+	wb = kzalloc(sizeof(*wb), GFP_KERNEL);
 
-		wb = kzalloc(sizeof(*wb), GFP_KERNEL);
+	BUG_ON(wb == NULL);
 
-		BUG_ON(wb == NULL);
+	wb->check_wb = &dss_check_wb;
+	wb->set_wb_info = &omap_dss_wb_set_info;
+	wb->get_wb_info = &omap_dss_wb_get_info;
 
-		wb->check_wb = &dss_check_wb;
-		wb->set_wb_info = &omap_dss_wb_set_info;
-		wb->get_wb_info = &omap_dss_wb_get_info;
-		mutex_init(&wb->lock);
+	mutex_init(&wb->lock);
 
-		omap_dss_add_wb(wb);
+	omap_dss_add_wb(wb);
 
-		r = kobject_init_and_add(&wb->kobj, &writeback_ktype,
-				&pdev->dev.kobj, "writeback", 0);
+	r = kobject_init_and_add(&wb->kobj, &writeback_ktype,
+		&pdev->dev.kobj, "writeback", 0);
 
-		if (r) {
-			DSSERR("failed to create sysfs file\n");
-		}
+	if (r)
+		DSSERR("failed to create sysfs file\n");
 }

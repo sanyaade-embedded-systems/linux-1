@@ -798,6 +798,7 @@ static int configure_overlay(enum omap_plane plane)
 		case OMAP_DSS_COLOR_NV12:
 			bpp = 8;
 			break;
+
 		case OMAP_DSS_COLOR_RGB16:
 		case OMAP_DSS_COLOR_ARGB16:
 		case OMAP_DSS_COLOR_YUV2:
@@ -982,11 +983,10 @@ static int configure_dispc(void)
 		oc->dirty = false;
 		oc->shadow_dirty = true;
 		if (!cpu_is_omap44xx())
-		mgr_go[oc->channel] = true;
-		else
-			if (!omap_dss_check_wb(wb, i, -1))
-				/* skip manager go if WB enabled */
-				mgr_go[oc->channel] = true;
+			mgr_go[oc->channel] = true;
+		else if (!omap_dss_check_wb(wb, i, -1))
+			/* skip manager go if WB enabled */
+			mgr_go[oc->channel] = true;
 	}
 
 	/* Commit manager settings */
@@ -1028,8 +1028,9 @@ static int configure_dispc(void)
 				/* Do nothing as of now as we dont
 				 * support Manager yet with WB
 				 */
-				/*WB GO bit has to be used only in case of
-				capture mode and not in memory mode*/
+				/* WB GO bit has to be used only in case of
+				 * capture mode and not in memory mode
+				 */
 				dispc_go_wb();
 				break;
 			}
