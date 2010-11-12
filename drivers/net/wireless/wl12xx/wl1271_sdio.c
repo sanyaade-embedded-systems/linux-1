@@ -181,7 +181,7 @@ static int wl1271_sdio_power_off(struct wl1271 *wl)
     return 0;
 }
 
-static void wl1271_sdio_set_power(struct wl1271 *wl, bool enable)
+static int wl1271_sdio_set_power(struct wl1271 *wl, bool enable)
 {
 	struct sdio_func *func = wl_to_func(wl);
 
@@ -193,7 +193,6 @@ static void wl1271_sdio_set_power(struct wl1271 *wl, bool enable)
 		return wl1271_sdio_power_on(wl);
     else
 		return wl1271_sdio_power_off(wl);
-
 }
 
 static struct wl1271_if_operations sdio_ops = {
