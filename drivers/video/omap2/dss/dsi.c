@@ -3187,7 +3187,7 @@ static void dsi_handle_framedone(enum omap_dsi_index ix, int error)
 
 	p_dsi->bta_callback = NULL;
 
-	if (error == -ETIMEDOUT)
+	if (error == -ETIMEDOUT && device->manager)
 		/* Ensures recovery of DISPC after a failed lcd_enable*/
 		device->manager->disable(device->manager);
 
@@ -3405,21 +3405,23 @@ int omap_dsi_update(struct omap_dss_device *dssdev,
 	 * see rather obscure HW error happening, as DSS halts. */
 	BUG_ON(x % 2 == 1);
 
-	if (dssdev->manager->caps & OMAP_DSS_OVL_MGR_CAP_DISPC) {
-		p_dsi->framedone_callback = callback;
-		p_dsi->framedone_data = data;
+	if (dssdev->manager) {
+		if (dssdev->manager->caps & OMAP_DSS_OVL_MGR_CAP_DISPC) {
+			p_dsi->framedone_callback = callback;
+			p_dsi->framedone_data = data;
 
-		p_dsi->update_region.x = x;
-		p_dsi->update_region.y = y;
-		p_dsi->update_region.w = w;
-		p_dsi->update_region.h = h;
-		p_dsi->update_region.device = dssdev;
+			p_dsi->update_region.x = x;
+			p_dsi->update_region.y = y;
+			p_dsi->update_region.w = w;
+			p_dsi->update_region.h = h;
+			p_dsi->update_region.device = dssdev;
 
-		dsi_update_screen_dispc(dssdev, x, y, w, h);
-	} else {
-		dsi_update_screen_l4(dssdev, x, y, w, h);
-		dsi_perf_show(ix, "L4");
-		callback(0, data);
+			dsi_update_screen_dispc(dssdev, x, y, w, h);
+		} else {
+			dsi_update_screen_l4(dssdev, x, y, w, h);
+			dsi_perf_show(ix, "L4");
+			callback(0, data);
+		}
 	}
 
 	return 0;
@@ -3669,9 +3671,9 @@ int omapdss_dsi_display_enable(struct omap_dss_device *dssdev)
 
 	DSSDBG("dsi_display_enable\n");
 
-	dss_mainclk_state_enable();
-
+	/* turn on clock(s) */
 	dssdev->state = OMAP_DSS_DISPLAY_TRANSITION;
+	dss_mainclk_state_enable();
 
 	WARN_ON(!dsi_bus_is_locked(ix));
 
@@ -3744,8 +3746,8 @@ void omapdss_dsi_display_disable(struct omap_dss_device *dssdev)
 
 	p_dsi->recover.enabled = false;
 
+	/* cut clocks(s) */
 	dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
-
 	dss_mainclk_state_disable(true);
 
 	p_dsi->enabled = false;
@@ -3885,11 +3887,13 @@ static void dsi_error_recovery_worker(struct work_struct *work)
 		dsi_bus_unlock(ix);
 		mutex_unlock(&p_dsi->lock);
 
-		if (recover->dssdev->driver->run_test(recover->dssdev, 1) != 0) {
-			DSSERR("DSS IF reset failed, resetting panel taal%d\n", ix + 1);
-			recover->dssdev->driver->disable(recover->dssdev);
+		if (recover->dssdev->driver->run_test(recover->dssdev, 1)
+			!= 0) {
+			DSSERR("DSS IF reset failed, resetting panel taal%d\n",
+				ix + 1);
+			omapdss_display_disable(recover->dssdev);
 			mdelay(10);
-			recover->dssdev->driver->enable(recover->dssdev);
+			omapdss_display_enable(recover->dssdev);
 			recover->recovering = false;
 		}
 		return;

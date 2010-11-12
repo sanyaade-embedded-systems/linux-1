@@ -234,6 +234,10 @@ int omapdss_dpi_display_enable(struct omap_dss_device *dssdev)
 
 	dss_clk_enable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
+	/* turn on clock(s) */
+	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
+	dss_mainclk_state_enable();
+
 	r = dpi_basic_init(dssdev);
 	if (r)
 		goto err2;
@@ -250,10 +254,12 @@ int omapdss_dpi_display_enable(struct omap_dss_device *dssdev)
 
 	mdelay(2);
 
-	if (cpu_is_omap44xx())
-		dpi_start_auto_update(dssdev);
+	if (dssdev->manager) {
+		if (cpu_is_omap44xx())
+			dpi_start_auto_update(dssdev);
 
-	dssdev->manager->enable(dssdev->manager);
+		dssdev->manager->enable(dssdev->manager);
+	}
 
 	return 0;
 
@@ -280,7 +286,8 @@ void omapdss_dpi_display_disable(struct omap_dss_device *dssdev)
 
 	ix = (dssdev->channel == OMAP_DSS_CHANNEL_LCD) ? DSI1 : DSI2;
 
-	dssdev->manager->disable(dssdev->manager);
+	if (dssdev->manager)
+		dssdev->manager->disable(dssdev->manager);
 
 #ifdef HWMOD
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
@@ -289,6 +296,11 @@ void omapdss_dpi_display_disable(struct omap_dss_device *dssdev)
 	dss_clk_disable(DSS_CLK_FCK2);
 #endif
 #endif
+
+	/* cut clock(s) */
+	dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
+	dss_mainclk_state_disable(true);
+
 	dss_clk_disable(DSS_CLK_ICK | DSS_CLK_FCK1);
 
 	if (cpu_is_omap34xx() && !cpu_is_omap3630())
