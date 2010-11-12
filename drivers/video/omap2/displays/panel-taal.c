@@ -196,24 +196,24 @@ static struct panel_config panel_configs[] = {
 			.low		= 10,
 		},
 	},
-       {
-                .name           = "taal2",
-                .type           = PANEL_TAAL,
-                .timings        = {
-                        .x_res          = 864,
-                        .y_res          = 480,
-                },
-                .sleep          = {
-                        .sleep_in       = 5,
-                        .sleep_out      = 5,
-                        .hw_reset       = 5,
-                        .enable_te      = 100, /* possible panel bug */
-                },
-                .reset_sequence = {
-                        .high           = 10,
-                        .low            = 10,
-                },
-        },
+	{
+		.name		= "taal2",
+		.type		= PANEL_TAAL,
+		.timings	= {
+			.x_res		= 864,
+			.y_res		= 480,
+		},
+		.sleep		= {
+			.sleep_in	= 5,
+			.sleep_out	= 5,
+			.hw_reset	= 5,
+			.enable_te	= 100, /* possible panel bug */
+		},
+		.reset_sequence = {
+			.high		= 10,
+			.low		= 10,
+		},
+	},
 };
 
 struct taal_data {

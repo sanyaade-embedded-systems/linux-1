@@ -43,10 +43,10 @@ static struct {
 	struct platform_device *pdev;
 	int		ctx_id;
 
-	struct clk      *dss_ick;
+	struct clk	*dss_ick;
 	struct clk	*dss1_fck;
 	struct clk	*dss2_fck;
-	struct clk      *dss_54m_fck;
+	struct clk	*dss_54m_fck;
 	struct clk	*dss_96m_fck;
 	unsigned	num_clks_enabled;
 
@@ -522,8 +522,8 @@ static int dss_initialize_debugfs(void)
 	debugfs_create_file("dsi1_irq", S_IRUGO, dss_debugfs_dir,
 			&dsi1_dump_irqs, &dss_debug_fops);
 	if (cpu_is_omap44xx())
-			debugfs_create_file("dsi2_irq", S_IRUGO, dss_debugfs_dir,
-					&dsi2_dump_irqs, &dss_debug_fops);
+		debugfs_create_file("dsi2_irq", S_IRUGO, dss_debugfs_dir,
+			&dsi2_dump_irqs, &dss_debug_fops);
 #endif
 
 	debugfs_create_file("dss", S_IRUGO, dss_debugfs_dir,
@@ -584,7 +584,7 @@ static int omap_dss_probe(struct platform_device *pdev)
 		dss_init_writeback(pdev); /*Write back init*/
 #ifdef HWMOD
 	if (!cpu_is_omap44xx())
-	r = dss_get_clocks();
+		r = dss_get_clocks();
 	if (r)
 		goto err_clocks;
 
@@ -1143,7 +1143,7 @@ static void reset_device(struct device *dev, int check)
 			if (*dev_p) {
 				WARN("%s: struct device fields will be "
 						"discarded\n",
-				     __func__);
+					__func__);
 				break;
 			}
 			dev_p++;

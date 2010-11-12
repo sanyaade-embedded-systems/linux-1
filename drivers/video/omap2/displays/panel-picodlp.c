@@ -31,22 +31,23 @@
 #include <linux/slab.h>
 
 
-#define DRIVER_NAME       "pico_i2c"
-/* How much data we can put into single write block */
-#define MAX_I2C_WRITE_BLOCK_SIZE 32
-#define PICO_MAJOR     1 /* 2 bits */
-#define PICO_MINOR     1 /* 2 bits */
-#define DSI_DIV2            (0x40C)
-#define DSI_DIV_LCD          (16)
-#define DSI_DIV_PCD          (0)
-#define DSI_CONTROL2         (0x238)
+#define DRIVER_NAME	"pico_i2c"
 
-static  int display_control_reg   = (0x58000000 + 0x1000);
+/* How much data we can put into single write block */
+#define MAX_I2C_WRITE_BLOCK_SIZE	32
+#define PICO_MAJOR			1 /* 2 bits */
+#define PICO_MINOR			1 /* 2 bits */
+#define DSI_DIV2			0x40C
+#define DSI_DIV_LCD			16
+#define DSI_DIV_PCD			0
+#define DSI_CONTROL2			0x238
+
+static  int display_control_reg		= (0x58000000 + 0x1000);
 extern void __iomem  *dispc_base;
 
 static struct omap_video_timings pico_ls_timings = {
-	.x_res	        = 864,
-	.y_res	        = 480,
+	.x_res		= 864,
+	.y_res		= 480,
 	.hsw		= 7,
 	.hfp		= 11,
 	.hbp		= 7,
@@ -61,7 +62,6 @@ struct pico {
 	struct mutex xfer_lock;
 	} *sd;
 
-
 static int dlp_read_block(int reg, u8 *data, int len);
 static int pico_i2c_write(int reg, u32 value);
 
@@ -72,10 +72,9 @@ static int dlp_write_block(int reg, const u8 *data, int len)
 	int r;
 	int i;
 
-	if (len < 1 ||
-	    len > MAX_I2C_WRITE_BLOCK_SIZE) {
+	if (len < 1 || len > MAX_I2C_WRITE_BLOCK_SIZE) {
 		dev_info(&sd->client->dev, "too long syn_write_block len %d\n",
-			 len);
+			len);
 		return -EIO;
 	}
 
@@ -94,13 +93,12 @@ static int dlp_write_block(int reg, const u8 *data, int len)
 	r = i2c_transfer(sd->client->adapter, &msg, 1);
 	mutex_unlock(&sd->xfer_lock);
 
-		if (r == 1) {
-			for (i = 0; i < len; i++)
-				dev_info(&sd->client->dev,
-					 "addr %x bw 0x%02x[%d]: 0x%02x\n",
-					 sd->client->addr, reg + i, i, data[i]);
-		}
-
+	if (r == 1) {
+		for (i = 0; i < len; i++)
+			dev_info(&sd->client->dev,
+				"addr %x bw 0x%02x[%d]: 0x%02x\n",
+				sd->client->addr, reg + i, i, data[i]);
+	}
 
 	if (r == 1)
 		return 0;
@@ -140,16 +138,14 @@ static int dlp_read_block(int reg, u8 *data, int len)
 	r = i2c_transfer(sd->client->adapter, msg, 2);
 	mutex_unlock(&sd->xfer_lock);
 
+	if (r == 2) {
+		int i;
 
-		if (r == 2) {
-			int i;
-
-			for (i = 0; i < len; i++)
-				dev_info(&sd->client->dev,
-					 "addr %x br 0x%02x[%d]: 0x%02x\n",
-					sd->client->addr, reg + i, i, data[i]);
-		}
-
+		for (i = 0; i < len; i++)
+			dev_info(&sd->client->dev,
+				"addr %x br 0x%02x[%d]: 0x%02x\n",
+				sd->client->addr, reg + i, i, data[i]);
+	}
 
 	if (r == 2)
 		return len;
@@ -165,7 +161,8 @@ static __attribute__ ((unused)) int pico_i2c_read(int reg)
 	data[1] = data[2] = data[3] = data[0] = 0;
 
 	r = dlp_read_block(reg, data, 4);
-	return (int)data[3] | ((int)(data[2]) << 8) | ((int)(data[1]) << 16) | ((int)(data[0]) << 24);
+	return (int) data[3] | ((int)(data[2]) << 8) | ((int)(data[1]) << 16) |
+		((int)(data[0]) << 24);
 }
 
 /*
@@ -179,8 +176,8 @@ static __attribute__ ((unused)) int pico_i2c_read(int reg)
  *          2 - invalid mailbox specified
  *          3 - invalid table_number / mailbox combination
  */
-int dpp2600_flash_dma(int flash_address, int flash_num_bytes, int CMT_SEQz, int table_number)
-
+int dpp2600_flash_dma(int flash_address, int flash_num_bytes, int CMT_SEQz,
+		int table_number)
 {
 	int mailbox_address, mailbox_select;
 
@@ -192,6 +189,7 @@ int dpp2600_flash_dma(int flash_address, int flash_num_bytes, int CMT_SEQz, int 
 	if ((CMT_SEQz == 0 && table_number > 6) ||
 		(CMT_SEQz == 1 && table_number > 5))
 		return 3;
+
 	/* set mailbox parameters */
 	if (CMT_SEQz) {
 		mailbox_address = CMT_SPLASH_LUT_START_ADDR;
@@ -209,7 +207,9 @@ int dpp2600_flash_dma(int flash_address, int flash_num_bytes, int CMT_SEQz, int 
 	pico_i2c_write(mailbox_select, table_number);
 	/* transfer control to flash controller */
 	pico_i2c_write(PBC_CONTROL, 1);
+
 	mdelay(1000);
+
 	/* return register access to I2c */
 	pico_i2c_write(PBC_CONTROL, 0);
 	/* close LUT access */
@@ -241,7 +241,9 @@ static void dpp2600_config_rgb(void)
 int dpp2600_config_splash(int image_number)
 {
 	int address, size, resolution;
-	printk("dpp2600 config splash");
+
+	printk("dpp2600 config splash\n");
+
 	resolution = QWVGA_LANDSCAPE;
 	switch (image_number) {
 	case 0:
@@ -277,6 +279,7 @@ int dpp2600_config_splash(int image_number)
 	dpp2600_flash_dma(address, size, 1, SPLASH_LUT);
 	/* turn image back on */
 	pico_i2c_write(SEQ_CONTROL, 1);
+
 	return 0;
 }
 
@@ -308,12 +311,14 @@ int dpp2600_config_tpg(int pattern_select)
 {
 	if (pattern_select > TPG_ANSI_CHECKERBOARD)
 		return 1;
+
 	pico_i2c_write(SEQ_CONTROL, 0);
 	pico_i2c_write(INPUT_RESOLUTION, WVGA_854_LANDSCAPE);
 	pico_i2c_write(SEQUENCE_MODE, SEQ_LOCK);
 	pico_i2c_write(TEST_PAT_SELECT, pattern_select);
 	pico_i2c_write(INPUT_SOURCE, 1);
 	pico_i2c_write(SEQ_CONTROL, 1);
+
 	return 0;
 }
 
@@ -321,7 +326,9 @@ static int pico_i2c_initialize(void)
 {
 
 	mutex_init(&sd->xfer_lock);
+
 	mdelay(100);
+
 	/* pico Soft reset */
 	pico_i2c_write(SOFT_RESET, 1);
 	/*Front end reset*/
@@ -341,10 +348,13 @@ static int pico_i2c_initialize(void)
 	pico_i2c_write(FLASH_DUMMY_BYTES, 1);
 	pico_i2c_write(FLASH_ADDR_BYTES, 3);
 	/* configure DMA from flash to LUT */
-	dpp2600_flash_dma(CMT_LUT_0_START_ADDR, CMT_LUT_0_SIZE, 1, CMT_LUT_ALL);
+	dpp2600_flash_dma(CMT_LUT_0_START_ADDR, CMT_LUT_0_SIZE, 1,
+		CMT_LUT_ALL);
 	/* SEQ and DRC look-up tables */
-	dpp2600_flash_dma(SEQUENCE_0_START_ADDR, SEQUENCE_0_SIZE, 0, SEQ_SEQ_LUT);
-	dpp2600_flash_dma(DRC_TABLE_0_START_ADDR, DRC_TABLE_0_SIZE, 0, SEQ_DRC_LUT_ALL);
+	dpp2600_flash_dma(SEQUENCE_0_START_ADDR, SEQUENCE_0_SIZE, 0,
+		SEQ_SEQ_LUT);
+	dpp2600_flash_dma(DRC_TABLE_0_START_ADDR, DRC_TABLE_0_SIZE, 0,
+		SEQ_DRC_LUT_ALL);
 	/* frame buffer memory controller enable */
 	pico_i2c_write(SDC_ENABLE, 1);
 	/* AGC control */
@@ -375,27 +385,34 @@ static int pico_i2c_initialize(void)
 	pico_i2c_write(G_DRIVE_CURRENT, 0x298);
 	pico_i2c_write(B_DRIVE_CURRENT, 0x298);
 	pico_i2c_write(RGB_DRIVER_ENABLE, 7);
+
 	mdelay(10000);
+
 	dpp2600_config_rgb();
+
 	return 0;
-
-
 }
 
-static int pico_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int pico_probe(struct i2c_client *client,
+		const struct i2c_device_id *id)
 {
-	printk("pico probe called");
+	printk("pico probe called\n");
+
 	sd = kzalloc(sizeof(struct pico), GFP_KERNEL);
+
 	if (sd == NULL)
 		return -ENOMEM;
+
 	i2c_set_clientdata(client, sd);
 	sd->client = client;
+
 	return 0;
 }
 
 static int __exit pico_remove(struct i2c_client *client)
 {
 	struct pico *sd1 = i2c_get_clientdata(client);
+
 	kfree(sd1);
 	i2c_set_clientdata(client, NULL);
 
@@ -404,36 +421,44 @@ static int __exit pico_remove(struct i2c_client *client)
 
 static const struct i2c_device_id pico_id[] = {
 	{ "picoDLP_i2c_driver", 0 },
-	{ },
 };
 
 static int picoDLP_panel_start(struct omap_dss_device *dssdev)
 {
 	int r = 0;
+
 	if (dssdev->platform_enable) {
 		r = dssdev->platform_enable(dssdev);
 		if (r)
 			return r;
 	}
+
 	r = omapdss_dpi_display_enable(dssdev);
 	if (r) {
 		dev_err(&dssdev->dev, "failed to enable DPI\n");
 		return r;
 	}
+
 	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
-	display_control_reg	= (int)dispc_base;
+
+	display_control_reg = (int)dispc_base;
+
 	/* Specify the Display Controller Logic Clock Divisor*/
 	modify_pico_register(display_control_reg + DSI_DIV2, 0xFF |
-			(0XFF << DSI_DIV_LCD), (1 << DSI_DIV_LCD) | (4 << DSI_DIV_PCD));
+			(0XFF << DSI_DIV_LCD), (1 << DSI_DIV_LCD) |
+			(4 << DSI_DIV_PCD));
 	/* LCD output Enabled */
-	modify_pico_register(display_control_reg + DSI_CONTROL2, (1<<11), 0x00000000);
+	modify_pico_register(display_control_reg + DSI_CONTROL2, (1<<11),
+			0x00000000);
+
 	pico_i2c_initialize();
 	return 0;
 }
 
 static int picoDLP_panel_enable(struct omap_dss_device *dssdev)
 {
-	printk(KERN_INFO "pico DLP init is called ");
+	printk(KERN_INFO "pico DLP init is called\n");
+
 	if (dssdev->state != OMAP_DSS_DISPLAY_DISABLED)
 		return -EINVAL;
 
@@ -448,10 +473,9 @@ static void pico_get_resolution(struct omap_dss_device *dssdev,
 
 static int picoDLP_panel_probe(struct omap_dss_device *dssdev)
 {
-	dssdev->panel.config &= ~((OMAP_DSS_LCD_IPC) | (OMAP_DSS_LCD_IEO));
-	dssdev->panel.config =  (OMAP_DSS_LCD_TFT) | (OMAP_DSS_LCD_ONOFF) |
-						(OMAP_DSS_LCD_IHS)  |
-						(OMAP_DSS_LCD_IVS) ;
+	dssdev->panel.config &= ~(OMAP_DSS_LCD_IPC | OMAP_DSS_LCD_IEO);
+	dssdev->panel.config = OMAP_DSS_LCD_TFT | OMAP_DSS_LCD_ONOFF |
+				OMAP_DSS_LCD_IHS | OMAP_DSS_LCD_IVS;
 	dssdev->panel.acb = 0x0;
 	dssdev->panel.timings = pico_ls_timings;
 
@@ -495,7 +519,8 @@ static int picoDLP_panel_suspend(struct omap_dss_device *dssdev)
 
 static int picoDLP_panel_resume(struct omap_dss_device *dssdev)
 {
-	printk(KERN_INFO "pico DLP resume is called ");
+	printk(KERN_INFO "pico DLP resume is called\n");
+
 	if (dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED)
 		return -EINVAL;
 
@@ -510,32 +535,34 @@ static struct omap_dss_driver picoDLP_driver = {
 	.get_resolution	= pico_get_resolution,
 	.suspend	= picoDLP_panel_suspend,
 	.resume		= picoDLP_panel_resume,
-	.driver         = {
-		.name   = "picoDLP_panel",
-	.owner  = THIS_MODULE,
+	.driver		= {
+		.name	= "picoDLP_panel",
+		.owner	= THIS_MODULE,
 	},
 };
 
 static struct i2c_driver pico_i2c_driver = {
 	.driver = {
-		.name           = "pico_i2c_driver",
+		.name	= "pico_i2c_driver",
 	},
-	.probe          = pico_probe,
-	.remove         = __exit_p(pico_remove),
-	.id_table       = pico_id,
-
+	.probe		= pico_probe,
+	.remove		= __exit_p(pico_remove),
+	.id_table	= pico_id,
 };
 
 static int __init pico_i2c_init(void)
 {
 	int r;
+
 	r = i2c_add_driver(&pico_i2c_driver);
 	if (r < 0) {
 		printk(KERN_WARNING DRIVER_NAME
 		" driver registration failed\n");
 		return r;
 	}
+
 	omap_dss_register_driver(&picoDLP_driver);
+
 	return 0;
 }
 
@@ -550,10 +577,5 @@ static void __exit pico_i2c_exit(void)
 module_init(pico_i2c_init);
 module_exit(pico_i2c_exit);
 
-
-
 MODULE_DESCRIPTION("pico DLP driver");
 MODULE_LICENSE("GPL");
-
-
-
