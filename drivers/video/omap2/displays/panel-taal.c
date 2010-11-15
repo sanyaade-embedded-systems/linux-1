@@ -415,11 +415,12 @@ static int taal_set_update_window(enum omap_dsi_index ix,
 	u16 x, u16 y, u16 w, u16 h)
 {
 	int r = 0;
-#if 0
 	u16 x1 = x;
 	u16 x2 = x + w - 1;
+#if 0
 	u16 y1 = y;
 	u16 y2 = y + h - 1;
+#endif
 
 	u8 buf[5];
 	buf[0] = DCS_COLUMN_ADDR;
@@ -431,6 +432,7 @@ static int taal_set_update_window(enum omap_dsi_index ix,
 	r = dsi_vc_dcs_write_nosync(ix, TCH, buf, sizeof(buf));
 	if (r)
 		return r;
+#if 0
 
 	buf[0] = DCS_PAGE_ADDR;
 	buf[1] = (y1 >> 8) & 0xff;
