@@ -258,6 +258,7 @@ static int fm_v4l2_vidioc_g_ctrl(struct file *file, void *priv,
 	unsigned short curr_vol;
 	unsigned char curr_mute_mode;
 	struct fmdrv_ops *fmdev;
+	unsigned char chanl_spacing;
 
 	fmdev = video_drvdata(file);
 
@@ -273,6 +274,10 @@ static int fm_v4l2_vidioc_g_ctrl(struct file *file, void *priv,
 		if (ret < 0)
 			goto exit;
 		ctrl->value = curr_vol;
+		break;
+	case V4L2_CID_CHANNEL_SPACING:  /* channel spacing */
+		ret = fm_rx_get_chanl_spacing(fmdev, &chanl_spacing);
+		ctrl->value = chanl_spacing;
 		break;
 	}
 
@@ -298,6 +303,10 @@ static int fm_v4l2_vidioc_s_ctrl(struct file *file, void *priv,
 		ret = fm_rx_set_volume(fmdev, (unsigned short)ctrl->value);
 		if (ret < 0)
 			goto exit;
+		break;
+
+	case V4L2_CID_CHANNEL_SPACING:		/* channel spacing */
+		ret = fm_rx_set_chanl_spacing(fmdev, (unsigned int)ctrl->value);
 		break;
 	}
 

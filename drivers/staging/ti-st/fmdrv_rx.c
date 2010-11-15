@@ -81,7 +81,7 @@ int fm_rx_set_frequency(struct fmdrv_ops *fmdev, unsigned int freq_to_set)
 
 	/* Calculate frequency index to write */
 	frq_index = (freq_to_set - fmdev->rx.region.bottom_frequency) /
-		fmdev->rx.region.channel_spacing;
+				FM_FREQ_MUL;
 
 	/* Set frequency index */
 	FM_STORE_LE16_TO_BE16(payload, frq_index);
@@ -125,7 +125,7 @@ int fm_rx_set_frequency(struct fmdrv_ops *fmdev, unsigned int freq_to_set)
 
 	curr_frq = FM_BE16_TO_LE16(curr_frq);
 	curr_frq_in_khz = (fmdev->rx.region.bottom_frequency
-		+ ((unsigned int)curr_frq * fmdev->rx.region.channel_spacing));
+		+ ((unsigned int)curr_frq * FM_FREQ_MUL));
 
 	/* Re-enable default FM interrupts */
 	fmdev->irq_info.mask &= ~(FM_FR_EVENT | FM_BL_EVENT);
@@ -160,7 +160,7 @@ int fm_rx_seek(struct fmdrv_ops *fmdev, unsigned int seek_upward,
 	int resp_len;
 	unsigned short curr_frq, next_frq, last_frq;
 	unsigned short payload, int_reason;
-	char offset;
+	char offset, spacing;
 	unsigned long timeleft;
 	int ret;
 
@@ -176,19 +176,20 @@ int fm_rx_seek(struct fmdrv_ops *fmdev, unsigned int seek_upward,
 
 	curr_frq = FM_BE16_TO_LE16(curr_frq);
 
-	last_frq =
-	(fmdev->rx.region.top_frequency - fmdev->rx.region.bottom_frequency)
-	/ fmdev->rx.region.channel_spacing;
+	last_frq = (fmdev->rx.region.top_frequency -
+		fmdev->rx.region.bottom_frequency) / FM_FREQ_MUL;
 
-	/* Check the offset in order to be aligned to the 100KHz steps */
-	offset = curr_frq % 2;
+	/* Check the offset in order to be aligned to the channel spacing*/
+	spacing = fmdev->rx.region.channel_spacing / FM_FREQ_MUL;
+	offset = curr_frq % spacing;
 
-	next_frq = seek_upward ? curr_frq + 2 /* Seek Up */ :
-	    curr_frq - 2 /* Seek Down */ ;
+	next_frq = seek_upward ? curr_frq + spacing /* Seek Up */ :
+				 curr_frq - spacing /* Seek Down */ ;
 
-	/* Add or subtract offset (0/1) in order
-	 * to stay aligned to the 100KHz steps
-	 */
+	/* Add or subtract offset in order to stay aligned to the channel
+	* spacing.
+	*/
+
 	if ((short)next_frq < 0)
 		next_frq = last_frq - offset;
 	else if (next_frq > last_frq)
@@ -251,8 +252,7 @@ int fm_rx_seek(struct fmdrv_ops *fmdev, unsigned int seek_upward,
 
 	curr_frq = FM_BE16_TO_LE16(curr_frq);
 	fmdev->rx.curr_freq = (fmdev->rx.region.bottom_frequency +
-			       ((unsigned int)curr_frq *
-				fmdev->rx.region.channel_spacing));
+			       ((unsigned int)curr_frq * FM_FREQ_MUL));
 
 	/* Reset RDS cache and current station pointers */
 	fm_rx_reset_rds_cache(fmdev);
@@ -808,5 +808,47 @@ int fm_rx_get_af_switch(struct fmdrv_ops *fmdev, unsigned char *af_mode)
 		return -ENOMEM;
 	}
 	*af_mode = fmdev->rx.af_mode;
+	return 0;
+}
+
+/* Set desired channel spacing */
+int fm_rx_set_chanl_spacing(struct fmdrv_ops *fmdev, unsigned char spacing)
+{
+	unsigned short payload;
+	int ret;
+
+	if (spacing != FM_CHANNEL_SPACING_50KHZ &&
+		spacing != FM_CHANNEL_SPACING_100KHZ &&
+		spacing != FM_CHANNEL_SPACING_200KHZ) {
+		pr_err("Invalid channel spacing");
+		return -EINVAL;
+	}
+
+	/* set channel spacing */
+	FM_STORE_LE16_TO_BE16(payload, spacing);
+
+	ret = fmc_send_cmd(fmdev, CHANL_BW_SET, &payload, sizeof(payload),
+		&fmdev->maintask_completion, NULL, NULL);
+	if (ret < 0)
+		return ret;
+
+	fmdev->rx.region.channel_spacing = spacing * FM_FREQ_MUL;
+
+	return 0;
+}
+
+/* Get channel spacing */
+int fm_rx_get_chanl_spacing(struct fmdrv_ops *fmdev, unsigned char *spacing)
+{
+	if (fmdev->curr_fmmode != FM_MODE_RX)
+		return -EPERM;
+
+	if (spacing == NULL) {
+		pr_err("Invalid memory");
+		return -ENOMEM;
+	}
+
+	*spacing = fmdev->rx.region.channel_spacing / FM_FREQ_MUL;
+
 	return 0;
 }

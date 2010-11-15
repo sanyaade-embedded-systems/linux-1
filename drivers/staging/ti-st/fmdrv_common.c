@@ -194,14 +194,14 @@ static struct fm_reg_table fm_reg_info[] = {
 static struct region_info region_configs[] = {
 	/* Europe/US */
 	{
-	 .channel_spacing = 50,	/* 50 KHz */
+	 .channel_spacing = FM_CHANNEL_SPACING_50KHZ * FM_FREQ_MUL,
 	 .bottom_frequency = 87500,	/* 87.5 MHz */
 	 .top_frequency = 108000,	/* 108 MHz */
 	 .region_index = 0,
 	 },
 	/* Japan */
 	{
-	 .channel_spacing = 50,	/* 50 KHz */
+	 .channel_spacing = FM_CHANNEL_SPACING_50KHZ * FM_FREQ_MUL,
 	 .bottom_frequency = 76000,	/* 76 MHz */
 	 .top_frequency = 90000,	/* 90 MHz */
 	 .region_index = 1,
@@ -1176,8 +1176,7 @@ static void fm_irq_afjump_setfreq(void *arg)
 	       fmdev->rx.cur_station_info.af_cache[fmdev->rx.cur_afjump_index]);
 	frq_index =
 	    (fmdev->rx.cur_station_info.af_cache[fmdev->rx.cur_afjump_index] -
-	     fmdev->rx.region.bottom_frequency) /
-	    fmdev->rx.region.channel_spacing;
+	     fmdev->rx.region.bottom_frequency) / FM_FREQ_MUL;
 
 	FM_STORE_LE16_TO_BE16(payload, frq_index);
 	ret = __fm_send_cmd(fmdev, AF_FREQ_SET, &payload, sizeof(payload),
@@ -1341,7 +1340,7 @@ static void fm_irq_afjump_rd_freq_resp(void *arg)
 	memcpy(&read_freq, skb->data, sizeof(read_freq));
 	read_freq = FM_BE16_TO_LE16(read_freq);
 	curr_freq = fmdev->rx.region.bottom_frequency +
-	    ((unsigned int)read_freq * fmdev->rx.region.channel_spacing);
+	    ((unsigned int)read_freq * FM_FREQ_MUL);
 
 	jumped_freq =
 	    fmdev->rx.cur_station_info.af_cache[fmdev->rx.cur_afjump_index];
