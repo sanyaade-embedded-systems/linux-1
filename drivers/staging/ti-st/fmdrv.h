@@ -60,6 +60,11 @@ enum {
 
 #define FM_RX_RDS_INFO_FIELD_MAX	8	/* 4 Group * 2 Bytes */
 
+/*
+ * define private CIDs for V4L2
+ */
+#define V4L2_CID_CHANNEL_SPACING (V4L2_CID_PRIVATE_BASE + 0)
+
 /* RX RDS data format */
 struct fm_rdsdata_format {
 	union {

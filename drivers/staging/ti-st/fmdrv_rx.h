@@ -52,5 +52,7 @@ int fm_rx_get_rfdepend_softmute(struct fmdrv_ops *, unsigned char*);
 int fm_rx_get_deemphasis_mode(struct fmdrv_ops *, unsigned short*);
 int fm_rx_get_af_switch(struct fmdrv_ops *, unsigned char *);
 
+int fm_rx_set_chanl_spacing(struct fmdrv_ops*, unsigned char);
+int fm_rx_get_chanl_spacing(struct fmdrv_ops*, unsigned char*);
 #endif
 
