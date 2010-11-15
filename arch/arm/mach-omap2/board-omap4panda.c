@@ -27,6 +27,8 @@
 #include <linux/regulator/machine.h>
 #include <linux/spi/spi.h>
 #include <linux/interrupt.h>
+#include <linux/regulator/fixed.h>
+#include <linux/wl12xx.h>
 
 #include <mach/hardware.h>
 #include <mach/omap4-common.h>
@@ -46,6 +48,9 @@
 #include <plat/mmc.h>
 #include <plat/hwspinlock.h>
 #include "hsmmc.h"
+
+#define OMAP_PANDA_WLAN_PMENA_GPIO (43)
+#define OMAP_PANDA_WLAN_IRQ_GPIO   (53)
 
 #define GPIO_HUB_POWER 1
 #define GPIO_HUB_NRESET_39 39
@@ -249,6 +254,38 @@ static int omap4_twl6030_hsmmc_late_init(struct device *dev)
 	}
 	return ret;
 }
+
+static struct regulator_init_data panda_vmmc5 = {
+	.constraints = {
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies = 1,
+	.consumer_supplies = NULL,
+};
+
+static struct fixed_voltage_config panda_vwlan = {
+	.supply_name = "vwl1271",
+	.microvolts = 1800000, /* 1.8V */
+	.gpio = OMAP_PANDA_WLAN_PMENA_GPIO,
+	.startup_delay = 70000, /* 70msec */
+	.enable_high = 1,
+	.enabled_at_boot = 0,
+	.init_data = &panda_vmmc5,
+};
+
+static struct platform_device omap_vwlan_device = {
+	.name       = "reg-fixed-voltage",
+	.id     = 1,
+	.dev = {
+		.platform_data = &panda_vwlan,
+	},
+};
+
+struct wl12xx_platform_data omap_panda_wlan_data = {
+	.irq = OMAP_GPIO_IRQ(OMAP_PANDA_WLAN_IRQ_GPIO),
+	/* PANDA ref clock is 38.4 MHz */
+	.board_ref_clock = 2,
+};
 
 static __init void omap4_twl6030_hsmmc_set_late_init(struct device *dev)
 {
@@ -567,9 +604,12 @@ static void __init omap_panda_init(void)
 
 	panda_boardrev_init();
 
+	if (wl12xx_set_platform_data(&omap_panda_wlan_data))
+		pr_err("error setting wl12xx data\n");
 	omap4_i2c_init();
 	omap4_display_init();
 	platform_add_devices(panda_devices, ARRAY_SIZE(panda_devices));
+	platform_device_register(&omap_vwlan_device);
 	omap_serial_init();
 	omap4_twl6030_hsmmc_init(mmc);
 

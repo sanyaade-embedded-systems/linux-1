@@ -10,6 +10,7 @@
  */
 
 #include <linux/err.h>
+#include <linux/pm_runtime.h>
 
 #include <linux/mmc/host.h>
 #include <linux/mmc/card.h>
@@ -361,7 +362,6 @@ static int mmc_sdio_init_card(struct mmc_host *host, u32 ocr,
 			goto err;
 		}
 		card = oldcard;
-		return 0;
 	}
 
 	/*
@@ -436,6 +436,11 @@ static void mmc_sdio_detect(struct mmc_host *host)
 	BUG_ON(!host);
 	BUG_ON(!host->card);
 
+	/* Make sure card is powered before detecting it */
+	err = pm_runtime_get_sync(&host->card->dev);
+	if (err < 0)
+		goto out;
+
 	mmc_claim_host(host);
 
 	/*
@@ -445,6 +450,7 @@ static void mmc_sdio_detect(struct mmc_host *host)
 
 	mmc_release_host(host);
 
+out:
 	if (err) {
 		mmc_sdio_remove(host);
 
@@ -452,6 +458,9 @@ static void mmc_sdio_detect(struct mmc_host *host)
 		mmc_detach_bus(host);
 		mmc_release_host(host);
 	}
+
+	/* Tell PM core that we're done */
+	pm_runtime_put(&host->card->dev);
 }
 
 /*
@@ -504,9 +513,6 @@ static int mmc_sdio_resume(struct mmc_host *host)
 	mmc_claim_host(host);
 	err = mmc_sdio_init_card(host, host->ocr, host->card,
 				 (host->pm_flags & MMC_PM_KEEP_POWER));
-	if (!err)
-		/* We may have switched to 1-bit mode during suspend. */
-		err = sdio_enable_wide(host->card);
 	if (!err && host->sdio_irqs)
 		mmc_signal_sdio_irq(host);
 	mmc_release_host(host);
@@ -532,11 +538,29 @@ static int mmc_sdio_resume(struct mmc_host *host)
 	return err;
 }
 
+static int mmc_sdio_power_restore(struct mmc_host *host)
+{
+	int ret;
+
+	BUG_ON(!host);
+	BUG_ON(!host->card);
+
+	mmc_claim_host(host);
+	ret = mmc_sdio_init_card(host, host->ocr, host->card,
+					(host->pm_flags & MMC_PM_KEEP_POWER));
+	if (!ret && host->sdio_irqs)
+		mmc_signal_sdio_irq(host);
+	mmc_release_host(host);
+
+	return ret;
+}
+
 static const struct mmc_bus_ops mmc_sdio_ops = {
 	.remove = mmc_sdio_remove,
 	.detect = mmc_sdio_detect,
 	.suspend = mmc_sdio_suspend,
 	.resume = mmc_sdio_resume,
+	.power_restore = mmc_sdio_power_restore,
 };
 
 
@@ -584,6 +608,18 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 	card = host->card;
 
 	/*
+	 * Let runtime PM core know our card is active
+	 */
+	err = pm_runtime_set_active(&card->dev);
+	if (err)
+		goto remove;
+
+	/*
+	 * Enable runtime PM for this card
+	 */
+	pm_runtime_enable(&card->dev);
+
+	/*
 	 * The number of functions on the card is encoded inside
 	 * the ocr.
 	 */
@@ -621,6 +657,11 @@ int mmc_attach_sdio(struct mmc_host *host, u32 ocr)
 		err = sdio_init_func(host->card, i + 1);
 		if (err)
 			goto remove;
+
+	/*
+	 * Enable Runtime PM for this func
+	 */
+	pm_runtime_enable(&card->sdio_func[i]->dev);
 #ifdef CONFIG_TIWLAN_SDIO
 	}
 #endif
