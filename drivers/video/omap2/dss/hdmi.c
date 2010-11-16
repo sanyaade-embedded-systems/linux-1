@@ -599,7 +599,6 @@ int hdmi_pll_program(struct hdmi_pll_info *fmt)
 static int hdmi_phy_init(u32 w1,
 		u32 phy)
 {
-	u32 count;
 	int r;
 
 	/* wait till PHY_PWR_STATUS=LDOON */
@@ -630,17 +629,12 @@ static int hdmi_phy_init(u32 w1,
 	/*  write to phy address 3 to change the polarity control  */
 	REG_FLD_MOD(phy, HDMI_TXPHY_PAD_CFG_CTRL, 0x1, 27, 27);
 
-	count = 0;
-	while (count++ < 1000)
-		;
-
 	return 0;
 }
 
 static int hdmi_phy_off(u32 name)
 {
 	int r = 0;
-	u32 count;
 
 	/* wait till PHY_PWR_STATUS=OFF */
 	/* HDMI_PHYPWRCMD_OFF = 0 */
@@ -648,9 +642,6 @@ static int hdmi_phy_off(u32 name)
 	if (r)
 		return r;
 
-	count = 0;
-	while (count++ < 200)
-		;
 	return 0;
 }
 
