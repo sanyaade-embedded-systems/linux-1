@@ -59,6 +59,8 @@
 #define WB_MAX_WIDTH		2048
 #define WB_MAX_HEIGHT		2048
 
+#define TILER_PAGE		0x1000
+#define TILER_WIDTH		256
 
 struct mutex wb_lock;
 static struct videobuf_queue_ops video_vbq_ops;
@@ -566,14 +568,10 @@ static void omap_wb_tiler_buffer_free(struct omap_wb_device *wb,
 		count = VIDEO_MAX_FRAME - startindex;
 
 	for (i = startindex; i < startindex + count; i++) {
-		if (wb->buf_phy_addr_alloced[i])
-			tiler_free(wb->buf_phy_addr_alloced[i]);
-		if (wb->buf_phy_uv_addr_alloced[i])
-			tiler_free(wb->buf_phy_uv_addr_alloced[i]);
+		tiler_free(wb->tiler_blocks + i);
+		tiler_free(wb->uv_blocks + i);
 		wb->buf_phy_addr[i] = 0;
-		wb->buf_phy_addr_alloced[i] = 0;
 		wb->buf_phy_uv_addr[i] = 0;
-		wb->buf_phy_uv_addr_alloced[i] = 0;
 	}
 }
 
@@ -584,8 +582,9 @@ static int omap_wb_tiler_buffer_setup(struct omap_wb_device *wb,
 					unsigned int *count, unsigned int startindex,
 					struct v4l2_pix_format *pix)
 {
-	int i, aligned = 1;
+	int i, res;
 	enum tiler_fmt fmt;
+	unsigned int width = pix->width;
 
 	/* normalize buffers to allocate so we stay within bounds */
 	int start = (startindex < 0) ? 0 : startindex;
@@ -595,39 +594,50 @@ static int omap_wb_tiler_buffer_setup(struct omap_wb_device *wb,
 
 	v4l2_dbg(1, debug_wb, &wb->wb_dev->v4l2_dev, "tiler buffer alloc:\n"
 		"count - %d, start -%d :\n", *count, startindex);
+	switch (video_mode_to_dss_mode(pix)) {
+	case OMAP_DSS_COLOR_UYVY:
+	case OMAP_DSS_COLOR_YUV2:
+		width /= 2;
+		bpp = 4;
+		break;
+	default:
+		break;
+	}
 
-	/* special allocation scheme for NV12 format */
-	if (OMAP_DSS_COLOR_NV12 == video_mode_to_dss_mode(pix)) {
-		tiler_alloc_packed_nv12(&n_alloc, pix->width,
-			pix->height,
-			(void **) wb->buf_phy_addr + start,
-			(void **) wb->buf_phy_uv_addr + start,
-			(void **) wb->buf_phy_addr_alloced + start,
-			(void **) wb->buf_phy_uv_addr_alloced + start,
-			aligned);
-	} else {
-		unsigned int width = pix->width;
-		switch (video_mode_to_dss_mode(pix)) {
-		case OMAP_DSS_COLOR_UYVY:
-		case OMAP_DSS_COLOR_YUV2:
-			width /= 2;
-			bpp = 4;
-			break;
-		default:
+	/* Only bpp of 1, 2, and 4 is supported by tiler */
+	fmt = (bpp == 1 ? TILFMT_8BIT :
+		bpp == 2 ? TILFMT_16BIT :
+		bpp == 4 ? TILFMT_32BIT : TILFMT_INVALID);
+	if (fmt == TILFMT_INVALID)
+		return -ENOMEM;
+
+	for (i = start; i < start + n_alloc; i++) {
+		wb->tiler_blocks[i].width = ALIGN(width, 128 / bpp);
+		wb->tiler_blocks[i].height = pix->height;
+		res = tiler_alloc(wb->tiler_blocks + i, fmt, 0, 0);
+
+		/* allocate uv block for NV12 format */
+		if (!res &&
+		    OMAP_DSS_COLOR_NV12 == video_mode_to_dss_mode(pix)) {
+			wb->uv_blocks[i].width =
+				wb->tiler_blocks[i].width >> 1;
+			wb->uv_blocks[i].height =
+				wb->tiler_blocks[i].height >> 1;
+			res = tiler_alloc(wb->uv_blocks + i, TILFMT_16BIT,
+				PAGE_SIZE,
+				wb->tiler_blocks[i].phys & ~PAGE_MASK);
+			if (res)
+				tiler_free(wb->tiler_blocks + i);
+			else
+				wb->buf_phy_uv_addr[i] =
+					wb->uv_blocks[i].phys;
+		}
+
+		if (res) {
+			n_alloc = i - start;
 			break;
 		}
-		/* Only bpp of 1, 2, and 4 is supported by tiler */
-		fmt = (bpp == 1 ? TILFMT_8BIT :
-			bpp == 2 ? TILFMT_16BIT :
-			bpp == 4 ? TILFMT_32BIT : TILFMT_INVALID);
-		if (fmt == TILFMT_INVALID)
-			return -ENOMEM;
-
-		tiler_alloc_packed(&n_alloc, fmt, width,
-			pix->height,
-			(void **) wb->buf_phy_addr + start,
-			(void **) wb->buf_phy_addr_alloced + start,
-			aligned);
+		wb->buf_phy_addr[i] = wb->tiler_blocks[i].phys;
 	}
 
 	v4l2_dbg(1, debug_wb, &wb->wb_dev->v4l2_dev,
@@ -645,11 +655,9 @@ static int omap_wb_tiler_buffer_setup(struct omap_wb_device *wb,
 
 	for (i = start; i < start + n_alloc; i++) {
 		v4l2_dbg(1, debug_wb, &wb->wb_dev->v4l2_dev,
-				"y=%08lx (%d) uv=%08lx (%d)\n",
+				"y=%08lx uv=%08lx\n",
 				wb->buf_phy_addr[i],
-				wb->buf_phy_addr_alloced[i] ? 1 : 0,
-				wb->buf_phy_uv_addr[i],
-				wb->buf_phy_uv_addr_alloced[i] ? 1 : 0);
+				wb->buf_phy_uv_addr[i]);
 	}
 
 	*count = n_alloc;
