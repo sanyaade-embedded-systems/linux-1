@@ -193,7 +193,8 @@ static struct {
 	void __iomem *base_core_av;  /*1*/
 	void __iomem *base_wp;       /*2*/
 	struct hdmi_core_infoframe_avi avi_param;
-	struct mutex hdmi_lock;
+	struct mutex mutex;
+	struct list_head notifier_head;
 } hdmi;
 
 int count = 0, count_hpd = 0;
@@ -1154,7 +1155,7 @@ static void hdmi_w1_audio_enable(void)
 	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 1, 31, 31);
 }
 
-static __attribute__ ((unused))__attribute__ ((unused)) void hdmi_w1_audio_disable(void)
+static void hdmi_w1_audio_disable(void)
 {
 	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 0, 31, 31);
 }
@@ -1365,6 +1366,9 @@ int hdmi_lib_init(void){
 	hdmi.base_core = hdmi.base_wp + 0x400;
 	hdmi.base_core_av = hdmi.base_wp + 0x900;
 
+	mutex_init(&hdmi.mutex);
+	INIT_LIST_HEAD(&hdmi.notifier_head);
+
 	rev = hdmi_read_reg(HDMI_WP, HDMI_WP_REVISION);
 
 	printk(KERN_INFO "OMAP HDMI W1 rev %d.%d\n",
@@ -1532,4 +1536,34 @@ int hdmi_w1_start_audio_transfer(u32 instanceName)
 	hdmi_w1_audio_start();
 	printk(KERN_INFO "Start audio transfer...\n");
 	return 0;
+}
+
+void hdmi_add_notifier(struct hdmi_notifier *notifier)
+{
+	mutex_lock(&hdmi.mutex);
+	list_add_tail(&notifier->list, &hdmi.notifier_head);
+	mutex_unlock(&hdmi.mutex);
+}
+
+void hdmi_remove_notifier(struct hdmi_notifier *notifier)
+{
+	struct hdmi_notifier *cur, *next;
+
+	list_for_each_entry_safe(cur, next, &hdmi.notifier_head, list) {
+		if (cur == notifier) {
+			mutex_lock(&hdmi.mutex);
+			list_del(&cur->list);
+			mutex_unlock(&hdmi.mutex);
+		}
+	}
+}
+
+void hdmi_notify_hpd(int state)
+{
+	struct hdmi_notifier *cur, *next;
+
+	list_for_each_entry_safe(cur, next, &hdmi.notifier_head, list) {
+		if (cur->hpd_notifier)
+			cur->hpd_notifier(state, cur->private_data);
+	}
 }
