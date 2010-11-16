@@ -465,7 +465,8 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 	return 0;
 }
 
-static void hdmi_core_init(struct hdmi_core_video_config_t *v_cfg,
+static void hdmi_core_init(enum hdmi_deep_mode deep_color,
+	struct hdmi_core_video_config_t *v_cfg,
 	struct hdmi_core_audio_config *audio_cfg,
 	struct hdmi_core_infoframe_avi *avi,
 	struct hdmi_core_packet_enable_repeat *r_p)
@@ -473,13 +474,35 @@ static void hdmi_core_init(struct hdmi_core_video_config_t *v_cfg,
 	DBG("Enter HDMI_Core_GlobalInitVars()\n");
 
 	/*video core*/
-	v_cfg->CoreInputBusWide = HDMI_INPUT_8BIT;
-	v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_8BIT;
-	v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTDISABLE;
-	v_cfg->CorePacketMode = HDMI_PACKETMODERESERVEDVALUE;
+	switch (deep_color) {
+	case HDMI_DEEP_COLOR_24BIT:
+				v_cfg->CoreInputBusWide = HDMI_INPUT_8BIT;
+				v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_8BIT;
+				v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTDISABLE;
+				v_cfg->CorePacketMode = HDMI_PACKETMODERESERVEDVALUE;
+				break;
+	case HDMI_DEEP_COLOR_30BIT:
+				v_cfg->CoreInputBusWide = HDMI_INPUT_10BIT;
+				v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_10BIT;
+				v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTENABLE;
+				v_cfg->CorePacketMode = HDMI_PACKETMODE30BITPERPIXEL;
+				break;
+	case HDMI_DEEP_COLOR_36BIT:
+				v_cfg->CoreInputBusWide = HDMI_INPUT_12BIT;
+				v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_12BIT;
+				v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTENABLE;
+				v_cfg->CorePacketMode = HDMI_PACKETMODE36BITPERPIXEL;
+				break;
+	default:
+				v_cfg->CoreInputBusWide = HDMI_INPUT_8BIT;
+				v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_8BIT;
+				v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTDISABLE;
+				v_cfg->CorePacketMode = HDMI_PACKETMODERESERVEDVALUE;
+				break;
+	}
+
 	v_cfg->CoreHdmiDvi = HDMI_DVI;
 	v_cfg->CoreTclkSelClkMult = FPLL10IDCK;
-
 	/*audio core*/
 	audio_cfg->fs = FS_44100;
 	audio_cfg->n = 0;
@@ -1217,7 +1240,7 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 		&VideoInterfaceParam, &IrqHdmiVectorEnable,
 		&audio_fmt, &audio_dma);
 
-	hdmi_core_init(&v_core_cfg,
+	hdmi_core_init(cfg->deep_color, &v_core_cfg,
 		&audio_cfg,
 		&hdmi.avi_param,
 		&repeat_param);
@@ -1235,7 +1258,20 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	hdmi_w1_video_config_timing(&VideoTimingParam);
 
 	/*video config*/
-	VideoFormatParam.packingMode = HDMI_PACK_24b_RGB_YUV444_YUV422;
+	switch (cfg->deep_color) {
+	case 0:
+		VideoFormatParam.packingMode = HDMI_PACK_24b_RGB_YUV444_YUV422;
+		VideoInterfaceParam.timingMode = HDMI_TIMING_MASTER_24BIT;
+		break;
+	case 1:
+		VideoFormatParam.packingMode = HDMI_PACK_10b_RGB_YUV444;
+		VideoInterfaceParam.timingMode = HDMI_TIMING_MASTER_30BIT;
+		break;
+	case 2:
+		VideoFormatParam.packingMode = HDMI_PACK_ALREADYPACKED;
+		VideoInterfaceParam.timingMode = HDMI_TIMING_MASTER_36BIT;
+		break;
+	}
 
 	hdmi_w1_video_config_format(&VideoFormatParam);
 
@@ -1243,7 +1279,6 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	VideoInterfaceParam.vSyncPolarity = cfg->v_pol;
 	VideoInterfaceParam.hSyncPolarity = cfg->h_pol;
 	VideoInterfaceParam.interlacing = cfg->interlace;
-	VideoInterfaceParam.timingMode = 1 ; /* HDMI_TIMING_MASTER_24BIT */
 
 	hdmi_w1_video_config_interface(&VideoInterfaceParam);
 
@@ -1265,8 +1300,7 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	/*power down off*/
 	hdmi_core_powerdown_disable();
 
-	v_core_cfg.CorePacketMode = HDMI_PACKETMODE24BITPERPIXEL;
-	v_core_cfg.CoreHdmiDvi = HDMI_HDMI;
+	v_core_cfg.CoreHdmiDvi = cfg->hdmi_dvi;
 
 	/* hnagalla */
 	audio_cfg.fs = 0x02;
