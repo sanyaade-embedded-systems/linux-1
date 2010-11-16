@@ -597,7 +597,7 @@ int hdmi_pll_program(struct hdmi_pll_info *fmt)
 
 /* double check the order */
 static int hdmi_phy_init(u32 w1,
-		u32 phy)
+		u32 phy, int tmds)
 {
 	int r;
 
@@ -618,7 +618,7 @@ static int hdmi_phy_init(u32 w1,
 
 	/* write to phy address 0 to configure the clock */
 	/* use HFBITCLK write HDMI_TXPHY_TX_CONTROL__FREQOUT field */
-	REG_FLD_MOD(phy, HDMI_TXPHY_TX_CTRL, 0x1, 31, 30);
+	REG_FLD_MOD(phy, HDMI_TXPHY_TX_CTRL, tmds, 31, 30);
 
 	/* write to phy address 1 to start HDMI line (TXVALID and TMDSCLKEN) */
 	hdmi_write_reg(phy, HDMI_TXPHY_DIGITAL_CTRL,
@@ -824,7 +824,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 	struct omap_video_timings *p;
 	struct hdmi_pll_info pll_data;
 	struct deep_color *vsdb_format = NULL;
-	int clkin, n, phy, max_tmds, temp = 0;
+	int clkin, n, phy, max_tmds, temp = 0, tmds_freq;
 
 	hdmi_power = HDMI_POWER_FULL;
 	code = get_timings_index();
@@ -932,7 +932,14 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 		goto err;
 	}
 
-	r = hdmi_phy_init(HDMI_WP, HDMI_PHY);
+	if (phy <= 50000) /*TMDS freq_out in the PHY should be set based on the TMDS clock*/
+		tmds_freq = 0x0;
+	else if ((phy > 50000) && (phy <= 100000))
+		tmds_freq = 0x1;
+	else
+		tmds_freq = 0x2;
+
+	r = hdmi_phy_init(HDMI_WP, HDMI_PHY, tmds_freq);
 	if (r) {
 		DSSERR("Failed to start PHY\n");
 		r = -EIO;
@@ -995,7 +1002,7 @@ int hdmi_min_enable(void)
 	int r;
 	DSSDBG("hdmi_min_enable");
 	hdmi_power = HDMI_POWER_MIN;
-	r = hdmi_phy_init(HDMI_WP, HDMI_PHY);
+	r = hdmi_phy_init(HDMI_WP, HDMI_PHY, 0);
 	if (r) {
 		DSSERR("Failed to start PHY\n");
 	}
