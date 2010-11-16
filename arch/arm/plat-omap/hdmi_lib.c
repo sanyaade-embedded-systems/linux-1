@@ -539,6 +539,10 @@ static void hdmi_core_init(enum hdmi_deep_mode deep_color,
 	r_p->GeneralcontrolPacketRepeat = 0;
 	r_p->GenericPacketED = 0;
 	r_p->GenericPacketRepeat = 0;
+        r_p->MPEGInfoFrameED = 0;
+        r_p->MPEGInfoFrameRepeat = 0;
+        r_p->SPDInfoFrameED = 0;
+        r_p->SPDInfoFrameRepeat = 0;
 }
 
 static void hdmi_core_powerdown_disable(void)
@@ -741,6 +745,17 @@ static int hdmi_core_audio_config(u32 name,
 	hdmi_write_reg(name, (size0 + 8 * size1), 0x000);
 	hdmi_write_reg(name, (size0 + 9 * size1), 0x000);
 
+        /* ISCR1 and ACP setting */
+	WR_REG_32(name, HDMI_CORE_AV__SPD_TYPE, 0x04);
+	WR_REG_32(name, HDMI_CORE_AV__SPD_VERS, 0x0);
+	WR_REG_32(name, HDMI_CORE_AV__SPD_LEN, 0x0);
+	WR_REG_32(name, HDMI_CORE_AV__SPD_CHSUM, 0x0);
+
+	WR_REG_32(name, HDMI_CORE_AV__MPEG_TYPE, 0x05);
+	WR_REG_32(name, HDMI_CORE_AV__MPEG_VERS, 0x0);
+	WR_REG_32(name, HDMI_CORE_AV__MPEG_LEN, 0x0);
+	WR_REG_32(name, HDMI_CORE_AV__MPEG_CHSUM, 0x0);
+
 	return ret;
 }
 
@@ -897,10 +912,15 @@ int hdmi_configure_csc(enum hdmi_core_av_csc csc)
 static int hdmi_core_av_packet_config(u32 name,
 	struct hdmi_core_packet_enable_repeat r_p)
 {
+
 	/*enable/repeat the infoframe*/
 	hdmi_write_reg(name, HDMI_CORE_AV_PB_CTRL1,
+		(r_p.MPEGInfoFrameED << 7)|
+		(r_p.MPEGInfoFrameRepeat << 6)|
 		(r_p.AudioPacketED << 5)|
 		(r_p.AudioPacketRepeat << 4)|
+		(r_p.SPDInfoFrameED << 3)|
+		(r_p.SPDInfoFrameRepeat << 2)|
 		(r_p.AVIInfoFrameED << 1)|
 		(r_p.AVIInfoFrameRepeat));
 
@@ -1381,6 +1401,13 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	/* wakeup */
 	repeat_param.AudioPacketED = PACKETENABLE;
 	repeat_param.AudioPacketRepeat = PACKETREPEATON;
+        /* ISCR1 transmission */
+	repeat_param.MPEGInfoFrameED = PACKETENABLE;
+	repeat_param.MPEGInfoFrameRepeat = PACKETREPEATON;
+        /* ACP transmission */
+	repeat_param.SPDInfoFrameED = PACKETENABLE;
+	repeat_param.SPDInfoFrameRepeat = PACKETREPEATON;
+
 	r = hdmi_core_av_packet_config(av_name, repeat_param);
 
 	REG_FLD_MOD(av_name, HDMI_CORE_AV__HDMI_CTRL, cfg->hdmi_dvi, 0, 0);

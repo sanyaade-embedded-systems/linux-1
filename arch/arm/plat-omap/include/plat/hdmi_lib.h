@@ -206,8 +206,12 @@ struct hdmi_core_infoframe_avi {
 };
 
 struct hdmi_core_packet_enable_repeat {
+	u32		MPEGInfoFrameED;
+	u32		MPEGInfoFrameRepeat;
 	u32		AudioPacketED;
 	u32		AudioPacketRepeat;
+	u32		SPDInfoFrameED;
+	u32		SPDInfoFrameRepeat;
 	u32		AVIInfoFrameED;
 	u32		AVIInfoFrameRepeat;
 	u32		GeneralcontrolPacketED;
