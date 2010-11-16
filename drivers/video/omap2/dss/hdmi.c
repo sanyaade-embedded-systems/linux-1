@@ -410,13 +410,10 @@ static int hdmi_ioctl(struct inode *inode, struct file *file,
  *
  */
 
-#define CPF			2
-
 struct hdmi_pll_info {
 	u16 regn;
 	u16 regm;
 	u32 regmf;
-	u16 regm4; /* M4_CLOCK_DIV */
 	u16 regm2;
 	u16 regsd;
 	u16 dcofreq;
@@ -445,31 +442,27 @@ static void compute_pll(int clkin, int phy,
 	int refclk;
 	u32 temp, mf;
 
-	if (clkin > 3200) /* 32 mHz */
-		refclk = clkin / (2 * (n + 1));
-	else
-		refclk = clkin / (n + 1);
 
-	temp = phy * 100/(CPF * refclk);
+	refclk = clkin / (n + 1);
+
+	temp = phy * 100/(refclk);
 
 	pi->regn = n;
 	pi->regm = temp/100;
 	pi->regm2 = 1;
 
-	mf = (phy - pi->regm * CPF * refclk) * 262144;
-	pi->regmf = mf/(CPF * refclk);
+	mf = (phy - pi->regm * refclk) * 262144;
+	pi->regmf = mf/(refclk);
 
 	if (phy > 1000 * 100) {
-		pi->regm4 = phy / 10000;
 		pi->dcofreq = 1;
 		pi->regsd = ((pi->regm * 384)/((n + 1) * 250) + 5)/10;
 	} else {
-		pi->regm4 = 1;
 		pi->dcofreq = 0;
 		pi->regsd = 0;
 	}
 
-	DSSDBG("M = %d Mf = %d, m4= %d\n", pi->regm, pi->regmf, pi->regm4);
+	DSSDBG("M = %d Mf = %d\n", pi->regm, pi->regmf);
 	DSSDBG("range = %d sd = %d\n", pi->dcofreq, pi->regsd);
 }
 
@@ -485,24 +478,14 @@ static int hdmi_pll_init(int refsel, int dcofreq, struct hdmi_pll_info *fmt, u16
 	r = hdmi_read_reg(pll, PLLCTRL_CFG1);
 	r = FLD_MOD(r, fmt->regm, 20, 9); /* CFG1__PLL_REGM */
 	r = FLD_MOD(r, fmt->regn, 8, 1);  /* CFG1__PLL_REGN */
-	r = FLD_MOD(r, fmt->regm4, 25, 21); /* M4_CLOCK_DIV */
 
 	hdmi_write_reg(pll, PLLCTRL_CFG1, r);
 
 	r = hdmi_read_reg(pll, PLLCTRL_CFG2);
 
-	/* SYS w/o divide by 2 [22:21] = donot care  [11:11] = 0x0 */
-	/* SYS divide by 2     [22:21] = 0x3 [11:11] = 0x1 */
-	/* PCLK, REF1 or REF2  [22:21] = 0x0, 0x 1 or 0x2 [11:11] = 0x1 */
-	r = FLD_MOD(r, 0x0, 11, 11); /* PLL_CLKSEL 1: PLL 0: SYS*/
 	r = FLD_MOD(r, 0x0, 12, 12); /* PLL_HIGHFREQ divide by 2 */
 	r = FLD_MOD(r, 0x1, 13, 13); /* PLL_REFEN */
 	r = FLD_MOD(r, 0x0, 14, 14); /* PHY_CLKINEN de-assert during locking */
-	r = FLD_MOD(r, 0x1, 20, 20); /* HSDIVBYPASS assert during locking */
-	r = FLD_MOD(r, refsel, 22, 21); /* REFSEL */
-	/* DPLL3  used by DISPC or HDMI itself*/
-	r = FLD_MOD(r, 0x0, 17, 17); /* M4_CLOCK_PWDN */
-	r = FLD_MOD(r, 0x1, 16, 16); /* M4_CLOCK_EN */
 
 	if (dcofreq) {
 		/* divider programming for 1080p */
@@ -514,7 +497,7 @@ static int hdmi_pll_init(int refsel, int dcofreq, struct hdmi_pll_info *fmt, u16
 	hdmi_write_reg(pll, PLLCTRL_CFG2, r);
 
 	r = hdmi_read_reg(pll, PLLCTRL_CFG4);
-	r = FLD_MOD(r, 0, 24, 18); /* todo: M2 */
+	r = FLD_MOD(r, fmt->regm2, 24, 18);
 	r = FLD_MOD(r, fmt->regmf, 17, 0);
 
 	/* go now */
@@ -537,18 +520,6 @@ static int hdmi_pll_init(int refsel, int dcofreq, struct hdmi_pll_info *fmt, u16
 	}
 
 	DSSDBG("PLL locked!\n");
-
-	r = hdmi_read_reg(pll, PLLCTRL_CFG2);
-	r = FLD_MOD(r, 0, 0, 0);	/* PLL_IDLE */
-	r = FLD_MOD(r, 0, 5, 5);	/* PLL_PLLLPMODE */
-	r = FLD_MOD(r, 0, 6, 6);	/* PLL_LOWCURRSTBY */
-	r = FLD_MOD(r, 0, 8, 8);	/* PLL_DRIFTGUARDEN */
-	r = FLD_MOD(r, 0, 10, 9);	/* PLL_LOCKSEL */
-	r = FLD_MOD(r, 1, 13, 13);	/* PLL_REFEN */
-	r = FLD_MOD(r, 1, 14, 14);	/* PHY_CLKINEN */
-	r = FLD_MOD(r, 0, 15, 15);	/* BYPASSEN */
-	r = FLD_MOD(r, 0, 20, 20);	/* HSDIVBYPASS */
-	hdmi_write_reg(pll, PLLCTRL_CFG2, r);
 
 	return 0;
 }
