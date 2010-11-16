@@ -322,10 +322,20 @@ struct hdmi_audio_dma {
 enum hdmi_packing_mode {
 	HDMI_PACK_10b_RGB_YUV444 = 0,
 	HDMI_PACK_24b_RGB_YUV444_YUV422 = 1,
-	HDMI_PACK_20b_YUV422 = 2,
 	HDMI_PACK_ALREADYPACKED = 7
 };
 
+enum hdmi_timing_mode {
+	HDMI_TIMING_MASTER_24BIT = 0x1,
+	HDMI_TIMING_MASTER_30BIT = 0x2,
+	HDMI_TIMING_MASTER_36BIT = 0x3
+};
+
+enum hdmi_deep_mode {
+	HDMI_DEEP_COLOR_24BIT = 0,
+	HDMI_DEEP_COLOR_30BIT = 1,
+	HDMI_DEEP_COLOR_36BIT = 2
+};
 struct hdmi_video_format {
 	enum hdmi_packing_mode	packingMode;
 	u32	linePerPanel;
@@ -375,6 +385,7 @@ struct hdmi_config {
 	u16 v_pol;
 	u16 hdmi_dvi;
 	u16 video_format;
+	u16 deep_color;
 };
 
 enum hdmi_core_if_fs {

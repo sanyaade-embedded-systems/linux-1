@@ -210,6 +210,7 @@ struct hdmi {
 	struct mutex lock;
 	int code;
 	int mode;
+	int deep_color;
 	struct hdmi_config cfg;
 	struct omap_display_platform_data *pdata;
 	struct platform_device *pdev;
@@ -324,8 +325,26 @@ static ssize_t hdmi_yuv_set(struct device *dev,
 	return size;
 }
 
+
+static ssize_t hdmi_deepcolor_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hdmi.deep_color);
+}
+
+static ssize_t hdmi_deepcolor_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	int deepcolor;
+	deepcolor = simple_strtoul(buf, NULL, 0);
+	hdmi.deep_color = deepcolor;
+	return size;
+}
+
 static DEVICE_ATTR(edid, S_IRUGO, hdmi_edid_show, hdmi_edid_store);
 static DEVICE_ATTR(yuv, S_IRUGO | S_IWUSR, hdmi_yuv_supported, hdmi_yuv_set);
+static DEVICE_ATTR(deepcolor, S_IRUGO | S_IWUSR, hdmi_deepcolor_show, hdmi_deepcolor_store);
 
 static int set_hdmi_hot_plug_status(struct omap_dss_device *dssdev, bool onoff)
 {
@@ -614,6 +633,7 @@ static int hdmi_phy_init(u32 w1,
 	count = 0;
 	while (count++ < 1000)
 		;
+
 	return 0;
 }
 
@@ -659,7 +679,7 @@ static int hdmi_panel_probe(struct omap_dss_device *dssdev)
 
 	dssdev->panel.config = OMAP_DSS_LCD_TFT |
 			OMAP_DSS_LCD_IVS | OMAP_DSS_LCD_IHS;
-
+	hdmi.deep_color = 0;
 	code = get_timings_index();
 
 	dssdev->panel.timings = all_timings_direct[code];
@@ -812,8 +832,8 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 	int dirty = false;
 	struct omap_video_timings *p;
 	struct hdmi_pll_info pll_data;
-
-	int clkin, n, phy;
+	struct deep_color *vsdb_format = NULL;
+	int clkin, n, phy, max_tmds, temp = 0;
 
 	hdmi_power = HDMI_POWER_FULL;
 	code = get_timings_index();
@@ -833,6 +853,13 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 			r = -EIO;
 			goto err;
 		}
+
+		vsdb_format = kzalloc(sizeof(*vsdb_format), GFP_KERNEL);
+		hdmi_deep_color_support_info(edid, vsdb_format);
+		printk("%d deep color bit 30 %d  deep color 36 bit %d max tmds freq",
+		vsdb_format->bit_30, vsdb_format->bit_36, vsdb_format->max_tmds_freq);
+		max_tmds = vsdb_format->max_tmds_freq * 500;
+
 		if (get_timings_index() != code) {
 			dirty = true;
 		}
@@ -854,7 +881,48 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 
 	clkin = 3840; /* 38.4 mHz */
 	n = 15; /* this is a constant for our math */
-	phy = p->pixel_clock;
+
+	switch (hdmi.deep_color) {
+	case 0:
+		phy = p->pixel_clock;
+		hdmi.cfg.deep_color = 0;
+		break;
+	case 1:
+		if (!custom_set) {
+			temp = (p->pixel_clock * 125) / 100 ;
+			if (vsdb_format->bit_30) {
+				if (max_tmds != 0 && max_tmds >= temp)
+					phy = (p->pixel_clock * 125) / 100;
+			} else {
+				printk(KERN_ERR"TV does not support Deep color");
+				goto err;
+			}
+		} else {
+			phy = (p->pixel_clock * 125) / 100;
+		}
+		hdmi.cfg.deep_color = 1;
+		break;
+	case 2:
+		if (p->pixel_clock != 148500) {
+			if (!custom_set) {
+				temp = (int)(p->pixel_clock * 150) / 100;
+				if (vsdb_format->bit_36) {
+					if (max_tmds != 0 && max_tmds >= temp)
+						phy = (p->pixel_clock * 150) / 100;
+				} else {
+					printk(KERN_ERR"TV does not support Deep color");
+					goto err;
+				}
+			} else
+				phy = (p->pixel_clock * 150) / 100;
+		} else {
+			printk(KERN_ERR"36 bit deep color not supported");
+			goto err;
+		}
+		hdmi.cfg.deep_color = 2;
+		break;
+	}
+
 	compute_pll(clkin, phy, n, &pll_data);
 
 	HDMI_W1_StopVideoFrame(HDMI_WP);
@@ -923,8 +991,11 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 
 	dispc_enable_digit_out(1);
 
+	kfree(vsdb_format);
+
 	return 0;
 err:
+	kfree(vsdb_format);
 	return r;
 }
 
@@ -1492,6 +1563,8 @@ int hdmi_init_display(struct omap_dss_device *dssdev)
 	if (device_create_file(&dssdev->dev, &dev_attr_edid))
 		DSSERR("failed to create sysfs file\n");
 	if (device_create_file(&dssdev->dev, &dev_attr_yuv))
+		DSSERR("failed to create sysfs file\n");
+	if (device_create_file(&dssdev->dev, &dev_attr_deepcolor))
 		DSSERR("failed to create sysfs file\n");
 
 	return 0;
