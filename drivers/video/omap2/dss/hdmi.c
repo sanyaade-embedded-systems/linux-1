@@ -65,6 +65,7 @@ static int hdmi_read_edid(struct omap_video_timings *);
 static int get_edid_timing_data(struct HDMI_EDID *edid);
 static irqreturn_t hdmi_irq_handler(int irq, void *arg);
 static int hdmi_enable_hpd(struct omap_dss_device *dssdev);
+static int hdmi_set_power(struct omap_dss_device *dssdev);
 static void hdmi_power_off(struct omap_dss_device *dssdev);
 static int hdmi_open(struct inode *inode, struct file *filp);
 static int hdmi_release(struct inode *inode, struct file *filp);
@@ -83,6 +84,17 @@ static struct file_operations hdmi_fops = {
 	.release = hdmi_release,
 	.ioctl = hdmi_ioctl,
 };
+
+/* distinguish power states when ACTIVE */
+enum hdmi_power_state {
+	HDMI_POWER_OFF,
+	HDMI_POWER_MIN,		/* minimum power for HPD detect */
+	HDMI_POWER_FULL,	/* full power */
+} hdmi_power;
+
+static bool is_hdmi_on;		/* whether full power is needed */
+static bool is_hpd_on;		/* whether hpd is enabled */
+static bool user_hpd_state;	/* user hpd state */
 
 #define HDMI_PLLCTRL		0x58006200
 #define HDMI_PHY		0x58006300
@@ -315,10 +327,26 @@ static ssize_t hdmi_yuv_set(struct device *dev,
 static DEVICE_ATTR(edid, S_IRUGO, hdmi_edid_show, hdmi_edid_store);
 static DEVICE_ATTR(yuv, S_IRUGO | S_IWUSR, hdmi_yuv_supported, hdmi_yuv_set);
 
-int hdmi_hot_plug_event_send(struct omap_dss_device *dssdev, int onoff)
+static int set_hdmi_hot_plug_status(struct omap_dss_device *dssdev, bool onoff)
 {
-	printk("hot plug event %d", onoff);
-	return kobject_uevent(&dssdev->dev.kobj, onoff ? KOBJ_ADD : KOBJ_REMOVE);
+	int ret = 0;
+
+	if (onoff != user_hpd_state) {
+		hdmi_notify_hpd(onoff);
+		DSSINFO("hot plug event %d", onoff);
+		ret = kobject_uevent(&dssdev->dev.kobj,
+					onoff ? KOBJ_ADD : KOBJ_REMOVE);
+		if (ret)
+			DSSWARN("error sending hot plug event %d (%d)",
+								onoff, ret);
+		/*
+		 * TRICKY: we update status here as kobject_uevent seems to
+		 * always return an error for now.
+		 */
+		user_hpd_state = onoff;
+	}
+
+	return ret;
 }
 
 static int hdmi_open(struct inode *inode, struct file *filp)
@@ -347,6 +375,8 @@ static int hdmi_ioctl(struct inode *inode, struct file *file,
 	switch (cmd) {
 	case HDMI_ENABLE:
 		r = hdmi_enable_display(dssdev);
+		/* set HDMI full power on resume (in case suspended) */
+		is_hdmi_on = true;
 		break;
 
 	case HDMI_DISABLE:
@@ -675,6 +705,11 @@ static void hdmi_panel_remove(struct omap_dss_device *dssdev)
 
 }
 
+static bool hdmi_panel_is_enabled(struct omap_dss_device *dssdev)
+{
+	return is_hdmi_on;
+}
+
 static int hdmi_panel_enable(struct omap_dss_device *dssdev)
 {
 	hdmi_enable_display(dssdev);
@@ -712,8 +747,9 @@ static struct omap_dss_driver hdmi_driver = {
 	.probe		= hdmi_panel_probe,
 	.remove		= hdmi_panel_remove,
 
-	.enable		= hdmi_panel_enable,
 	.disable	= hdmi_panel_disable,
+	.smart_enable	= hdmi_panel_enable,
+	.smart_is_enabled	= hdmi_panel_is_enabled,
 	.suspend	= hdmi_panel_suspend,
 	.resume		= hdmi_panel_resume,
 	.get_timings	= hdmi_get_timings,
@@ -808,6 +844,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 
 	int clkin, n, phy;
 
+	hdmi_power = HDMI_POWER_FULL;
 	code = get_timings_index();
 	dssdev->panel.timings = all_timings_direct[code];
 
@@ -896,7 +933,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 	/* bypass TV gamma table*/
 	dispc_enable_gamma_table(0);
 
-	/* do not fall into any sort of idle */
+	/* allow idle mode */
 	dispc_set_idle_mode();
 
 #ifndef CONFIG_OMAP4_ES1
@@ -923,6 +960,7 @@ int hdmi_min_enable(void)
 {
 	int r;
 	DSSDBG("hdmi_min_enable");
+	hdmi_power = HDMI_POWER_MIN;
 	r = hdmi_phy_init(HDMI_WP, HDMI_PHY);
 	if (r) {
 		DSSERR("Failed to start PHY\n");
@@ -956,44 +994,63 @@ void hdmi_work_queue(struct work_struct *work)
 	irqstatus = 0;
 	spin_unlock_irqrestore(&irqstatus_lock, flags);
 
-	DSSDBG("irqstatus=%08x\n hdp_mode = %d dssdev->state = %d",\
-		r, hpd_mode, dssdev->state);
+	DSSDBG("irqstatus=%08x\n hdp_mode = %d dssdev->state = %d, "
+		"hdmi_power = %d", r, hpd_mode, dssdev->state, hdmi_power);
 
-	if (r & HDMI_DISCONNECT) {
-		printk(KERN_INFO"Display disabled\n");
+	if ((r & HDMI_DISCONNECT) && (hdmi_power == HDMI_POWER_FULL)) {
+		set_hdmi_hot_plug_status(dssdev, false);
+		/* ignore return value for now */
+
+		/*
+		 * WORKAROUND: wait before turning off HDMI.  This may give
+		 * audio/video enough time to stop operations.  However, if
+		 * user reconnects HDMI, response will be delayed.
+		 */
+		mdelay(1000);
+
+		DSSINFO("Display disabled\n");
 		HDMI_W1_StopVideoFrame(HDMI_WP);
 		if (dssdev->platform_disable)
 			dssdev->platform_disable(dssdev);
 			dispc_enable_digit_out(0);
 		HDMI_W1_SetWaitPllPwrState(HDMI_WP, HDMI_PLLPWRCMD_ALLOFF);
 		edid_set = false;
+		is_hdmi_on = false;
+		is_hpd_on = true; /* keep HPD */
 		hdmi_enable_clocks(0);
-		dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
-		hdmi_enable_hpd(dssdev);
+		hdmi_set_power(dssdev);
 		hpd_mode = 1;
-		hdmi_hot_plug_event_send(dssdev, 0);
 	}
 
-	if (r & (HDMI_CONNECT) && (hpd_mode == 1) &&
-		(dssdev->state != OMAP_DSS_DISPLAY_ACTIVE)) {
+	if ((r & HDMI_CONNECT) && (hpd_mode == 1) &&
+		(hdmi_power != HDMI_POWER_FULL)) {
 
-		printk(KERN_INFO"Physical Connect\n");
+		DSSINFO("Physical Connect\n");
+
+		/* turn on clocks on connect */
 		hdmi_enable_clocks(1);
-		hdmi_power_on(dssdev);
+		is_hdmi_on = true;
+		hdmi_set_power(dssdev);
 		mdelay(1000);
-
 	}
 
-	if (r & (HDMI_HPD) && (hpd_mode == 1) &&
-		dssdev->state != OMAP_DSS_DISPLAY_ACTIVE) {
+	if ((r & HDMI_HPD) && (hpd_mode == 1)) {
+
 		mdelay(1000);
-		printk(KERN_INFO "Enabling display\n");
-		hdmi_enable_clocks(1);
-		hdmi_power_on(dssdev);
 
-		hdmi_hot_plug_event_send(dssdev, 1);
+		/*
+		 * HDMI should already be full on. We use this to read EDID
+		 * the first time we enable HDMI via HPD.
+		 */
+		if (!user_hpd_state) {
+			DSSINFO("Connect 1 - Enabling display\n");
+			hdmi_enable_clocks(1);
+			is_hdmi_on = true;
+			hdmi_set_power(dssdev);
+		}
 
-		dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
+		set_hdmi_hot_plug_status(dssdev, true);
+		/* ignore return value for now */
 	}
 
 	kfree(work);
@@ -1015,12 +1072,11 @@ static irqreturn_t hdmi_irq_handler(int irq, void *arg)
 
 	spin_lock_irqsave(&irqstatus_lock, flags);
 	work_pending = irqstatus;
-
-	if ((r & HDMI_DISCONNECT))
-		irqstatus = HDMI_DISCONNECT;
-	else
-		irqstatus = r;
-
+	if (r & HDMI_DISCONNECT)
+		irqstatus &= ~HDMI_CONNECT;
+	if (r & HDMI_CONNECT)
+		irqstatus &= ~HDMI_DISCONNECT;
+	irqstatus |= r;
 	spin_unlock_irqrestore(&irqstatus_lock, flags);
 
 	if (r && !work_pending) {
@@ -1041,6 +1097,7 @@ static void hdmi_power_off(struct omap_dss_device *dssdev)
 {
 	HDMI_W1_StopVideoFrame(HDMI_WP);
 
+	hdmi_power = HDMI_POWER_OFF;
 	dispc_enable_digit_out(0);
 
 	hdmi_phy_off(HDMI_WP);
@@ -1053,33 +1110,34 @@ static void hdmi_power_off(struct omap_dss_device *dssdev)
 	edid_set = false;
 	hdmi_enable_clocks(0);
 
-	hdmi_hot_plug_event_send(dssdev, 0);
+	set_hdmi_hot_plug_status(dssdev, false);
+	/* ignore return value for now */
+
+	/*
+	 * WORKAROUND: wait before turning off HDMI.  This may give
+	 * audio/video enough time to stop operations.  However, if
+	 * user reconnects HDMI, response will be delayed.
+	 */
+	mdelay(1000);
+
+	/* cut clock(s) */
+	dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
+	dss_mainclk_state_disable(true);
+
 	/* reset to default */
 
 }
 
-static int hdmi_enable_display(struct omap_dss_device *dssdev)
+static int hdmi_start_display(struct omap_dss_device *dssdev)
 {
-	int r = 0;
-	DSSDBG("ENTER hdmi_enable_display()\n");
-
-	mutex_lock(&hdmi.lock);
-
 	/* the tv overlay manager is shared*/
-	r = omap_dss_start_device(dssdev);
+	int r = omap_dss_start_device(dssdev);
 	if (r) {
 		DSSERR("failed to start device\n");
 		goto err;
 	}
 
-	if (dssdev->state != OMAP_DSS_DISPLAY_DISABLED) {
-		r = -EINVAL;
-		goto err;
-	}
-
 	free_irq(OMAP44XX_IRQ_DSS_HDMI, NULL);
-
-	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
 
 	/* PAD0_HDMI_HPD_PAD1_HDMI_CEC */
 	omap_writel(0x01180118, 0x4A100098);
@@ -1091,10 +1149,11 @@ static int hdmi_enable_display(struct omap_dss_device *dssdev)
 	if (dssdev->platform_enable)
 		dssdev->platform_enable(dssdev);
 
-	r = hdmi_power_on(dssdev);
+	/* enable clock(s) */
+	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
+	dss_mainclk_state_enable();
 
-	hdmi_hot_plug_event_send(dssdev, 1);
-
+	r = hdmi_set_power(dssdev);
 	if (r) {
 		DSSERR("failed to power on device\n");
 		goto err;
@@ -1103,9 +1162,7 @@ static int hdmi_enable_display(struct omap_dss_device *dssdev)
 			0, "OMAP HDMI", (void *)0);
 
 err:
-	mutex_unlock(&hdmi.lock);
 	return r;
-
 }
 
 static int hdmi_enable_hpd(struct omap_dss_device *dssdev)
@@ -1113,41 +1170,57 @@ static int hdmi_enable_hpd(struct omap_dss_device *dssdev)
 	int r = 0;
 	DSSDBG("ENTER hdmi_enable_hpd()\n");
 
+	is_hpd_on = true;
+	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
+		dssdev->activate_after_resume = true;
+
+	if (dssdev->state != OMAP_DSS_DISPLAY_DISABLED)
+		return 0;
+
 	mutex_lock(&hdmi.lock);
 
-	/* the tv overlay manager is shared*/
-	r = omap_dss_start_device(dssdev);
-	if (r) {
-		DSSERR("failed to start device\n");
-		goto err;
-	}
-
-	if (dssdev->state != OMAP_DSS_DISPLAY_DISABLED) {
-		r = -EINVAL;
-		goto err;
-	}
-
-	/* PAD0_HDMI_HPD_PAD1_HDMI_CEC */
-	omap_writel(0x01180118, 0x4A100098);
-	/* PAD0_HDMI_DDC_SCL_PAD1_HDMI_DDC_SDA */
-	omap_writel(0x01180118 , 0x4A10009C);
-	/* CONTROL_HDMI_TX_PHY */
-	omap_writel(0x10000000, 0x4A100610);
-
-	if (dssdev->platform_enable)
-		dssdev->platform_enable(dssdev);
-
 	hpd_mode = 1;
-	r = hdmi_min_enable();
-	if (r) {
-		DSSERR("failed to power on device\n");
-		goto err;
-	}
+	r = hdmi_start_display(dssdev);
+	if (r)
+		hpd_mode = 0;
 
-err:
 	mutex_unlock(&hdmi.lock);
 	return r;
+}
 
+static int hdmi_enable_display(struct omap_dss_device *dssdev)
+{
+	int r = 0;
+	bool was_hdmi_on = is_hdmi_on;
+
+	DSSDBG("ENTER hdmi_enable_display()\n");
+
+	is_hdmi_on = is_hpd_on = true;
+	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
+		return 0;
+
+	mutex_lock(&hdmi.lock);
+
+	if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE)
+		/* turn on full power if HDMI was only on HPD */
+		r = was_hdmi_on ? 0 : hdmi_set_power(dssdev);
+	else
+		r = hdmi_start_display(dssdev);
+
+	if (!r)
+		set_hdmi_hot_plug_status(dssdev, true);
+		/* ignore return value for now */
+
+	mutex_unlock(&hdmi.lock);
+
+	return r;
+}
+
+static void hdmi_stop_display(struct omap_dss_device *dssdev)
+{
+	omap_dss_stop_device(dssdev);
+
+	hdmi_power_off(dssdev);
 }
 
 static void hdmi_disable_display(struct omap_dss_device *dssdev)
@@ -1155,46 +1228,37 @@ static void hdmi_disable_display(struct omap_dss_device *dssdev)
 	DSSDBG("Enter hdmi_disable_display()\n");
 
 	mutex_lock(&hdmi.lock);
-	if (dssdev->state == OMAP_DSS_DISPLAY_DISABLED)
-		goto end;
 
-	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED) {
-		/* suspended is the same as disabled with venc */
-		dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
-		goto end;
-	}
+	is_hdmi_on = is_hpd_on = false;
+
+	if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE)
+		hdmi_stop_display(dssdev);
+
+	/*setting to default only in case of disable and not suspend*/
+	hdmi.code = 16;
+	hdmi.mode = 1 ;
+
+	mutex_unlock(&hdmi.lock);
 
 	dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
-	omap_dss_stop_device(dssdev);
-
-	hdmi_power_off(dssdev);
-
-	hdmi.code = 16;
-	hdmi.mode = 1 ; /*setting to default only in case of disable and not suspend*/
-end:
-	mutex_unlock(&hdmi.lock);
 }
 
 static int hdmi_display_suspend(struct omap_dss_device *dssdev)
 {
-	int r = 0;
-
 	DSSDBG("hdmi_display_suspend\n");
-		mutex_lock(&hdmi.lock);
-	if (dssdev->state == OMAP_DSS_DISPLAY_DISABLED)
-		goto end;
 
-	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
-		goto end;
+	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE)
+		return -EINVAL;
+
+	mutex_lock(&hdmi.lock);
+
+	hdmi_stop_display(dssdev);
+
+	mutex_unlock(&hdmi.lock);
 
 	dssdev->state = OMAP_DSS_DISPLAY_SUSPENDED;
 
-	omap_dss_stop_device(dssdev);
-
-	hdmi_power_off(dssdev);
-end:
-	mutex_unlock(&hdmi.lock);
-	return r;
+	return 0;
 }
 
 static int hdmi_display_resume(struct omap_dss_device *dssdev)
@@ -1202,43 +1266,35 @@ static int hdmi_display_resume(struct omap_dss_device *dssdev)
 	int r = 0;
 
 	DSSDBG("hdmi_display_resume\n");
+	if (dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED)
+		return -EINVAL;
+
 	mutex_lock(&hdmi.lock);
 
-	/* the tv overlay manager is shared*/
-	r = omap_dss_start_device(dssdev);
-	if (r) {
-		DSSERR("failed to start device\n");
-		goto err;
-	}
+	r = hdmi_start_display(dssdev);
+	if (!r && hdmi_power == HDMI_POWER_FULL)
+		set_hdmi_hot_plug_status(dssdev, true);
 
-	if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE) {
-		r = -EINVAL;
-		goto err;
-	}
-
-	dssdev->state = OMAP_DSS_DISPLAY_ACTIVE;
-
-	/* PAD0_HDMI_HPD_PAD1_HDMI_CEC */
-	omap_writel(0x01180118, 0x4A100098);
-	/* PAD0_HDMI_DDC_SCL_PAD1_HDMI_DDC_SDA */
-	omap_writel(0x01180118 , 0x4A10009C);
-	/* CONTROL_HDMI_TX_PHY */
-	omap_writel(0x10000000, 0x4A100610);
-
-	if (dssdev->platform_enable)
-		dssdev->platform_enable(dssdev);
-
-	r = hdmi_power_on(dssdev);
-
-	hdmi_hot_plug_event_send(dssdev, 1);
-
-	if (r) {
-		DSSERR("failed to power on device\n");
-		goto err;
-	}
-
-err:
 	mutex_unlock(&hdmi.lock);
+
+	return r;
+}
+
+/* set power state depending on device state and HDMI state */
+static int hdmi_set_power(struct omap_dss_device *dssdev)
+{
+	int r = 0;
+
+	/* do not change power state if suspended */
+	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
+		return 0;
+
+	if (is_hdmi_on)
+		r = hdmi_power_on(dssdev);
+	else if (is_hpd_on)
+		r = hdmi_min_enable();
+	else
+		hdmi_power_off(dssdev);
 
 	return r;
 }
