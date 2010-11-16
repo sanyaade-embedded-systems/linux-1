@@ -1141,9 +1141,9 @@ static int hdmi_start_display(struct omap_dss_device *dssdev)
 	free_irq(OMAP44XX_IRQ_DSS_HDMI, NULL);
 
 	/* PAD0_HDMI_HPD_PAD1_HDMI_CEC */
-	omap_writel(0x01180118, 0x4A100098);
+	omap_writel(0x01100110, 0x4A100098);
 	/* PAD0_HDMI_DDC_SCL_PAD1_HDMI_DDC_SDA */
-	omap_writel(0x01180118 , 0x4A10009C);
+	omap_writel(0x01100110 , 0x4A10009C);
 	/* CONTROL_HDMI_TX_PHY */
 	omap_writel(0x10000000, 0x4A100610);
 
