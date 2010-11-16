@@ -997,7 +997,7 @@ void hdmi_work_queue(struct work_struct *work)
 	DSSDBG("irqstatus=%08x\n hdp_mode = %d dssdev->state = %d, "
 		"hdmi_power = %d", r, hpd_mode, dssdev->state, hdmi_power);
 
-	if ((r & HDMI_DISCONNECT) && (hdmi_power == HDMI_POWER_FULL)) {
+	if ((r & HDMI_DISCONNECT) && (hdmi_power == HDMI_POWER_FULL) && (hpd_mode == 1)) {
 		set_hdmi_hot_plug_status(dssdev, false);
 		/* ignore return value for now */
 
@@ -1237,7 +1237,7 @@ static void hdmi_disable_display(struct omap_dss_device *dssdev)
 	/*setting to default only in case of disable and not suspend*/
 	hdmi.code = 16;
 	hdmi.mode = 1 ;
-
+	hpd_mode = 0;
 	mutex_unlock(&hdmi.lock);
 
 	dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
