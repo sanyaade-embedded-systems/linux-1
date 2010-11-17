@@ -281,6 +281,11 @@ void hdmi_get_av_delay(u8 *edid, struct latency *lat);
 void hdmi_deep_color_support_info(u8 *edid, struct deep_color *format);
 int hdmi_tv_yuv_supported(u8 *edid);
 
+#define OMAP_HDMI_TIMINGS_NB 34
+#define OMAP_HDMI_TIMINGS_VESA_START 15
+
+extern const struct omap_video_timings all_timings_direct[OMAP_HDMI_TIMINGS_NB];
+
 #ifdef __cplusplus
 };
 #endif
