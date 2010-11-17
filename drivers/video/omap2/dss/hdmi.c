@@ -131,7 +131,7 @@ struct hdmi_hvsync_pol {
 };
 
 /*This is the structure which has all supported timing values that OMAP4 supports*/
-const struct omap_video_timings all_timings_direct[32] = {
+const struct omap_video_timings all_timings_direct[OMAP_HDMI_TIMINGS_NB] = {
 						{640, 480, 25200, 96, 16, 48, 2, 10, 33},
 						{1280, 720, 74250, 40, 440, 220, 5, 5, 20},
 						{1280, 720, 74250, 40, 110, 220, 5, 5, 20},
@@ -146,6 +146,7 @@ const struct omap_video_timings all_timings_direct[32] = {
 						{1440, 576, 54000, 128, 24, 136, 5, 5, 39},
 						{1920, 1080, 148500, 44, 528, 148, 5, 4, 36},
 						{2880, 480, 108000, 248, 64, 240, 6, 9, 30},
+						{1920, 1080, 74250, 44, 638, 148, 5, 4, 36},
 						/*Vesa frome here*/
 						{640, 480, 25175, 96, 16, 48, 2 , 11, 31},
 						{800, 600, 40000, 128, 40, 88, 4 , 1, 23},
@@ -164,44 +165,50 @@ const struct omap_video_timings all_timings_direct[32] = {
 						{1280, 768, 68250, 32, 48, 80, 7, 3, 12},
 						{1400, 1050, 101000, 32, 48, 80, 4, 3, 23},
 						{1680, 1050, 119000, 32, 48, 80, 6, 3, 21},
-						{1280, 800, 79500, 32, 48, 80, 6, 3, 14} };
+						{1280, 800, 79500, 32, 48, 80, 6, 3, 14},
+						{1280, 720, 74250, 40, 110, 220, 5, 5, 20} };
 
 /*This is a static Mapping array which maps the timing values with corresponding CEA / VESA code*/
-int code_index[32] = {1, 19, 4, 2, 37, 6, 21, 20, 5, 16, 17, 29, 31, 35,
-			/* <--14 CEA 17--> vesa*/
-			4, 9, 0xE, 0x17, 0x1C, 0x27, 0x20, 0x23, 0x10, 0x2A,
-			0X2F, 0x3A, 0X51, 0X52, 0x16, 0x29, 0x39, 0x1B};
+int code_index[OMAP_HDMI_TIMINGS_NB] = {1, 19, 4, 2, 37, 6, 21, 20, 5, 16, 17, 29, 31, 35, 32,
+					/* <--14 CEA 17--> vesa*/
+					4, 9, 0xE, 0x17, 0x1C, 0x27, 0x20, 0x23, 0x10, 0x2A,
+					0X2F, 0x3A, 0X51, 0X52, 0x16, 0x29, 0x39, 0x1B, 0x54};
 
 /*Static mapping of the Timing values with the corresponding Vsync and Hsync polarity*/
-const struct hdmi_hvsync_pol hvpol_mapping[32] = {
+const struct hdmi_hvsync_pol hvpol_mapping[OMAP_HDMI_TIMINGS_NB] = {
+					/* CEA */
 					{0, 0}, {1, 1}, {1, 1}, {0, 0},
 					{0, 0}, {0, 0}, {0, 0}, {1, 1},
 					{1, 1}, {1, 1}, {0, 0}, {0, 0},
-					{1, 1}, {0, 0}, {0, 0}, {1, 1},
-					{1, 1}, {1, 0}, {1, 0}, {1, 1},
-					{1, 1}, {1, 1}, {0, 0}, {1, 0},
-					{1, 0}, {1, 0}, {1, 1}, {1, 1},
-					{0, 1}, {0, 1}, {0, 1}, {0, 1} };
+					{1, 1}, {0, 0}, {1, 1},
+
+					/* VESA */
+					{0, 0}, {1, 1}, {1, 1}, {1, 0},
+					{1, 0}, {1, 1},	{1, 1}, {1, 1},
+					{0, 0}, {1, 0},	{1, 0}, {1, 0},
+					{1, 1}, {1, 1},	{0, 1}, {0, 1},
+					{0, 1}, {0, 1}, {1, 1} };
 
 /*This is revere static mapping which maps the CEA / VESA code to the corresponding timing values*/
+/* FIXME: these tables should be processed at runtime to make maintenance easier */
 /* note: table is 10 entries per line to make it easier to find index.. */
 int code_cea[39] = {
 		-1,  0,  3,  3,  2,  8,  5,  5, -1, -1,
 		-1, -1, -1, -1, -1, -1,  9, 10, 10,  1,
 		7,   6,  6, -1, -1, -1, -1, -1, -1, 11,
-		11, 12, -1, -1, -1, 13, 13,  4,  4};
+		11, 12, 14, -1, -1, 13, 13,  4,  4};
 
 /* note: table is 10 entries per line to make it easier to find index.. */
-int code_vesa[83] = {
-		-1, -1, -1, -1, 14, -1, -1, -1, -1, 15,
-		-1, -1, -1, -1, 16, -1, 22, -1, -1, -1,
-		-1, -1, 28, 17, -1, -1, -1, 31, 18, -1,
-		-1, -1, 20, -1, -1, 21, -1, -1, -1, 19,
-		-1, 29, 23, -1, -1, -1, -1, 24, -1, -1,
-		-1, -1, -1, -1, -1, -1, -1, 30, 25, -1,
+int code_vesa[85] = {
+		-1, -1, -1, -1, 15, -1, -1, -1, -1, 16,
+		-1, -1, -1, -1, 17, -1, 23, -1, -1, -1,
+		-1, -1, 29, 18, -1, -1, -1, 32, 19, -1,
+		-1, -1, 21, -1, -1, 22, -1, -1, -1, 20,
+		-1, 30, 24, -1, -1, -1, -1, 25, -1, -1,
+		-1, -1, -1, -1, -1, -1, -1, 31, 26, -1,
 		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 		-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-		-1, 26, 27};
+		-1, 27, 28, -1, 33};
 
 struct hdmi {
 	struct kobject kobj;
@@ -1381,7 +1388,7 @@ static struct hdmi_cm hdmi_get_code(struct omap_video_timings *timing)
 	struct hdmi_cm cm = {-1};
 	DSSDBG("hdmi_get_code");
 
-	for (i = 0; i < 32; i++) {
+	for (i = 0; i < OMAP_HDMI_TIMINGS_NB; i++) {
 		temp = all_timings_direct[i];
 		if ((temp.pixel_clock == timing->pixel_clock) &&
 			(temp.x_res == timing->x_res) &&
@@ -1399,7 +1406,7 @@ static struct hdmi_cm hdmi_get_code(struct omap_video_timings *timing)
 			if ((temp_hsync == timing_hsync)  &&  (temp_vsync == timing_vsync)) {
 				code = i;
 				cm.code = code_index[i];
-				if (code < 14)
+				if (code < OMAP_HDMI_TIMINGS_VESA_START)
 					cm.mode = 1;
 				else
 					cm.mode = 0;
