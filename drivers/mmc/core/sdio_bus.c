@@ -130,46 +130,21 @@ static int sdio_bus_probe(struct device *dev)
 	if (!id)
 		return -ENODEV;
 
-	/* Unbound SDIO functions are always suspended.
-	 * During probe, the function is set active and the usage count
-	 * is incremented.  If the driver supports runtime PM,
-	 * it should call pm_runtime_put_noidle() in its probe routine and
-	 * pm_runtime_get_noresume() in its remove routine.
-	 */
-	ret = pm_runtime_get_sync(dev);
-	if (ret < 0)
-		goto out;
-
 	/* Set the default block size so the driver is sure it's something
 	 * sensible. */
 	sdio_claim_host(func);
 	ret = sdio_set_block_size(func, 0);
 	sdio_release_host(func);
 	if (ret)
-		goto disable_runtimepm;
+		return ret;
 
-	ret = drv->probe(func, id);
-	if (ret)
-		goto disable_runtimepm;
-
-	return 0;
-
-disable_runtimepm:
-	pm_runtime_put_noidle(dev);
-out:
-	return ret;
+	return drv->probe(func, id);
 }
 
 static int sdio_bus_remove(struct device *dev)
 {
 	struct sdio_driver *drv = to_sdio_driver(dev->driver);
 	struct sdio_func *func = dev_to_sdio_func(dev);
-	int ret;
-
-	/* Make sure card is powered before invoking ->remove() */
-	ret = pm_runtime_get_sync(dev);
-	if (ret < 0)
-		goto out;
 
 	drv->remove(func);
 
@@ -181,14 +156,7 @@ static int sdio_bus_remove(struct device *dev)
 		sdio_release_host(func);
 	}
 
-	/* First, undo the increment made directly above */
-	pm_runtime_put_noidle(dev);
-
-	/* Then undo the runtime PM settings in sdio_bus_probe() */
-	pm_runtime_put_noidle(dev);
-
-out:
-	return ret;
+	return 0;
 }
 
 #ifdef CONFIG_PM_RUNTIME
