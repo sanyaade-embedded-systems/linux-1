@@ -22,15 +22,16 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/sdio_ids.h>
 #include <linux/err.h>
+#include <generated/mach-types.h>
 
 #include <asm/gpio.h>
 #include <asm/io.h>
 #include <asm/mach-types.h>
 #include <plat/wifi_tiwlan.h>
 
-#define SDP4430_WIFI_PMENA_GPIO_BLAZE	54
-#define SDP4430_WIFI_PMENA_GPIO_PANDA	43
-#define SDP4430_WIFI_IRQ_GPIO 53
+#define SDP4430_WIFI_PMENA_GPIO	 54
+#define PANDA_WIFI_PMENA_GPIO    43
+#define SDP4430_WIFI_IRQ_GPIO	 53
 
 static int sdp4430_wifi_cd;		/* WIFI virtual 'card detect' status */
 static void (*wifi_status_cb)(int card_present, void *dev_id);
@@ -73,10 +74,12 @@ int sdp4430_wifi_power(int on)
 {
 
 	printk(KERN_WARNING"%s: %d\n", __func__, on);
+
 	if (machine_is_omap_4430sdp())
-		gpio_set_value(SDP4430_WIFI_PMENA_GPIO_BLAZE, on);
+		gpio_set_value(SDP4430_WIFI_PMENA_GPIO, on);
 	else
-		gpio_set_value(SDP4430_WIFI_PMENA_GPIO_PANDA, on);
+		gpio_set_value(PANDA_WIFI_PMENA_GPIO, on);
+
 	sdp4430_wifi_power_state = on;
 	return 0;
 }
@@ -127,9 +130,10 @@ static struct platform_device panda_wifi_device = {
 	.num_resources  = ARRAY_SIZE(sdp4430_wifi_resources),
 	.resource       = sdp4430_wifi_resources,
 	.dev            = {
-		.platform_data = &sdp4430_wifi_control,
+	.platform_data = &sdp4430_wifi_control,
 	},
 };
+
 #endif
 
 static int __init sdp4430_wifi_init(void)
@@ -145,10 +149,10 @@ static int __init sdp4430_wifi_init(void)
 	}
 	gpio_direction_input(SDP4430_WIFI_IRQ_GPIO);
 #ifdef CONFIG_WIFI_CONTROL_FUNC
-        if (machine_is_omap_4430sdp())
-               ret = platform_device_register(&sdp4430_wifi_device);
-        else
-               ret = platform_device_register(&panda_wifi_device);
+	if (machine_is_omap_4430sdp())
+		ret = platform_device_register(&sdp4430_wifi_device);
+	else
+		ret = platform_device_register(&panda_wifi_device);
 #endif
 out:
 	return ret;
