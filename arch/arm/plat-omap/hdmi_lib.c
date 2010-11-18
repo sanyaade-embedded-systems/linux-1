@@ -320,7 +320,7 @@ void hdmi_dump_regs(struct seq_file *s)
 #define RD_REG_32(COMP, REG)            hdmi_read_reg(COMP, REG)
 #define WR_REG_32(COMP, REG, VAL)       hdmi_write_reg(COMP, REG, (u32)(VAL))
 
-u8 edid_backup[256];
+u8 edid_backup[512];
 
 int hdmi_get_pixel_append_position(void)
 {
@@ -396,7 +396,7 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 
 	i = 0;
 	while (((FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
-			| (FLD_GET(hdmi_read_reg(ins, sts), 2, 2) == 0)) && i < 256) {		
+			| (FLD_GET(hdmi_read_reg(ins, sts), 2, 2) == 0)) && i < 512) {
 		if (FLD_GET(hdmi_read_reg(ins,
 			sts), 2, 2) == 0) {
 			/* FIFO not empty */
@@ -410,9 +410,9 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 			checksum += pEDID[j];
 			DBG("No extension 128 bit checksum\n");
 		} else {
-			for (j = 0; j < 256; j++)
-			checksum += pEDID[j];
-			DBG("Extension present 256 bit checksum\n");
+			for (j = 0; j < 512; j++)
+				checksum += pEDID[j];
+			DBG("Extension present 512 bit checksum\n");
 			/* HDMI_CORE_DDC_READ_EXTBLOCK(); */
 		}
 	} else {
@@ -420,7 +420,7 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 	}
 
 	DBG("EDID Content %d\n", i);
-	for (i = 0 ; i < 256 ; i++)
+	for (i = 0 ; i < 512 ; i++)
 		edid_backup[i] = pEDID[i];
 
 #ifdef DEBUG_EDID
