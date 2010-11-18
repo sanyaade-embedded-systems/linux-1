@@ -134,12 +134,13 @@ int fm_rx_set_frequency(struct fmdrv_ops *fmdev, unsigned int freq_to_set)
 				&fmdev->maintask_completion, NULL, NULL);
 	FM_CHECK_SEND_CMD_STATUS(ret);
 
+	/* Gap BTW two consecutive frequency must be 50KHz, if the requested
+	* frequency is odd value then driver will tune to the next higher freq.
+	*/
 	if (curr_frq_in_khz != freq_to_set) {
 		pr_err("(fmdrv): Current chip frequency(%d) is not matching"
 			   " with requested frequency(%d)", curr_frq_in_khz,
 			   freq_to_set);
-		ret = -EAGAIN;
-		goto exit;
 	}
 
 	/* Update local cache  */
