@@ -30,8 +30,10 @@ u32 abe_firmware_version_number;
  */
 u32 abe_compensated_mixer_gain;
 u8 abe_muted_gains_indicator[MAX_NBGAIN_CMEM];
-u32 abe_unmuted_desired_gains[MAX_NBGAIN_CMEM];
-u32 abe_unmuted_compensated_gains[MAX_NBGAIN_CMEM];
+u32 abe_desired_gains_decibel[MAX_NBGAIN_CMEM];
+u32 abe_muted_gains_decibel[MAX_NBGAIN_CMEM];
+u32 abe_desired_gains_linear[MAX_NBGAIN_CMEM];
+u32 abe_desired_ramp_delay_ms[MAX_NBGAIN_CMEM];
 /*
  * HAL/FW ports status / format / sampling / protocol(call_back) / features
  *	/ gain / name
@@ -528,7 +530,7 @@ const abe_subroutine2 abe_sub_array [MAXNBSUBROUTINE] =
  typedef double (*PtrFun) (double);
 PtrFun pFun;
 pFun = sin;
-       y = (* pFun) (x);
+   y = (* pFun) (x);
 *//* mask, { time id param tag1} */
 const abe_sequence_t seq_null = {
 	NOMASK, {CL_M1, 0, {0, 0, 0, 0}, 0}, {CL_M1, 0, {0, 0, 0, 0}, 0}
@@ -569,7 +571,6 @@ u32 abe_current_event_id;
  * ABE CONST AREA FOR PARAMETERS TRANSLATION
  */
 const u32 abe_db2lin_table[sizeof_db2lin_table] = {
-#if 0
 	0x00000000,		/* SMEM coding of -120 dB */
 	0x00000000,		/* SMEM coding of -119 dB */
 	0x00000000,		/* SMEM coding of -118 dB */
@@ -600,7 +601,6 @@ const u32 abe_db2lin_table[sizeof_db2lin_table] = {
 	0x00000005,		/* SMEM coding of -93 dB */
 	0x00000006,		/* SMEM coding of -92 dB */
 	0x00000007,		/* SMEM coding of -91 dB */
-#endif
 	0x00000008,		/* SMEM coding of -90 dB */
 	0x00000009,		/* SMEM coding of -89 dB */
 	0x0000000A,		/* SMEM coding of -88 dB */

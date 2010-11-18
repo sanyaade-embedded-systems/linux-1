@@ -22,34 +22,6 @@
 #if PC_SIMULATION
 #include <stdlib.h>
 #endif
-#define ABE_PMEM_BASE_OFFSET_MPU	0xe0000
-#define ABE_CMEM_BASE_OFFSET_MPU	0xa0000
-#define ABE_SMEM_BASE_OFFSET_MPU	0xc0000
-#define ABE_DMEM_BASE_OFFSET_MPU	0x80000
-#define ABE_ATC_BASE_OFFSET_MPU		0xf1000
-#include <linux/module.h>
-#include <linux/moduleparam.h>
-#include <linux/init.h>
-#include <linux/delay.h>
-#include <linux/pm.h>
-#include <linux/i2c.h>
-#include <linux/gpio.h>
-#include <linux/platform_device.h>
-#include <linux/workqueue.h>
-#include <linux/clk.h>
-#include <linux/err.h>
-#include <linux/slab.h>
-#include <linux/pm_runtime.h>
-void __iomem *io_base;
-/**
- * abe_init_mem - Allocate Kernel space memory map for ABE
- *
- * Memory map of ABE memory space for PMEM/DMEM/SMEM/DMEM
- */
-void abe_init_mem(void __iomem *_io_base)
-{
-	io_base = _io_base;
-}
 /**
 * abe_fprintf
 * @line: character line to be printed
@@ -131,6 +103,7 @@ void abe_write_fifo(u32 memory_bank, u32 descr_addr, u32 *data, u32 nb_data32)
 		break;
 	}
 }
+#if 0
 /**
  * abe_block_copy
  * @direction: direction of the data move (Read/Write)
@@ -144,29 +117,140 @@ void abe_write_fifo(u32 memory_bank, u32 descr_addr, u32 *data, u32 nb_data32)
 void abe_block_copy(u32 direction, u32 memory_bank, u32 address,
 		    u32 *data, u32 nb_bytes)
 {
+#if PC_SIMULATION
+	extern void target_server_read_pmem(u32 address, u32 *data,
+					    u32 nb_words_32bits);
+	extern void target_server_write_pmem(u32 address, u32 *data,
+					     u32 nb_words_32bits);
+	extern void target_server_read_cmem(u32 address, u32 *data,
+					    u32 nb_words_32bits);
+	extern void target_server_write_cmem(u32 address, u32 *data,
+					     u32 nb_words_32bits);
+	extern void target_server_read_atc(u32 address, u32 *data,
+					   u32 nb_words_32bits);
+	extern void target_server_write_atc(u32 address, u32 *data,
+					    u32 nb_words_32bits);
+	extern void target_server_read_smem(u32 address_48bits, u32 *data,
+					    u32 nb_words_48bits);
+	extern void target_server_write_smem(u32 address_48bits, u32 *data,
+					     u32 nb_words_48bits);
+	extern void target_server_read_dmem(u32 address_byte, u32 *data,
+					    u32 nb_byte);
+	extern void target_server_write_dmem(u32 address_byte, u32 *data,
+					     u32 nb_byte);
+	u32 *smem_tmp, smem_offset, smem_base, nb_words48;
+	u32 remaining, index;
+	if (direction == COPY_FROM_HOST_TO_ABE) {
+		switch (memory_bank) {
+		case ABE_PMEM:
+			target_server_write_pmem(address / 4, data,
+						 nb_bytes / 4);
+			break;
+		case ABE_CMEM:
+			target_server_write_cmem(address / 4, data,
+						 nb_bytes / 4);
+			break;
+		case ABE_ATC:
+			target_server_write_atc(address / 4, data,
+						nb_bytes / 4);
+			break;
+		case ABE_SMEM:
+			nb_words48 = (nb_bytes + 7) >> 3;
+			/* temporary buffer manages the OCP access to
+			   32bits boundaries */
+			smem_tmp = (u32 *) malloc(nb_bytes + 64);
+			/* address is on SMEM 48bits lines boundary */
+			smem_base = address - (address & 7);
+			target_server_read_smem(smem_base / 8, smem_tmp,
+						2 + nb_words48);
+			smem_offset = address & 7;
+			memcpy(&(smem_tmp[smem_offset >> 2]), data, nb_bytes);
+			target_server_write_smem(smem_base / 8, smem_tmp,
+						 2 + nb_words48);
+			free(smem_tmp);
+			break;
+		case ABE_DMEM:
+			if (nb_bytes > 0x1000) {
+				remaining = nb_bytes;
+				index = 0;
+				while (remaining > 0x1000) {
+					target_server_write_dmem(address,
+								 &(data[index]),
+								 0x1000);
+					address += 0x1000;
+					index += (0x1000 >> 2);
+					remaining -= 0x1000;
+				}
+				target_server_write_dmem(address,
+							 &(data[index]),
+							 remaining);
+			} else
+				target_server_write_dmem(address, data,
+							 nb_bytes);
+			break;
+		default:
+			abe_dbg_param |= ERR_LIB;
+			abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
+			break;
+		}
+	} else {
+		switch (memory_bank) {
+		case ABE_PMEM:
+			target_server_read_pmem(address / 4, data,
+						nb_bytes / 4);
+			break;
+		case ABE_CMEM:
+			target_server_read_cmem(address / 4, data,
+						nb_bytes / 4);
+			break;
+		case ABE_ATC:
+			target_server_read_atc(address / 4, data, nb_bytes / 4);
+			break;
+		case ABE_SMEM:
+			nb_words48 = (nb_bytes + 7) >> 3;
+			/* temporary buffer manages the OCP access to
+			   32bits boundaries */
+			smem_tmp = (u32 *) malloc(nb_bytes + 64);
+			/* address is on SMEM 48bits lines boundary */
+			smem_base = address - (address & 7);
+			target_server_read_smem(smem_base / 8, smem_tmp,
+						2 + nb_words48);
+			smem_offset = address & 7;
+			memcpy(data, &(smem_tmp[smem_offset >> 2]), nb_bytes);
+			free(smem_tmp);
+			break;
+		case ABE_DMEM:
+			target_server_read_dmem(address, data, nb_bytes);
+			break;
+		default:
+			abe_dbg_param |= ERR_LIB;
+			abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
+			break;
+		}
+	}
+#else
 	u32 i;
-	u32 base_address = 0, *src_ptr, *dst_ptr, n;
+	u32 base_address, *src_ptr, *dst_ptr, n;
 	switch (memory_bank) {
 	case ABE_PMEM:
-		base_address = (u32) io_base + ABE_PMEM_BASE_OFFSET_MPU;
+		base_address = ABE_PMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_CMEM:
-		base_address = (u32) io_base + ABE_CMEM_BASE_OFFSET_MPU;
+		base_address = ABE_CMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_SMEM:
-		base_address = (u32) io_base + ABE_SMEM_BASE_OFFSET_MPU;
+		base_address = ABE_SMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_DMEM:
-		base_address = (u32) io_base + ABE_DMEM_BASE_OFFSET_MPU;
+		base_address = ABE_DMEM_BASE_ADDRESS_MPU;
 		break;
 	case ABE_ATC:
-		base_address = (u32) io_base + ABE_ATC_BASE_OFFSET_MPU;
+		base_address = ABE_ATC_BASE_ADDRESS_MPU;
 		break;
 	default:
-		base_address = (u32) io_base + ABE_SMEM_BASE_OFFSET_MPU;
+		base_address = ABE_SMEM_BASE_ADDRESS_MPU;
 		abe_dbg_param |= ERR_LIB;
 		abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
-		break;
 	}
 	if (direction == COPY_FROM_HOST_TO_ABE) {
 		dst_ptr = (u32 *) (base_address + address);
@@ -175,10 +259,12 @@ void abe_block_copy(u32 direction, u32 memory_bank, u32 address,
 		dst_ptr = (u32 *) data;
 		src_ptr = (u32 *) (base_address + address);
 	}
-	n = (nb_bytes / 4);
+	n = (nb_bytes >> 2);
 	for (i = 0; i < n; i++)
 		*dst_ptr++ = *src_ptr++;
+#endif
 }
+#endif
 #if 0
 /*
  * ABE_SINGLE_COPY
@@ -203,6 +289,7 @@ void abe_write_dmem(u32 address, u32 *data, u32 nb_bytes)
      void abe_write_atc(u32 address, u32 *data, u32 nb_bytes)
      void abe_read_atc(u32 address, u32 *data, u32 nb_bytes)
 #endif
+#if 0
 /**
  * abe_reset_mem
  *
@@ -214,25 +301,55 @@ void abe_write_dmem(u32 address, u32 *data, u32 nb_bytes)
  */
      void abe_reset_mem(u32 memory_bank, u32 address, u32 nb_bytes)
 {
-	u32 i;
-	u32 *dst_ptr, n;
-	u32 base_address = 0;
+#if PC_SIMULATION
+	extern void target_server_write_smem(u32 address_48bits,
+					     u32 *data, u32 nb_words_48bits);
+	extern void target_server_write_dmem(u32 address_byte,
+					     u32 *data, u32 nb_byte);
+	u32 *smem_tmp, *data, smem_offset, smem_base, nb_words48;
+	data = (u32 *) calloc(nb_bytes, 1);
 	switch (memory_bank) {
 	case ABE_SMEM:
-		base_address = (u32) io_base + ABE_SMEM_BASE_OFFSET_MPU;
-		break;
-	case ABE_DMEM:
-		base_address = (u32) io_base + ABE_DMEM_BASE_OFFSET_MPU;
+		nb_words48 = (nb_bytes + 7) >> 3;
+		/* temporary buffer manages the OCP access to 32bits
+		   boundaries */
+		smem_tmp = (u32 *) malloc(nb_bytes + 64);
+		/* address is on SMEM 48bits lines boundary */
+		smem_base = address - (address & 7);
+		target_server_read_smem(smem_base / 8, smem_tmp,
+					2 + nb_words48);
+		smem_offset = address & 7;
+		memcpy(&(smem_tmp[smem_offset >> 2]), data, nb_bytes);
+		target_server_write_smem(smem_base / 8, smem_tmp,
+					 2 + nb_words48);
+		free(smem_tmp);
 		break;
 	case ABE_CMEM:
-		base_address = (u32) io_base + ABE_CMEM_BASE_OFFSET_MPU;
+		target_server_write_cmem(address / 4, data, nb_bytes / 4);
 		break;
+	case ABE_DMEM:
+		target_server_write_dmem(address, data, nb_bytes);
+		break;
+	default:
+		abe_dbg_param |= ERR_LIB;
+		abe_dbg_error_log(ABE_BLOCK_COPY_ERR);
 	}
-	dst_ptr = (u32 *) (base_address + address);
-	n = (nb_bytes / 4);
+	free(data);
+#else
+	u32 i;
+	u32 *dst_ptr, n;
+	if (memory_bank == ABE_SMEM)
+		dst_ptr = (u32 *) (ABE_SMEM_BASE_ADDRESS_MPU + address);
+	else if (memory_bank == ABE_CMEM)
+		dst_ptr = (u32 *) (ABE_CMEM_BASE_ADDRESS_MPU + address);
+	else
+		dst_ptr = (u32 *) (ABE_DMEM_BASE_ADDRESS_MPU + address);
+	n = (nb_bytes >> 2);
 	for (i = 0; i < n; i++)
 		*dst_ptr++ = 0;
+#endif
 }
+#endif
 /**
  * abe_monitoring
  *
@@ -500,49 +617,29 @@ void abe_gain_offset(u32 id, u32 *mixer_offset)
  */
 u32 abe_valid_port_for_synchro(u32 id)
 {
-	if ((abe_port[id].protocol.protocol_switch == DMAREQ_PORT_PROT) ||
-		(abe_port[id].protocol.protocol_switch == PINGPONG_PORT_PROT))
+	if ((abe_port[id].protocol.protocol_switch ==
+	     DMAREQ_PORT_PROT) ||
+	    (abe_port[id].protocol.protocol_switch ==
+	     PINGPONG_PORT_PROT) ||
+	    (abe_port[id].status != OMAP_ABE_PORT_ACTIVITY_RUNNING))
 		return 0;
 	else
 		return 1;
 }
-void abe_decide_main_port(u32 id)
+void abe_decide_main_port(void)
 {
-	u32 i;
-
-	if (abe_valid_port_for_synchro(id)) {
-		for (i = 0; i < (LAST_PORT_ID - 1); i++) {
-			if (abe_port[abe_port_priority[i]].status ==
-					OMAP_ABE_PORT_ACTIVITY_RUNNING)
-				break;
-		}
-
-		if (i < (LAST_PORT_ID - 1))
-			id = abe_port_priority[i];
-		abe_select_main_port(id);
-	}
-}
-/**
- * abe_check_activity - Check if some ABE activity.
- *
- * Check if any ABE ports are running.
- * return 1: still activity on ABE
- * return 0: no more activity on ABE. Event generator can be stopped
- *
- */
-u32 abe_check_activity(void)
-{
-	u32 i;
-	u32 ret;
-
-	ret = 0;
-	for (i = 0; i < (LAST_PORT_ID - 1); i++) {
-		if (abe_port[abe_port_priority[i]].status ==
-				OMAP_ABE_PORT_ACTIVITY_RUNNING)
+	u32 id, id_not_found;
+	id_not_found = 1;
+	for (id = 0; id < LAST_PORT_ID - 1; id++) {
+		if (abe_valid_port_for_synchro(abe_port_priority[id])) {
+			id_not_found = 0;
 			break;
+		}
 	}
-	if (i < (LAST_PORT_ID - 1))
-		ret = 1;
+	/* if no port is currently activated, the default one is PDM_DL */
+	if (id_not_found)
+		abe_select_main_port(PDM_DL_PORT);
+	else
+	abe_select_main_port(abe_port_priority[id]);
 
-	return ret;
 }
