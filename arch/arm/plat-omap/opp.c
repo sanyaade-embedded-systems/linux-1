@@ -329,7 +329,8 @@ struct omap_opp *opp_find_freq_floor(struct device *dev, unsigned long *freq)
  * opp if found, else returns ERR_PTR in case of error and should be handled
  * using IS_ERR.
  */
-struct omap_opp *opp_find_voltage(struct device *dev, unsigned long volt)
+struct omap_opp *opp_find_voltage(struct device *dev, unsigned long volt,
+				  unsigned long hack_freq)
 {
 	struct device_opp *dev_opp;
 	struct omap_opp *temp_opp, *opp = ERR_PTR(-ENODEV);
@@ -340,8 +341,15 @@ struct omap_opp *opp_find_voltage(struct device *dev, unsigned long volt)
 
 	list_for_each_entry(temp_opp, &dev_opp->opp_list, node) {
 		if (temp_opp->enabled && temp_opp->u_volt == volt) {
-			opp = temp_opp;
-			break;
+			if (hack_freq) {
+				if (hack_freq == temp_opp->rate) {
+					opp = temp_opp;
+					break;
+				}
+			} else {
+				opp = temp_opp;
+				break;
+			}
 		}
 	}
 
