@@ -160,7 +160,6 @@ abehal_status abe_set_ping_pong_buffer(u32 port, u32 n_bytes);
  * Tell the next base address of the next ping_pong Buffer and its size
  */
 abehal_status abe_read_next_ping_pong_buffer(u32 port, u32 *p, u32 *n);
-abehal_status abe_read_offset_ping_pong_buffer(u32 port, u32 *n);
 /**
  * abe_init_ping_pong_buffer
  * @id: ABE port ID
@@ -173,6 +172,15 @@ abehal_status abe_read_offset_ping_pong_buffer(u32 port, u32 *n);
  */
 abehal_status abe_init_ping_pong_buffer(u32 id, u32 size_bytes, u32 n_buffers,
 					u32 *p);
+/**
+ * abe_read_offset_from_ping_buffer
+ * @id: ABE port ID
+ * @n:  returned address of the offset from the ping buffer start address expressed in samples
+ *
+ * Computes the current firmware ping pong read pointer location, expressed in samples,
+ * as the offset from the start address of ping buffer.
+ */
+abehal_status abe_read_offset_from_ping_buffer(u32 id, u32 *n);
 /**
  * abe_plug_subroutine
  * @id: returned sequence index after plugging a new subroutine
@@ -226,8 +234,6 @@ abehal_status abe_disable_data_transfer(u32 id);
  * enable the IO task (@f <> 0)
  */
 abehal_status abe_enable_data_transfer(u32 id);
-void abe_enable_irq_transfer(u32 id);
-void abe_disable_irq_transfer(u32 id);
 /**
  * abe_set_dmic_filter
  * @d: DMIC decimation ratio : 16/25/32/40
@@ -475,14 +481,7 @@ abehal_status abe_remote_debugger_interface(u32 n, u8 *p);
  *
  */
 abehal_status abe_enable_test_pattern(u32 smem_id, u32 on_off);
-/**
- * abe_check_activity - Check if some ABE activity.
- *
- * Check if any ABE ports are running.
- * return 1: still activity on ABE
- * return 0: no more activity on ABE. Event generator can be stopped
- *
- */
+
 u32 abe_check_activity(void);
 
 #endif/* _ABE_API_H_ */
