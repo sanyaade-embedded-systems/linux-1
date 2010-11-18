@@ -483,5 +483,11 @@ abehal_status abe_remote_debugger_interface(u32 n, u8 *p);
 abehal_status abe_enable_test_pattern(u32 smem_id, u32 on_off);
 
 u32 abe_check_activity(void);
+/**
+ * abe_wakeup - Wakeup ABE
+ *
+ * Wakeup ABE in case of retention
+ */
+abehal_status abe_wakeup(void);
 
 #endif/* _ABE_API_H_ */
