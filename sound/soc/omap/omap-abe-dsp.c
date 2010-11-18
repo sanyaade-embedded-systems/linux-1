@@ -1783,6 +1783,21 @@ static struct snd_pcm_ops omap_aess_pcm_ops = {
 	.mmap		= aess_mmap,
 };
 
+static int aess_stream_event(struct snd_soc_dapm_context *dapm)
+{
+	/* TODO: do not use abe global structure to assign pdev */
+	struct platform_device *pdev = abe->pdev;
+
+	pm_runtime_get_sync(&pdev->dev);
+
+	aess_set_opp_mode();
+
+	pm_runtime_put_sync(&pdev->dev);
+
+	return 0;
+}
+
+/* TODO: MODEM doesn't need this although low power mmap() does */
 /* TODO: We need the buffer less IOCTL() to support MODEM */
 
 static struct snd_soc_platform_driver omap_aess_platform = {
@@ -1791,6 +1806,7 @@ static struct snd_soc_platform_driver omap_aess_platform = {
 	.remove = abe_remove,
 	.read = abe_dsp_read,
 	.write = abe_dsp_write,
+	.stream_event = aess_stream_event,
 };
 
 static int __devinit abe_engine_probe(struct platform_device *pdev)
