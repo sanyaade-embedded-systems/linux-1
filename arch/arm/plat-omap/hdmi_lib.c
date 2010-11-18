@@ -329,12 +329,13 @@ int hdmi_get_pixel_append_position(void)
 }
 EXPORT_SYMBOL(hdmi_get_pixel_append_position);
 
-int hdmi_core_ddc_edid(u8 *pEDID)
+int hdmi_core_ddc_edid(u8 *pEDID, int ext)
 {
 	u32 i, j, l;
 	char checksum = 0;
 	u32 sts = HDMI_CORE_DDC_STATUS;
 	u32 ins = HDMI_CORE_SYS;
+	u32 offset = 0;
 
 	/* Turn on CLK for DDC */
 	REG_FLD_MOD(HDMI_CORE_AV, HDMI_CORE_AV_DPD, 0x7, 2, 0);
@@ -342,27 +343,41 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 	/* Wait */
 	mdelay(10);
 
-	/* Clk SCL Devices */
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0xA, 3, 0);
+	if (!ext) {
+		/* Clk SCL Devices */
+		REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0xA, 3, 0);
 
-	/* HDMI_CORE_DDC_STATUS__IN_PROG */
-	while (FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
+		/* HDMI_CORE_DDC_STATUS__IN_PROG */
+		while (FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
+			;
 
-	/* Clear FIFO */
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x9, 3, 0);
+		/* Clear FIFO */
+		REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x9, 3, 0);
 
-	/* HDMI_CORE_DDC_STATUS__IN_PROG */
-	while (FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
+		/* HDMI_CORE_DDC_STATUS__IN_PROG */
+		while (FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
+			;
+	} else {
+		if (ext%2 != 0)
+			offset = 0x80;
+	}
+
+	/* Load Segment Address Register */
+	REG_FLD_MOD(ins, HDMI_CORE_DDC_SEGM, ext/2, 7, 0);
 
 	/* Load Slave Address Register */
 	REG_FLD_MOD(ins, HDMI_CORE_DDC_ADDR, 0xA0 >> 1, 7, 1);
 
 	/* Load Offset Address Register */
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_OFFSET, 0x0, 7, 0);
+	REG_FLD_MOD(ins, HDMI_CORE_DDC_OFFSET, offset, 7, 0);
 	/* Load Byte Count */
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_COUNT1, 0x100, 7, 0);
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_COUNT2, 0x100>>8, 1, 0);
+	REG_FLD_MOD(ins, HDMI_CORE_DDC_COUNT1, 0x80, 7, 0);
+	REG_FLD_MOD(ins, HDMI_CORE_DDC_COUNT2, 0x0, 1, 0);
 	/* Set DDC_CMD */
+
+	if (ext)
+		REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x4, 3, 0);
+	else
 	REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x2, 3, 0);
 
 	/* Yong: do not optimize this part of the code, seems
@@ -381,86 +396,43 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 		return -1;
 	}
 
-	j = 100;
-	while (j--) {
-		l = hdmi_read_reg(ins, sts);
-		/* progress */
-		if (FLD_GET(l, 4, 4) == 1) {
-			/* HACK: Load Slave Address Register again */
-			REG_FLD_MOD(ins, HDMI_CORE_DDC_ADDR, 0xA0 >> 1, 7, 1);
-			REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x2, 3, 0);
-			break;
-		}
-		mdelay(20);
-	}
-
-	i = 0;
+	i = ext * 128;
+	j = 0;
 	while (((FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
-			| (FLD_GET(hdmi_read_reg(ins, sts), 2, 2) == 0)) && i < 512) {
+			| (FLD_GET(hdmi_read_reg(ins, sts), 2, 2) == 0)) && j < 128) {
 		if (FLD_GET(hdmi_read_reg(ins,
 			sts), 2, 2) == 0) {
 			/* FIFO not empty */
 			pEDID[i++] = FLD_GET(hdmi_read_reg(ins, HDMI_CORE_DDC_DATA), 7, 0);
+			j++;
 		}
 	}
 
-	if (pEDID[0x14] == 0x80) {/* Digital Display */
-		if (pEDID[0x7e] == 0x00) {/* No Extention Block */
-			for (j = 0; j < 128; j++)
-			checksum += pEDID[j];
-			DBG("No extension 128 bit checksum\n");
-		} else {
-			for (j = 0; j < 512; j++)
-				checksum += pEDID[j];
-			DBG("Extension present 512 bit checksum\n");
-			/* HDMI_CORE_DDC_READ_EXTBLOCK(); */
-		}
-	} else {
-		DBG("Analog Display\n");
-	}
+	for (j = 0; j < 128; j++)
+		checksum += pEDID[j];
 
-	DBG("EDID Content %d\n", i);
-	for (i = 0 ; i < 512 ; i++)
-		edid_backup[i] = pEDID[i];
-
-#ifdef DEBUG_EDID
-	DBG("\nHeader:");
-	for (i = 0x00; i < 0x08; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nVendor & Product:");
-	for (i = 0x08; i < 0x12; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nEDID Structure:");
-	for (i = 0x12; i < 0x14; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nBasic Display Parameter:");
-	for (i = 0x14; i < 0x19; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nColor Characteristics:");
-	for (i = 0x19; i < 0x23; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nEstablished timings:");
-	for (i = 0x23; i < 0x26; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("Standard timings:\n");
-	for (i = 0x26; i < 0x36; i++)
-		DBG("\n%02x", pEDID[i]);
-	DBG("\nDetailed timing1:");
-	for (i = 0x36; i < 0x48; i++)
-		DBG("\n%02x", pEDID[i]);
-	DBG("\nDetailed timing2:");
-	for (i = 0x48; i < 0x5a; i++)
-		DBG("\n%02x", pEDID[i]);
-	DBG("\nDetailed timing3:");
-	for (i = 0x5a; i < 0x6c; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nDetailed timing4:");
-	for (i = 0x6c; i < 0x7e; i++)
-		DBG(" %02x", pEDID[i]);
-#endif
 	if (checksum != 0) {
 		printk("E-EDID checksum failed!!");
 		return -1;
+	}
+	return 0;
+}
+
+int read_edid(u8 *pEDID)
+{
+	int r = 0, n = 0, i = 0;
+	r = hdmi_core_ddc_edid(pEDID, 0);
+	if (r) {
+		return -1;
+	} else {
+		n = pEDID[0x7e];
+		if (n >= 3)
+			n = 3;
+		for (i = 1; i <= n; i++) {
+			r = hdmi_core_ddc_edid(pEDID, i);
+			if (r)
+				return -1;
+		}
 	}
 	return 0;
 }
@@ -1527,7 +1499,7 @@ void HDMI_W1_HPD_handler(int *r)
 /* wrapper functions to be used until L24.5 release*/
 int HDMI_CORE_DDC_READEDID(u32 name, u8 *p)
 {
-	int r = hdmi_core_ddc_edid(p);
+	int r = read_edid(p);
 	return r;
 }
 
