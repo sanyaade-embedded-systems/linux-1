@@ -64,7 +64,7 @@
 
 
 /* HDMI EDID Length  */
-#define HDMI_EDID_MAX_LENGTH    256
+#define HDMI_EDID_MAX_LENGTH    512
 
 /* HDMI EDID DTDs  */
 #define HDMI_EDID_MAX_DTDS      4
@@ -263,6 +263,8 @@ struct HDMI_EDID {
 
 	u8   data_block[123];		/* 04 - 126 */
 	u8   extension_checksum;	/* 127 */
+
+	u8   ext_datablock[256];
 
 } __attribute__ ((packed));
 
