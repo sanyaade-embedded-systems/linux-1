@@ -258,6 +258,7 @@ static int fm_v4l2_vidioc_g_ctrl(struct file *file, void *priv,
 	unsigned short curr_vol;
 	unsigned char curr_mute_mode;
 	struct fmdrv_ops *fmdev;
+	unsigned char chanl_spacing;
 
 	fmdev = video_drvdata(file);
 
@@ -273,6 +274,10 @@ static int fm_v4l2_vidioc_g_ctrl(struct file *file, void *priv,
 		if (ret < 0)
 			goto exit;
 		ctrl->value = curr_vol;
+		break;
+	case V4L2_CID_CHANNEL_SPACING:  /* channel spacing */
+		ret = fm_rx_get_chanl_spacing(fmdev, &chanl_spacing);
+		ctrl->value = chanl_spacing;
 		break;
 	}
 
@@ -298,6 +303,10 @@ static int fm_v4l2_vidioc_s_ctrl(struct file *file, void *priv,
 		ret = fm_rx_set_volume(fmdev, (unsigned short)ctrl->value);
 		if (ret < 0)
 			goto exit;
+		break;
+
+	case V4L2_CID_CHANNEL_SPACING:		/* channel spacing */
+		ret = fm_rx_set_chanl_spacing(fmdev, (unsigned int)ctrl->value);
 		break;
 	}
 
@@ -363,12 +372,13 @@ static int fm_v4l2_vidioc_g_tuner(struct file *file, void *priv,
 
 	strcpy(tuner->name, "FM");
 	tuner->type = V4L2_TUNER_RADIO;
-	/* Store rangelow and rangehigh freq in unit of 62.5 KHz */
-	tuner->rangelow = (bottom_frequency * 10000) / 625;
-	tuner->rangehigh = (top_frequency * 10000) / 625;
+	/* Store rangelow and rangehigh freq in unit of 62.5 Hz */
+	tuner->rangelow = bottom_frequency * 16;
+	tuner->rangehigh = top_frequency * 16;
 	tuner->rxsubchans = V4L2_TUNER_SUB_MONO | V4L2_TUNER_SUB_STEREO |
 	((fmdev->rx.rds.flag == FM_RDS_ENABLE) ? V4L2_TUNER_SUB_RDS : 0);
-	tuner->capability = V4L2_TUNER_CAP_STEREO | V4L2_TUNER_CAP_RDS;
+	tuner->capability = V4L2_TUNER_CAP_STEREO | V4L2_TUNER_CAP_RDS |
+				V4L2_TUNER_CAP_LOW;
 	tuner->audmode = (stereo_mono_mode ?
 			  V4L2_TUNER_MODE_MONO : V4L2_TUNER_MODE_STEREO);
 
@@ -440,6 +450,10 @@ static int fm_v4l2_vidioc_g_frequency(struct file *file, void *priv,
 	ret = fmc_get_frequency(fmdev, &freq->frequency);
 	if (ret < 0)
 		return ret;
+
+	/* Convert the frequency from Khz to 62.5 Hz */
+	freq->frequency = (unsigned int) freq->frequency * 16;
+
 	return 0;
 }
 
@@ -451,6 +465,13 @@ static int fm_v4l2_vidioc_s_frequency(struct file *file, void *priv,
 	struct fmdrv_ops *fmdev;
 
 	fmdev = video_drvdata(file);
+
+	/* As tuner->capability is set to V4L2_TUNER_CAP_LOW, application sends
+	* the frequency in units of 62.5 Hz but as FM chip accepts the frequency
+	* in units of KHz convert the frequency from units of 62.5 Hz to KHz.
+	*/
+	freq->frequency = (unsigned int)(freq->frequency / 16);
+
 	ret = fmc_set_frequency(fmdev, freq->frequency);
 	if (ret < 0)
 		return ret;

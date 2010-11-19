@@ -455,5 +455,13 @@ int fmc_get_frequency(struct fmdrv_ops *, unsigned int *);
 int fmc_get_region(struct fmdrv_ops *, unsigned char *);
 int fmc_get_mode(struct fmdrv_ops *, unsigned char *);
 
+/*
+ * channel spacing
+ */
+#define FM_CHANNEL_SPACING_50KHZ 1
+#define FM_CHANNEL_SPACING_100KHZ 2
+#define FM_CHANNEL_SPACING_200KHZ 4
+#define FM_FREQ_MUL 50
+
 #endif
 
