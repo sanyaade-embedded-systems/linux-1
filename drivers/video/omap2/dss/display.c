@@ -35,11 +35,66 @@
 
 static LIST_HEAD(display_list);
 
+int omapdss_display_enable(struct omap_dss_device *dssdev)
+{
+	int r = 0;
+
+	/* use smart_enable if present */
+	if (dssdev->driver->smart_enable)
+		return dssdev->driver->smart_enable(dssdev);
+
+	/* store resume info for suspended displays */
+	switch (dssdev->state) {
+	case OMAP_DSS_DISPLAY_SUSPENDED:
+		dssdev->activate_after_resume = true;
+		break;
+	case OMAP_DSS_DISPLAY_DISABLED:
+		if (dssdev->driver)
+			r = dssdev->driver->enable(dssdev);
+		if (r) {
+			DSSERR("Failed to enable %s device (%d), disabling\n",
+				dssdev->name, r);
+			dssdev->driver->disable(dssdev);
+		}
+		break;
+	default:
+		break;
+	}
+
+	return r;
+}
+EXPORT_SYMBOL(omapdss_display_enable);
+
+void omapdss_display_disable(struct omap_dss_device *dssdev)
+{
+	/* store resume info for suspended displays */
+	switch (dssdev->state) {
+	case OMAP_DSS_DISPLAY_SUSPENDED:
+		dssdev->activate_after_resume = false;
+		break;
+	case OMAP_DSS_DISPLAY_DISABLED:
+		break;
+	default:
+		dssdev->driver->disable(dssdev);
+		break;
+	}
+}
+EXPORT_SYMBOL(omapdss_display_disable);
+
 static ssize_t display_enabled_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct omap_dss_device *dssdev = to_dss_device(dev);
-	bool enabled = dssdev->state != OMAP_DSS_DISPLAY_DISABLED;
+	bool enabled;
+
+	/* use smart_disable if present */
+	if (dssdev->driver->smart_is_enabled)
+		enabled = dssdev->driver->smart_is_enabled(dssdev);
+	/* show resume info for suspended displays */
+	else if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
+		enabled = dssdev->activate_after_resume;
+	else
+		enabled  = dssdev->state != OMAP_DSS_DISPLAY_DISABLED;
 
 	return snprintf(buf, PAGE_SIZE, "%d\n", enabled);
 }
@@ -49,21 +104,15 @@ static ssize_t display_enabled_store(struct device *dev,
 		const char *buf, size_t size)
 {
 	struct omap_dss_device *dssdev = to_dss_device(dev);
-	bool enabled, r;
+	bool enabled = simple_strtoul(buf, NULL, 10);
+	int r = 0;
 
-	enabled = simple_strtoul(buf, NULL, 10);
+	if (enabled)
+		r = omapdss_display_enable(dssdev);
+	else
+		omapdss_display_disable(dssdev);
 
-	if (enabled != (dssdev->state != OMAP_DSS_DISPLAY_DISABLED)) {
-		if (enabled) {
-			r = dssdev->driver->enable(dssdev);
-			if (r)
-				return r;
-		} else {
-			dssdev->driver->disable(dssdev);
-		}
-	}
-
-	return size;
+	return r ? : size;
 }
 
 static ssize_t display_upd_mode_show(struct device *dev,
@@ -376,17 +425,22 @@ void default_get_overlay_fifo_thresholds(enum omap_plane plane,
 		u32 fifo_size, enum omap_burst_size *burst_size,
 		u32 *fifo_low, u32 *fifo_high)
 {
-	unsigned burst_size_bytes;
+	unsigned burst_size_reg;
 
-	*burst_size = OMAP_DSS_BURST_16x32;
-	if (cpu_is_omap44xx())
-		burst_size_bytes = 8 * 128 / 8; /* OMAP4: highest
-							burst size is 8x128*/
-	else
-		burst_size_bytes = 16 * 32 / 8;
-
+	*burst_size = OMAP_DSS_BURST_16x32;	/* 8 x 128 bits on OMAP4 */
+	/* On omap4, one unit in the BUF_SIZE_STATUS
+	 * and BUF_THRESHOLD registers represent
+	 * 128 bits in comparison to 8 bits on omap3
+	 */
+	if (cpu_is_omap44xx()) {
+		/* Unit is 128 bits */
+		burst_size_reg = 8 * 128 / 128;
+	} else {
+		/* Unit is bytes*/
+		burst_size_reg = 16 * 32 / 8;
+	}
 	*fifo_high = fifo_size - 1;
-	*fifo_low = fifo_size - burst_size_bytes;
+	*fifo_low = fifo_size - burst_size_reg;
 }
 
 int omapdss_default_get_recommended_bpp(struct omap_dss_device *dssdev)
@@ -559,6 +613,10 @@ static int dss_suspend_device(struct device *dev, void *data)
 	int r;
 	struct omap_dss_device *dssdev = to_dss_device(dev);
 
+	/* don't work on suspended displays */
+	if (dssdev->state == OMAP_DSS_DISPLAY_SUSPENDED)
+		return 0;
+
 	if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE) {
 		dssdev->activate_after_resume = false;
 		return 0;
@@ -599,6 +657,10 @@ static int dss_resume_device(struct device *dev, void *data)
 	int r;
 	struct omap_dss_device *dssdev = to_dss_device(dev);
 
+	/* don't work on non-suspended displays */
+	if (dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED)
+		return 0;
+
 	if (dssdev->activate_after_resume && dssdev->driver->resume) {
 		r = dssdev->driver->resume(dssdev);
 		if (r) {
@@ -607,6 +669,9 @@ static int dss_resume_device(struct device *dev, void *data)
 			dssdev->driver->disable(dssdev);
 			return r;
 		}
+	} else {
+		/* disabled may not be the same as suspended so call handler */
+		dssdev->driver->disable(dssdev);
 	}
 
 	dssdev->activate_after_resume = false;
@@ -656,8 +721,7 @@ int dss_mainclk_state_disable(bool do_clk_disable)
 }
 
 /*
- * enables mainclk (DSS clocks on OMAP4 if all devices are either in disabled or
- * suspended state before calling this function.
+ * enables mainclk (DSS clocks on OMAP4 if any device is enabled.
  * Returns 0 on success.
  */
 int dss_mainclk_state_enable(void)
@@ -668,13 +732,13 @@ int dss_mainclk_state_enable(void)
 	r = bus_for_each_dev(bus, NULL, NULL, dss_check_state_disabled);
 
 	if (r) {
-		/* All devices are not disabled /suspended */
-		return -EINVAL;
-	} else {
 		r = dss_mainclk_enable();
-		if (r >= 0)
+		if (!r)
 			restore_all_ctx();
-		return 0;
+		return r;
+	} else {
+		/* All devices are disabled/suspended */
+		return -EAGAIN;
 	}
 }
 

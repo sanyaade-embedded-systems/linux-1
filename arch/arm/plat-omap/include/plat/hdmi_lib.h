@@ -206,8 +206,12 @@ struct hdmi_core_infoframe_avi {
 };
 
 struct hdmi_core_packet_enable_repeat {
+	u32		MPEGInfoFrameED;
+	u32		MPEGInfoFrameRepeat;
 	u32		AudioPacketED;
 	u32		AudioPacketRepeat;
+	u32		SPDInfoFrameED;
+	u32		SPDInfoFrameRepeat;
 	u32		AVIInfoFrameED;
 	u32		AVIInfoFrameRepeat;
 	u32		GeneralcontrolPacketED;
@@ -322,10 +326,20 @@ struct hdmi_audio_dma {
 enum hdmi_packing_mode {
 	HDMI_PACK_10b_RGB_YUV444 = 0,
 	HDMI_PACK_24b_RGB_YUV444_YUV422 = 1,
-	HDMI_PACK_20b_YUV422 = 2,
 	HDMI_PACK_ALREADYPACKED = 7
 };
 
+enum hdmi_timing_mode {
+	HDMI_TIMING_MASTER_24BIT = 0x1,
+	HDMI_TIMING_MASTER_30BIT = 0x2,
+	HDMI_TIMING_MASTER_36BIT = 0x3
+};
+
+enum hdmi_deep_mode {
+	HDMI_DEEP_COLOR_24BIT = 0,
+	HDMI_DEEP_COLOR_30BIT = 1,
+	HDMI_DEEP_COLOR_36BIT = 2
+};
 struct hdmi_video_format {
 	enum hdmi_packing_mode	packingMode;
 	u32	linePerPanel;
@@ -375,6 +389,7 @@ struct hdmi_config {
 	u16 v_pol;
 	u16 hdmi_dvi;
 	u16 video_format;
+	u16 deep_color;
 };
 
 enum hdmi_core_if_fs {
@@ -413,6 +428,11 @@ struct hdmi_core_audio_config {
 	enum hdmi_core_if_sample_size	if_sample_size;
 	enum hdmi_cea_code		if_audio_channel_location;
  };
+struct hdmi_notifier {
+	void (*hpd_notifier)(int state, void *data);
+	void *private_data;
+	struct list_head list;
+};
 
 #define HDMI_CONNECT      0x01
 #define HDMI_DISCONNECT   0x02
@@ -435,6 +455,10 @@ void HDMI_W1_HPD_handler(int *r);
 int hdmi_lib_init(void);
 void hdmi_lib_exit(void);
 int hdmi_configure_csc(enum hdmi_core_av_csc csc);
+
+void hdmi_add_notifier(struct hdmi_notifier *notifier);
+void hdmi_remove_notifier(struct hdmi_notifier *notifier);
+void hdmi_notify_hpd(int state);
 
 #endif
 

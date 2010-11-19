@@ -43,10 +43,10 @@ static struct {
 	struct platform_device *pdev;
 	int		ctx_id;
 
-	struct clk      *dss_ick;
+	struct clk	*dss_ick;
 	struct clk	*dss1_fck;
 	struct clk	*dss2_fck;
-	struct clk      *dss_54m_fck;
+	struct clk	*dss_54m_fck;
 	struct clk	*dss_96m_fck;
 	unsigned	num_clks_enabled;
 
@@ -354,20 +354,6 @@ void dss_opt_clock_disable()
 	clk_disable(core.dss_96m_fck);
 }
 
-void omap_dss_prepare_idle(void)
-{
-	if (!dss_mainclk_state_disable(false))
-		dss_opt_clock_disable();
-}
-EXPORT_SYMBOL(omap_dss_prepare_idle);
-
-void omap_dss_resume_idle(void)
-{
-	if (!dss_mainclk_state_disable(false))
-		dss_opt_clock_enable();
-}
-EXPORT_SYMBOL(omap_dss_resume_idle);
-
 static void dss_clk_disable_no_ctx(enum dss_clock clks)
 {
 	unsigned num_clks;
@@ -536,8 +522,8 @@ static int dss_initialize_debugfs(void)
 	debugfs_create_file("dsi1_irq", S_IRUGO, dss_debugfs_dir,
 			&dsi1_dump_irqs, &dss_debug_fops);
 	if (cpu_is_omap44xx())
-			debugfs_create_file("dsi2_irq", S_IRUGO, dss_debugfs_dir,
-					&dsi2_dump_irqs, &dss_debug_fops);
+		debugfs_create_file("dsi2_irq", S_IRUGO, dss_debugfs_dir,
+			&dsi2_dump_irqs, &dss_debug_fops);
 #endif
 
 	debugfs_create_file("dss", S_IRUGO, dss_debugfs_dir,
@@ -585,9 +571,6 @@ static inline void dss_uninitialize_debugfs(void)
 static int omap_dss_probe(struct platform_device *pdev)
 {
 	struct omap_dss_board_info *pdata = pdev->dev.platform_data;
-#ifdef HWMOD
-	int skip_init = 0;
-#endif
 	int r = 0;
 	int i;
 
@@ -601,27 +584,19 @@ static int omap_dss_probe(struct platform_device *pdev)
 		dss_init_writeback(pdev); /*Write back init*/
 #ifdef HWMOD
 	if (!cpu_is_omap44xx())
-	r = dss_get_clocks();
+		r = dss_get_clocks();
 	if (r)
 		goto err_clocks;
-
-	dss_clk_enable_all_no_ctx();
 
 	core.ctx_id = dss_get_ctx_id();
 	DSSDBG("initial ctx id %u\n", core.ctx_id);
 
-#ifdef CONFIG_FB_OMAP_BOOTLOADER_INIT
-	/* DISPC_CONTROL */
-	if (omap_readl(0x48050440) & 1)	/* LCD enabled? */
-		skip_init = 1;
-#endif
-
-	r = dss_init(skip_init);
+	r = dss_init(pdev);
 	if (r) {
 		DSSERR("Failed to initialize DSS\n");
 		goto err_dss;
 	}
-	dss_clk_disable_all_no_ctx();
+
 	r = rfbi_init();
 	if (r) {
 		DSSERR("Failed to initialize rfbi\n");
@@ -834,7 +809,6 @@ static int omap_dss_resume(struct platform_device *pdev)
 
 static int omap_dsshw_probe(struct platform_device *pdev)
 {
-	int skip_init = 0;
 	int r;
 
 	pm_runtime_enable(&pdev->dev);
@@ -843,14 +817,7 @@ static int omap_dsshw_probe(struct platform_device *pdev)
 	if (r)
 		goto err_dss;
 
-	dss_clk_enable_all_no_ctx();
-#ifdef CONFIG_FB_OMAP_BOOTLOADER_INIT
-	/* DISPC_CONTROL */
-	if (omap_readl(0x48050440) & 1)	/* LCD enabled? */
-		skip_init = 1;
-#endif
-
-	r = dss_init(skip_init, pdev);
+	r = dss_init(pdev);
 	if (r) {
 		DSSERR("Failed to initialize DSS\n");
 		goto err_dss;
@@ -1176,7 +1143,7 @@ static void reset_device(struct device *dev, int check)
 			if (*dev_p) {
 				WARN("%s: struct device fields will be "
 						"discarded\n",
-				     __func__);
+					__func__);
 				break;
 			}
 			dev_p++;

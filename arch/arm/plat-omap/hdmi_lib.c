@@ -193,7 +193,8 @@ static struct {
 	void __iomem *base_core_av;  /*1*/
 	void __iomem *base_wp;       /*2*/
 	struct hdmi_core_infoframe_avi avi_param;
-	struct mutex hdmi_lock;
+	struct mutex mutex;
+	struct list_head notifier_head;
 } hdmi;
 
 int count = 0, count_hpd = 0;
@@ -319,7 +320,7 @@ void hdmi_dump_regs(struct seq_file *s)
 #define RD_REG_32(COMP, REG)            hdmi_read_reg(COMP, REG)
 #define WR_REG_32(COMP, REG, VAL)       hdmi_write_reg(COMP, REG, (u32)(VAL))
 
-u8 edid_backup[256];
+u8 edid_backup[512];
 
 int hdmi_get_pixel_append_position(void)
 {
@@ -328,12 +329,13 @@ int hdmi_get_pixel_append_position(void)
 }
 EXPORT_SYMBOL(hdmi_get_pixel_append_position);
 
-int hdmi_core_ddc_edid(u8 *pEDID)
+int hdmi_core_ddc_edid(u8 *pEDID, int ext)
 {
 	u32 i, j, l;
 	char checksum = 0;
 	u32 sts = HDMI_CORE_DDC_STATUS;
 	u32 ins = HDMI_CORE_SYS;
+	u32 offset = 0;
 
 	/* Turn on CLK for DDC */
 	REG_FLD_MOD(HDMI_CORE_AV, HDMI_CORE_AV_DPD, 0x7, 2, 0);
@@ -341,27 +343,41 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 	/* Wait */
 	mdelay(10);
 
-	/* Clk SCL Devices */
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0xA, 3, 0);
+	if (!ext) {
+		/* Clk SCL Devices */
+		REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0xA, 3, 0);
 
-	/* HDMI_CORE_DDC_STATUS__IN_PROG */
-	while (FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
+		/* HDMI_CORE_DDC_STATUS__IN_PROG */
+		while (FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
+			;
 
-	/* Clear FIFO */
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x9, 3, 0);
+		/* Clear FIFO */
+		REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x9, 3, 0);
 
-	/* HDMI_CORE_DDC_STATUS__IN_PROG */
-	while (FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
+		/* HDMI_CORE_DDC_STATUS__IN_PROG */
+		while (FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
+			;
+	} else {
+		if (ext%2 != 0)
+			offset = 0x80;
+	}
+
+	/* Load Segment Address Register */
+	REG_FLD_MOD(ins, HDMI_CORE_DDC_SEGM, ext/2, 7, 0);
 
 	/* Load Slave Address Register */
 	REG_FLD_MOD(ins, HDMI_CORE_DDC_ADDR, 0xA0 >> 1, 7, 1);
 
 	/* Load Offset Address Register */
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_OFFSET, 0x0, 7, 0);
+	REG_FLD_MOD(ins, HDMI_CORE_DDC_OFFSET, offset, 7, 0);
 	/* Load Byte Count */
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_COUNT1, 0x100, 7, 0);
-	REG_FLD_MOD(ins, HDMI_CORE_DDC_COUNT2, 0x100>>8, 1, 0);
+	REG_FLD_MOD(ins, HDMI_CORE_DDC_COUNT1, 0x80, 7, 0);
+	REG_FLD_MOD(ins, HDMI_CORE_DDC_COUNT2, 0x0, 1, 0);
 	/* Set DDC_CMD */
+
+	if (ext)
+		REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x4, 3, 0);
+	else
 	REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x2, 3, 0);
 
 	/* Yong: do not optimize this part of the code, seems
@@ -380,83 +396,21 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 		return -1;
 	}
 
-	j = 100;
-	while (j--) {
-		l = hdmi_read_reg(ins, sts);
-		/* progress */
-		if (FLD_GET(l, 4, 4) == 1) {
-			/* HACK: Load Slave Address Register again */
-			REG_FLD_MOD(ins, HDMI_CORE_DDC_ADDR, 0xA0 >> 1, 7, 1);
-			REG_FLD_MOD(ins, HDMI_CORE_DDC_CMD, 0x2, 3, 0);
-			break;
-		}
-		mdelay(20);
-	}
-
-	i = 0;
+	i = ext * 128;
+	j = 0;
 	while (((FLD_GET(hdmi_read_reg(ins, sts), 4, 4) == 1)
-			| (FLD_GET(hdmi_read_reg(ins, sts), 2, 2) == 0)) && i < 256) {		
+			| (FLD_GET(hdmi_read_reg(ins, sts), 2, 2) == 0)) && j < 128) {
 		if (FLD_GET(hdmi_read_reg(ins,
 			sts), 2, 2) == 0) {
 			/* FIFO not empty */
 			pEDID[i++] = FLD_GET(hdmi_read_reg(ins, HDMI_CORE_DDC_DATA), 7, 0);
+			j++;
 		}
 	}
 
-	if (pEDID[0x14] == 0x80) {/* Digital Display */
-		if (pEDID[0x7e] == 0x00) {/* No Extention Block */
-			for (j = 0; j < 128; j++)
-			checksum += pEDID[j];
-			DBG("No extension 128 bit checksum\n");
-		} else {
-			for (j = 0; j < 256; j++)
-			checksum += pEDID[j];
-			DBG("Extension present 256 bit checksum\n");
-			/* HDMI_CORE_DDC_READ_EXTBLOCK(); */
-		}
-	} else {
-		DBG("Analog Display\n");
-	}
+	for (j = 0; j < 128; j++)
+		checksum += pEDID[j];
 
-	DBG("EDID Content %d\n", i);
-	for (i = 0 ; i < 256 ; i++)
-		edid_backup[i] = pEDID[i];
-
-#ifdef DEBUG_EDID
-	DBG("\nHeader:");
-	for (i = 0x00; i < 0x08; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nVendor & Product:");
-	for (i = 0x08; i < 0x12; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nEDID Structure:");
-	for (i = 0x12; i < 0x14; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nBasic Display Parameter:");
-	for (i = 0x14; i < 0x19; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nColor Characteristics:");
-	for (i = 0x19; i < 0x23; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nEstablished timings:");
-	for (i = 0x23; i < 0x26; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("Standard timings:\n");
-	for (i = 0x26; i < 0x36; i++)
-		DBG("\n%02x", pEDID[i]);
-	DBG("\nDetailed timing1:");
-	for (i = 0x36; i < 0x48; i++)
-		DBG("\n%02x", pEDID[i]);
-	DBG("\nDetailed timing2:");
-	for (i = 0x48; i < 0x5a; i++)
-		DBG("\n%02x", pEDID[i]);
-	DBG("\nDetailed timing3:");
-	for (i = 0x5a; i < 0x6c; i++)
-		DBG(" %02x", pEDID[i]);
-	DBG("\nDetailed timing4:");
-	for (i = 0x6c; i < 0x7e; i++)
-		DBG(" %02x", pEDID[i]);
-#endif
 	if (checksum != 0) {
 		printk("E-EDID checksum failed!!");
 		return -1;
@@ -464,7 +418,27 @@ int hdmi_core_ddc_edid(u8 *pEDID)
 	return 0;
 }
 
-static void hdmi_core_init(struct hdmi_core_video_config_t *v_cfg,
+int read_edid(u8 *pEDID)
+{
+	int r = 0, n = 0, i = 0;
+	r = hdmi_core_ddc_edid(pEDID, 0);
+	if (r) {
+		return -1;
+	} else {
+		n = pEDID[0x7e];
+		if (n >= 3)
+			n = 3;
+		for (i = 1; i <= n; i++) {
+			r = hdmi_core_ddc_edid(pEDID, i);
+			if (r)
+				return -1;
+		}
+	}
+	return 0;
+}
+
+static void hdmi_core_init(enum hdmi_deep_mode deep_color,
+	struct hdmi_core_video_config_t *v_cfg,
 	struct hdmi_core_audio_config *audio_cfg,
 	struct hdmi_core_infoframe_avi *avi,
 	struct hdmi_core_packet_enable_repeat *r_p)
@@ -472,13 +446,35 @@ static void hdmi_core_init(struct hdmi_core_video_config_t *v_cfg,
 	DBG("Enter HDMI_Core_GlobalInitVars()\n");
 
 	/*video core*/
-	v_cfg->CoreInputBusWide = HDMI_INPUT_8BIT;
-	v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_8BIT;
-	v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTDISABLE;
-	v_cfg->CorePacketMode = HDMI_PACKETMODERESERVEDVALUE;
+	switch (deep_color) {
+	case HDMI_DEEP_COLOR_24BIT:
+				v_cfg->CoreInputBusWide = HDMI_INPUT_8BIT;
+				v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_8BIT;
+				v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTDISABLE;
+				v_cfg->CorePacketMode = HDMI_PACKETMODERESERVEDVALUE;
+				break;
+	case HDMI_DEEP_COLOR_30BIT:
+				v_cfg->CoreInputBusWide = HDMI_INPUT_10BIT;
+				v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_10BIT;
+				v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTENABLE;
+				v_cfg->CorePacketMode = HDMI_PACKETMODE30BITPERPIXEL;
+				break;
+	case HDMI_DEEP_COLOR_36BIT:
+				v_cfg->CoreInputBusWide = HDMI_INPUT_12BIT;
+				v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_12BIT;
+				v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTENABLE;
+				v_cfg->CorePacketMode = HDMI_PACKETMODE36BITPERPIXEL;
+				break;
+	default:
+				v_cfg->CoreInputBusWide = HDMI_INPUT_8BIT;
+				v_cfg->CoreOutputDitherTruncation = HDMI_OUTPUTTRUNCATION_8BIT;
+				v_cfg->CoreDeepColorPacketED = HDMI_DEEPCOLORPACKECTDISABLE;
+				v_cfg->CorePacketMode = HDMI_PACKETMODERESERVEDVALUE;
+				break;
+	}
+
 	v_cfg->CoreHdmiDvi = HDMI_DVI;
 	v_cfg->CoreTclkSelClkMult = FPLL10IDCK;
-
 	/*audio core*/
 	audio_cfg->fs = FS_44100;
 	audio_cfg->n = 0;
@@ -515,6 +511,10 @@ static void hdmi_core_init(struct hdmi_core_video_config_t *v_cfg,
 	r_p->GeneralcontrolPacketRepeat = 0;
 	r_p->GenericPacketED = 0;
 	r_p->GenericPacketRepeat = 0;
+        r_p->MPEGInfoFrameED = 0;
+        r_p->MPEGInfoFrameRepeat = 0;
+        r_p->SPDInfoFrameED = 0;
+        r_p->SPDInfoFrameRepeat = 0;
 }
 
 static void hdmi_core_powerdown_disable(void)
@@ -691,8 +691,8 @@ static int hdmi_core_audio_config(u32 name,
 		(0)); /* AUD_EN*/
 
 	/* Audio info frame setting refer to CEA-861-d spec p75 */
-	/*0x10 because only PCM is supported / -1 because 1 is for 2 channel*/
-	DBYTE1 = 0x10 + (audio_cfg->if_channel_number - 1);
+	/* 0x0 because on HDMI CT must be = 0 / -1 because 1 is for 2 channel*/
+	DBYTE1 = 0x0 + (audio_cfg->if_channel_number - 1);
 	DBYTE2 = (audio_cfg->if_fs << 2) + audio_cfg->if_sample_size;
 	/*channel location according to CEA spec*/
 	DBYTE4 = audio_cfg->if_audio_channel_location;
@@ -716,6 +716,17 @@ static int hdmi_core_audio_config(u32 name,
 	hdmi_write_reg(name, (size0 + 7 * size1), 0x000);
 	hdmi_write_reg(name, (size0 + 8 * size1), 0x000);
 	hdmi_write_reg(name, (size0 + 9 * size1), 0x000);
+
+        /* ISCR1 and ACP setting */
+	WR_REG_32(name, HDMI_CORE_AV__SPD_TYPE, 0x04);
+	WR_REG_32(name, HDMI_CORE_AV__SPD_VERS, 0x0);
+	WR_REG_32(name, HDMI_CORE_AV__SPD_LEN, 0x0);
+	WR_REG_32(name, HDMI_CORE_AV__SPD_CHSUM, 0x0);
+
+	WR_REG_32(name, HDMI_CORE_AV__MPEG_TYPE, 0x05);
+	WR_REG_32(name, HDMI_CORE_AV__MPEG_VERS, 0x0);
+	WR_REG_32(name, HDMI_CORE_AV__MPEG_LEN, 0x0);
+	WR_REG_32(name, HDMI_CORE_AV__MPEG_CHSUM, 0x0);
 
 	return ret;
 }
@@ -873,10 +884,15 @@ int hdmi_configure_csc(enum hdmi_core_av_csc csc)
 static int hdmi_core_av_packet_config(u32 name,
 	struct hdmi_core_packet_enable_repeat r_p)
 {
+
 	/*enable/repeat the infoframe*/
 	hdmi_write_reg(name, HDMI_CORE_AV_PB_CTRL1,
+		(r_p.MPEGInfoFrameED << 7)|
+		(r_p.MPEGInfoFrameRepeat << 6)|
 		(r_p.AudioPacketED << 5)|
 		(r_p.AudioPacketRepeat << 4)|
+		(r_p.SPDInfoFrameED << 3)|
+		(r_p.SPDInfoFrameRepeat << 2)|
 		(r_p.AVIInfoFrameED << 1)|
 		(r_p.AVIInfoFrameRepeat));
 
@@ -1154,7 +1170,7 @@ static void hdmi_w1_audio_enable(void)
 	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 1, 31, 31);
 }
 
-static __attribute__ ((unused))__attribute__ ((unused)) void hdmi_w1_audio_disable(void)
+static void hdmi_w1_audio_disable(void)
 {
 	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 0, 31, 31);
 }
@@ -1216,7 +1232,7 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 		&VideoInterfaceParam, &IrqHdmiVectorEnable,
 		&audio_fmt, &audio_dma);
 
-	hdmi_core_init(&v_core_cfg,
+	hdmi_core_init(cfg->deep_color, &v_core_cfg,
 		&audio_cfg,
 		&hdmi.avi_param,
 		&repeat_param);
@@ -1234,7 +1250,20 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	hdmi_w1_video_config_timing(&VideoTimingParam);
 
 	/*video config*/
-	VideoFormatParam.packingMode = HDMI_PACK_24b_RGB_YUV444_YUV422;
+	switch (cfg->deep_color) {
+	case 0:
+		VideoFormatParam.packingMode = HDMI_PACK_24b_RGB_YUV444_YUV422;
+		VideoInterfaceParam.timingMode = HDMI_TIMING_MASTER_24BIT;
+		break;
+	case 1:
+		VideoFormatParam.packingMode = HDMI_PACK_10b_RGB_YUV444;
+		VideoInterfaceParam.timingMode = HDMI_TIMING_MASTER_30BIT;
+		break;
+	case 2:
+		VideoFormatParam.packingMode = HDMI_PACK_ALREADYPACKED;
+		VideoInterfaceParam.timingMode = HDMI_TIMING_MASTER_36BIT;
+		break;
+	}
 
 	hdmi_w1_video_config_format(&VideoFormatParam);
 
@@ -1242,7 +1271,6 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	VideoInterfaceParam.vSyncPolarity = cfg->v_pol;
 	VideoInterfaceParam.hSyncPolarity = cfg->h_pol;
 	VideoInterfaceParam.interlacing = cfg->interlace;
-	VideoInterfaceParam.timingMode = 1 ; /* HDMI_TIMING_MASTER_24BIT */
 
 	hdmi_w1_video_config_interface(&VideoInterfaceParam);
 
@@ -1264,8 +1292,7 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	/*power down off*/
 	hdmi_core_powerdown_disable();
 
-	v_core_cfg.CorePacketMode = HDMI_PACKETMODE24BITPERPIXEL;
-	v_core_cfg.CoreHdmiDvi = HDMI_HDMI;
+	v_core_cfg.CoreHdmiDvi = cfg->hdmi_dvi;
 
 	/* hnagalla */
 	audio_cfg.fs = 0x02;
@@ -1346,6 +1373,13 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	/* wakeup */
 	repeat_param.AudioPacketED = PACKETENABLE;
 	repeat_param.AudioPacketRepeat = PACKETREPEATON;
+        /* ISCR1 transmission */
+	repeat_param.MPEGInfoFrameED = PACKETENABLE;
+	repeat_param.MPEGInfoFrameRepeat = PACKETREPEATON;
+        /* ACP transmission */
+	repeat_param.SPDInfoFrameED = PACKETENABLE;
+	repeat_param.SPDInfoFrameRepeat = PACKETREPEATON;
+
 	r = hdmi_core_av_packet_config(av_name, repeat_param);
 
 	REG_FLD_MOD(av_name, HDMI_CORE_AV__HDMI_CTRL, cfg->hdmi_dvi, 0, 0);
@@ -1364,6 +1398,9 @@ int hdmi_lib_init(void){
 
 	hdmi.base_core = hdmi.base_wp + 0x400;
 	hdmi.base_core_av = hdmi.base_wp + 0x900;
+
+	mutex_init(&hdmi.mutex);
+	INIT_LIST_HEAD(&hdmi.notifier_head);
 
 	rev = hdmi_read_reg(HDMI_WP, HDMI_WP_REVISION);
 
@@ -1462,7 +1499,7 @@ void HDMI_W1_HPD_handler(int *r)
 /* wrapper functions to be used until L24.5 release*/
 int HDMI_CORE_DDC_READEDID(u32 name, u8 *p)
 {
-	int r = hdmi_core_ddc_edid(p);
+	int r = read_edid(p);
 	return r;
 }
 
@@ -1532,4 +1569,34 @@ int hdmi_w1_start_audio_transfer(u32 instanceName)
 	hdmi_w1_audio_start();
 	printk(KERN_INFO "Start audio transfer...\n");
 	return 0;
+}
+
+void hdmi_add_notifier(struct hdmi_notifier *notifier)
+{
+	mutex_lock(&hdmi.mutex);
+	list_add_tail(&notifier->list, &hdmi.notifier_head);
+	mutex_unlock(&hdmi.mutex);
+}
+
+void hdmi_remove_notifier(struct hdmi_notifier *notifier)
+{
+	struct hdmi_notifier *cur, *next;
+
+	list_for_each_entry_safe(cur, next, &hdmi.notifier_head, list) {
+		if (cur == notifier) {
+			mutex_lock(&hdmi.mutex);
+			list_del(&cur->list);
+			mutex_unlock(&hdmi.mutex);
+		}
+	}
+}
+
+void hdmi_notify_hpd(int state)
+{
+	struct hdmi_notifier *cur, *next;
+
+	list_for_each_entry_safe(cur, next, &hdmi.notifier_head, list) {
+		if (cur->hpd_notifier)
+			cur->hpd_notifier(state, cur->private_data);
+	}
 }
