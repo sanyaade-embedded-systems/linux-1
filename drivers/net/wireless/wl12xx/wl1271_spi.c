@@ -417,8 +417,9 @@ static int __devexit wl1271_remove(struct spi_device *spi)
 {
 	struct wl1271 *wl = dev_get_drvdata(&spi->dev);
 
-	wl1271_unregister_hw(wl);
 	free_irq(wl->irq, wl);
+
+	wl1271_unregister_hw(wl);
 	wl1271_free_hw(wl);
 
 	return 0;
