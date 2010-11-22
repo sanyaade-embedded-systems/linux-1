@@ -1255,7 +1255,7 @@ static const struct snd_soc_dapm_widget abe_dapm_widgets[] = {
 
 	/* SDT_MIXER  - TODO: shoult this not be OPP25 ??? */
 	SND_SOC_DAPM_MIXER("Sidetone Mixer",
-			ABE_WIDGET(37), ABE_OPP_50, 0, sdt_mixer_controls,
+			ABE_WIDGET(37), ABE_OPP_25, 0, sdt_mixer_controls,
 			ARRAY_SIZE(sdt_mixer_controls)),
 
 	/*
