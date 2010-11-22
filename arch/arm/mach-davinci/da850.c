@@ -753,7 +753,7 @@ const short da850_rmii_pins[] __initdata = {
 
 const short da850_mcasp_pins[] __initdata = {
 	DA850_AHCLKX, DA850_ACLKX, DA850_AFSX,
-	DA850_ACLKR, DA850_AFSR, DA850_AMUTE,
+	DA850_ACLKR, DA850_AFSR,
 	DA850_AXR_11, DA850_AXR_12,
 	-1
 };
