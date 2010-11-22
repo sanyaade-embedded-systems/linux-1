@@ -729,6 +729,7 @@ static struct omap_dss_driver hdmi_driver = {
 	.probe		= hdmi_panel_probe,
 	.remove		= hdmi_panel_remove,
 
+	.enable		= hdmi_panel_enable,
 	.disable	= hdmi_panel_disable,
 	.smart_enable	= hdmi_panel_enable,
 	.smart_is_enabled	= hdmi_panel_is_enabled,
