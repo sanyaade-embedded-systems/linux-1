@@ -25,4 +25,5 @@ const struct wl12xx_platform_data *wl12xx_get_platform_data(void)
 
 	return platform_data;
 }
+
 EXPORT_SYMBOL(wl12xx_get_platform_data);
