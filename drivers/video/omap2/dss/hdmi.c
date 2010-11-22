@@ -218,6 +218,8 @@ struct hdmi {
 	int code;
 	int mode;
 	int deep_color;
+	int lr_fr;
+	int force_set;
 	struct hdmi_config cfg;
 	struct omap_display_platform_data *pdata;
 	struct platform_device *pdev;
@@ -349,9 +351,59 @@ static ssize_t hdmi_deepcolor_store(struct device *dev,
 	return size;
 }
 
+/* This function is used to configure Limited range/full range
+ * with RGB format , with YUV format Full range is not supported
+ * Please refer to section 6.6 Video quantization ranges in HDMI 1.3a
+ * specification for more details.
+ * Now conversion to Full range or limited range can either be done at
+ * display controller or HDMI IP ,This function allows to select either
+ * Please note : To convert to full range it is better to convert the video
+ * in the dispc to full range as there will be no loss of data , if a
+ * limited range data is sent ot HDMI and converted to Full range in HDMI
+ * the data quality would not be good.
+ */
+static void hdmi_configure_lr_fr(void)
+{
+	int ret = 0;
+	if (hdmi.mode == 0 || (hdmi.mode == 1 && hdmi.code == 1)) {
+		ret = hdmi_configure_lrfr(HDMI_FULL_RANGE, 0);
+		if (!ret)
+			dispc_setup_color_fr_lr(1);
+		return;
+	}
+	if (hdmi.lr_fr) {
+		ret = hdmi_configure_lrfr(HDMI_FULL_RANGE, hdmi.force_set);
+		if (!ret && !hdmi.force_set)
+			dispc_setup_color_fr_lr(1);
+	} else {
+		ret = hdmi_configure_lrfr(HDMI_LIMITED_RANGE, hdmi.force_set);
+		if (!ret && !hdmi.force_set)
+			dispc_setup_color_fr_lr(0);
+	}
+}
+
+static ssize_t hdmi_lr_fr_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", hdmi.lr_fr);
+}
+
+static ssize_t hdmi_lr_fr_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t size)
+{
+	int range;
+	range = simple_strtoul(buf, NULL, 0);
+	hdmi.lr_fr = range/10;
+	hdmi.force_set = range%10;
+	hdmi_configure_lr_fr();
+	return size;
+}
+
 static DEVICE_ATTR(edid, S_IRUGO, hdmi_edid_show, hdmi_edid_store);
 static DEVICE_ATTR(yuv, S_IRUGO | S_IWUSR, hdmi_yuv_supported, hdmi_yuv_set);
 static DEVICE_ATTR(deepcolor, S_IRUGO | S_IWUSR, hdmi_deepcolor_show, hdmi_deepcolor_store);
+static DEVICE_ATTR(lr_fr, S_IRUGO | S_IWUSR, hdmi_lr_fr_show, hdmi_lr_fr_store);
 
 static int set_hdmi_hot_plug_status(struct omap_dss_device *dssdev, bool onoff)
 {
@@ -680,6 +732,7 @@ static int hdmi_panel_probe(struct omap_dss_device *dssdev)
 	dssdev->panel.config = OMAP_DSS_LCD_TFT |
 			OMAP_DSS_LCD_IVS | OMAP_DSS_LCD_IHS;
 	hdmi.deep_color = 0;
+	hdmi.lr_fr = HDMI_LIMITED_RANGE;
 	code = get_timings_index();
 
 	dssdev->panel.timings = all_timings_direct[code];
@@ -973,6 +1026,8 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 	}
 
 	hdmi_lib_enable(&hdmi.cfg);
+
+	hdmi_configure_lr_fr();
 
 	/* these settings are independent of overlays */
 	dss_switch_tv_hdmi(1);
@@ -1572,6 +1627,8 @@ int hdmi_init_display(struct omap_dss_device *dssdev)
 	if (device_create_file(&dssdev->dev, &dev_attr_yuv))
 		DSSERR("failed to create sysfs file\n");
 	if (device_create_file(&dssdev->dev, &dev_attr_deepcolor))
+		DSSERR("failed to create sysfs file\n");
+	if (device_create_file(&dssdev->dev, &dev_attr_lr_fr))
 		DSSERR("failed to create sysfs file\n");
 
 	return 0;

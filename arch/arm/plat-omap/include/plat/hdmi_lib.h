@@ -340,6 +340,12 @@ enum hdmi_deep_mode {
 	HDMI_DEEP_COLOR_30BIT = 1,
 	HDMI_DEEP_COLOR_36BIT = 2
 };
+
+enum hdmi_range {
+	HDMI_LIMITED_RANGE = 0,
+	HDMI_FULL_RANGE = 1,
+};
+
 struct hdmi_video_format {
 	enum hdmi_packing_mode	packingMode;
 	u32	linePerPanel;
@@ -455,7 +461,7 @@ void HDMI_W1_HPD_handler(int *r);
 int hdmi_lib_init(void);
 void hdmi_lib_exit(void);
 int hdmi_configure_csc(enum hdmi_core_av_csc csc);
-
+int hdmi_configure_lrfr(enum hdmi_range, int force_set);
 void hdmi_add_notifier(struct hdmi_notifier *notifier);
 void hdmi_remove_notifier(struct hdmi_notifier *notifier);
 void hdmi_notify_hpd(int state);
