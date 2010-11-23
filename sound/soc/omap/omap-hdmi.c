@@ -164,6 +164,10 @@ static int omap_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
 		return err;
 
 #ifdef CONFIG_HDMI_NO_IP_MODULE
+	err = hdmi_configure_audio_channels(params_channels(params),
+						HDMI_CEA_CODE_00);
+	if (err < 0)
+		return err;
 	err = hdmi_configure_audio_sample_rate(params_rate(params));
 	if (err < 0)
 		return err;
@@ -171,6 +175,10 @@ static int omap_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
 	if (err < 0)
 		return err;
 #else
+	err = hdmi_audio_core.config_audio_channels(HDMI_WP,
+			params_channels(params), HDMI_CEA_CODE_00);
+	if (err < 0)
+		return err;
 	err = hdmi_audio_core.config_audio_sample_rate(HDMI_WP,
 				params_rate(params));
 	if (err < 0)
@@ -266,6 +274,7 @@ void hdmi_audio_core_stub_init(void)
 	hdmi_audio_core.read_edid = NULL;
 	hdmi_audio_core.config_audio_sample_rate = NULL;
 	hdmi_audio_core.config_sample_size = NULL;
+	hdmi_audio_core.config_audio_channels = NULL;
 	hdmi_audio_core.ip_init = audio_stub_lib_init;
 	hdmi_audio_core.ip_exit = audio_stub_lib_exit;
 	hdmi_audio_core.module_loaded = 0;
