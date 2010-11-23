@@ -540,6 +540,7 @@ static const abe_router_t router[] = {
 		DMIC2_L_labelID, DMIC2_R_labelID,
 		DMIC3_L_labelID, DMIC3_R_labelID,
 		BT_UL_L_labelID, BT_UL_R_labelID,
+		MM_EXT_IN_L_labelID, MM_EXT_IN_R_labelID,
 		AMIC_L_labelID, AMIC_R_labelID,
 		VX_REC_L_labelID, VX_REC_R_labelID,
 };
@@ -557,7 +558,7 @@ static int ul_mux_put_route(struct snd_kcontrol *kcontrol,
 
 	pm_runtime_get_sync(&pdev->dev);
 
-	if (mux >= ABE_ROUTES_UL)
+	if (mux > ABE_ROUTES_UL)
 		return 0;
 
 	if (reg < 8) {
@@ -936,22 +937,23 @@ static const struct soc_enum sdt_equalizer_enum =
 
 static const char *route_ul_texts[] =
 	{"None", "DMic0L", "DMic0R", "DMic1L", "DMic1R", "DMic2L", "DMic2R",
-	"BT Left", "BT Right", "AMic0", "AMic1", "VX Left", "VX Right"};
+	"BT Left", "BT Right", "MMExt Left", "MMExt Right", "AMic0", "AMic1",
+							"VX Left", "VX Right"};
 
 /* ROUTE_UL Mux table */
 static const struct soc_enum abe_enum[] = {
-		SOC_ENUM_SINGLE(ABE_MM_UL1(0), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_MM_UL1(1), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_MM_UL1(2), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_MM_UL1(3), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_MM_UL1(4), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_MM_UL1(5), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_MM_UL1(6), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_MM_UL1(7), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_MM_UL2(0), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_MM_UL2(1), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_VX_UL(0), 0, 13, route_ul_texts),
-		SOC_ENUM_SINGLE(ABE_VX_UL(1), 0, 13, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL1(0), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL1(1), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL1(2), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL1(3), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL1(4), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL1(5), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL1(6), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL1(7), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL2(0), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_MM_UL2(1), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_VX_UL(0), 0, 15, route_ul_texts),
+		SOC_ENUM_SINGLE(ABE_VX_UL(1), 0, 15, route_ul_texts),
 };
 
 static const struct snd_kcontrol_new mm_ul00_control =
@@ -1069,16 +1071,6 @@ static const struct snd_kcontrol_new bt_vx_dl_switch_controls =
 /* Virtual MM_EXT_DL Switch */
 static const struct snd_kcontrol_new mm_ext_dl_switch_controls =
 	SOC_SINGLE_EXT("Switch", VIRT_SWITCH, 19, 1, 0,
-			abe_get_mixer, abe_put_switch);
-
-/* Virtual MM_EXT_UL Switch */
-static const struct snd_kcontrol_new mm_ext_ul_switch_controls =
-	SOC_SINGLE_EXT("Switch", VIRT_SWITCH, 20, 1, 0,
-			abe_get_mixer, abe_put_switch);
-
-/* Virtual PDM_UL Switch */
-static const struct snd_kcontrol_new pdm_ul1_switch_controls =
-	SOC_SINGLE_EXT("Switch", VIRT_SWITCH, 21, 1, 0,
 			abe_get_mixer, abe_put_switch);
 
 static const struct snd_kcontrol_new abe_controls[] = {
@@ -1291,22 +1283,6 @@ static const struct snd_soc_dapm_widget abe_dapm_widgets[] = {
 	SND_SOC_DAPM_MIXER("DL1 MM_EXT",
 			ABE_WIDGET(40), ABE_OPP_50, 0, &mm_ext_dl_switch_controls, 1),
 
-	/*
-	 * The Following three are virtual switches to select the input port
-	 * before AMIC_UL enters ROUTE_UL - HAL V0.6x
-	 */
-
-	/* Virtual MM_EXT_UL Switch */
-	SND_SOC_DAPM_MIXER("AMIC_UL MM_EXT",
-			ABE_WIDGET(41), ABE_OPP_50, 0, &mm_ext_ul_switch_controls, 1),
-
-	/* Virtual PDM_UL1 Switch */
-	SND_SOC_DAPM_MIXER("AMIC_UL PDM",
-			ABE_WIDGET(42), ABE_OPP_50, 0, &pdm_ul1_switch_controls, 1),
-
-	/* Virtual to join MM_EXT and PDM+UL1 switches */
-	SND_SOC_DAPM_MIXER("AMIC_UL", SND_SOC_NOPM, 0, 0, NULL, 0),
-
 	/* Virtuals to join our capture sources */
 	SND_SOC_DAPM_MIXER("Sidetone Capture VMixer", SND_SOC_NOPM, 0, 0, NULL, 0),
 	SND_SOC_DAPM_MIXER("Voice Capture VMixer", SND_SOC_NOPM, 0, 0, NULL, 0),
@@ -1336,8 +1312,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL00", "DMic2R", "DMIC2"},
 	{"MUX_UL00", "BT Left", "BT_VX_UL"},
 	{"MUX_UL00", "BT Right", "BT_VX_UL"},
-	{"MUX_UL00", "AMic0", "AMIC_UL"},
-	{"MUX_UL00", "AMic1", "AMIC_UL"},
+	{"MUX_UL00", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL00", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL00", "AMic0", "PDM_UL1"},
+	{"MUX_UL00", "AMic1", "PDM_UL1"},
 	{"MUX_UL00", "VX Left", "Capture Mixer"},
 	{"MUX_UL00", "VX Right", "Capture Mixer"},
 	{"MM_UL1", NULL, "MUX_UL00"},
@@ -1351,8 +1329,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL01", "DMic2R", "DMIC2"},
 	{"MUX_UL01", "BT Left", "BT_VX_UL"},
 	{"MUX_UL01", "BT Right", "BT_VX_UL"},
-	{"MUX_UL01", "AMic0", "AMIC_UL"},
-	{"MUX_UL01", "AMic1", "AMIC_UL"},
+	{"MUX_UL01", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL01", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL01", "AMic0", "PDM_UL1"},
+	{"MUX_UL01", "AMic1", "PDM_UL1"},
 	{"MUX_UL01", "VX Left", "Capture Mixer"},
 	{"MUX_UL01", "VX Right", "Capture Mixer"},
 	{"MM_UL1", NULL, "MUX_UL01"},
@@ -1366,8 +1346,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL02", "DMic2R", "DMIC2"},
 	{"MUX_UL02", "BT Left", "BT_VX_UL"},
 	{"MUX_UL02", "BT Right", "BT_VX_UL"},
-	{"MUX_UL02", "AMic0", "AMIC_UL"},
-	{"MUX_UL02", "AMic1", "AMIC_UL"},
+	{"MUX_UL02", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL02", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL02", "AMic0", "PDM_UL1"},
+	{"MUX_UL02", "AMic1", "PDM_UL1"},
 	{"MUX_UL02", "VX Left", "Capture Mixer"},
 	{"MUX_UL02", "VX Right", "Capture Mixer"},
 	{"MM_UL1", NULL, "MUX_UL02"},
@@ -1381,8 +1363,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL03", "DMic2R", "DMIC2"},
 	{"MUX_UL03", "BT Left", "BT_VX_UL"},
 	{"MUX_UL03", "BT Right", "BT_VX_UL"},
-	{"MUX_UL03", "AMic0", "AMIC_UL"},
-	{"MUX_UL03", "AMic1", "AMIC_UL"},
+	{"MUX_UL03", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL03", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL03", "AMic0", "PDM_UL1"},
+	{"MUX_UL03", "AMic1", "PDM_UL1"},
 	{"MUX_UL03", "VX Left", "Capture Mixer"},
 	{"MUX_UL03", "VX Right", "Capture Mixer"},
 	{"MM_UL1", NULL, "MUX_UL03"},
@@ -1396,8 +1380,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL04", "DMic2R", "DMIC2"},
 	{"MUX_UL04", "BT Left", "BT_VX_UL"},
 	{"MUX_UL04", "BT Right", "BT_VX_UL"},
-	{"MUX_UL04", "AMic0", "AMIC_UL"},
-	{"MUX_UL04", "AMic1", "AMIC_UL"},
+	{"MUX_UL04", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL04", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL04", "AMic0", "PDM_UL1"},
+	{"MUX_UL04", "AMic1", "PDM_UL1"},
 	{"MUX_UL04", "VX Left", "Capture Mixer"},
 	{"MUX_UL04", "VX Right", "Capture Mixer"},
 	{"MM_UL1", NULL, "MUX_UL04"},
@@ -1411,8 +1397,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL05", "DMic2R", "DMIC2"},
 	{"MUX_UL05", "BT Left", "BT_VX_UL"},
 	{"MUX_UL05", "BT Right", "BT_VX_UL"},
-	{"MUX_UL05", "AMic0", "AMIC_UL"},
-	{"MUX_UL05", "AMic1", "AMIC_UL"},
+	{"MUX_UL05", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL05", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL05", "AMic0", "PDM_UL1"},
+	{"MUX_UL05", "AMic1", "PDM_UL1"},
 	{"MUX_UL05", "VX Left", "Capture Mixer"},
 	{"MUX_UL05", "VX Right", "Capture Mixer"},
 	{"MM_UL1", NULL, "MUX_UL05"},
@@ -1426,8 +1414,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL06", "DMic2R", "DMIC2"},
 	{"MUX_UL06", "BT Left", "BT_VX_UL"},
 	{"MUX_UL06", "BT Right", "BT_VX_UL"},
-	{"MUX_UL06", "AMic0", "AMIC_UL"},
-	{"MUX_UL06", "AMic1", "AMIC_UL"},
+	{"MUX_UL06", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL06", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL06", "AMic0", "PDM_UL1"},
+	{"MUX_UL06", "AMic1", "PDM_UL1"},
 	{"MUX_UL06", "VX Left", "Capture Mixer"},
 	{"MUX_UL06", "VX Right", "Capture Mixer"},
 	{"MM_UL1", NULL, "MUX_UL06"},
@@ -1441,8 +1431,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL07", "DMic2R", "DMIC2"},
 	{"MUX_UL07", "BT Left", "BT_VX_UL"},
 	{"MUX_UL07", "BT Right", "BT_VX_UL"},
-	{"MUX_UL07", "AMic0", "AMIC_UL"},
-	{"MUX_UL07", "AMic1", "AMIC_UL"},
+	{"MUX_UL07", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL07", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL07", "AMic0", "PDM_UL1"},
+	{"MUX_UL07", "AMic1", "PDM_UL1"},
 	{"MUX_UL07", "VX Left", "Capture Mixer"},
 	{"MUX_UL07", "VX Right", "Capture Mixer"},
 	{"MM_UL1", NULL, "MUX_UL07"},
@@ -1456,8 +1448,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL10", "DMic2R", "DMIC2"},
 	{"MUX_UL10", "BT Left", "BT_VX_UL"},
 	{"MUX_UL10", "BT Right", "BT_VX_UL"},
-	{"MUX_UL10", "AMic0", "AMIC_UL"},
-	{"MUX_UL10", "AMic1", "AMIC_UL"},
+	{"MUX_UL10", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL10", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL10", "AMic0", "PDM_UL1"},
+	{"MUX_UL10", "AMic1", "PDM_UL1"},
 	{"MUX_UL10", "VX Left", "Capture Mixer"},
 	{"MUX_UL10", "VX Right", "Capture Mixer"},
 	{"MM_UL2", NULL, "MUX_UL10"},
@@ -1471,8 +1465,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_UL11", "DMic2R", "DMIC2"},
 	{"MUX_UL11", "BT Left", "BT_VX_UL"},
 	{"MUX_UL11", "BT Right", "BT_VX_UL"},
-	{"MUX_UL11", "AMic0", "AMIC_UL"},
-	{"MUX_UL11", "AMic1", "AMIC_UL"},
+	{"MUX_UL11", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_UL11", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_UL11", "AMic0", "PDM_UL1"},
+	{"MUX_UL11", "AMic1", "PDM_UL1"},
 	{"MUX_UL11", "VX Left", "Capture Mixer"},
 	{"MUX_UL11", "VX Right", "Capture Mixer"},
 	{"MM_UL2", NULL, "MUX_UL11"},
@@ -1486,8 +1482,10 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_VX0", "DMic2R", "DMIC2"},
 	{"MUX_VX0", "BT Left", "BT_VX_UL"},
 	{"MUX_VX0", "BT Right", "BT_VX_UL"},
-	{"MUX_VX0", "AMic0", "AMIC_UL"},
-	{"MUX_VX0", "AMic1", "AMIC_UL"},
+	{"MUX_VX0", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_VX0", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_VX0", "AMic0", "PDM_UL1"},
+	{"MUX_VX0", "AMic1", "PDM_UL1"},
 	{"MUX_VX0", "VX Left", "Capture Mixer"},
 	{"MUX_VX0", "VX Right", "Capture Mixer"},
 
@@ -1500,16 +1498,12 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MUX_VX1", "DMic2R", "DMIC2"},
 	{"MUX_VX1", "BT Left", "BT_VX_UL"},
 	{"MUX_VX1", "BT Right", "BT_VX_UL"},
-	{"MUX_VX1", "AMic0", "AMIC_UL"},
-	{"MUX_VX1", "AMic1", "AMIC_UL"},
+	{"MUX_VX1", "MMExt Left", "MM_EXT_UL"},
+	{"MUX_VX1", "MMExt Right", "MM_EXT_UL"},
+	{"MUX_VX1", "AMic0", "PDM_UL1"},
+	{"MUX_VX1", "AMic1", "PDM_UL1"},
 	{"MUX_VX1", "VX Left", "Capture Mixer"},
 	{"MUX_VX1", "VX Right", "Capture Mixer"},
-
-	/* Capture Input Selection  for AMIC_UL  */
-	{"AMIC_UL MM_EXT", "Switch", "MM_EXT_UL"},
-	{"AMIC_UL PDM", "Switch", "PDM_UL1"},
-	{"AMIC_UL", NULL, "AMIC_UL MM_EXT"},
-	{"AMIC_UL", NULL, "AMIC_UL PDM"},
 
 	/* Headset (DL1)  playback path */
 	{"DL1 Mixer", "Tones", "TONES_DL"},
