@@ -2142,7 +2142,8 @@ static int aess_stream_event(struct snd_soc_dapm_context *dapm)
 
 	pm_runtime_get_sync(&pdev->dev);
 
-	aess_set_opp_mode();
+	if (abe->active)
+		aess_set_opp_mode();
 
 	pm_runtime_put_sync(&pdev->dev);
 
