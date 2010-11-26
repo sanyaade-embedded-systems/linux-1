@@ -2289,9 +2289,12 @@ static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 				REG_FLD_MOD(dispc_reg_att[plane], 0x0, 18, 18);
 		}
 	} else {
-		REG_FLD_MOD(dispc_reg_att[plane], 0, 13, 12);
-		if (!cpu_is_omap44xx())
+		if (!cpu_is_omap44xx()) {
+			REG_FLD_MOD(dispc_reg_att[plane], 0, 13, 12);
 			REG_FLD_MOD(dispc_reg_att[plane], 0, 18, 18);
+		} else {
+			REG_FLD_MOD(dispc_reg_att[plane], rotation, 13, 12);
+		}
 	}
 
 	if (plane != OMAP_DSS_GFX) {
