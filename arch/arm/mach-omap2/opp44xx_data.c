@@ -62,6 +62,8 @@ static struct omap_opp_def __initdata omap44xx_pre_es2_1_opp_def_list[] = {
 	OMAP_OPP_DEF("dsp", true, 465600000, 1100000),
 	/* DSP OPP3 - OPPTB */
 	OMAP_OPP_DEF("dsp", false, 498000000, 1260000),
+	/* ABE OPP1 - OPP25 */
+	OMAP_OPP_DEF("omap-aess-audio", true, 49150000, 930000),
 	/* ABE OPP1 - OPP50 */
 	OMAP_OPP_DEF("omap-aess-audio", true, 98300000, 930000),
 	/* ABE OPP2 - OPP100 */
