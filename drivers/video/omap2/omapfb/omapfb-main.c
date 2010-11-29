@@ -2023,7 +2023,7 @@ static void omapfb_free_resources(struct omapfb2_device *fbdev)
 
 	for (i = 0; i < fbdev->num_displays; i++) {
 		if (fbdev->displays[i]->state != OMAP_DSS_DISPLAY_DISABLED)
-			fbdev->displays[i]->driver->disable(fbdev->displays[i]);
+			omapdss_display_disable(fbdev->displays[i]);
 
 		omap_dss_put_device(fbdev->displays[i]);
 	}
@@ -2501,7 +2501,7 @@ static int omapfb_probe(struct platform_device *pdev)
 	if (def_display) {
 		struct omap_dss_driver *dssdrv = def_display->driver;
 
-		r = def_display->driver->enable(def_display);
+		r = omapdss_display_enable(def_display);
 		if (r) {
 			dev_warn(fbdev->dev, "Failed to enable display '%s'\n",
 					def_display->name);
