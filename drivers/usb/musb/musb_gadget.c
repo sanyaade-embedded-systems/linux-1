@@ -391,11 +391,14 @@ static void txstate(struct musb *musb, struct musb_request *req)
 					csr |= (MUSB_TXCSR_DMAENAB |
 							MUSB_TXCSR_MODE);
 					/* against programming guide */
-				} else
-					csr |= (MUSB_TXCSR_AUTOSET
-							| MUSB_TXCSR_DMAENAB
+				} else {
+						csr |= (MUSB_TXCSR_DMAENAB
 							| MUSB_TXCSR_DMAMODE
 							| MUSB_TXCSR_MODE);
+
+						if (!musb_ep->hb_mult)
+							csr |= MUSB_TXCSR_AUTOSET;
+				}
 
 				csr &= ~MUSB_TXCSR_P_UNDERRUN;
 				musb_writew(epio, MUSB_TXCSR, csr);
@@ -565,18 +568,6 @@ void musb_g_tx(struct musb *musb, u8 epnum)
 			/* ... or if not, then complete it. */
 			musb_g_giveback(musb_ep, request, 0);
 
-			/*
-			 * Kickstart next transfer if appropriate;
-			 * the packet that just completed might not
-			 * be transmitted for hours or days.
-			 * REVISIT for double buffering...
-			 * FIXME revisit for stalls too...
-			 */
-			musb_ep_select(mbase, epnum);
-			csr = musb_readw(epio, MUSB_TXCSR);
-			if (csr & MUSB_TXCSR_FIFONOTEMPTY)
-				return;
-
 			request = musb_ep->desc ? next_request(musb_ep) : NULL;
 			if (!request) {
 				DBG(4, "%s idle now\n",
@@ -623,19 +614,40 @@ void musb_g_tx(struct musb *musb, u8 epnum)
 #endif
 
 /*
+ * Enable DMA Mode 1 for RX transfers. This works reliably only
+ * with g_file_storage at the moment. Enabling this feature will
+ * result in a performance gain of about 30% for at least
+ * g_file_storage use cases.
+ * Making it a module parameter for overriding the short_not_ok check.
+ * so that this can be tested with g_zero, etc.
+ */
+static int musb_use_dma_mode1_rx;
+module_param_named(dma_mode1_rx, musb_use_dma_mode1_rx, bool,
+						S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(dma_mode1_rx, "Enable Mode 1 for RX transfers. Default = n");
+
+/*
  * Context: controller locked, IRQs blocked, endpoint selected
  */
 static void rxstate(struct musb *musb, struct musb_request *req)
 {
 	const u8		epnum = req->epnum;
 	struct usb_request	*request = &req->request;
-	struct musb_ep		*musb_ep = &musb->endpoints[epnum].ep_out;
+	struct musb_ep		*musb_ep;
 	void __iomem		*epio = musb->endpoints[epnum].regs;
 	unsigned		fifo_count = 0;
-	u16			len = musb_ep->packet_sz;
+	u16			len;
 	u16			csr = musb_readw(epio, MUSB_RXCSR);
+	int			use_mode1_rx = 0;
+	struct musb_hw_ep       *hw_ep = &musb->endpoints[epnum];
 
-	struct musb_hw_ep	*hw_ep = musb_ep->hw_ep;
+	if (hw_ep->is_shared_fifo)
+		musb_ep = &hw_ep->ep_in;
+	else
+		musb_ep = &hw_ep->ep_out;
+
+	len = musb_ep->packet_sz;
+
 	/* We shouldn't get here while DMA is active, but we do... */
 	if (dma_channel_status(musb_ep->dma) == MUSB_DMA_STATUS_BUSY) {
 		DBG(4, "DMA pending...\n");
@@ -693,6 +705,20 @@ static void rxstate(struct musb *musb, struct musb_request *req)
 
 	if (csr & MUSB_RXCSR_RXPKTRDY) {
 		len = musb_readw(epio, MUSB_RXCOUNT);
+
+		/*
+		 * Use Mode1 for RX transfers only for g_file_storage,
+		 * for which request->short_not_ok is set.
+		 * This should give a throughput boost of about
+		 * 30 percent for g_file_storage.
+		 * The module param can override this check.
+		 */
+		if ((musb_use_dma_mode1_rx || request->short_not_ok)
+					&& len == musb_ep->packet_sz)
+			use_mode1_rx = 1;
+		else
+			use_mode1_rx = 0;
+
 		if (request->actual < request->length) {
 #ifdef CONFIG_USB_INVENTRA_DMA
 			if (is_dma_capable() && musb_ep->dma) {
@@ -724,28 +750,37 @@ static void rxstate(struct musb *musb, struct musb_request *req)
 	 * then becomes usable as a runtime "use mode 1" hint...
 	 */
 
-				csr |= MUSB_RXCSR_DMAENAB;
-#ifdef USE_MODE1
-				csr |= MUSB_RXCSR_AUTOCLEAR;
-				/* csr |= MUSB_RXCSR_DMAMODE; */
+	/*
+	 * Experimental: Mode1 works with g_file_storage use cases
+	 * For other drivers, it appears that sometimes an end-point
+	 * interrupt is received before the DMA completion interrupt
+	 * REVISIT this at a later date. For now, enable mode 1
+	 * by default for g_file_storage
+	 * FIXME: The indentation here is deliberately broken - it was
+	 * either this, or violate the 80-character limit.
+	 */
 
-				/* this special sequence (enabling and then
-				 * disabling MUSB_RXCSR_DMAMODE) is required
-				 * to get DMAReq to activate
-				 */
-				musb_writew(epio, MUSB_RXCSR,
-					csr | MUSB_RXCSR_DMAMODE);
-#endif
-				musb_writew(epio, MUSB_RXCSR, csr);
+		if (use_mode1_rx) {
+			csr |= MUSB_RXCSR_AUTOCLEAR;
+			csr |= MUSB_RXCSR_DMAENAB;
+			musb_writew(epio, MUSB_RXCSR, csr);
+			csr |= MUSB_RXCSR_DMAMODE;
+			musb_writew(epio, MUSB_RXCSR, csr);
+		} else {
+			if (!musb_ep->hb_mult &&
+				musb_ep->hw_ep->rx_double_buffered)
+				csr |= MUSB_RXCSR_AUTOCLEAR;
+			csr |= MUSB_RXCSR_DMAENAB;
+			musb_writew(epio, MUSB_RXCSR, csr);
+		}
 
 				if (request->actual < request->length) {
 					int transfer_size = 0;
-#ifdef USE_MODE1
-					transfer_size = min(request->length,
-							channel->max_len);
-#else
-					transfer_size = len;
-#endif
+
+					transfer_size = use_mode1_rx ?
+							min(request->length,
+							channel->max_len) : len;
+
 					if (transfer_size <= musb_ep->packet_sz)
 						musb_ep->dma->desired_mode = 0;
 					else
@@ -825,9 +860,15 @@ void musb_g_rx(struct musb *musb, u8 epnum)
 	u16			csr;
 	struct usb_request	*request;
 	void __iomem		*mbase = musb->mregs;
-	struct musb_ep		*musb_ep = &musb->endpoints[epnum].ep_out;
+	struct musb_ep		*musb_ep;
 	void __iomem		*epio = musb->endpoints[epnum].regs;
 	struct dma_channel	*dma;
+	struct musb_hw_ep       *hw_ep = &musb->endpoints[epnum];
+
+	if (hw_ep->is_shared_fifo)
+		musb_ep = &hw_ep->ep_in;
+	else
+		musb_ep = &hw_ep->ep_out;
 
 	musb_ep_select(mbase, epnum);
 
@@ -886,7 +927,7 @@ void musb_g_rx(struct musb *musb, u8 epnum)
 
 #if defined(CONFIG_USB_INVENTRA_DMA) || defined(CONFIG_USB_TUSB_OMAP_DMA)
 		/* Autoclear doesn't clear RxPktRdy for short packets */
-		if ((dma->desired_mode == 0)
+		if ((dma->desired_mode == 0 && !hw_ep->rx_double_buffered)
 				|| (dma->actual_len
 					& (musb_ep->packet_sz - 1))) {
 			/* ack the read! */
@@ -897,8 +938,18 @@ void musb_g_rx(struct musb *musb, u8 epnum)
 		/* incomplete, and not short? wait for next IN packet */
 		if ((request->actual < request->length)
 				&& (musb_ep->dma->actual_len
-					== musb_ep->packet_sz))
+					== musb_ep->packet_sz)) {
+			/*
+			 * In double buffer case, continue to unload fifo if
+			 * there is Rx packet in FIFO.
+			 */
+			csr = musb_readw(epio, MUSB_RXCSR);
+			if ((csr & MUSB_RXCSR_RXPKTRDY) &&
+				hw_ep->rx_double_buffered)
+				goto exit;
+
 			return;
+		}
 #endif
 		musb_g_giveback(musb_ep, request, 0);
 
@@ -906,7 +957,7 @@ void musb_g_rx(struct musb *musb, u8 epnum)
 		if (!request)
 			return;
 	}
-
+exit:
 	/* analyze request if the ep is hot */
 	if (request)
 		rxstate(musb, to_musb_request(request));
@@ -957,9 +1008,25 @@ static int musb_gadget_enable(struct usb_ep *ep,
 
 	/* REVISIT this rules out high bandwidth periodic transfers */
 	tmp = le16_to_cpu(desc->wMaxPacketSize);
-	if (tmp & ~0x07ff)
-		goto fail;
-	musb_ep->packet_sz = tmp;
+	if (tmp & ~0x07ff) {
+		int ok;
+
+		if (usb_endpoint_dir_in(desc))
+			ok = musb->hb_iso_tx;
+		else
+			ok = musb->hb_iso_rx;
+
+		if (!ok) {
+			DBG(4, "%s: not support ISO high bandwidth\n", __func__);
+			goto fail;
+		}
+		musb_ep->hb_mult = (tmp >> 11) & 3;
+	} else {
+		musb_ep->hb_mult = 0;
+	}
+
+	musb_ep->packet_sz = tmp & 0x7ff;
+	tmp = musb_ep->packet_sz * (musb_ep->hb_mult + 1);
 
 	/* enable the interrupts for the endpoint, set the endpoint
 	 * packet size (or fail), set the mode, clear the fifo
@@ -972,8 +1039,10 @@ static int musb_gadget_enable(struct usb_ep *ep,
 			musb_ep->is_in = 1;
 		if (!musb_ep->is_in)
 			goto fail;
-		if (tmp > hw_ep->max_packet_sz_tx)
+		if (tmp > hw_ep->max_packet_sz_tx) {
+			DBG(4, "%s: packet size beyond hw fifo size\n", __func__);
 			goto fail;
+		}
 
 		int_txe |= (1 << epnum);
 		musb_writew(mbase, MUSB_INTRTXE, int_txe);
@@ -988,7 +1057,7 @@ static int musb_gadget_enable(struct usb_ep *ep,
 		if (musb->hwvers < MUSB_HWVERS_2000)
 			musb_writew(regs, MUSB_TXMAXP, hw_ep->max_packet_sz_tx);
 		else
-			musb_writew(regs, MUSB_TXMAXP, tmp);
+			musb_writew(regs, MUSB_TXMAXP, musb_ep->packet_sz | (musb_ep->hb_mult << 11));
 
 		csr = MUSB_TXCSR_MODE | MUSB_TXCSR_CLRDATATOG;
 		if (musb_readw(regs, MUSB_TXCSR)
@@ -1009,8 +1078,10 @@ static int musb_gadget_enable(struct usb_ep *ep,
 			musb_ep->is_in = 0;
 		if (musb_ep->is_in)
 			goto fail;
-		if (tmp > hw_ep->max_packet_sz_rx)
+		if (tmp > hw_ep->max_packet_sz_rx) {
+			DBG(4, "%s: packet size beyond hw fifo size\n", __func__);
 			goto fail;
+		}
 
 		int_rxe |= (1 << epnum);
 		musb_writew(mbase, MUSB_INTRRXE, int_rxe);
@@ -1024,7 +1095,7 @@ static int musb_gadget_enable(struct usb_ep *ep,
 		if (musb->hwvers < MUSB_HWVERS_2000)
 			musb_writew(regs, MUSB_RXMAXP, hw_ep->max_packet_sz_rx);
 		else
-			musb_writew(regs, MUSB_RXMAXP, tmp);
+			musb_writew(regs, MUSB_RXMAXP, musb_ep->packet_sz | (musb_ep->hb_mult << 11));
 
 		/* force shared fifo to OUT-only mode */
 		if (hw_ep->is_shared_fifo) {
