@@ -109,7 +109,7 @@
  *	product=0xPPPP		Default 0xa4a5 (FSG), USB Product ID
  *	release=0xRRRR		Override the USB release number (bcdDevice)
  *	serial=HHHH...		Override serial number (string of hex chars)
- *	buflen=N		Default N=16384, buffer size used (will be
+ *	buflen=N		Default N=32768, buffer size used (will be
  *					rounded down to a multiple of
  *					PAGE_CACHE_SIZE)
  *
@@ -338,7 +338,7 @@ static struct {
 	.vendor			= FSG_VENDOR_ID,
 	.product		= FSG_PRODUCT_ID,
 	.release		= 0xffff,	// Use controller chip type
-	.buflen			= 16384,
+	.buflen			= 32768,
 	};
 
 
