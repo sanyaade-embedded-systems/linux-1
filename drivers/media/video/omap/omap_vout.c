@@ -911,11 +911,6 @@ int omapvid_setup_overlay(struct omap_vout_device *vout,
 		pixheight = vout->pix.height;
 		pixwidth = vout->pix.width;
 	}
-	if ((cropwidth > VID_MAX_WIDTH) || (cropwidth < VID_MIN_WIDTH))
-		pr_debug("omapdss params:Invalid crop width:%d\n", cropwidth);
-
-	if ((cropheight > VID_MAX_HEIGHT) || (cropheight < VID_MIN_HEIGHT))
-		pr_debug("omapdss params:Invalid crop heigth:%d\n", cropheight);
 
 	ovl->get_overlay_info(ovl, &info);
 	if (addr)
@@ -997,14 +992,6 @@ int omapvid_init(struct omap_vout_device *vout, u32 addr, u32 uv_addr)
 		outh = win->w.height;
 		posx = win->w.left;
 		posy = win->w.top;
-	if ((outw > VID_MAX_WIDTH) || (outw < VID_MIN_WIDTH))
-		pr_debug("omapdss params:Invalid o/p width:%d\n", outw);
-	if ((outh > VID_MAX_HEIGHT) || (outh < VID_MIN_HEIGHT))
-		pr_debug("omapdss params:Invalid o/p heigth:%d\n", outh);
-	if ((posx > VID_MAX_WIDTH) || (outw < -VID_MAX_WIDTH))
-		pr_debug("omapdss params:Invalid left position:%d\n", posx);
-	if ((posy > VID_MAX_HEIGHT) || (posy < -VID_MAX_HEIGHT))
-		pr_debug("omapdss params:Invalid top position:%d\n", posy);
 
 		switch (vout->rotation) {
 		case dss_rotation_90_degree:
@@ -2048,6 +2035,19 @@ static int vidioc_s_fmt_vid_overlay(struct file *file, void *fh,
 	struct omap_vout_device *vout = fh;
 	struct v4l2_window *win = &f->fmt.win;
 
+	if ((win->w.width > VID_MAX_WIDTH) || (win->w.width < VID_MIN_WIDTH))
+		pr_debug("omapdss params:Invalid o/p width:%d\n",
+			win->w.width);
+	if ((win->w.height > VID_MAX_HEIGHT) ||
+		 (win->w.height < VID_MIN_HEIGHT))
+		pr_debug("omapdss params:Invalid o/p heigth:%d\n",
+			win->w.height);
+	if ((win->w.left > VID_MAX_WIDTH) || (win->w.left < -VID_MAX_WIDTH))
+		pr_debug("omapdss params:Invalid left position:%d\n",
+			win->w.left);
+	if ((win->w.top > VID_MAX_HEIGHT) || (win->w.top < -VID_MAX_HEIGHT))
+		pr_debug("omapdss params:Invalid top position:%d\n",
+			win->w.top);
 	mutex_lock(&vout->lock);
 	ovid = &vout->vid_info;
 	ovl = ovid->overlays[0];
@@ -2100,6 +2100,12 @@ static int vidioc_s_fmt_vid_overlay(struct file *file, void *fh,
 
 		omapvid_apply_changes(vout);
 	}
+	if (vout->win.chromakey > 0xFFFFFF)
+		pr_debug("omapdss params:Invalid chroma key value:%d\n",
+			vout->win.chromakey);
+	if (vout->win.global_alpha > 255)
+		pr_debug("omapdss params:Invalid global alpha value:%d\n",
+			vout->win.global_alpha);
 
 	return ret;
 }
@@ -2138,17 +2144,11 @@ static int vidioc_g_fmt_vid_overlay(struct file *file, void *fh,
 	win->w = vout->win.w;
 	win->field = vout->win.field;
 	win->global_alpha = vout->win.global_alpha;
-	if (win->global_alpha > 255)
-		pr_debug("omapdss params:Invalid global_alpha:%d\n",
-			win->global_alpha);
 
 	if (ovl->manager && ovl->manager->get_manager_info) {
 		ovl->manager->get_manager_info(ovl->manager, &info);
 		key_value = info.trans_key;
 	}
-	if (key_value > 0xFFFFFF)
-		pr_debug("omapdss params:Invalid chroma key value:%d\n",
-		key_value);
 
 	win->chromakey = key_value;
 	return 0;
@@ -2192,6 +2192,20 @@ static int vidioc_s_crop(struct file *file, void *fh, struct v4l2_crop *crop)
 	struct omap_overlay *ovl;
 	struct omap_video_timings *timing;
 
+	if ((crop->c.width > VID_MAX_WIDTH) || (crop->c.width < VID_MIN_WIDTH))
+		pr_debug("omapdss params:Invalid crop width:%d\n",
+			 crop->c.width);
+	if ((crop->c.height > VID_MAX_HEIGHT) ||
+		(crop->c.height < VID_MIN_HEIGHT))
+		pr_debug("omapdss params:Invalid crop heigth:%d\n",
+			 crop->c.height);
+	if ((crop->c.left > VID_MAX_WIDTH) || (crop->c.left < -VID_MAX_WIDTH))
+		pr_debug("omapdss params:Invalid crop left:%d\n",
+			crop->c.left);
+	if ((crop->c.top > VID_MAX_HEIGHT) ||
+		(crop->c.top < -VID_MAX_HEIGHT))
+		pr_debug("omapdss params:Invalid crop top:%d\n",
+			crop->c.top);
 	/* Currently we only allow changing the crop position while
 	   streaming.  */
 	if (vout->streaming &&
