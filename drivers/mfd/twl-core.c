@@ -632,6 +632,13 @@ add_children(struct twl4030_platform_data *pdata, unsigned long features)
 			return PTR_ERR(child);
 	}
 
+	if (twl_class_is_6030()) {
+		child = add_child(1, "twl6030_hotdie", NULL, 0, true,
+				pdata->irq_base + HOTDIE_INTR_OFFSET, 0);
+		if (IS_ERR(child))
+			return PTR_ERR(child);
+	}
+
 	if (twl_has_madc() && pdata->madc && twl_class_is_6030()) {
 		child = add_child(1, "twl6030_gpadc",
 				pdata->madc, sizeof(*pdata->madc),
