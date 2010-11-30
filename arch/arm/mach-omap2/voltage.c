@@ -1305,7 +1305,7 @@ static int scale_dep_vdd(struct omap_vdd_info *main_vdd)
 
 	for (i = 0; i < main_vdd->nr_dep_vdd; i++)
 		omap_voltage_scale(dep_vdds[i].voltdm,
-				dep_vdds[i].cur_dep_volt, 0);
+				dep_vdds[i].cur_dep_volt);
 	return 0;
 }
 
@@ -1793,8 +1793,7 @@ struct voltagedomain *omap_voltage_domain_get(char *name)
  * the voltage domain voltage to the new value. Returns 0 on success
  * else the error value.
  */
-int omap_voltage_scale(struct voltagedomain *voltdm, unsigned long volt,
-		       unsigned long hack_freq)
+int omap_voltage_scale(struct voltagedomain *voltdm, unsigned long volt)
 {
 	unsigned long curr_volt;
 	int is_volt_scaled = 0, i;
@@ -1836,14 +1835,9 @@ int omap_voltage_scale(struct voltagedomain *voltdm, unsigned long volt,
 
 	for (i = 0; i < vdd->dev_count; i++) {
 		struct omap_opp *opp;
-		unsigned long freq = 0;
+		unsigned long freq;
 
-		if (!strcmp(dev_driver_string(vdd->dev_list[i]), "omap-aess-audio")) {
-			freq = hack_freq;
-			printk(KERN_ERR "hacking freq for aess -> %ld\n", freq);
-		}
-
-		opp = opp_find_voltage(vdd->dev_list[i], volt, freq);
+		opp = opp_find_voltage(vdd->dev_list[i], volt);
 		if (IS_ERR(opp)) {
 			dev_err(vdd->dev_list[i], "%s: Unable to find OPP for"
 				"volt%ld\n", __func__, volt);
