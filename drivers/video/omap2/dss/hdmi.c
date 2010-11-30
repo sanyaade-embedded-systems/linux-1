@@ -533,11 +533,11 @@ static void compute_pll(int clkin, int phy,
 
 	if (phy > 1000 * 100) {
 		pi->dcofreq = 1;
-		pi->regsd = ((pi->regm * 384)/((n + 1) * 250) + 5)/10;
 	} else {
 		pi->dcofreq = 0;
-		pi->regsd = 0;
 	}
+
+	pi->regsd = ((pi->regm * clkin/10)/((n + 1) * 250) + 5)/10;
 
 	DSSDBG("M = %d Mf = %d\n", pi->regm, pi->regmf);
 	DSSDBG("range = %d sd = %d\n", pi->dcofreq, pi->regsd);
@@ -578,6 +578,8 @@ static int hdmi_pll_init(int refsel, int dcofreq, struct hdmi_pll_info *fmt,
 	r = hdmi_read_reg(pll, PLLCTRL_CFG4);
 	r = FLD_MOD(r, fmt->regm2, 24, 18);
 	r = FLD_MOD(r, fmt->regmf, 17, 0);
+
+	hdmi_write_reg(pll, PLLCTRL_CFG4, r);
 
 	/* go now */
 	REG_FLD_MOD(pll, PLLCTRL_PLL_GO, 0x1ul, 0, 0);
