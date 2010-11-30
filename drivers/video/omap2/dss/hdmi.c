@@ -1013,23 +1013,23 @@ static int hdmi_min_enable(void)
 }
 
 static DEFINE_SPINLOCK(irqstatus_lock);
-static volatile int irqstatus;
 
-static void hdmi_work_queue(struct work_struct *work)
-{
-	struct omap_dss_device *dssdev = get_hdmi_device();
+struct hdmi_work_struct {
+	struct work_struct work;
 	int r;
-	unsigned long flags;
+};
+
+static void hdmi_work_queue(struct work_struct *ws)
+{
+	struct hdmi_work_struct *work =
+			container_of(ws, struct hdmi_work_struct, work);
+	struct omap_dss_device *dssdev = get_hdmi_device();
+	int r = work->r;
 
 	if (dssdev == NULL)
 		goto done;
 
 	DSSDBG("found hdmi handle %s" , dssdev->name);
-
-	spin_lock_irqsave(&irqstatus_lock, flags);
-	r = irqstatus;
-	irqstatus = 0;
-	spin_unlock_irqrestore(&irqstatus_lock, flags);
 
 	DSSDBG("irqstatus=%08x\n hdp_mode = %d dssdev->state = %d, "
 		"hdmi_power = %d", r, hpd_mode, dssdev->state, hdmi_power);
@@ -1097,33 +1097,28 @@ done:
 
 static irqreturn_t hdmi_irq_handler(int irq, void *arg)
 {
-	struct work_struct *work;
+	struct hdmi_work_struct *work;
 	unsigned long flags;
 	int r = 0;
-	int work_pending;
+
+	/* process interrupt in critical section to handle conflicts */
+	spin_lock_irqsave(&irqstatus_lock, flags);
 
 	HDMI_W1_HPD_handler(&r);
-	DSSDBG("r=%08x, prev irqstatus=%08x\n", r, irqstatus);
+	DSSDBG("Received IRQ r=%08x\n", r);
 
 	if (((r & HDMI_CONNECT) || (r & HDMI_HPD)) && (hpd_mode == 1))
 		hdmi_enable_clocks(1);
 
-
-	spin_lock_irqsave(&irqstatus_lock, flags);
-	work_pending = irqstatus;
-	if (r & HDMI_DISCONNECT)
-		irqstatus &= ~HDMI_CONNECT;
-	if (r & HDMI_CONNECT)
-		irqstatus &= ~HDMI_DISCONNECT;
-	irqstatus |= r;
 	spin_unlock_irqrestore(&irqstatus_lock, flags);
 
-	if (r && !work_pending) {
+	if (r) {
 		work = kmalloc(sizeof(*work), GFP_KERNEL);
 
 		if (work) {
-			INIT_WORK(work, hdmi_work_queue);
-			schedule_work(work);
+			INIT_WORK(&work->work, hdmi_work_queue);
+			work->r = r;
+			schedule_work(&work->work);
 		} else {
 			printk(KERN_ERR "Cannot allocate memory to create work");
 		}
