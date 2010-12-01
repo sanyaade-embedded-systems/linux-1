@@ -1,7 +1,9 @@
 /*
  * dmm.h
  *
- * DMM driver support functions for TI OMAP processors.
+ * DMM driver support functions for TI DMM-TILER hardware block.
+ *
+ * Author: David Sin <davidsin@ti.com>
  *
  * Copyright (C) 2009-2010 Texas Instruments, Inc.
  *

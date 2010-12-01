@@ -2,7 +2,9 @@
  * tcm.h
  *
  * TILER container manager specification and support functions for TI
- * processors.
+ * TILER driver.
+ *
+ * Author: Lajos Molnar <molnar@ti.com>
  *
  * Copyright (C) 2009-2010 Texas Instruments, Inc.
  *
@@ -15,19 +17,18 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#ifndef _TCM_H_
-#define _TCM_H_
-
-#include <linux/init.h>
-#include <linux/module.h>
+#ifndef TCM_H
+#define TCM_H
 
 struct tcm;
 
+/* point */
 struct tcm_pt {
 	u16 x;
 	u16 y;
 };
 
+/* 1d or 2d area */
 struct tcm_area {
 	bool is2d;		/* whether are is 1d or 2d */
 	struct tcm    *tcm;	/* parent */
@@ -49,8 +50,6 @@ struct tcm {
 			  struct tcm_area *area);
 	s32 (*reserve_1d)(struct tcm *tcm, u32 slots, struct tcm_area *area);
 	s32 (*free)      (struct tcm *tcm, struct tcm_area *area);
-	s32 (*get_parent)(struct tcm *tcm, struct tcm_pt *pt,
-			  struct tcm_area *area);
 	void (*deinit)   (struct tcm *tcm);
 };
 
@@ -79,12 +78,12 @@ struct tcm {
  * @param width		Width of container
  * @param height	Height of container
  * @param attr		Container manager specific configuration
- *  			arguments.  Please describe these in
- *  			your header file.
+ *			arguments.  Please describe these in
+ *			your header file.
  *
  * @return Pointer to the allocated and initialized container
- *  	   manager.  NULL on failure.  DO NOT leak any memory on
- *  	   failure!
+ *	   manager.  NULL on failure.  DO NOT leak any memory on
+ *	   failure!
  */
 #define TCM_INIT(name, attr_t) \
 struct tcm *name(u16 width, u16 height, typeof(attr_t) *attr);
@@ -92,14 +91,12 @@ struct tcm *name(u16 width, u16 height, typeof(attr_t) *attr);
 /**
  * Deinitialize tiler container manager.
  *
- * @author Ravi Ramachandra (3/1/2010)
- *
  * @param tcm	Pointer to container manager.
  *
  * @return 0 on success, non-0 error value on error.  The call
- *  	   should free as much memory as possible and meaningful
- *  	   even on failure.  Some error codes: -ENODEV: invalid
- *  	   manager.
+ *	   should free as much memory as possible and meaningful
+ *	   even on failure.  Some error codes: -ENODEV: invalid
+ *	   manager.
  */
 static inline void tcm_deinit(struct tcm *tcm)
 {
@@ -110,34 +107,36 @@ static inline void tcm_deinit(struct tcm *tcm)
 /**
  * Reserves a 2D area in the container.
  *
- * @author Ravi Ramachandra (3/1/2010)
- *
  * @param tcm		Pointer to container manager.
  * @param height	Height(in pages) of area to be reserved.
  * @param width		Width(in pages) of area to be reserved.
  * @param align		Alignment requirement for top-left corner of area. Not
- *  			all values may be supported by the container manager,
- * 			but it must support 0 (1), 32 and 64.
- *  			0 value is equivalent to 1.
+ *			all values may be supported by the container manager,
+ *			but it must support 0 (1), 32 and 64.
+ *			0 value is equivalent to 1.
  * @param area		Pointer to where the reserved area should be stored.
  *
  * @return 0 on success.  Non-0 error code on failure.  Also,
- *  	   the tcm field of the area will be set to NULL on
- *  	   failure.  Some error codes: -ENODEV: invalid manager,
- *  	   -EINVAL: invalid area, -ENOMEM: not enough space for
- *  	    allocation.
+ *	   the tcm field of the area will be set to NULL on
+ *	   failure.  Some error codes: -ENODEV: invalid manager,
+ *	   -EINVAL: invalid area, -ENOMEM: not enough space for
+ *	    allocation.
  */
 static inline s32 tcm_reserve_2d(struct tcm *tcm, u16 width, u16 height,
 				 u16 align, struct tcm_area *area)
 {
 	/* perform rudimentary error checking */
-	s32 res = (tcm  == NULL ? -ENODEV :
-		   area == NULL ? -EINVAL :
-		   (height > tcm->height || width > tcm->width) ? -ENOMEM :
-		   tcm->reserve_2d(tcm, height, width, align, area));
+	s32 res = tcm  == NULL ? -ENODEV :
+		(area == NULL || width == 0 || height == 0 ||
+		 /* align must be a 2 power */
+		 align & (align - 1)) ? -EINVAL :
+		(height > tcm->height || width > tcm->width) ? -ENOMEM : 0;
 
-	if (area)
+	if (!res) {
+		area->is2d = true;
+		res = tcm->reserve_2d(tcm, height, width, align, area);
 		area->tcm = res ? NULL : tcm;
+	}
 
 	return res;
 }
@@ -145,29 +144,29 @@ static inline s32 tcm_reserve_2d(struct tcm *tcm, u16 width, u16 height,
 /**
  * Reserves a 1D area in the container.
  *
- * @author Ravi Ramachandra (3/1/2010)
- *
  * @param tcm		Pointer to container manager.
  * @param slots		Number of (contiguous) slots to reserve.
  * @param area		Pointer to where the reserved area should be stored.
  *
  * @return 0 on success.  Non-0 error code on failure.  Also,
- *  	   the tcm field of the area will be set to NULL on
- *  	   failure.  Some error codes: -ENODEV: invalid manager,
- *  	   -EINVAL: invalid area, -ENOMEM: not enough space for
- *  	    allocation.
+ *	   the tcm field of the area will be set to NULL on
+ *	   failure.  Some error codes: -ENODEV: invalid manager,
+ *	   -EINVAL: invalid area, -ENOMEM: not enough space for
+ *	    allocation.
  */
 static inline s32 tcm_reserve_1d(struct tcm *tcm, u32 slots,
 				 struct tcm_area *area)
 {
 	/* perform rudimentary error checking */
-	s32 res = (tcm  == NULL ? -ENODEV :
-		   area == NULL ? -EINVAL :
-		   slots > (tcm->width * (u32) tcm->height) ? -ENOMEM :
-		   tcm->reserve_1d(tcm, slots, area));
+	s32 res = tcm  == NULL ? -ENODEV :
+		(area == NULL || slots == 0) ? -EINVAL :
+		slots > (tcm->width * (u32) tcm->height) ? -ENOMEM : 0;
 
-	if (area)
+	if (!res) {
+		area->is2d = false;
+		res = tcm->reserve_1d(tcm, slots, area);
 		area->tcm = res ? NULL : tcm;
+	}
 
 	return res;
 }
@@ -175,17 +174,15 @@ static inline s32 tcm_reserve_1d(struct tcm *tcm, u32 slots,
 /**
  * Free a previously reserved area from the container.
  *
- * @author Ravi Ramachandra (3/1/2010)
- *
  * @param area	Pointer to area reserved by a prior call to
- *  		tcm_reserve_1d or tcm_reserve_2d call, whether
- *  		it was successful or not. (Note: all fields of
- *  		the structure must match.)
+ *		tcm_reserve_1d or tcm_reserve_2d call, whether
+ *		it was successful or not. (Note: all fields of
+ *		the structure must match.)
  *
  * @return 0 on success.  Non-0 error code on failure.  Also, the tcm
- *  	   field of the area is set to NULL on success to avoid subsequent
- *  	   freeing.  This call will succeed even if supplying
- *  	   the area from a failed reserved call.
+ *	   field of the area is set to NULL on success to avoid subsequent
+ *	   freeing.  This call will succeed even if supplying
+ *	   the area from a failed reserved call.
  */
 static inline s32 tcm_free(struct tcm_area *area)
 {
@@ -200,37 +197,6 @@ static inline s32 tcm_free(struct tcm_area *area)
 	return res;
 }
 
-
-/**
- * Retrieves the parent area (1D or 2D) for a given co-ordinate in the
- * container.
- *
- * @author Ravi Ramachandra (3/1/2010)
- *
- * @param tcm		Pointer to container manager.
- * @param pt		Pointer to the coordinates of a slot in the container.
- * @param area		Pointer to where the reserved area should be stored.
- *
- * @return 0 on success.  Non-0 error code on failure.  Also,
- *  	   the tcm field of the area will be set to NULL on
- *  	   failure.  Some error codes: -ENODEV: invalid manager,
- *  	   -EINVAL: invalid area, -ENOENT: coordinate is not part of any
- * 	   active area.
- */
-static inline s32 tcm_get_parent(struct tcm *tcm, struct tcm_pt *pt,
-				 struct tcm_area *area)
-{
-	s32 res = (tcm  == NULL ? -ENODEV :
-		   area == NULL ? -EINVAL :
-		   (pt->x >= tcm->width || pt->y >= tcm->height) ? -ENOENT :
-		   tcm->get_parent(tcm, pt, area));
-
-	if (area)
-		area->tcm = res ? NULL : tcm;
-
-	return res;
-}
-
 /*=============================================================================
     HELPER FUNCTION FOR ANY TILER CONTAINER MANAGER
 =============================================================================*/
@@ -241,8 +207,6 @@ static inline s32 tcm_get_parent(struct tcm *tcm, struct tcm_pt *pt,
  * contain the remaining portion of the area.  If the whole parent area can
  * fit in a 2D slice, its tcm pointer is set to NULL to mark that it is no
  * longer a valid area.
- *
- * @author Lajos Molnar (3/17/2010)
  *
  * @param parent	Pointer to a VALID parent area that will get modified
  * @param slice		Pointer to the slice area that will get modified
@@ -267,16 +231,10 @@ static inline void tcm_slice(struct tcm_area *parent, struct tcm_area *slice)
 	}
 }
 
-/**
- * Verifies if a tcm area is logically valid.
- *
- * @param area		Pointer to tcm area
- *
- * @return TRUE if area is logically valid, FALSE otherwise.
- */
+/* Verify if a tcm area is logically valid */
 static inline bool tcm_area_is_valid(struct tcm_area *area)
 {
-	return (area && area->tcm &&
+	return area && area->tcm &&
 		/* coordinate bounds */
 		area->p1.x < area->tcm->width &&
 		area->p1.y < area->tcm->height &&
@@ -288,8 +246,7 @@ static inline bool tcm_area_is_valid(struct tcm_area *area)
 		  area->p1.x + area->p1.y * area->tcm->width) ||
 		 /* 2D coordinate relationship */
 		 (area->is2d &&
-		  area->p0.x <= area->p1.x))
-	       );
+		  area->p0.x <= area->p1.x));
 }
 
 /* see if a coordinate is within an area */
@@ -337,11 +294,11 @@ static inline u16 __tcm_sizeof(struct tcm_area *area)
  * syntactically as a for(;;) statement.
  *
  * @param var		Name of a local variable of type 'struct
- *  			tcm_area *' that will get modified to
- *  			contain each slice.
+ *			tcm_area *' that will get modified to
+ *			contain each slice.
  * @param area		Pointer to the VALID parent area. This
- *  			structure will not get modified
- *  			throughout the loop.
+ *			structure will not get modified
+ *			throughout the loop.
  *
  */
 #define tcm_for_each_slice(var, area, safe) \
@@ -349,4 +306,4 @@ static inline u16 __tcm_sizeof(struct tcm_area *area)
 	     tcm_slice(&safe, &var); \
 	     var.tcm; tcm_slice(&safe, &var))
 
-#endif /* _TCM_H_ */
+#endif

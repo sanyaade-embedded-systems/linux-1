@@ -1,7 +1,9 @@
 /*
  * tmm.h
  *
- * TMM interface definition for TI TILER.
+ * TMM interface definition for TI TILER driver.
+ *
+ * Author: Lajos Molnar <molnar@ti.com>
  *
  * Copyright (C) 2009-2010 Texas Instruments, Inc.
  *
@@ -24,11 +26,11 @@ struct tmm {
 	void *pvt;
 
 	/* function table */
-	u32 *(*get)    (struct tmm *tmm, s32 num_pages);
-	void (*free)   (struct tmm *tmm, u32 *pages);
-	s32  (*map)    (struct tmm *tmm, struct pat_area area, u32 page_pa);
-	void (*clear)  (struct tmm *tmm, struct pat_area area);
-	void (*deinit) (struct tmm *tmm);
+	u32 *(*get)	(struct tmm *tmm, u32 num_pages);
+	void (*free)	(struct tmm *tmm, u32 *pages);
+	s32  (*map)	(struct tmm *tmm, struct pat_area area, u32 page_pa);
+	void (*clear)	(struct tmm *tmm, struct pat_area area);
+	void (*deinit)	(struct tmm *tmm);
 };
 
 /**
@@ -36,7 +38,7 @@ struct tmm {
  * @return a pointer to a list of physical page addresses.
  */
 static inline
-u32 *tmm_get(struct tmm *tmm, s32 num_pages)
+u32 *tmm_get(struct tmm *tmm, u32 num_pages)
 {
 	if (tmm && tmm->pvt)
 		return tmm->get(tmm, num_pages);
