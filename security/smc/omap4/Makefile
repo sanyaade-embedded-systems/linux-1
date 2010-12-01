@@ -38,4 +38,7 @@ tf_driver-objs += tf_comm_mshield.o
 tf_driver-objs += tf_device_mshield.o
 tf_driver-objs += bridge_pub2sec.o
 
+plus_sec := $(call as-instr,.arch_extension sec,+sec)
+AFLAGS_bridge_pub2sec.o	:=-Wa,-march=armv7-a$(plus_sec)
+
 obj-$(CONFIG_SECURITY_MIDDLEWARE_COMPONENT) += tf_driver.o
