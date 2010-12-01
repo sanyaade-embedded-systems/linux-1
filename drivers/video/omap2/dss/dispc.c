@@ -313,26 +313,6 @@ static inline u32 dispc_read_reg(const struct dispc_reg idx)
 	return __raw_readl(dispc.base + idx.idx);
 }
 
-static inline u8 calc_tiler_orientation(u8 rotation, u8 mir)
-{
-	static u8 orientation;
-	switch (rotation) {
-	case 0:
-		orientation = (mir ? 0x2 : 0x0);
-		break;
-	case 1:
-		orientation = (mir ? 0x7 : 0x6);
-		break;
-	case 2:
-		orientation = (mir ? 0x1 : 0x3);
-		break;
-	case 3:
-		orientation = (mir ? 0x4 : 0x5);
-		break;
-	}
-	return orientation;
-}
-
 
 
 #define SR(reg) \
@@ -2282,9 +2262,12 @@ static void _dispc_set_rotation_attrs(enum omap_plane plane, u8 rotation,
 				REG_FLD_MOD(dispc_reg_att[plane], 0x0, 18, 18);
 		}
 	} else {
-		REG_FLD_MOD(dispc_reg_att[plane], 0, 13, 12);
-		if (!cpu_is_omap44xx())
+		if (!cpu_is_omap44xx()) {
+			REG_FLD_MOD(dispc_reg_att[plane], 0, 13, 12);
 			REG_FLD_MOD(dispc_reg_att[plane], 0, 18, 18);
+		} else {
+			REG_FLD_MOD(dispc_reg_att[plane], rotation, 13, 12);
+		}
 	}
 
 	if (plane != OMAP_DSS_GFX) {
@@ -2340,80 +2323,28 @@ static s32 pixinc(int pixels, u8 ps)
 		BUG();
 }
 
-static void calc_tiler_row_rotation(u8 rotation,
-		u16 width,
-		enum omap_color_mode color_mode,
-		int y_decim,
+static void calc_tiler_row_rotation(struct tiler_view_t *view, int y_decim,
 		s32 *row_inc,
 		unsigned *offset1,
 		enum device_n_buffer_type  ilace,
 		u16 pic_height)
  {
-	u8 ps = 1;
-	u32 line_size = 0;
-	DSSDBG("calc_tiler_rot(%d): %dx%d\n", rotation, width, pic_height);
-
-	switch (color_mode) {
-	case OMAP_DSS_COLOR_RGB16:
-	case OMAP_DSS_COLOR_ARGB16:
-		ps = 2;
-		break;
-
-	case OMAP_DSS_COLOR_RGB24P:
-	case OMAP_DSS_COLOR_RGB24U:
-	case OMAP_DSS_COLOR_ARGB32:
-	case OMAP_DSS_COLOR_RGBA32:
-	case OMAP_DSS_COLOR_RGBX32:
-	case OMAP_DSS_COLOR_YUV2:
-	case OMAP_DSS_COLOR_UYVY:
-		ps = 4;
-		break;
-
-	case OMAP_DSS_COLOR_NV12:
-		ps = 1;
-		break;
-
-	default:
-		BUG();
-		return;
-	}
-	switch (rotation) {
-	case 0:
-	case 2:
-		if (color_mode == OMAP_DSS_COLOR_YUV2 ||
-			color_mode == OMAP_DSS_COLOR_UYVY)
-			width /= 2;
-		line_size = (1 == ps) ? 16384 : 32768 ;
-		break;
-
-	case 1:
-	case 3:
-		/* input width/height already swapped for rotated frames */
-		line_size = (4 == ps) ? 16384 : 8192 ;
-		break;
-
-	default:
-		BUG();
-		return;
-	}
-
 	/* assume TB. We worry about swapping top/bottom outside of this call */
 
 	if (ilace & OMAP_FLAG_IBUF) {
 		/* bottom half of image is the odd frame */
-		*offset1 = line_size * pic_height;
+		*offset1 = view->v_inc * pic_height;
 	} else if (ilace & OMAP_FLAG_IDEV) {
 		/* even and odd frames are interleaved */
-
 		/* offset1 is always at an odd line */
-		*offset1 = line_size * (y_decim | 1);
+		*offset1 = view->v_inc * (y_decim | 1);
 		y_decim *= 2;
 	}
-	*row_inc = line_size * y_decim + 1 - (width * ps);
+	*row_inc = view->v_inc * y_decim + 1 - (view->width * view->bpp);
 
-	DSSDBG(" colormode: %d, rotation: %d, ps: %d, width: %d,"
+	DSSDBG(" ps: %d, width: %d, offset1: %d,"
 		" height: %d, row_inc:%d\n",
-		color_mode, rotation, ps, width, pic_height, *row_inc);
+		view->bpp, view->width, *offset1, pic_height, *row_inc);
 
 	return;
  }
@@ -3006,56 +2937,38 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	offset0 = offset1 = 0x0;
 
 	if (rotation_type == OMAP_DSS_ROT_TILER) {
-		struct tiler_view_orient orient = {0};
+		struct tiler_view_t view = {0};
 		unsigned long tiler_width = width, tiler_height = height;
-		u8 mir_x = 0, mir_y = 0;
-		u8 tiler_rotation = rotation;
+
+		/* tiler needs 0-degree width & height */
+		if (rotation & 1)
+			swap(tiler_width, tiler_height);
+
+		if (color_mode == OMAP_DSS_COLOR_YUV2 ||
+			color_mode == OMAP_DSS_COLOR_UYVY)
+				tiler_width /= 2;
+
+		tilview_create(&view, paddr, tiler_width, tiler_height);
+		tilview_rotate(&view, rotation * 90);
+		tilview_flip(&view, false, mirror);
+		paddr = view.tsptr;
 
 		pix_inc = 1 + (x_decim - 1) * bpp;
-		calc_tiler_row_rotation(rotation, width * x_decim,
-					color_mode, y_decim, &row_inc,
+		calc_tiler_row_rotation(&view, y_decim, &row_inc,
 					&offset1, ilace, pic_height);
 
 		if (ilace & OMAP_FLAG_ISWAP)
 			swap(offset0, offset1);
 
-		/* mirroring is applied before rotataion */
-		if (tiler_rotation & 1)
-			tiler_rotation ^= 2;
-
-		tiler_rotate_view(&orient, tiler_rotation * 90);
-
-		if (mirror) {
-			if (rotation & 1)
-				mir_x = 1;
-			else
-				mir_y = 1;
-		}
-		orient.x_invert ^= mir_x;
-		orient.y_invert ^= mir_y;
-
-		DSSDBG("RXY = %d %d %d\n", orient.rotate_90,
-				orient.x_invert, orient.y_invert);
-
-		if (orient.rotate_90 & 1)
-			swap(tiler_width, tiler_height);
-
-		if (color_mode == OMAP_DSS_COLOR_YUV2 ||
-			color_mode == OMAP_DSS_COLOR_UYVY)
-			tiler_width /= 2;
-
 		DSSDBG("w, h = %ld %ld\n", tiler_width, tiler_height);
 
-		paddr = tiler_reorient_topleft(
-					tiler_get_natural_addr((void *)paddr),
-					orient, tiler_width, tiler_height);
-
-		if (puv_addr)
-			puv_addr = tiler_reorient_topleft(
-				tiler_get_natural_addr(
-				(void *) puv_addr), orient,
-				tiler_width/2, tiler_height/2);
-
+		if (puv_addr) {
+			tilview_create(&view, puv_addr, tiler_width / 2,
+						tiler_height / 2);
+			tilview_rotate(&view, rotation * 90);
+			tilview_flip(&view, false, mirror);
+			puv_addr = view.tsptr;
+		}
 		/*
 		 * BA1 used as temporary storage to pointer to lower
 		 * half of interlaced buffer on progressive display
@@ -4971,7 +4884,7 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	unsigned long tiler_width, tiler_height;
 	u8 rotation = 0, mirror = 0 ;
 	int ch_width, ch_height, out_ch_width, out_ch_height, scale_x, scale_y;
-	struct tiler_view_orient orient = {0};
+	struct tiler_view_t view = {0};
 	u32 paddr = wb->paddr;
 	u32 puv_addr = wb->puv_addr; /* relevant for NV12 format only */
 	u16 out_width = wb->width;
@@ -5071,47 +4984,35 @@ int dispc_setup_wb(struct writeback_cache_data *wb)
 	}
 
 	pix_inc = 0x1;
-	if ((paddr >= 0x60000000) && (paddr <= 0x7fffffff)) {
-		u8 mir_x = 0, mir_y = 0;
-		tiler_width = out_width, tiler_height = out_height;
+	if (is_tiler_addr(paddr)) {
+		tiler_width = out_width;
+		tiler_height = out_height;
 
-		calc_tiler_row_rotation(rotation, out_width,
-						color_mode, 1, /* y_decim = 1 */
-						&row_inc,
-						&offset1, ilace,
-						pic_height);
-
-		/* mirroring is applied before rotataion */
-		/* mirroring is applied before rotataion */
+		/* tiler needs 0-degree width & height */
 		if (rotation & 1)
-			rotation ^= 2;
-
-		tiler_rotate_view(&orient, rotation * 90);
-
-		if (mirror) {
-			if (rotation & 1)
-				mir_x = 1;
-			else
-				mir_y = 1;
-		}
-		orient.x_invert ^= mir_x;
-		orient.y_invert ^= mir_y;
-
-		if (orient.rotate_90 & 1)
 			swap(tiler_width, tiler_height);
 
 		if (color_mode == OMAP_DSS_COLOR_YUV2 ||
-		    color_mode == OMAP_DSS_COLOR_UYVY)
-			tiler_width /= 2;
+			color_mode == OMAP_DSS_COLOR_UYVY)
+				tiler_width /= 2;
 
-		paddr = tiler_reorient_topleft(
-			tiler_get_natural_addr((void *)paddr),
-			orient, tiler_width, tiler_height);
+		tilview_create(&view, paddr, tiler_width, tiler_height);
+		tilview_rotate(&view, rotation * 90);
+		tilview_flip(&view, false, mirror);
+		paddr = view.tsptr;
 
-		if (puv_addr)
-			puv_addr = tiler_reorient_topleft(
-				tiler_get_natural_addr((void *)puv_addr),
-				orient, tiler_width/2, tiler_height/2);
+		calc_tiler_row_rotation(&view, 1, /* y_decim = 1 */
+					&row_inc,
+					&offset1, ilace,
+					pic_height);
+
+		if (puv_addr) {
+			tilview_create(&view, puv_addr, tiler_width / 2,
+					tiler_height / 2);
+			tilview_rotate(&view, rotation * 90);
+			tilview_flip(&view, false, mirror);
+			puv_addr = view.tsptr;
+		}
 
 		DSSDBG("rotated addresses: 0x%0x, 0x%0x\n",
 						paddr, puv_addr);

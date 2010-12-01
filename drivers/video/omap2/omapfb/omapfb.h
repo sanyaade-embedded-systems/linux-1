@@ -30,6 +30,7 @@
 #include <linux/rwsem.h>
 
 #include <plat/display.h>
+#include <mach/tiler.h>
 
 #ifdef DEBUG
 extern unsigned int omapfb_debug;
@@ -57,6 +58,7 @@ struct omapfb2_mem_region {
 	atomic_t	map_count;
 	struct rw_semaphore lock;
 	atomic_t	lock_count;
+	struct tiler_block_t block;
 };
 
 /* appended to fb_info */

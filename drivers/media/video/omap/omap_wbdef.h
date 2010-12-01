@@ -9,6 +9,7 @@
  */
 
 #include <plat/display.h>
+#include <mach/tiler.h>
 #include <linux/videodev2.h>
 
 #define YUYV_BPP        2
@@ -41,8 +42,8 @@ struct omap_wb_device {
 	unsigned long buf_virt_addr[VIDEO_MAX_FRAME];
 	unsigned long buf_phy_addr[VIDEO_MAX_FRAME];
 	/* keep which buffers we actually allocated (via tiler) */
-	unsigned long buf_phy_uv_addr_alloced[VIDEO_MAX_FRAME];
-	unsigned long buf_phy_addr_alloced[VIDEO_MAX_FRAME];
+	struct tiler_block_t uv_blocks[VIDEO_MAX_FRAME];
+	struct tiler_block_t tiler_blocks[VIDEO_MAX_FRAME];
 
 	/* NV12 support*/
 	unsigned long buf_phy_uv_addr[VIDEO_MAX_FRAME];
