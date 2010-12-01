@@ -19,12 +19,12 @@
 
 #include <linux/string.h>
 
-#define HDMI_WP				0x58006000
+#define HDMI_WP			0x58006000
 #define HDMI_CORE_SYS		0x58006400
 #define HDMI_CORE_AV		0x58006900
-#define HDMI_HDCP			0x58007000
+#define HDMI_HDCP		0x58007000
 
-#define HDMI_WP_AUDIO_DATA		0x8Cul
+#define HDMI_WP_AUDIO_DATA	0x8Cul
 
 #define DBG(format, ...) \
 		printk(KERN_DEBUG "hdmi: " format, ## __VA_ARGS__)
@@ -108,10 +108,10 @@ enum hdmi_core_tclkselclkmult {
 
 struct hdmi_core_video_config_t {
 	enum hdmi_core_inputbus_width	CoreInputBusWide;
-	enum hdmi_core_dither_trunc 	CoreOutputDitherTruncation;
-	enum hdmi_core_deepcolor_ed		CoreDeepColorPacketED;
-	enum hdmi_core_packet_mode		CorePacketMode;
-	enum hdmi_core_hdmi_dvi			CoreHdmiDvi;
+	enum hdmi_core_dither_trunc	CoreOutputDitherTruncation;
+	enum hdmi_core_deepcolor_ed	CoreDeepColorPacketED;
+	enum hdmi_core_packet_mode	CorePacketMode;
+	enum hdmi_core_hdmi_dvi		CoreHdmiDvi;
 	enum hdmi_core_tclkselclkmult	CoreTclkSelClkMult;
 };
 
