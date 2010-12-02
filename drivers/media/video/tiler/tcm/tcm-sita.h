@@ -16,10 +16,10 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#ifndef TCM_SITA_H_
-#define TCM_SITA_H_
+#ifndef TCM_SITA_H
+#define TCM_SITA_H
 
-#include "tcm.h"
+#include "../tcm.h"
 
 /**
  * Create a SiTA tiler container manager.
