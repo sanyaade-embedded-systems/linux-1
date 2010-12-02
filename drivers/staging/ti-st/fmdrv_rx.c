@@ -163,7 +163,7 @@ int fm_rx_seek(struct fmdrv_ops *fmdev, unsigned int seek_upward,
 	unsigned short payload, int_reason;
 	char offset, spacing;
 	unsigned long timeleft;
-	int ret;
+	int ret, band_lmt_reach = 0;
 
 	if (fmdev->curr_fmmode != FM_MODE_RX) {
 		ret = -EPERM;
@@ -239,6 +239,9 @@ int fm_rx_seek(struct fmdrv_ops *fmdev, unsigned int seek_upward,
 	}
 	int_reason = fmdev->irq_info.flag & 0x3;
 
+	if (fmdev->irq_info.flag & FM_BL_EVENT)
+		band_lmt_reach = 1;
+
 	/* Re-enable default FM interrupts */
 	fmdev->irq_info.mask &= ~(FM_FR_EVENT | FM_BL_EVENT);
 	FM_STORE_LE16_TO_BE16(payload, fmdev->irq_info.mask);
@@ -246,6 +249,11 @@ int fm_rx_seek(struct fmdrv_ops *fmdev, unsigned int seek_upward,
 				&fmdev->maintask_completion, NULL, NULL);
 	FM_CHECK_SEND_CMD_STATUS(ret);
 
+	if (band_lmt_reach == 1)
+		fmdev->rx.curr_freq = seek_upward ?
+		fmdev->rx.region.top_frequency :
+		fmdev->rx.region.bottom_frequency;
+	else {
 	/* Read freq to know where operation tune operation stopped */
 	ret = fmc_send_cmd(fmdev, FREQ_GET, NULL, 2,
 		&fmdev->maintask_completion, &curr_frq, &resp_len);
@@ -255,6 +263,7 @@ int fm_rx_seek(struct fmdrv_ops *fmdev, unsigned int seek_upward,
 	fmdev->rx.curr_freq = (fmdev->rx.region.bottom_frequency +
 			       ((unsigned int)curr_frq * FM_FREQ_MUL));
 
+	}
 	/* Reset RDS cache and current station pointers */
 	fm_rx_reset_rds_cache(fmdev);
 	fm_rx_reset_curr_station_info(fmdev);

@@ -194,14 +194,14 @@ static struct fm_reg_table fm_reg_info[] = {
 static struct region_info region_configs[] = {
 	/* Europe/US */
 	{
-	 .channel_spacing = FM_CHANNEL_SPACING_50KHZ * FM_FREQ_MUL,
+	 .channel_spacing = FM_CHANNEL_SPACING_200KHZ * FM_FREQ_MUL,
 	 .bottom_frequency = 87500,	/* 87.5 MHz */
 	 .top_frequency = 108000,	/* 108 MHz */
 	 .region_index = 0,
 	 },
 	/* Japan */
 	{
-	 .channel_spacing = FM_CHANNEL_SPACING_50KHZ * FM_FREQ_MUL,
+	 .channel_spacing = FM_CHANNEL_SPACING_200KHZ * FM_FREQ_MUL,
 	 .bottom_frequency = 76000,	/* 76 MHz */
 	 .top_frequency = 90000,	/* 90 MHz */
 	 .region_index = 1,
@@ -1017,7 +1017,6 @@ static void fm_irq_handle_rds_finish(void *arg)
 static void fm_irq_handle_tune_op_ended(void *arg)
 {
 	struct fmdrv_ops *fmdev;
-
 	fmdev = arg;
 	if (fmdev->irq_info.flag & (FM_FR_EVENT | FM_BL_EVENT) & fmdev->
 	    irq_info.mask) {
