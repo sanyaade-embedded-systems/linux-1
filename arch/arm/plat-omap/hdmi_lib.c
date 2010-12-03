@@ -417,16 +417,25 @@ int hdmi_core_ddc_edid(u8 *pEDID, int ext)
 	return 0;
 }
 
-int read_edid(u8 *pEDID)
+int read_edid(u8 *pEDID, u16 max_length)
 {
 	int r = 0, n = 0, i = 0;
+	int max_ext_blocks = (max_length / 128) - 1;
+
 	r = hdmi_core_ddc_edid(pEDID, 0);
 	if (r) {
 		return -1;
 	} else {
 		n = pEDID[0x7e];
-		if (n >= 3)
-			n = 3;
+
+		/* README: need to comply with max_length set by the caller.
+		 * Better implementation should be to allocate necessary
+		 * memory to store EDID according to nb_block field found
+		 * in first block */
+
+		if (n > max_ext_blocks)
+			n = max_ext_blocks;
+
 		for (i = 1; i <= n; i++) {
 			r = hdmi_core_ddc_edid(pEDID, i);
 			if (r)
@@ -1545,9 +1554,9 @@ void HDMI_W1_HPD_handler(int *r)
 
 
 /* wrapper functions to be used until L24.5 release */
-int HDMI_CORE_DDC_READEDID(u32 name, u8 *p)
+int HDMI_CORE_DDC_READEDID(u32 name, u8 *p, u16 max_length)
 {
-	int r = read_edid(p);
+	int r = read_edid(p, max_length);
 	return r;
 }
 
