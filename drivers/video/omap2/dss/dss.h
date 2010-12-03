@@ -436,6 +436,7 @@ void dispc_set_plane_ba0(enum omap_plane plane, u32 paddr);
 void dispc_set_plane_ba1(enum omap_plane plane, u32 paddr);
 void dispc_enable_gamma_table(bool enable);
 void dispc_set_idle_mode(void);
+void dispc_setup_color_fr_lr(int range);
 
 void dispc_set_plane_pos(enum omap_plane plane, u16 x, u16 y);
 void dispc_set_plane_size(enum omap_plane plane, u16 width, u16 height);

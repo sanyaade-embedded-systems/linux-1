@@ -1323,6 +1323,61 @@ static void _dispc_setup_color_conv_coef(void)
 	REG_FLD_MOD(DISPC_VID_ATTRIBUTES(0), ct->full_range, 11, 11);
 	REG_FLD_MOD(DISPC_VID_ATTRIBUTES(1), ct->full_range, 11, 11);
 }
+void dispc_setup_color_fr_lr(int range)
+{
+	struct color_conv_coef {
+		int  ry,  rcr,  rcb,   gy,  gcr,  gcb,   by,  bcr,  bcb;
+		int  full_range;
+	};
+	const struct color_conv_coef  ctbl_bt601_5_lr = {
+		298, 409, 0, 298, -208, -100, 298, 0, 517, 0,
+	};
+	const struct color_conv_coef ctbl_bt601_5_fr = {
+		256, 351, 0, 256, -179, -86, 256, 0, 443, 1,
+	};
+
+	const struct color_conv_coef *ct;
+
+#define CVAL(x, y) (FLD_VAL(x, 26, 16) | FLD_VAL(y, 10, 0))
+
+	if (range)
+		ct = &ctbl_bt601_5_fr;
+		/*Full range selected if range = 1 else default limited range*/
+	else
+		ct = &ctbl_bt601_5_lr;
+
+	dispc_write_reg(DISPC_VID_CONV_COEF(0, 0), CVAL(ct->rcr, ct->ry));
+	dispc_write_reg(DISPC_VID_CONV_COEF(0, 1), CVAL(ct->gy,	 ct->rcb));
+	dispc_write_reg(DISPC_VID_CONV_COEF(0, 2), CVAL(ct->gcb, ct->gcr));
+	dispc_write_reg(DISPC_VID_CONV_COEF(0, 3), CVAL(ct->bcr, ct->by));
+	dispc_write_reg(DISPC_VID_CONV_COEF(0, 4), CVAL(0,       ct->bcb));
+
+	dispc_write_reg(DISPC_VID_CONV_COEF(1, 0), CVAL(ct->rcr, ct->ry));
+	dispc_write_reg(DISPC_VID_CONV_COEF(1, 1), CVAL(ct->gy,	 ct->rcb));
+	dispc_write_reg(DISPC_VID_CONV_COEF(1, 2), CVAL(ct->gcb, ct->gcr));
+	dispc_write_reg(DISPC_VID_CONV_COEF(1, 3), CVAL(ct->bcr, ct->by));
+	dispc_write_reg(DISPC_VID_CONV_COEF(1, 4), CVAL(0,       ct->bcb));
+	if (cpu_is_omap44xx()) {
+		dispc_write_reg(DISPC_VID_V3_WB_CONV_COEF(0, 0),
+			CVAL(ct->rcr, ct->ry));
+		dispc_write_reg(DISPC_VID_V3_WB_CONV_COEF(0, 1),
+			CVAL(ct->gy,  ct->rcb));
+		dispc_write_reg(DISPC_VID_V3_WB_CONV_COEF(0, 2),
+			CVAL(ct->gcb, ct->gcr));
+		dispc_write_reg(DISPC_VID_V3_WB_CONV_COEF(0, 3),
+			CVAL(ct->bcr, ct->by));
+		dispc_write_reg(DISPC_VID_V3_WB_CONV_COEF(0, 4),
+			CVAL(0, ct->bcb));
+		REG_FLD_MOD(DISPC_VID_V3_WB_ATTRIBUTES(0),
+			ct->full_range, 11, 11);
+	}
+
+#undef CVAL
+
+	REG_FLD_MOD(DISPC_VID_ATTRIBUTES(0), ct->full_range, 11, 11);
+	REG_FLD_MOD(DISPC_VID_ATTRIBUTES(1), ct->full_range, 11, 11);
+}
+
 
 
 static void _dispc_set_plane_ba0(enum omap_plane plane, u32 paddr)
