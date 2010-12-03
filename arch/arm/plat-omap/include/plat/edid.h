@@ -120,6 +120,9 @@
 #define HDMI_EDID_EX_VIDEO_1920x1080p_25Hz_16_9     33
 #define HDMI_EDID_EX_VIDEO_1920x1080p_30Hz_16_9     34
 
+#define OMAP_HDMI_TIMINGS_NB 34
+#define OMAP_HDMI_TIMINGS_VESA_START 15
+
 #ifdef __cplusplus
 extern "C" {
 #endif
