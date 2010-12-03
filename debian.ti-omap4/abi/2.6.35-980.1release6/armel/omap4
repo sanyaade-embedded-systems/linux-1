@@ -1414,6 +1414,7 @@ EXPORT_SYMBOL vmlinux 0x00000000	abe_disable_data_transfer
 EXPORT_SYMBOL vmlinux 0x00000000	abe_enable_data_transfer
 EXPORT_SYMBOL vmlinux 0x00000000	abe_enable_test_pattern
 EXPORT_SYMBOL vmlinux 0x00000000	abe_init_ping_pong_buffer
+EXPORT_SYMBOL vmlinux 0x00000000	abe_irq_clear
 EXPORT_SYMBOL vmlinux 0x00000000	abe_irq_processing
 EXPORT_SYMBOL vmlinux 0x00000000	abe_load_fw
 EXPORT_SYMBOL vmlinux 0x00000000	abe_load_fw_param
@@ -1424,6 +1425,7 @@ EXPORT_SYMBOL vmlinux 0x00000000	abe_read_gain
 EXPORT_SYMBOL vmlinux 0x00000000	abe_read_hardware_configuration
 EXPORT_SYMBOL vmlinux 0x00000000	abe_read_mixer
 EXPORT_SYMBOL vmlinux 0x00000000	abe_read_next_ping_pong_buffer
+EXPORT_SYMBOL vmlinux 0x00000000	abe_read_offset_from_ping_buffer
 EXPORT_SYMBOL vmlinux 0x00000000	abe_read_port_address
 EXPORT_SYMBOL vmlinux 0x00000000	abe_read_remaining_data
 EXPORT_SYMBOL vmlinux 0x00000000	abe_read_use_case_opp
@@ -1439,6 +1441,7 @@ EXPORT_SYMBOL vmlinux 0x00000000	abe_set_sequence_time_accuracy
 EXPORT_SYMBOL vmlinux 0x00000000	abe_stop_event_generator
 EXPORT_SYMBOL vmlinux 0x00000000	abe_unmute_gain
 EXPORT_SYMBOL vmlinux 0x00000000	abe_use_compensated_gain
+EXPORT_SYMBOL vmlinux 0x00000000	abe_wakeup
 EXPORT_SYMBOL vmlinux 0x00000000	abe_write_aps
 EXPORT_SYMBOL vmlinux 0x00000000	abe_write_asrc
 EXPORT_SYMBOL vmlinux 0x00000000	abe_write_equalizer
@@ -3448,11 +3451,9 @@ EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_get_num_overlays
 EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_get_overlay
 EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_get_overlay_manager
 EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_notify
-EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_prepare_idle
 EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_put_device
 EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_register_driver
 EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_remove_notify
-EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_resume_idle
 EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_start_device
 EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_stop_device
 EXPORT_SYMBOL vmlinux 0x00000000	omap_dss_unregister_driver
@@ -3533,6 +3534,8 @@ EXPORT_SYMBOL vmlinux 0x00000000	omap_writel
 EXPORT_SYMBOL vmlinux 0x00000000	omap_writew
 EXPORT_SYMBOL vmlinux 0x00000000	omapdss_default_get_recommended_bpp
 EXPORT_SYMBOL vmlinux 0x00000000	omapdss_default_get_resolution
+EXPORT_SYMBOL vmlinux 0x00000000	omapdss_display_disable
+EXPORT_SYMBOL vmlinux 0x00000000	omapdss_display_enable
 EXPORT_SYMBOL vmlinux 0x00000000	omapdss_dpi_display_disable
 EXPORT_SYMBOL vmlinux 0x00000000	omapdss_dpi_display_enable
 EXPORT_SYMBOL vmlinux 0x00000000	omapdss_dsi_display_disable
