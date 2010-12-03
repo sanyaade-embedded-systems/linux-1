@@ -892,6 +892,45 @@ int hdmi_configure_csc(enum hdmi_core_av_csc csc)
 	return 0;
 
 }
+int hdmi_configure_lrfr(enum hdmi_range lr_fr, int force_set)
+{
+	int var;
+	switch (lr_fr) {
+	/*Setting the AVI infroframe to respective limited range
+	* 0 if for limited range 1 for full range */
+	case HDMI_LIMITED_RANGE:
+		hdmi.avi_param.db3q_default_lr_fr = INFOFRAME_AVI_DB3Q_LR;
+		hdmi_core_audio_infoframe_avi(hdmi.avi_param);
+		if (force_set) {
+			var = hdmi_read_reg(HDMI_CORE_SYS,
+					HDMI_CORE_SYS__VID_ACEN);
+			var = FLD_MOD(var, 1, 1, 1);
+			hdmi_write_reg(HDMI_CORE_SYS,
+					HDMI_CORE_SYS__VID_ACEN, var);
+		}
+		break;
+	case HDMI_FULL_RANGE:
+	if (hdmi.avi_param.db1y_rgb_yuv422_yuv444 ==
+					INFOFRAME_AVI_DB1Y_YUV422) {
+			printk(KERN_ERR"It is only limited range for YUV");
+			return -1;
+		}
+		hdmi.avi_param.db3q_default_lr_fr = INFOFRAME_AVI_DB3Q_FR;
+		hdmi_core_audio_infoframe_avi(hdmi.avi_param);
+		if (force_set) {
+			var = hdmi_read_reg(HDMI_CORE_SYS,
+					HDMI_CORE_SYS__VID_MODE);
+			var = FLD_MOD(var, 1, 4, 4);
+			hdmi_write_reg(HDMI_CORE_SYS,
+					HDMI_CORE_SYS__VID_MODE, var);
+		}
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 static int hdmi_core_av_packet_config(u32 name,
 	struct hdmi_core_packet_enable_repeat r_p)
 {
