@@ -154,8 +154,6 @@ static void wl1271_sdio_raw_write(struct wl1271 *wl, int addr, void *buf,
 
 static void wl1271_sdio_set_power(struct wl1271 *wl, bool enable)
 {
-	struct sdio_func *func = wl_to_func(wl);
-
 	/* Let the SDIO stack handle wlan_enable control, so we
 	 * keep host claimed while wlan is in use to keep wl1271
 	 * alive.
