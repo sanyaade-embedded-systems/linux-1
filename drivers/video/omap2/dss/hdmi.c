@@ -134,7 +134,8 @@ struct hdmi_hvsync_pol {
 };
 
 /* All supported timing values that OMAP4 supports */
-static const struct omap_video_timings all_timings_direct[OMAP_HDMI_TIMINGS_NB] = {
+static const
+struct omap_video_timings all_timings_direct[OMAP_HDMI_TIMINGS_NB] = {
 	{640, 480, 25200, 96, 16, 48, 2, 10, 33},
 	{1280, 720, 74250, 40, 440, 220, 5, 5, 20},
 	{1280, 720, 74250, 40, 110, 220, 5, 5, 20},
@@ -353,7 +354,8 @@ static ssize_t hdmi_deepcolor_store(struct device *dev,
 	return size;
 }
 
-/* This function is used to configure Limited range/full range
+/*
+ * This function is used to configure Limited range/full range
  * with RGB format , with YUV format Full range is not supported
  * Please refer to section 6.6 Video quantization ranges in HDMI 1.3a
  * specification for more details.
@@ -539,13 +541,9 @@ static void compute_pll(int clkin, int phy,
 	mf = (phy - pi->regm * refclk) * 262144;
 	pi->regmf = mf/(refclk);
 
-	if (phy > 1000 * 100) {
-		pi->dcofreq = 1;
-	} else {
-		pi->dcofreq = 0;
-	}
+	pi->dcofreq = phy > 1000 * 100;
 
-	pi->regsd = ((pi->regm * clkin/10)/((n + 1) * 250) + 5)/10;
+	pi->regsd = ((pi->regm * clkin / 10) / ((n + 1) * 250) + 5) / 10;
 
 	DSSDBG("M = %d Mf = %d\n", pi->regm, pi->regmf);
 	DSSDBG("range = %d sd = %d\n", pi->dcofreq, pi->regsd);
@@ -820,7 +818,7 @@ int hdmi_init(struct platform_device *pdev)
 {
 	int r = 0, hdmi_irq;
 	struct resource *hdmi_mem;
-	printk("Enter hdmi_init()\n");
+	printk(KERN_INFO "Enter hdmi_init()\n");
 
 	hdmi.pdata = pdev->dev.platform_data;
 	hdmi.pdev = pdev;
@@ -890,7 +888,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 	struct omap_video_timings *p;
 	struct hdmi_pll_info pll_data;
 	struct deep_color *vsdb_format = NULL;
-	int clkin, n, phy, max_tmds, temp = 0, tmds_freq;
+	int clkin, n, phy = 0, max_tmds = 0, temp = 0, tmds_freq;
 
 	hdmi_power = HDMI_POWER_FULL;
 	code = get_timings_index();
@@ -1486,7 +1484,7 @@ static void hdmi_get_edid(struct omap_dss_device *dssdev)
 	if (!edid_set) {
 		printk(KERN_WARNING "Display doesn't seem to be enabled invalid read\n");
 		if (HDMI_CORE_DDC_READEDID(HDMI_CORE_SYS, edid,
-				HDMI_EDID_MAX_LENGTH) != 0)
+						HDMI_EDID_MAX_LENGTH) != 0)
 			printk(KERN_WARNING "HDMI failed to read E-EDID\n");
 		edid_set = !memcmp(edid, header, sizeof(header));
 	}
@@ -1620,7 +1618,7 @@ static int hdmi_read_edid(struct omap_video_timings *dp)
 
 	if (!edid_set)
 		ret = HDMI_CORE_DDC_READEDID(HDMI_CORE_SYS, edid,
-			HDMI_EDID_MAX_LENGTH);
+							HDMI_EDID_MAX_LENGTH);
 	if (ret != 0) {
 		printk(KERN_WARNING "HDMI failed to read E-EDID\n");
 	} else {
