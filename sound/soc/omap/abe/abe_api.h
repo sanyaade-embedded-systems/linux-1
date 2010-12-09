@@ -80,7 +80,7 @@ abehal_status abe_read_hardware_configuration(u32 *u, u32 *o,
  * for the delivery of "end of time sequenced tasks" notifications, some are
  * originated from the Ping-Pong protocols, some are generated from
  * the embedded debugger when the firmware stops on programmable break-points,
- * etc
+ * etc ...
  */
 abehal_status abe_irq_processing(void);
 /**
@@ -88,13 +88,30 @@ abehal_status abe_irq_processing(void);
  *
  * This subroutine is call to clear MCU Irq
  */
-abehal_status abe_irq_clear(void);
+abehal_status abe_clear_irq(void);
 /**
- * abe_disable_clear - disable MCU/DSP ABE interrupt
+ * abe_disable_irq - disable MCU/DSP ABE interrupt
  *
  * This subroutine is disabling ABE MCU/DSP Irq
  */
 abehal_status abe_disable_irq(void);
+/*
+ * abe_check_activity - check all ports are closed
+ */
+u32 abe_check_activity(void);
+/**
+ * abe_wakeup - Wakeup ABE
+ *
+ * Wakeup ABE in case of retention
+ */
+abehal_status abe_wakeup(void);
+/**
+ * abe_stop_event_generator - Stop event generator source
+ *
+ * Stop the event genrator of AESS. No more event will be send to AESS engine.
+ * Upper layer needs to wait 1/96kHz to be sure that engine reach IDLE instruction
+ */
+abehal_status abe_stop_event_generator(void);
 /**
  * abe_select_main_port - Select stynchronization port for Event generator.
  * @id: audio port name
@@ -119,13 +136,6 @@ abehal_status abe_select_main_port(u32 id);
  * (1<<1) in order to have the same speed at 50% and 100% OPP (only 15 MSB bits are used at OPP50%)
  */
 abehal_status abe_write_event_generator(u32 e);
-/**
- * abe_stop_event_generator - Stop event generator source
- *
- * Stop the event genrator of AESS. No more event will be send to AESS engine.
- * Upper layer needs to wait 1/96kHz to be sure that engine reach IDLE instruction
- */
-abehal_status abe_stop_event_generator(void);
 /**
  * abe_read_use_case_opp() - description for void abe_read_use_case_opp().
  *
@@ -489,13 +499,10 @@ abehal_status abe_remote_debugger_interface(u32 n, u8 *p);
  *
  */
 abehal_status abe_enable_test_pattern(u32 smem_id, u32 on_off);
-
-u32 abe_check_activity(void);
 /**
- * abe_wakeup - Wakeup ABE
+ * abe_init_mem - Allocate Kernel space memory map for ABE
  *
- * Wakeup ABE in case of retention
+ * Memory map of ABE memory space for PMEM/DMEM/SMEM/DMEM
  */
-abehal_status abe_wakeup(void);
-
+void abe_init_mem(void __iomem *_io_base);
 #endif/* _ABE_API_H_ */
