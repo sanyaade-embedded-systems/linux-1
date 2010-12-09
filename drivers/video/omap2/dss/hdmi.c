@@ -389,17 +389,27 @@ static void hdmi_configure_lr_fr(void)
 static ssize_t hdmi_lr_fr_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%d\n", hdmi.lr_fr);
+	return snprintf(buf, PAGE_SIZE, "%d:%d\n", hdmi.lr_fr, hdmi.force_set);
 }
 
 static ssize_t hdmi_lr_fr_store(struct device *dev,
 		struct device_attribute *attr,
 		const char *buf, size_t size)
 {
-	int range;
-	range = simple_strtoul(buf, NULL, 0);
-	hdmi.lr_fr = range/10;
-	hdmi.force_set = range%10;
+	int lr_fr, force_set = 0;
+	if (!*buf || !strchr("yY1nN0", *buf))
+		return -EINVAL;
+	lr_fr = !!strchr("yY1", *buf++);
+	if (*buf && *buf != '\n') {
+		if (!strchr(" \t,:", *buf++) ||
+		    !*buf || !strchr("yY1nN0", *buf))
+			return -EINVAL;
+		force_set = !!strchr("yY1", *buf++);
+	}
+	if (*buf && strcmp(buf, "\n"))
+		return -EINVAL;
+	hdmi.lr_fr = lr_fr;
+	hdmi.force_set = force_set;
 	hdmi_configure_lr_fr();
 	return size;
 }
