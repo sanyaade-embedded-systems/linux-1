@@ -196,7 +196,6 @@ static struct {
 	struct list_head notifier_head;
 } hdmi;
 
-
 static inline void hdmi_write_reg(u32 base, u16 idx, u32 val)
 {
 	void __iomem *b;
@@ -303,7 +302,6 @@ void hdmi_dump_regs(struct seq_file *s)
 	DUMPREG(HDMI_CORE_AV, HDMI_CORE_AV__AVI_DBYTE);
 	DUMPREG(HDMI_CORE_AV, HDMI_CORE_AV__AVI_DBYTE);
 	DUMPREG(HDMI_CORE_AV, HDMI_CORE_AV__AVI_DBYTE);
-
 }
 
 #define FLD_MASK(start, end)	(((1 << ((start) - (end) + 1)) - 1) << (end))
@@ -318,7 +316,6 @@ void hdmi_dump_regs(struct seq_file *s)
 
 #define RD_REG_32(COMP, REG)            hdmi_read_reg(COMP, REG)
 #define WR_REG_32(COMP, REG, VAL)       hdmi_write_reg(COMP, REG, (u32)(VAL))
-
 
 int hdmi_get_pixel_append_position(void)
 {
@@ -428,10 +425,12 @@ int read_edid(u8 *pEDID, u16 max_length)
 	} else {
 		n = pEDID[0x7e];
 
-		/* README: need to comply with max_length set by the caller.
+		/*
+		 * README: need to comply with max_length set by the caller.
 		 * Better implementation should be to allocate necessary
 		 * memory to store EDID according to nb_block field found
-		 * in first block */
+		 * in first block
+		 */
 
 		if (n > max_ext_blocks)
 			n = max_ext_blocks;
@@ -899,28 +898,30 @@ int hdmi_configure_csc(enum hdmi_core_av_csc csc)
 		break;
 	}
 	return 0;
-
 }
+
 int hdmi_configure_lrfr(enum hdmi_range lr_fr, int force_set)
 {
 	int var;
 	switch (lr_fr) {
-	/*Setting the AVI infroframe to respective limited range
-	* 0 if for limited range 1 for full range */
+	/*
+	 * Setting the AVI infroframe to respective limited range
+	 * 0 if for limited range 1 for full range
+	 */
 	case HDMI_LIMITED_RANGE:
 		hdmi.avi_param.db3q_default_lr_fr = INFOFRAME_AVI_DB3Q_LR;
 		hdmi_core_audio_infoframe_avi(hdmi.avi_param);
 		if (force_set) {
 			var = hdmi_read_reg(HDMI_CORE_SYS,
-					HDMI_CORE_SYS__VID_ACEN);
+						HDMI_CORE_SYS__VID_ACEN);
 			var = FLD_MOD(var, 1, 1, 1);
 			hdmi_write_reg(HDMI_CORE_SYS,
-					HDMI_CORE_SYS__VID_ACEN, var);
+						HDMI_CORE_SYS__VID_ACEN, var);
 		}
 		break;
 	case HDMI_FULL_RANGE:
-	if (hdmi.avi_param.db1y_rgb_yuv422_yuv444 ==
-					INFOFRAME_AVI_DB1Y_YUV422) {
+		if (hdmi.avi_param.db1y_rgb_yuv422_yuv444 ==
+						INFOFRAME_AVI_DB1Y_YUV422) {
 			printk(KERN_ERR"It is only limited range for YUV");
 			return -1;
 		}
@@ -928,10 +929,10 @@ int hdmi_configure_lrfr(enum hdmi_range lr_fr, int force_set)
 		hdmi_core_audio_infoframe_avi(hdmi.avi_param);
 		if (force_set) {
 			var = hdmi_read_reg(HDMI_CORE_SYS,
-					HDMI_CORE_SYS__VID_MODE);
+						HDMI_CORE_SYS__VID_MODE);
 			var = FLD_MOD(var, 1, 4, 4);
 			hdmi_write_reg(HDMI_CORE_SYS,
-					HDMI_CORE_SYS__VID_MODE, var);
+						HDMI_CORE_SYS__VID_MODE, var);
 		}
 		break;
 	default:
@@ -1460,7 +1461,6 @@ int hdmi_lib_init(void){
 	INIT_LIST_HEAD(&hdmi.notifier_head);
 
 	rev = hdmi_read_reg(HDMI_WP, HDMI_WP_REVISION);
-
 	printk(KERN_INFO "OMAP HDMI W1 rev %d.%d\n",
 		FLD_GET(rev, 10, 8), FLD_GET(rev, 5, 0));
 
@@ -1551,7 +1551,6 @@ void HDMI_W1_HPD_handler(int *r)
 	/* Read to flush */
 	hdmi_read_reg(HDMI_CORE_SYS, HDMI_CORE_SYS__INTR1);
 }
-
 
 /* wrapper functions to be used until L24.5 release */
 int HDMI_CORE_DDC_READEDID(u32 name, u8 *p, u16 max_length)
