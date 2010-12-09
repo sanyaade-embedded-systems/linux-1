@@ -1099,7 +1099,9 @@ static void hdmi_work_queue(struct work_struct *ws)
 	struct omap_dss_device *dssdev = get_hdmi_device();
 	int r = work->r;
 
-	if (dssdev == NULL)
+	mutex_lock(&hdmi.lock);
+	if (dssdev == NULL || dssdev->state != OMAP_DSS_DISPLAY_ACTIVE)
+		/* HDMI is disabled, there cannot be any HDMI irqs */
 		goto done;
 
 	DSSDBG("found hdmi handle %s" , dssdev->name);
@@ -1117,7 +1119,9 @@ static void hdmi_work_queue(struct work_struct *ws)
 		 * audio/video enough time to stop operations.  However, if
 		 * user reconnects HDMI, response will be delayed.
 		 */
+		mutex_unlock(&hdmi.lock);
 		mdelay(1000);
+		mutex_lock(&hdmi.lock);
 
 		DSSINFO("Display disabled\n");
 		HDMI_W1_StopVideoFrame(HDMI_WP);
@@ -1142,12 +1146,18 @@ static void hdmi_work_queue(struct work_struct *ws)
 		hdmi_enable_clocks(1);
 		is_hdmi_on = true;
 		hdmi_set_power(dssdev);
+		mutex_unlock(&hdmi.lock);
 		mdelay(1000);
+		mutex_lock(&hdmi.lock);
+		if (dssdev->state != OMAP_DSS_DISPLAY_ACTIVE)
+			/* HDMI is disabled, no need to process */
+			goto done;
 	}
 
 	if ((r & HDMI_HPD) && (hpd_mode == 1)) {
-
+		mutex_unlock(&hdmi.lock);
 		mdelay(1000);
+		mutex_lock(&hdmi.lock);
 
 		/*
 		 * HDMI should already be full on. We use this to read EDID
@@ -1165,6 +1175,7 @@ static void hdmi_work_queue(struct work_struct *ws)
 	}
 
 done:
+	mutex_unlock(&hdmi.lock);
 	kfree(work);
 }
 
