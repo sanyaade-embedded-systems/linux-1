@@ -756,13 +756,6 @@ void __init omap_serial_init_port(int port)
 	name = DRIVER_NAME;
 	omap_up.dma_enabled = uart->dma_enabled;
 
-	/* ENABLE DMA MODE UART2 */
-	if (uart->num == 1) {
-		omap_up.dma_enabled = true;
-		if (cpu_is_omap44xx() && (omap_rev() > OMAP4430_REV_ES1_0))
-			omap_up.omap4_tx_threshold = true;
-	}
-
 	omap_up.uartclk = OMAP24XX_BASE_BAUD * 16;
 	omap_up.mapbase = uart->mapbase;
 	omap_up.membase = uart->membase;
