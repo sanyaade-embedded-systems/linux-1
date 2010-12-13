@@ -116,10 +116,9 @@ static void _write_sysconfig(u32 v, struct omap_hwmod *oh)
 
 	/* XXX ensure module interface clock is up */
 
-	if (oh->_sysc_cache != v) {
-		oh->_sysc_cache = v;
-		omap_hwmod_writel(v, oh, oh->class->sysc->sysc_offs);
-	}
+	/* Module might have lost context, always update cache and register */
+	oh->_sysc_cache = v;
+	omap_hwmod_writel(v, oh, oh->class->sysc->sysc_offs);
 }
 
 /**
