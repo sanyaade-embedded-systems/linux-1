@@ -164,7 +164,6 @@ static int dpi_set_mode(struct omap_dss_device *dssdev)
 
 
 #ifdef CONFIG_OMAP2_DSS_USE_DSI_PLL
-err1:
 	dsi_pll_uninit(ix);
 #endif
 err0:
