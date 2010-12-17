@@ -39,6 +39,7 @@
 #include <linux/module.h>
 #include <linux/module.h>
 #include <linux/seq_file.h>
+#include <linux/hrtimer.h>
 
 /* HDMI PHY */
 #define HDMI_TXPHY_TX_CTRL			0x0ul
@@ -568,6 +569,8 @@ static int hdmi_core_video_config(struct hdmi_core_video_config_t *cfg)
 	r = FLD_MOD(r, hen, 4, 4);
 	r = FLD_MOD(r, bsel, 2, 2);
 	r = FLD_MOD(r, edge, 1, 1);
+	r = FLD_MOD(r, 1, 0, 0);
+	/*PD bit has to be written to recieve the interrupts*/
 	hdmi_write_reg(name, HDMI_CORE_CTRL1, r);
 
 	REG_FLD_MOD(name, HDMI_CORE_SYS__VID_ACEN, cfg->CoreInputBusWide, 7, 6);
@@ -1298,6 +1301,7 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	/* Enable PLL Lock and UnLock intrerrupts */
 	IrqHdmiVectorEnable.pllUnlock = 1;
 	IrqHdmiVectorEnable.pllLock = 1;
+	IrqHdmiVectorEnable.core = 1;
 
 	/***************** init DSS register **********************/
 	hdmi_w1_irq_enable(&IrqHdmiVectorEnable);
@@ -1494,16 +1498,24 @@ int hdmi_set_irqs(void)
 
 	r = hdmi_read_reg(HDMI_WP, HDMI_WP_IRQENABLE_SET);
 	DBG("Irqenable %x\n", r);
+	r = hdmi_read_reg(HDMI_CORE_SYS, HDMI_CORE_CTRL1);
+	r = FLD_MOD(r, 1, 0, 0);
+	/*PD bit has to be written to recieve the interrupts*/
+	hdmi_write_reg(HDMI_CORE_SYS, HDMI_CORE_CTRL1, r);
+
+	hdmi_write_reg(HDMI_CORE_SYS, HDMI_CORE_SYS__UMASK1, 0x40);
 	hpd = hdmi_read_reg(HDMI_CORE_SYS, HDMI_CORE_SYS__UMASK1);
 	DBG("%x hpd\n", hpd);
+	/*sys_ctrl1 default configuration not tunable*/
 	return 0;
 }
 
 /* Interrupt handler */
 void HDMI_W1_HPD_handler(int *r)
 {
-	u32 val, set = 0, hpd_intr;
-
+	u32 val, set = 0, hpd_intr, core_state, time_in_ms;
+	static bool first_hpd, dirty;
+	static ktime_t ts_hpd_low, ts_hpd_high;
 	mdelay(30);
 	DBG("-------------DEBUG-------------------");
 	DBG("%x hdmi_wp_irqstatus\n", \
@@ -1528,20 +1540,46 @@ void HDMI_W1_HPD_handler(int *r)
 	hdmi_write_reg(HDMI_WP, HDMI_WP_IRQSTATUS, val);
 	/* flush posted write */
 	hdmi_read_reg(HDMI_WP, HDMI_WP_IRQSTATUS);
-	mdelay(30);
+
+	core_state = hdmi_read_reg(HDMI_CORE_SYS, HDMI_CORE_SYS__INTR_STATE);
 
 	if (val & 0x02000000) {
 		DBG("connect, ");
 		*r = HDMI_CONNECT;
 	}
-	if (hpd_intr & 0x00000040) {
-		if  (set & 0x00000002)
-			*r = HDMI_HPD;
-		else
-			*r = HDMI_DISCONNECT;
+
+	if ((val & 0x1) && (core_state & 0x1)) {
+		if (hpd_intr & 0x00000040) {
+			if  (set & 0x00000002) {
+				if ((first_hpd == 0) && (dirty == 0)) {
+					*r = HDMI_FIRST_HPD;
+					first_hpd++;
+					DBG("first hpd");
+				} else {
+					ts_hpd_high = ktime_get();
+					if (dirty) {
+						time_in_ms = (int)ktime_to_us(ktime_sub\
+								(ts_hpd_high, ts_hpd_low))\
+								/ 1000;
+					if (time_in_ms >= 100)
+							*r = HDMI_HPD_MODIFY;
+						else
+							*r = HDMI_HPD_HIGH;
+						dirty = 0;
+					}
+				}
+			} else {
+				ts_hpd_low = ktime_get();
+				dirty = 1;
+				*r = HDMI_HPD_LOW;
+			}
+		}
 	}
+
 	if ((val & 0x04000000) && (!(val & 0x02000000))) {
 		DBG("Disconnect");
+		dirty = 0;
+		first_hpd = 0;
 		*r = HDMI_DISCONNECT;
 	}
 	/* flush posted write */

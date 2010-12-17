@@ -440,10 +440,12 @@ struct hdmi_notifier {
 	struct list_head list;
 };
 
-#define HDMI_CONNECT		0x01
-#define HDMI_DISCONNECT		0x02
-#define HDMI_HPD		0x04
-#define HDMI_FIRST_HPD		0x08
+#define HDMI_CONNECT	0x01
+#define HDMI_DISCONNECT	0x02
+#define HDMI_HPD_MODIFY	0x04
+#define HDMI_FIRST_HPD	0x08
+#define HDMI_HPD_LOW	0x10
+#define HDMI_HPD_HIGH	0x20
 
 /* Function prototype */
 int HDMI_W1_StopVideoFrame(u32);
