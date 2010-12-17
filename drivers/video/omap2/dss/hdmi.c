@@ -1154,7 +1154,7 @@ static void hdmi_work_queue(struct work_struct *ws)
 			goto done;
 	}
 
-	if ((r & HDMI_HPD) && (hpd_mode == 1)) {
+	if ((r & HDMI_FIRST_HPD) && (hpd_mode == 1)) {
 		mutex_unlock(&hdmi.lock);
 		mdelay(1000);
 		mutex_lock(&hdmi.lock);
@@ -1174,6 +1174,28 @@ static void hdmi_work_queue(struct work_struct *ws)
 		/* ignore return value for now */
 	}
 
+	if (r & HDMI_HPD_MODIFY) {
+
+		/*
+		 * HDMI HPD state low followed by a HPD state high
+		 * with more than 100ms duration is recieved so EDID should
+		 * reread and HDMI reconfigued.
+		 */
+		DSSINFO("HDMI HPD  display\n");
+		hdmi_enable_clocks(1);
+		is_hdmi_on = true;
+		edid_set = false;
+		hdmi_set_power(dssdev);
+		set_hdmi_hot_plug_status(dssdev, true);
+		/* ignore return value for now */
+	}
+
+	if (r & HDMI_HPD_LOW)
+		DSSDBG("Disable LS if LS toggle is activated");
+
+	if (r & HDMI_HPD_HIGH)
+		DSSDBG("Enable LS if LS toggle is activated");
+
 done:
 	mutex_unlock(&hdmi.lock);
 	kfree(work);
@@ -1191,7 +1213,7 @@ static irqreturn_t hdmi_irq_handler(int irq, void *arg)
 	HDMI_W1_HPD_handler(&r);
 	DSSDBG("Received IRQ r=%08x\n", r);
 
-	if (((r & HDMI_CONNECT) || (r & HDMI_HPD)) && (hpd_mode == 1))
+	if (((r & HDMI_CONNECT) || (r & HDMI_FIRST_HPD)) && (hpd_mode == 1))
 		hdmi_enable_clocks(1);
 
 	spin_unlock_irqrestore(&irqstatus_lock, flags);
@@ -1254,8 +1276,6 @@ static int hdmi_start_display(struct omap_dss_device *dssdev)
 		goto err;
 	}
 
-	free_irq(OMAP44XX_IRQ_DSS_HDMI, NULL);
-
 	/* PAD0_HDMI_HPD_PAD1_HDMI_CEC */
 	omap_writel(0x01100110, 0x4A100098);
 	/* PAD0_HDMI_DDC_SCL_PAD1_HDMI_DDC_SDA */
@@ -1275,8 +1295,6 @@ static int hdmi_start_display(struct omap_dss_device *dssdev)
 		DSSERR("failed to power on device\n");
 		goto err;
 	}
-	r = request_irq(OMAP44XX_IRQ_DSS_HDMI, hdmi_irq_handler,
-			0, "OMAP HDMI", (void *)0);
 
 err:
 	return r;
