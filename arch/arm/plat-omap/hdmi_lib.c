@@ -320,6 +320,8 @@ void hdmi_dump_regs(struct seq_file *s)
 #define RD_REG_32(COMP, REG)            hdmi_read_reg(COMP, REG)
 #define WR_REG_32(COMP, REG, VAL)       hdmi_write_reg(COMP, REG, (u32)(VAL))
 
+u8 edid_backup[512];
+
 int hdmi_get_pixel_append_position(void)
 {
 	printk("This is yet to be implemented");
