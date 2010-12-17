@@ -1436,7 +1436,7 @@ static void hdmi_get_edid(struct omap_dss_device *dssdev)
 
 	if (edid_set != 1) {
 		printk(KERN_WARNING "Display doesnt seem to be enabled invalid read\n");
-	if (HDMI_CORE_DDC_READEDID(HDMI_CORE_SYS, edid, HDMI_EDID_MAX_LENGTH) != 0) {
+	if (HDMI_CORE_DDC_READEDID(HDMI_CORE_SYS, edid) != 0) {
 		printk(KERN_WARNING "HDMI failed to read E-EDID\n");
 	}
 			for (i = 0x00; i < 0x08; i++) {
@@ -1580,7 +1580,7 @@ static int hdmi_read_edid(struct omap_video_timings *dp)
 	memset(edid, 0, HDMI_EDID_MAX_LENGTH);
 
 	if (!edid_set) {
-		ret = HDMI_CORE_DDC_READEDID(HDMI_CORE_SYS, edid, HDMI_EDID_MAX_LENGTH);
+		ret = HDMI_CORE_DDC_READEDID(HDMI_CORE_SYS, edid);
 	}
 	if (ret != 0)
 		printk(KERN_WARNING "HDMI failed to read E-EDID\n");
