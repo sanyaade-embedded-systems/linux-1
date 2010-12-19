@@ -166,7 +166,7 @@ typedef u32 abe_patch_rev;
 #define PDM_DL2_PORT 19
 #define PDM_VIB_PORT 20
 /* There is only one DMIC port, always used with 6 samples
-   per 96kHz periods */
+   per 96kHz periods   */
 #define DMIC_PORT1 DMIC_PORT
 #define DMIC_PORT2 DMIC_PORT
 #define DMIC_PORT3 DMIC_PORT
@@ -482,7 +482,7 @@ typedef struct {
 			u32 iter;
 		} prot_serial;
 		/* DMIC peripheral connected to ATC */
-		struct	{
+		struct {
 			/* DMEM address in bytes */
 			u32 buf_addr;
 			/* DMEM buffer size in bytes */

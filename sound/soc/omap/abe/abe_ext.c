@@ -19,6 +19,7 @@
  * 02110-1301 USA
  */
 #include "abe_main.h"
+#define ENABLE_DEFAULT_PLAYERS 0
 /**
  * abe_default_irq_pingpong_player
  *
@@ -26,7 +27,7 @@
  */
 void abe_default_irq_pingpong_player(void)
 {
-#if 0
+#if ENABLE_DEFAULT_PLAYERS
 #define N_SAMPLES_MAX ((int)(1024))	/* ping-pong access to MM_DL at 48kHz Mono with 20ms packet sizes */
 	static s32 idx;
 	u32 i, dst, n_samples, n_bytes;
@@ -80,7 +81,7 @@ void abe_default_irq_pingpong_player(void)
  */
 void abe_default_irq_pingpong_player_32bits(void)
 {
-#if 0
+#if ENABLE_DEFAULT_PLAYERS
 	/* ping-pong access to MM_DL at 48kHz Mono with 20ms packet sizes */
 	static s32 idx;
 	u32 i, dst, n_samples, n_bytes;
@@ -122,7 +123,7 @@ void abe_default_irq_pingpong_player_32bits(void)
  */
 void abe_rshifted16_irq_pingpong_player_32bits(void)
 {
-#if 0
+#if ENABLE_DEFAULT_PLAYERS
 	/* ping-pong access to MM_DL at 48kHz Mono with 20ms packet sizes */
 	static s32 idx;
 	u32 i, dst, n_samples, n_bytes;
@@ -164,7 +165,7 @@ void abe_rshifted16_irq_pingpong_player_32bits(void)
  */
 void abe_1616_irq_pingpong_player_1616bits(void)
 {
-#if 0
+#if ENABLE_DEFAULT_PLAYERS
 	/* ping-pong access to MM_DL at 48kHz Mono with 20ms packet sizes */
 	static s32 idx;
 	u32 i, dst, n_samples, n_bytes;
