@@ -273,6 +273,9 @@ static ssize_t store_virtual(struct device *device,
 		return -EINVAL;
 	var.yres_virtual = simple_strtoul(last, &last, 0);
 
+	var.xres = var.xres_virtual;
+	var.yres = var.yres_virtual;
+
 	if ((err = activate(fb_info, &var)))
 		return err;
 	return count;
