@@ -14,6 +14,7 @@
  *     firmware files based on mode selection)
  *
  *  Copyright (C) 2010 Texas Instruments
+ *  Author: Raja Mani <raja_mani@ti.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -37,158 +38,9 @@
 #include "fmdrv_v4l2.h"
 #include "fmdrv_common.h"
 #include "st.h"
+#include "st_kim.h"
 #include "fmdrv_rx.h"
-/* TODO: Enable when FM TX is supported */
-/* #include "fmdrv_tx.h" */
-
-#ifndef DEBUG
-#ifdef pr_info
-#undef pr_info
-#define pr_info(fmt, arg...)
-#endif
-#endif
-
-/* FM chip register table */
-static struct fm_reg_table fm_reg_info[] = {
-	/* ----- FM RX registers -------*/
-	/* opcode, type(rd/wr), reg name */
-	{0x00, REG_RD, "STEREO_GET"},
-	{0x01, REG_RD, "RSSI_LVL_GET"},
-	{0x02, REG_RD, "IF_COUNT_GET"},
-	{0x03, REG_RD, "FLAG_GET"},
-	{0x04, REG_RD, "RDS_SYNC_GET"},
-	{0x05, REG_RD, "RDS_DATA_GET"},
-	{0x0a, REG_WR, "FREQ_SET"},
-	{0x0a, REG_RD, "FREQ_GET"},
-	{0x0b, REG_WR, "AF_FREQ_SET"},
-	{0x0b, REG_RD, "AF_FREQ_GET"},
-	{0x0c, REG_WR, "MOST_MODE_SET"},
-	{0x0c, REG_RD, "MOST_MODE_GET"},
-	{0x0d, REG_WR, "MOST_BLEND_SET"},
-	{0x0d, REG_RD, "MOST_BLEND_GET"},
-	{0x0e, REG_WR, "DEMPH_MODE_SET"},
-	{0x0e, REG_RD, "DEMPH_MODE_GET"},
-	{0x0f, REG_WR, "SEARCH_LVL_SET"},
-	{0x0f, REG_RD, "SEARCH_LVL_GET"},
-	{0x10, REG_WR, "RX_BAND_SET"},
-	{0x10, REG_RD, "RX_BAND_GET"},
-	{0x11, REG_WR, "MUTE_STATUS_SET"},
-	{0x11, REG_RD, "MUTE_STATUS_GET"},
-	{0x12, REG_WR, "RDS_PAUSE_LVL_SET"},
-	{0x12, REG_RD, "RDS_PAUSE_LVL_GET"},
-	{0x13, REG_WR, "RDS_PAUSE_DUR_SET"},
-	{0x13, REG_RD, "RDS_PAUSE_DUR_GET"},
-	{0x14, REG_WR, "RDS_MEM_SET"},
-	{0x14, REG_RD, "RDS_MEM_GET"},
-	{0x15, REG_WR, "RDS_BLK_B_SET"},
-	{0x15, REG_RD, "RDS_BLK_B_GET"},
-	{0x16, REG_WR, "RDS_MSK_B_SET"},
-	{0x16, REG_RD, "RDS_MSK_B_GET"},
-	{0x17, REG_WR, "RDS_PI_MASK_SET"},
-	{0x17, REG_RD, "RDS_PI_MASK_GET"},
-	{0x18, REG_WR, "RDS_PI_SET"},
-	{0x18, REG_RD, "RDS_PI_GET"},
-	{0x19, REG_WR, "RDS_SYSTEM_SET"},
-	{0x19, REG_RD, "RDS_SYSTEM_GET"},
-	{0x1a, REG_WR, "INT_MASK_SET"},
-	{0x1a, REG_RD, "INT_MASK_GET"},
-	{0x1b, REG_WR, "SRCH_DIR_SET"},
-	{0x1b, REG_RD, "SRCH_DIR_GET"},
-	{0x1c, REG_WR, "VOLUME_SET"},
-	{0x1c, REG_RD, "VOLUME_GET"},
-	{0x1d, REG_WR, "AUDIO_ENABLE(SET)"},
-	{0x1d, REG_RD, "AUDIO_ENABLE(GET)"},
-	{0x1e, REG_WR, "PCM_MODE_SET"},
-	{0x1e, REG_RD, "PCM_MODE_SET"},
-	{0x1f, REG_WR, "I2S_MD_CFG_SET"},
-	{0x1f, REG_RD, "I2S_MD_CFG_GET"},
-	{0x20, REG_WR, "POWER_SET"},
-	{0x20, REG_RD, "POWER_GET"},
-	{0x21, REG_WR, "INTx_CONFIG_SET"},
-	{0x21, REG_RD, "INTx_CONFIG_GET"},
-	{0x22, REG_WR, "PULL_EN_SET"},
-	{0x22, REG_RD, "PULL_EN_GET"},
-	{0x23, REG_WR, "HILO_SET"},
-	{0x23, REG_RD, "HILO_GET"},
-	{0x24, REG_WR, "SWITCH2FREF"},
-	{0x25, REG_WR, "FREQ_DRIFT_REP"},
-	{0x28, REG_RD, "PCE_GET"},
-	{0x29, REG_RD, "FIRM_VER_GET"},
-	{0x2a, REG_RD, "ASIC_VER_GET"},
-	{0x2b, REG_RD, "ASIC_ID_GET"},
-	{0x2c, REG_RD, "MAIN_ID_GET"},
-	{0x2d, REG_WR, "TUNER_MODE_SET"},
-	{0x2e, REG_WR, "STOP_SEARCH"},
-	{0x2f, REG_WR, "RDS_CNTRL_SET"},
-	{0x64, REG_WR, "WR_HW_REG"},
-	{0x65, REG_WR, "CODE_DOWNLOAD"},
-	{0x66, REG_WR, "RESET"},
-	{0xfe, REG_WR, "FM_POWER_MODE(SET)"},
-	{0xff, REG_RD, "FM_INTERRUPT"},
-
-	/* --- FM TX registers ------ */
-	{0x37, REG_WR, "CHANL_SET"},
-	{0x37, REG_RD, "CHANL_GET"},
-	{0x38, REG_WR, "CHANL_BW_SET"},
-	{0x38, REG_RD, "CHANL_BW_GET"},
-	{0x87, REG_WR, "REF_SET"},
-	{0x87, REG_RD, "REF_GET"},
-	{0x5a, REG_WR, "POWER_ENB_SET"},
-	{0x3a, REG_WR, "POWER_ATT_SET"},
-	{0x3a, REG_RD, "POWER_ATT_GET"},
-	{0x3b, REG_WR, "POWER_LEL_SET"},
-	{0x3b, REG_RD, "POWER_LEL_GET"},
-	{0x3c, REG_WR, "AUDIO_DEV_SET"},
-	{0x3c, REG_RD, "AUDIO_DEV_GET"},
-	{0x3d, REG_WR, "PILOT_DEV_SET"},
-	{0x3d, REG_RD, "PILOT_DEV_GET"},
-	{0x3e, REG_WR, "RDS_DEV_SET"},
-	{0x3e, REG_RD, "RDS_DEV_GET"},
-	{0x5b, REG_WR, "PUPD_SET"},
-	{0x3f, REG_WR, "AUDIO_IO_SET"},
-	{0x40, REG_WR, "PREMPH_SET"},
-	{0x40, REG_RD, "PREMPH_GET"},
-	{0x41, REG_WR, "TX_BAND_SET"},
-	{0x41, REG_RD, "TX_BAND_GET"},
-	{0x42, REG_WR, "MONO_SET"},
-	{0x42, REG_RD, "MONO_GET"},
-	{0x5C, REG_WR, "MUTE"},
-	{0x43, REG_WR, "MPX_LMT_ENABLE"},
-	{0x06, REG_RD, "LOCK_GET"},
-	{0x5d, REG_WR, "REF_ERR_SET"},
-	{0x44, REG_WR, "PI_SET"},
-	{0x44, REG_RD, "PI_GET"},
-	{0x45, REG_WR, "TYPE_SET"},
-	{0x45, REG_RD, "TYPE_GET"},
-	{0x46, REG_WR, "PTY_SET"},
-	{0x46, REG_RD, "PTY_GET"},
-	{0x47, REG_WR, "AF_SET"},
-	{0x47, REG_RD, "AF_GET"},
-	{0x48, REG_WR, "DISPLAY_SIZE_SET"},
-	{0x48, REG_RD, "DISPLAY_SIZE_GET"},
-	{0x49, REG_WR, "RDS_MODE_SET"},
-	{0x49, REG_RD, "RDS_MODE_GET"},
-	{0x4a, REG_WR, "DISPLAY_MODE_SET"},
-	{0x4a, REG_RD, "DISPLAY_MODE_GET"},
-	{0x62, REG_WR, "LENGHT_SET"},
-	{0x4b, REG_RD, "LENGHT_GET"},
-	{0x4c, REG_WR, "TOGGLE_AB_SET"},
-	{0x4c, REG_RD, "TOGGLE_AB_GET"},
-	{0x4d, REG_WR, "RDS_REP_SET"},
-	{0x4d, REG_RD, "RDS_REP_GET"},
-	{0x63, REG_WR, "RDS_DATA_SET"},
-	{0x5e, REG_WR, "RDS_DATA_ENB"},
-	{0x4e, REG_WR, "TA_SET"},
-	{0x4e, REG_RD, "TA_GET"},
-	{0x4f, REG_WR, "TP_SET"},
-	{0x4f, REG_RD, "TP_GET"},
-	{0x50, REG_WR, "DI_SET"},
-	{0x50, REG_RD, "DI_GET"},
-	{0x51, REG_WR, "MS_SET"},
-	{0x51, REG_RD, "MS_GET"},
-	{0x52, REG_WR, "PS_SCROLL_SPEED_SET"},
-	{0x52, REG_RD, "PS_SCROLL_SPEED_GET"},
-};
+#include "fmdrv_tx.h"
 
 /* Region info */
 static struct region_info region_configs[] = {
@@ -250,10 +102,11 @@ static void fm_irq_handle_low_rssi_finish(void *);
 static void fm_irq_send_intmsk_cmd(void *);
 static void fm_irq_handle_intmsk_cmd_resp(void *);
 
-/* When FM common module receives interrupt packet, following handlers
+/*
+ * When FM common module receives interrupt packet, following handlers
  * will be executed one after another to service the interrupt(s)
  */
-enum fmc_irq_handler_index{
+enum fmc_irq_handler_index {
 	FM_SEND_FLAG_GETCMD_INDEX,
 	FM_HANDLE_FLAG_GETCMD_RESP_INDEX,
 
@@ -384,7 +237,8 @@ void fmc_update_region_info(struct fmdrv_ops *fmdev,
 		sizeof(struct region_info));
 }
 
-/* FM common sub-module will schedule this tasklet whenever it receives
+/*
+ * FM common sub-module will schedule this tasklet whenever it receives
  * FM packet from ST driver.
  */
 static void __recv_tasklet(unsigned long arg)
@@ -400,7 +254,7 @@ static void __recv_tasklet(unsigned long arg)
 	while ((skb = skb_dequeue(&fmdev->rx_q))) {
 		if (skb->len < sizeof(struct fm_event_msg_hdr)) {
 			pr_err("(fmdrv): skb(%p) has only %d bytes"
-				"atleast need %d bytes to decode",
+				"atleast need %d bytes to decode\n",
 				skb, skb->len,
 				sizeof(struct fm_event_msg_hdr));
 			kfree_skb(skb);
@@ -411,18 +265,19 @@ static void __recv_tasklet(unsigned long arg)
 		num_fm_hci_cmds = fm_evt_hdr->num_fm_hci_cmds;
 
 		/* FM interrupt packet? */
-		if (fm_evt_hdr->fm_opcode == fm_reg_info[FM_INTERRUPT].opcode) {
+		if (fm_evt_hdr->fm_opcode == FM_INTERRUPT) {
 			/* FM interrupt handler started already? */
 			if (!test_bit(FM_INTTASK_RUNNING, &fmdev->flag)) {
 				set_bit(FM_INTTASK_RUNNING, &fmdev->flag);
 				if (fmdev->irq_info.stage_index != 0) {
 					pr_err("(fmdrv): Invalid stage index,"
-						"resetting to zero");
+						"resetting to zero\n");
 					fmdev->irq_info.stage_index = 0;
 				}
 
-				/* Execute first function
-				 * in interrupt handler table
+				/*
+				 * Execute first function in interrupt handler
+				 * table.
 				 */
 				fmdev->irq_info.fm_int_handlers
 					[fmdev->irq_info.stage_index](fmdev);
@@ -436,7 +291,7 @@ static void __recv_tasklet(unsigned long arg)
 		else if (fm_evt_hdr->fm_opcode == fmdev->last_sent_pkt_opcode &&
 			fmdev->response_completion != NULL) {
 			if (fmdev->response_skb != NULL)
-				pr_err("(fmdrv): Response SKB ptr not NULL");
+				pr_err("(fmdrv): Response SKB ptr not NULL\n");
 
 			spin_lock_irqsave(&fmdev->resp_skb_lock, flags);
 			fmdev->response_skb = skb;
@@ -450,7 +305,7 @@ static void __recv_tasklet(unsigned long arg)
 		else if (fm_evt_hdr->fm_opcode == fmdev->last_sent_pkt_opcode &&
 			fmdev->response_completion == NULL) {
 			if (fmdev->response_skb != NULL)
-				pr_err("(fmdrv): Response SKB ptr not NULL");
+				pr_err("(fmdrv): Response SKB ptr not NULL\n");
 
 			spin_lock_irqsave(&fmdev->resp_skb_lock, flags);
 			fmdev->response_skb = skb;
@@ -463,12 +318,13 @@ static void __recv_tasklet(unsigned long arg)
 			kfree_skb(skb);
 			atomic_set(&fmdev->tx_cnt, 1);
 		} else {
-			pr_err("(fmdrv): Nobody claimed SKB(%p),purging", skb);
+			pr_err("(fmdrv): Nobody claimed SKB(%p),purging\n",
+				skb);
 		}
 
-		/* Check flow control field.
-		 * If Num_FM_HCI_Commands field is not zero,
-		 * schedule FM TX tasklet.
+		/*
+		 * Check flow control field. If Num_FM_HCI_Commands field is
+		 * not zero, schedule FM TX tasklet.
 		 */
 		if (num_fm_hci_cmds && atomic_read(&fmdev->tx_cnt)) {
 			if (!skb_queue_empty(&fmdev->tx_q))
@@ -488,7 +344,7 @@ static void __send_tasklet(unsigned long arg)
 	/* Check, is there any timeout happenned to last transmitted packet */
 	if (!atomic_read(&fmdev->tx_cnt) &&
 		((jiffies - fmdev->last_tx_jiffies) > FM_DRV_TX_TIMEOUT)) {
-		pr_err("(fmdrv): TX timeout occurred");
+		pr_err("(fmdrv): TX timeout occurred\n");
 		atomic_set(&fmdev->tx_cnt, 1);
 	}
 	/* Send queued FM TX packets */
@@ -500,7 +356,7 @@ static void __send_tasklet(unsigned long arg)
 
 			if (fmdev->response_completion != NULL)
 				pr_err("(fmdrv): Response completion handler"
-						"is not NULL");
+						"is not NULL\n");
 
 			fmdev->response_completion = fm_cb(skb)->completion;
 
@@ -509,8 +365,8 @@ static void __send_tasklet(unsigned long arg)
 			if (len < 0) {
 				kfree_skb(skb);
 				fmdev->response_completion = NULL;
-				pr_err("(fmdrv): TX tasklet failed to send" \
-					"skb(%p)", skb);
+				pr_err("(fmdrv): TX tasklet failed to send"
+					"skb(%p)\n", skb);
 				atomic_set(&fmdev->tx_cnt, 1);
 			} else {
 				fmdev->last_tx_jiffies = jiffies;
@@ -519,10 +375,13 @@ static void __send_tasklet(unsigned long arg)
 	}
 }
 
-/* Queues FM Channel-8 packet to FM TX queue and schedules FM TX tasklet for
- * transmission */
-static int __fm_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
-				void *payload, int payload_len,
+/*
+ * Queues FM Channel-8 packet to FM TX queue and schedules FM TX tasklet for
+ * transmission
+ */
+static int __fm_send_cmd(struct fmdrv_ops *fmdev, unsigned char fm_opcode,
+				unsigned short int type, void *payload,
+				int payload_len,
 				struct completion *wait_completion)
 {
 	struct sk_buff *skb;
@@ -530,13 +389,13 @@ static int __fm_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
 	int size;
 
 
-	if (fmreg_index >= FM_REG_MAX_ENTRIES) {
-		pr_err("(fmdrv): Invalid fm register index");
+	if (fm_opcode >= FM_INTERRUPT) {
+		pr_err("(fmdrv): Invalid fm register index\n");
 		return -EINVAL;
 	}
 	if (test_bit(FM_FIRMWARE_DW_INPROGRESS, &fmdev->flag) &&
 			payload == NULL) {
-		pr_err("(fmdrv): Payload data is NULL during fw download");
+		pr_err("(fmdrv): Payload data is NULL during fw download\n");
 		return -EINVAL;
 	}
 	if (!test_bit(FM_FIRMWARE_DW_INPROGRESS, &fmdev->flag))
@@ -547,11 +406,13 @@ static int __fm_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
 
 	skb = alloc_skb(size, GFP_ATOMIC);
 	if (!skb) {
-		pr_err("(fmdrv): No memory to create new SKB");
+		pr_err("(fmdrv): No memory to create new SKB\n");
 		return -ENOMEM;
 	}
-	/* Don't fill FM header info for the commands which come from
-	 * FM firmware file */
+	/*
+	 * Don't fill FM header info for the commands which come from
+	 * FM firmware file.
+	 */
 	if (!test_bit(FM_FIRMWARE_DW_INPROGRESS, &fmdev->flag) ||
 	    test_bit(FM_INTTASK_RUNNING, &fmdev->flag)) {
 		/* Fill command header info */
@@ -561,11 +422,20 @@ static int __fm_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
 		/* 3 (fm_opcode,rd_wr,dlen) + payload len) */
 		cmd_hdr->len = ((payload == NULL) ? 0 : payload_len) + 3;
 		/* FM opcode */
-		cmd_hdr->fm_opcode = fm_reg_info[fmreg_index].opcode;
+		cmd_hdr->fm_opcode = fm_opcode;
 		/* read/write type */
-		cmd_hdr->rd_wr = fm_reg_info[fmreg_index].type;
+		cmd_hdr->rd_wr = type;
 		cmd_hdr->dlen = payload_len;
-		fm_cb(skb)->fm_opcode = fm_reg_info[fmreg_index].opcode;
+		fm_cb(skb)->fm_opcode = fm_opcode;
+		/*
+		 * If firmware download has finished and the command is
+		 * not a read command then payload is != NULL - a write
+		 * command with unsigned short payload - convert to be16
+		 */
+		if (payload != NULL) {
+			*(unsigned short *)payload =
+				cpu_to_be16(*(unsigned short *)payload);
+		}
 	} else if (payload != NULL) {
 		fm_cb(skb)->fm_opcode = *((char *)payload + 2);
 	}
@@ -580,10 +450,9 @@ static int __fm_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
 }
 
 /* Sends FM Channel-8 command to the chip and waits for the reponse */
-int fmc_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
-			void *payload, int payload_len,
-			struct completion *wait_completion, void *reponse,
-			int *reponse_len)
+int fmc_send_cmd(struct fmdrv_ops *fmdev, unsigned char fm_opcode,
+			unsigned short int type, void *payload, int payload_len,
+			void *reponse, int *reponse_len)
 {
 	struct sk_buff *skb;
 	struct fm_event_msg_hdr *fm_evt_hdr;
@@ -591,23 +460,25 @@ int fmc_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
 	unsigned long flags;
 	int ret;
 
-	init_completion(wait_completion);
-	ret = __fm_send_cmd(fmdev, fmreg_index, payload, payload_len,
-			    wait_completion);
+	init_completion(&fmdev->maintask_completion);
+	ret = __fm_send_cmd(fmdev, fm_opcode, type, payload, payload_len,
+			    &fmdev->maintask_completion);
 	if (ret < 0)
-		return ret;
+		goto exit;
 
-	timeleft = wait_for_completion_timeout(wait_completion,
+	timeleft = wait_for_completion_timeout(&fmdev->maintask_completion,
 					       FM_DRV_TX_TIMEOUT);
 	if (!timeleft) {
 		pr_err("(fmdrv): Timeout(%d sec),didn't get reg"
-			   "completion signal from RX tasklet",
+			   "completion signal from RX tasklet\n",
 			   jiffies_to_msecs(FM_DRV_TX_TIMEOUT) / 1000);
 		return -ETIMEDOUT;
+		goto exit;
 	}
 	if (!fmdev->response_skb) {
-		pr_err("(fmdrv): Reponse SKB is missing ");
+		pr_err("(fmdrv): Reponse SKB is missing\n");
 		return -EFAULT;
+		goto exit;
 	}
 	spin_lock_irqsave(&fmdev->resp_skb_lock, flags);
 	skb = fmdev->response_skb;
@@ -616,10 +487,11 @@ int fmc_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
 
 	fm_evt_hdr = (void *)skb->data;
 	if (fm_evt_hdr->status != 0) {
-		pr_err("(fmdrv): Received event pkt status(%d) is not zero",
+		pr_err("(fmdrv): Received event pkt status(%d) is not zero\n",
 			   fm_evt_hdr->status);
 		kfree_skb(skb);
-		return -EIO;
+		ret = -EIO;
+		goto exit;
 	}
 	/* Send reponse data to caller */
 	if (reponse != NULL && reponse_len != NULL && fm_evt_hdr->dlen) {
@@ -631,7 +503,13 @@ int fmc_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
 		*reponse_len = 0;
 	}
 	kfree_skb(skb);
-	return 0;
+exit:
+	if (ret < 0) {
+		pr_err("(fmdrv): Command %d failed\n", fm_opcode);
+		return ret;
+	}
+
+	return ret;
 }
 
 /* --- Helper functions used in FM interrupt handlers ---*/
@@ -648,7 +526,7 @@ static inline int __check_cmdresp_status(struct fmdrv_ops *fmdev,
 
 	fm_evt_hdr = (void *)(*skb)->data;
 	if (fm_evt_hdr->status != 0) {
-		pr_err("(fmdrv): irq: opcode %x response status is not zero",
+		pr_err("(fmdrv): irq: opcode %x response status is not zero\n",
 			   fm_evt_hdr->fm_opcode);
 		return -1;
 	}
@@ -656,7 +534,8 @@ static inline int __check_cmdresp_status(struct fmdrv_ops *fmdev,
 	return 0;
 }
 
-/* Interrupt process timeout handler.
+/*
+ * Interrupt process timeout handler.
  * One of the irq handler did not get proper response from the chip. So take
  * recovery action here. FM interrupts are disabled in the beginning of
  * interrupt process. Therefore reset stage index to re-enable default
@@ -666,7 +545,7 @@ static void __int_timeout_handler(unsigned long data)
 {
 	struct fmdrv_ops *fmdev;
 
-	pr_info("(fmdrv): irq: timeout,trying to re-enable fm interrupts");
+	pr_debug("(fmdrv): irq: timeout,trying to re-enable fm interrupts\n");
 	fmdev = (struct fmdrv_ops *)data;
 	fmdev->irq_info.irq_service_timeout_retry++;
 
@@ -676,13 +555,14 @@ static void __int_timeout_handler(unsigned long data)
 		fmdev->irq_info.fm_int_handlers[fmdev->irq_info.
 							 stage_index] (fmdev);
 	} else {
-		/* Stop recovery action (interrupt reenable process) and
+		/*
+		 * Stop recovery action (interrupt reenable process) and
 		 * reset stage index & retry count values
 		 */
 		fmdev->irq_info.stage_index = 0;
 		fmdev->irq_info.irq_service_timeout_retry = 0;
-		pr_err("(fmdrv): Recovery action failed during \
-		    irq processing, max retry reached");
+		pr_err("(fmdrv): Recovery action failed during"
+			"irq processing, max retry reached\n");
 	}
 }
 
@@ -695,10 +575,10 @@ static void fm_irq_send_flag_getcmd(void *arg)
 
 	fmdev = arg;
 	/* Send FLAG_GET command , to know the source of interrupt */
-	ret = __fm_send_cmd(fmdev, FLAG_GET, NULL, sizeof(flag), NULL);
+	ret = __fm_send_cmd(fmdev, FLAG_GET, REG_RD, NULL, sizeof(flag), NULL);
 	if (ret)
 		pr_err("(fmdrv): irq: failed to send flag_get command,"
-			   "initiating irq recovery process");
+			   "initiating irq recovery process\n");
 	else
 		fmdev->irq_info.stage_index = FM_HANDLE_FLAG_GETCMD_RESP_INDEX;
 
@@ -718,7 +598,7 @@ static void fm_irq_handle_flag_getcmd_resp(void *arg)
 
 	ret = __check_cmdresp_status(fmdev, &skb);
 	if (ret < 0) {
-		pr_err("(fmdrv): Initiating irq recovery process");
+		pr_err("(fmdrv): Initiating irq recovery process\n");
 		mod_timer(&fmdev->irq_info.int_timeout_timer, jiffies +
 			  FM_DRV_TX_TIMEOUT);
 		return;
@@ -729,8 +609,8 @@ static void fm_irq_handle_flag_getcmd_resp(void *arg)
 	skb_pull(skb, sizeof(struct fm_event_msg_hdr));
 	memcpy(&fmdev->irq_info.flag, skb->data, fm_evt_hdr->dlen);
 
-	FM_STORE_BE16_TO_LE16(fmdev->irq_info.flag, fmdev->irq_info.flag);
-	pr_info("(fmdrv): irq: flag register(0x%x)", fmdev->irq_info.flag);
+	fmdev->irq_info.flag = be16_to_cpu(fmdev->irq_info.flag);
+	pr_debug("(fmdrv): irq: flag register(0x%x)\n", fmdev->irq_info.flag);
 
 	/* Continue next function in interrupt handler table */
 	fmdev->irq_info.stage_index = FM_HW_MAL_FUNC_INDEX;
@@ -744,7 +624,7 @@ static void fm_irq_handle_hw_malfunction(void *arg)
 
 	fmdev = arg;
 	if (fmdev->irq_info.flag & FM_MAL_EVENT & fmdev->irq_info.mask)
-		pr_err("(fmdrv): irq: HW MAL interrupt received - do nothing");
+		pr_err("(fmdrv): irq: HW MAL int received - do nothing\n");
 
 	/* Continue next function in interrupt handler table */
 	fmdev->irq_info.stage_index = FM_RDS_START_INDEX;
@@ -757,7 +637,7 @@ static void fm_irq_handle_rds_start(void *arg)
 
 	fmdev = arg;
 	if (fmdev->irq_info.flag & FM_RDS_EVENT & fmdev->irq_info.mask) {
-		pr_info("(fmdrv): irq: rds threshold reached");
+		pr_debug("(fmdrv): irq: rds threshold reached\n");
 		fmdev->irq_info.stage_index = FM_RDS_SEND_RDS_GETCMD_INDEX;
 	} else {
 		/* Continue next function in interrupt handler table */
@@ -773,11 +653,11 @@ static void fm_irq_send_rdsdata_getcmd(void *arg)
 
 	fmdev = arg;
 	/* Send the command to read RDS data from the chip */
-	ret = __fm_send_cmd(fmdev, RDS_DATA_GET, NULL,
+	ret = __fm_send_cmd(fmdev, RDS_DATA_GET, REG_RD, NULL,
 			    (FM_RX_RDS_FIFO_THRESHOLD * 3), NULL);
 	if (ret < 0)
 		pr_err("(fmdrv): irq : failed to send rds get command,"
-			   "initiating irq recovery process");
+			   "initiating irq recovery process\n");
 	else
 		fmdev->irq_info.stage_index =
 		    FM_RDS_HANDLE_RDS_GETCMD_RESP_INDEX;
@@ -799,7 +679,7 @@ static void __fm_rx_update_af_cache(struct fmdrv_ops *fmdev,
 		fmdev->rx.cur_station_info.af_list_max =
 		    (af - FM_RDS_1_AF_FOLLOWS + 1);
 		fmdev->rx.cur_station_info.no_of_items_in_afcache = 0;
-		pr_info("(fmdrv): No of expected AF : %d",
+		pr_debug("(fmdrv): No of expected AF : %d\n",
 			   fmdev->rx.cur_station_info.af_list_max);
 	} else if (((af >= FM_RDS_MIN_AF)
 		    && (fmdev->rx.region.region_index == FM_BAND_EUROPE_US)
@@ -811,8 +691,8 @@ static void __fm_rx_update_af_cache(struct fmdrv_ops *fmdev,
 						      FM_RDS_MAX_AF_JAPAN))) {
 		freq = fmdev->rx.region.bottom_frequency + (af * 100);
 		if (freq == fmdev->rx.curr_freq) {
-			pr_info("(fmdrv): Current frequency(%d) is \
-			    matching with received AF(%d)",
+			pr_debug("(fmdrv): Current frequency(%d) is"
+				"matching with received AF(%d)\n",
 			    fmdev->rx.curr_freq, freq);
 			return;
 		}
@@ -825,15 +705,16 @@ static void __fm_rx_update_af_cache(struct fmdrv_ops *fmdev,
 		}
 		/* Reached the limit of the list - ignore the next AF */
 		if (index == fmdev->rx.cur_station_info.af_list_max) {
-			pr_info("(fmdrv): AF cache is full");
+			pr_debug("(fmdrv): AF cache is full\n");
 			return;
 		}
-		/* If we reached the end of the list then
-		 * this AF is not in the list - add it
+		/*
+		 * If we reached the end of the list then this AF is not
+		 * in the list - add it.
 		 */
 		if (index == fmdev->rx.cur_station_info.
 				   no_of_items_in_afcache) {
-			pr_info("(fmdrv): Storing AF %d to AF cache index %d",
+			pr_debug("(fmdrv): Storing AF %d to cache index %d\n",
 					freq, index);
 			fmdev->rx.cur_station_info.af_cache[index] = freq;
 			fmdev->rx.cur_station_info.no_of_items_in_afcache++;
@@ -841,8 +722,9 @@ static void __fm_rx_update_af_cache(struct fmdrv_ops *fmdev,
 	}
 }
 
-/* Converts RDS buffer data from big endian format
- * to little endian format
+/*
+ * Converts RDS buffer data from big endian format
+ * to little endian format.
  */
 static void __fm_rdsparse_swapbytes(struct fmdrv_ops *fmdev,
 					struct fm_rdsdata_format *rds_format)
@@ -851,9 +733,11 @@ static void __fm_rdsparse_swapbytes(struct fmdrv_ops *fmdev,
 	unsigned char index = 0;
 	char *rds_buff;
 
-	/* Since in Orca the 2 RDS Data bytes are in little endian and
+	/*
+	 * Since in Orca the 2 RDS Data bytes are in little endian and
 	 * in Dolphin they are in big endian, the parsing of the RDS data
-	 * is chip dependent */
+	 * is chip dependent
+	 */
 	if (fmdev->asci_id != 0x6350) {
 		rds_buff = &rds_format->rdsdata.groupdatabuff.rdsbuff[0];
 		while (index + 1 < FM_RX_RDS_INFO_FIELD_MAX) {
@@ -884,7 +768,7 @@ static void fm_irq_handle_rdsdata_getcmd_resp(void *arg)
 
 	ret = __check_cmdresp_status(fmdev, &skb);
 	if (ret < 0) {
-		pr_err("(fmdrv): Initiating irq recovery process");
+		pr_err("(fmdrv): Initiating irq recovery process\n");
 		mod_timer(&fmdev->irq_info.int_timeout_timer, jiffies +
 			  FM_DRV_TX_TIMEOUT);
 		return;
@@ -897,22 +781,28 @@ static void fm_irq_handle_rdsdata_getcmd_resp(void *arg)
 	/* Parse the RDS data */
 	while (rds_len >= FM_RDS_BLOCK_SIZE) {
 		meta_data = rds_data[2];
-		/* Get the type:
-		 * 0=A, 1=B, 2=C, 3=C', 4=D, 5=E */
+		/*
+		 * Get the type:
+		 * 0=A, 1=B, 2=C, 3=C', 4=D, 5=E
+		 */
 		type = (meta_data & 0x07);
 
-		/* Transform the block type
-		 * into an index sequence (0, 1, 2, 3, 4) */
+		/*
+		 * Transform the block type into an
+		 * index sequence (0, 1, 2, 3, 4)
+		 */
 		block_index = (type <= FM_RDS_BLOCK_C ? type : (type - 1));
-		pr_info("(fmdrv): Block index:%d(%s) ", block_index,
+		pr_debug("(fmdrv): Block index:%d(%s)\n", block_index,
 			   (meta_data & FM_RDS_STATUS_ERROR_MASK) ? "Bad" :
 			   "Ok");
 		if (((meta_data & FM_RDS_STATUS_ERROR_MASK) == 0)
 		    && (block_index == FM_RDS_BLOCK_INDEX_A
 			|| (block_index == fmdev->rx.rds.last_block_index + 1
 			    && block_index <= FM_RDS_BLOCK_INDEX_D))) {
-			/* Skip checkword (control) byte
-			 * and copy only data byte */
+			/*
+			 * Skip checkword (control) byte and copy only data
+			 * byte
+			 */
 			memcpy(&rds_format.rdsdata.groupdatabuff.
 			       rdsbuff[block_index * (FM_RDS_BLOCK_SIZE - 1)],
 			       rds_data, (FM_RDS_BLOCK_SIZE - 1));
@@ -920,24 +810,25 @@ static void fm_irq_handle_rdsdata_getcmd_resp(void *arg)
 
 			/* If completed a whole group then handle it */
 			if (block_index == FM_RDS_BLOCK_INDEX_D) {
-				pr_info("(fmdrv): Good block received");
+				pr_debug("(fmdrv): Good block received\n");
 				__fm_rdsparse_swapbytes(fmdev, &rds_format);
 
-				/* Extract PI code and store in local cache.
-				 * We need this during AF switch processing */
-				cur_picode =
-				    FM_BE16_TO_LE16(rds_format.rdsdata.
-						    groupgeneral.pidata);
+				/*
+				 * Extract PI code and store in local cache.
+				 * We need this during AF switch processing.
+				 */
+				cur_picode = be16_to_cpu
+				(rds_format.rdsdata.groupgeneral.pidata);
 				if (fmdev->rx.cur_station_info.picode !=
 				    cur_picode)
 					fmdev->rx.cur_station_info.picode =
 					    cur_picode;
-				pr_info("(fmdrv): picode:%d", cur_picode);
+				pr_debug("(fmdrv): picode:%d\n", cur_picode);
 
 				group_index =
 				    (rds_format.rdsdata.groupgeneral.
 				     block_b_byte1 >> 3);
-				pr_info("(fmdrv):Group:%ld%s", group_index / 2,
+				pr_debug("(fmdrv):Group:%ld%s\n", group_index/2,
 					   (group_index % 2) ? "B" : "A");
 
 				group_index =
@@ -953,7 +844,7 @@ static void fm_irq_handle_rdsdata_getcmd_resp(void *arg)
 				}
 			}
 		} else {
-			pr_info("(fmdrv): Block sequence mismatch");
+			pr_debug("(fmdrv): Block sequence mismatch\n");
 			fmdev->rx.rds.last_block_index = -1;
 		}
 		rds_len -= FM_RDS_BLOCK_SIZE;
@@ -966,7 +857,8 @@ static void fm_irq_handle_rdsdata_getcmd_resp(void *arg)
 
 	spin_lock_irqsave(&fmdev->rds_buff_lock, flags);
 	while (rds_len > 0) {
-		/* Fill RDS buffer as per V4L2 specification.
+		/*
+		 * Fill RDS buffer as per V4L2 specification.
 		 * Store control byte
 		 */
 		type = (rds_data[2] & 0x07);
@@ -986,7 +878,7 @@ static void fm_irq_handle_rdsdata_getcmd_resp(void *arg)
 
 		/* Check for overflow & start over */
 		if (fmdev->rx.rds.wr_index == fmdev->rx.rds.rd_index) {
-			pr_info("(fmdrv): RDS buffer overflow");
+			pr_debug("(fmdrv): RDS buffer overflow\n");
 			fmdev->rx.rds.wr_index = 0;
 			fmdev->rx.rds.rd_index = 0;
 			break;
@@ -1020,7 +912,7 @@ static void fm_irq_handle_tune_op_ended(void *arg)
 	fmdev = arg;
 	if (fmdev->irq_info.flag & (FM_FR_EVENT | FM_BL_EVENT) & fmdev->
 	    irq_info.mask) {
-		pr_info("(fmdrv): irq: tune ended/bandlimit reached");
+		pr_debug("(fmdrv): irq: tune ended/bandlimit reached\n");
 		if (test_and_clear_bit(FM_AF_SWITCH_INPROGRESS, &fmdev->flag)) {
 			fmdev->irq_info.stage_index = FM_AF_JUMP_RD_FREQ_INDEX;
 		} else {
@@ -1039,7 +931,7 @@ static void fm_irq_handle_power_enb(void *arg)
 
 	fmdev = arg;
 	if (fmdev->irq_info.flag & FM_POW_ENB_EVENT) {
-		pr_info("(fmdrv): irq: Power Enabled/Disabled");
+		pr_debug("(fmdrv): irq: Power Enabled/Disabled\n");
 		complete(&fmdev->maintask_completion);
 	}
 
@@ -1057,8 +949,8 @@ static void fm_irq_handle_low_rssi_start(void *arg)
 	    (fmdev->irq_info.flag & FM_LEV_EVENT & fmdev->irq_info.mask) &&
 	    (fmdev->rx.curr_freq != FM_UNDEFINED_FREQ) &&
 	    (fmdev->rx.cur_station_info.no_of_items_in_afcache != 0)) {
-		pr_info("(fmdrv): irq: rssi level has fallen below" \
-			" threshold level");
+		pr_debug("(fmdrv): irq: rssi level has fallen below"
+			" threshold level\n");
 
 		/* Disable further low RSSI interrupts */
 		fmdev->irq_info.mask &= ~FM_LEV_EVENT;
@@ -1081,12 +973,12 @@ static void fm_irq_afjump_set_pi(void *arg)
 
 	fmdev = arg;
 	/* Set PI code - must be updated if the AF list is not empty */
-	payload = FM_LE16_TO_BE16(fmdev->rx.cur_station_info.picode);
-	ret = __fm_send_cmd(fmdev, RDS_PI_SET, &payload, sizeof(payload),
-			    NULL);
+	payload = fmdev->rx.cur_station_info.picode;
+	ret = __fm_send_cmd(fmdev, RDS_PI_SET, REG_WR, &payload,
+			sizeof(payload), NULL);
 	if (ret < 0)
 		pr_err("(fmdrv): irq : failed to set PI,"
-			   "initiating irq recovery process");
+			   "initiating irq recovery process\n");
 	else
 		fmdev->irq_info.stage_index =
 		    FM_AF_JUMP_HANDLE_SETPI_RESP_INDEX;
@@ -1106,7 +998,7 @@ static void fm_irq_handle_set_pi_resp(void *arg)
 
 	ret = __check_cmdresp_status(fmdev, &skb);
 	if (ret < 0) {
-		pr_err("(fmdrv): Initiating irq recovery process");
+		pr_err("(fmdrv): Initiating irq recovery process\n");
 		mod_timer(&fmdev->irq_info.int_timeout_timer, jiffies +
 			  FM_DRV_TX_TIMEOUT);
 		return;
@@ -1117,7 +1009,8 @@ static void fm_irq_handle_set_pi_resp(void *arg)
 	fmdev->irq_info.fm_int_handlers[fmdev->irq_info.stage_index](fmdev);
 }
 
-/* Set PI mask.
+/*
+ * Set PI mask.
  * 0xFFFF = Enable PI code matching
  * 0x0000 = Disable PI code matching
  */
@@ -1129,11 +1022,11 @@ static void fm_irq_afjump_set_pimask(void *arg)
 
 	fmdev = arg;
 	payload = 0x0000;
-	ret = __fm_send_cmd(fmdev, RDS_PI_MASK_SET, &payload, sizeof(payload),
-				NULL);
+	ret = __fm_send_cmd(fmdev, RDS_PI_MASK_SET, REG_WR, &payload,
+			sizeof(payload), NULL);
 	if (ret < 0)
-		pr_err("(fmdrv): irq: failed to set PI mask,"
-			   "initiating irq recovery process");
+		pr_err("(fmdrv): irq: failed to set PI mask, "
+			   "initiating irq recovery process\n");
 	else
 		fmdev->irq_info.stage_index =
 		    FM_AF_JUMP_HANDLE_SETPI_MASK_RESP_INDEX;
@@ -1153,7 +1046,7 @@ static void fm_irq_handle_set_pimask_resp(void *arg)
 
 	ret = __check_cmdresp_status(fmdev, &skb);
 	if (ret < 0) {
-		pr_err("(fmdrv): Initiating irq recovery process");
+		pr_err("(fmdrv): Initiating irq recovery process\n");
 		mod_timer(&fmdev->irq_info.int_timeout_timer, jiffies +
 			  FM_DRV_TX_TIMEOUT);
 		return;
@@ -1171,18 +1064,18 @@ static void fm_irq_afjump_setfreq(void *arg)
 	int ret;
 
 	fmdev = arg;
-	pr_info("(fmdrv): Swtiching to %d KHz\n",
+	pr_debug("(fmdrv): Swtiching to %d KHz\n",
 	       fmdev->rx.cur_station_info.af_cache[fmdev->rx.cur_afjump_index]);
 	frq_index =
 	    (fmdev->rx.cur_station_info.af_cache[fmdev->rx.cur_afjump_index] -
 	     fmdev->rx.region.bottom_frequency) / FM_FREQ_MUL;
 
-	FM_STORE_LE16_TO_BE16(payload, frq_index);
-	ret = __fm_send_cmd(fmdev, AF_FREQ_SET, &payload, sizeof(payload),
-				NULL);
+	payload = frq_index;
+	ret = __fm_send_cmd(fmdev, AF_FREQ_SET, REG_WR, &payload,
+			sizeof(payload), NULL);
 	if (ret < 0)
-		pr_err("(fmdrv): irq : failed to set AF freq,"
-			   "initiating irq recovery process");
+		pr_err("(fmdrv): irq : failed to set AF freq, "
+			   "initiating irq recovery process\n");
 	else
 		fmdev->irq_info.stage_index =
 		    FM_AF_JUMP_HENDLE_SET_AFFREQ_RESP_INDEX;
@@ -1202,7 +1095,7 @@ static void fm_irq_handle_setfreq_resp(void *arg)
 
 	ret = __check_cmdresp_status(fmdev, &skb);
 	if (ret < 0) {
-		pr_err("(fmdrv): Initiating irq recovery process");
+		pr_err("(fmdrv): Initiating irq recovery process\n");
 		mod_timer(&fmdev->irq_info.int_timeout_timer, jiffies +
 			  FM_DRV_TX_TIMEOUT);
 		return;
@@ -1221,12 +1114,12 @@ static void fm_irq_afjump_enableint(void *arg)
 
 	fmdev = arg;
 	/* Enable FR (tuning operation ended) interrupt */
-	payload = FM_LE16_TO_BE16(FM_FR_EVENT);
-	ret = __fm_send_cmd(fmdev, INT_MASK_SET, &payload, sizeof(payload),
-				NULL);
+	payload = FM_FR_EVENT;
+	ret = __fm_send_cmd(fmdev, INT_MASK_SET, REG_WR, &payload,
+			sizeof(payload), NULL);
 	if (ret)
-		pr_err("(fmdrv): irq : failed to enable FR interrupt,"
-			   "initiating irq recovery process");
+		pr_err("(fmdrv): irq : failed to enable FR interrupt, "
+			   "initiating irq recovery process\n");
 	else
 		fmdev->irq_info.stage_index = FM_AF_JUMP_ENABLE_INT_RESP_INDEX;
 
@@ -1245,7 +1138,7 @@ static void fm_irq_afjump_enableint_resp(void *arg)
 
 	ret = __check_cmdresp_status(fmdev, &skb);
 	if (ret < 0) {
-		pr_err("(fmdrv): Initiating irq recovery process");
+		pr_err("(fmdrv): Initiating irq recovery process\n");
 		mod_timer(&fmdev->irq_info.int_timeout_timer, jiffies +
 			  FM_DRV_TX_TIMEOUT);
 		return;
@@ -1262,12 +1155,12 @@ static void fm_irq_start_afjump(void *arg)
 	int ret;
 
 	fmdev = arg;
-	FM_STORE_LE16_TO_BE16(payload, FM_TUNER_AF_JUMP_MODE);
-	ret = __fm_send_cmd(fmdev, TUNER_MODE_SET, &payload, sizeof(payload),
-				NULL);
+	payload = FM_TUNER_AF_JUMP_MODE;
+	ret = __fm_send_cmd(fmdev, TUNER_MODE_SET, REG_WR, &payload,
+			sizeof(payload), NULL);
 	if (ret)
-		pr_err("(fmdrv): irq : failed to start af switch,"
-			   "initiating irq recovery process");
+		pr_err("(fmdrv): irq : failed to start af switch, "
+			   "initiating irq recovery process\n");
 	else
 		fmdev->irq_info.stage_index =
 		    FM_AF_JUMP_HANDLE_START_AFJUMP_RESP_INDEX;
@@ -1287,7 +1180,7 @@ static void fm_irq_handle_start_afjump_resp(void *arg)
 
 	ret = __check_cmdresp_status(fmdev, &skb);
 	if (ret < 0) {
-		pr_err("(fmdrv): Initiating irq recovery process");
+		pr_err("(fmdrv): Initiating irq recovery process\n");
 		mod_timer(&fmdev->irq_info.int_timeout_timer, jiffies +
 			  FM_DRV_TX_TIMEOUT);
 		return;
@@ -1304,10 +1197,11 @@ static void fm_irq_afjump_rd_freq(void *arg)
 	int ret;
 
 	fmdev = arg;
-	ret = __fm_send_cmd(fmdev, FREQ_GET, NULL, sizeof(payload), NULL);
+	ret = __fm_send_cmd(fmdev, FREQ_SET, REG_RD, NULL,
+			sizeof(payload), NULL);
 	if (ret < 0)
-		pr_err("(fmdrv): irq: failed to read cur freq,"
-			   "initiating irq recovery process");
+		pr_err("(fmdrv): irq: failed to read cur freq, "
+			   "initiating irq recovery process\n");
 	else
 		fmdev->irq_info.stage_index = FM_AF_JUMP_RD_FREQ_RESP_INDEX;
 
@@ -1329,7 +1223,7 @@ static void fm_irq_afjump_rd_freq_resp(void *arg)
 
 	ret = __check_cmdresp_status(fmdev, &skb);
 	if (ret < 0) {
-		pr_err("(fmdrv): Initiating irq recovery process");
+		pr_err("(fmdrv): Initiating irq recovery process\n");
 		mod_timer(&fmdev->irq_info.int_timeout_timer, jiffies +
 			  FM_DRV_TX_TIMEOUT);
 		return;
@@ -1337,7 +1231,7 @@ static void fm_irq_afjump_rd_freq_resp(void *arg)
 	/* Skip header info and copy only response data */
 	skb_pull(skb, sizeof(struct fm_event_msg_hdr));
 	memcpy(&read_freq, skb->data, sizeof(read_freq));
-	read_freq = FM_BE16_TO_LE16(read_freq);
+	read_freq = be16_to_cpu(read_freq);
 	curr_freq = fmdev->rx.region.bottom_frequency +
 	    ((unsigned int)read_freq * FM_FREQ_MUL);
 
@@ -1347,8 +1241,8 @@ static void fm_irq_afjump_rd_freq_resp(void *arg)
 	/* If the frequency was changed the jump succeeded */
 	if ((curr_freq != fmdev->rx.freq_before_jump) &&
 	    (curr_freq == jumped_freq)) {
-		pr_info("(fmdrv): Successfully switched to alternate" \
-			"frequency %d", curr_freq);
+		pr_debug("(fmdrv): Successfully switched to alternate"
+			"frequency %d\n", curr_freq);
 		fmdev->rx.curr_freq = curr_freq;
 		fm_rx_reset_rds_cache(fmdev);
 
@@ -1363,11 +1257,11 @@ static void fm_irq_afjump_rd_freq_resp(void *arg)
 		/* If we reached the end of the list - stop searching */
 		if (fmdev->rx.cur_afjump_index >=
 		    fmdev->rx.cur_station_info.no_of_items_in_afcache) {
-			pr_info("(fmdrv): AF switch processing failed");
+			pr_debug("(fmdrv): AF switch processing failed\n");
 			fmdev->irq_info.stage_index = FM_LOW_RSSI_FINISH_INDEX;
 		} else {	/* AF List is not over - try next one */
 
-			pr_info("(fmdrv): Trying next frequency in af cache");
+			pr_debug("(fmdrv): Trying next freq in AF cache\n");
 			fmdev->irq_info.stage_index = FM_AF_JUMP_SETPI_INDEX;
 		}
 	}
@@ -1393,12 +1287,12 @@ static void fm_irq_send_intmsk_cmd(void *arg)
 	fmdev = arg;
 
 	/* Re-enable FM interrupts */
-	FM_STORE_LE16_TO_BE16(payload, fmdev->irq_info.mask);
-	ret = __fm_send_cmd(fmdev, INT_MASK_SET, &payload, sizeof(payload),
-				NULL);
+	payload = fmdev->irq_info.mask;
+	ret = __fm_send_cmd(fmdev, INT_MASK_SET, REG_WR, &payload,
+			sizeof(payload), NULL);
 	if (ret)
-		pr_err("(fmdrv): irq: failed to send int_mask_set cmd,"
-			   "initiating irq recovery process");
+		pr_err("(fmdrv): irq: failed to send int_mask_set cmd, "
+			   "initiating irq recovery process\n");
 	else
 		fmdev->irq_info.stage_index = FM_HANDLE_INTMSK_CMD_RESP_INDEX;
 
@@ -1418,12 +1312,13 @@ static void fm_irq_handle_intmsk_cmd_resp(void *arg)
 
 	ret = __check_cmdresp_status(fmdev, &skb);
 	if (ret < 0) {
-		pr_err("(fmdrv): Initiating irq recovery process");
+		pr_err("(fmdrv): Initiating irq recovery process\n");
 		mod_timer(&fmdev->irq_info.int_timeout_timer, jiffies +
 			  FM_DRV_TX_TIMEOUT);
 		return;
 	}
-	/* This is last function in interrupt table to be executed.
+	/*
+	 * This is last function in interrupt table to be executed.
 	 * So, reset stage index to 0.
 	 */
 	fmdev->irq_info.stage_index = FM_SEND_FLAG_GETCMD_INDEX;
@@ -1505,9 +1400,8 @@ int fmc_set_frequency(struct fmdrv_ops *fmdev, unsigned int freq_to_set)
 		break;
 
 	case FM_MODE_TX:
-		/* TODO: Enable when FM TX is supported */
-		/* ret = fm_tx_set_frequency(fmdev, freq_to_set); */
-		/* break; */
+		ret = fm_tx_set_frequency(fmdev, freq_to_set);
+		break;
 
 	default:
 		ret = -EINVAL;
@@ -1520,14 +1414,12 @@ int fmc_get_frequency(struct fmdrv_ops *fmdev, unsigned int *cur_tuned_frq)
 	int ret = 0;
 
 	if (fmdev->rx.curr_freq == FM_UNDEFINED_FREQ) {
-		pr_err("(fmdrv): RX frequency is not set");
-		ret = -EPERM;
-		goto exit;
+		pr_err("(fmdrv): RX frequency is not set\n");
+		return -EPERM;
 	}
 	if (cur_tuned_frq == NULL) {
-		pr_err("(fmdrv): Invalid memory");
-		ret = -ENOMEM;
-		goto exit;
+		pr_err("(fmdrv): Invalid memory\n");
+		return -ENOMEM;
 	}
 
 	switch (fmdev->curr_fmmode) {
@@ -1542,15 +1434,8 @@ int fmc_get_frequency(struct fmdrv_ops *fmdev, unsigned int *cur_tuned_frq)
 	default:
 		ret = -EINVAL;
 	}
-exit:
-	return ret;
-}
 
-/* Returns current band index (0-Europe/US; 1-Japan) */
-int fmc_get_region(struct fmdrv_ops *fmdev, unsigned char *region)
-{
-	*region = fmdev->rx.region.region_index;
-	return 0;
+	return ret;
 }
 
 int fmc_set_region(struct fmdrv_ops *fmdev, unsigned char region_to_set)
@@ -1563,9 +1448,8 @@ int fmc_set_region(struct fmdrv_ops *fmdev, unsigned char region_to_set)
 		break;
 
 	case FM_MODE_TX:
-		/* TODO: Enable when FM TX is supported */
-		/* ret = fm_tx_set_region(fmdev, region_to_set); */
-		/* break; */
+		ret = fm_tx_set_region(fmdev, region_to_set);
+		break;
 
 	default:
 		ret = -EINVAL;
@@ -1583,9 +1467,8 @@ int fmc_set_mute_mode(struct fmdrv_ops *fmdev, unsigned char mute_mode_toset)
 		break;
 
 	case FM_MODE_TX:
-		/* TODO: Enable when FM TX is supported */
-		/* ret = fm_tx_set_mute_mode(fmdev, mute_mode_toset); */
-		/* break; */
+		ret = fm_tx_set_mute_mode(fmdev, mute_mode_toset);
+		break;
 
 	default:
 		ret = -EINVAL;
@@ -1603,9 +1486,8 @@ int fmc_set_stereo_mono(struct fmdrv_ops *fmdev, unsigned short mode)
 		break;
 
 	case FM_MODE_TX:
-		/* TODO: Enable when FM TX is supported */
-		/* ret = fm_tx_set_stereo_mono(fmdev, mode); */
-		/* break; */
+		ret = fm_tx_set_stereo_mono(fmdev, mode);
+		break;
 
 	default:
 		ret = -EINVAL;
@@ -1623,9 +1505,8 @@ int fmc_set_rds_mode(struct fmdrv_ops *fmdev, unsigned char rds_en_dis)
 		break;
 
 	case FM_MODE_TX:
-		/* TODO: Enable when FM TX is supported */
-		/* ret = fm_tx_set_rds_mode(fmdev, rds_en_dis); */
-		/* break; */
+		ret = fm_tx_set_rds_mode(fmdev, rds_en_dis);
+		break;
 
 	default:
 		ret = -EINVAL;
@@ -1640,25 +1521,24 @@ static int fm_power_down(struct fmdrv_ops *fmdev)
 	int ret = 0;
 
 	if (!test_bit(FM_CORE_READY, &fmdev->flag)) {
-		pr_err("(fmdrv): FM core is not ready");
-		ret = -EPERM;
-		goto exit;
+		pr_err("(fmdrv): FM core is not ready\n");
+		return -EPERM;
 	}
 	if (fmdev->curr_fmmode == FM_MODE_OFF) {
-		pr_err("(fmdrv): FM chip is already in OFF state");
-		goto exit;
+		pr_debug("(fmdrv): FM chip is already in OFF state\n");
+		return ret;
 	}
 
-	FM_STORE_LE16_TO_BE16(payload, 0x0);
-	ret = fmc_send_cmd(fmdev, FM_POWER_MODE, &payload, sizeof(payload),
-			   &fmdev->maintask_completion, NULL, NULL);
-	FM_CHECK_SEND_CMD_STATUS(ret);
+	payload = 0x0;
+	ret = fmc_send_cmd(fmdev, FM_POWER_MODE, REG_WR, &payload,
+		sizeof(payload), NULL, NULL);
+	if (ret < 0)
+		return ret;
 
 	ret = fmc_release(fmdev);
 	if (ret < 0)
-		pr_err("(fmdrv): FM CORE release failed");
+		pr_err("(fmdrv): FM CORE release failed\n");
 
-exit:
 	return ret;
 }
 
@@ -1678,13 +1558,12 @@ static int fm_download_firmware(struct fmdrv_ops *fmdev,
 
 	ret = request_firmware(&fw_entry, firmware_name,
 				&fmdev->radio_dev->dev);
-	if ((ret < 0) || (fw_entry == NULL) || (fw_entry->data == NULL) ||
-			(fw_entry->size == 0)) {
+	if (ret < 0) {
 		pr_err("(fmdrv): Unable to read firmware(%s) content\n",
 			   firmware_name);
-		goto exit;
+		return ret;
 	}
-	pr_info("(fmdrv): Firmware(%s) length : %d bytes", firmware_name,
+	pr_debug("(fmdrv): Firmware(%s) length : %d bytes\n", firmware_name,
 		   fw_entry->size);
 
 	fw_data = (void *)fw_entry->data;
@@ -1692,12 +1571,12 @@ static int fm_download_firmware(struct fmdrv_ops *fmdev,
 
 	fw_header = (struct bts_header *)fw_data;
 	if (fw_header->magic != FM_FW_FILE_HEADER_MAGIC) {
-		pr_err("(fmdrv): %s not a legal TI firmware file",
+		pr_err("(fmdrv): %s not a legal TI firmware file\n",
 			firmware_name);
 		ret = -EINVAL;
-		goto exit;
+		goto rel_fw;
 	}
-	pr_info("(fmdrv): Firmware(%s) magic number : 0x%x", firmware_name,
+	pr_debug("(fmdrv): Firmware(%s) magic number : 0x%x\n", firmware_name,
 		   fw_header->magic);
 
 	/* Skip file header info , we already verified it */
@@ -1709,11 +1588,10 @@ static int fm_download_firmware(struct fmdrv_ops *fmdev,
 
 		switch (action->type) {
 		case ACTION_SEND_COMMAND:	/* Send */
-			ret = fmc_send_cmd(fmdev, 0, action->data,
-				action->size, &fmdev->maintask_completion,
-				NULL, NULL);
+			ret = fmc_send_cmd(fmdev, 0, 0, action->data,
+				action->size, NULL, NULL);
 			if (ret < 0)
-				goto exit;
+				goto rel_fw;
 
 			cmd_cnt++;
 			break;
@@ -1727,10 +1605,11 @@ static int fm_download_firmware(struct fmdrv_ops *fmdev,
 		fw_data += (sizeof(struct bts_action) + (action->size));
 		fw_len -= (sizeof(struct bts_action) + (action->size));
 	}
-	pr_info("(fmdrv): Firmare commands(%d) loaded to the chip", cmd_cnt);
-exit:
+	pr_debug("(fmdrv): Firmare commands(%d) loaded to chip\n", cmd_cnt);
+rel_fw:
 	release_firmware(fw_entry);
 	clear_bit(FM_FIRMWARE_DW_INPROGRESS, &fmdev->flag);
+
 	return ret;
 }
 
@@ -1755,71 +1634,64 @@ static int fm_power_up(struct fmdrv_ops *fmdev, unsigned char fw_option)
 	char fw_name[50];
 
 	if (fw_option >= FM_MODE_ENTRY_MAX) {
-		pr_err("(fmdrv): Invalid firmware download option");
-		ret = -EINVAL;
-		goto exit;
+		pr_err("(fmdrv): Invalid firmware download option\n");
+		return -EINVAL;
 	}
 
-	/* Initialize FM common module. FM GPIO toggling is
+	/*
+	 * Initialize FM common module. FM GPIO toggling is
 	 * taken care in Shared Transport driver.
 	 */
 	ret = fmc_prepare(fmdev);
 	if (ret < 0) {
-		pr_err("(fmdrv): Unable to prepare FM Common");
-		goto exit;
+		pr_err("(fmdrv): Unable to prepare FM Common\n");
+		return ret;
 	}
 
-	FM_STORE_LE16_TO_BE16(payload, FM_ENABLE);
-	ret = fmc_send_cmd(fmdev, FM_POWER_MODE, &payload, sizeof(payload),
-			   &fmdev->maintask_completion, NULL, NULL);
-	if (ret < 0) {
-		pr_err("(fmdrv): Failed enable FM over Channel 8");
+	payload = FM_ENABLE;
+	ret = fmc_send_cmd(fmdev, FM_POWER_MODE, REG_WR, &payload,
+			sizeof(payload), NULL, NULL);
+	if (ret < 0)
 		goto rel;
-	}
 
 	/* Allow the chip to settle down in Channel-8 mode */
-	msleep(5);
+	msleep(20);
 
-	ret = fmc_send_cmd(fmdev, ASIC_ID_GET, NULL, sizeof(asic_id),
-			   &fmdev->maintask_completion, &asic_id,
-			   &resp_len);
-	if (ret < 0) {
-		pr_err("(fmdrv): Failed read FM chip ASIC ID");
+	ret = fmc_send_cmd(fmdev, ASIC_ID_GET, REG_RD, NULL,
+			sizeof(asic_id), &asic_id, &resp_len);
+	if (ret < 0)
 		goto rel;
-	}
-	ret = fmc_send_cmd(fmdev, ASIC_VER_GET, NULL, sizeof(asic_ver),
-			   &fmdev->maintask_completion, &asic_ver,
-			   &resp_len);
-	if (ret < 0) {
-		pr_err("(fmdrv): Failed read FM chip ASIC Version");
-		goto rel;
-	}
 
-	pr_info("(fmdrv): ASIC ID: 0x%x , ASIC Version: %d",
-		FM_BE16_TO_LE16(asic_id), FM_BE16_TO_LE16(asic_ver));
+	ret = fmc_send_cmd(fmdev, ASIC_VER_GET, REG_RD, NULL,
+			sizeof(asic_ver), &asic_ver, &resp_len);
+	if (ret < 0)
+		goto rel;
+
+	pr_debug("(fmdrv): ASIC ID: 0x%x , ASIC Version: %d\n",
+		be16_to_cpu(asic_id), be16_to_cpu(asic_ver));
 
 	sprintf(fw_name, "%s_%x.%d.bts", FM_FMC_FW_FILE_START,
-		FM_BE16_TO_LE16(asic_id), FM_BE16_TO_LE16(asic_ver));
+		be16_to_cpu(asic_id), be16_to_cpu(asic_ver));
 	ret = fm_download_firmware(fmdev, fw_name);
 	if (ret < 0) {
-		pr_info("(fmdrv): Failed to download firmware file %s\n",
+		pr_debug("(fmdrv): Failed to download firmware file %s\n",
 			fw_name);
 		goto rel;
 	}
 
 	sprintf(fw_name, "%s_%x.%d.bts", (fw_option == FM_MODE_RX) ?
 		FM_RX_FW_FILE_START : FM_TX_FW_FILE_START,
-		FM_BE16_TO_LE16(asic_id), FM_BE16_TO_LE16(asic_ver));
+		be16_to_cpu(asic_id), be16_to_cpu(asic_ver));
 	ret = fm_download_firmware(fmdev, fw_name);
 	if (ret < 0) {
-		pr_info("(fmdrv): Failed to download firmware file %s\n",
+		pr_debug("(fmdrv): Failed to download firmware file %s\n",
 			fw_name);
 		goto rel;
 	} else
-		goto exit;
+		return ret;
 rel:
 	fmc_release(fmdev);
-exit:
+
 	return ret;
 }
 
@@ -1829,21 +1701,20 @@ int fmc_set_mode(struct fmdrv_ops *fmdev, unsigned char fm_mode)
 	int ret = 0;
 
 	if (fm_mode >= FM_MODE_ENTRY_MAX) {
-		pr_err("(fmdrv): Invalid FM mode");
-		ret = -EINVAL;
-		goto exit;
+		pr_err("(fmdrv): Invalid FM mode\n");
+		return -EINVAL;
 	}
 	if (fmdev->curr_fmmode == fm_mode) {
-		pr_info("(fmdrv): Already fm is in mode(%d)", fm_mode);
-		goto exit;
+		pr_debug("(fmdrv): Already fm is in mode(%d)\n", fm_mode);
+		return ret;
 	}
 
 	switch (fm_mode) {
 	case FM_MODE_OFF:	/* OFF Mode */
 		ret = fm_power_down(fmdev);
 		if (ret < 0) {
-			pr_err("(fmdrv): Failed to set OFF mode");
-			goto exit;
+			pr_err("(fmdrv): Failed to set OFF mode\n");
+			return ret;
 		}
 		break;
 
@@ -1853,27 +1724,27 @@ int fmc_set_mode(struct fmdrv_ops *fmdev, unsigned char fm_mode)
 		if (fmdev->curr_fmmode != FM_MODE_OFF) {
 			ret = fm_power_down(fmdev);
 			if (ret < 0) {
-				pr_err("(fmdrv): Failed to set OFF mode");
-				goto exit;
+				pr_err("(fmdrv): Failed to set OFF mode\n");
+				return ret;
 			}
 			msleep(30);
 		}
 		ret = fm_power_up(fmdev, fm_mode);
 		if (ret < 0) {
 			pr_err("(fmdrv): Failed to load firmware\n");
-			goto exit;
+			return ret;
 		}
 	}
 	fmdev->curr_fmmode = fm_mode;
 
 	/* Set default configuration */
 	if (fmdev->curr_fmmode == FM_MODE_RX) {
-		pr_info("(fmdrv): Loading default rx configuration..\n");
+		pr_debug("(fmdrv): Loading default rx configuration..\n");
 		ret = __load_default_rx_configuration(fmdev);
 		if (ret < 0)
 			pr_err("(fmdrv): Failed to load default values\n");
 	}
-exit:
+
 	return ret;
 }
 
@@ -1881,11 +1752,11 @@ exit:
 int fmc_get_mode(struct fmdrv_ops *fmdev, unsigned char *fmmode)
 {
 	if (!test_bit(FM_CORE_READY, &fmdev->flag)) {
-		pr_err("(fmdrv): FM core is not ready");
+		pr_err("(fmdrv): FM core is not ready\n");
 		return -EPERM;
 	}
 	if (fmmode == NULL) {
-		pr_err("(fmdrv): Invalid memory");
+		pr_err("(fmdrv): Invalid memory\n");
 		return -ENOMEM;
 	}
 
@@ -1901,12 +1772,12 @@ static long fm_st_receive(void *arg, struct sk_buff *skb)
 	fmdev = (struct fmdrv_ops *)arg;
 
 	if (skb == NULL) {
-		pr_err("(fmdrv): Invalid SKB received from ST");
+		pr_err("(fmdrv): Invalid SKB received from ST\n");
 		return -EFAULT;
 	}
 
 	if (skb->cb[0] != FM_PKT_LOGICAL_CHAN_NUMBER) {
-		pr_err("(fmdrv): Received SKB (%p) is not FM Channel 8 pkt",
+		pr_err("(fmdrv): Received SKB (%p) is not FM Channel 8 pkt\n",
 			skb);
 		return -EINVAL;
 	}
@@ -1918,7 +1789,8 @@ static long fm_st_receive(void *arg, struct sk_buff *skb)
 	return 0;
 }
 
-/* Called by ST layer to indicate protocol registration completion
+/*
+ * Called by ST layer to indicate protocol registration completion
  * status.
  */
 static void fm_st_reg_comp_cb(void *arg, char data)
@@ -1930,7 +1802,8 @@ static void fm_st_reg_comp_cb(void *arg, char data)
 	complete(&wait_for_fmdrv_reg_comp);
 }
 
-/* This function will be called from FM V4L2 open function.
+/*
+ * This function will be called from FM V4L2 open function.
  * Register with ST driver and initialize driver data.
  */
 int fmc_prepare(struct fmdrv_ops *fmdev)
@@ -1940,8 +1813,8 @@ int fmc_prepare(struct fmdrv_ops *fmdev)
 	int ret = 0;
 
 	if (test_bit(FM_CORE_READY, &fmdev->flag)) {
-		pr_info("(fmdrv): FM Core is already up");
-		goto exit;
+		pr_debug("(fmdrv): FM Core is already up\n");
+		return ret;
 	}
 
 	memset(&fm_st_proto, 0, sizeof(fm_st_proto));
@@ -1956,43 +1829,38 @@ int fmc_prepare(struct fmdrv_ops *fmdev)
 	if (ret == -EINPROGRESS) {
 		init_completion(&wait_for_fmdrv_reg_comp);
 		fmdev->streg_cbdata = -EINPROGRESS;
-		pr_info("(fmdrv): %s waiting for ST reg completion signal",
-		__func__);
+		pr_debug("(fmdrv): %s waiting for ST reg completion signal\n",
+			__func__);
 
 		timeleft =
 		wait_for_completion_timeout(&wait_for_fmdrv_reg_comp,
 		FM_ST_REGISTER_TIMEOUT);
 
 		if (!timeleft) {
-			pr_err("(fmdrv): Timeout(%d sec), didn't get reg"
-			"completion signal from ST",
-			jiffies_to_msecs(FM_ST_REGISTER_TIMEOUT) /
-			1000);
-			ret = -ETIMEDOUT;
-			goto exit;
+			pr_err("(fmdrv): Timeout(%d sec), didn't get reg "
+			"completion signal from ST\n",
+			jiffies_to_msecs(FM_ST_REGISTER_TIMEOUT) / 1000);
+			return -ETIMEDOUT;
 		}
 		if (fmdev->streg_cbdata != 0) {
-			pr_err("(fmdrv): ST reg comp CB called with error"
-			"status %d", fmdev->streg_cbdata);
-			ret = -EAGAIN;
-			goto exit;
+			pr_err("(fmdrv): ST reg comp CB called with error "
+			"status %d\n", fmdev->streg_cbdata);
+			return -EAGAIN;
 		}
 		ret = 0;
 	} else if (ret == -1) {
-		pr_err("(fmdrv): st_register failed %d", ret);
-		ret = -EAGAIN;
-		goto exit;
+		pr_err("(fmdrv): st_register failed %d\n", ret);
+		return -EAGAIN;
 	}
 
 	if (fm_st_proto.write != NULL) {
 		g_st_write = fm_st_proto.write;
 	} else {
-		pr_err("(fmdrv): Failed to get ST write func pointer");
+		pr_err("(fmdrv): Failed to get ST write func pointer\n");
 		ret = st_unregister(ST_FM);
 		if (ret < 0)
-			pr_err("(fmdrv): st_unregister failed %d", ret);
-		ret = -EAGAIN;
-		goto exit;
+			pr_err("(fmdrv): st_unregister failed %d\n", ret);
+		return -EAGAIN;
 	}
 
 	spin_lock_init(&fmdev->rds_buff_lock);
@@ -2034,11 +1902,12 @@ int fmc_prepare(struct fmdrv_ops *fmdev)
 
 	fm_rx_reset_curr_station_info(fmdev);
 	set_bit(FM_CORE_READY, &fmdev->flag);
-exit:
+
 	return ret;
 }
 
-/* This function will be called from FM V4L2 release function.
+/*
+ * This function will be called from FM V4L2 release function.
  * Unregister from ST driver.
  */
 int fmc_release(struct fmdrv_ops *fmdev)
@@ -2046,7 +1915,7 @@ int fmc_release(struct fmdrv_ops *fmdev)
 	int ret;
 
 	if (!test_bit(FM_CORE_READY, &fmdev->flag)) {
-		pr_info("(fmdrv): FM Core is already down");
+		pr_debug("(fmdrv): FM Core is already down\n");
 		return 0;
 	}
 	/* Sevice pending read */
@@ -2063,15 +1932,16 @@ int fmc_release(struct fmdrv_ops *fmdev)
 
 	ret = st_unregister(ST_FM);
 	if (ret < 0)
-		pr_err("(fmdrv): Failed to de-register FM from ST - %d", ret);
+		pr_err("(fmdrv): Failed to de-register FM from ST %d\n", ret);
 	else
-		pr_info("(fmdrv): Successfully unregistered from ST");
+		pr_debug("(fmdrv): Successfully unregistered from ST\n");
 
 	clear_bit(FM_CORE_READY, &fmdev->flag);
 	return ret;
 }
 
-/* Module init function. Ask FM V4L module to register video device.
+/*
+ * Module init function. Ask FM V4L module to register video device.
  * Allocate memory for FM driver context and RX RDS buffer.
  */
 static int __init fm_drv_init(void)
@@ -2079,17 +1949,17 @@ static int __init fm_drv_init(void)
 	struct fmdrv_ops *fmdev = NULL;
 	int ret = -ENOMEM;
 
-	pr_info("(fmdrv): FM driver version %s", FM_DRV_VERSION);
+	pr_debug("(fmdrv): FM driver version %s\n", FM_DRV_VERSION);
 
 	fmdev = kzalloc(sizeof(struct fmdrv_ops), GFP_KERNEL);
 	if (NULL == fmdev) {
-		pr_err("(fmdrv): Can't allocate operation structure memory");
-		goto exit;
+		pr_err("(fmdrv): Can't allocate operation structure memory\n");
+		return ret;
 	}
 	fmdev->rx.rds.buf_size = default_rds_buf * FM_RDS_BLOCK_SIZE;
 	fmdev->rx.rds.buffer = kzalloc(fmdev->rx.rds.buf_size, GFP_KERNEL);
 	if (NULL == fmdev->rx.rds.buffer) {
-		pr_err("(fmdrv): Can't allocate rds ring buffer");
+		pr_err("(fmdrv): Can't allocate rds ring buffer\n");
 		goto rel_dev;
 	}
 
@@ -2099,13 +1969,15 @@ static int __init fm_drv_init(void)
 
 	fmdev->irq_info.fm_int_handlers = g_IntHandlerTable;
 	fmdev->curr_fmmode = FM_MODE_OFF;
-	goto exit;
+	fmdev->tx_data.pwr_lvl = FM_PWR_LVL_DEF;
+	fmdev->tx_data.preemph = FM_TX_PREEMPH_50US;
+	return ret;
 
 rel_rdsbuf:
 	kfree(fmdev->rx.rds.buffer);
 rel_dev:
 	kfree(fmdev);
-exit:
+
 	return ret;
 }
 

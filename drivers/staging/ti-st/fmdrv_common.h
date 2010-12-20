@@ -34,148 +34,104 @@ struct fm_reg_table {
 	char *name;
 };
 
-/* FM register index */
-enum fm_reg_index {
-	/* FM RX registers */
-	STEREO_GET,
-	RSSI_LVL_GET,
-	IF_COUNT_GET,
-	FLAG_GET,
-	RDS_SYNC_GET,
-	RDS_DATA_GET,
-	FREQ_SET,
-	FREQ_GET,
-	AF_FREQ_SET,
-	AF_FREQ_GET,
-	MOST_MODE_SET,
-	MOST_MODE_GET,
-	MOST_BLEND_SET,
-	MOST_BLEND_GET,
-	DEMPH_MODE_SET,
-	DEMPH_MODE_GET,
-	SEARCH_LVL_SET,
-	SEARCH_LVL_GET,
-	RX_BAND_SET,
-	RX_BAND_GET,
-	MUTE_STATUS_SET,
-	MUTE_STATUS_GET,
-	RDS_PAUSE_LVL_SET,
-	RDS_PAUSE_LVL_GET,
-	RDS_PAUSE_DUR_SET,
-	RDS_PAUSE_DUR_GET,
-	RDS_MEM_SET,
-	RDS_MEM_GET,
-	RDS_BLK_B_SET,
-	RDS_BLK_B_GET,
-	RDS_MSK_B_SET,
-	RDS_MSK_B_GET,
-	RDS_PI_MASK_SET,
-	RDS_PI_MASK_GET,
-	RDS_PI_SET,
-	RDS_PI_GET,
-	RDS_SYSTEM_SET,
-	RDS_SYSTEM_GET,
-	INT_MASK_SET,
-	INT_MASK_GET,
-	SEARCH_DIR_SET,
-	SEARCH_DIR_GET,
-	VOLUME_SET,
-	VOLUME_GET,
-	AUDIO_ENABLE_SET,
-	AUDIO_ENABLE_GET,
-	PCM_MODE_SET,
-	PCM_MODE_GET,
-	I2S_MODE_CONFIG_SET,
-	I2S_MODE_CONFIG_GET,
-	POWER_SET,
-	POWER_GET,
-	INTx_CONFIG_SET,
-	INTx_CONFIG_GET,
-	PULL_EN_SET,
-	PULL_EN_GET,
-	HILO_SET,
-	HILO_GET,
-	SWITCH2FREF,
-	FREQ_DRIFT_REPORT,
-	PCE_GET,
-	FIRM_VER_GET,
-	ASIC_VER_GET,
-	ASIC_ID_GET,
-	MAIN_ID_GET,
-	TUNER_MODE_SET,
-	STOP_SEARCH,
-	RDS_CNTRL_SET,
-	WRITE_HARDWARE_REG,
-	CODE_DOWNLOAD,
-	RESET,
-	FM_POWER_MODE,
-	FM_INTERRUPT,
+#define STEREO_GET               0
+#define RSSI_LVL_GET             1
+#define IF_COUNT_GET             2
+#define FLAG_GET                 3
+#define RDS_SYNC_GET             4
+#define RDS_DATA_GET             5
+#define FREQ_SET                 10
+#define AF_FREQ_SET              11
+#define MOST_MODE_SET            12
+#define MOST_BLEND_SET           13
+#define DEMPH_MODE_SET           14
+#define SEARCH_LVL_SET           15
+#define BAND_SET                 16
+#define MUTE_STATUS_SET          17
+#define RDS_PAUSE_LVL_SET        18
+#define RDS_PAUSE_DUR_SET        19
+#define RDS_MEM_SET              20
+#define RDS_BLK_B_SET            21
+#define RDS_MSK_B_SET            22
+#define RDS_PI_MASK_SET          23
+#define RDS_PI_SET               24
+#define RDS_SYSTEM_SET           25
+#define INT_MASK_SET             26
+#define SEARCH_DIR_SET           27
+#define VOLUME_SET               28
+#define AUDIO_ENABLE_SET         29
+#define PCM_MODE_SET             30
+#define I2S_MODE_CONFIG_SET      31
+#define POWER_SET                32
+#define INTX_CONFIG_SET          33
+#define PULL_EN_SET              34
+#define HILO_SET                 35
+#define SWITCH2FREF              36
+#define FREQ_DRIFT_REPORT        37
 
-	/* FM TX registers */
-	CHANL_SET,
-	CHANL_GET,
-	CHANL_BW_SET,
-	CHANL_BW_GET,
-	REF_SET,
-	REF_GET,
-	POWER_ENB_SET,
-	POWER_ATT_SET,
-	POWER_ATT_GET,
-	POWER_LEL_SET,
-	POWER_LEL_GET,
-	AUDIO_DEV_SET,
-	AUDIO_DEV_GET,
-	PILOT_DEV_SET,
-	PILOT_DEV_GET,
-	RDS_DEV_SET,
-	RDS_DEV_GET,
-	PUPD_SET,
-	AUDIO_IO_SET,
-	PREMPH_SET,
-	PREMPH_GET,
-	TX_BAND_SET,
-	TX_BAND_GET,
-	MONO_SET,
-	MONO_GET,
-	MUTE,
-	MPX_LMT_ENABLE,
-	LOCK_GET,
-	REF_ERR_SET,
-	PI_SET,
-	PI_GET,
-	TYPE_SET,
-	TYPE_GET,
-	PTY_SET,
-	PTY_GET,
-	AF_SET,
-	AF_GET,
-	DISPLAY_SIZE_SET,
-	DISPLAY_SIZE_GET,
-	RDS_MODE_SET,
-	RDS_MODE_GET,
-	DISPLAY_MODE_SET,
-	DISPLAY_MODE_GET,
-	LENGHT_SET,
-	LENGHT_GET,
-	TOGGLE_AB_SET,
-	TOGGLE_AB_GET,
-	RDS_REP_SET,
-	RDS_REP_GET,
-	RDS_DATA_SET,
-	RDS_DATA_ENB,
-	TA_SET,
-	TA_GET,
-	TP_SET,
-	TP_GET,
-	DI_SET,
-	DI_GET,
-	MS_SET,
-	MS_GET,
-	PS_SCROLL_SPEED_SET,
-	PS_SCROLL_SPEED_GET,
+#define PCE_GET                  40
+#define FIRM_VER_GET             41
+#define ASIC_VER_GET             42
+#define ASIC_ID_GET              43
+#define MAN_ID_GET               44
+#define TUNER_MODE_SET           45
+#define STOP_SEARCH              46
+#define RDS_CNTRL_SET            47
 
-	FM_REG_MAX_ENTRIES
-};
+#define WRITE_HARDWARE_REG       100
+#define CODE_DOWNLOAD            101
+#define RESET                    102
+
+#define FM_POWER_MODE            254
+#define FM_INTERRUPT             255
+
+/* Transmitter API */
+
+#define CHANL_SET                55
+#define CHANL_BW_SET		56
+#define REF_SET                  57
+#define POWER_ENB_SET            90
+#define POWER_ATT_SET            58
+#define POWER_LEV_SET            59
+#define AUDIO_DEV_SET            60
+#define PILOT_DEV_SET            61
+#define RDS_DEV_SET              62
+#define TX_BAND_SET              65
+#define PUPD_SET                 91
+#define AUDIO_IO_SET             63
+#define PREMPH_SET               64
+#define MONO_SET                 66
+#define MUTE                     92
+#define MPX_LMT_ENABLE           67
+#define PI_SET                   93
+#define ECC_SET                  69
+#define PTY                      70
+#define AF                       71
+#define DISPLAY_MODE             74
+#define RDS_REP_SET              77
+#define RDS_CONFIG_DATA_SET      98
+#define RDS_DATA_SET             99
+#define RDS_DATA_ENB             94
+#define TA_SET                   78
+#define TP_SET                   79
+#define DI_SET                   80
+#define MS_SET                   81
+#define PS_SCROLL_SPEED          82
+#define TX_AUDIO_LEVEL_TEST      96
+#define TX_AUDIO_LEVEL_TEST_THRESHOLD    73
+#define TX_AUDIO_INPUT_LEVEL_RANGE_SET   54
+#define RX_ANTENNA_SELECT        87
+#define I2C_DEV_ADDR_SET         86
+#define REF_ERR_CALIB_PARAM_SET          88
+#define REF_ERR_CALIB_PERIODICITY_SET    89
+#define SOC_INT_TRIGGER                  52
+#define SOC_AUDIO_PATH_SET               83
+#define SOC_PCMI_OVERRIDE                84
+#define SOC_I2S_OVERRIDE         85
+#define RSSI_BLOCK_SCAN_FREQ_SET 95
+#define RSSI_BLOCK_SCAN_START    97
+#define RSSI_BLOCK_SCAN_DATA_GET  5
+#define READ_FMANT_TUNE_VALUE            104
 
 /* SKB helpers */
 struct fm_skb_cb {
@@ -212,42 +168,6 @@ struct fm_event_msg_hdr {
 /* TI's magic number in firmware file */
 #define FM_FW_FILE_HEADER_MAGIC	     0x42535442
 
-/* Firmware header */
-struct bts_header {
-	uint32_t magic;
-	uint32_t version;
-	uint8_t future[24];
-	uint8_t actions[0];
-} __attribute__ ((packed));
-
-/* Firmware action */
-struct bts_action {
-	uint16_t type;
-	uint16_t size;
-	uint8_t data[0];
-} __attribute__ ((packed));
-
-/* Firmware delay */
-struct bts_action_delay {
-	uint32_t msec;
-} __attribute__ ((packed));
-
-#define ACTION_SEND_COMMAND	1
-#define ACTION_WAIT_EVENT	2
-#define ACTION_SERIAL		3
-#define ACTION_DELAY		4
-#define ACTION_REMARKS		6
-
-/* Converts little endian to big endian */
-#define FM_STORE_LE16_TO_BE16(data, value)   \
-	(data = ((value >> 8) | ((value & 0xFF) << 8)))
-#define FM_LE16_TO_BE16(value)   (((value >> 8) | ((value & 0xFF) << 8)))
-
-/* Converts big endian to little endian */
-#define FM_STORE_BE16_TO_LE16(data, value)   \
-	(data = ((value & 0xFF) << 8) | ((value >> 8)))
-#define FM_BE16_TO_LE16(value)   (((value & 0xFF) << 8) | ((value >> 8)))
-
 #define FM_ENABLE   1
 #define FM_DISABLE  0
 
@@ -265,17 +185,14 @@ struct bts_action_delay {
 #define FM_MAL_EVENT		(1 << 10)
 #define FM_POW_ENB_EVENT	(1 << 11)
 
-/* Firmware files of the FM, ASIC ID and
- * ASIC version will be appened to this later
+/*
+ * Firmware files of FM. ASIC ID and ASIC version will be appened to this,
+ * later.
  */
 #define FM_FMC_FW_FILE_START      ("fmc_ch8")
 #define FM_RX_FW_FILE_START       ("fm_rx_ch8")
 #define FM_TX_FW_FILE_START       ("fm_tx_ch8")
 
-#define FM_CHECK_SEND_CMD_STATUS(ret)  \
-	if (ret < 0) {\
-		return ret;\
-	}
 #define FM_UNDEFINED_FREQ		   0xFFFFFFFF
 
 /* Band types */
@@ -300,8 +217,8 @@ struct bts_action_delay {
 #define FM_RX_VOLUME_GAIN_STEP	0x370
 
 /* Mute modes */
-#define FM_MUTE_ON		0
-#define	FM_MUTE_OFF		1
+#define	FM_MUTE_ON		0
+#define FM_MUTE_OFF		1
 #define	FM_MUTE_ATTENUATE	2
 
 #define FM_RX_MUTE_UNMUTE_MODE		0x00
@@ -360,9 +277,9 @@ struct bts_action_delay {
 
 #define FM_RDS_STATUS_ERROR_MASK	0x18
 
-/* Represents an RDS group type & version.
- * There are 15 groups, each group has 2
- * versions: A and B.
+/*
+ * Represents an RDS group type & version.
+ * There are 15 groups, each group has 2 versions: A and B.
  */
 #define FM_RDS_GROUP_TYPE_MASK_0A	    ((unsigned long)1<<0)
 #define FM_RDS_GROUP_TYPE_MASK_0B	    ((unsigned long)1<<1)
@@ -426,19 +343,37 @@ struct bts_action_delay {
 #define FM_RX_IFFREQ_TO_LO_SIDE		0x1
 #define FM_RX_IFFREQ_HILO_AUTOMATIC	0x2
 
-/* Default RX mode configuration. Chip will be configured
+/*
+ * Default RX mode configuration. Chip will be configured
  * with this default values after loading RX firmware.
  */
 #define FM_DEFAULT_RX_VOLUME		10
 #define FM_DEFAULT_RSSI_THRESHOLD	3
+
+/* Range for TX power level in units for dB/uV */
+#define FM_PWR_LVL_LOW			91
+#define FM_PWR_LVL_HIGH			122
+
+/* Chip specific default TX power level value */
+#define FM_PWR_LVL_DEF			4
+
+/* FM TX Pre-emphasis filter values */
+#define FM_TX_PREEMPH_OFF		1
+#define FM_TX_PREEMPH_50US		0
+#define FM_TX_PREEMPH_75US		2
+
+/* FM TX antenna impedence values */
+#define FM_TX_ANT_IMP_50		0
+#define FM_TX_ANT_IMP_200		1
+#define FM_TX_ANT_IMP_500		2
 
 /* Functions exported by FM common sub-module */
 int fmc_prepare(struct fmdrv_ops *);
 int fmc_release(struct fmdrv_ops *);
 
 void fmc_update_region_info(struct fmdrv_ops *, unsigned char);
-int fmc_send_cmd(struct fmdrv_ops *, unsigned char, void *, int,
-			struct completion *, void *, int *);
+int fmc_send_cmd(struct fmdrv_ops *, unsigned char, unsigned short int,
+				void *, int, void *, int *);
 int fmc_is_rds_data_available(struct fmdrv_ops *, struct file *,
 				struct poll_table_struct *);
 int fmc_transfer_rds_from_internal_buff(struct fmdrv_ops *, struct file *,

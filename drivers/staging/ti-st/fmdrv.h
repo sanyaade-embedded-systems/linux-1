@@ -46,6 +46,9 @@
 #define FM_AF_SWITCH_INPROGRESS	      5
 #define FM_CORE_TX_XMITING	      6
 
+#define FM_TUNE_COMPLETE	      0x1
+#define FM_BAND_LIMIT		      0x2
+
 #define FM_DRV_TX_TIMEOUT      (5*HZ)	/* 5 seconds */
 #define FM_DRV_RX_SEEK_TIMEOUT (20*HZ)	/* 20 seconds */
 
@@ -137,7 +140,8 @@ struct fm_rds {
 
 #define FM_RDS_MAX_AF_LIST		25
 
-/* Current RX channel Alternate Frequency cache.
+/*
+ * Current RX channel Alternate Frequency cache.
  * This info is used to switch to other freq (AF)
  * when current channel signal strengh is below RSSI threshold.
  */
@@ -153,6 +157,7 @@ struct fm_rx {
 	struct region_info region;	/* Current selected band */
 	unsigned int curr_freq;	/* Current RX frquency */
 	unsigned char curr_mute_mode;	/* Current mute mode */
+	unsigned char curr_deemphasis_mode; /* Current deemphasis mode */
 	/* RF dependent soft mute mode */
 	unsigned char curr_rf_depend_mute;
 	unsigned short curr_volume;	/* Current volume level */
@@ -178,6 +183,7 @@ struct fm_rx {
 struct tx_rds {
 	unsigned char text_type;
 	unsigned char text[25];
+	unsigned char flag;
 	unsigned int af_freq;
 };
 /*
@@ -192,6 +198,9 @@ struct fmtx_data {
 	unsigned char pwr_lvl;
 	unsigned char xmit_state;
 	unsigned char audio_io;
+	unsigned char region;
+	unsigned short aud_mode;
+	unsigned int preemph;
 	unsigned long tx_frq;
 	struct tx_rds rds;
 };
@@ -227,4 +236,26 @@ struct fmdrv_ops {
 	struct fm_rx rx;	/* FM receiver info */
 	struct fmtx_data tx_data;
 };
+
+/* TODO:
+ * move the following CIDs to videodev2.h upon acceptance
+ */
+
+#define V4L2_CTRL_CLASS_FM_RX 0x009c0000       /* FM Tuner control class */
+/* FM Tuner class control IDs */
+#define V4L2_CID_FM_RX_CLASS_BASE      (V4L2_CTRL_CLASS_FM_RX | 0x900)
+#define V4L2_CID_FM_RX_CLASS           (V4L2_CTRL_CLASS_FM_RX | 1)
+#define V4L2_CID_RSSI_THRESHOLD                (V4L2_CID_FM_RX_CLASS_BASE + 2)
+#define V4L2_CID_TUNE_AF               (V4L2_CID_FM_RX_CLASS_BASE + 3)
+enum v4l2_tune_af {
+	V4L2_FM_AF_OFF          = 0,
+	V4L2_FM_AF_ON           = 1
+};
+#define V4L2_CID_FM_BAND               (V4L2_CID_FM_RX_CLASS_BASE + 1)
+enum v4l2_fm_band {
+	V4L2_FM_BAND_OTHER      = 0,
+	V4L2_FM_BAND_JAPAN      = 1,
+	V4L2_FM_BAND_OIRT       = 2
+};
+
 #endif
