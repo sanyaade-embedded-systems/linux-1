@@ -2986,6 +2986,7 @@ static int _dispc_setup_plane(enum omap_plane plane,
 	u16 frame_height = height;
 	unsigned int field_offset = 0;
 	int bpp = color_mode_to_bpp(color_mode) / 8;
+	unsigned long tiler_width, tiler_height;
 
 	if (paddr == 0)
 		return -EINVAL;
@@ -3075,6 +3076,11 @@ static int _dispc_setup_plane(enum omap_plane plane,
 		}
 	}
 
+	/* Assigning tiler_width and tiler_height with the original before
+	 * the predecimate
+	 */
+	tiler_width = width;
+	tiler_height = height;
 	/* predecimate */
 	width = DIV_ROUND_UP(width, x_decim);
 	height = DIV_ROUND_UP(height, y_decim);
@@ -3105,7 +3111,6 @@ static int _dispc_setup_plane(enum omap_plane plane,
 
 	if (rotation_type == OMAP_DSS_ROT_TILER) {
 		struct tiler_view_orient orient = {0};
-		unsigned long tiler_width = width, tiler_height = height;
 		u8 mir_x = 0, mir_y = 0;
 		u8 tiler_rotation = rotation;
 
