@@ -1190,8 +1190,8 @@ static int hdmi_w1_audio_config_format(u32 name,
 	value |= ((audio_fmt->audio_channel_location) << 16);
 	value &= 0xffffffef;
 	value |= ((audio_fmt->iec) << 4);
-	/* Wakeup */
-	value = 0x1030022;
+	/* TODO: what does this bit do? */
+	value |= 0x20;
 	hdmi_write_reg(name, HDMI_WP_AUDIO_CFG, value);
 	DBG("HDMI_WP_AUDIO_CFG = 0x%x\n", value);
 
@@ -1208,8 +1208,6 @@ static int hdmi_w1_audio_config_dma(u32 name, struct hdmi_audio_dma *audio_dma)
 	value |= audio_dma->block_size;
 	value &= 0xffff00ff;
 	value |= audio_dma->dma_transfer << 8;
-	/*  Wakeup */
-	value = 0x20C0;
 	hdmi_write_reg(name, HDMI_WP_AUDIO_CFG2, value);
 	DBG("HDMI_WP_AUDIO_CFG2 = 0x%x\n", value);
 
@@ -1218,8 +1216,6 @@ static int hdmi_w1_audio_config_dma(u32 name, struct hdmi_audio_dma *audio_dma)
 	value |= audio_dma->dma_or_irq << 9;
 	value &= 0xfffffe00;
 	value |= audio_dma->threshold_value;
-	/*  Wakeup */
-	value = 0x020;
 	hdmi_write_reg(name, HDMI_WP_AUDIO_CTRL, value);
 	DBG("HDMI_WP_AUDIO_CTRL = 0x%x\n", value);
 
@@ -1254,15 +1250,18 @@ static int hdmi_w1_audio_config(void)
 	struct hdmi_audio_dma audio_dma;
 
 	audio_fmt.justify = HDMI_AUDIO_JUSTIFY_LEFT;
-	audio_fmt.sample_number = HDMI_ONEWORD_ONE_SAMPLE;
-	audio_fmt.sample_size = HDMI_SAMPLE_24BITS;
+	audio_fmt.sample_number = HDMI_ONEWORD_TWO_SAMPLES;
+	audio_fmt.sample_size = HDMI_SAMPLE_16BITS;
 	audio_fmt.stereo_channel_enable = HDMI_STEREO_ONECHANNELS;
 	audio_fmt.audio_channel_location = 0x03;
+	audio_fmt.left_before = HDMI_SAMPLE_RIGHT_FIRST;
+	audio_fmt.iec = HDMI_AUDIO_FORMAT_LPCM;
 
 	ret = hdmi_w1_audio_config_format(HDMI_WP, &audio_fmt);
 
 	audio_dma.dma_transfer = 0x20;
-	audio_dma.threshold_value = 0x60;
+	audio_dma.block_size = 0xC0;
+	audio_dma.threshold_value = 0x20;
 	audio_dma.dma_or_irq = HDMI_THRESHOLD_DMA;
 
 	ret = hdmi_w1_audio_config_dma(HDMI_WP, &audio_dma);
