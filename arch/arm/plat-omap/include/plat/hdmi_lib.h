@@ -475,5 +475,7 @@ void hdmi_add_notifier(struct hdmi_notifier *notifier);
 void hdmi_remove_notifier(struct hdmi_notifier *notifier);
 void hdmi_notify_hpd(int state);
 int hdmi_configure_audio_acr(u32 pixel_clock);
+int hdmi_configure_audio_sample_rate(u32 sampleRate);
+int hdmi_configure_audio(void);
 #endif
 
