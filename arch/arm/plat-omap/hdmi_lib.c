@@ -1015,12 +1015,13 @@ static void hdmi_w1_init(struct hdmi_video_timing *t_p,
 	audio_fmt->left_before = HDMI_SAMPLE_LEFT_FIRST;
 	audio_fmt->sample_number = HDMI_ONEWORD_TWO_SAMPLES;
 	audio_fmt->sample_size = HDMI_SAMPLE_16BITS;
+	audio_fmt->signal_block_start_end = HDMI_BLOCK_STARTEND_SIGNAL_ON;
+
 
 	audio_dma->dma_transfer = 0x20;
 	audio_dma->block_size = 0xC0;
 	audio_dma->dma_or_irq = HDMI_THRESHOLD_DMA;
 	audio_dma->threshold_value = 0x20;
-	audio_dma->block_start_end = HDMI_BLOCK_STARTEND_ON;
 }
 
 
@@ -1190,8 +1191,8 @@ static int hdmi_w1_audio_config_format(u32 name,
 	value |= ((audio_fmt->audio_channel_location) << 16);
 	value &= 0xffffffef;
 	value |= ((audio_fmt->iec) << 4);
-	/* TODO: what does this bit do? */
-	value |= 0x20;
+	value &= 0xffffffdf;
+	value |= ((audio_fmt->signal_block_start_end) << 5);
 	hdmi_write_reg(name, HDMI_WP_AUDIO_CFG, value);
 	DBG("HDMI_WP_AUDIO_CFG = 0x%x\n", value);
 
