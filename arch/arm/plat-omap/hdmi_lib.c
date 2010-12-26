@@ -192,6 +192,9 @@ static struct {
 	void __iomem *base_core_av;	/* 1 */
 	void __iomem *base_wp;		/* 2 */
 	struct hdmi_core_infoframe_avi avi_param;
+	struct hdmi_audio_dma audio_dma;
+	struct hdmi_audio_format audio_fmt;
+	struct hdmi_core_audio_config audio_core_cfg;
 	struct mutex mutex;
 	struct list_head notifier_head;
 } hdmi;
@@ -1263,20 +1266,17 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	struct hdmi_video_format VideoFormatParam;
 	struct hdmi_video_interface VideoInterfaceParam;
 	struct hdmi_irq_vector IrqHdmiVectorEnable;
-	struct hdmi_audio_format audio_fmt;
-	struct hdmi_audio_dma audio_dma;
 
 	/* HDMI core */
 	struct hdmi_core_video_config_t v_core_cfg;
-	struct hdmi_core_audio_config audio_cfg;
 	struct hdmi_core_packet_enable_repeat repeat_param;
 
 	hdmi_w1_init(&VideoTimingParam, &VideoFormatParam,
 		&VideoInterfaceParam, &IrqHdmiVectorEnable,
-		&audio_fmt, &audio_dma);
+		&hdmi.audio_fmt, &hdmi.audio_dma);
 
 	hdmi_core_init(cfg->deep_color, &v_core_cfg,
-		&audio_cfg,
+		&hdmi.audio_core_cfg,
 		&hdmi.avi_param,
 		&repeat_param);
 
@@ -1325,8 +1325,8 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	val |= ((0x1f) << 27); /* wakeup */
 	hdmi_write_reg(HDMI_WP, HDMI_WP_VIDEO_SIZE, val);
 #endif
-	r = hdmi_w1_audio_config_format(HDMI_WP, &audio_fmt);
-	r |= hdmi_w1_audio_config_dma(HDMI_WP, &audio_dma);
+	r = hdmi_w1_audio_config_format(HDMI_WP, &hdmi.audio_fmt);
+	r |= hdmi_w1_audio_config_dma(HDMI_WP, &hdmi.audio_dma);
 
 	/****************************** CORE *******************************/
 	/************* configure core video part ********************************/
@@ -1340,7 +1340,7 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 
 	r = hdmi_core_video_config(&v_core_cfg);
 
-	hdmi_core_audio_config(av_name, &audio_cfg);
+	hdmi_core_audio_config(av_name, &hdmi.audio_core_cfg);
 	hdmi_core_audio_mode_enable(av_name);
 
 	/* release software reset in the core */
