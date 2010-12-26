@@ -198,6 +198,7 @@ static struct {
 	struct hdmi_core_audio_config audio_core_cfg;
 	struct mutex mutex;
 	struct list_head notifier_head;
+	u32 pixel_clock;
 } hdmi;
 
 static const u32 hdmi_cts_values[5][3] = { {25200,  28000, 25250},
@@ -700,7 +701,7 @@ static int hdmi_core_audio_config(u32 name,
 		SD2_EN = 0x0;
 		SD1_EN = 0x0;
 		SD0_EN = 0x1;
-	} else if (audio_cfg->layout == LAYOUT_8CH) {
+	} else {
 		SD3_EN = 0x1;
 		SD2_EN = 0x1;
 		SD1_EN = 0x1;
@@ -1349,7 +1350,8 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	v_core_cfg.CoreHdmiDvi = cfg->hdmi_dvi;
 
 	/* Calculate CTS and N */
-	hdmi_configure_audio_acr(cfg->pixel_clock);
+	hdmi.pixel_clock = cfg->pixel_clock;
+	hdmi_configure_audio_acr(hdmi.pixel_clock);
 
 	r = hdmi_core_video_config(&v_core_cfg);
 
@@ -1730,4 +1732,38 @@ int hdmi_configure_audio_acr(u32 pixel_clock)
 	hdmi.audio_core_cfg.cts = cts;
 
 	return 0;
+}
+
+int hdmi_configure_audio_sample_rate(u32 sampleRate)
+{
+	int err = 0;
+
+	switch (sampleRate) {
+	case 48000:
+		hdmi.audio_core_cfg.fs = FS_48000;
+		break;
+	case 44100:
+		hdmi.audio_core_cfg.fs = FS_44100;
+		break;
+	case 32000:
+		hdmi.audio_core_cfg.fs = FS_32000;
+		break;
+	default:
+		return -EINVAL;
+	}
+	err = hdmi_configure_audio_acr(hdmi.pixel_clock);
+
+	return err;
+}
+
+int hdmi_configure_audio(void)
+{
+	int r = 0;
+	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 0, 31, 31);
+	r = hdmi_w1_audio_config_format(HDMI_WP, &hdmi.audio_fmt);
+	r |= hdmi_w1_audio_config_dma(HDMI_WP, &hdmi.audio_dma);
+	r |= hdmi_core_audio_config(HDMI_CORE_AV, &hdmi.audio_core_cfg);
+	r |= hdmi_core_audio_mode_enable(HDMI_CORE_AV);
+	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 1, 31, 31);
+	return r;
 }
