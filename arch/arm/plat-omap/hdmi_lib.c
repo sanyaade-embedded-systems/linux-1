@@ -200,6 +200,12 @@ static struct {
 	struct list_head notifier_head;
 } hdmi;
 
+static const u32 hdmi_cts_values[5][3] = { {25200,  28000, 25250},
+					{27000,  30000, 27000},
+					{54000,  60000, 54000},
+					{74250,  82500, 74250},
+					{148500, 165000, 148500} };
+
 static inline void hdmi_write_reg(u32 base, u16 idx, u32 val)
 {
 	void __iomem *b;
@@ -1342,6 +1348,9 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 
 	v_core_cfg.CoreHdmiDvi = cfg->hdmi_dvi;
 
+	/* Calculate CTS and N */
+	hdmi_configure_audio_acr(cfg->pixel_clock);
+
 	r = hdmi_core_video_config(&v_core_cfg);
 
 	hdmi_core_audio_config(av_name, &hdmi.audio_core_cfg);
@@ -1637,4 +1646,88 @@ void hdmi_notify_hpd(int state)
 		if (cur->hpd_notifier)
 			cur->hpd_notifier(state, cur->private_data);
 	}
+}
+
+int hdmi_configure_audio_acr(u32 pixel_clock)
+{
+	int fs_idx, clk_idx, fs;
+	u32 n;
+	u32 cts;
+	u32 r;
+	u32 deep_color = 0;
+
+	switch (hdmi.audio_core_cfg.fs) {
+	case FS_32000:
+		fs_idx = 0;
+		fs = 32000;
+		n = 4096;
+		break;
+	case FS_44100:
+		fs_idx = 1;
+		fs = 44100;
+		n = 6272;
+		break;
+	case FS_48000:
+		fs_idx = 2;
+		fs = 48000;
+		n = 6144;
+		break;
+	case FS_88200:
+	case FS_96000:
+	case FS_176400:
+	case FS_192000:
+	case FS_NOT_INDICATED:
+	default:
+		n = 0;
+		return -EINVAL;
+		break;
+	}
+
+	hdmi.audio_core_cfg.n = n;
+
+	if (omap_rev() == OMAP4430_REV_ES1_0)
+		deep_color = 100;
+	else {
+		r = hdmi_read_reg(HDMI_WP, HDMI_WP_VIDEO_CFG);
+		switch (r&0x03) {
+		case 1:
+			deep_color = 100;
+			break;
+		case 2:
+			deep_color = 125;
+			break;
+		case 3:
+			deep_color = 150;
+			break;
+		case 4:
+			deep_color = 100;
+			break;
+		}
+	}
+
+	switch (pixel_clock) {
+	case 25200:
+		clk_idx = 0;
+		break;
+	case 27000:
+		clk_idx = 1;
+		break;
+	case 54000:
+		clk_idx = 2;
+		break;
+	case 74250:
+		clk_idx = 3;
+		break;
+	case 148500:
+		clk_idx = 4;
+	break;
+	default:
+		return -EINVAL;
+		break;
+	}
+
+	cts = hdmi_cts_values[clk_idx][fs_idx]*deep_color/100;
+	hdmi.audio_core_cfg.cts = cts;
+
+	return 0;
 }
