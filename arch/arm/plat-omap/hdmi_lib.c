@@ -625,6 +625,7 @@ static int hdmi_core_audio_config(u32 name,
 	u8 DBYTE1, DBYTE2, DBYTE4, CHSUM;
 	u8 size1;
 	u16 size0;
+	u32 r;
 
 	/* CTS_MODE */
 	WR_REG_32(name, HDMI_CORE_AV__ACR_CTRL,
@@ -651,19 +652,19 @@ static int hdmi_core_audio_config(u32 name,
 				(audio_cfg->aud_par_busclk >> 8), 7, 0);
 	REG_FLD_MOD(name, HDMI_CORE_AV__AUD_PAR_BUSCLK_3,
 				(audio_cfg->aud_par_busclk >> 16), 7, 0);
-	/* FS_OVERRIDE = 1 because // input is used */
-	WR_REG_32(name, HDMI_CORE_AV__SPDIF_CTRL, 0x1);
-	 /* refer to table209 p192 in func core spec */
-	WR_REG_32(name, HDMI_CORE_AV__I2S_CHST4, audio_cfg->fs);
+	/* FS_OVERRIDE = 1 because parallel input is used. */
+	REG_FLD_MOD(name, HDMI_CORE_AV__SPDIF_CTRL, 1, 1, 1);
+	 /* refer to table171 p122 in func core spec*/
+	REG_FLD_MOD(name, HDMI_CORE_AV__I2S_CHST4, audio_cfg->fs, 3, 0);
 
 	/*
 	 * audio config is mainly due to wrapper hardware connection
-	 * and so are fixe (hardware) I2S deserializer is by-pass
+	 * and so are fixed (hardware) I2S deserializer is by-passed
 	 * so I2S configuration is not needed (I2S don't care).
-	 * Wrapper are directly connected at the I2S deserialiser
-	 * output level so some register call I2S... need to be
-	 * programm to configure this parallel bus, there configuration
-	 * is also fixe and due to the hardware connection (I2S hardware)
+	 * Wrapper is directly connected at the I2S deserialiser
+	 * output level so some registers call I2S and need to be
+	 * programmed to configure this parallel bus, there configuration
+	 * is also fixed and due to the hardware connection (I2S hardware)
 	 */
 	WR_REG_32(name, HDMI_CORE_AV__I2S_IN_CTRL,
 		(0 << 7) |	/* HBRA_ON */
@@ -675,10 +676,11 @@ static int hdmi_core_audio_config(u32 name,
 		(0 << 1) |	/* I2S_DIR, 0xdon't care */
 		(0));		/* I2S_SHIFT, 0x0 don't care */
 
-	WR_REG_32(name, HDMI_CORE_AV__I2S_CHST5, /* mode only */
-		(0 << 4) |	/* FS_ORIG */
-		(1 << 1) |	/* I2S lenght 16bits (refer doc) */
-		(0));		/* Audio sample lenght */
+	r = hdmi_read_reg(name, HDMI_CORE_AV__I2S_CHST5);
+	r = FLD_MOD(r, audio_cfg->fs, 7, 4); /* FS_ORIG */
+	r = FLD_MOD(r, 1, 3, 1); /* I2S audio sample word length */
+	r = FLD_MOD(r, 0, 0, 0); /* IS2 max audio sample word length */
+	WR_REG_32(name, HDMI_CORE_AV__I2S_CHST5, r);
 
 	WR_REG_32(name, HDMI_CORE_AV__I2S_IN_LEN, /* mode only */
 		(0xb));		/* In length b=>24bits i2s hardware */
@@ -696,15 +698,15 @@ static int hdmi_core_audio_config(u32 name,
 		SD0_EN = 0x1;
 	}
 
-	WR_REG_32(name, HDMI_CORE_AV__AUD_MODE,
-		(SD3_EN << 7) |	/* SD3_EN */
-		(SD2_EN << 6) |	/* SD2_EN */
-		(SD1_EN << 5) |	/* SD1_EN */
-		(SD0_EN << 4) |	/* SD0_EN */
-		(0 << 3) |	/* DSD_EN */
-		(1 << 2) |	/* AUD_PAR_EN */
-		(0 << 1) |	/* SPDIF_EN */
-		(0));		/* AUD_EN */
+	r = hdmi_read_reg(name, HDMI_CORE_AV__AUD_MODE);
+	r = FLD_MOD(r, SD3_EN, 7, 7); /* SD3_EN */
+	r = FLD_MOD(r, SD2_EN, 6, 6); /* SD2_EN */
+	r = FLD_MOD(r, SD1_EN, 5, 5); /* SD1_EN */
+	r = FLD_MOD(r, SD0_EN, 4, 4); /* SD0_EN */
+	r = FLD_MOD(r, 0, 3, 3); /* DSD_EN */
+	r = FLD_MOD(r, 1, 2, 2); /* AUD_PAR_EN */
+	r = FLD_MOD(r, 0, 1, 1); /* SPDIF_EN */
+	WR_REG_32(name, HDMI_CORE_AV__AUD_MODE, r);
 
 	/* Audio info frame setting refer to CEA-861-d spec p75 */
 	/* 0x0 because on HDMI CT must be = 0 / -1 because 1 is for 2 channel */
