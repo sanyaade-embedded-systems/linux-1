@@ -497,6 +497,10 @@ static void hdmi_core_init(enum hdmi_deep_mode deep_color,
 	audio_cfg->if_channel_number = 2;
 	audio_cfg->if_sample_size = IF_NO_PER_SAMPLE;
 	audio_cfg->if_audio_channel_location = HDMI_CEA_CODE_00;
+	audio_cfg->i2schst_max_word_length = I2S_CHST_WORD_MAX_20;
+	audio_cfg->i2schst_word_length = I2S_CHST_WORD_16_BITS;
+	audio_cfg->i2s_in_bit_length = I2S_IN_LENGTH_16;
+	audio_cfg->i2s_justify = HDMI_AUDIO_JUSTIFY_LEFT;
 	if (omap_rev() == OMAP4430_REV_ES1_0) {
 		audio_cfg->aud_par_busclk = (((128 * 31) - 1) << 8);
 		audio_cfg->cts_mode = CTS_MODE_HW;
@@ -679,18 +683,18 @@ static int hdmi_core_audio_config(u32 name,
 		(0 << 5) |	/* CBIT_ORDER */
 		(0 << 4) |	/* VBit, 0x0=PCM, 0x1=compressed */
 		(0 << 3) |	/* I2S_WS, 0xdon't care */
-		(0 << 2) |	/* I2S_JUST, 0=left- 1=right-justified */
+		(audio_cfg->i2s_justify << 2) | /* I2S_JUST*/
 		(0 << 1) |	/* I2S_DIR, 0xdon't care */
 		(0));		/* I2S_SHIFT, 0x0 don't care */
 
 	r = hdmi_read_reg(name, HDMI_CORE_AV__I2S_CHST5);
 	r = FLD_MOD(r, audio_cfg->fs, 7, 4); /* FS_ORIG */
-	r = FLD_MOD(r, 1, 3, 1); /* I2S audio sample word length */
-	r = FLD_MOD(r, 0, 0, 0); /* IS2 max audio sample word length */
+	r = FLD_MOD(r, audio_cfg->i2schst_word_length, 3, 1);
+	r = FLD_MOD(r, audio_cfg->i2schst_max_word_length, 0, 0);
 	WR_REG_32(name, HDMI_CORE_AV__I2S_CHST5, r);
 
-	WR_REG_32(name, HDMI_CORE_AV__I2S_IN_LEN, /* mode only */
-		(0xb));		/* In length b=>24bits i2s hardware */
+	REG_FLD_MOD(name, HDMI_CORE_AV__I2S_IN_LEN,
+			audio_cfg->i2s_in_bit_length, 3, 0);
 
 	/* channel enable depend of the layout */
 	if (audio_cfg->layout == LAYOUT_2CH) {
@@ -1716,6 +1720,38 @@ int hdmi_configure_audio_sample_rate(u32 sampleRate)
 	err = hdmi_configure_audio_acr(hdmi.pixel_clock);
 
 	return err;
+}
+
+int hdmi_configure_audio_sample_size(u32 sampleSize)
+{
+	hdmi.audio_core_cfg.if_sample_size = IF_NO_PER_SAMPLE;
+	hdmi.audio_fmt.left_before = HDMI_SAMPLE_LEFT_FIRST;
+
+	switch (sampleSize) {
+	case HDMI_SAMPLE_16BITS:
+		hdmi.audio_core_cfg.i2schst_max_word_length =
+			I2S_CHST_WORD_MAX_20;
+		hdmi.audio_core_cfg.i2schst_word_length = I2S_CHST_WORD_16_BITS;
+		hdmi.audio_core_cfg.i2s_in_bit_length = I2S_IN_LENGTH_16;
+		hdmi.audio_core_cfg.i2s_justify = HDMI_AUDIO_JUSTIFY_LEFT;
+		hdmi.audio_fmt.sample_number = HDMI_ONEWORD_TWO_SAMPLES;
+		hdmi.audio_fmt.sample_size = HDMI_SAMPLE_16BITS;
+		hdmi.audio_fmt.justify = HDMI_AUDIO_JUSTIFY_LEFT;
+		break;
+	case HDMI_SAMPLE_24BITS:
+		hdmi.audio_core_cfg.i2schst_max_word_length =
+			I2S_CHST_WORD_MAX_24;
+		hdmi.audio_core_cfg.i2schst_word_length = I2S_CHST_WORD_24_BITS;
+		hdmi.audio_core_cfg.i2s_in_bit_length = I2S_IN_LENGTH_24;
+		hdmi.audio_core_cfg.i2s_justify = HDMI_AUDIO_JUSTIFY_RIGHT;
+		hdmi.audio_fmt.sample_number = HDMI_ONEWORD_ONE_SAMPLE;
+		hdmi.audio_fmt.sample_size = HDMI_SAMPLE_24BITS;
+		hdmi.audio_fmt.justify = HDMI_AUDIO_JUSTIFY_RIGHT;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
 }
 
 int hdmi_configure_audio(void)
