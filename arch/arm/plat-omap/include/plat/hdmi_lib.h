@@ -517,6 +517,7 @@ void hdmi_notify_hpd(int state);
 int hdmi_configure_audio_acr(u32 pixel_clock);
 int hdmi_configure_audio_sample_rate(u32 sampleRate);
 int hdmi_configure_audio_sample_size(u32 sampleSize);
+int hdmi_configure_audio_channels(u32, enum hdmi_cea_code);
 int hdmi_configure_audio(void);
 #endif
 
