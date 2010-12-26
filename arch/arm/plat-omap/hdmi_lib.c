@@ -201,12 +201,6 @@ static struct {
 	u32 pixel_clock;
 } hdmi;
 
-static const u32 hdmi_cts_values[5][3] = { {25200,  28000, 25250},
-					{27000,  30000, 27000},
-					{54000,  60000, 54000},
-					{74250,  82500, 74250},
-					{148500, 165000, 148500} };
-
 static inline void hdmi_write_reg(u32 base, u16 idx, u32 val)
 {
 	void __iomem *b;
@@ -1656,41 +1650,12 @@ void hdmi_notify_hpd(int state)
 
 int hdmi_configure_audio_acr(u32 pixel_clock)
 {
-	int fs_idx, clk_idx, fs;
-	u32 n;
-	u32 cts;
+	int fs;
+	u32 n, cts;
 	u32 r;
 	u32 deep_color = 0;
 
-	switch (hdmi.audio_core_cfg.fs) {
-	case FS_32000:
-		fs_idx = 0;
-		fs = 32000;
-		n = 4096;
-		break;
-	case FS_44100:
-		fs_idx = 1;
-		fs = 44100;
-		n = 6272;
-		break;
-	case FS_48000:
-		fs_idx = 2;
-		fs = 48000;
-		n = 6144;
-		break;
-	case FS_88200:
-	case FS_96000:
-	case FS_176400:
-	case FS_192000:
-	case FS_NOT_INDICATED:
-	default:
-		n = 0;
-		return -EINVAL;
-		break;
-	}
-
-	hdmi.audio_core_cfg.n = n;
-
+	/* Deep color mode */
 	if (omap_rev() == OMAP4430_REV_ES1_0)
 		deep_color = 100;
 	else {
@@ -1711,28 +1676,52 @@ int hdmi_configure_audio_acr(u32 pixel_clock)
 		}
 	}
 
-	switch (pixel_clock) {
-	case 25200:
-		clk_idx = 0;
+	/* Determine N */
+	/* Instead of using a table we handle following cases:
+		30 bits/pixel
+			54.054 MHz / 32kHz or 48 kHz: 8192
+			74.250 MHz / 32kHz or 48 kHz: 8192
+		32kHz   => 4096
+		44.1kHz => 6272
+		48kHz   => 6144
+	*/
+	switch (hdmi.audio_core_cfg.fs) {
+	case FS_32000:
+		fs = 32000;
+		if ((deep_color == 125) && ((pixel_clock == 54054)
+				|| (pixel_clock == 74250)))
+			n = 8192;
+		else
+			n = 4096;
 		break;
-	case 27000:
-		clk_idx = 1;
+	case FS_44100:
+		fs = 44100;
+		n = 6272;
 		break;
-	case 54000:
-		clk_idx = 2;
+	case FS_48000:
+		fs = 48000;
+		if ((deep_color == 125) && ((pixel_clock == 54054)
+				|| (pixel_clock == 74250)))
+			n = 8192;
+		else
+			n = 6144;
 		break;
-	case 74250:
-		clk_idx = 3;
-		break;
-	case 148500:
-		clk_idx = 4;
-	break;
+	case FS_88200:
+	case FS_96000:
+	case FS_176400:
+	case FS_192000:
+	case FS_NOT_INDICATED:
 	default:
+		n = 0;
 		return -EINVAL;
 		break;
 	}
 
-	cts = hdmi_cts_values[clk_idx][fs_idx]*deep_color/100;
+	hdmi.audio_core_cfg.n = n;
+
+	/* Process CTS */
+	cts = pixel_clock*(n/128)*deep_color / (fs/10);
+
 	hdmi.audio_core_cfg.cts = cts;
 
 	return 0;
