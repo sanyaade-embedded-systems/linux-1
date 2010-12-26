@@ -1792,6 +1792,21 @@ int hdmi_configure_audio_sample_size(u32 sampleSize)
 	return 0;
 }
 
+int hdmi_configure_audio_channels(u32 channel_nr,
+		enum hdmi_cea_code channel_location)
+{
+	if (channel_nr != 2)
+		return -EINVAL;
+	else {
+		hdmi.audio_fmt.stereo_channel_enable = HDMI_STEREO_ONECHANNELS;
+		hdmi.audio_fmt.audio_channel_location = 0x03;
+		hdmi.audio_core_cfg.layout = LAYOUT_2CH;
+		hdmi.audio_core_cfg.if_channel_number = channel_nr;
+		hdmi.audio_core_cfg.if_audio_channel_location =
+				channel_location;
+	}
+	return 0;
+}
 int hdmi_configure_audio(void)
 {
 	int r = 0;
