@@ -115,9 +115,18 @@ struct hdmi_core_video_config_t {
 	enum hdmi_core_tclkselclkmult	CoreTclkSelClkMult;
 };
 
-enum hdmi_core_fs {
-	FS_32000 = 0,
-	FS_44100 = 1
+/* Sample frequency encoded in audio channel status bits
+ * See HDMI 1.3a specification section 7.3. Bit order is reversed.
+ */
+ enum hdmi_core_fs {
+	FS_32000 = 0x3,
+	FS_44100 = 0x0,
+	FS_48000 = 0x2,
+	FS_88200 = 0x8,
+	FS_96000 = 0xA,
+	FS_176400 = 0xC,
+	FS_192000 = 0xE,
+	FS_NOT_INDICATED = 0x1
 };
 
 enum hdmi_core_layout {
@@ -465,6 +474,6 @@ int hdmi_configure_lrfr(enum hdmi_range, int force_set);
 void hdmi_add_notifier(struct hdmi_notifier *notifier);
 void hdmi_remove_notifier(struct hdmi_notifier *notifier);
 void hdmi_notify_hpd(int state);
-
+int hdmi_configure_audio_acr(u32 pixel_clock);
 #endif
 
