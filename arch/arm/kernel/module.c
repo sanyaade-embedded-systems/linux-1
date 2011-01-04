@@ -283,6 +283,7 @@ static const Elf_Shdr *find_mod_section(const Elf32_Ehdr *hdr,
 	return NULL;
 }
 
+extern void fixup_pv_table(const void *, unsigned long);
 extern void fixup_smp(const void *, unsigned long);
 
 int module_finalize(const Elf32_Ehdr *hdr, const Elf_Shdr *sechdrs,
@@ -333,9 +334,11 @@ int module_finalize(const Elf32_Ehdr *hdr, const Elf_Shdr *sechdrs,
 					         maps[i].txt_sec->sh_addr,
 					         maps[i].txt_sec->sh_size);
 #endif
-	s = find_mod_section(hdr, sechdrs, ".alt.smp.init");
-	if (s && !is_smp())
-		fixup_smp((void *)s->sh_addr, s->sh_size);
+#ifdef CONFIG_ARM_PATCH_PHYS_VIRT
+	s = find_mod_section(hdr, sechdrs, ".pv_table");
+	if (s)
+		fixup_pv_table((void *)s->sh_addr, s->sh_size);
+#endif
 	return 0;
 }
 
