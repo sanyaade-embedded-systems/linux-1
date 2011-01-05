@@ -1848,8 +1848,10 @@ int omapfb_realloc_fbmem(struct fb_info *fbi, unsigned long size, int type)
 			old_size == size && old_type == type)
 		return 0;
 
-	if (display && display->driver->sync)
-			display->driver->sync(display);
+	if (display && display->driver->sync &&
+		display->driver->get_update_mode(display) ==
+						OMAP_DSS_UPDATE_MANUAL)
+		display->driver->sync(display);
 
 	omapfb_free_fbmem(fbi);
 
@@ -1870,7 +1872,7 @@ int omapfb_realloc_fbmem(struct fb_info *fbi, unsigned long size, int type)
 		return r;
 	}
 
-	if (old_size == size)
+	if (old_size == size && ofbi->rotation_type != OMAP_DSS_ROT_TILER)
 		return 0;
 
 	if (old_size == 0) {
@@ -1897,6 +1899,12 @@ int omapfb_realloc_fbmem(struct fb_info *fbi, unsigned long size, int type)
 			r = setup_vrfb_rotation(fbi);
 			if (r)
 				goto err;
+		} else {
+			r = omapfb_apply_changes(fbi, 0);
+			if (r) {
+				DBG("omapfb_apply_changes failed\n");
+				goto err;
+			}
 		}
 	}
 
