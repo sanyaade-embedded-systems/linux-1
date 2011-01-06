@@ -873,6 +873,15 @@ config SENSORS_TMP421
 	  This driver can also be built as a module.  If so, the module
 	  will be called tmp421.
 
+config SENSORS_TWL6030_HOTDIE
+	tristate "Texas Instruments TWL6030 HOTDIE"
+	depends on I2C && TWL4030_CORE
+	help
+	  If you say yes here you get support for TWL6030 Hotdie,
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called twl6030_hotdie.
+
 config SENSORS_VIA_CPUTEMP
 	tristate "VIA CPU temperature sensor"
 	depends on X86

@@ -1066,7 +1066,6 @@ static void serial_omap_rx_timeout(unsigned long uart_no)
 	struct uart_omap_port *up = ui[uart_no];
 	unsigned int curr_dma_pos, curr_transmitted_size;
 
-	spin_lock(&(up->uart_dma.rx_lock));
 	curr_dma_pos = omap_get_dma_dst_pos(up->uart_dma.rx_dma_channel);
 	if ((curr_dma_pos == up->uart_dma.prev_rx_dma_pos) ||
 			     (curr_dma_pos == 0)) {
@@ -1079,7 +1078,7 @@ static void serial_omap_rx_timeout(unsigned long uart_no)
 			up->ier |= UART_IER_RDI;
 			serial_out(up, UART_IER, up->ier);
 		}
-		goto out;
+		return;
 	}
 
 	curr_transmitted_size = curr_dma_pos -
@@ -1091,48 +1090,21 @@ static void serial_omap_rx_timeout(unsigned long uart_no)
 			up->uart_dma.rx_buf_dma_phys),
 			curr_transmitted_size);
 	tty_flip_buffer_push(up->port.state->port.tty);
-	up->uart_dma.prev_rx_dma_pos = curr_dma_pos;
 	if (up->uart_dma.rx_buf_size +
-			up->uart_dma.rx_buf_dma_phys != curr_dma_pos)
-		mod_timer(&up->uart_dma.rx_timer, jiffies +
-			usecs_to_jiffies(up->uart_dma.rx_timeout));
+			up->uart_dma.rx_buf_dma_phys == curr_dma_pos) {
+		omap_start_dma(up->uart_dma.rx_dma_channel);
+		up->uart_dma.prev_rx_dma_pos = up->uart_dma.rx_buf_dma_phys;
+	} else  {
+		up->uart_dma.prev_rx_dma_pos = curr_dma_pos;
+	}
 
+	mod_timer(&up->uart_dma.rx_timer, jiffies +
+		usecs_to_jiffies(up->uart_dma.rx_timeout));
 	up->port_activity = jiffies;
-out:
-	spin_unlock(&(up->uart_dma.rx_lock));
 }
 
 static void uart_rx_dma_callback(int lch, u16 ch_status, void *data)
 {
-	struct uart_omap_port *up = (struct uart_omap_port *)data;
-	unsigned int curr_dma_pos, curr_transmitted_size;
-	int ret = 0;
-
-	spin_lock(&(up->uart_dma.rx_lock));
-	del_timer(&up->uart_dma.rx_timer);
-	curr_dma_pos = omap_get_dma_dst_pos(up->uart_dma.rx_dma_channel);
-	if(curr_dma_pos != up->uart_dma.prev_rx_dma_pos) {
-		curr_transmitted_size = curr_dma_pos -
-						up->uart_dma.prev_rx_dma_pos;
-		tty_insert_flip_string(up->port.state->port.tty,
-				up->uart_dma.rx_buf +
-				(up->uart_dma.prev_rx_dma_pos -
-				up->uart_dma.rx_buf_dma_phys),
-				curr_transmitted_size);
-
-		tty_flip_buffer_push(up->port.state->port.tty);
-		up->port.icount.rx += curr_transmitted_size;
-	}
-
-	spin_unlock(&(up->uart_dma.rx_lock));
-	ret = serial_omap_start_rxdma(up);
-	if (ret < 0) {
-		serial_omap_stop_rxdma(up);
-		up->ier |= UART_IER_RDI;
-		serial_out(up, UART_IER, up->ier);
-	}
-
-	up->port_activity = jiffies;
 	return;
 }
 
@@ -1369,6 +1341,11 @@ int omap_uart_active(int num)
 
 	/* Any rx activity? */
 	if (status & UART_LSR_DR)
+		return 1;
+
+	/* Check if DMA channels are active */
+	if (up->uart_dma.rx_dma_channel != OMAP_UART_DMA_CH_FREE ||
+		up->uart_dma.tx_dma_channel != OMAP_UART_DMA_CH_FREE)
 		return 1;
 
 	return 0;
