@@ -1013,13 +1013,13 @@ static void hdmi_w1_init(struct hdmi_video_timing *t_p,
 	audio_fmt->iec = HDMI_AUDIO_FORMAT_LPCM;
 	audio_fmt->justify = HDMI_AUDIO_JUSTIFY_LEFT;
 	audio_fmt->left_before = HDMI_SAMPLE_LEFT_FIRST;
-	audio_fmt->sample_number = HDMI_ONEWORD_ONE_SAMPLE;
-	audio_fmt->sample_size = HDMI_SAMPLE_24BITS;
+	audio_fmt->sample_number = HDMI_ONEWORD_TWO_SAMPLES;
+	audio_fmt->sample_size = HDMI_SAMPLE_16BITS;
 
-	audio_dma->dma_transfer = 0x10;
+	audio_dma->dma_transfer = 0x20;
 	audio_dma->block_size = 0xC0;
 	audio_dma->dma_or_irq = HDMI_THRESHOLD_DMA;
-	audio_dma->threshold_value = 0x10;
+	audio_dma->threshold_value = 0x20;
 	audio_dma->block_start_end = HDMI_BLOCK_STARTEND_ON;
 }
 
@@ -1242,33 +1242,6 @@ static void hdmi_w1_audio_stop(void)
 	REG_FLD_MOD(HDMI_WP, HDMI_WP_AUDIO_CTRL, 0, 30, 30);
 }
 
-static int hdmi_w1_audio_config(void)
-{
-	int ret;
-
-	struct hdmi_audio_format audio_fmt;
-	struct hdmi_audio_dma audio_dma;
-
-	audio_fmt.justify = HDMI_AUDIO_JUSTIFY_LEFT;
-	audio_fmt.sample_number = HDMI_ONEWORD_TWO_SAMPLES;
-	audio_fmt.sample_size = HDMI_SAMPLE_16BITS;
-	audio_fmt.stereo_channel_enable = HDMI_STEREO_ONECHANNELS;
-	audio_fmt.audio_channel_location = 0x03;
-	audio_fmt.left_before = HDMI_SAMPLE_RIGHT_FIRST;
-	audio_fmt.iec = HDMI_AUDIO_FORMAT_LPCM;
-
-	ret = hdmi_w1_audio_config_format(HDMI_WP, &audio_fmt);
-
-	audio_dma.dma_transfer = 0x20;
-	audio_dma.block_size = 0xC0;
-	audio_dma.threshold_value = 0x20;
-	audio_dma.dma_or_irq = HDMI_THRESHOLD_DMA;
-
-	ret = hdmi_w1_audio_config_dma(HDMI_WP, &audio_dma);
-
-	return ret;
-}
-
 int hdmi_lib_enable(struct hdmi_config *cfg)
 {
 	u32 r, deep_color = 0;
@@ -1343,7 +1316,8 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	val |= ((0x1f) << 27); /* wakeup */
 	hdmi_write_reg(HDMI_WP, HDMI_WP_VIDEO_SIZE, val);
 #endif
-	hdmi_w1_audio_config();
+	r = hdmi_w1_audio_config_format(HDMI_WP, &audio_fmt);
+	r |= hdmi_w1_audio_config_dma(HDMI_WP, &audio_dma);
 
 	/****************************** CORE *******************************/
 	/************* configure core video part ********************************/
@@ -1357,7 +1331,7 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 
 	/* hnagalla */
 	audio_cfg.fs = 0x02;
-	audio_cfg.if_fs = 0x00;
+	audio_cfg.if_fs = IF_FS_NO;
 	audio_cfg.n = 6144;
 
 	r = hdmi_read_reg(HDMI_WP, HDMI_WP_VIDEO_CFG);
@@ -1384,8 +1358,8 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 		audio_cfg.cts = (cfg->pixel_clock * deep_color) / 100;
 
 	/* audio channel */
-	audio_cfg.if_sample_size = 0x0;
-	audio_cfg.layout = 0;
+	audio_cfg.if_sample_size = IF_NO_PER_SAMPLE;
+	audio_cfg.layout = LAYOUT_2CH;
 	audio_cfg.if_channel_number = 2;
 	audio_cfg.if_audio_channel_location = 0x00;
 
