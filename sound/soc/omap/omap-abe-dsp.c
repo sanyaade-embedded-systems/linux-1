@@ -2241,8 +2241,10 @@ static int aess_suspend(struct device *dev)
 
 	pm_runtime_get_sync(&pdev->dev);
 
-	if (!abe->active && !abe_check_activity())
-		dev_err(&pdev->dev, "Suspend in a middle of ABE activity !!!\n");
+	if (abe->active && abe_check_activity()) {
+		dev_dbg(&pdev->dev, "Suspend in a middle of ABE activity!\n");
+		goto no_suspend;
+	}
 
 	/* TODO: Find a better way to save/retore gains after dor OFF mode */
 	abe_mute_gain(MIXSDT, MIX_SDT_INPUT_UP_MIXER);
@@ -2258,6 +2260,7 @@ static int aess_suspend(struct device *dev)
 	abe_mute_gain(MIXVXREC, MIX_VXREC_INPUT_MM_DL);
 	abe_mute_gain(MIXVXREC, MIX_VXREC_INPUT_VX_UL);
 
+no_suspend:
 	pm_runtime_put_sync(&pdev->dev);
 
 	if (pdata->get_context_loss_count)
@@ -2281,6 +2284,11 @@ static int aess_resume(struct device *dev)
 
 	pm_runtime_get_sync(&pdev->dev);
 
+	if (abe->active && abe_check_activity()) {
+		dev_dbg(&pdev->dev, "Resume in a middle of ABE activity!\n");
+		goto no_resume;
+	}
+
 	if (loss_count != abe->loss_count)
 		abe_reload_fw();
 
@@ -2298,14 +2306,15 @@ static int aess_resume(struct device *dev)
 	abe_unmute_gain(MIXVXREC, MIX_VXREC_INPUT_MM_DL);
 	abe_unmute_gain(MIXVXREC, MIX_VXREC_INPUT_VX_UL);
 
+no_resume:
 	pm_runtime_put_sync(&pdev->dev);
 
 	return 0;
 }
 
 #else
-#define aess_runtime_suspend	NULL
-#define aess_runtime_resume	NULL
+#define aess_suspend	NULL
+#define aess_resume	NULL
 #endif
 
 static const struct dev_pm_ops aess_pm_ops = {
