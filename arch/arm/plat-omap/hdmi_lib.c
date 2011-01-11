@@ -479,12 +479,22 @@ static void hdmi_core_init(enum hdmi_deep_mode deep_color,
 	v_cfg->CoreHdmiDvi = HDMI_DVI;
 	v_cfg->CoreTclkSelClkMult = FPLL10IDCK;
 	/* audio core */
-	audio_cfg->fs = FS_44100;
-	audio_cfg->n = 0;
-	audio_cfg->cts = 0;
-	audio_cfg->layout = LAYOUT_2CH; /* 2channel audio */
-	audio_cfg->aud_par_busclk = 0;
-	audio_cfg->cts_mode = CTS_MODE_HW;
+	audio_cfg->fs = FS_48000;
+	audio_cfg->n = 6144;
+	audio_cfg->cts = 148500;
+	audio_cfg->layout = LAYOUT_2CH;
+	audio_cfg->cts_mode = CTS_MODE_SW;
+	audio_cfg->if_fs = IF_FS_NO;
+	audio_cfg->if_channel_number = 2;
+	audio_cfg->if_sample_size = IF_NO_PER_SAMPLE;
+	audio_cfg->if_audio_channel_location = HDMI_CEA_CODE_00;
+	if (omap_rev() == OMAP4430_REV_ES1_0) {
+		audio_cfg->aud_par_busclk = (((128 * 31) - 1) << 8);
+		audio_cfg->cts_mode = CTS_MODE_HW;
+	} else {
+		audio_cfg->aud_par_busclk = 0;
+		audio_cfg->cts_mode = CTS_MODE_SW;
+	}
 
 	/* info frame */
 	avi->db1y_rgb_yuv422_yuv444 = 0;
@@ -1009,7 +1019,7 @@ static void hdmi_w1_init(struct hdmi_video_timing *t_p,
 	pIrqVectorEnable->core = 1;
 
 	audio_fmt->stereo_channel_enable = HDMI_STEREO_ONECHANNELS;
-	audio_fmt->audio_channel_location = HDMI_CEA_CODE_03;
+	audio_fmt->audio_channel_location = 0x03;
 	audio_fmt->iec = HDMI_AUDIO_FORMAT_LPCM;
 	audio_fmt->justify = HDMI_AUDIO_JUSTIFY_LEFT;
 	audio_fmt->left_before = HDMI_SAMPLE_LEFT_FIRST;
@@ -1245,7 +1255,7 @@ static void hdmi_w1_audio_stop(void)
 
 int hdmi_lib_enable(struct hdmi_config *cfg)
 {
-	u32 r, deep_color = 0;
+	u32 r;
 
 	u32 av_name = HDMI_CORE_AV;
 
@@ -1329,48 +1339,6 @@ int hdmi_lib_enable(struct hdmi_config *cfg)
 	hdmi_core_powerdown_disable();
 
 	v_core_cfg.CoreHdmiDvi = cfg->hdmi_dvi;
-
-	/* hnagalla */
-	audio_cfg.fs = 0x02;
-	audio_cfg.if_fs = IF_FS_NO;
-	audio_cfg.n = 6144;
-
-	r = hdmi_read_reg(HDMI_WP, HDMI_WP_VIDEO_CFG);
-	switch(r & 0x03) {
-	case 1:
-		deep_color = 100;
-		break;
-	case 2:
-		deep_color = 125;
-		break;
-	case 3:
-		deep_color = 150;
-		break;
-	case 4:
-		printk(KERN_ERR "Invalid deep color configuration, "
-				"using no deep-color\n");
-		deep_color = 100;
-		break;
-	}
-
-	if (omap_rev() == OMAP4430_REV_ES1_0)
-		audio_cfg.cts = cfg->pixel_clock;
-	else
-		audio_cfg.cts = (cfg->pixel_clock * deep_color) / 100;
-
-	/* audio channel */
-	audio_cfg.if_sample_size = IF_NO_PER_SAMPLE;
-	audio_cfg.layout = LAYOUT_2CH;
-	audio_cfg.if_channel_number = 2;
-	audio_cfg.if_audio_channel_location = 0x00;
-
-	if (omap_rev() == OMAP4430_REV_ES1_0) {
-		audio_cfg.aud_par_busclk = (((128 * 31) - 1) << 8);
-		audio_cfg.cts_mode = CTS_MODE_HW;
-	} else {
-		audio_cfg.aud_par_busclk = 0;
-		audio_cfg.cts_mode = CTS_MODE_SW;
-	}
 
 	r = hdmi_core_video_config(&v_core_cfg);
 
