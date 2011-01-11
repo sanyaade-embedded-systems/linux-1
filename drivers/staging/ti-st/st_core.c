@@ -258,6 +258,7 @@ void st_int_recv(void *disc_data,
 	register int len = 0, type = 0, dlen = 0;
 	static enum proto_type protoid = ST_MAX;
 	struct st_data_s *st_gdata = (struct st_data_s *)disc_data;
+	unsigned long flags;
 
 	ptr = (char *)data;
 	/* tty_receive sent null ? */
@@ -270,6 +271,7 @@ void st_int_recv(void *disc_data,
 		   "rx_count %ld", count, st_gdata->rx_state,
 		   st_gdata->rx_count);
 
+	spin_lock_irqsave(&st_gdata->lock, flags);
 	/* Decode received bytes here */
 	while (count) {
 		if (st_gdata->rx_count) {
@@ -403,13 +405,22 @@ void st_int_recv(void *disc_data,
 			 * sleep state received --
 			 */
 			st_ll_sleep_state(st_gdata, *ptr);
+			/* if WAKEUP_IND collides copy from waitq to txq
+			 * and assume chip awake
+			 */
+			spin_unlock_irqrestore(&st_gdata->lock, flags);
+			if (st_ll_getstate(st_gdata) == ST_LL_AWAKE)
+				st_wakeup_ack(st_gdata, LL_WAKE_UP_ACK);
+			spin_lock_irqsave(&st_gdata->lock, flags);
 			ptr++;
 			count--;
 			continue;
 		case LL_WAKE_UP_ACK:
 			pr_info("PM packet");
+			spin_unlock_irqrestore(&st_gdata->lock, flags);
 			/* wake up ack received */
 			st_wakeup_ack(st_gdata, *ptr);
+			spin_lock_irqsave(&st_gdata->lock, flags);
 			ptr++;
 			count--;
 			continue;
@@ -452,7 +463,7 @@ void st_int_recv(void *disc_data,
 		case ST_GPS:
 			/* for GPS */
 			st_gdata->rx_skb =
-			    alloc_skb(100 /*GPS_MAX_FRAME_SIZE */ , GFP_ATOMIC);
+			    alloc_skb(GPS_MAX_FRAME_SIZE , GFP_ATOMIC);
 			if (!st_gdata->rx_skb) {
 				pr_err("Can't allocate mem for new packet");
 				st_gdata->rx_state = ST_W4_PACKET_TYPE;
@@ -467,6 +478,7 @@ void st_int_recv(void *disc_data,
 			break;
 		}
 	}
+	spin_unlock_irqrestore(&st_gdata->lock, flags);
 	pr_debug("done %s", __func__);
 	return;
 }
