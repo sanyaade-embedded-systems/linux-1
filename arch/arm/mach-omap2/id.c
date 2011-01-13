@@ -6,7 +6,7 @@
  * Copyright (C) 2005 Nokia Corporation
  * Written by Tony Lindgren <tony@atomide.com>
  *
- * Copyright (C) 2009 Texas Instruments
+ * Copyright (C) 2009-11 Texas Instruments
  * Added OMAP4 support - Santosh Shilimkar <santosh.shilimkar@ti.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -101,6 +101,7 @@ static struct omap_id omap_ids[] __initdata = {
 
 static void __iomem *tap_base;
 static u16 tap_prod_id;
+
 
 void __init omap24xx_check_revision(void)
 {
@@ -270,9 +271,9 @@ void __init omap3_check_revision(void)
 void __init omap4_check_revision(void)
 {
 	u32 idcode;
-	u8 rev;
-#if 0
 	u16 hawkeye;
+	u8 rev;
+
 	/*
 	 * The IC rev detection is done with hawkeye and rev.
 	 * Note that rev does not map directly to defined processor
@@ -280,65 +281,50 @@ void __init omap4_check_revision(void)
 	 */
 	idcode = read_tap_reg(OMAP_TAP_IDCODE);
 	hawkeye = (idcode >> 12) & 0xffff;
-	rev = (idcode >> 28) & 0xff;
+	rev = (idcode >> 28) & 0xf;
 
-	/*FIXME:  Check ES2 hawkeye and rev fields */
+	/*
+	 * Few initial ES2.0 samples IDCODE is same as ES1.0
+	 * Use ARM register to detect the correct ES version
+	 */
+	if (!rev) {
+		idcode = read_cpuid(CPUID_ID);
+		rev = (idcode & 0xf) - 1;
+	}
+
 	switch (hawkeye) {
 	case 0xb852:
-		switch(rev) {
+		switch (rev) {
 		case 0:
 			omap_revision = OMAP4430_REV_ES1_0;
 			omap_chip.oc |= CHIP_IS_OMAP4430ES1;
-			rev = 1;
 			break;
 		case 1:
-			omap_revision = OMAP4430_REV_ES2_0;
-			omap_chip.oc |= CHIP_IS_OMAP4430ES2;
-			rev = 2;
-			break;
 		default:
 			omap_revision = OMAP4430_REV_ES2_0;
 			omap_chip.oc |= CHIP_IS_OMAP4430ES2;
-			rev = 2;
-	}
-	break;
-	default:
-		/* Unknown default to latest silicon rev as default*/
-		omap_revision = OMAP4430_REV_ES2_0;
-		omap_chip.oc |= CHIP_IS_OMAP4430ES2;
-		rev = 2;
-	}
-#endif
-	/*
-	 * FIXME: Temporary ID check hack.
-	 * Use ARM register to check the ES type
-	 */
-	idcode = read_cpuid(CPUID_ID);
-	if (((idcode >> 4) & 0xfff) == 0xc09) {
-		idcode &= 0xf;
-		switch (idcode) {
-		case 1:
-			omap_revision = OMAP4430_REV_ES1_0;
-			omap_chip.oc |= CHIP_IS_OMAP4430ES1;
-			rev = 1;
-			break;
-		case 2:
-			omap_revision = OMAP4430_REV_ES2_0;
-			omap_chip.oc |= CHIP_IS_OMAP4430ES2;
-			rev = 2;
-			break;
-		default:
-			omap_revision = OMAP4430_REV_ES2_0;
-			omap_chip.oc |= CHIP_IS_OMAP4430ES2;
-			rev = 2;
 		}
-	} else {
-		/* Assume the latest version */
-		omap_revision = OMAP4430_REV_ES2_0;
-		omap_chip.oc |= CHIP_IS_OMAP4430ES2;
-		rev = 2;
+		break;
+	case 0xb95c:
+		switch (rev) {
+		case 3:
+			omap_revision = OMAP4430_REV_ES2_1;
+			omap_chip.oc |= CHIP_IS_OMAP4430ES2_1;
+			break;
+		case 4:
+		default:
+			omap_revision = OMAP4430_REV_ES2_2;
+			omap_chip.oc |= CHIP_IS_OMAP4430ES2_2;
+		}
+		break;
+	default:
+		/* Unknown default to latest silicon rev as default */
+		omap_revision = OMAP4430_REV_ES2_2;
+		omap_chip.oc |= CHIP_IS_OMAP4430ES2_2;
 	}
-	pr_info("OMAP%04x ES%d.0\n", omap_rev() >> 16, rev);
+
+	pr_info("OMAP%04x ES%d.%d\n", omap_rev() >> 16,
+		((omap_rev() >> 12) & 0xf), ((omap_rev() >> 8) & 0xf));
 }
 
 #define OMAP3_SHOW_FEATURE(feat)		\
