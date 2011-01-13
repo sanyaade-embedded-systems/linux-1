@@ -2,7 +2,7 @@
  *  FM Driver for Connectivity chip of Texas Instruments.
  *  FM Common module header file
  *
- *  Copyright (C) 2010 Texas Instruments
+ *  Copyright (C) 2011 Texas Instruments
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -22,16 +22,16 @@
 #ifndef _FMDRV_COMMON_H
 #define _FMDRV_COMMON_H
 
-#define FM_ST_REGISTER_TIMEOUT   msecs_to_jiffies(6000)	/* 6 sec */
+#define FM_ST_REG_TIMEOUT   msecs_to_jiffies(6000)	/* 6 sec */
 #define FM_PKT_LOGICAL_CHAN_NUMBER  0x08   /* Logical channel 8 */
 
 #define REG_RD       0x1
 #define REG_WR      0x0
 
 struct fm_reg_table {
-	unsigned char opcode;
-	unsigned char type;
-	char *name;
+	u8 opcode;
+	u8 type;
+	u8 *name;
 };
 
 #define STEREO_GET               0
@@ -135,7 +135,7 @@ struct fm_reg_table {
 
 /* SKB helpers */
 struct fm_skb_cb {
-	__u8 fm_opcode;
+	__u8 fm_op;
 	struct completion *completion;
 };
 
@@ -143,9 +143,9 @@ struct fm_skb_cb {
 
 /* FM Channel-8 command message format */
 struct fm_cmd_msg_hdr {
-	__u8 header;		/* Logical Channel-8 */
+	__u8 hdr;		/* Logical Channel-8 */
 	__u8 len;		/* Number of bytes follows */
-	__u8 fm_opcode;		/* FM Opcode */
+	__u8 op;		/* FM Opcode */
 	__u8 rd_wr;		/* Read/Write command */
 	__u8 dlen;		/* Length of payload */
 } __attribute__ ((packed));
@@ -158,7 +158,7 @@ struct fm_event_msg_hdr {
 	__u8 len;		/* Number of bytes follows */
 	__u8 status;		/* Event status */
 	__u8 num_fm_hci_cmds;	/* Number of pkts the host allowed to send */
-	__u8 fm_opcode;		/* FM Opcode */
+	__u8 op;		/* FM Opcode */
 	__u8 rd_wr;		/* Read/Write command */
 	__u8 dlen;		/* Length of payload */
 } __attribute__ ((packed));
@@ -221,12 +221,12 @@ struct fm_event_msg_hdr {
 #define FM_MUTE_OFF		1
 #define	FM_MUTE_ATTENUATE	2
 
-#define FM_RX_MUTE_UNMUTE_MODE		0x00
-#define FM_RX_MUTE_RF_DEP_MODE		0x01
-#define FM_RX_MUTE_AC_MUTE_MODE		0x02
-#define FM_RX_MUTE_HARD_MUTE_LEFT_MODE	0x04
-#define FM_RX_MUTE_HARD_MUTE_RIGHT_MODE	0x08
-#define FM_RX_MUTE_SOFT_MUTE_FORCE_MODE	0x10
+#define FM_RX_UNMUTE_MODE		0x00
+#define FM_RX_RF_DEP_MODE		0x01
+#define FM_RX_AC_MUTE_MODE		0x02
+#define FM_RX_HARD_MUTE_LEFT_MODE	0x04
+#define FM_RX_HARD_MUTE_RIGHT_MODE	0x08
+#define FM_RX_SOFT_MUTE_FORCE_MODE	0x10
 
 /* RF dependent mute mode */
 #define FM_RX_RF_DEPENDENT_MUTE_ON	1
@@ -252,14 +252,14 @@ struct fm_event_msg_hdr {
 #define FM_NO_PI_CODE	0
 
 /* FM and RX RDS block enable/disable  */
-#define FM_RX_POWER_SET_FM_ON_RDS_OFF		0x1
-#define FM_RX_POWET_SET_FM_AND_RDS_BLK_ON	0x3
-#define FM_RX_POWET_SET_FM_AND_RDS_BLK_OFF	0x0
+#define FM_RX_PWR_SET_FM_ON_RDS_OFF		0x1
+#define FM_RX_PWR_SET_FM_AND_RDS_BLK_ON		0x3
+#define FM_RX_PWR_SET_FM_AND_RDS_BLK_OFF	0x0
 
 /* RX RDS */
 #define FM_RX_RDS_FLUSH_FIFO		0x1
 #define FM_RX_RDS_FIFO_THRESHOLD	64	/* tuples */
-#define FM_RDS_BLOCK_SIZE		3	/* 3 bytes */
+#define FM_RDS_BLK_SIZE		3	/* 3 bytes */
 
 /* RDS block types */
 #define FM_RDS_BLOCK_A		0
@@ -269,13 +269,13 @@ struct fm_event_msg_hdr {
 #define FM_RDS_BLOCK_D		4
 #define FM_RDS_BLOCK_E		5
 
-#define FM_RDS_BLOCK_INDEX_A		0
-#define FM_RDS_BLOCK_INDEX_B		1
-#define FM_RDS_BLOCK_INDEX_C		2
-#define FM_RDS_BLOCK_INDEX_D		3
-#define FM_RDS_BLOCK_INDEX_UNKNOWN	0xF0
+#define FM_RDS_BLK_IDX_A		0
+#define FM_RDS_BLK_IDX_B		1
+#define FM_RDS_BLK_IDX_C		2
+#define FM_RDS_BLK_IDX_D		3
+#define FM_RDS_BLK_IDX_UNKNOWN	0xF0
 
-#define FM_RDS_STATUS_ERROR_MASK	0x18
+#define FM_RDS_STATUS_ERR_MASK	0x18
 
 /*
  * Represents an RDS group type & version.
@@ -333,10 +333,10 @@ struct fm_event_msg_hdr {
 #define FM_IRQ_TIMEOUT_RETRY_MAX	5	/* 5 times */
 
 /* Audio IO set values */
-#define FM_RX_FM_AUDIO_ENABLE_I2S	0x01
-#define FM_RX_FM_AUDIO_ENABLE_ANALOG	0x02
-#define FM_RX_FM_AUDIO_ENABLE_I2S_AND_ANALOG	0x03
-#define FM_RX_FM_AUDIO_ENABLE_DISABLE	0x00
+#define FM_RX_AUDIO_ENABLE_I2S	0x01
+#define FM_RX_AUDIO_ENABLE_ANALOG	0x02
+#define FM_RX_AUDIO_ENABLE_I2S_AND_ANALOG	0x03
+#define FM_RX_AUDIO_ENABLE_DISABLE	0x00
 
 /* HI/LO set values */
 #define FM_RX_IFFREQ_TO_HI_SIDE		0x0
@@ -368,27 +368,27 @@ struct fm_event_msg_hdr {
 #define FM_TX_ANT_IMP_500		2
 
 /* Functions exported by FM common sub-module */
-int fmc_prepare(struct fmdrv_ops *);
-int fmc_release(struct fmdrv_ops *);
+u32 fmc_prepare(struct fmdev *);
+u32 fmc_release(struct fmdev *);
 
-void fmc_update_region_info(struct fmdrv_ops *, unsigned char);
-int fmc_send_cmd(struct fmdrv_ops *, unsigned char, unsigned short int,
-				void *, int, void *, int *);
-int fmc_is_rds_data_available(struct fmdrv_ops *, struct file *,
+void fmc_update_region_info(struct fmdev *, u8);
+u32 fmc_send_cmd(struct fmdev *, u8, u16,
+				void *, unsigned int, void *, int *);
+u32 fmc_is_rds_data_available(struct fmdev *, struct file *,
 				struct poll_table_struct *);
-int fmc_transfer_rds_from_internal_buff(struct fmdrv_ops *, struct file *,
-					char __user *, size_t);
+u32 fmc_transfer_rds_from_internal_buff(struct fmdev *, struct file *,
+					u8 __user *, size_t);
 
-int fmc_set_frequency(struct fmdrv_ops *, unsigned int);
-int fmc_set_mode(struct fmdrv_ops *, unsigned char);
-int fmc_set_region(struct fmdrv_ops *, unsigned char);
-int fmc_set_mute_mode(struct fmdrv_ops *, unsigned char);
-int fmc_set_stereo_mono(struct fmdrv_ops *, unsigned short);
-int fmc_set_rds_mode(struct fmdrv_ops *, unsigned char);
+u32 fmc_set_freq(struct fmdev *, u32);
+u32 fmc_set_mode(struct fmdev *, u8);
+u32 fmc_set_region(struct fmdev *, u8);
+u32 fmc_set_mute_mode(struct fmdev *, u8);
+u32 fmc_set_stereo_mono(struct fmdev *, u16);
+u32 fmc_set_rds_mode(struct fmdev *, u8);
 
-int fmc_get_frequency(struct fmdrv_ops *, unsigned int *);
-int fmc_get_region(struct fmdrv_ops *, unsigned char *);
-int fmc_get_mode(struct fmdrv_ops *, unsigned char *);
+u32 fmc_get_freq(struct fmdev *, u32 *);
+u32 fmc_get_region(struct fmdev *, u8 *);
+u32 fmc_get_mode(struct fmdev *, u8 *);
 
 /*
  * channel spacing

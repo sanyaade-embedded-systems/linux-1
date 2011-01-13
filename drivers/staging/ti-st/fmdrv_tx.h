@@ -2,7 +2,7 @@
  *  FM Driver for Connectivity chip of Texas Instruments.
  *  FM TX module header.
  *
- *  Copyright (C) 2010 Texas Instruments
+ *  Copyright (C) 2011 Texas Instruments
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -22,16 +22,16 @@
 #ifndef _FMDRV_TX_H
 #define _FMDRV_TX_H
 
-int fm_tx_set_frequency(struct fmdrv_ops *, unsigned int);
-int fm_tx_set_pwr_lvl(struct fmdrv_ops *, unsigned char);
-int fm_tx_set_region(struct fmdrv_ops *, unsigned char);
-int fm_tx_set_mute_mode(struct fmdrv_ops *, unsigned char);
-int fm_tx_set_stereo_mono(struct fmdrv_ops *, unsigned short);
-int fm_tx_set_rds_mode(struct fmdrv_ops *, unsigned char);
-int fm_tx_set_radio_text(struct fmdrv_ops *, unsigned char *, unsigned char);
-int fm_tx_set_af(struct fmdrv_ops *, unsigned int);
-int fm_tx_set_preemph_filter(struct fmdrv_ops *, unsigned int);
-int fm_tx_set_ant_imp(struct fmdrv_ops *, unsigned char);
+u32 fm_tx_set_freq(struct fmdev *, u32);
+u32 fm_tx_set_pwr_lvl(struct fmdev *, u8);
+u32 fm_tx_set_region(struct fmdev *, u8);
+u32 fm_tx_set_mute_mode(struct fmdev *, u8);
+u32 fm_tx_set_stereo_mono(struct fmdev *, u16);
+u32 fm_tx_set_rds_mode(struct fmdev *, u8);
+u32 fm_tx_set_radio_text(struct fmdev *, u8 *, u8);
+u32 fm_tx_set_af(struct fmdev *, u32);
+u32 fm_tx_set_preemph_filter(struct fmdev *, u32);
+u32 fm_tx_get_tune_cap_val(struct fmdev *);
 
 #endif
 

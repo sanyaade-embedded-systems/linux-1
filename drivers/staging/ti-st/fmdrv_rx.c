@@ -2,8 +2,9 @@
  *  FM Driver for Connectivity chip of Texas Instruments.
  *  This sub-module of FM driver implements FM RX functionality.
  *
- *  Copyright (C) 2010 Texas Instruments
+ *  Copyright (C) 2011 Texas Instruments
  *  Author: Raja Mani <raja_mani@ti.com>
+ *  Author: Manjunatha Halli <manjunatha_halli@ti.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -24,42 +25,38 @@
 #include "fmdrv_common.h"
 #include "fmdrv_rx.h"
 
-void fm_rx_reset_rds_cache(struct fmdrv_ops *fmdev)
+void fm_rx_reset_rds_cache(struct fmdev *fmdev)
 {
 	fmdev->rx.rds.flag = FM_RDS_DISABLE;
-	fmdev->rx.rds.last_block_index = 0;
-	fmdev->rx.rds.wr_index = 0;
-	fmdev->rx.rds.rd_index = 0;
+	fmdev->rx.rds.last_blk_idx = 0;
+	fmdev->rx.rds.wr_idx = 0;
+	fmdev->rx.rds.rd_idx = 0;
 
 	if (fmdev->rx.af_mode == FM_RX_RDS_AF_SWITCH_MODE_ON)
 		fmdev->irq_info.mask |= FM_LEV_EVENT;
 }
 
-void fm_rx_reset_curr_station_info(struct fmdrv_ops *fmdev)
+void fm_rx_reset_station_info(struct fmdev *fmdev)
 {
-	fmdev->rx.cur_station_info.picode = FM_NO_PI_CODE;
-	fmdev->rx.cur_station_info.no_of_items_in_afcache = 0;
-	fmdev->rx.cur_station_info.af_list_max = 0;
+	fmdev->rx.stat_info.picode = FM_NO_PI_CODE;
+	fmdev->rx.stat_info.afcache_size = 0;
+	fmdev->rx.stat_info.af_list_max = 0;
 }
 
-int fm_rx_set_frequency(struct fmdrv_ops *fmdev, unsigned int freq_to_set)
+u32 fm_rx_set_freq(struct fmdev *fmdev, u32 freq)
 {
 	unsigned long timeleft;
-	unsigned short payload, curr_frq, frq_index;
-	unsigned int curr_frq_in_khz;
-	int ret, resp_len;
+	u16 payload, curr_frq, intr_flag;
+	u32 curr_frq_in_khz;
+	u32 ret, resp_len;
 
-	if (fmdev->curr_fmmode != FM_MODE_RX)
-		return -EPERM;
-
-	if (freq_to_set < fmdev->rx.region.bottom_frequency ||
-		freq_to_set > fmdev->rx.region.top_frequency) {
-		pr_err("(fmdrv): Invalid frequency %d\n", freq_to_set);
+	if (freq < fmdev->rx.region.bot_freq || freq > fmdev->rx.region.top_freq) {
+		fmerr("Invalid frequency %d\n", freq);
 		return -EINVAL;
 	}
 
 	/* Set audio enable */
-	payload = FM_RX_FM_AUDIO_ENABLE_I2S_AND_ANALOG;
+	payload = FM_RX_AUDIO_ENABLE_I2S_AND_ANALOG;
 
 	ret = fmc_send_cmd(fmdev, AUDIO_ENABLE_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
@@ -73,25 +70,22 @@ int fm_rx_set_frequency(struct fmdrv_ops *fmdev, unsigned int freq_to_set)
 	if (ret < 0)
 		return ret;
 
-	/* Calculate frequency index to write */
-	frq_index = (freq_to_set - fmdev->rx.region.bottom_frequency) /
-				FM_FREQ_MUL;
+	/* Calculate frequency index and set*/
+	payload = (freq - fmdev->rx.region.bot_freq) / FM_FREQ_MUL;
 
-	/* Set frequency index */
-	payload = frq_index;
 	ret = fmc_send_cmd(fmdev, FREQ_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
 	if (ret < 0)
 		return ret;
 
 	/* Read flags - just to clear any pending interrupts if we had */
-	ret = fmc_send_cmd(fmdev, FLAG_GET, REG_RD, NULL, 2,
-			NULL, NULL);
+	ret = fmc_send_cmd(fmdev, FLAG_GET, REG_RD, NULL, 2, NULL, NULL);
 	if (ret < 0)
 		return ret;
 
 	/* Enable FR, BL interrupts */
-	fmdev->irq_info.mask |= (FM_FR_EVENT | FM_BL_EVENT);
+	intr_flag = fmdev->irq_info.mask;
+	fmdev->irq_info.mask = (FM_FR_EVENT | FM_BL_EVENT);
 	payload = fmdev->irq_info.mask;
 	ret = fmc_send_cmd(fmdev, INT_MASK_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
@@ -103,65 +97,56 @@ int fm_rx_set_frequency(struct fmdrv_ops *fmdev, unsigned int freq_to_set)
 	ret = fmc_send_cmd(fmdev, TUNER_MODE_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
 	if (ret < 0)
-		return ret;
+		goto exit;
 
 	/* Wait for tune ended interrupt */
-	init_completion(&fmdev->maintask_completion);
-	timeleft = wait_for_completion_timeout(&fmdev->maintask_completion,
-					       FM_DRV_TX_TIMEOUT);
+	init_completion(&fmdev->maintask_comp);
+	timeleft = wait_for_completion_timeout(&fmdev->maintask_comp,
+			FM_DRV_TX_TIMEOUT);
 	if (!timeleft) {
-		pr_err("(fmdrv): Timeout(%d sec),didn't get tune ended int\n",
+		fmerr("Timeout(%d sec),didn't get tune ended int\n",
 			   jiffies_to_msecs(FM_DRV_TX_TIMEOUT) / 1000);
-		return -ETIMEDOUT;
+		ret = -ETIMEDOUT;
+		goto exit;
 	}
 
 	/* Read freq back to confirm */
-	ret = fmc_send_cmd(fmdev, FREQ_SET, REG_RD, NULL, 2,
-			&curr_frq, &resp_len);
+	ret = fmc_send_cmd(fmdev, FREQ_SET, REG_RD, NULL, 2, &curr_frq, &resp_len);
 	if (ret < 0)
-		return ret;
+		goto exit;
 
 	curr_frq = be16_to_cpu(curr_frq);
-	curr_frq_in_khz = (fmdev->rx.region.bottom_frequency
-		+ ((unsigned int)curr_frq * FM_FREQ_MUL));
+	curr_frq_in_khz = (fmdev->rx.region.bot_freq + ((u32)curr_frq * FM_FREQ_MUL));
 
-	/* Re-enable default FM interrupts */
-	fmdev->irq_info.mask &= ~(FM_FR_EVENT | FM_BL_EVENT);
-	payload = fmdev->irq_info.mask;
-	ret = fmc_send_cmd(fmdev, INT_MASK_SET, REG_WR, &payload,
-		sizeof(payload), NULL, NULL);
-	if (ret < 0)
-		return ret;
-
-	if (curr_frq_in_khz != freq_to_set) {
-		pr_info("(fmdrv): Frequency is set to (%d) but"
-			   " requested frequency is (%d)\n", curr_frq_in_khz,
-			   freq_to_set);
+	if (curr_frq_in_khz != freq) {
+		pr_info("Frequency is set to (%d) but "
+			   "requested freq is (%d)\n", curr_frq_in_khz, freq);
 	}
 
 	/* Update local cache  */
-	fmdev->rx.curr_freq = curr_frq_in_khz;
+	fmdev->rx.freq = curr_frq_in_khz;
+exit:
+	/* Re-enable default FM interrupts */
+	fmdev->irq_info.mask = intr_flag;
+	payload = fmdev->irq_info.mask;
+	ret = fmc_send_cmd(fmdev, INT_MASK_SET, REG_WR, &payload,
+			sizeof(payload), NULL, NULL);
+	if (ret < 0)
+		return ret;
 
 	/* Reset RDS cache and current station pointers */
 	fm_rx_reset_rds_cache(fmdev);
-	fm_rx_reset_curr_station_info(fmdev);
-
-	/* Do we need to reset anything else? */
+	fm_rx_reset_station_info(fmdev);
 
 	return ret;
 }
 
-/* TODO: Enable this once the kernel moves to 2.6.36 or above*/
-#if 0
-static int fm_rx_set_channel_spacing(struct fmdrv_ops *fmdev,
-		unsigned int spacing)
+static u32 fm_rx_set_channel_spacing(struct fmdev *fmdev, u32 spacing)
 {
-	unsigned short payload;
-	int ret;
+	u16 payload;
+	u32 ret;
 
-	if (spacing == 0)
-		spacing = FM_CHANNEL_SPACING_50KHZ;
-	else if (spacing > 0 && spacing <= 50000)
+	if (spacing > 0 && spacing <= 50000)
 		spacing = FM_CHANNEL_SPACING_50KHZ;
 	else if (spacing > 50000 && spacing <= 100000)
 		spacing = FM_CHANNEL_SPACING_100KHZ;
@@ -175,33 +160,20 @@ static int fm_rx_set_channel_spacing(struct fmdrv_ops *fmdev,
 	if (ret < 0)
 		return ret;
 
-	fmdev->rx.region.channel_spacing = spacing * FM_FREQ_MUL;
+	fmdev->rx.region.chanl_space = spacing * FM_FREQ_MUL;
 
 	return ret;
 }
-#endif
-int fm_rx_seek(struct fmdrv_ops *fmdev, unsigned int seek_upward,
-		unsigned int wrap_around)
+
+u32 fm_rx_seek(struct fmdev *fmdev, u32 seek_upward, u32 wrap_around)
 {
-	int resp_len;
-	unsigned short curr_frq, next_frq, last_frq;
-	unsigned short payload, int_reason;
-	char offset, spacing_index;
+	u32 resp_len;
+	u16 curr_frq, next_frq, last_frq;
+	u16 payload, int_reason, intr_flag;
+	u16 offset, space_idx;
 	unsigned long timeleft;
-	int ret;
+	u32 ret;
 
-	if (fmdev->curr_fmmode != FM_MODE_RX)
-		return -EPERM;
-
-	/* TODO: Enable this once the kernel moves to 2.6.36 or above*/
-#if 0
-	/* Set channel spacing */
-	ret = fm_rx_set_channel_spacing(fmdev, spacing);
-	if (ret < 0) {
-		pr_err("(fmdrv): Failed to set channel spacing\n");
-		return ret;
-	}
-#endif
 	/* Read the current frequency from chip */
 	ret = fmc_send_cmd(fmdev, FREQ_SET, REG_RD, NULL,
 			sizeof(curr_frq), &curr_frq, &resp_len);
@@ -209,15 +181,14 @@ int fm_rx_seek(struct fmdrv_ops *fmdev, unsigned int seek_upward,
 		return ret;
 
 	curr_frq = be16_to_cpu(curr_frq);
-	last_frq = (fmdev->rx.region.top_frequency -
-	   fmdev->rx.region.bottom_frequency) / FM_FREQ_MUL;
+	last_frq = (fmdev->rx.region.top_freq - fmdev->rx.region.bot_freq) / FM_FREQ_MUL;
 
 	/* Check the offset in order to be aligned to the channel spacing*/
-	spacing_index = fmdev->rx.region.channel_spacing / FM_FREQ_MUL;
-	offset = curr_frq % spacing_index;
+	space_idx = fmdev->rx.region.chanl_space / FM_FREQ_MUL;
+	offset = curr_frq % space_idx;
 
-	next_frq = seek_upward ? curr_frq + spacing_index /* Seek Up */ :
-				curr_frq - spacing_index /* Seek Down */ ;
+	next_frq = seek_upward ? curr_frq + space_idx /* Seek Up */ :
+				curr_frq - space_idx /* Seek Down */ ;
 
 	/*
 	 * Add or subtract offset in order to stay aligned to the channel
@@ -237,21 +208,20 @@ again:
 		return ret;
 
 	/* Set search direction (0:Seek Down, 1:Seek Up) */
-	payload = (seek_upward ? FM_SEARCH_DIRECTION_UP :
-					FM_SEARCH_DIRECTION_DOWN);
+	payload = (seek_upward ? FM_SEARCH_DIRECTION_UP : FM_SEARCH_DIRECTION_DOWN);
 	ret = fmc_send_cmd(fmdev, SEARCH_DIR_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
 	if (ret < 0)
 		return ret;
 
 	/* Read flags - just to clear any pending interrupts if we had */
-	ret = fmc_send_cmd(fmdev, FLAG_GET, REG_RD, NULL, 2,
-			NULL, NULL);
+	ret = fmc_send_cmd(fmdev, FLAG_GET, REG_RD, NULL, 2, NULL, NULL);
 	if (ret < 0)
 		return ret;
 
 	/* Enable FR, BL interrupts */
-	fmdev->irq_info.mask |= (FM_FR_EVENT | FM_BL_EVENT);
+	intr_flag = fmdev->irq_info.mask;
+	fmdev->irq_info.mask = (FM_FR_EVENT | FM_BL_EVENT);
 	payload = fmdev->irq_info.mask;
 	ret = fmc_send_cmd(fmdev, INT_MASK_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
@@ -266,11 +236,11 @@ again:
 		return ret;
 
 	/* Wait for tune ended/band limit reached interrupt */
-	init_completion(&fmdev->maintask_completion);
-	timeleft = wait_for_completion_timeout(&fmdev->maintask_completion,
-					       FM_DRV_RX_SEEK_TIMEOUT);
+	init_completion(&fmdev->maintask_comp);
+	timeleft = wait_for_completion_timeout(&fmdev->maintask_comp,
+			FM_DRV_RX_SEEK_TIMEOUT);
 	if (!timeleft) {
-		pr_err("(fmdrv): Timeout(%d sec),didn't get tune ended int\n",
+		fmerr("Timeout(%d sec),didn't get tune ended int\n",
 			   jiffies_to_msecs(FM_DRV_RX_SEEK_TIMEOUT) / 1000);
 		return -ETIMEDOUT;
 	}
@@ -278,7 +248,7 @@ again:
 	int_reason = fmdev->irq_info.flag & (FM_TUNE_COMPLETE | FM_BAND_LIMIT);
 
 	/* Re-enable default FM interrupts */
-	fmdev->irq_info.mask &= ~(FM_FR_EVENT | FM_BL_EVENT);
+	fmdev->irq_info.mask = intr_flag;
 	payload = fmdev->irq_info.mask;
 	ret = fmc_send_cmd(fmdev, INT_MASK_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
@@ -287,17 +257,16 @@ again:
 
 	if (int_reason & FM_BL_EVENT) {
 		if (wrap_around == 0) {
-			fmdev->rx.curr_freq = seek_upward ?
-				fmdev->rx.region.top_frequency :
-				fmdev->rx.region.bottom_frequency;
+			fmdev->rx.freq = seek_upward ?
+				fmdev->rx.region.top_freq :
+				fmdev->rx.region.bot_freq;
 		} else {
-			fmdev->rx.curr_freq = seek_upward ?
-				fmdev->rx.region.bottom_frequency :
-				fmdev->rx.region.top_frequency;
+			fmdev->rx.freq = seek_upward ?
+				fmdev->rx.region.bot_freq :
+				fmdev->rx.region.top_freq;
 			/* Calculate frequency index to write */
-			next_frq = (fmdev->rx.curr_freq -
-					fmdev->rx.region.bottom_frequency) /
-					FM_FREQ_MUL;
+			next_frq = (fmdev->rx.freq -
+					fmdev->rx.region.bot_freq) / FM_FREQ_MUL;
 			goto again;
 		}
 	} else {
@@ -308,27 +277,27 @@ again:
 			return ret;
 
 		curr_frq = be16_to_cpu(curr_frq);
-		fmdev->rx.curr_freq = (fmdev->rx.region.bottom_frequency +
-				((unsigned int)curr_frq * FM_FREQ_MUL));
+		fmdev->rx.freq = (fmdev->rx.region.bot_freq +
+				((u32)curr_frq * FM_FREQ_MUL));
 
 	}
 	/* Reset RDS cache and current station pointers */
 	fm_rx_reset_rds_cache(fmdev);
-	fm_rx_reset_curr_station_info(fmdev);
+	fm_rx_reset_station_info(fmdev);
 
 	return ret;
 }
 
-int fm_rx_set_volume(struct fmdrv_ops *fmdev, unsigned short vol_to_set)
+u32 fm_rx_set_volume(struct fmdev *fmdev, u16 vol_to_set)
 {
-	unsigned short payload;
-	int ret;
+	u16 payload;
+	u32 ret;
 
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (vol_to_set < FM_RX_VOLUME_MIN || vol_to_set > FM_RX_VOLUME_MAX) {
-		pr_err("(fmdrv): Volume is not within(%d-%d) range\n",
+		fmerr("Volume is not within(%d-%d) range\n",
 			   FM_RX_VOLUME_MIN, FM_RX_VOLUME_MAX);
 		return -EINVAL;
 	}
@@ -340,70 +309,64 @@ int fm_rx_set_volume(struct fmdrv_ops *fmdev, unsigned short vol_to_set)
 	if (ret < 0)
 		return ret;
 
-	fmdev->rx.curr_volume = vol_to_set;
+	fmdev->rx.volume = vol_to_set;
 	return ret;
 }
 
 /* Get volume */
-int fm_rx_get_volume(struct fmdrv_ops *fmdev, unsigned short *curr_vol)
+u32 fm_rx_get_volume(struct fmdev *fmdev, u16 *curr_vol)
 {
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (curr_vol == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 
-	*curr_vol = fmdev->rx.curr_volume / FM_RX_VOLUME_GAIN_STEP;
+	*curr_vol = fmdev->rx.volume / FM_RX_VOLUME_GAIN_STEP;
 
 	return 0;
 }
 
 /* To get current band's bottom and top frequency */
-int fm_rx_get_currband_freq_range(struct fmdrv_ops *fmdev,
-					unsigned int *bottom_frequency,
-					unsigned int *top_frequency)
+u32 fm_rx_get_band_freq_range(struct fmdev *fmdev, u32 *bot_freq, u32 *top_freq)
 {
-	if (bottom_frequency != NULL)
-		*bottom_frequency = fmdev->rx.region.bottom_frequency;
+	if (bot_freq != NULL)
+		*bot_freq = fmdev->rx.region.bot_freq;
 
-	if (top_frequency != NULL)
-		*top_frequency = fmdev->rx.region.top_frequency;
+	if (top_freq != NULL)
+		*top_freq = fmdev->rx.region.top_freq;
 
 	return 0;
 }
 
 /* Returns current band index (0-Europe/US; 1-Japan) */
-void fm_rx_get_region(struct fmdrv_ops *fmdev, unsigned char *region)
+void fm_rx_get_region(struct fmdev *fmdev, u8 *region)
 {
-	*region = fmdev->rx.region.region_index;
+	*region = fmdev->rx.region.fm_band;
 }
 
 /* Sets band (0-Europe/US; 1-Japan) */
-int fm_rx_set_region(struct fmdrv_ops *fmdev,
-			unsigned char region_to_set)
+u32 fm_rx_set_region(struct fmdev *fmdev, u8 region_to_set)
 {
-	unsigned short payload;
-	unsigned int new_frq = 0;
-	int ret = -EPERM;
-
-	if (fmdev->curr_fmmode != FM_MODE_RX)
-		return ret;
+	u16 payload;
+	u32 new_frq = 0;
+	u32 ret;
 
 	if (region_to_set != FM_BAND_EUROPE_US &&
 	    region_to_set != FM_BAND_JAPAN) {
-		pr_err("(fmdrv): Invalid band\n");
+		fmerr("Invalid band\n");
 		return -EINVAL;
 	}
 
-	if (fmdev->rx.region.region_index == region_to_set) {
-		pr_err("(fmdrv): Requested band is already configured\n");
-		return ret;
+	if (fmdev->rx.region.fm_band == region_to_set) {
+		fmerr("Requested band is already configured\n");
+		return 0;
 	}
 
 	/* Send cmd to set the band  */
-	payload = (unsigned short)region_to_set;
+	payload = (u16)region_to_set;
 	ret = fmc_send_cmd(fmdev, BAND_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
 	if (ret < 0)
@@ -412,65 +375,60 @@ int fm_rx_set_region(struct fmdrv_ops *fmdev,
 	fmc_update_region_info(fmdev, region_to_set);
 
 	/* Check whether current RX frequency is within band boundary */
-	if (fmdev->rx.curr_freq < fmdev->rx.region.bottom_frequency)
-		new_frq = fmdev->rx.region.bottom_frequency;
-	else if (fmdev->rx.curr_freq > fmdev->rx.region.top_frequency)
-		new_frq = fmdev->rx.region.top_frequency;
+	if (fmdev->rx.freq < fmdev->rx.region.bot_freq)
+		new_frq = fmdev->rx.region.bot_freq;
+	else if (fmdev->rx.freq > fmdev->rx.region.top_freq)
+		new_frq = fmdev->rx.region.top_freq;
 
 	if (new_frq) {
-		pr_debug("(fmdrv): "
-		     "Current freq is not within band limit boundary,"
-		     "switching to %d KHz\n", new_frq);
-		/*
-		 * Current RX frequency is not within boundary. So,
-		 * update it.
-		 */
-		ret = fm_rx_set_frequency(fmdev, new_frq);
+		fmdbg("Current freq is not within band limit boundary,"
+				"switching to %d KHz\n", new_frq);
+		 /* Current RX frequency is not in range. So, update it */
+		ret = fm_rx_set_freq(fmdev, new_frq);
 	}
 
 	return ret;
 }
 
 /* Reads current mute mode (Mute Off/On/Attenuate)*/
-int fm_rx_get_mute_mode(struct fmdrv_ops *fmdev,
-			unsigned char *curr_mute_mode)
+u32 fm_rx_get_mute_mode(struct fmdev *fmdev, u8 *curr_mute_mode)
 {
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (curr_mute_mode == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 
-	*curr_mute_mode = fmdev->rx.curr_mute_mode;
+	*curr_mute_mode = fmdev->rx.mute_mode;
 
 	return 0;
 }
 
-static int __fm_config_rx_mute_reg(struct fmdrv_ops *fmdev)
+static u32 fm_config_rx_mute_reg(struct fmdev *fmdev)
 {
-	unsigned short payload, muteval;
-	int ret;
+	u16 payload, muteval;
+	u32 ret;
 
 	muteval = 0;
-	switch (fmdev->rx.curr_mute_mode) {
+	switch (fmdev->rx.mute_mode) {
 	case FM_MUTE_ON:
-		muteval = FM_RX_MUTE_AC_MUTE_MODE;
+		muteval = FM_RX_AC_MUTE_MODE;
 		break;
 
 	case FM_MUTE_OFF:
-		muteval = FM_RX_MUTE_UNMUTE_MODE;
+		muteval = FM_RX_UNMUTE_MODE;
 		break;
 
 	case FM_MUTE_ATTENUATE:
-		muteval = FM_RX_MUTE_SOFT_MUTE_FORCE_MODE;
+		muteval = FM_RX_SOFT_MUTE_FORCE_MODE;
 		break;
 	}
-	if (fmdev->rx.curr_rf_depend_mute == FM_RX_RF_DEPENDENT_MUTE_ON)
-		muteval |= FM_RX_MUTE_RF_DEP_MODE;
+	if (fmdev->rx.rf_depend_mute == FM_RX_RF_DEPENDENT_MUTE_ON)
+		muteval |= FM_RX_RF_DEP_MODE;
 	else
-		muteval &= ~FM_RX_MUTE_RF_DEP_MODE;
+		muteval &= ~FM_RX_RF_DEP_MODE;
 
 	payload = muteval;
 	ret = fmc_send_cmd(fmdev, MUTE_STATUS_SET, REG_WR, &payload,
@@ -482,24 +440,20 @@ static int __fm_config_rx_mute_reg(struct fmdrv_ops *fmdev)
 }
 
 /* Configures mute mode (Mute Off/On/Attenuate) */
-int fm_rx_set_mute_mode(struct fmdrv_ops *fmdev,
-			unsigned char mute_mode_toset)
+u32 fm_rx_set_mute_mode(struct fmdev *fmdev, u8 mute_mode_toset)
 {
-	unsigned char org_state;
-	int ret;
+	u8 org_state;
+	u32 ret;
 
-	if (fmdev->curr_fmmode != FM_MODE_RX)
-		return -EPERM;
-
-	if (fmdev->rx.curr_mute_mode == mute_mode_toset)
+	if (fmdev->rx.mute_mode == mute_mode_toset)
 		return 0;
 
-	org_state = fmdev->rx.curr_mute_mode;
-	fmdev->rx.curr_mute_mode = mute_mode_toset;
+	org_state = fmdev->rx.mute_mode;
+	fmdev->rx.mute_mode = mute_mode_toset;
 
-	ret = __fm_config_rx_mute_reg(fmdev);
+	ret = fm_config_rx_mute_reg(fmdev);
 	if (ret < 0) {
-		fmdev->rx.curr_mute_mode = org_state;
+		fmdev->rx.mute_mode = org_state;
 		return ret;
 	}
 
@@ -507,46 +461,44 @@ int fm_rx_set_mute_mode(struct fmdrv_ops *fmdev,
 }
 
 /* Gets RF dependent soft mute mode enable/disable status */
-int fm_rx_get_rfdepend_softmute(struct fmdrv_ops *fmdev,
-				unsigned char *curr_mute_mode)
+u32 fm_rx_get_rfdepend_softmute(struct fmdev *fmdev, u8 *curr_mute_mode)
 {
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (curr_mute_mode == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 
-	*curr_mute_mode = fmdev->rx.curr_rf_depend_mute;
+	*curr_mute_mode = fmdev->rx.rf_depend_mute;
 
 	return 0;
 }
 
 /* Sets RF dependent soft mute mode */
-int fm_rx_set_rfdepend_softmute(struct fmdrv_ops *fmdev,
-				unsigned char rfdepend_mute)
+u32 fm_rx_set_rfdepend_softmute(struct fmdev *fmdev, u8 rfdepend_mute)
 {
-	unsigned char org_state;
-	int ret;
+	u8 org_state;
+	u32 ret;
 
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (rfdepend_mute != FM_RX_RF_DEPENDENT_MUTE_ON &&
 	    rfdepend_mute != FM_RX_RF_DEPENDENT_MUTE_OFF) {
-		pr_err("(fmdrv): Invalid RF dependent soft mute\n");
+		fmerr("Invalid RF dependent soft mute\n");
 		return -EINVAL;
 	}
-	if (fmdev->rx.curr_rf_depend_mute == rfdepend_mute)
+	if (fmdev->rx.rf_depend_mute == rfdepend_mute)
 		return 0;
 
-	org_state = fmdev->rx.curr_rf_depend_mute;
-	fmdev->rx.curr_rf_depend_mute = rfdepend_mute;
+	org_state = fmdev->rx.rf_depend_mute;
+	fmdev->rx.rf_depend_mute = rfdepend_mute;
 
-	ret = __fm_config_rx_mute_reg(fmdev);
+	ret = fm_config_rx_mute_reg(fmdev);
 	if (ret < 0) {
-		fmdev->rx.curr_rf_depend_mute = org_state;
+		fmdev->rx.rf_depend_mute = org_state;
 		return ret;
 	}
 
@@ -554,18 +506,14 @@ int fm_rx_set_rfdepend_softmute(struct fmdrv_ops *fmdev,
 }
 
 /* Returns the signal strength level of current channel */
-int fm_rx_get_rssi_level(struct fmdrv_ops *fmdev,
-				unsigned short *rssilvl)
+u32 fm_rx_get_rssi_level(struct fmdev *fmdev, u16 *rssilvl)
 {
-	unsigned short curr_rssi_lel;
-	int resp_len;
-	int ret;
-
-	if (fmdev->curr_fmmode != FM_MODE_RX)
-		return -EPERM;
+	u16 curr_rssi_lel;
+	u32 resp_len;
+	u32 ret;
 
 	if (rssilvl == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 	/* Read current RSSI level */
@@ -583,62 +531,56 @@ int fm_rx_get_rssi_level(struct fmdrv_ops *fmdev,
  * Sets the signal strength level that once reached
  * will stop the auto search process
  */
-int fm_rx_set_rssi_threshold(struct fmdrv_ops *fmdev,
-				short rssi_lvl_toset)
+u32 fm_rx_set_rssi_threshold(struct fmdev *fmdev, short rssi_lvl_toset)
 {
-	unsigned short payload;
-	int ret;
-
-	if (fmdev->curr_fmmode != FM_MODE_RX)
-		return -EPERM;
+	u16 payload;
+	u32 ret;
 
 	if (rssi_lvl_toset < FM_RX_RSSI_THRESHOLD_MIN ||
-	    rssi_lvl_toset > FM_RX_RSSI_THRESHOLD_MAX) {
-		pr_err("(fmdrv): Invalid RSSI threshold level\n");
+			rssi_lvl_toset > FM_RX_RSSI_THRESHOLD_MAX) {
+		fmerr("Invalid RSSI threshold level\n");
 		return -EINVAL;
 	}
-	payload = (unsigned short)rssi_lvl_toset;
+	payload = (u16)rssi_lvl_toset;
 	ret = fmc_send_cmd(fmdev, SEARCH_LVL_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
 	if (ret < 0)
 		return ret;
 
-	fmdev->rx.curr_rssi_threshold = rssi_lvl_toset;
+	fmdev->rx.rssi_threshold = rssi_lvl_toset;
+
 	return 0;
 }
 
 /* Returns current RX RSSI threshold value */
-int fm_rx_get_rssi_threshold(struct fmdrv_ops *fmdev, short *curr_rssi_lvl)
+u32 fm_rx_get_rssi_threshold(struct fmdev *fmdev, short *curr_rssi_lvl)
 {
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (curr_rssi_lvl == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 
-	*curr_rssi_lvl = fmdev->rx.curr_rssi_threshold;
+	*curr_rssi_lvl = fmdev->rx.rssi_threshold;
 
 	return 0;
 }
 
 /* Sets RX stereo/mono modes */
-int fm_rx_set_stereo_mono(struct fmdrv_ops *fmdev, unsigned short mode)
+u32 fm_rx_set_stereo_mono(struct fmdev *fmdev, u16 mode)
 {
-	unsigned short payload;
-	int ret;
-
-	if (fmdev->curr_fmmode != FM_MODE_RX)
-		return -EPERM;
+	u16 payload;
+	u32 ret;
 
 	if (mode != FM_STEREO_MODE && mode != FM_MONO_MODE) {
-		pr_err("(fmdrv): Invalid mode\n");
+		fmerr("Invalid mode\n");
 		return -EINVAL;
 	}
 
 	/* Set stereo/mono mode */
-	payload = (unsigned short)mode;
+	payload = (u16)mode;
 	ret = fmc_send_cmd(fmdev, MOST_MODE_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
 	if (ret < 0)
@@ -655,16 +597,13 @@ int fm_rx_set_stereo_mono(struct fmdrv_ops *fmdev, unsigned short mode)
 }
 
 /* Gets current RX stereo/mono mode */
-int fm_rx_get_stereo_mono(struct fmdrv_ops *fmdev, unsigned short *mode)
+u32 fm_rx_get_stereo_mono(struct fmdev *fmdev, u16 *mode)
 {
-	unsigned short curr_mode;
-	int ret, resp_len;
-
-	if (fmdev->curr_fmmode != FM_MODE_RX)
-		return -EPERM;
+	u16 curr_mode;
+	u32 ret, resp_len;
 
 	if (mode == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 
@@ -679,17 +618,17 @@ int fm_rx_get_stereo_mono(struct fmdrv_ops *fmdev, unsigned short *mode)
 }
 
 /* Choose RX de-emphasis filter mode (50us/75us) */
-int fm_rx_set_deemphasis_mode(struct fmdrv_ops *fmdev, unsigned short mode)
+u32 fm_rx_set_deemphasis_mode(struct fmdev *fmdev, u16 mode)
 {
-	unsigned short payload;
-	int ret;
+	u16 payload;
+	u32 ret;
 
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (mode != FM_RX_EMPHASIS_FILTER_50_USEC &&
-	    mode != FM_RX_EMPHASIS_FILTER_75_USEC) {
-		pr_err("(fmdrv): Invalid rx de-emphasis mode (%d)\n", mode);
+			mode != FM_RX_EMPHASIS_FILTER_75_USEC) {
+		fmerr("Invalid rx de-emphasis mode (%d)\n", mode);
 		return -EINVAL;
 	}
 
@@ -699,45 +638,42 @@ int fm_rx_set_deemphasis_mode(struct fmdrv_ops *fmdev, unsigned short mode)
 	if (ret < 0)
 		return ret;
 
-	fmdev->rx.curr_deemphasis_mode = mode;
+	fmdev->rx.deemphasis_mode = mode;
+
 	return 0;
 }
 
 /* Gets current RX de-emphasis filter mode */
-int fm_rx_get_deemphasis_mode(struct fmdrv_ops *fmdev,
-				unsigned short *curr_deemphasis_mode)
+u32 fm_rx_get_deemph_mode(struct fmdev *fmdev, u16 *curr_deemphasis_mode)
 {
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (curr_deemphasis_mode == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 
-	*curr_deemphasis_mode = fmdev->rx.curr_deemphasis_mode;
+	*curr_deemphasis_mode = fmdev->rx.deemphasis_mode;
 
 	return 0;
 }
 
 /* Enable/Disable RX RDS */
-int fm_rx_set_rds_mode(struct fmdrv_ops *fmdev, unsigned char rds_en_dis)
+u32 fm_rx_set_rds_mode(struct fmdev *fmdev, u8 rds_en_dis)
 {
-	unsigned short payload;
-	int ret;
-
-	if (fmdev->curr_fmmode != FM_MODE_RX)
-		return -EPERM;
+	u16 payload;
+	u32 ret;
 
 	if (rds_en_dis != FM_RDS_ENABLE && rds_en_dis != FM_RDS_DISABLE) {
-		pr_err("(fmdrv): Invalid rds option\n");
+		fmerr("Invalid rds option\n");
 		return -EINVAL;
 	}
 
 	if (rds_en_dis == FM_RDS_ENABLE
 	    && fmdev->rx.rds.flag == FM_RDS_DISABLE) {
 		/* Turn on RX RDS and RDS circuit */
-		payload = FM_RX_POWET_SET_FM_AND_RDS_BLK_ON;
+		payload = FM_RX_PWR_SET_FM_AND_RDS_BLK_ON;
 		ret = fmc_send_cmd(fmdev, POWER_SET, REG_WR, &payload,
 				sizeof(payload), NULL, NULL);
 		if (ret < 0)
@@ -767,7 +703,7 @@ int fm_rx_set_rds_mode(struct fmdrv_ops *fmdev, unsigned char rds_en_dis)
 		fmdev->irq_info.mask |= FM_RDS_EVENT;
 		payload = fmdev->irq_info.mask;
 		ret = fmc_send_cmd(fmdev, INT_MASK_SET, REG_WR, &payload,
-		sizeof(payload), NULL, NULL);
+				sizeof(payload), NULL, NULL);
 		if (ret < 0) {
 			fmdev->irq_info.mask &= ~FM_RDS_EVENT;
 			return ret;
@@ -778,18 +714,17 @@ int fm_rx_set_rds_mode(struct fmdrv_ops *fmdev, unsigned char rds_en_dis)
 	} else if (rds_en_dis == FM_RDS_DISABLE
 		   && fmdev->rx.rds.flag == FM_RDS_ENABLE) {
 		/* Turn off RX RDS */
-		/* Turn off RDS circuit */
-		payload = FM_RX_POWER_SET_FM_ON_RDS_OFF;
+		payload = FM_RX_PWR_SET_FM_ON_RDS_OFF;
 		ret = fmc_send_cmd(fmdev, POWER_SET, REG_WR, &payload,
 				sizeof(payload), NULL, NULL);
 		if (ret < 0)
 			return ret;
 
 		/* Reset RDS pointers */
-		fmdev->rx.rds.last_block_index = 0;
-		fmdev->rx.rds.wr_index = 0;
-		fmdev->rx.rds.rd_index = 0;
-		fm_rx_reset_curr_station_info(fmdev);
+		fmdev->rx.rds.last_blk_idx = 0;
+		fmdev->rx.rds.wr_idx = 0;
+		fmdev->rx.rds.rd_idx = 0;
+		fm_rx_reset_station_info(fmdev);
 
 		/* Update RDS local cache */
 		fmdev->irq_info.mask &= ~(FM_RDS_EVENT);
@@ -800,14 +735,13 @@ int fm_rx_set_rds_mode(struct fmdrv_ops *fmdev, unsigned char rds_en_dis)
 }
 
 /* Returns current RX RDS enable/disable status */
-int fm_rx_get_rds_mode(struct fmdrv_ops *fmdev,
-			unsigned char *curr_rds_en_dis)
+u32 fm_rx_get_rds_mode(struct fmdev *fmdev, u8 *curr_rds_en_dis)
 {
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (curr_rds_en_dis == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 
@@ -817,20 +751,20 @@ int fm_rx_get_rds_mode(struct fmdrv_ops *fmdev,
 }
 
 /* Sets RDS operation mode (RDS/RDBS) */
-int fm_rx_set_rds_system(struct fmdrv_ops *fmdev, unsigned char rds_mode)
+u32 fm_rx_set_rds_system(struct fmdev *fmdev, u8 rds_mode)
 {
-	unsigned short payload;
-	int ret;
+	u16 payload;
+	u32 ret;
 
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (rds_mode != FM_RDS_SYSTEM_RDS && rds_mode != FM_RDS_SYSTEM_RBDS) {
-		pr_err("(fmdrv): Invalid rds mode\n");
+		fmerr("Invalid rds mode\n");
 		return -EINVAL;
 	}
 	/* Set RDS operation mode */
-	payload = (unsigned short)rds_mode;
+	payload = (u16)rds_mode;
 	ret = fmc_send_cmd(fmdev, RDS_SYSTEM_SET, REG_WR, &payload,
 			sizeof(payload), NULL, NULL);
 	if (ret < 0)
@@ -842,14 +776,13 @@ int fm_rx_set_rds_system(struct fmdrv_ops *fmdev, unsigned char rds_mode)
 }
 
 /* Returns current RDS operation mode */
-int fm_rx_get_rds_system(struct fmdrv_ops *fmdev,
-				unsigned char *rds_mode)
+u32 fm_rx_get_rds_system(struct fmdev *fmdev, u8 *rds_mode)
 {
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (rds_mode == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 
@@ -859,17 +792,17 @@ int fm_rx_get_rds_system(struct fmdrv_ops *fmdev,
 }
 
 /* Configures Alternate Frequency switch mode */
-int fm_rx_set_af_switch(struct fmdrv_ops *fmdev, unsigned char af_mode)
+u32 fm_rx_set_af_switch(struct fmdev *fmdev, u8 af_mode)
 {
-	unsigned short payload;
-	int ret;
+	u16 payload;
+	u32 ret;
 
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (af_mode != FM_RX_RDS_AF_SWITCH_MODE_ON &&
 	    af_mode != FM_RX_RDS_AF_SWITCH_MODE_OFF) {
-		pr_err("(fmdrv): Invalid af mode\n");
+		fmerr("Invalid af mode\n");
 		return -EINVAL;
 	}
 	/* Enable/disable low RSSI interrupt based on af_mode */
@@ -880,7 +813,7 @@ int fm_rx_set_af_switch(struct fmdrv_ops *fmdev, unsigned char af_mode)
 
 	payload = fmdev->irq_info.mask;
 	ret = fmc_send_cmd(fmdev, INT_MASK_SET, REG_WR, &payload,
-		sizeof(payload), NULL, NULL);
+			sizeof(payload), NULL, NULL);
 	if (ret < 0)
 		return ret;
 
@@ -890,13 +823,13 @@ int fm_rx_set_af_switch(struct fmdrv_ops *fmdev, unsigned char af_mode)
 }
 
 /* Returns Alternate Frequency switch status */
-int fm_rx_get_af_switch(struct fmdrv_ops *fmdev, unsigned char *af_mode)
+u32 fm_rx_get_af_switch(struct fmdev *fmdev, u8 *af_mode)
 {
 	if (fmdev->curr_fmmode != FM_MODE_RX)
 		return -EPERM;
 
 	if (af_mode == NULL) {
-		pr_err("(fmdrv): Invalid memory\n");
+		fmerr("Invalid memory\n");
 		return -ENOMEM;
 	}
 
