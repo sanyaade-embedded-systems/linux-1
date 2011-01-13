@@ -211,7 +211,7 @@ static int omapfb_setup_mem(struct fb_info *fbi, struct omapfb_mem_info *mi)
 	struct omapfb_info *ofbi = FB2OFB(fbi);
 	struct omapfb2_device *fbdev = ofbi->fbdev;
 	struct omapfb2_mem_region *rg;
-	int r = 0, i;
+	int r = 0;
 	size_t size;
 
 	if (mi->type > OMAPFB_MEMTYPE_MAX)
@@ -227,21 +227,6 @@ static int omapfb_setup_mem(struct fb_info *fbi, struct omapfb_mem_info *mi)
 	if (atomic_read(&rg->map_count)) {
 		r = -EBUSY;
 		goto out;
-	}
-
-	for (i = 0; i < fbdev->num_fbs; i++) {
-		struct omapfb_info *ofbi2 = FB2OFB(fbdev->fbs[i]);
-		int j;
-
-		if (ofbi2->region != rg)
-			continue;
-
-		for (j = 0; j < ofbi2->num_overlays; j++) {
-			if (ofbi2->overlays[j]->info.enabled) {
-				r = -EBUSY;
-				goto out;
-			}
-		}
 	}
 
 	if (rg->size != size || rg->type != mi->type) {

@@ -115,9 +115,18 @@ struct hdmi_core_video_config_t {
 	enum hdmi_core_tclkselclkmult	CoreTclkSelClkMult;
 };
 
-enum hdmi_core_fs {
-	FS_32000 = 0,
-	FS_44100 = 1
+/* Sample frequency encoded in audio channel status bits
+ * See HDMI 1.3a specification section 7.3. Bit order is reversed.
+ */
+ enum hdmi_core_fs {
+	FS_32000 = 0x3,
+	FS_44100 = 0x0,
+	FS_48000 = 0x2,
+	FS_88200 = 0x8,
+	FS_96000 = 0xA,
+	FS_176400 = 0xC,
+	FS_192000 = 0xE,
+	FS_NOT_INDICATED = 0x1
 };
 
 enum hdmi_core_layout {
@@ -295,6 +304,11 @@ enum hdmi_sample_size {
 	HDMI_SAMPLE_24BITS = 1
 };
 
+enum hdmi_block_start_end {
+	HDMI_BLOCK_STARTEND_SIGNAL_ON = 0,
+	HDMI_BLOCK_STARTEND_SIGNAL_OFF = 1
+};
+
 struct hdmi_audio_format {
 	enum hdmi_stereo_channel	stereo_channel_enable;
 	enum hdmi_cea_code		audio_channel_location;
@@ -303,6 +317,7 @@ struct hdmi_audio_format {
 	enum hdmi_sample_order		left_before;
 	enum hdmi_sample_perword	sample_number;
 	enum hdmi_sample_size		sample_size;
+	enum hdmi_block_start_end	signal_block_start_end;
 };
 
 enum hdmi_dma_irq {
@@ -310,17 +325,11 @@ enum hdmi_dma_irq {
 	HDMI_THRESHOLD_IRQ = 1
 };
 
-enum hdmi_block_start_end {
-	HDMI_BLOCK_STARTEND_ON = 0,
-	HDMI_BLOCK_STARTEND_OFF = 1
-};
-
 struct hdmi_audio_dma {
 	u8				dma_transfer;
 	u8				block_size;
 	enum hdmi_dma_irq		dma_or_irq;
 	u16				threshold_value;
-	enum hdmi_block_start_end	block_start_end;
 };
 
 enum hdmi_packing_mode {
@@ -422,6 +431,40 @@ enum hdmi_core_av_csc{
 	YUV_TO_RGB = 0x2
 };
 
+enum hdmi_i2s_chst_audio_max_word_length{
+	I2S_CHST_WORD_MAX_20 = 0,
+	I2S_CHST_WORD_MAX_24 = 1,
+};
+
+/* The word length depends on how the max word length is set.
+ * Therefore, some values are duplicated. */
+enum hdmi_i2s_chst_audio_word_length{
+	I2S_CHST_WORD_NOT_SPECIFIED = 0x0,
+	I2S_CHST_WORD_16_BITS       = 0x1,
+	I2S_CHST_WORD_17_BITS       = 0x6,
+	I2S_CHST_WORD_18_BITS       = 0x2,
+	I2S_CHST_WORD_19_BITS       = 0x4,
+	I2S_CHST_WORD_20_BITS_20MAX = 0x5,
+	I2S_CHST_WORD_20_BITS_24MAX = 0x1,
+	I2S_CHST_WORD_21_BITS       = 0x6,
+	I2S_CHST_WORD_22_BITS       = 0x2,
+	I2S_CHST_WORD_23_BITS       = 0x4,
+	I2S_CHST_WORD_24_BITS       = 0x5,
+};
+
+enum hdmi_i2s_in_length{
+	I2S_IN_LENGTH_NA = 0x0,
+	I2S_IN_LENGTH_16 = 0x2,
+	I2S_IN_LENGTH_17 = 0xC,
+	I2S_IN_LENGTH_18 = 0x4,
+	I2S_IN_LENGTH_19 = 0x8,
+	I2S_IN_LENGTH_20 = 0xA,
+	I2S_IN_LENGTH_21 = 0xD,
+	I2S_IN_LENGTH_22 = 0x5,
+	I2S_IN_LENGTH_23 = 0x9,
+	I2S_IN_LENGTH_24 = 0xb,
+};
+
 struct hdmi_core_audio_config {
 	enum hdmi_core_fs		fs; /* 0=32KHz - 1=44.1KHz */
 	u32				n;
@@ -433,6 +476,10 @@ struct hdmi_core_audio_config {
 	u32				if_channel_number;
 	enum hdmi_core_if_sample_size	if_sample_size;
 	enum hdmi_cea_code		if_audio_channel_location;
+	enum hdmi_i2s_chst_audio_max_word_length i2schst_max_word_length;
+	enum hdmi_i2s_chst_audio_word_length i2schst_word_length;
+	enum hdmi_i2s_in_length i2s_in_bit_length;
+	enum hdmi_audio_justify i2s_justify;
  };
 struct hdmi_notifier {
 	void (*hpd_notifier)(int state, void *data);
@@ -465,6 +512,10 @@ int hdmi_configure_lrfr(enum hdmi_range, int force_set);
 void hdmi_add_notifier(struct hdmi_notifier *notifier);
 void hdmi_remove_notifier(struct hdmi_notifier *notifier);
 void hdmi_notify_hpd(int state);
-
+int hdmi_configure_audio_acr(u32 pixel_clock);
+int hdmi_configure_audio_sample_rate(u32 sampleRate);
+int hdmi_configure_audio_sample_size(u32 sampleSize);
+int hdmi_configure_audio_channels(u32, enum hdmi_cea_code);
+int hdmi_configure_audio(void);
 #endif
 
