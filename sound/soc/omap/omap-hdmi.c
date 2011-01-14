@@ -35,7 +35,8 @@
 #include "omap-hdmi.h"
 
 #define CONFIG_HDMI_NO_IP_MODULE
-#define OMAP_HDMI_RATES	(SNDRV_PCM_RATE_48000)
+#define OMAP_HDMI_RATES	(SNDRV_PCM_RATE_32000 | \
+				SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000)
 
 /* Currently, we support only 16b samples at HDMI */
 #define OMAP_HDMI_FORMATS (SNDRV_PCM_FMTBIT_S16_LE)
@@ -137,6 +138,21 @@ static int omap_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
 	default:
 		err = -EINVAL;
 	}
+
+#ifdef CONFIG_HDMI_NO_IP_MODULE
+	err = hdmi_configure_audio_sample_rate(params_rate(params));
+	if (err < 0)
+		return err;
+	err = hdmi_configure_audio();
+	if (err < 0)
+		return err;
+#else
+	err = hdmi_audio_core.config_audio_sample_rate(HDMI_WP,
+				params_rate(params));
+	if (err < 0)
+		return err;
+#endif
+
 	omap_hdmi_dai_dma_params.packet_size = 0x20;
 
 	snd_soc_dai_set_dma_data(dai, substream,
@@ -224,6 +240,7 @@ void hdmi_audio_core_stub_init(void)
 	hdmi_audio_core.set_wait_pwr = NULL;
 	hdmi_audio_core.set_wait_srst = NULL;
 	hdmi_audio_core.read_edid = NULL;
+	hdmi_audio_core.config_audio_sample_rate = NULL;
 	hdmi_audio_core.ip_init = audio_stub_lib_init;
 	hdmi_audio_core.ip_exit = audio_stub_lib_exit;
 	hdmi_audio_core.module_loaded = 0;
