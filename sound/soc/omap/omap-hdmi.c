@@ -38,8 +38,9 @@
 #define OMAP_HDMI_RATES	(SNDRV_PCM_RATE_32000 | \
 				SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000)
 
-/* Currently, we support only 16b samples at HDMI */
-#define OMAP_HDMI_FORMATS (SNDRV_PCM_FMTBIT_S16_LE)
+/* Support for 16 and 24 bits */
+#define OMAP_HDMI_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | \
+				SNDRV_PCM_FMTBIT_S24_LE)
 
 #ifdef CONFIG_HDMI_NO_IP_MODULE
 #include <plat/hdmi_lib.h>
@@ -131,13 +132,36 @@ static int omap_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
-	case SNDRV_PCM_FORMAT_S32_LE:
+#ifdef CONFIG_HDMI_NO_IP_MODULE
+		err = hdmi_configure_audio_sample_size(HDMI_SAMPLE_16BITS);
+#else
+		if (hdmi_audio_core.module_loaded)
+			err = hdmi_audio_core.config_sample_size(HDMI_WP,
+						HDMI_SAMPLE_16BITS);
+		else
+			printk(KERN_WARNING "Warning: hdmi_core.ko is "
+							"not enabled");
+#endif
 		omap_hdmi_dai_dma_params.data_type = OMAP_DMA_DATA_TYPE_S32;
 		break;
-
+	case SNDRV_PCM_FORMAT_S24_LE:
+#ifdef CONFIG_HDMI_NO_IP_MODULE
+		err = hdmi_configure_audio_sample_size(HDMI_SAMPLE_24BITS);
+#else
+		if (hdmi_audio_core.module_loaded)
+			err = hdmi_audio_core.config_sample_size(HDMI_WP,
+						HDMI_SAMPLE_24BITS);
+		else
+			printk(KERN_WARNING "Warning: hdmi_core.ko is "
+							"not enabled");
+#endif
+		omap_hdmi_dai_dma_params.data_type = OMAP_DMA_DATA_TYPE_S32;
+		break;
 	default:
 		err = -EINVAL;
 	}
+	if (err < 0)
+		return err;
 
 #ifdef CONFIG_HDMI_NO_IP_MODULE
 	err = hdmi_configure_audio_sample_rate(params_rate(params));
@@ -241,6 +265,7 @@ void hdmi_audio_core_stub_init(void)
 	hdmi_audio_core.set_wait_srst = NULL;
 	hdmi_audio_core.read_edid = NULL;
 	hdmi_audio_core.config_audio_sample_rate = NULL;
+	hdmi_audio_core.config_sample_size = NULL;
 	hdmi_audio_core.ip_init = audio_stub_lib_init;
 	hdmi_audio_core.ip_exit = audio_stub_lib_exit;
 	hdmi_audio_core.module_loaded = 0;
