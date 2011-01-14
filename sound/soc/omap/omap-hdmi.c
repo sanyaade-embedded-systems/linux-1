@@ -30,7 +30,6 @@
 #include <sound/initval.h>
 #include <sound/soc.h>
 
-#include <plat/control.h>
 #include <plat/dma.h>
 #include "omap-pcm.h"
 #include "omap-hdmi.h"
