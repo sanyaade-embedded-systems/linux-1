@@ -24,8 +24,6 @@
 #ifndef __OMAP_ABE_DSP_H__
 #define __OMAP_ABE_DSP_H__
 
-#define ABE_VM_AESS_OFFSET		0x400000	/* AESS VM offset for DMEM */
-
 void abe_dsp_shutdown(void);
 void abe_dsp_pm_get(void);
 void abe_dsp_pm_put(void);

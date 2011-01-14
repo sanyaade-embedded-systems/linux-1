@@ -2067,7 +2067,10 @@ static int abe_ping_pong_init(struct snd_pcm_hw_params *params,
 	abe->psubs = substream;
 
 	format.f = params_rate(params);
-	format.samp_format = STEREO_16_16;
+	if (params_format(params) == SNDRV_PCM_FORMAT_S32_LE)
+		format.samp_format = STEREO_MSB;
+	else
+		format.samp_format = STEREO_16_16;
 
 	if (format.f == 44100)
 		abe_write_event_generator(EVENT_44100);
@@ -2086,8 +2089,7 @@ static int abe_ping_pong_init(struct snd_pcm_hw_params *params,
 				PING_PONG_WITH_MCU_IRQ);
 
 	/* Memory mapping for hw params */
-	runtime->dma_area  = abe->io_base + ABE_DMEM_BASE_OFFSET_MPU +
-				ABE_VM_AESS_OFFSET + dst;
+	runtime->dma_area  = abe->io_base + ABE_DMEM_BASE_OFFSET_MPU + dst;
 	runtime->dma_addr  = 0;
 	runtime->dma_bytes = period_size * 2;
 
