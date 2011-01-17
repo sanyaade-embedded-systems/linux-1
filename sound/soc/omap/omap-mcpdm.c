@@ -70,7 +70,7 @@ struct omap_mcpdm {
 	struct delayed_work delayed_abe_work;
 #endif
 
-	spinlock_t lock;
+	struct mutex mutex;
 	struct omap_mcpdm_platform_data *pdata;
 	struct omap_mcpdm_link *downlink;
 	struct omap_mcpdm_link *uplink;
@@ -407,17 +407,15 @@ static int omap_mcpdm_request(struct omap_mcpdm *mcpdm)
 
 	pm_runtime_get_sync(&pdev->dev);
 
-	spin_lock(&mcpdm->lock);
-
+	mutex_lock(&mcpdm->mutex);
 	if (!mcpdm->free) {
 		dev_err(mcpdm->dev, "McPDM interface is in use\n");
-		spin_unlock(&mcpdm->lock);
+		mutex_unlock(&mcpdm->mutex);
 		ret = -EBUSY;
 		goto err;
 	}
 	mcpdm->free = 0;
-
-	spin_unlock(&mcpdm->lock);
+	mutex_unlock(&mcpdm->mutex);
 
 	/* Disable lines while request is ongoing */
 	omap_mcpdm_write(mcpdm, MCPDM_CTRL, 0x00);
@@ -449,15 +447,15 @@ static void omap_mcpdm_free(struct omap_mcpdm *mcpdm)
 
 	pdev = to_platform_device(mcpdm->dev);
 
-	spin_lock(&mcpdm->lock);
+	mutex_lock(&mcpdm->mutex);
 	if (mcpdm->free) {
 		dev_err(mcpdm->dev, "McPDM interface is already free\n");
-		spin_unlock(&mcpdm->lock);
+		mutex_unlock(&mcpdm->mutex);
 		return;
 	}
 
 	mcpdm->free = 1;
-	spin_unlock(&mcpdm->lock);
+	mutex_unlock(&mcpdm->mutex);
 
 	pm_runtime_put_sync(&pdev->dev);
 
@@ -661,7 +659,8 @@ static void omap_mcpdm_abe_dai_shutdown(struct snd_pcm_substream *substream,
 	if (!dai->active) {
 		if (!mcpdm->ul_active && substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 			omap_mcpdm_capture_close(mcpdm, mcpdm->uplink);
-			if (!mcpdm->free && !mcpdm->dn_channels)
+			if (!mcpdm->free && !mcpdm->dn_channels &&
+			    !mcpdm->dl_active)
 				omap_mcpdm_free(mcpdm);
 		}
 		if (!mcpdm->dl_active && substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
@@ -677,7 +676,7 @@ static void playback_abe_work(struct work_struct *work)
 	struct omap_mcpdm *mcpdm =
 			container_of(work, struct omap_mcpdm, delayed_abe_work.work);
 
-	spin_lock(&mcpdm->lock);
+	mutex_lock(&mcpdm->mutex);
 	if (!mcpdm->dl_active && mcpdm->dn_channels) {
 		abe_disable_data_transfer(PDM_DL_PORT);
 		udelay(250);
@@ -685,8 +684,8 @@ static void playback_abe_work(struct work_struct *work)
 		omap_mcpdm_playback_close(mcpdm, mcpdm->downlink);
 		abe_dsp_shutdown();
 	}
-	spin_unlock(&mcpdm->lock);
 	abe_dsp_pm_put();
+	mutex_unlock(&mcpdm->mutex);
 
 	if (!mcpdm->free && !mcpdm->ul_active)
 		omap_mcpdm_free(mcpdm);
@@ -708,8 +707,8 @@ static int omap_mcpdm_abe_dai_hw_params(struct snd_pcm_substream *substream,
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		/* Check if McPDM is already started */
 		if (!mcpdm->dn_channels) {
+			mutex_lock(&mcpdm->mutex);
 			abe_dsp_pm_get();
-			spin_lock(&mcpdm->lock);
 			/* start ATC before McPDM IP */
 			abe_enable_data_transfer(PDM_DL_PORT);
 			udelay(250);
@@ -717,12 +716,12 @@ static int omap_mcpdm_abe_dai_hw_params(struct snd_pcm_substream *substream,
 
 			ret = omap_mcpdm_playback_open(mcpdm, &omap_mcpdm_links[0]);
 			if (ret < 0) {
-				spin_unlock(&mcpdm->lock);
+				mutex_unlock(&mcpdm->mutex);
 				goto out;
 			}
 
 			omap_mcpdm_start(mcpdm, stream);
-			spin_unlock(&mcpdm->lock);
+			mutex_unlock(&mcpdm->mutex);
 		}
 	} else {
 		mcpdm->uplink->channels = PDM_UP1_EN | PDM_UP2_EN;
@@ -832,7 +831,7 @@ static __devinit int asoc_mcpdm_probe(struct platform_device *pdev)
 	mcpdm->downlink = &omap_mcpdm_links[0];
 	mcpdm->uplink = &omap_mcpdm_links[1];
 
-	spin_lock_init(&mcpdm->lock);
+	mutex_init(&mcpdm->mutex);
 	mcpdm->free = 1;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);

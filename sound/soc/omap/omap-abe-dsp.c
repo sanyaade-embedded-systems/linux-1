@@ -116,8 +116,8 @@ static const struct snd_pcm_hardware omap_abe_hardware = {
 				  SNDRV_PCM_INFO_RESUME,
 	.formats		= SNDRV_PCM_FMTBIT_S16_LE |
 				  SNDRV_PCM_FMTBIT_S32_LE,
-	.period_bytes_min	= 24 * 1024,
-	.period_bytes_max	= 48 * 1024,
+	.period_bytes_min	= 4 * 1024,
+	.period_bytes_max	= 24 * 1024,
 	.periods_min		= 2,
 	.periods_max		= 2,
 	.buffer_bytes_max	= 24 * 1024 * 2,
@@ -874,59 +874,65 @@ static int abe_get_equalizer(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int abe_put_equalizer(struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_value *ucontrol)
+static void abe_dsp_set_equalizer(unsigned int id, unsigned int profile)
 {
 	/* TODO: do not use abe global structure to assign pdev */
 	struct platform_device *pdev = abe->pdev;
-	struct soc_enum *eqc = (struct soc_enum *)kcontrol->private_value;
-	u16 val = ucontrol->value.enumerated.item[0];
 	abe_equ_t equ_params;
 
-	switch (eqc->reg) {
+	switch (id) {
 	case EQ1:
 		equ_params.equ_length = NBDL1COEFFS;
-		memcpy(equ_params.coef.type1, dl1_equ_coeffs[val],
-				sizeof(dl1_equ_coeffs[val]));
-		abe->dl1_equ_profile = val;
+		memcpy(equ_params.coef.type1, dl1_equ_coeffs[profile],
+				sizeof(dl1_equ_coeffs[profile]));
+		abe->dl1_equ_profile = profile;
 		break;
 	case EQ2L:
 		equ_params.equ_length = NBDL2COEFFS;
-		memcpy(equ_params.coef.type1, dl20_equ_coeffs[val],
-				sizeof(dl20_equ_coeffs[val]));
-		abe->dl20_equ_profile = val;
+		memcpy(equ_params.coef.type1, dl20_equ_coeffs[profile],
+				sizeof(dl20_equ_coeffs[profile]));
+		abe->dl20_equ_profile = profile;
 		break;
 	case EQ2R:
 		equ_params.equ_length = NBDL2COEFFS;
-		memcpy(equ_params.coef.type1, dl21_equ_coeffs[val],
-				sizeof(dl21_equ_coeffs[val]));
-		abe->dl21_equ_profile = val;
+		memcpy(equ_params.coef.type1, dl21_equ_coeffs[profile],
+				sizeof(dl21_equ_coeffs[profile]));
+		abe->dl21_equ_profile = profile;
 		break;
 	case EQAMIC:
 		equ_params.equ_length = NBAMICCOEFFS;
-		memcpy(equ_params.coef.type1, amic_equ_coeffs[val],
-				sizeof(amic_equ_coeffs[val]));
-		abe->amic_equ_profile = val;
+		memcpy(equ_params.coef.type1, amic_equ_coeffs[profile],
+				sizeof(amic_equ_coeffs[profile]));
+		abe->amic_equ_profile = profile;
 		break;
 	case EQDMIC:
 		equ_params.equ_length = NBDMICCOEFFS;
-		memcpy(equ_params.coef.type1, dmic_equ_coeffs[val],
-				sizeof(dmic_equ_coeffs[val]));
-		abe->dmic_equ_profile = val;
+		memcpy(equ_params.coef.type1, dmic_equ_coeffs[profile],
+				sizeof(dmic_equ_coeffs[profile]));
+		abe->dmic_equ_profile = profile;
 		break;
 	case EQSDT:
 		equ_params.equ_length = NBSDTCOEFFS;
-		memcpy(equ_params.coef.type1, sdt_equ_coeffs[val],
-				sizeof(sdt_equ_coeffs[val]));
-		abe->sdt_equ_profile = val;
+		memcpy(equ_params.coef.type1, sdt_equ_coeffs[profile],
+				sizeof(sdt_equ_coeffs[profile]));
+		abe->sdt_equ_profile = profile;
 		break;
 	default:
-		break;
+		return;
 	}
 
 	pm_runtime_get_sync(&pdev->dev);
-	abe_write_equalizer(eqc->reg, &equ_params);
+	abe_write_equalizer(id, &equ_params);
 	pm_runtime_put_sync(&pdev->dev);
+}
+
+static int abe_put_equalizer(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_enum *eqc = (struct soc_enum *)kcontrol->private_value;
+	u16 val = ucontrol->value.enumerated.item[0];
+
+	abe_dsp_set_equalizer(eqc->reg, val);
 
 	return 1;
 }
@@ -1697,8 +1703,12 @@ static int aess_set_opp_mode(void)
 			break;
 		}
 	} else if (abe->opp < opp) {
-		/* Increase OPP mode - no need of OPP25% */
+		/* Increase OPP mode */
 		switch (opp) {
+		case 25:
+			omap_device_set_rate(&pdev->dev, &pdev->dev, 49000000);
+			abe_set_opp_processing(ABE_OPP25);
+			break;
 		case 50:
 			omap_device_set_rate(&pdev->dev, &pdev->dev, 98300000);
 			abe_set_opp_processing(ABE_OPP50);
@@ -2024,6 +2034,7 @@ static int aess_open(struct snd_pcm_substream *substream)
 	struct snd_soc_dai *dai = rtd->cpu_dai;
 	/* TODO: do not use abe global structure to assign pdev */
 	struct platform_device *pdev = abe->pdev;
+	int ret = 0;
 
 	mutex_lock(&abe->mutex);
 
@@ -2040,29 +2051,37 @@ static int aess_open(struct snd_pcm_substream *substream)
 		break;
 	case ABE_FRONTEND_DAI_LP_MEDIA:
 		snd_soc_set_runtime_hwparams(substream, &omap_abe_hardware);
+		ret = snd_pcm_hw_constraint_step(substream->runtime, 0,
+					 SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 1024);
 		break;
 	default:
 		break;
 	}
 
 	mutex_unlock(&abe->mutex);
-	return 0;
+	return ret;
 }
 static int abe_ping_pong_init(struct snd_pcm_hw_params *params,
 	struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	abe_data_format_t format;
+	size_t period_size;
 	u32 dst;
 
 	/*Storing substream pointer for irq*/
 	abe->psubs = substream;
 
 	format.f = params_rate(params);
-	format.samp_format = STEREO_16_16;
+	if (params_format(params) == SNDRV_PCM_FORMAT_S32_LE)
+		format.samp_format = STEREO_MSB;
+	else
+		format.samp_format = STEREO_16_16;
 
 	if (format.f == 44100)
 		abe_write_event_generator(EVENT_44100);
+
+	period_size = params_period_bytes(params);
 
 	/*Adding ping pong buffer subroutine*/
 	abe_add_subroutine(&abe_irq_pingpong_player_id,
@@ -2072,17 +2091,16 @@ static int abe_ping_pong_init(struct snd_pcm_hw_params *params,
 	/* Connect a Ping-Pong cache-flush protocol to MM_DL port */
 	abe_connect_irq_ping_pong_port(MM_DL_PORT, &format,
 				abe_irq_pingpong_player_id,
-				N_SAMPLES_BYTES, &dst,
+				period_size, &dst,
 				PING_PONG_WITH_MCU_IRQ);
 
 	/* Memory mapping for hw params */
-	runtime->dma_area  = abe->io_base + ABE_DMEM_BASE_OFFSET_MPU +
-				ABE_VM_AESS_OFFSET + dst;
+	runtime->dma_area  = abe->io_base + ABE_DMEM_BASE_OFFSET_MPU + dst;
 	runtime->dma_addr  = 0;
-	runtime->dma_bytes = N_SAMPLES_BYTES * 2;
+	runtime->dma_bytes = period_size * 2;
 
 	/* Need to set the first buffer in order to get interrupt */
-	abe_set_ping_pong_buffer(MM_DL_PORT, N_SAMPLES_BYTES);
+	abe_set_ping_pong_buffer(MM_DL_PORT, period_size);
 
 	return 0;
 }
@@ -2233,6 +2251,36 @@ static int aess_suspend(struct device *dev)
 	pdev = to_platform_device(dev);
 	pdata = pdev->dev.platform_data;
 
+	pm_runtime_get_sync(&pdev->dev);
+
+	if (abe->active && abe_check_activity()) {
+		dev_dbg(&pdev->dev, "Suspend in a middle of ABE activity!\n");
+		goto no_suspend;
+	}
+
+	/* TODO: Find a better way to save/retore gains after dor OFF mode */
+	abe_mute_gain(MIXSDT, MIX_SDT_INPUT_UP_MIXER);
+	abe_mute_gain(MIXSDT, MIX_SDT_INPUT_DL1_MIXER);
+	abe_mute_gain(MIXECHO, MIX_ECHO_DL1);
+	abe_mute_gain(MIXECHO, MIX_ECHO_DL2);
+	abe_mute_gain(MIXAUDUL, MIX_AUDUL_INPUT_MM_DL);
+	abe_mute_gain(MIXAUDUL, MIX_AUDUL_INPUT_TONES);
+	abe_mute_gain(MIXAUDUL, MIX_AUDUL_INPUT_UPLINK);
+	abe_mute_gain(MIXAUDUL, MIX_AUDUL_INPUT_VX_DL);
+	abe_mute_gain(MIXVXREC, MIX_VXREC_INPUT_TONES);
+	abe_mute_gain(MIXVXREC, MIX_VXREC_INPUT_VX_DL);
+	abe_mute_gain(MIXVXREC, MIX_VXREC_INPUT_MM_DL);
+	abe_mute_gain(MIXVXREC, MIX_VXREC_INPUT_VX_UL);
+
+no_suspend:
+	pm_runtime_put_sync(&pdev->dev);
+
+	/*
+	 * force setting OPP after suspend/resume to ensure
+	 * ABE freq/volt are set to proper values
+	 */
+	abe->opp = 0;
+
 	if (pdata->get_context_loss_count)
 		abe->loss_count = pdata->get_context_loss_count(dev);
 
@@ -2254,17 +2302,43 @@ static int aess_resume(struct device *dev)
 
 	pm_runtime_get_sync(&pdev->dev);
 
+	if (abe->active && abe_check_activity()) {
+		dev_dbg(&pdev->dev, "Resume in a middle of ABE activity!\n");
+		goto no_resume;
+	}
+
 	if (loss_count != abe->loss_count)
 		abe_reload_fw();
 
+	/* TODO: Find a better way to save/retore gains after dor OFF mode */
+	abe_unmute_gain(MIXSDT, MIX_SDT_INPUT_UP_MIXER);
+	abe_unmute_gain(MIXSDT, MIX_SDT_INPUT_DL1_MIXER);
+	abe_unmute_gain(MIXECHO, MIX_ECHO_DL1);
+	abe_unmute_gain(MIXECHO, MIX_ECHO_DL2);
+	abe_unmute_gain(MIXAUDUL, MIX_AUDUL_INPUT_MM_DL);
+	abe_unmute_gain(MIXAUDUL, MIX_AUDUL_INPUT_TONES);
+	abe_unmute_gain(MIXAUDUL, MIX_AUDUL_INPUT_UPLINK);
+	abe_unmute_gain(MIXAUDUL, MIX_AUDUL_INPUT_VX_DL);
+	abe_unmute_gain(MIXVXREC, MIX_VXREC_INPUT_TONES);
+	abe_unmute_gain(MIXVXREC, MIX_VXREC_INPUT_VX_DL);
+	abe_unmute_gain(MIXVXREC, MIX_VXREC_INPUT_MM_DL);
+	abe_unmute_gain(MIXVXREC, MIX_VXREC_INPUT_VX_UL);
+	abe_dsp_set_equalizer(EQ1, abe->dl1_equ_profile);
+	abe_dsp_set_equalizer(EQ2L, abe->dl20_equ_profile);
+	abe_dsp_set_equalizer(EQ2R, abe->dl21_equ_profile);
+	abe_dsp_set_equalizer(EQAMIC, abe->amic_equ_profile);
+	abe_dsp_set_equalizer(EQDMIC, abe->dmic_equ_profile);
+	abe_dsp_set_equalizer(EQSDT, abe->sdt_equ_profile);
+
+no_resume:
 	pm_runtime_put_sync(&pdev->dev);
 
 	return 0;
 }
 
 #else
-#define aess_runtime_suspend	NULL
-#define aess_runtime_resume	NULL
+#define aess_suspend	NULL
+#define aess_resume	NULL
 #endif
 
 static const struct dev_pm_ops aess_pm_ops = {

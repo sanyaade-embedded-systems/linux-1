@@ -30,19 +30,26 @@
 #include <sound/initval.h>
 #include <sound/soc.h>
 
-#include <plat/control.h>
 #include <plat/dma.h>
 #include "omap-pcm.h"
 #include "omap-hdmi.h"
 
 #define CONFIG_HDMI_NO_IP_MODULE
-#define OMAP_HDMI_RATES	(SNDRV_PCM_RATE_48000)
+#define OMAP_HDMI_RATES	(SNDRV_PCM_RATE_32000 | \
+				SNDRV_PCM_RATE_44100 | SNDRV_PCM_RATE_48000)
 
-/* Currently, we support only 16b samples at HDMI */
-#define OMAP_HDMI_FORMATS (SNDRV_PCM_FMTBIT_S16_LE)
+/* Support for 16 and 24 bits */
+#define OMAP_HDMI_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | \
+				SNDRV_PCM_FMTBIT_S24_LE)
 
-#ifdef CONFIG_HDMI_NO_IP_MODULE
+#if defined(CONFIG_HDMI_NO_IP) || defined(CONFIG_HDMI_NO_IP_MODULE)
 #include <plat/hdmi_lib.h>
+
+struct omap_hdmi_data {
+	struct hdmi_notifier notifier;
+};
+
+struct omap_hdmi_data hdmi_data;
 #else
 struct hdmi_ip_driver hdmi_audio_core;
 #endif
@@ -54,11 +61,27 @@ static struct omap_pcm_dma_data omap_hdmi_dai_dma_params = {
 	.sync_mode = OMAP_DMA_SYNC_PACKET,
 };
 
+#ifdef CONFIG_HDMI_NO_IP_MODULE
+static void hdmi_hpd_notifier(int state, void *data)
+{
+	struct snd_pcm_substream *substream = data;
+
+	if (!state && substream)
+		snd_pcm_stop(substream, SNDRV_PCM_STATE_DISCONNECTED);
+}
+#endif
+
 static int omap_hdmi_dai_startup(struct snd_pcm_substream *substream,
 				  struct snd_soc_dai *dai)
 {
 	int err = 0;
-#ifdef CONFIG_HDMI_NO_IP_MODULE
+#if defined(CONFIG_HDMI_NO_IP) || defined(CONFIG_HDMI_NO_IP_MODULE)
+	struct hdmi_notifier *notifier = &hdmi_data.notifier;
+
+	notifier->hpd_notifier = hdmi_hpd_notifier;
+	notifier->private_data = substream;
+	hdmi_add_notifier(notifier);
+
 	err = hdmi_w1_wrapper_enable(HDMI_WP);
 #else
 	if (hdmi_audio_core.module_loaded)
@@ -72,8 +95,13 @@ static int omap_hdmi_dai_startup(struct snd_pcm_substream *substream,
 static void omap_hdmi_dai_shutdown(struct snd_pcm_substream *substream,
 				    struct snd_soc_dai *dai)
 {
-#ifdef CONFIG_HDMI_NO_IP_MODULE
+#if defined(CONFIG_HDMI_NO_IP) || defined(CONFIG_HDMI_NO_IP_MODULE)
+	struct hdmi_notifier *notifier = &hdmi_data.notifier;
+
 	hdmi_w1_wrapper_disable(HDMI_WP);
+
+	hdmi_remove_notifier(notifier);
+	notifier->private_data = NULL;
 #else
 	if (hdmi_audio_core.module_loaded)
 		hdmi_audio_core.wrapper_disable(HDMI_WP);
@@ -92,7 +120,7 @@ static int omap_hdmi_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_START:
 	case SNDRV_PCM_TRIGGER_RESUME:
 	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-#ifdef CONFIG_HDMI_NO_IP_MODULE
+#if defined(CONFIG_HDMI_NO_IP) || defined(CONFIG_HDMI_NO_IP_MODULE)
 		err = hdmi_w1_start_audio_transfer(HDMI_WP);
 #else
 		if (hdmi_audio_core.module_loaded)
@@ -106,7 +134,7 @@ static int omap_hdmi_dai_trigger(struct snd_pcm_substream *substream, int cmd,
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-#ifdef CONFIG_HDMI_NO_IP_MODULE
+#if defined(CONFIG_HDMI_NO_IP) || defined(CONFIG_HDMI_NO_IP_MODULE)
 		err = hdmi_w1_stop_audio_transfer(HDMI_WP);
 #else
 		if (hdmi_audio_core.module_loaded)
@@ -131,13 +159,59 @@ static int omap_hdmi_dai_hw_params(struct snd_pcm_substream *substream,
 
 	switch (params_format(params)) {
 	case SNDRV_PCM_FORMAT_S16_LE:
-	case SNDRV_PCM_FORMAT_S32_LE:
+#if defined(CONFIG_HDMI_NO_IP) || defined(CONFIG_HDMI_NO_IP_MODULE)
+		err = hdmi_configure_audio_sample_size(HDMI_SAMPLE_16BITS);
+#else
+		if (hdmi_audio_core.module_loaded)
+			err = hdmi_audio_core.config_sample_size(HDMI_WP,
+						HDMI_SAMPLE_16BITS);
+		else
+			printk(KERN_WARNING "Warning: hdmi_core.ko is "
+							"not enabled");
+#endif
 		omap_hdmi_dai_dma_params.data_type = OMAP_DMA_DATA_TYPE_S32;
 		break;
-
+	case SNDRV_PCM_FORMAT_S24_LE:
+#if defined(CONFIG_HDMI_NO_IP) || defined(CONFIG_HDMI_NO_IP_MODULE)
+		err = hdmi_configure_audio_sample_size(HDMI_SAMPLE_24BITS);
+#else
+		if (hdmi_audio_core.module_loaded)
+			err = hdmi_audio_core.config_sample_size(HDMI_WP,
+						HDMI_SAMPLE_24BITS);
+		else
+			printk(KERN_WARNING "Warning: hdmi_core.ko is "
+							"not enabled");
+#endif
+		omap_hdmi_dai_dma_params.data_type = OMAP_DMA_DATA_TYPE_S32;
+		break;
 	default:
 		err = -EINVAL;
 	}
+	if (err < 0)
+		return err;
+
+#if defined(CONFIG_HDMI_NO_IP) || defined(CONFIG_HDMI_NO_IP_MODULE)
+	err = hdmi_configure_audio_channels(params_channels(params),
+						HDMI_CEA_CODE_00);
+	if (err < 0)
+		return err;
+	err = hdmi_configure_audio_sample_rate(params_rate(params));
+	if (err < 0)
+		return err;
+	err = hdmi_configure_audio();
+	if (err < 0)
+		return err;
+#else
+	err = hdmi_audio_core.config_audio_channels(HDMI_WP,
+			params_channels(params), HDMI_CEA_CODE_00);
+	if (err < 0)
+		return err;
+	err = hdmi_audio_core.config_audio_sample_rate(HDMI_WP,
+				params_rate(params));
+	if (err < 0)
+		return err;
+#endif
+
 	omap_hdmi_dai_dma_params.packet_size = 0x20;
 
 	snd_soc_dai_set_dma_data(dai, substream,
@@ -196,7 +270,7 @@ static void __exit hdmi_dai_exit(void)
 }
 module_exit(hdmi_dai_exit);
 
-#ifndef CONFIG_HDMI_NO_IP_MODULE
+#if !defined(CONFIG_HDMI_NO_IP) && !defined(CONFIG_HDMI_NO_IP_MODULE)
 
 /* stub */
 int audio_stub_lib_init(void)
@@ -225,6 +299,9 @@ void hdmi_audio_core_stub_init(void)
 	hdmi_audio_core.set_wait_pwr = NULL;
 	hdmi_audio_core.set_wait_srst = NULL;
 	hdmi_audio_core.read_edid = NULL;
+	hdmi_audio_core.config_audio_sample_rate = NULL;
+	hdmi_audio_core.config_sample_size = NULL;
+	hdmi_audio_core.config_audio_channels = NULL;
 	hdmi_audio_core.ip_init = audio_stub_lib_init;
 	hdmi_audio_core.ip_exit = audio_stub_lib_exit;
 	hdmi_audio_core.module_loaded = 0;
