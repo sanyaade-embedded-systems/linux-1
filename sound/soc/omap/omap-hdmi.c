@@ -61,7 +61,7 @@ static struct omap_pcm_dma_data omap_hdmi_dai_dma_params = {
 	.sync_mode = OMAP_DMA_SYNC_PACKET,
 };
 
-#ifdef CONFIG_HDMI_NO_IP_MODULE
+#if defined(CONFIG_HDMI_NO_IP) || defined(CONFIG_HDMI_NO_IP_MODULE)
 static void hdmi_hpd_notifier(int state, void *data)
 {
 	struct snd_pcm_substream *substream = data;
