@@ -2727,7 +2727,7 @@ int dispc_scaling_decision(u16 width, u16 height,
 	int x, y;			/* decimation search variables */
 	unsigned long fclk_max = dispc_fclk_rate();
 
-	if (bpp < 16) {
+	if ((bpp < 16) && !can_scale) {
 		*x_decim = 1;
 		*y_decim = 1;
 		*three_tap = 0;
