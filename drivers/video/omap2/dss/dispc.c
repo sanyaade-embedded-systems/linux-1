@@ -2813,7 +2813,7 @@ int dispc_scaling_decision(u16 width, u16 height,
 	unsigned long fclk = 0;
 	int x, y;			/* decimation search variables */
 
-	if (bpp < 16) {
+	if ((bpp < 16) && !can_scale) {
 		*x_decim = 1;
 		*y_decim = 1;
 		*three_tap = 0;
