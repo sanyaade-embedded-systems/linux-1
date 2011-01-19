@@ -2920,12 +2920,12 @@ int dispc_scaling_decision(u16 width, u16 height,
 	unsigned long fclk = 0, fclk_rate, pclk_rate;
 	int x, y;			/* decimation search variables */
 
-        if (bpp < 16) {
-                *x_decim = 1;
-                *y_decim = 1;
-                *three_tap = 0;
-                return 0;
-        }
+	if ((bpp < 16) && !can_scale) {
+		*x_decim = 1;
+		*y_decim = 1;
+		*three_tap = 0;
+		return 0;
+	}
 
 	/* restrict search region based on whether we can decimate */
 	if (!can_decimate_x) {
