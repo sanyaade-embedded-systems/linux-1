@@ -21,6 +21,7 @@
 #include <linux/mutex.h>
 #include <linux/list.h>
 #include <linux/slab.h>
+#include <linux/vmalloc.h>
 
 #include "tmm.h"
 
@@ -80,8 +81,8 @@ static void dmm_free_fast_list(struct fast *fast)
 		f = list_entry(pos, struct fast, list);
 		for (i = 0; i < f->num; i++)
 			__free_page(f->mem[i]->pg);
-		kfree(f->pa);
-		kfree(f->mem);
+		vfree(f->pa);
+		vfree(f->mem);
 		list_del(pos);
 		kfree(f);
 	}
@@ -168,16 +169,16 @@ static u32 *tmm_pat_get_pages(struct tmm *tmm, s32 n)
 	memset(f, 0x0, sizeof(*f));
 
 	/* array of mem struct pointers */
-	f->mem = kmalloc(n * sizeof(*f->mem), GFP_KERNEL);
+	f->mem = vmalloc(n * sizeof(*f->mem));
 	if (!f->mem) {
 		kfree(f); return NULL;
 	}
 	memset(f->mem, 0x0, n * sizeof(*f->mem));
 
 	/* array of physical addresses */
-	f->pa = kmalloc(n * sizeof(*f->pa), GFP_KERNEL);
+	f->pa = vmalloc(n * sizeof(*f->pa));
 	if (!f->pa) {
-		kfree(f->mem); kfree(f); return NULL;
+		vfree(f->mem); kfree(f); return NULL;
 	}
 	memset(f->pa, 0x0, n * sizeof(*f->pa));
 
@@ -228,8 +229,8 @@ cleanup:
 		list_add(&f->mem[i - 1]->list, &pvt->free_list.list);
 		mutex_unlock(&pvt->mtx);
 	}
-	kfree(f->pa);
-	kfree(f->mem);
+	vfree(f->pa);
+	vfree(f->mem);
 	kfree(f);
 	return NULL;
 }
@@ -260,8 +261,8 @@ static void tmm_pat_free_pages(struct tmm *tmm, u32 *list)
 				}
 			}
 			list_del(pos);
-			kfree(f->pa);
-			kfree(f->mem);
+			vfree(f->pa);
+			vfree(f->mem);
 			kfree(f);
 			break;
 		}
