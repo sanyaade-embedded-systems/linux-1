@@ -184,16 +184,10 @@ static bool migrate_one_irq(struct irq_data *d)
 	unsigned int cpu = cpumask_any_and(d->affinity, cpu_online_mask);
 	bool ret = false;
 
-	if (cpu >= nr_cpu_ids) {
-		cpu = cpumask_any(cpu_online_mask);
-		ret = true;
-	}
-
-	pr_debug("IRQ%u: moving from cpu%u to cpu%u\n", d->irq, d->node, cpu);
-
-	d->chip->irq_set_affinity(d, cpumask_of(cpu), true);
-
-	return ret;
+	raw_spin_lock_irq(&desc->lock);
+	desc->irq_data.chip->irq_set_affinity(&desc->irq_data,
+					      cpumask_of(cpu), true);
+	raw_spin_unlock_irq(&desc->lock);
 }
 
 /*
