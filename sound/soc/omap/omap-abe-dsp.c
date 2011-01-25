@@ -173,6 +173,8 @@ struct abe_data {
 
 	int loss_count;
 
+	int first_irq;
+
 	struct snd_pcm_substream *psubs;
 
 #ifdef CONFIG_DEBUG_FS
@@ -236,7 +238,14 @@ static void abe_irq_pingpong_subroutine(void)
 
 	abe_read_next_ping_pong_buffer(MM_DL_PORT, &dst, &n_bytes);
 	abe_set_ping_pong_buffer(MM_DL_PORT, n_bytes);
-	snd_pcm_period_elapsed(abe->psubs);
+
+	/* Do not call ALSA function for first IRQ */
+	if (abe->first_irq) {
+		abe->first_irq = 0;
+	} else {
+		if (abe->psubs)
+			snd_pcm_period_elapsed(abe->psubs);
+	}
 }
 
 static irqreturn_t abe_irq_handler(int irq, void *dev_id)
@@ -2179,6 +2188,7 @@ static int aess_open(struct snd_pcm_substream *substream)
 	mutex_unlock(&abe->mutex);
 	return ret;
 }
+
 static int abe_ping_pong_init(struct snd_pcm_hw_params *params,
 	struct snd_pcm_substream *substream)
 {
@@ -2219,6 +2229,7 @@ static int abe_ping_pong_init(struct snd_pcm_hw_params *params,
 
 	/* Need to set the first buffer in order to get interrupt */
 	abe_set_ping_pong_buffer(MM_DL_PORT, period_size);
+	abe->first_irq = 1;
 
 	return 0;
 }
