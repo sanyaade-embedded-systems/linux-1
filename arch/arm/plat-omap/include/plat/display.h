@@ -689,8 +689,11 @@ struct omap_dss_driver {
 	bool (*smart_is_enabled)(struct omap_dss_device *dssdev);
 	int (*smart_enable)(struct omap_dss_device *display);
 
+	/* return raw EDID.. should be kfree'd when done */
+	u8 * (*get_edid)(struct omap_dss_device *dssdev);
+
 /*HDMI specific */
-	void (*get_edid)(struct omap_dss_device *dssdev);
+	void (*get_custom_edid_timing_code)(struct omap_dss_device *dssdev);
 	void (*set_custom_edid_timing_code)(struct omap_dss_device *dssdev,
 			int mode, int code);
 	int (*hpd_enable)(struct omap_dss_device *dssdev);

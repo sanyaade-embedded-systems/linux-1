@@ -338,9 +338,9 @@ static ssize_t display_edid_show(struct device *dev,
 	struct omap_dss_device *dssdev = to_dss_device(dev);
 
 
-		if (!dssdev->driver->get_edid)
+		if (!dssdev->driver->get_custom_edid_timing_code)
 		return -ENOENT;
-	dssdev->driver->get_edid(dssdev);
+	dssdev->driver->get_custom_edid_timing_code(dssdev);
 	return snprintf(buf, PAGE_SIZE, "EDID-Information");
 
 }
