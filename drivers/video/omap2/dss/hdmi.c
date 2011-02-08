@@ -426,6 +426,40 @@ static int set_hdmi_hot_plug_status(struct omap_dss_device *dssdev, bool onoff)
 {
 	int ret = 0;
 
+#if 0
+	/* it is crashing in here on resolution change, for some reason that I
+	 * don't care to debug (because userspace notification for HPD is supposed
+	 * to be thru drm driver anyways)
+Backtrace:
+[<c01c2a1c>] (strlen+0x0/0x2c) from [<c01bedac>] (kobject_get_path+0x2c/0xac)
+[<c01bed80>] (kobject_get_path+0x0/0xac) from [<c01bf364>] (kobject_uevent_env+0xd4/0x440)
+ r7:c0572af8 r6:c0572af0 r5:efc02840 r4:c0572af0
+[<c01bf290>] (kobject_uevent_env+0x0/0x440) from [<c01bf6e4>] (kobject_uevent+0x14/0x18)
+[<c01bf6d0>] (kobject_uevent+0x0/0x18) from [<c01f30b4>] (set_hdmi_hot_plug_status+0x48/0x7c)
+[<c01f306c>] (set_hdmi_hot_plug_status+0x0/0x7c) from [<c01f37a4>] (hdmi_power_off+0x7c/0xb0)
+ r5:000003e8 r4:00000000
+[<c01f3728>] (hdmi_power_off+0x0/0xb0) from [<c01f4250>] (hdmi_stop_display+0x1c/0x20)
+ r7:0000003a r6:c0572af0 r5:c0572af0 r4:c0572af0
+[<c01f4234>] (hdmi_stop_display+0x0/0x20) from [<c01f42a8>] (hdmi_disable_display+0x54/0x8c)
+ r5:c0572af0 r4:c05bd440
+[<c01f4254>] (hdmi_disable_display+0x0/0x8c) from [<c01f4398>] (hdmi_set_timings+0x68/0xcc)
+ r5:e9939bb4 r4:c0572c3c
+[<c01f4330>] (hdmi_set_timings+0x0/0xcc) from [<c023114c>] (omap_connector_mode_set+0x19c/0x1b4)
+[<c0230fb0>] (omap_connector_mode_set+0x0/0x1b4) from [<c0230dbc>] (omap_encoder_mode_set+0x34/0x48)
+[<c0230d88>] (omap_encoder_mode_set+0x0/0x48) from [<c021d0c4>] (drm_crtc_helper_set_mode+0x25c/0x310)
+ r7:cee9a410 r6:eea72e00 r5:00000001 r4:ee988840
+[<c021ce68>] (drm_crtc_helper_set_mode+0x0/0x310) from [<c021d7a4>] (drm_crtc_helper_set_config+0x508/0x6cc)
+[<c021d29c>] (drm_crtc_helper_set_config+0x0/0x6cc) from [<c022c468>] (drm_mode_setcrtc+0x294/0x2e0)
+[<c022c1d4>] (drm_mode_setcrtc+0x0/0x2e0) from [<c0221564>] (drm_ioctl+0x234/0x390)
+[<c0221330>] (drm_ioctl+0x0/0x390) from [<c00ea310>] (vfs_ioctl+0x34/0xb4)
+[<c00ea2dc>] (vfs_ioctl+0x0/0xb4) from [<c00ea9c8>] (do_vfs_ioctl+0x53c/0x580)
+ r7:e9b878c0 r6:00000006 r5:e9b878c0 r4:00000006
+[<c00ea48c>] (do_vfs_ioctl+0x0/0x580) from [<c00eaa4c>] (sys_ioctl+0x40/0x64)
+[<c00eaa0c>] (sys_ioctl+0x0/0x64) from [<c0039200>] (ret_fast_syscall+0x0/0x30)
+ r7:00000036 r6:00000006 r5:c06864a2 r4:beacd610
+Code: e24cb004 e1a02000 ea000000 e2800001 (e5d03000)
+---[ end trace a3794b0a541b3b0c ]---
+	 */
 	if (onoff != user_hpd_state) {
 		hdmi_notify_hpd(onoff);
 		DSSINFO("hot plug event %d", onoff);
@@ -440,6 +474,7 @@ static int set_hdmi_hot_plug_status(struct omap_dss_device *dssdev, bool onoff)
 		 */
 		user_hpd_state = onoff;
 	}
+#endif
 
 	return ret;
 }
