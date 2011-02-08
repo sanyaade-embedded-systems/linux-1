@@ -925,8 +925,12 @@ struct omap_dss_driver {
 	bool (*smart_is_enabled)(struct omap_dss_device *dssdev);
 	int (*smart_enable)(struct omap_dss_device *display);
 
-	/*HDMI specific */
-	void (*get_edid)(struct omap_dss_device *dssdev);
+/*HDMI specific */
+	/* return raw EDID.. len indicates the max number of bytes of the
+	 * EDID to read */
+	int (*get_edid)(struct omap_dss_device *dssdev, u8 *edid, int len);
+
+	void (*dump_edid)(struct omap_dss_device *dssdev);
 	void (*set_custom_edid_timing_code)(struct omap_dss_device *dssdev,
 			int mode, int code);
 	int (*hpd_enable)(struct omap_dss_device *dssdev);
