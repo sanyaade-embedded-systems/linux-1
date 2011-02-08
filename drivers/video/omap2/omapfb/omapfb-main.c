@@ -38,6 +38,10 @@
 
 #include "omapfb.h"
 
+#ifdef CONFIG_DRM_OMAP
+#  include "../../../gpu/drm/omap/omap_gpu.h"
+#endif
+
 #define MODULE_NAME     "omapfb"
 
 #define OMAPFB_PLANE_XRES_MIN		8
@@ -2094,6 +2098,10 @@ static void size_notify(struct fb_info *fbi, int w, int h)
 	fbi->flags = orig_flags;
 
 	release_console_sem();
+
+#ifdef CONFIG_DRM_OMAP
+	omap_gpu_hotplug_event(fbi);
+#endif
 }
 
 struct omapfb_notifier_block {
@@ -2282,6 +2290,10 @@ static int omapfb_create_framebuffers(struct omapfb2_device *fbdev)
 	}
 
 	DBG("create_framebuffers done\n");
+
+#ifdef CONFIG_DRM_OMAP
+	omap_gpu_register_fbs(fbdev->num_fbs, fbdev->fbs);
+#endif
 
 	return 0;
 }

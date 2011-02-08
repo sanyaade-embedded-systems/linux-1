@@ -159,3 +159,13 @@ config DRM_SAVAGE
 	help
 	  Choose this option if you have a Savage3D/4/SuperSavage/Pro/Twister
 	  chipset. If M is selected the module will be called savage.
+
+config DRM_OMAP
+	tristate "OMAP GPU"
+	depends on DRM
+	#depends on CONFIG_FB_OMAP2   ## kconfig bug?  I get depends on 'CONFIG_FB_OMAP2 [=CONFIG_FB_OMAP2]'
+	select DRM_KMS_HELPER
+	help
+	  Choose this option to enable OMAP GPU DRM driver... XXX
+	  
+	  If M is selected, the module will be called omapgpu.
