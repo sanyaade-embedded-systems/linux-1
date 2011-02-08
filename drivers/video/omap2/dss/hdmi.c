@@ -1446,15 +1446,54 @@ static void hdmi_get_timings(struct omap_dss_device *dssdev,
 static void hdmi_set_timings(struct omap_dss_device *dssdev,
 			struct omap_video_timings *timings)
 {
+	struct hdmi_cm cm;
+
 	DSSDBG("hdmi_set_timings\n");
 
-	dssdev->panel.timings = *timings;
+	/* check if proposed timings are something in our table of supported
+	 * timings:
+	 */
+	cm = hdmi_get_code(timings);
+
+	if (cm.code == -1)
+		return;
 
 	if (dssdev->state == OMAP_DSS_DISPLAY_ACTIVE) {
 		/* turn the hdmi off and on to get new timings to use */
 		hdmi_disable_display(dssdev);
+		dssdev->panel.timings = *timings;
+		hdmi.code = cm.code;
+		hdmi.mode = cm.mode;
+		custom_set = true;
 		hdmi_enable_display(dssdev);
+		custom_set = false;
+	} else {
+		/* possibly we can ignore if display is not currently detected...
+		 * currently we'd anyways override these settings with the first
+		 * timings extracted from EDID, so this is kinda pointless:
+		 */
+		dssdev->panel.timings = *timings;
+		hdmi.code = cm.code;
+		hdmi.mode = cm.mode;
 	}
+}
+
+static int hdmi_check_timings(struct omap_dss_device *dssdev,
+			struct omap_video_timings *timings)
+{
+	struct hdmi_cm cm;
+
+	DSSDBG("hdmi_check_timings\n");
+
+	/* check if proposed timings are something in our table of supported
+	 * timings:
+	 */
+	cm = hdmi_get_code(timings);
+
+	if (cm.code == -1)
+		return -EINVAL;
+
+	return 0;
 }
 
 static u8 * hdmi_get_edid(struct omap_dss_device *dssdev)
@@ -1628,17 +1667,6 @@ static void hdmi_get_custom_edid_timing_code(struct omap_dss_device *dssdev)
 	kfree(aud_format);
 	kfree(vsdb_format);
 	kfree(lat);
-}
-
-static int hdmi_check_timings(struct omap_dss_device *dssdev,
-			struct omap_video_timings *timings)
-{
-	DSSDBG("hdmi_check_timings\n");
-
-	if (memcmp(&dssdev->panel.timings, timings, sizeof(*timings)) == 0)
-		return 0;
-
-	return -EINVAL;
 }
 
 int hdmi_init_display(struct omap_dss_device *dssdev)
