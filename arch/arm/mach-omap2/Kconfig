@@ -273,10 +273,12 @@ config MACH_OMAP_BLAZE
 	select CDC_TCXO
 	select PANEL_DP501
 	select PANEL_D2L
+	select REGULATOR_FIXED_VOLTAGE
 
 config MACH_OMAP4_PANDA
 	bool "OMAP4 based Panda board"
 	depends on ARCH_OMAP4
+	select REGULATOR_FIXED_VOLTAGE
 
 config ERRATA_OMAP4_AXI2OCP
 	bool "OMAP 4430 axi2ocp errata workaround"
