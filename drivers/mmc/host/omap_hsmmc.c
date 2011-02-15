@@ -297,7 +297,7 @@ static int omap_hsmmc_1_set_power(struct device *dev, int slot, int power_on,
 	return ret;
 }
 
-static int omap_hsmmc_23_set_power(struct device *dev, int slot, int power_on,
+static int omap_hsmmc_235_set_power(struct device *dev, int slot, int power_on,
 				   int vdd)
 {
 	struct omap_hsmmc_host *host =
@@ -347,8 +347,9 @@ static int omap_hsmmc_23_set_power(struct device *dev, int slot, int power_on,
 
 	return ret;
 }
-static int omap_hsmmc_45_set_power(struct device *dev, int slot, int power_on,
-				   int vdd)
+
+static int omap_hsmmc_4_set_power(struct device *dev, int slot, int power_on,
+					int vdd)
 {
 	return 0;
 }
@@ -363,7 +364,7 @@ static int omap_hsmmc_1_set_sleep(struct device *dev, int slot, int sleep,
 	return regulator_set_mode(host->vcc, mode);
 }
 
-static int omap_hsmmc_23_set_sleep(struct device *dev, int slot, int sleep,
+static int omap_hsmmc_235_set_sleep(struct device *dev, int slot, int sleep,
 				   int vdd, int cardsleep)
 {
 	struct omap_hsmmc_host *host =
@@ -402,8 +403,8 @@ static int omap_hsmmc_23_set_sleep(struct device *dev, int slot, int sleep,
 		return regulator_enable(host->vcc_aux);
 }
 
-static int omap_hsmmc_45_set_sleep(struct device *dev, int slot, int sleep,
-				   int vdd, int cardsleep)
+static int omap_hsmmc_4_set_sleep(struct device *dev, int slot, int sleep,
+					int vdd, int cardsleep)
 {
 	return 0;
 }
@@ -421,15 +422,14 @@ static int omap_hsmmc_reg_get(struct omap_hsmmc_host *host)
 		break;
 	case OMAP_MMC2_DEVID:
 	case OMAP_MMC3_DEVID:
+	case OMAP_MMC5_DEVID:
 		/* Off-chip level shifting, or none */
-		mmc_slot(host).set_power = omap_hsmmc_23_set_power;
-		mmc_slot(host).set_sleep = omap_hsmmc_23_set_sleep;
+		mmc_slot(host).set_power = omap_hsmmc_235_set_power;
+		mmc_slot(host).set_sleep = omap_hsmmc_235_set_sleep;
 		break;
 	case OMAP_MMC4_DEVID:
-	case OMAP_MMC5_DEVID:
-		/* TODO Update required */
-		mmc_slot(host).set_power = omap_hsmmc_45_set_power;
-		mmc_slot(host).set_sleep = omap_hsmmc_45_set_sleep;
+		mmc_slot(host).set_power = omap_hsmmc_4_set_power;
+		mmc_slot(host).set_sleep = omap_hsmmc_4_set_sleep;
 		break;
 	default:
 		pr_err("MMC%d configuration not supported!\n", host->id);
