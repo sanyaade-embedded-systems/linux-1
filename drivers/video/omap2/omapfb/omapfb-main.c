@@ -39,7 +39,7 @@
 #include "omapfb.h"
 
 #ifdef CONFIG_DRM_OMAP
-#  include "../../../gpu/drm/omap/omap_gpu.h"
+#  include <linux/omap_gpu.h>
 #endif
 
 #define MODULE_NAME     "omapfb"

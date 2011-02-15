@@ -17,7 +17,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "omap_gpu.h"
+#include <linux/omap_gpu.h>
 #include "omap_gpu_priv.h"
 
 #include "drm_crtc.h"

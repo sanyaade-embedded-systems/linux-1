@@ -1,5 +1,5 @@
 /*
- * linux/drivers/gpu/drm/omap/omap_gpu.h
+ * include/linux/omap_gpu.h
  *
  * Copyright (C) 2011 Texas Instruments
  * Author: Rob Clark <rob@ti.com>
