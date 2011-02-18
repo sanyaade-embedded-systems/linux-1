@@ -462,7 +462,6 @@ hwmon-vid
 i1480-dfu-usb
 i1480-est
 i1480u-wlp
-i2c-algo-bit
 ibmcam
 icplus
 ics932s401
