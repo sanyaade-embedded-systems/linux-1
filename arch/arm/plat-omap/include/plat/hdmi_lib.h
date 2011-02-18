@@ -558,7 +558,7 @@ void hdmi_add_notifier(struct hdmi_notifier *notifier);
 void hdmi_remove_notifier(struct hdmi_notifier *notifier);
 void hdmi_notify_hpd(int state);
 void hdmi_notify_pwrchange(int state);
-int hdmi_rxdet(void);
+bool hdmi_is_connected(void);
 int hdmi_w1_get_video_state(void);
 int hdmi_configure_audio_sample_freq(u32 sample_freq);
 int hdmi_configure_audio_sample_size(u32 sample_size);
