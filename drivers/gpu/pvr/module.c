@@ -28,10 +28,9 @@
  #include <linux/config.h>
 #endif
 
-#if defined(SUPPORT_DRI_DRM)
+#if defined(SUPPORT_DRI_DRM) && !defined(SUPPORT_DRI_DRM_EXTERNAL)
 #define	PVR_MOD_STATIC
 #else
-	
 	#if defined(LDM_PLATFORM)
 		#define	PVR_LDM_PLATFORM_MODULE
 		#define	PVR_LDM_MODULE
@@ -41,7 +40,11 @@
 			#define	PVR_LDM_MODULE
 		#endif
 	#endif
+#if defined(SUPPORT_DRI_DRM_EXTERNAL)
+#define	PVR_MOD_STATIC
+#else
 #define	PVR_MOD_STATIC	static
+#endif
 #endif
 
 #if defined(PVR_LDM_PLATFORM_PRE_REGISTERED)
@@ -100,16 +103,20 @@
 #if defined(SUPPORT_DRI_DRM)
 #include "pvr_drm.h"
 #endif
+#if defined(SUPPORT_DRI_DRM_EXTERNAL)
+#define DRVNAME                PVRSRV_MODNAME
+#define DEVNAME		PVRSRV_MODNAME
+#else
 #define DRVNAME		PVRSRV_MODNAME
 #define DEVNAME		PVRSRV_MODNAME
+MODULE_SUPPORTED_DEVICE(DEVNAME);
+#endif
 
 #if defined(SUPPORT_DRI_DRM)
 #define PRIVATE_DATA(pFile) ((pFile)->driver_priv)
 #else
 #define PRIVATE_DATA(pFile) ((pFile)->private_data)
 #endif
-
-MODULE_SUPPORTED_DEVICE(DEVNAME);
 
 #if defined(PVRSRV_NEED_PVR_DPF)
 #include <linux/moduleparam.h>
@@ -126,9 +133,11 @@ EXPORT_SYMBOL(PVRGetBufferClassJTable);
 static struct class *psPvrClass;
 #endif
 
-#if !defined(SUPPORT_DRI_DRM)
+#if defined(SUPPORT_DRI_DRM_EXTERNAL) || !defined(SUPPORT_DRI_DRM)
 static int AssignedMajorNumber;
+#endif
 
+#if !defined(SUPPORT_DRI_DRM)
 static int PVRSRVOpen(struct inode* pInode, struct file* pFile);
 static int PVRSRVRelease(struct inode* pInode, struct file* pFile);
 
@@ -161,7 +170,7 @@ static IMG_UINT32 gPVRPowerLevel;
 #define	LDM_DEV	struct pci_dev
 #define	LDM_DRV	struct pci_driver
 #endif 
-#if defined(PVR_LDM_PLATFORM_MODULE)
+#if defined(PVR_LDM_PLATFORM_MODULE) && !defined(SUPPORT_DRI_DRM_EXTERNAL)
 static int PVRSRVDriverRemove(LDM_DEV *device);
 static int PVRSRVDriverProbe(LDM_DEV *device);
 #endif
@@ -169,9 +178,6 @@ static int PVRSRVDriverProbe(LDM_DEV *device);
 static void PVRSRVDriverRemove(LDM_DEV *device);
 static int PVRSRVDriverProbe(LDM_DEV *device, const struct pci_device_id *id);
 #endif
-static int PVRSRVDriverSuspend(LDM_DEV *device, pm_message_t state);
-static void PVRSRVDriverShutdown(LDM_DEV *device);
-static int PVRSRVDriverResume(LDM_DEV *device);
 
 #if defined(PVR_LDM_PCI_MODULE)
 struct pci_device_id powervr_id_table[] __devinitdata = {
@@ -192,6 +198,7 @@ static struct platform_device_id powervr_id_table[] __devinitdata = {
 };
 #endif
 
+#if defined(SUPPORT_DRI_DRM_EXTERNAL) || !defined(SUPPORT_DRI_DRM)
 static LDM_DRV powervr_driver = {
 #if defined(PVR_LDM_PLATFORM_MODULE)
 	.driver = {
@@ -215,6 +222,7 @@ static LDM_DRV powervr_driver = {
 	.resume		= PVRSRVDriverResume,
 	.shutdown	= PVRSRVDriverShutdown,
 };
+#endif
 
 LDM_DEV *gpsPVRLDMDev;
 
@@ -234,7 +242,7 @@ static struct platform_device powervr_device = {
 #endif
 
 #if defined(PVR_LDM_PLATFORM_MODULE)
-static int PVRSRVDriverProbe(LDM_DEV *pDevice)
+PVR_MOD_STATIC int PVRSRVDriverProbe(LDM_DEV *pDevice)
 #endif
 #if defined(PVR_LDM_PCI_MODULE)
 static int __devinit PVRSRVDriverProbe(LDM_DEV *pDevice, const struct pci_device_id *id)
@@ -268,7 +276,7 @@ static int __devinit PVRSRVDriverProbe(LDM_DEV *pDevice, const struct pci_device
 
 
 #if defined (PVR_LDM_PLATFORM_MODULE)
-static int PVRSRVDriverRemove(LDM_DEV *pDevice)
+PVR_MOD_STATIC int PVRSRVDriverRemove(LDM_DEV *pDevice)
 #endif
 #if defined(PVR_LDM_PCI_MODULE)
 static void __devexit PVRSRVDriverRemove(LDM_DEV *pDevice)
@@ -637,7 +645,7 @@ static int __init PVRCore_Init(void)
 		error = -EBUSY;
 		goto destroy_class;
 	}
-#endif 
+#endif
 
 	return 0;
 
