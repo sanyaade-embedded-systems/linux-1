@@ -1969,7 +1969,8 @@ OMAP_ERROR OMAPLFBInit(void)
 		/* Register the display device */
 		if(psDevInfo->sPVRJTable.pfnPVRSRVRegisterDCDevice(
 			&psDevInfo->sDCJTable,
-			&psDevInfo->uDeviceID) != PVRSRV_OK)
+			&psDevInfo->uDeviceID,
+			psDevInfo->psLINFBInfo) != PVRSRV_OK)
 		{
 			ERROR_PRINTK("Unable to register the jump table"
 				" services->display");
