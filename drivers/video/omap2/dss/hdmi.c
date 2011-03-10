@@ -1528,6 +1528,8 @@ static void hdmi_work_queue(struct work_struct *ws)
 			hdmi_set_48Mhz_l3_cstr(dssdev, false);
 
 		DSSINFO("Disable Display Done - HDMI_DISCONNECT\n\n");
+
+		omap_dss_notify(dssdev, OMAP_DSS_HOTPLUG_DISCONNECT);
 	}
 
 	/* read connect timestamp */
@@ -1540,6 +1542,8 @@ static void hdmi_work_queue(struct work_struct *ws)
 		user_hpd_state = false;
 
 		hdmi_notify_status(dssdev, true);
+
+		omap_dss_notify(dssdev, OMAP_DSS_HOTPLUG_CONNECT);
 	}
 
 	if ((action & HDMI_CONNECT) && (video_power == HDMI_POWER_MIN) &&
