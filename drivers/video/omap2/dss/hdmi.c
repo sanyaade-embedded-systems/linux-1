@@ -1447,6 +1447,8 @@ static void hdmi_work_queue(struct work_struct *ws)
 			}
 		}
 		DSSINFO("Disable Display Done - HDMI_DISCONNECT\n\n");
+
+		omap_dss_notify(dssdev, OMAP_DSS_HOTPLUG_DISCONNECT);
 	}
 
 	/* read connect timestamp */
@@ -1459,6 +1461,8 @@ static void hdmi_work_queue(struct work_struct *ws)
 
 		if (!user_hpd_state && (hdmi_power == HDMI_POWER_FULL))
 			set_hdmi_hot_plug_status(dssdev, true);
+
+		omap_dss_notify(dssdev, OMAP_DSS_HOTPLUG_CONNECT);
 	}
 
 	if ((action & HDMI_CONNECT) && (video_power == HDMI_POWER_MIN) &&
