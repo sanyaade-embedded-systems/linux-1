@@ -39,6 +39,7 @@
 
 #if defined(SUPPORT_DRI_DRM)
 #include <drm/drmP.h>
+#include <linux/omap_gpu.h>
 #else
 #include <linux/module.h>
 #endif
@@ -1470,6 +1471,50 @@ static void DeInitDev(OMAPLFB_DEVINFO *psDevInfo)
 	release_console_sem();
 }
 
+#if defined(SUPPORT_DRI_DRM)
+/* drm driver case.. because of virtual displays, the width/height coming
+ * from framebuffer->var are meaningless so we need to iterate the connectors
+ */
+static void OMAPLFBGetDisplaySize(OMAPLFB_DEVINFO *psDevInfo)
+{
+	struct fb_info *framebuffer = psDevInfo->psLINFBInfo;
+	struct drm_connector *connector = NULL;
+	int err = 0;
+
+	psDevInfo->sDisplayInfo.ui32PhysicalWidthmm = 0;
+	psDevInfo->sDisplayInfo.ui32PhysicalHeightmm = 0;
+
+	while ((connector = omap_fbdev_get_next_connector(framebuffer, connector)))
+	{
+		u32 width = 0, height = 0;
+		if (omap_connector_get_dimension(connector, &width, &height)) {
+			/* if there are multiple displays, we really need to know how they
+			 * are arranged in relation to each other to know how to calculate
+			 * the combined width/height.. but width/height really don't make
+			 * sense for virtual displays anyways..
+			 */
+			psDevInfo->sDisplayInfo.ui32PhysicalWidthmm += width;
+			psDevInfo->sDisplayInfo.ui32PhysicalHeightmm += height;
+		}
+	}
+}
+#else
+/* non-drm driver case.. not sure we have a #define for that */
+static void OMAPLFBGetDisplaySize(OMAPLFB_DEVINFO *psDevInfo)
+{
+	struct fb_info *psLINFBInfo = psDevInfo->psLINFBInfo;
+	if (psLINFBInfo->var.width < 0 || psLINFBInfo->var.height < 0) {
+		psDevInfo->sDisplayInfo.ui32PhysicalWidthmm = 0;
+		psDevInfo->sDisplayInfo.ui32PhysicalHeightmm = 0;
+	} else {
+		psDevInfo->sDisplayInfo.ui32PhysicalWidthmm =
+			psLINFBInfo->var.width;
+		psDevInfo->sDisplayInfo.ui32PhysicalHeightmm =
+			psLINFBInfo->var.height;
+	}
+}
+#endif
+
 /*
  *  Deinitialization routine for the 3rd party display driver
  */
@@ -1667,15 +1712,7 @@ static OMAP_ERROR InitDev(OMAPLFB_DEVINFO *psDevInfo)
 #endif
 
 	/* Get physical display size for DPI calculation */
-	if (psLINFBInfo->var.width < 0 || psLINFBInfo->var.height < 0) {
-		psDevInfo->sDisplayInfo.ui32PhysicalWidthmm = 0;
-		psDevInfo->sDisplayInfo.ui32PhysicalHeightmm = 0;
-	} else {
-		psDevInfo->sDisplayInfo.ui32PhysicalWidthmm =
-			psLINFBInfo->var.width;
-		psDevInfo->sDisplayInfo.ui32PhysicalHeightmm =
-			psLINFBInfo->var.height;
-	}
+	OMAPLFBGetDisplaySize(psDevInfo);
 
 	/* XXX: Page aligning with 16bpp causes the
 	 * position of framebuffer address to look in the wrong place.

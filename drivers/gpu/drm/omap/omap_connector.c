@@ -267,6 +267,25 @@ void omap_connector_mode_set(struct drm_connector *connector,
 	dssdrv->set_timings(dssdev, &timings);
 }
 
+/* this really only makes sense for LCD panels, and fixed displays that do
+ * not have an EDID.. otherwise this returns false and doesnt' update w/h
+ */
+bool omap_connector_get_dimension(struct drm_connector *connector,
+		u32 *width, u32 *height)
+{
+	struct omap_connector *omap_connector = to_omap_connector(connector);
+	struct omap_dss_device *dssdev = omap_connector->dssdev;
+	struct omap_dss_driver *dssdrv = dssdev->driver;
+
+	if (! dssdrv->get_dimension)
+		return false;
+
+	dssdrv->get_dimension(dssdev, width, height);
+
+	return true;
+}
+EXPORT_SYMBOL(omap_connector_get_dimension);
+
 enum omap_dss_update_mode omap_connector_get_update_mode(
 		struct drm_connector *connector)
 {
