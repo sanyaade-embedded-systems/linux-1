@@ -47,6 +47,8 @@ int omap_gpu_register_plugin(struct omap_gpu_plugin *plugin);
 int omap_gpu_unregister_plugin(struct omap_gpu_plugin *plugin);
 struct fb_info * omap_gpu_get_fbdev(struct drm_device *dev);
 
+bool omap_connector_get_dimension(struct drm_connector *connector,
+		u32 *width, u32 *height);
 enum omap_dss_update_mode omap_connector_get_update_mode(
 		struct drm_connector *connector);
 int omap_connector_set_update_mode(struct drm_connector *connector,
