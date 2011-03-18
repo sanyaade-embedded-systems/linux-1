@@ -3770,7 +3770,7 @@ void dispc_enable_trans_key(enum omap_channel ch, bool enable)
 
 void dispc_enable_alpha_blending(enum omap_channel ch, bool enable)
 {
-	if (cpu_is_omap24xx())
+	if (cpu_is_omap24xx() || cpu_is_omap44xx())
 		return;
 
 	/* compatibility mode is not supported on LCD2 */
