@@ -34,6 +34,7 @@
 #include <linux/wl12xx.h>
 #include <linux/cdc_tcxo.h>
 #include <linux/mfd/twl6040-codec.h>
+#include <linux/omap_gpu.h>
 
 #include <mach/hardware.h>
 #include <mach/omap4-common.h>
@@ -760,6 +761,49 @@ static struct omap_dss_board_info sdp4430_dss_data = {
 	.devices	=	sdp4430_dss_devices,
 	.default_device	=	&sdp4430_lcd_device,
 };
+
+static const int sdp4430_fb0_ovl_ids[] = {0};
+static const int sdp4430_fb0_mgr_ids[] = {0};
+static const char *sdp4430_fb0_dev_names[] = {"lcd"};
+
+static const int sdp4430_fb1_ovl_ids[] = {1};
+static const int sdp4430_fb1_mgr_ids[] = {1};
+static const char *sdp4430_fb1_dev_names[] = {"hdmi"};
+
+static const struct omap_gpu_platform_data sdp4430_gpu_data[] = {
+		/* primary framebuffer on lcd */
+		{
+				.ovl_cnt = ARRAY_SIZE(sdp4430_fb0_ovl_ids),
+				.ovl_ids = sdp4430_fb0_ovl_ids,
+				.mgr_cnt = ARRAY_SIZE(sdp4430_fb0_mgr_ids),
+				.mgr_ids = sdp4430_fb0_mgr_ids,
+				.dev_cnt = ARRAY_SIZE(sdp4430_fb0_dev_names),
+				.dev_names = sdp4430_fb0_dev_names,
+		},
+		/* secondary framebuffer for ubuntu on hdmi.. */
+		{
+				.ovl_cnt = ARRAY_SIZE(sdp4430_fb1_ovl_ids),
+				.ovl_ids = sdp4430_fb1_ovl_ids,
+				.mgr_cnt = ARRAY_SIZE(sdp4430_fb1_mgr_ids),
+				.mgr_ids = sdp4430_fb1_mgr_ids,
+				.dev_cnt = ARRAY_SIZE(sdp4430_fb1_dev_names),
+				.dev_names = sdp4430_fb1_dev_names,
+		},
+};
+
+static void omap_gpu_init(const struct omap_gpu_platform_data *pdata, int n)
+{
+	int i;
+	for (i = 0; i < n; i++) {
+		struct platform_device *pdev = kzalloc(sizeof(*pdev), GFP_KERNEL);
+
+		pdev->name = "pvrsrvkm";
+		pdev->id = i;
+		pdev->dev.platform_data = (void *)&pdata[i];
+
+		platform_device_register(pdev);
+	}
+}
 
 static unsigned long retry_suspend;
 int plat_kim_suspend(struct platform_device *pdev, pm_message_t state)
@@ -2050,7 +2094,7 @@ static void __init omap_4430sdp_init(void)
 	omap_cma3000accl_init();
 
 	omap_display_init(&sdp4430_dss_data);
-
+	omap_gpu_init(sdp4430_gpu_data, ARRAY_SIZE(sdp4430_gpu_data));
 	enable_board_wakeup_source();
 
 	if (cpu_is_omap443x()) {
