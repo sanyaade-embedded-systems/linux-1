@@ -1,0 +1,22 @@
+linux-ti-omap4 (2.6.35-990.0) maverick; urgency=low
+
+
+ -- Sebastien JAN <s-jan@ti.com>  Wed, 23 Mar 2011 18:01:33 +0100
+
+linux-ti-omap4 (2.6.35-980.1release14) maverick; urgency=low
+
+  [ Upstream Kernel Changes ]
+
+  * ASoC: ABE DSP: Correct mute/unmute to manage Left/Right channels
+  * OMAP4: powerdomain: Fix ABE context lost offset
+  * ASoC: ABE HAL: Reset DBG and ABE IRQ FIFO pointers
+  * ASoC: ABE DSP: Save/restore context based on stream activity
+  * ASoC: ABE DSP: protect ABE driver against race condition with McPDM
+  * ASoC: McPDM: Increase critical region for PCM ops
+  * ASoC: McPDM: Update the control of the channels for SW reset
+  * ASoC: ABE DSP: Use 98MHz for ABE OPP25 processing
+  * ASoC: Ignore first ABE IRQ to avoid underflow at ALSA level
+  * Fix border effect of local timer DVFS fix
+
+ -- Sebastien JAN <s-jan@ti.com>  Fri, 28 Jan 2011 10:21:30 +0100
+
