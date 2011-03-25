@@ -1,4 +1,6 @@
 #
+DATE                    := $(shell date +%Y-%m-%d)
+
 ccflags-y = -DLINUX -D__linux__ -Idrivers/gpu/pvr \
 	-DANDROID \
 	-DPVR_BUILD_DIR="\"omap_sgx_android\"" \
@@ -18,7 +20,7 @@ ccflags-y = -DLINUX -D__linux__ -Idrivers/gpu/pvr \
 	-DSUPPORT_MEMINFO_IDS \
 	-DDISPLAY_CONTROLLER=omaplfb \
 	-DSYS_SGX_ACTIVE_POWER_LATENCY_MS=2 \
-	-DPVR_BUILD_DATE="" \
+	-DPVR_BUILD_DATE="\"$(DATE)\"" \
 	-DSUPPORT_SGX \
 	-DCLIENT_DRIVER_DEFAULT_WAIT_RETRIES=50 \
 	-DPVR_LINUX_TIMERS_USING_WORKQUEUES \
