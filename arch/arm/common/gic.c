@@ -72,7 +72,7 @@ static void gic_ack_irq(unsigned int irq)
 {
 
 	spin_lock(&irq_controller_lock);
-	writel(gic_irq(irq), gic_cpu_base(irq) + GIC_CPU_EOI);
+	writel_relaxed(gic_irq(irq), gic_cpu_base(irq) + GIC_CPU_EOI);
 	spin_unlock(&irq_controller_lock);
 }
 
@@ -81,7 +81,7 @@ static void gic_mask_irq(unsigned int irq)
 	u32 mask = 1 << (irq % 32);
 
 	spin_lock(&irq_controller_lock);
-	writel(mask, gic_dist_base(irq) + GIC_DIST_ENABLE_CLEAR + (gic_irq(irq) / 32) * 4);
+	writel_relaxed(mask, gic_dist_base(irq) + GIC_DIST_ENABLE_CLEAR + (gic_irq(irq) / 32) * 4);
 	spin_unlock(&irq_controller_lock);
 }
 
@@ -90,7 +90,7 @@ static void gic_unmask_irq(unsigned int irq)
 	u32 mask = 1 << (irq % 32);
 
 	spin_lock(&irq_controller_lock);
-	writel(mask, gic_dist_base(irq) + GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
+	writel_relaxed(mask, gic_dist_base(irq) + GIC_DIST_ENABLE_SET + (gic_irq(irq) / 32) * 4);
 	spin_unlock(&irq_controller_lock);
 }
 
@@ -104,9 +104,9 @@ static int gic_set_cpu(unsigned int irq, const struct cpumask *mask_val)
 
 	spin_lock(&irq_controller_lock);
 	irq_desc[irq].node = cpu;
-	val = readl(reg) & ~(0xff << shift);
+	val = readl_relaxed(reg) & ~(0xff << shift);
 	val |= 1 << (cpu + shift);
-	writel(val, reg);
+	writel_relaxed(val, reg);
 	spin_unlock(&irq_controller_lock);
 
 	return 0;
@@ -124,7 +124,7 @@ static void gic_handle_cascade_irq(unsigned int irq, struct irq_desc *desc)
 	chip->ack(irq);
 
 	spin_lock(&irq_controller_lock);
-	status = readl(chip_data->cpu_base + GIC_CPU_INTACK);
+	status = readl_relaxed(chip_data->cpu_base + GIC_CPU_INTACK);
 	spin_unlock(&irq_controller_lock);
 
 	gic_irq = (status & 0x3ff);
@@ -176,12 +176,12 @@ void __init gic_dist_init(unsigned int gic_nr, void __iomem *base,
 	gic_data[gic_nr].dist_base = base;
 	gic_data[gic_nr].irq_offset = (irq_start - 1) & ~31;
 
-	writel(0, base + GIC_DIST_CTRL);
+	writel_relaxed(0, base + GIC_DIST_CTRL);
 
 	/*
 	 * Find out how many interrupts are supported.
 	 */
-	max_irq = readl(base + GIC_DIST_CTR) & 0x1f;
+	max_irq = readl_relaxed(base + GIC_DIST_CTR) & 0x1f;
 	max_irq = (max_irq + 1) * 32;
 
 	/*
@@ -196,25 +196,25 @@ void __init gic_dist_init(unsigned int gic_nr, void __iomem *base,
 	 * Set all global interrupts to be level triggered, active low.
 	 */
 	for (i = 32; i < max_irq; i += 16)
-		writel(0, base + GIC_DIST_CONFIG + i * 4 / 16);
+		writel_relaxed(0, base + GIC_DIST_CONFIG + i * 4 / 16);
 
 	/*
 	 * Set all global interrupts to this CPU only.
 	 */
 	for (i = 32; i < max_irq; i += 4)
-		writel(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
+		writel_relaxed(cpumask, base + GIC_DIST_TARGET + i * 4 / 4);
 
 	/*
 	 * Set priority on all interrupts.
 	 */
 	for (i = 0; i < max_irq; i += 4)
-		writel(0xa0a0a0a0, base + GIC_DIST_PRI + i * 4 / 4);
+		writel_relaxed(0xa0a0a0a0, base + GIC_DIST_PRI + i * 4 / 4);
 
 	/*
 	 * Disable all interrupts.
 	 */
 	for (i = 0; i < max_irq; i += 32)
-		writel(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
+		writel_relaxed(0xffffffff, base + GIC_DIST_ENABLE_CLEAR + i * 4 / 32);
 
 	/*
 	 * Setup the Linux IRQ subsystem.
@@ -226,7 +226,7 @@ void __init gic_dist_init(unsigned int gic_nr, void __iomem *base,
 		set_irq_flags(i, IRQF_VALID | IRQF_PROBE);
 	}
 
-	writel(1, base + GIC_DIST_CTRL);
+	writel_relaxed(1, base + GIC_DIST_CTRL);
 }
 
 void __cpuinit gic_cpu_init(unsigned int gic_nr, void __iomem *base)
@@ -236,8 +236,16 @@ void __cpuinit gic_cpu_init(unsigned int gic_nr, void __iomem *base)
 
 	gic_data[gic_nr].cpu_base = base;
 
-	writel(0xf0, base + GIC_CPU_PRIMASK);
-	writel(1, base + GIC_CPU_CTRL);
+	writel_relaxed(0xf0, base + GIC_CPU_PRIMASK);
+	writel_relaxed(1, base + GIC_CPU_CTRL);
+}
+
+void gic_cpu_exit(unsigned int gic_nr)
+{
+	if (gic_nr >= MAX_GIC_NR)
+		BUG();
+
+	writel_relaxed(0, gic_data[gic_nr].cpu_base + GIC_CPU_CTRL);
 }
 
 #ifdef CONFIG_SMP
@@ -245,7 +253,13 @@ void gic_raise_softirq(const struct cpumask *mask, unsigned int irq)
 {
 	unsigned long map = *cpus_addr(*mask);
 
+	/*
+	 * Ensure that stores to Normal memory are visible to the
+	 * other CPUs before issuing the IPI.
+	 */
+	dsb();
+
 	/* this always happens on GIC0 */
-	writel(map << 16 | irq, gic_data[0].dist_base + GIC_DIST_SOFTINT);
+	writel_relaxed(map << 16 | irq, gic_data[0].dist_base + GIC_DIST_SOFTINT);
 }
 #endif
