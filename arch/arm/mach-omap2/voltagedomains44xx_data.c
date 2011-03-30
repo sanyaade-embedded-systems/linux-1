@@ -111,7 +111,9 @@ void __init omap44xx_voltagedomains_init(void)
 	 * for the currently-running IC
 	 */
 	omap4_vdd_mpu_info.volt_data = omap44xx_vdd_mpu_volt_data;
+	omap4_vdd_mpu_info.dep_vdd_info = omap44xx_vddmpu_dep_info;
 	omap4_vdd_iva_info.volt_data = omap44xx_vdd_iva_volt_data;
+	omap4_vdd_iva_info.dep_vdd_info = omap44xx_vddiva_dep_info;
 	omap4_vdd_core_info.volt_data = omap44xx_vdd_core_volt_data;
 
 	for (i = 0; voltdm = voltagedomains_omap4[i], voltdm; i++)
