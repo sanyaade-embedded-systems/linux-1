@@ -55,7 +55,7 @@
 #define SYS_OMAP4430_GP11TIMER_TSICR_SYS_PHYS_BASE	0x48088054
 
 #if defined(__linux__)
-#define	SYS_SGX_DEV_NAME	"pvrsrvkm"
+#define	SYS_SGX_DEV_NAME	"pvrsrvkm_pvr"
 #endif
 
  
