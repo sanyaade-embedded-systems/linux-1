@@ -79,8 +79,10 @@ static void dmm_free_fast_list(struct fast *fast)
 	/* mutex is locked */
 	list_for_each_safe(pos, q, &fast->list) {
 		f = list_entry(pos, struct fast, list);
-		for (i = 0; i < f->num; i++)
+		for (i = 0; i < f->num; i++){
 			__free_page(f->mem[i]->pg);
+			kfree(f->mem[i]);
+		}
 		vfree(f->pa);
 		vfree(f->mem);
 		list_del(pos);
