@@ -85,6 +85,31 @@ static struct fb_ops omap_fb_ops = {
 	.fb_setcmap = drm_fb_helper_setcmap,
 };
 
+static void omap_fbdev_deferred_io(struct fb_info *fbi,
+			    struct list_head *pagelist)
+{
+	struct page *cur;
+
+	/* walk the written page list and flush the data */
+	list_for_each_entry(cur, pagelist, lru) {
+		void *va = page_address(cur);
+		unsigned long pa = page_to_phys(cur);
+		dmac_flush_range(va, va + PAGE_SIZE);
+		outer_flush_range(pa, pa + PAGE_SIZE);
+	}
+
+	/* someone has written to mmap'd framebuffer from userspace, and the
+	 * timeout has elapsed.. so flush the fb to properly support manual
+	 * update displays
+	 */
+	omap_fbdev_flush(fbi, 0, 0, fbi->var.xres, fbi->var.yres);
+}
+
+struct fb_deferred_io omap_fbdev_defio = {
+	.delay		= HZ / 30,
+	.deferred_io	= omap_fbdev_deferred_io,
+};
+
 static int omap_fbdev_create(struct drm_fb_helper *helper,
 		struct drm_fb_helper_surface_size *sizes)
 {
@@ -134,6 +159,14 @@ static int omap_fbdev_create(struct drm_fb_helper *helper,
 	fbi->par = helper;
 	fbi->flags = FBINFO_DEFAULT;
 	fbi->fbops = &omap_fb_ops;
+
+	fbi->fbdefio = &omap_fbdev_defio;
+	fb_deferred_io_init(fbi);
+
+	/* TODO: if we want to support making this driver a module, we
+	 * need to call fb_deferred_io_cleanup() when the fbdev is
+	 * unregistered!
+	 */
 
 	strcpy(fbi->fix.id, MODULE_NAME);
 
