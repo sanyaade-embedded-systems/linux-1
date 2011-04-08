@@ -762,13 +762,9 @@ static struct omap_dss_board_info sdp4430_dss_data = {
 	.default_device	=	&sdp4430_lcd_device,
 };
 
-static const int sdp4430_fb0_ovl_ids[] = {0};
-static const int sdp4430_fb0_mgr_ids[] = {0};
-static const char *sdp4430_fb0_dev_names[] = {"lcd"};
-
-static const int sdp4430_fb1_ovl_ids[] = {1};
-static const int sdp4430_fb1_mgr_ids[] = {1};
-static const char *sdp4430_fb1_dev_names[] = {"hdmi"};
+static const int sdp4430_fb0_ovl_ids[] = {0, 1};
+static const int sdp4430_fb0_mgr_ids[] = {0, 1};
+static const char *sdp4430_fb0_dev_names[] = {"lcd", "hdmi"};
 
 static const struct omap_gpu_platform_data sdp4430_gpu_data[] = {
 		/* primary framebuffer on lcd */
@@ -779,15 +775,6 @@ static const struct omap_gpu_platform_data sdp4430_gpu_data[] = {
 				.mgr_ids = sdp4430_fb0_mgr_ids,
 				.dev_cnt = ARRAY_SIZE(sdp4430_fb0_dev_names),
 				.dev_names = sdp4430_fb0_dev_names,
-		},
-		/* secondary framebuffer for ubuntu on hdmi.. */
-		{
-				.ovl_cnt = ARRAY_SIZE(sdp4430_fb1_ovl_ids),
-				.ovl_ids = sdp4430_fb1_ovl_ids,
-				.mgr_cnt = ARRAY_SIZE(sdp4430_fb1_mgr_ids),
-				.mgr_ids = sdp4430_fb1_mgr_ids,
-				.dev_cnt = ARRAY_SIZE(sdp4430_fb1_dev_names),
-				.dev_names = sdp4430_fb1_dev_names,
 		},
 };
 
