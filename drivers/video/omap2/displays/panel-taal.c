@@ -73,6 +73,8 @@ static void te_work_callback(struct work_struct *work);
 static void te2_work_callback(struct work_struct *work);
 static int taal_update(struct omap_dss_device *dssdev,
 				u16 x, u16 y, u16 w, u16 h);
+static int taal_sched_update(struct omap_dss_device *dssdev,
+				u16 x, u16 y, u16 w, u16 h);
 
 struct panel_regulator {
 	struct regulator *regulator;
@@ -1198,7 +1200,7 @@ static void te_work_callback(struct work_struct *work)
 	u16 x_res = dssdev->panel.timings.x_res;
 	u16 y_res = dssdev->panel.timings.y_res;
 
-	taal_update(dssdev, 0, 0, x_res, y_res);
+	taal_sched_update(dssdev, 0, 0, x_res, y_res);
 }
 
 static void te2_work_callback(struct work_struct *work)
@@ -1209,7 +1211,7 @@ static void te2_work_callback(struct work_struct *work)
 	u16 x_res = dssdev->panel.timings.x_res;
 	u16 y_res = dssdev->panel.timings.y_res;
 
-	taal_update(dssdev, 0, 0, x_res, y_res);
+	taal_sched_update(dssdev, 0, 0, x_res, y_res);
 }
 static irqreturn_t taal_te_isr(int irq, void *data)
 {
