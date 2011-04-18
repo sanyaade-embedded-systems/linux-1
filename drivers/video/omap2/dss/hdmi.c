@@ -397,8 +397,12 @@ err:
 	return ret;
 }
 
-static void update_cfg(struct hdmi_config *cfg,
-					struct omap_video_timings *timings)
+unsigned long hdmi_pclk_rate(void)
+{
+	return (unsigned long)(hdmi.cfg.pixel_clock * 1000);
+}
+
+static void update_cfg(struct hdmi_config *cfg, struct omap_video_timings *timings)
 {
 	cfg->ppl = timings->x_res;
 	cfg->lpp = timings->y_res;

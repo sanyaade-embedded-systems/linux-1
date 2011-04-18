@@ -2846,6 +2846,9 @@ static unsigned long calc_fclk_five_taps(enum omap_channel channel,
 	/* FIXME venc pclk? */
 	u64 tmp, pclk = dispc_pclk_rate(channel);
 
+	if (cpu_is_omap44xx())
+		return dispc_pclk_rate(channel) / out_width * width;
+
 	if (height > out_height) {
 		/* FIXME get real display PPL */
 		unsigned int ppl = 800;
@@ -2881,6 +2884,9 @@ static unsigned long calc_fclk(enum omap_channel channel, u16 width,
 {
 	unsigned int hf, vf;
 
+	if (cpu_is_omap44xx())
+		return dispc_pclk_rate(channel) / out_width * width;
+
 	/*
 	 * FIXME how to determine the 'A' factor
 	 * for the no downscaling case ?
@@ -2911,6 +2917,8 @@ void dispc_set_channel_out(enum omap_plane plane, enum omap_channel channel_out)
 	enable_clocks(0);
 }
 
+#define WIDTH_MAXDOWNSCALE_REACHED (1 << 0)
+#define HEIGHT_MAXDOWNSCALE_REACHED (1 << 1)
 int dispc_scaling_decision(u16 width, u16 height,
 				u16 out_width, u16 out_height,
 				enum omap_plane plane,
@@ -2920,6 +2928,7 @@ int dispc_scaling_decision(u16 width, u16 height,
 				u16 min_y_decim, u16 max_y_decim,
 				u16 *x_decim, u16 *y_decim, bool *three_tap)
 {
+	unsigned int reason = 0;
 	int maxdownscale = cpu_is_omap24xx() ? 2 : 4;
 	int bpp = color_mode_to_bpp(color_mode);
 
@@ -2933,10 +2942,8 @@ int dispc_scaling_decision(u16 width, u16 height,
 	bool can_scale = plane != OMAP_DSS_GFX;
 
 	u16 in_width, in_height;
-	unsigned long fclk = 0, fclk5 = 0;
-	int min_factor, max_factor;	/* decimation search limits */
+	unsigned long fclk = 0, fclk_rate, pclk_rate;
 	int x, y;			/* decimation search variables */
-	unsigned long fclk_max = dispc_fclk_rate();
 
 	/* No decimation for bitmap formats */
 	if (color_mode == OMAP_DSS_COLOR_CLUT1 ||
@@ -2963,115 +2970,135 @@ int dispc_scaling_decision(u16 width, u16 height,
 		if (min_y_decim > 1)
 			return -EINVAL;
 		min_y_decim = max_y_decim = 1;
+	} else {
+		/* TODO: put 16 once all decimation work OK */
+		if (max_y_decim > 2)
+			max_y_decim = 2;
 	}
 
 	/*
-	 * Find best supported quality.  In the search algorithm, we make use
-	 * of the fact, that increased decimation in either direction will have
-	 * lower quality.  However, we do not differentiate horizontal and
-	 * vertical decimation even though they may affect quality differently
-	 * given the exact geometry involved.
+	 * GFX pipeline: no downscale. But on OMAP4, decimation so downsize
+	 *   by 2, 3, 4, ... shall be OK ?
+	 * OMAP2: no decimation, maxdownscale 2, specific maxdownscale
+	 *   constraint through calc_fclk
+	 * OMAP3: no decimation, maxdownscale 4, specific maxdownscale
+	 *   constraint idem
+	 * OMAP4: decimation, maxdownscale 4, specific width maxdownscale
+	 *   constraint: f_clk > in_width * p_clk / out_width + max_downscale
 	 *
-	 * Also, since the clock calculations are abstracted, we cannot make
-	 * assumptions on how decimation affects the clock rates in our search.
-	 *
-	 * We search the whole search region in increasing layers from
-	 * min_factor to max_factor.  In each layer we search in increasing
-	 * factors alternating between x and y axis:
-	 *
-	 *   x:	1	2	3
-	 * y:
-	 * 1	1st |	3rd |	6th |
-	 *	----+	    |	    |
-	 * 2	2nd	4th |	8th |
-	 *	------------+	    |
-	 * 3	5th	7th	9th |
-	*	--------------------+
+	 * Optimization:
+	 * - GFX: check if xxx / out_xxx is integer. then check if is valid
+	 *   decimation coef (max 16 for OMAP4, 1 for others)
+	 * - Compute maxdownscale. Update with specific constraint if width
+	 * - Compute xxx / out_xxx: if > 1 and < maxdownscale OK.
+	 * - Else xxx / out_xxx / maxdownscale. Round up to get decimation coef
+	 *   and check it is valid (max 16 for OMAP4, 1 for others)
 	 */
-	min_factor = min(min_x_decim, min_y_decim);
-	max_factor = max(max_x_decim, max_y_decim);
 	x = min_x_decim;
 	y = min_y_decim;
+	/* while() loop can be optimized by computing directly right decimation
+	 * values
+	 */
 	while (1) {
-		if (x < min_x_decim || x > max_x_decim ||
-			y < min_y_decim || y > max_y_decim)
-			goto loop;
-
 		in_width = DIV_ROUND_UP(width, x);
 		in_height = DIV_ROUND_UP(height, y);
 
-		if (in_width == out_width && in_height == out_height)
+		/* decimation defines pixel fetching increment. in_xxx defines
+		 * number of increments to perform in_xxx must be even and
+		 * pixels must be in picture so we take closer lower even value
+		 */
+		in_width &= 0xFFFFFFFE;
+		in_height &= 0xFFFFFFFE;
+
+		/* needed for GFX that can't rescale. width / decimation must
+		 * be integer
+		 */
+		if (in_width == out_width && in_height == out_height) {
 			break;
+		/* On OMAP4, we can try to decimate. For other platforms, goto
+		 * loop: will return failure
+		 */
+		} else if (!can_scale) {
+			if (out_width < in_width)
+				reason |= WIDTH_MAXDOWNSCALE_REACHED;
+			if (out_height < in_height)
+				reason |= HEIGHT_MAXDOWNSCALE_REACHED;
+			goto loop;
+		}
 
-		if (!can_scale)
+		/* max downscale constraint. Only solution is decimation */
+		if (out_width < in_width / maxdownscale)
+			reason |= WIDTH_MAXDOWNSCALE_REACHED;
+		if (out_height < in_height / maxdownscale)
+			reason |= HEIGHT_MAXDOWNSCALE_REACHED;
+		if (reason > 0)
 			goto loop;
 
-		if (out_width < in_width / maxdownscale ||
-			out_height < in_height / maxdownscale)
-			goto loop;
-
-		/* Must use 3-tap filter */
-		*three_tap = false;
+		/* height: taps number selection to compute later specific
+		 * clock constraint
+		 */
 		if (!cpu_is_omap44xx())
 			*three_tap = in_width > 1024;
 		else if (omap_rev() == OMAP4430_REV_ES1_0)
 			*three_tap = in_width > 1280;
 
-		/* Also use 3-tap if downscaling by 2 or less */
-		*three_tap |= out_height * 2 >= in_height;
-
-		/*
-		 * Predecimation on OMAP4 still fetches the whole lines
-		 * :TODO: How does it affect the required clock speed?
-		 */
-		enable_clocks(1);
-		fclk = calc_fclk(channel, in_width, in_height,
-					out_width, out_height);
-		fclk5 = *three_tap ? 0 :
-			calc_fclk_five_taps(channel, in_width, in_height,
-					out_width, out_height, color_mode);
-		enable_clocks(0);
-
-		DSSDBG("%d*%d,%d*%d->%d,%d requires %lu(3T), %lu(5T) Hz\n",
-			in_width, x, in_height, y, out_width, out_height,
-			fclk, fclk5);
-
-		/* Use 3-tap if 5-tap clock requirement is too high */
-		*three_tap |= fclk5 > fclk_max;
-
-		/* for now we always use 5-tap unless 3-tap is required */
-		if (!*three_tap)
-			fclk = fclk5;
+		else if (omap_rev() >= OMAP4430_REV_ES2_0)
+			*three_tap = 0;
 
 		/* OMAP2/3 has a scaler size limitation */
 		if (!cpu_is_omap44xx() && in_width > (1024 << *three_tap))
+			return -EINVAL;
+
+		/*
+		 * Functional clock specific downscale constraint
+		 */
+		enable_clocks(1);
+
+		fclk = *three_tap ?
+			calc_fclk(channel, in_width, in_height,	out_width, out_height) :
+			calc_fclk_five_taps(channel, in_width, in_height, out_width, out_height, color_mode);
+
+        fclk_rate = dispc_fclk_rate();
+        pclk_rate = dispc_pclk_rate(channel);
+
+		enable_clocks(0);
+
+		DSSDBG("Scaling: %d*%d,%d*%d->%d,%d 3taps=%d\n", in_width, x,
+			in_height, y, out_width, out_height, *three_tap);
+		DSSDBG("required fclk= %lu Hz - fclk= %lu - pclk= %lu channel= %u\n",
+			fclk, fclk_rate, pclk_rate, channel);
+
+		/* if required fclk is too high, OMAP2/3 fail. OMAP4 can try to
+		 *  decimate more the width
+		 */
+		if (fclk > fclk_rate) {
+			reason |= WIDTH_MAXDOWNSCALE_REACHED;
 			goto loop;
 
-		DSSDBG("required fclk rate = %lu Hz\n", fclk);
-		DSSDBG("current fclk rate = %lu Hz\n", fclk_max);
-
-		if (fclk > fclk_max)
-			goto loop;
+		}
 		break;
 
 loop:
-		/* err if exhausted search region */
-		if (x == max_x_decim && y == max_y_decim) {
+		/* if downscaling issue exists, we only hav epossibility to
+		 * decimate otherwise INVALID
+		 */
+		if (((x == max_x_decim) && (reason & WIDTH_MAXDOWNSCALE_REACHED)) ||
+			((y == max_y_decim) && (reason & HEIGHT_MAXDOWNSCALE_REACHED))) {
 			DSSERR("failed to set up scaling, "
 					"required fclk rate = %lu Hz, "
 					"current fclk rate = %lu Hz\n",
-					fclk, fclk_max);
+					fclk, dispc_fclk_rate());
 			return -EINVAL;
 		}
 
-		/* get to next factor */
-		if (x == y) {
-			x = min_factor;
-			y++;
-		} else {
-			swap(x, y);
-			if (x < y)
+		if (reason & WIDTH_MAXDOWNSCALE_REACHED) {
 				x++;
+			reason &= ~WIDTH_MAXDOWNSCALE_REACHED;
+		}
+
+		if (reason & HEIGHT_MAXDOWNSCALE_REACHED) {
+			y++;
+			reason &= ~HEIGHT_MAXDOWNSCALE_REACHED;
 		}
 	}
 
@@ -3180,6 +3207,8 @@ static int _dispc_setup_plane(enum omap_plane plane,
 
 	width = DIV_ROUND_UP(width, x_decim);
 	height = DIV_ROUND_UP(height, y_decim);
+	width &= 0xFFFFFFFE;
+	height &= 0xFFFFFFFE;
 
 	/* NV12 width has to be even (height apparently does not) */
 	if (color_mode == OMAP_DSS_COLOR_NV12)
@@ -4080,7 +4109,9 @@ unsigned long dispc_pclk_rate(enum omap_channel channel)
 	int lcd, pcd;
 	unsigned long r;
 	u32 l;
-	if (OMAP_DSS_CHANNEL_LCD2 == channel)
+	if (OMAP_DSS_CHANNEL_DIGIT == channel)
+		return hdmi_pclk_rate();
+	else if (OMAP_DSS_CHANNEL_LCD2 == channel)
 		l = dispc_read_reg(DISPC_DIVISOR2);
 	else
 		l = dispc_read_reg(DISPC_DIVISOR);
