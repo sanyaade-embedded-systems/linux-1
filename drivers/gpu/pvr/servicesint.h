@@ -148,6 +148,9 @@ typedef struct _PVRSRV_KERNEL_SYNC_INFO_
 
 	
 	IMG_UINT32		ui32UID;
+
+
+	IMG_HANDLE		hSmartCache;
 } PVRSRV_KERNEL_SYNC_INFO;
 
 typedef struct _PVRSRV_DEVICE_SYNC_OBJECT_

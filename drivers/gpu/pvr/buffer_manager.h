@@ -181,6 +181,11 @@ IMG_VOID
 BM_Free (BM_HANDLE hBuf,
 		IMG_UINT32 ui32Flags);
 
+IMG_VOID
+BM_RegisterSmart(BM_HANDLE hBuf, IMG_HANDLE hSmartCache);
+
+IMG_VOID
+BM_UnregisterSmart(BM_HANDLE hBuf, IMG_HANDLE hSmartCache);
 
 IMG_CPU_VIRTADDR
 BM_HandleToCpuVaddr (BM_HANDLE hBuf);

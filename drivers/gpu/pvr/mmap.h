@@ -117,6 +117,10 @@ PVRMMapReleaseMMapData(PVRSRV_PER_PROCESS_DATA *psPerProc,
 
 int PVRMMap(struct file* pFile, struct vm_area_struct* ps_vma);
 
+IMG_VOID PVRMMapPrepareCpuToGpu(IMG_HANDLE hSmartCache);
+IMG_VOID PVRMMapPrepareGpuToCpu(IMG_HANDLE hSmartCache);
+IMG_HANDLE PVRMMapAllocateSmart(PVRSRV_KERNEL_SYNC_INFO *psKernelSyncInfo);
+IMG_VOID PVRMMapFreeSmart(IMG_HANDLE hSmartCache);
 
 #endif	
 

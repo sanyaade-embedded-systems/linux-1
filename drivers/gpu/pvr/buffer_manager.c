@@ -1530,6 +1530,21 @@ BM_Free (BM_HANDLE hBuf,
 }
 
 
+IMG_VOID
+BM_RegisterSmart(BM_HANDLE hBuf, IMG_HANDLE hSmartCache)
+{
+	BM_BUF *pBuf = (BM_BUF *)hBuf;
+	OSMemHandleRegisterSmart(pBuf->hOSMemHandle, hSmartCache);
+}
+
+IMG_VOID
+BM_UnregisterSmart(BM_HANDLE hBuf, IMG_HANDLE hSmartCache)
+{
+	BM_BUF *pBuf = (BM_BUF *)hBuf;
+	OSMemHandleUnegisterSmart(pBuf->hOSMemHandle, hSmartCache);
+}
+
+
 IMG_CPU_VIRTADDR
 BM_HandleToCpuVaddr (BM_HANDLE hBuf)
 {

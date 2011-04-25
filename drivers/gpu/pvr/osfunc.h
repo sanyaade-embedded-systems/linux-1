@@ -384,6 +384,8 @@ PVRSRV_ERROR OSFreePages(IMG_UINT32 ui32Flags, IMG_SIZE_T ui32Size, IMG_PVOID pv
 		OSFreeMem_Impl(flags, size, addr, blockAlloc)
 #endif
 
+IMG_VOID OSMemHandleRegisterSmart(IMG_VOID *hOSMemHandle, IMG_HANDLE hSmartCache);
+IMG_VOID OSMemHandleUnegisterSmart(IMG_VOID *hOSMemHandle, IMG_HANDLE hSmartCache);
 
 #if defined(__linux__)
 IMG_CPU_PHYADDR OSMemHandleToCpuPAddr(IMG_VOID *hOSMemHandle, IMG_SIZE_T ui32ByteOffset);

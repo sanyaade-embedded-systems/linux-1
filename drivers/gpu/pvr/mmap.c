@@ -676,6 +676,342 @@ static struct vm_operations_struct MMapIOOps =
 	.close=MMapVClose
 };
 
+/*****************************************************************************/
+/* "Smart" cached buffer support..
+ */
+
+#include <linux/rmap.h>
+#include <linux/pagemap.h>
+
+typedef struct {
+	struct mutex lock; 			/* mutex that protects the page list */
+	struct list_head faulted; 	/* list of touched pages */
+	int npages;					/* number of pages in buffer */
+	struct vm_area_struct *vma;	/* vma of initial creator of buffer */
+} PVRMMapSmartCache;
+
+enum {
+	PG_touched = PG_private,
+	PG_written = PG_private_2
+};
+
+static IMG_VOID PVRMMapUnmapInv(IMG_HANDLE hSmartCache, bool inv);
+
+#define DBG(fmt, ...) do {} while (0)
+//#define DBG(fmt, ...) printk(KERN_INFO"[%s:%d] "fmt"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define VERB(fmt, ...) do {} while (0)
+//#define VERB(fmt, ...) printk(KERN_INFO"[%s:%d] "fmt"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define ERR(fmt, ...) printk(KERN_ERR"ERR: [%s:%d] "fmt"\n", __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
+static int
+MMapVFault(struct vm_area_struct *vma, struct vm_fault *vmf)
+{
+	PKV_OFFSET_STRUCT psOffsetStruct = vma->vm_private_data;
+	LinuxMemArea *psLinuxMemArea = psOffsetStruct->psLinuxMemArea;
+	PVRMMapSmartCache *smart = psLinuxMemArea->hSmartCache;
+	unsigned long offset, pfn;
+	struct page *page;
+	pgoff_t pgoff;
+	int ret = VM_FAULT_NOPAGE;
+
+	if (!smart)
+	{
+		ERR("uhh oh, I'm not smart..\n");
+		return VM_FAULT_SIGBUS;
+	}
+
+	/* We don't use vmf->pgoff since that has the fake offset */
+	pgoff = ((unsigned long)vmf->virtual_address - vma->vm_start) >> PAGE_SHIFT;
+	offset = pgoff << PAGE_SHIFT;
+	if (offset >= psOffsetStruct->psLinuxMemArea->ui32ByteSize)
+	{
+		ERR("%p: offset too big: %lu vs %u, %p", smart, offset,
+				psOffsetStruct->psLinuxMemArea->ui32ByteSize,
+				psOffsetStruct->psLinuxMemArea);
+		return VM_FAULT_SIGBUS;
+	}
+
+	pfn = LinuxMemAreaToCpuPFN(psLinuxMemArea, offset);
+	page = pfn_to_page(pfn);
+	if (!page)
+	{
+		ERR("%p: can't find page: %lu, %p", smart, offset, psLinuxMemArea);
+		return VM_FAULT_SIGBUS;
+	}
+
+
+	/* *** BEGIN CRITICAL SECTION ********************************************/
+	mutex_lock(&smart->lock);
+
+	/* if we already know of this page the we are done */
+	if (test_and_set_bit(PG_touched, &page->flags))
+	{
+		VERB("%p: (already touched) get_page(%p) (idx=%08lx, flg=%08x, cnt=%d)",
+				smart, page, page->index, vmf->flags, atomic_read(&page->_count));
+		goto unlock;
+	}
+
+	page->index = pgoff + vma->vm_pgoff;
+
+	VERB("%p: get_page(%p) (idx=%08lx, flg=%08x, cnt=%d)",
+			smart, page, page->index, vmf->flags, atomic_read(&page->_count));
+
+	if (vma->vm_file)
+	{
+		page->mapping = vma->vm_file->f_mapping;
+	}
+	else
+	{
+		ERR("%p: no mapping available\n", smart);
+	}
+
+	BUG_ON(!page->mapping);
+
+	vmf->page = page;
+
+	get_page(page);
+	ret = vm_insert_mixed(vma, (unsigned long)vmf->virtual_address, pfn);
+	if (ret)
+	{
+		ERR("%p: error inserting page: %d", smart, ret);
+		goto unlock;
+	}
+	ret = VM_FAULT_NOPAGE;
+
+	/* Add the page to the list of pages that have been touched
+	 */
+	list_add_tail(&page->lru, &smart->faulted);
+
+unlock:
+	mutex_unlock(&smart->lock);
+	/* *** END CRITICAL SECTION **********************************************/
+
+	return ret;
+}
+
+static int
+MMapVMkWrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+{
+	PKV_OFFSET_STRUCT psOffsetStruct = (PKV_OFFSET_STRUCT)vma->vm_private_data;
+	PVRMMapSmartCache *smart = psOffsetStruct->psLinuxMemArea->hSmartCache;
+	struct page *page = vmf->page;
+
+	VERB("%p: page=%p", smart, page);
+
+	/* *** BEGIN CRITICAL SECTION ********************************************/
+	mutex_lock(&smart->lock);
+
+	/* We want the page to remain locked from ->page_mkwrite until
+	 * the PTE is marked dirty to avoid page_mkclean() being called
+	 * before the PTE is updated, which would leave the page ignored.
+	 *
+	 * Do this by locking the page here and informing the caller
+	 * about it with VM_FAULT_LOCKED.
+	 */
+	lock_page(page);
+
+	set_bit(PG_written, &page->flags);
+
+	mutex_unlock(&smart->lock);
+	/* *** END CRITICAL SECTION **********************************************/
+
+	return VM_FAULT_LOCKED;
+}
+
+static void
+MMapVClose2(struct vm_area_struct* vma)
+{
+	PKV_OFFSET_STRUCT psOffsetStruct = (PKV_OFFSET_STRUCT)vma->vm_private_data;
+	PVRMMapSmartCache *smart = psOffsetStruct->psLinuxMemArea->hSmartCache;
+	DBG("%p", smart);
+	PVRMMapUnmapInv(smart, false);
+	MMapVClose(vma);
+}
+
+static struct vm_operations_struct MMapSmartOps = {
+	.open=MMapVOpen,
+	.close=MMapVClose2,
+	.fault=MMapVFault,
+	.page_mkwrite=MMapVMkWrite,
+};
+
+static int
+MMapSetPageDirty(struct page *page)
+{
+	if (!PageDirty(page))
+		SetPageDirty(page);
+	return 0;
+}
+
+static const struct address_space_operations MMapSmartAOps = {
+	.set_page_dirty = MMapSetPageDirty,
+};
+
+/* prepare buffer transition CPU -> GPU */
+IMG_VOID
+PVRMMapPrepareCpuToGpu(IMG_HANDLE hSmartCache)
+{
+#if 0
+	PVRMMapSmartCache *smart = hSmartCache;
+	struct page *page;
+	int cnt = 0;
+
+	/* hopefully this is the common-path.. */
+	if (list_empty(&smart->faulted))
+	{
+		return;
+	}
+
+	/* *** BEGIN CRITICAL SECTION ********************************************/
+	mutex_lock(&smart->lock);
+
+	list_for_each_entry(page, &smart->faulted, lru) {
+		if (test_and_clear_bit(PG_written, &page->flags))
+		{
+			void *va = (void *)(smart->vma->vm_start +
+					((page->index - smart->vma->vm_pgoff) << PAGE_SHIFT));
+			unsigned long pa = page_to_phys(page);
+
+			lock_page(page);
+			page_mkclean(page);
+			dmac_clean_range(va, va + PAGE_SIZE);
+			outer_clean_range(pa, pa + PAGE_SIZE);
+			unlock_page(page);
+
+			cnt++;
+		}
+	}
+
+	mutex_unlock(&smart->lock);
+	/* *** END CRITICAL SECTION **********************************************/
+
+	DBG("%p: cleaned %d (of %d)", smart, cnt, smart->npages);
+#else
+	PVRMMapUnmapInv(hSmartCache, true);
+#endif
+}
+/* prepare buffer transition GPU -> CPU */
+IMG_VOID
+PVRMMapPrepareGpuToCpu(IMG_HANDLE hSmartCache)
+{
+	PVRMMapUnmapInv(hSmartCache, true);
+}
+
+/* remove faulted pages from user's vm, and optionally invalidate.. */
+static IMG_VOID
+PVRMMapUnmapInv(IMG_HANDLE hSmartCache, bool inv)
+{
+	PVRMMapSmartCache *smart = hSmartCache;
+	struct page *page, *next;
+	pgoff_t min = ULONG_MAX, max = 0;
+	struct address_space *mapping = NULL;
+	int cnt = 0;
+
+	/* hopefully this is the common-path.. */
+	if (list_empty(&smart->faulted))
+	{
+		return;
+	}
+
+	VERB("%p", smart);
+
+	/* *** BEGIN CRITICAL SECTION ********************************************/
+	mutex_lock(&smart->lock);
+
+	list_for_each_entry(page, &smart->faulted, lru) {
+
+		if (inv)
+		{
+			void *va = (void *)(smart->vma->vm_start +
+					((page->index - smart->vma->vm_pgoff) << PAGE_SHIFT));
+
+#if 0
+			dmac_inv_range(va, va + PAGE_SIZE);
+#else
+			dmac_flush_range(va, va + PAGE_SIZE);
+#endif
+		}
+
+		clear_bit(PG_touched, &page->flags);
+		clear_bit(PG_written, &page->flags);
+
+		min = min(min, page->index);
+		max = max(max, page->index);
+
+		mapping = page->mapping;
+
+		cnt++;
+	}
+
+	/* clear out the mapping that we setup.. do this before
+	 * invalidating to avoid a window where the cache is
+	 * clean, but access to it is not protected by a fault
+	 */
+	if (mapping)
+	{
+		VERB("unmap_mapping_range: max=%08lx, min=%08lx", max, min);
+		unmap_mapping_range(mapping, min << PAGE_SHIFT,
+				(max - min + 1) << PAGE_SHIFT, 1);
+	}
+
+	list_for_each_entry_safe(page, next, &smart->faulted, lru) {
+
+		if (inv)
+		{
+			unsigned long pa = page_to_phys(page);
+
+#if 0
+			outer_inv_range(pa, pa + PAGE_SIZE);
+#else
+			outer_flush_range(pa, pa + PAGE_SIZE);
+#endif
+		}
+
+		VERB("%p: put_page(%p) (idx=%08lx, cnt=%d)",
+				smart, page, page->index, atomic_read(&page->_count));
+
+		page->index = 0;
+		page->mapping = NULL;
+
+		put_page(page);
+
+		list_del(&page->lru);
+	}
+
+	mutex_unlock(&smart->lock);
+	/* *** END CRITICAL SECTION **********************************************/
+
+	DBG("%p: put %d (of %d)", smart, cnt, smart->npages);
+}
+
+/* setup smart cache buffer */
+IMG_HANDLE
+PVRMMapAllocateSmart(PVRSRV_KERNEL_SYNC_INFO *psKernelSyncInfo)
+{
+	PVRMMapSmartCache *smart = kzalloc(sizeof(*smart), GFP_KERNEL);
+
+	DBG("%p", smart);
+
+	mutex_init(&smart->lock);
+	INIT_LIST_HEAD(&smart->faulted);
+
+	return smart;
+}
+
+IMG_VOID
+PVRMMapFreeSmart(IMG_HANDLE hSmartCache)
+{
+	PVRMMapSmartCache *smart = hSmartCache;
+
+	DBG("%p", smart);
+
+	PVRMMapUnmapInv(smart, false);
+
+	mutex_destroy(&smart->lock);
+
+	kfree(smart);
+}
+/*****************************************************************************/
 
 int
 PVRMMap(struct file* pFile, struct vm_area_struct* ps_vma)
@@ -748,30 +1084,52 @@ PVRMMap(struct file* pFile, struct vm_area_struct* ps_vma)
     switch(psOffsetStruct->psLinuxMemArea->ui32AreaFlags & PVRSRV_HAP_CACHETYPE_MASK)
     {
         case PVRSRV_HAP_CACHED:
-            
+        case PVRSRV_HAP_SMART:
             break;
         case PVRSRV_HAP_WRITECOMBINE:
-	    ps_vma->vm_page_prot = PGPROT_WC(ps_vma->vm_page_prot);
+            ps_vma->vm_page_prot = PGPROT_WC(ps_vma->vm_page_prot);
             break;
         case PVRSRV_HAP_UNCACHED:
             ps_vma->vm_page_prot = PGPROT_UC(ps_vma->vm_page_prot);
             break;
         default:
             PVR_DPF((PVR_DBG_ERROR, "%s: unknown cache type", __FUNCTION__));
-	    iRetVal = -EINVAL;
-	    goto unlock_and_return;
+            iRetVal = -EINVAL;
+            goto unlock_and_return;
     }
     
-    
-    ps_vma->vm_ops = &MMapIOOps;
-    
-    if(!DoMapToUser(psOffsetStruct->psLinuxMemArea, ps_vma, 0))
+    if (psOffsetStruct->psLinuxMemArea->hSmartCache)
     {
-        iRetVal = -EAGAIN;
-        goto unlock_and_return;
+        PVRMMapSmartCache *smart = psOffsetStruct->psLinuxMemArea->hSmartCache;
+        DBG("using smart cache, smart=%p, psLinuxMemArea=%p (%d, %d)",
+                psOffsetStruct->psLinuxMemArea->hSmartCache,
+                psOffsetStruct->psLinuxMemArea,
+                psOffsetStruct->ui32RealByteSize,
+                psOffsetStruct->psLinuxMemArea->ui32ByteSize);
+        smart->npages = (psOffsetStruct->ui32RealByteSize + PAGE_SIZE - 1) / PAGE_SIZE;
+        /* abuse pgoff a bit less.. in unmap_mapping_range() it is assumed
+         * that the offset is something sane, and I think it probably
+         * shouldn't intersect with other page->index's.. otherwise I
+         * suspect the prio_tree stuff won't work out..
+         */
+        ps_vma->vm_pgoff = ps_vma->vm_start >> PAGE_SHIFT;
+        smart->vma = ps_vma;
+        ps_vma->vm_ops = &MMapSmartOps;
+        pFile->f_mapping->a_ops = &MMapSmartAOps;
+
+        ps_vma->vm_flags |= VM_MIXEDMAP;
+    }
+    else
+    {
+        ps_vma->vm_ops = &MMapIOOps;
+        if(!DoMapToUser(psOffsetStruct->psLinuxMemArea, ps_vma, 0))
+        {
+            iRetVal = -EAGAIN;
+            goto unlock_and_return;
+        }
     }
     
-    PVR_ASSERT(psOffsetStruct->ui32UserVAddr == 0)
+    PVR_ASSERT(psOffsetStruct->ui32UserVAddr == 0);
 
     psOffsetStruct->ui32UserVAddr = ps_vma->vm_start;
 

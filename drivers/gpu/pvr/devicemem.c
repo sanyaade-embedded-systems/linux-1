@@ -31,6 +31,10 @@
 #include "pdump_km.h"
 #include "pvr_bridge_km.h"
 
+#if defined (__linux__)
+#include "mmap.h"
+#endif
+
 static PVRSRV_ERROR AllocDeviceMem(IMG_HANDLE		hDevCookie,
 									IMG_HANDLE		hDevMemHeap,
 									IMG_UINT32		ui32Flags,
@@ -538,6 +542,7 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVAllocSyncInfoKM(IMG_HANDLE					hDevCookie,
 	psKernelSyncInfo->sWriteOpsCompleteDevVAddr.uiAddr = psKernelSyncInfo->psSyncDataMemInfoKM->sDevVAddr.uiAddr + offsetof(PVRSRV_SYNC_DATA, ui32WriteOpsComplete);
 	psKernelSyncInfo->sReadOpsCompleteDevVAddr.uiAddr = psKernelSyncInfo->psSyncDataMemInfoKM->sDevVAddr.uiAddr + offsetof(PVRSRV_SYNC_DATA, ui32ReadOpsComplete);
 	psKernelSyncInfo->ui32UID = g_ui32SyncUID++;
+	psKernelSyncInfo->hSmartCache = NULL;
 
 	
 	psKernelSyncInfo->psSyncDataMemInfoKM->psKernelSyncInfo = IMG_NULL;
@@ -642,6 +647,12 @@ static PVRSRV_ERROR FreeMemCallBackCommon(PVRSRV_KERNEL_MEM_INFO *psMemInfo,
 
 					if (psMemInfo->psKernelSyncInfo->ui32RefCount == 0)
 					{
+						if (psMemInfo->psKernelSyncInfo->hSmartCache)
+						{
+							BM_UnregisterSmart(psMemInfo->sMemBlk.hBuffer,
+									psMemInfo->psKernelSyncInfo->hSmartCache);
+							PVRMMapFreeSmart(psMemInfo->psKernelSyncInfo->hSmartCache);
+						}
 						eError = PVRSRVFreeSyncInfoKM(psMemInfo->psKernelSyncInfo);
 					}
 				}
@@ -685,6 +696,15 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVFreeDeviceMemKM(IMG_HANDLE				hDevCookie,
 	if (!psMemInfo)
 	{
 		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
+
+	// XXX do we need this?
+	if (psMemInfo->psKernelSyncInfo && psMemInfo->psKernelSyncInfo->hSmartCache)
+	{
+		BM_UnregisterSmart(psMemInfo->sMemBlk.hBuffer,
+				psMemInfo->psKernelSyncInfo->hSmartCache);
+		PVRMMapFreeSmart(psMemInfo->psKernelSyncInfo->hSmartCache);
+		psMemInfo->psKernelSyncInfo->hSmartCache = NULL;
 	}
 
 	if (psMemInfo->sMemBlk.hResItem != IMG_NULL)
@@ -846,6 +866,13 @@ PVRSRV_ERROR IMG_CALLCONV _PVRSRVAllocDeviceMemKM(IMG_HANDLE					hDevCookie,
 			goto free_mainalloc;
 		}
 		psMemInfo->psKernelSyncInfo->ui32RefCount++;
+
+		if (ui32Flags & PVRSRV_HAP_SMART)
+		{
+			psMemInfo->psKernelSyncInfo->hSmartCache = (IMG_HANDLE)
+					PVRMMapAllocateSmart(psMemInfo->psKernelSyncInfo);
+			BM_RegisterSmart(psMemInfo->sMemBlk.hBuffer, psMemInfo->psKernelSyncInfo->hSmartCache);
+		}
 	}
 
 	

@@ -39,7 +39,8 @@
 
 #define	PVR_DRM_DISP_ARG_CMD		0
 #define	PVR_DRM_DISP_ARG_DEV		1
-#define	PVR_DRM_DISP_NUM_ARGS		2
+#define	PVR_DRM_DISP_ARG_ARG		2
+#define	PVR_DRM_DISP_NUM_ARGS		3
 
 #endif	
 #endif 

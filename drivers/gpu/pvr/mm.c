@@ -521,6 +521,7 @@ _VMallocWrapper(IMG_UINT32 ui32Bytes,
     switch(ui32AllocFlags & PVRSRV_HAP_CACHETYPE_MASK)
     {
         case PVRSRV_HAP_CACHED:
+        case PVRSRV_HAP_SMART:
             PGProtFlags = PAGE_KERNEL;
             break;
         case PVRSRV_HAP_WRITECOMBINE:
@@ -694,6 +695,7 @@ _IORemapWrapper(IMG_CPU_PHYADDR BasePAddr,
     switch(ui32MappingFlags & PVRSRV_HAP_CACHETYPE_MASK)
     {
         case PVRSRV_HAP_CACHED:
+        case PVRSRV_HAP_SMART:
 	    pvIORemapCookie = (IMG_VOID *)IOREMAP(BasePAddr.uiAddr, ui32Bytes);
             break;
         case PVRSRV_HAP_WRITECOMBINE:
@@ -1064,6 +1066,12 @@ FreeAllocPagesLinuxMemArea(LinuxMemArea *psLinuxMemArea)
         mem_map_reserve(pvPageList[i]);
 #endif		
 #endif	
+        if (psLinuxMemArea->ui32AreaFlags & PVRSRV_HAP_SMART)
+        {
+            // XXX some race here..
+            clear_bit(PG_private, &pvPageList[i]->flags);
+            clear_bit(PG_private_2, &pvPageList[i]->flags);
+        }
         __free_pages(pvPageList[i], 0);
     }
 
@@ -1952,6 +1960,7 @@ HAPFlagsToString(IMG_UINT32 ui32Flags)
     IMG_CHAR *apszCacheTypes[] = {
         "UNCACHED",
         "CACHED",
+        "SMART",
         "WRITECOMBINE",
         "UNKNOWN"
     };
@@ -1969,10 +1978,12 @@ HAPFlagsToString(IMG_UINT32 ui32Flags)
         ui32CacheTypeIndex=0;
     }else if(ui32Flags & PVRSRV_HAP_CACHED){
         ui32CacheTypeIndex=1;
-    }else if(ui32Flags & PVRSRV_HAP_WRITECOMBINE){
+    }else if(ui32Flags & PVRSRV_HAP_SMART){
         ui32CacheTypeIndex=2;
-    }else{
+    }else if(ui32Flags & PVRSRV_HAP_WRITECOMBINE){
         ui32CacheTypeIndex=3;
+    }else{
+        ui32CacheTypeIndex=4;
         PVR_DPF((PVR_DBG_ERROR, "%s: unknown cache type (%u)",
                  __FUNCTION__, (ui32Flags & PVRSRV_HAP_CACHETYPE_MASK)));
     }

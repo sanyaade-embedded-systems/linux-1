@@ -44,6 +44,10 @@
 #include "sgxutils.h"
 #include "ttrace.h"
 
+#if defined (__linux__)
+#include "mmap.h"
+#endif
+
 #if defined (SUPPORT_SID_INTERFACE)
 IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSFER_SGX_KICK_KM *psKick)
 #else
@@ -161,6 +165,10 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 		}
 		if (abSrcSyncEnable[loop])
 		{
+			if (psMySyncInfo->hSmartCache)
+			{
+				PVRMMapPrepareCpuToGpu(psMySyncInfo->hSmartCache);
+			}
 			ui32RealSrcSyncNum++;
 		}
 	}
@@ -186,6 +194,11 @@ IMG_EXPORT PVRSRV_ERROR SGXSubmitTransferKM(IMG_HANDLE hDevHandle, PVRSRV_TRANSF
 		}
 		if (abDstSyncEnable[loop])
 		{
+			if (psMySyncInfo->hSmartCache)
+			{
+				/* TODO this should happen after GPU is done? */
+				PVRMMapPrepareGpuToCpu(psMySyncInfo->hSmartCache);
+			}
 			ui32RealDstSyncNum++;
 		}
 	}

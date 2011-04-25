@@ -206,7 +206,7 @@ OSAllocPages_Impl(IMG_UINT32 ui32AllocFlags,
             
 #if defined(VIVT_CACHE) || defined(__sh__)
             
-            ui32AllocFlags &= ~PVRSRV_HAP_CACHED;
+            ui32AllocFlags &= ~(PVRSRV_HAP_CACHED|PVRSRV_HAP_SMART);
 #endif
             psLinuxMemArea = NewVMallocLinuxMemArea(ui32Size, ui32AllocFlags);
             if(!psLinuxMemArea)
@@ -331,6 +331,23 @@ OSReleaseSubMemHandle(IMG_VOID *hOSMemHandle, IMG_UINT32 ui32Flags)
     LinuxMemAreaDeepFree(psLinuxMemArea);
 
     return PVRSRV_OK;
+}
+
+IMG_VOID
+OSMemHandleRegisterSmart(IMG_VOID *hOSMemHandle, IMG_HANDLE hSmartCache)
+{
+    LinuxMemArea *psLinuxMemArea = hOSMemHandle;
+    psLinuxMemArea->hSmartCache = hSmartCache;
+}
+
+IMG_VOID
+OSMemHandleUnegisterSmart(IMG_VOID *hOSMemHandle, IMG_HANDLE hSmartCache)
+{
+    LinuxMemArea *psLinuxMemArea = hOSMemHandle;
+    if (psLinuxMemArea->hSmartCache == hSmartCache)
+    {
+        psLinuxMemArea->hSmartCache = NULL;
+    }
 }
 
 
@@ -1189,7 +1206,7 @@ RegisterExternalMem(IMG_SYS_PHYADDR *pBasePAddr,
             
 #if defined(VIVT_CACHE) || defined(__sh__)
             
-            ui32MappingFlags &= ~PVRSRV_HAP_CACHED;
+            ui32MappingFlags &= ~(PVRSRV_HAP_CACHED|PVRSRV_HAP_SMART);
 #endif
         psLinuxMemArea = NewExternalKVLinuxMemArea(pBasePAddr, pvCPUVAddr, ui32Bytes, bPhysContig, ui32MappingFlags);
 
@@ -1325,7 +1342,7 @@ OSReservePhys(IMG_CPU_PHYADDR BasePAddr,
             
 #if defined(VIVT_CACHE) || defined(__sh__)
             
-            ui32MappingFlags &= ~PVRSRV_HAP_CACHED;
+            ui32MappingFlags &= ~(PVRSRV_HAP_CACHED|PVRSRV_HAP_SMART);
 #endif
             psLinuxMemArea = NewIORemapLinuxMemArea(BasePAddr, ui32Bytes, ui32MappingFlags);
             if(!psLinuxMemArea)
