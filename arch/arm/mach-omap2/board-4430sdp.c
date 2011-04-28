@@ -1859,7 +1859,6 @@ static void __init omap_4430sdp_init(void)
 	} else
 		pr_info("Modem HSI not detected");
 
-	usb_uhhtll_init(&usbhs_pdata);
 	usb_musb_init(&musb_board_data);
 
 	status = omap4_keypad_initialization(&sdp4430_keypad_data);
