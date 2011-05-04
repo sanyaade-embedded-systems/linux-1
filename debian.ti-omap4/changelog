@@ -1,4 +1,9 @@
-linux-ti-omap4 (2.6.35-990.0) maverick; urgency=low
+linux-ti-omap4 (2.6.35-991.1) maverick; urgency=low
+
+
+ -- Sebastien JAN <s-jan@ti.com>  Wed, 04 May 2011 17:53:32 +0200
+
+linux-ti-omap4 (2.6.35-991.0) maverick; urgency=low
 
 
  -- Sebastien JAN <s-jan@ti.com>  Wed, 23 Mar 2011 18:01:33 +0100
