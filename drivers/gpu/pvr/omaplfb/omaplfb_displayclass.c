@@ -837,10 +837,11 @@ static PVRSRV_ERROR CreateDCSwapChain(IMG_HANDLE hDevice,
 		psBuffer[i].sCPUVAddr = psDevInfo->sFBInfo.sCPUVAddr +
 			ui32BufferOffset;
 		DEBUG_PRINTK("Display %u buffer index %u has physical "
-			"address 0x%x",
+			"address 0x%x and virtual address 0x%x",
 			psDevInfo->uDeviceID,
 			(unsigned int)i,
-			(unsigned int)psBuffer[i].sSysAddr.uiAddr);
+			(unsigned int)psBuffer[i].sSysAddr.uiAddr,
+			(unsigned int)psBuffer[i].sCPUVAddr);
 	}
 
 	/* Initialize each flip item abstraction structure */
@@ -1102,7 +1103,7 @@ static void OMAPLFBSyncIHandler(struct work_struct *work)
 			psSwapChain->ulRemoveIndex++;
 			if (psSwapChain->ulRemoveIndex > ulMaxIndex)
 				psSwapChain->ulRemoveIndex = 0;
-
+			psFlipItem->bCmdCompleted = OMAP_FALSE;
 			psFlipItem->bFlipped = OMAP_FALSE;
 			psFlipItem->bValid = OMAP_FALSE;
 
@@ -1212,7 +1213,6 @@ static IMG_BOOL ProcessFlip(IMG_HANDLE  hCmdCookie,
 			(unsigned long)psFlipCmd->ui32SwapInterval;
 		psFlipItem->sSysAddr = &psBuffer->sSysAddr;
 		psFlipItem->bValid = OMAP_TRUE;
-		psFlipItem->bCmdCompleted = OMAP_FALSE;
 
 		psSwapChain->ulInsertIndex++;
 		if(psSwapChain->ulInsertIndex > ulMaxIndex)
@@ -1627,8 +1627,11 @@ static OMAP_ERROR InitDev(OMAPLFB_DEVINFO *psDevInfo)
 #if defined(FLIP_TECHNIQUE_FRAMEBUFFER)
 	psLINFBInfo->var.activate = FB_ACTIVATE_FORCE;
 	fb_set_var(psLINFBInfo, &psLINFBInfo->var);
+	/* note: calculate by fb size, not yres_virtual, as drm will set
+	 * yres_virtual back to yres
+	 */
 	buffers_available =
-		psLINFBInfo->var.yres_virtual / psLINFBInfo->var.yres;
+			psLINFBInfo->fix.smem_len / psPVRFBInfo->ulBufferSize;
 
 #elif defined(FLIP_TECHNIQUE_OVERLAY)
 	buffers_available =
@@ -1645,7 +1648,6 @@ static OMAP_ERROR InitDev(OMAPLFB_DEVINFO *psDevInfo)
 		 * Flipping is not supported, return the framebuffer to
 		 * its original state
 		 */
-		psLINFBInfo->var.yres_virtual = psLINFBInfo->var.yres;
 		psLINFBInfo->var.activate = FB_ACTIVATE_FORCE;
 		fb_set_var(psLINFBInfo, &psLINFBInfo->var);
 		buffers_available = 1;
@@ -1686,6 +1688,7 @@ static OMAP_ERROR InitDev(OMAPLFB_DEVINFO *psDevInfo)
 	DEBUG_PRINTK("*Virtual width, height: %u,%u",
 		psLINFBInfo->var.xres_virtual, psLINFBInfo->var.yres_virtual);
 	DEBUG_PRINTK("*Rotation: %u", psLINFBInfo->var.rotate);
+	DEBUG_PRINTK("*Buffers available: %d", buffers_available);
 	DEBUG_PRINTK("*Stride (bytes): %u",
 		(unsigned int)psLINFBInfo->fix.line_length);
 
@@ -1714,29 +1717,12 @@ static OMAP_ERROR InitDev(OMAPLFB_DEVINFO *psDevInfo)
 	/* Get physical display size for DPI calculation */
 	OMAPLFBGetDisplaySize(psDevInfo);
 
+	DEBUG_PRINTK("*Buffer size: %lu", psPVRFBInfo->ulBufferSize);
 	/* XXX: Page aligning with 16bpp causes the
 	 * position of framebuffer address to look in the wrong place.
 	 */
 	psPVRFBInfo->ulRoundedBufferSize =
 			OMAPLFB_PAGE_ROUNDUP(psPVRFBInfo->ulBufferSize);
-
-	/* note: calculate by fb size, not yres_virtual, as drm will set
-	 * yres_virtual back to yres
-	 */
-	buffers_available =
-			psLINFBInfo->fix.smem_len / psPVRFBInfo->ulRoundedBufferSize;
-
-	if(buffers_available <= 1)
-	{
-		/*
-		 * Flipping is not supported, return the framebuffer to
-		 * its original state
-		 */
-		psLINFBInfo->var.activate = FB_ACTIVATE_FORCE;
-		fb_set_var(psLINFBInfo, &psLINFBInfo->var);
-		buffers_available = 1;
-	}
-	psDevInfo->sDisplayInfo.ui32MaxSwapChainBuffers = buffers_available;
 
 	psDevInfo->sFBInfo.sSysAddr.uiAddr = psPVRFBInfo->sSysAddr.uiAddr;
 	psDevInfo->sFBInfo.sCPUVAddr = psPVRFBInfo->sCPUVAddr;
@@ -2014,7 +2000,7 @@ OMAP_ERROR OMAPLFBInit(void)
 			return OMAP_ERROR_DEVICE_REGISTER_FAILED;
 		}
 
-		DEBUG_PRINTK("Display device %i registered with id %u",
+		DEBUG_PRINTK("Framebuffer fb%i registered with id %u",
 			i, psDevInfo->uDeviceID);
 
 		/*

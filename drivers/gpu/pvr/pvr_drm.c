@@ -268,12 +268,9 @@ PVRSRVDrmRelease(struct inode *inode, struct file *filp)
 			__FUNCTION__, ret));
 	}
 
-	if (psDriverPriv)
-	{
 		PVRSRVRelease(psDriverPriv);
-	}
 
-	return ret;
+	return 0;
 }
 #endif
 
@@ -456,8 +453,8 @@ PVRSRVDrmRemove(struct platform_device *pDevice)
 
 	return 0;
 }
-
 #endif	
+
 static int __init PVRSRVDrmInit(void)
 {
 	int iRes;
@@ -482,6 +479,12 @@ static int __init PVRSRVDrmInit(void)
 	iRes = drm_init(&sPVRDrmDriver);
 #endif
 
+#if defined(PVR_DRI_DRM_NOT_PCI)
+	if (iRes != 0)
+	{
+		drm_pvr_dev_remove();
+	}
+#endif
 	return iRes;
 }
 	
@@ -491,10 +494,10 @@ static void __exit PVRSRVDrmExit(void)
 	omap_gpu_unregister_plugin(&plugin);
 #else
 	drm_exit(&sPVRDrmDriver);
-#endif
 
 #if defined(PVR_DRI_DRM_NOT_PCI)
 	drm_pvr_dev_remove();
+#endif
 #endif
 }
 
