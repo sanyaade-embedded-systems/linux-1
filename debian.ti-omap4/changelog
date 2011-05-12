@@ -1,3 +1,64 @@
+linux-ti-omap4 (2.6.35-991.2) maverick; urgency=low
+
+  [ Nicolas Dechesne ]
+
+  * Config: enable profiling and tweek some features
+
+  [ Sebastien Jan ]
+
+  * Config: enable DRM
+  * Config: update with DRM and PVR defaults
+  * Config: enable debug features
+  * Config: set default VRAM to 32M
+  * Config: deactivate HSI support
+
+  [ Upstream Kernel Changes ]
+
+  * Revert "DSS2: Taal: Remove forced auto update scheme"
+  * DSI: TAAL: performance optimization for auto update
+  * OMAP4: SGX-KM: Adding PVR DRM files to Android DDK KM (1.7.17.4403)
+  * DRM: Remove drm_resource wrappers
+  * drm: Add support for platform devices to register as DRM devices
+  * drm: Add __arm defines to DRM
+  * drm: Make sure the DRM offset matches the CPU
+  * drm: Call platform register/unregister for platform drivers.
+  * Update OMAP4 defconfig files to enable drm
+  * drm: Fix compiler warning in drm_edid.c
+  * OMAP4: SGX-KM: Fix PVR_BUILD_DATE
+  * OMAP4: SGX-KM: Correct device name for Android kernel
+  * OMAP4:SGX-KM: Adding DRM support to 3PDD
+  * OMAP4: SGX-KM: Enable DRM support in SGX Driver
+  * drm: drm platform multi-device support
+  * tiler: avoid lock-ups due to unmapped DMM entries
+  * omap:dss: expose API to get edid
+  * omap:dss: add hotplug notify events
+  * omap:dss:hdmi: support checking/setting timings
+  * omap:dss: printk should have \n
+  * omap:dss: add default get/check timings functions
+  * omap:dss: add is_detected() driver API
+  * omap:dss:hdmi: tame hdmi driver
+  * drm: psuedocolor support for ARGB modes
+  * fbops support for framebuffers with alpha channel
+  * omap_gpu drm display driver
+  * pvr: support to register as a plugin for omap_gpu drm driver
+  * pvr: restrict visibility of DC devices to corresponding drm_device
+    instance
+  * setup multiple drm devices
+  * special hack for android
+  * omap:dss: don't enable alphablender on omap4
+  * fix number of omap_vout resources
+  * omap_gpu: fix for NPE
+  * move omap_gpu configuration to board file
+  * omap_gpu: mmap support for manual update displays
+  * Blaze/SDP default to LCD and HDMI for DRM display config
+  * Prototyping of decimation based on Lajos Molnar's work.
+  * OMAP4: DSS: Add check for setting x_inc & y_inc
+  * omap_gpu: add support to get display dimensions
+  * pvr: fixes after rebase
+  * OMAP4: SGX-KM: Changing device name to pvrsrvkm_pvr
+
+ -- Sebastien JAN <s-jan@ti.com>  Thu, 12 May 2011 11:12:39 +0200
+
 linux-ti-omap4 (2.6.35-991.1) maverick; urgency=low
 
 
