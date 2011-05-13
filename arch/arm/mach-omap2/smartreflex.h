@@ -197,6 +197,16 @@ struct omap_sr_nvalue_table {
 };
 
 /**
+ * struct omap_smartreflex_dev_attr - Smartreflex Device attribute.
+ *
+ * @sensor_voltdm_name:       Name of voltdomain of SR instance
+ */
+
+struct omap_smartreflex_dev_attr {
+	const char      *sensor_voltdm_name;
+};
+
+/**
  * struct omap_sr_data - Smartreflex platform data.
  *
  * @ip_type:		Smartreflex IP type.
