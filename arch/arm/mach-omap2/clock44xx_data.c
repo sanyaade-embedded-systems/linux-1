@@ -522,6 +522,7 @@ static struct clk dpll_core_m5x2_ck = {
 	.recalc		= &omap2_clksel_recalc,
 	.round_rate	= &omap2_clksel_round_rate,
 	.set_rate	= &omap2_clksel_set_rate,
+	.clkdm_name     = "l3_1_clkdm",
 };
 
 static const struct clksel div_core_div[] = {
@@ -755,6 +756,7 @@ static struct clk dpll_mpu_ck = {
 	.recalc		= &omap3_dpll_recalc,
 	.round_rate	= &omap2_dpll_round_rate,
 	.set_rate	= &omap3_noncore_dpll_set_rate,
+	.clkdm_name     = "mpuss_clkdm",
 };
 
 static const struct clksel dpll_mpu_m2_div[] = {
