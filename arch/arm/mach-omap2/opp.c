@@ -22,6 +22,7 @@
 #include <plat/omap_device.h>
 
 #include "omap_opp_data.h"
+#include "dvfs.h"
 
 /* Temp variable to allow multiple calls */
 static u8 __initdata omap_table_init;
@@ -85,6 +86,11 @@ int __init omap_init_opp_table(struct omap_opp_def *opp_def,
 					"[%d] result=%d\n",
 					__func__, opp_def->freq,
 					opp_def->hwmod_name, i, r);
+
+			r  = omap_dvfs_register_device(oh, dev);
+			if (r)
+				dev_err(dev, "%s: failed register dvfs %d %d\n",
+					__func__, r, i);
 		}
 		opp_def++;
 	}
