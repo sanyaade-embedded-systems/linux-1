@@ -308,6 +308,7 @@ static struct omap_hwmod omap44xx_l3_main_1_hwmod = {
 	.slaves		= omap44xx_l3_main_1_slaves,
 	.slaves_cnt	= ARRAY_SIZE(omap44xx_l3_main_1_slaves),
 	.omap_chip	= OMAP_CHIP_INIT(CHIP_IS_OMAP4430),
+	.main_clk	= "dpll_core_m5x2_ck",
 };
 
 /* l3_main_2 interface data */
@@ -3738,7 +3739,7 @@ static struct omap_hwmod omap44xx_mpu_hwmod = {
 	.flags		= (HWMOD_INIT_NO_IDLE | HWMOD_INIT_NO_RESET),
 	.mpu_irqs	= omap44xx_mpu_irqs,
 	.mpu_irqs_cnt	= ARRAY_SIZE(omap44xx_mpu_irqs),
-	.main_clk	= "dpll_mpu_m2_ck",
+	.main_clk	= "dpll_mpu_ck",
 	.prcm = {
 		.omap4 = {
 			.clkctrl_reg = OMAP4430_CM_MPU_MPU_CLKCTRL,
