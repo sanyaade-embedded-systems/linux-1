@@ -45,6 +45,7 @@ IMG_UINT32	g_ui32InitFlags;
 
 #define		INIT_DATA_ENABLE_PDUMPINIT	0x1U
 #define		INIT_DATA_ENABLE_TTARCE		0x2U
+#define		PVR_FULL_CACHE_OP_THRESHOLD	0x7D000
 
 PVRSRV_ERROR AllocateDeviceID(SYS_DATA *psSysData, IMG_UINT32 *pui32DevID)
 {
@@ -1092,14 +1093,28 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 /* FIXME: Temporary fix needs to be revisited
  * LinuxMemArea struct listing is not registered for memory areas
  * wrapped through PVR2DMemWrap() call. For now, we are doing
- * cache flush/inv by grabbing the physical pages through
+ * cache flush/inv range ops by grabbing the physical pages through
  * get_user_pages() for every blt call.
  */
 			else if (psMiscInfo->sCacheOpCtl.eCacheOpType ==
 						PVRSRV_MISC_INFO_CPUCACHEOP_CUSTOM_FLUSH)
 			{
-#if defined(CONFIG_OUTER_CACHE) && defined(PVR_NO_FULL_CACHE_OPS)
-				if (1)
+				/* Sync operation for buffer-to-GPU case */
+#if defined(CONFIG_OUTER_CACHE)
+				/* If the size of mem region is more than 500 kB,
+				 * its beneficial to perform full cache flush
+				 * than range wise flush, provided full cache
+				 * operations are supported in the kernel.
+				 */
+				if (psMiscInfo->sCacheOpCtl.ui32Length >
+					PVR_FULL_CACHE_OP_THRESHOLD)
+				{
+					OSFlushCPUCacheKM();
+#if defined(PVR_NO_FULL_CACHE_OPS)
+					outer_flush_all();
+#endif
+				}
+				else
 				{
 					IMG_SIZE_T 	uPageOffset, uPageCount;
 					IMG_VOID	*pvPageAlignedCPUVAddr;
@@ -1136,21 +1151,35 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 						psIntSysPAddr, IMG_NULL);
 
 					kfree(hOSWrapMem);
-
 				}
-#else
-				OSFlushCPUCacheKM();
-#endif /* CONFIG_OUTER_CACHE && PVR_NO_FULL_CACHE_OPS*/
+#endif	/* CONFIG_OUTER_CACHE */
 			}
 			else if (psMiscInfo->sCacheOpCtl.eCacheOpType ==
 							PVRSRV_MISC_INFO_CPUCACHEOP_CUSTOM_INV)
 			{
+				/* Synch operation for buffer-from-GPU case */
 #if defined(CONFIG_OUTER_CACHE)
-				/* TODO: Need to check full cache invalidation, but
-				 * currently it is not exported through
-				 * outer_cache interface.
+				/* If the size of mem region is more than 500 kB,
+				 * its beneficial to perform full cache operations
+				 * then range operations, so here we do full cache
+				 * flush operation.
+				 *
+				 * The clean op resulting from flush should not
+				 * affect the usecase as the cache lines
+				 * corresponding to the buffer in question will not
+				 * be dirty during the GPU update. If they are dirty,
+				 * the buffer is not synched properly between
+				 * CPU<-->GPU and the contents are undefined anyway.
 				 */
-				if (1)
+				if (psMiscInfo->sCacheOpCtl.ui32Length >
+					PVR_FULL_CACHE_OP_THRESHOLD)
+				{
+					OSFlushCPUCacheKM();
+#if defined(PVR_NO_FULL_CACHE_OPS)
+					outer_flush_all();
+#endif
+				}
+				else
 				{
 					IMG_SIZE_T 	uPageOffset, uPageCount;
 					IMG_VOID	*pvPageAlignedCPUVAddr;
@@ -1187,10 +1216,8 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 						psIntSysPAddr, IMG_NULL);
 
 					kfree(hOSWrapMem);
-
 				}
-
-#endif /* CONFIG_OUTER_CACHE */
+#endif	/* CONFIG_OUTER_CACHE */
 			}
 
 		}
