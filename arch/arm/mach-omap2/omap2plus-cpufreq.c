@@ -39,6 +39,8 @@
 
 #include <mach/hardware.h>
 
+#include "dvfs.h"
+
 #define VERY_HI_RATE	900000000
 
 static struct cpufreq_frequency_table *freq_table;
@@ -46,6 +48,8 @@ static int freq_table_users;
 static DEFINE_MUTEX(freq_table_lock);
 
 static struct clk *mpu_clk;
+
+static bool dvfs_transition;
 
 static int omap_verify_speed(struct cpufreq_policy *policy)
 {
@@ -83,6 +87,7 @@ static int omap_target(struct cpufreq_policy *policy,
 	unsigned int i;
 	int ret = 0;
 	struct cpufreq_freqs freqs;
+	struct device *mpu_dev = omap2_get_mpuss_device();
 
 	/* Changes not allowed until all CPUs are online */
 	if (is_smp() && (num_online_cpus() < NR_CPUS))
@@ -137,7 +142,10 @@ set_freq:
 	pr_info("cpufreq-omap: transition: %u --> %u\n", freqs.old, freqs.new);
 #endif
 
-	ret = clk_set_rate(mpu_clk, freqs.new * 1000);
+	if (dvfs_transition)
+		ret = omap_device_scale(mpu_dev, mpu_dev, freqs.new * 1000);
+	else
+		ret = clk_set_rate(mpu_clk, freqs.new * 1000);
 
 	/*
 	 * Generic CPUFREQ driver jiffy update is under !SMP. So jiffies
@@ -222,6 +230,8 @@ static int __cpuinit omap_cpu_init(struct cpufreq_policy *policy)
 	if (!freq_table) {
 		if (opp_init_cpufreq_table(mpu_dev, &freq_table))
 			clk_init_cpufreq_table(&freq_table);
+		else
+			dvfs_transition = true;
 	}
 
 	if (freq_table) {
