@@ -50,6 +50,15 @@ static const struct omap_vc_common omap4_vc_common = {
 	.i2c_mcode_mask	 = OMAP4430_HSMCODE_MASK,
 };
 
+/* handle exception case for vc44xx */
+static struct omap_vc_channel_cfg vc44xx_mpu_cfg_channel = {
+	.cfg_channel_sa = CFG_CHANNEL_SA,
+	.cfg_channel_cmd = BIT(1),
+	.cfg_channel_rav = BIT(2),
+	.cfg_channel_rac = BIT(3),
+	.cfg_channel_racen = BIT(4),
+};
+
 /* VC instance data for each controllable voltage line */
 struct omap_vc_channel omap4_vc_mpu = {
 	.common = &omap4_vc_common,
@@ -58,6 +67,7 @@ struct omap_vc_channel omap4_vc_mpu = {
 	.smps_volra_mask = OMAP4430_VOLRA_VDD_MPU_L_MASK,
 	.smps_cmdra_mask = OMAP4430_CMDRA_VDD_MPU_L_MASK,
 	.cfg_channel_sa_shift = OMAP4430_SA_VDD_MPU_L_SHIFT,
+	.cfg_ch_data = &vc44xx_mpu_cfg_channel,
 };
 
 struct omap_vc_channel omap4_vc_iva = {

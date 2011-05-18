@@ -62,11 +62,42 @@ struct omap_vc_common {
 	u8 i2c_mcode_mask;
 };
 
+/*
+ * Channel configuration bits, common for OMAP3 & 4
+ * OMAP3 register: PRM_VC_CH_CONF
+ * OMAP4 register: PRM_VC_CFG_CHANNEL
+ */
+#define CFG_CHANNEL_SA    BIT(0)
+#define CFG_CHANNEL_RAV   BIT(1)
+#define CFG_CHANNEL_RAC   BIT(2)
+#define CFG_CHANNEL_RACEN BIT(3)
+#define CFG_CHANNEL_CMD   BIT(4)
+#define CFG_CHANNEL_MASK 0x3f
+/**
+ * struct omap_vc_channel_cfg - describe the cfg_channel bitfield
+ * @cfg_channel_sa:	SA_VDD_xxx_L
+ * @cfg_channel_rav:	RAV_VDD_xxx_L
+ * @cfg_channel_rac:	RAC_VDD_xxx_L
+ * @cfg_channel_racen:	RACEN_VDD_xxx_L
+ * @cfg_channel_cmd:	CMD_VDD_xxx_L
+ *
+ * by default it uses CFG_CHANNEL_xyz regs, but in OMAP4 MPU,
+ * there is a need for an exception case.
+ */
+struct omap_vc_channel_cfg {
+	u8 cfg_channel_sa;
+	u8 cfg_channel_rav;
+	u8 cfg_channel_rac;
+	u8 cfg_channel_racen;
+	u8 cfg_channel_cmd;
+};
+
 /**
  * struct omap_vc_channel - VC per-instance data
  * @common: pointer to VC common data for this platform
  * @smps_sa_mask: i2c slave address bitmask in the PRM_VC_SMPS_SA register
  * @smps_volra_mask: VOLRA* bitmask in the PRM_VC_VOL_RA register
+ * @cfg_ch_data: exception handling for unordered register bits in cfg_channel
  */
 struct omap_vc_channel {
 	/* channel state */
@@ -74,6 +105,7 @@ struct omap_vc_channel {
 	u8 volt_reg_addr;
 	u8 cmd_reg_addr;
 	u8 cfg_channel;
+	struct omap_vc_channel_cfg *cfg_ch_data;
 	u16 setup_time;
 	bool i2c_high_speed;
 
@@ -85,6 +117,7 @@ struct omap_vc_channel {
 	u8 cmdval_reg;
 	u8 cfg_channel_sa_shift;
 };
+
 
 extern struct omap_vc_channel omap3_vc_mpu;
 extern struct omap_vc_channel omap3_vc_core;

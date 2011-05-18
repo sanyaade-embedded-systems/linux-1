@@ -10,18 +10,6 @@
 #include "prm-regbits-44xx.h"
 #include "prm44xx.h"
 
-/*
- * Channel configuration bits, common for OMAP3 & 4
- * OMAP3 register: PRM_VC_CH_CONF
- * OMAP4 register: PRM_VC_CFG_CHANNEL
- */
-#define CFG_CHANNEL_SA    BIT(0)
-#define CFG_CHANNEL_RAV   BIT(1)
-#define CFG_CHANNEL_RAC   BIT(2)
-#define CFG_CHANNEL_RACEN BIT(3)
-#define CFG_CHANNEL_CMD   BIT(4)
-#define CFG_CHANNEL_MASK 0x3f
-
 /**
  * omap_vc_config_channel - configure VC channel to PMIC mappings
  * @voltdm: pointer to voltagdomain defining the desired VC channel
@@ -258,6 +246,14 @@ void __init omap_vc_init_channel(struct voltagedomain *voltdm)
 	struct omap_vc_channel *vc = voltdm->vc;
 	u8 on_vsel, onlp_vsel, ret_vsel, off_vsel;
 	u32 val;
+	struct omap_vc_channel_cfg *cfg_channel_data;
+	struct omap_vc_channel_cfg cfg_channel_common = {
+		.cfg_channel_sa = CFG_CHANNEL_SA,
+		.cfg_channel_rav = CFG_CHANNEL_RAV,
+		.cfg_channel_rac = CFG_CHANNEL_RAC,
+		.cfg_channel_racen = CFG_CHANNEL_RACEN,
+		.cfg_channel_cmd = CFG_CHANNEL_CMD,
+	};
 
 	if (!voltdm->pmic || !voltdm->pmic->uv_to_vsel) {
 		pr_err("%s: PMIC info requried to configure vc for"
@@ -272,6 +268,12 @@ void __init omap_vc_init_channel(struct voltagedomain *voltdm)
 		return;
 	}
 
+	/* if there is an exception case, use the exception data */
+	if (!vc->cfg_ch_data)
+		cfg_channel_data = &cfg_channel_common;
+	else
+		cfg_channel_data = vc->cfg_ch_data;
+
 	vc->cfg_channel = 0;
 
 	/* get PMIC/board specific settings */
@@ -284,7 +286,7 @@ void __init omap_vc_init_channel(struct voltagedomain *voltdm)
 	voltdm->rmw(vc->smps_sa_mask,
 		    vc->i2c_slave_addr << __ffs(vc->smps_sa_mask),
 		    vc->common->smps_sa_reg);
-	vc->cfg_channel |= CFG_CHANNEL_SA;
+	vc->cfg_channel |= cfg_channel_data->cfg_channel_sa;
 
 	/*
 	 * Configure the PMIC register addresses.
@@ -292,13 +294,14 @@ void __init omap_vc_init_channel(struct voltagedomain *voltdm)
 	voltdm->rmw(vc->smps_volra_mask,
 		    vc->volt_reg_addr << __ffs(vc->smps_volra_mask),
 		    vc->common->smps_volra_reg);
-	vc->cfg_channel |= CFG_CHANNEL_RAV;
+	vc->cfg_channel |= cfg_channel_data->cfg_channel_rav;
 
 	if (vc->cmd_reg_addr) {
 		voltdm->rmw(vc->smps_cmdra_mask,
 			    vc->cmd_reg_addr << __ffs(vc->smps_cmdra_mask),
 			    vc->common->smps_cmdra_reg);
-		vc->cfg_channel |= CFG_CHANNEL_RAC | CFG_CHANNEL_RACEN;
+		vc->cfg_channel |= cfg_channel_data->cfg_channel_rac |
+					cfg_channel_data->cfg_channel_racen;
 	}
 
 	/* Set up the on, inactive, retention and off voltage */
@@ -311,7 +314,7 @@ void __init omap_vc_init_channel(struct voltagedomain *voltdm)
 	       (ret_vsel << vc->common->cmd_ret_shift) |
 	       (off_vsel << vc->common->cmd_off_shift));
 	voltdm->write(val, vc->cmdval_reg);
-	vc->cfg_channel |= CFG_CHANNEL_CMD;
+	vc->cfg_channel |= cfg_channel_data->cfg_channel_cmd;
 
 	/* Channel configuration */
 	omap_vc_config_channel(voltdm);
