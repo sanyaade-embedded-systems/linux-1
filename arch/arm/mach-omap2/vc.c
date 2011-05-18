@@ -36,7 +36,7 @@ static int omap_vc_config_channel(struct voltagedomain *voltdm)
 	 * All others must stay at zero (see function comment above.)
 	 */
 	if (!vc->cfg_channel_sa_shift)
-		vc->cfg_channel &= CFG_CHANNEL_RACEN;
+		vc->cfg_channel &= (CFG_CHANNEL_RACEN | CFG_CHANNEL_RAV);
 
 	voltdm->rmw(CFG_CHANNEL_MASK << vc->cfg_channel_sa_shift,
 		    vc->cfg_channel << vc->cfg_channel_sa_shift,
