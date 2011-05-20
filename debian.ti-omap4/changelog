@@ -1,3 +1,23 @@
+linux-ti-omap4 (2.6.35-991.3) maverick; urgency=low
+
+  [ Sebastien Jan ]
+
+  * SAUCE: smsc95xx: Add module parameter to override MAC address
+  * Config: deactivate HSI support
+  * config: enable pandaboard
+  * Config: Enable storage devices support
+
+  [ Upstream Kernel Changes ]
+
+  * SGX-KM: Reduce PB heap to 16M and increase General Heap size
+  * OMAP4: BLAZE: do not register USB host controler driver
+  * arm: omap4: pandaboard: turn on PHY reference clock at init
+  * Fix pandaboard compilation
+  * smsc95xx: generate random MAC address once, not every ifup
+  * NET: smsc95xx: don't use stack for async writes to the device
+
+ -- Sebastien JAN <s-jan@ti.com>  Fri, 20 May 2011 14:51:49 +0200
+
 linux-ti-omap4 (2.6.35-991.2) maverick; urgency=low
 
   [ Nicolas Dechesne ]
