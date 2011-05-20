@@ -152,6 +152,17 @@ struct omap_sr_pmic_data {
 	void (*sr_pmic_init) (void);
 };
 
+/**
+ * struct omap_smartreflex_dev_attr - Smartreflex Device attribute.
+ *
+ * @sensor_voltdm_name:       Name of voltdomain of SR instance
+ */
+
+struct omap_smartreflex_dev_attr {
+	const char      *sensor_voltdm_name;
+};
+
+
 #ifdef CONFIG_OMAP_SMARTREFLEX
 /*
  * The smart reflex driver supports CLASS1 CLASS2 and CLASS3 SR.
@@ -194,16 +205,6 @@ struct omap_sr_class_data {
 struct omap_sr_nvalue_table {
 	u32 efuse_offs;
 	u32 nvalue;
-};
-
-/**
- * struct omap_smartreflex_dev_attr - Smartreflex Device attribute.
- *
- * @sensor_voltdm_name:       Name of voltdomain of SR instance
- */
-
-struct omap_smartreflex_dev_attr {
-	const char      *sensor_voltdm_name;
 };
 
 /**
