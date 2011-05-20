@@ -316,6 +316,7 @@ static int _add_vdd_user(struct omap_vdd_dvfs_info *dvfs_info,
 		return -EINVAL;
 	}
 
+	spin_lock(&dvfs_info->user_lock);
 	plist_for_each_entry(temp_user, &dvfs_info->vdd_user_list, node) {
 		if (temp_user->dev == dev) {
 			user = temp_user;
@@ -324,11 +325,12 @@ static int _add_vdd_user(struct omap_vdd_dvfs_info *dvfs_info,
 	}
 
 	if (!user) {
-		user = kzalloc(sizeof(struct omap_vdd_user_list), GFP_KERNEL);
+		user = kzalloc(sizeof(struct omap_vdd_user_list), GFP_ATOMIC);
 		if (!user) {
 			dev_err(dev,
 				"%s: Unable to creat a new user for vdd_%s\n",
 				__func__, dvfs_info->voltdm->name);
+			spin_unlock(&dvfs_info->user_lock);
 			return -ENOMEM;
 		}
 		user->dev = dev;
@@ -341,6 +343,7 @@ static int _add_vdd_user(struct omap_vdd_dvfs_info *dvfs_info,
 	node = plist_last(&dvfs_info->vdd_user_list);
 	user->volt = node->prio;
 
+	spin_unlock(&dvfs_info->user_lock);
 	return 0;
 }
 
@@ -365,6 +368,7 @@ static int _remove_vdd_user(struct omap_vdd_dvfs_info *dvfs_info,
 		return -EINVAL;
 	}
 
+	spin_lock(&dvfs_info->user_lock);
 	plist_for_each_entry(temp_user, &dvfs_info->vdd_user_list, node) {
 		if (temp_user->dev == dev) {
 			user = temp_user;
@@ -380,6 +384,7 @@ static int _remove_vdd_user(struct omap_vdd_dvfs_info *dvfs_info,
 		ret = -ENOMEM;
 	}
 
+	spin_unlock(&dvfs_info->user_lock);
 	kfree(user);
 
 	return ret;
@@ -419,6 +424,7 @@ static int _add_freq_request(struct omap_vdd_dvfs_info *dvfs_info,
 		return -EINVAL;
 	}
 
+	spin_lock(&temp_dev->user_lock);
 	plist_for_each_entry(tmp_user, &temp_dev->freq_user_list, node) {
 		if (tmp_user->dev == req_dev) {
 			dev_user = tmp_user;
@@ -428,11 +434,12 @@ static int _add_freq_request(struct omap_vdd_dvfs_info *dvfs_info,
 
 	if (!dev_user) {
 		dev_user = kzalloc(sizeof(struct omap_dev_user_list),
-					GFP_KERNEL);
+					GFP_ATOMIC);
 		if (!dev_user) {
 			dev_err(target_dev,
 				"%s: Unable to creat a new user for vdd_%s\n",
 				__func__, dvfs_info->voltdm->name);
+			spin_unlock(&temp_dev->user_lock);
 			return -ENOMEM;
 		}
 		dev_user->dev = req_dev;
@@ -442,7 +449,7 @@ static int _add_freq_request(struct omap_vdd_dvfs_info *dvfs_info,
 
 	plist_node_init(&dev_user->node, freq);
 	plist_add(&dev_user->node, &temp_dev->freq_user_list);
-
+	spin_unlock(&temp_dev->user_lock);
 	return 0;
 }
 
@@ -482,6 +489,7 @@ static int _remove_freq_request(struct omap_vdd_dvfs_info *dvfs_info,
 		return -EINVAL;
 	}
 
+	spin_lock(&temp_dev->user_lock);
 	plist_for_each_entry(tmp_user, &temp_dev->freq_user_list, node) {
 		if (tmp_user->dev == req_dev) {
 			dev_user = tmp_user;
@@ -498,6 +506,7 @@ static int _remove_freq_request(struct omap_vdd_dvfs_info *dvfs_info,
 		ret = -EINVAL;
 	}
 
+	spin_unlock(&temp_dev->user_lock);
 	kfree(dev_user);
 
 	return ret;
