@@ -1,3 +1,11 @@
+linux-ti-omap4 (2.6.35-991.4) maverick; urgency=low
+
+  [ Upstream Kernel Changes ]
+
+  * SGX-KM: PVR2DAPI : custom flush operation for wrapped memory regions
+
+ -- Sebastien JAN <s-jan@ti.com>  Thu, 26 May 2011 15:46:31 +0200
+
 linux-ti-omap4 (2.6.35-991.3) maverick; urgency=low
 
   [ Sebastien Jan ]
