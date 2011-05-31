@@ -1,3 +1,21 @@
+linux-ti-omap4 (2.6.35-991.5) maverick; urgency=low
+
+  [ Upstream Kernel Changes ]
+
+  * Revert "tiler: avoid lock-ups due to unmapped DMM entries"
+  * OMAP4: enable smc instruction in new assembler versions
+  * TILER: Don't declare big table on stack
+  * Move large tiler allocs to vmalloc
+  * TI: TILER: Fix NULL dereference when mapping kernel buffers with
+    map_block
+  * TI: TILER: Separate virtual to physical mapping into virt2phys() method
+  * TI: TILER: Add support for mapping kernel allocated buffers into TILER
+  * TILER: Add missing kfree for pointer elements
+  * TILER: Implement tcm_clear, and initialize TILER container.
+  * TILER: Use owner's pid to notify devh
+
+ -- Sebastien JAN <s-jan@ti.com>  Wed, 01 Jun 2011 08:58:59 +0200
+
 linux-ti-omap4 (2.6.35-991.4) maverick; urgency=low
 
   [ Upstream Kernel Changes ]
