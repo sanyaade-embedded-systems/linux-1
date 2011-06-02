@@ -110,6 +110,7 @@ static int allocate_vram(struct drm_framebuffer *fb, int idx, int size)
 
 	if (idx >= MAX_FBS) {
 		dev_err(dev->dev, "invalid fb number: %d\n", idx);
+		ret = -EINVAL;
 		goto fail;
 	}
 
