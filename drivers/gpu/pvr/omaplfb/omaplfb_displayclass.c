@@ -356,8 +356,6 @@ static int FrameBufferEvents(struct notifier_block *psNotif,
 		DEBUG_PRINTK("Ignoring");
 		return 0;
 	}
-
-	DEBUG_PRINTK("Event is FB_EVENT_BLANK");
 	
 	psDevInfo = 0;
 	for(i = 0; i < FRAMEBUFFER_COUNT; i++)
@@ -386,6 +384,8 @@ static int FrameBufferEvents(struct notifier_block *psNotif,
 
 	bBlanked = (*(IMG_INT *)psFBEvent->data != 0) ?
 		OMAP_TRUE: OMAP_FALSE;
+
+	DEBUG_PRINTK("Event is FB_EVENT_BLANK: %s", bBlanked ? "blanked" : "unblanked");
 
 	/* Check if the blank state is the same as the swap chain */
 	if (bBlanked != psSwapChain->bBlanked)
