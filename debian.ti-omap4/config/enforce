@@ -9,9 +9,7 @@ value CONFIG_SECURITY y
 !exists CONFIG_SECURITY_FILE_CAPABILITIES | value CONFIG_SECURITY_FILE_CAPABILITIES y
 value CONFIG_SECURITY_SELINUX y
 value CONFIG_SECURITY_SMACK y
-value CONFIG_SECURITY_YAMA y
 value CONFIG_SYN_COOKIES y
-value CONFIG_DEFAULT_SECURITY_APPARMOR y
 # For architectures which support this option ensure it is enabled.
 !exists CONFIG_SECCOMP | value CONFIG_SECCOMP y
 !exists CONFIG_CC_STACKPROTECTOR | value CONFIG_CC_STACKPROTECTOR y
@@ -26,6 +24,10 @@ value CONFIG_DEFAULT_SECURITY_APPARMOR y
 # CONFIG_USB_DEVICE_FS breaks udev USB firmware loading and is deprecated
 # ensure it is disabled.
 value CONFIG_USB_DEVICEFS n
+
+# ARM requires some THUMB options
+(arch armel & value CONFIG_ARM_THUMB y)
+(arch armel & value CONFIG_ARM_THUMBEE y)
 
 # upstart requires DEVTMPFS be enabled and mounted by default.
 value CONFIG_DEVTMPFS y
@@ -58,3 +60,15 @@ value CONFIG_FRAMEBUFFER_CONSOLE y
 
 # Build in uinput module so that it's always available (LP: 584812)
 value CONFIG_INPUT_UINPUT y
+
+#prevent some Android settings:
+value CONFIG_ANDROID_PARANOID_NETWORK n
+
+# force some convenient settings
+value CONFIG_BLK_DEV_SD y
+value CONFIG_KPROBES y
+value CONFIG_OPROFILE y
+value CONFIG_RELAY y
+value CONFIG_SCSI y
+value CONFIG_TUN y
+
