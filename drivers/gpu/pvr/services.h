@@ -363,7 +363,9 @@ typedef enum
 	PVRSRV_MISC_INFO_CPUCACHEOP_CLEAN,
 	PVRSRV_MISC_INFO_CPUCACHEOP_FLUSH,
 	PVRSRV_MISC_INFO_CPUCACHEOP_CUSTOM_FLUSH,
-	PVRSRV_MISC_INFO_CPUCACHEOP_CUSTOM_INV
+	PVRSRV_MISC_INFO_CPUCACHEOP_CUSTOM_INV,
+	PVRSRV_MISC_INFO_CPUCACHEOP_CLEAN_REGIONS,
+	PVRSRV_MISC_INFO_CPUCACHEOP_INV_REGIONS,
 } PVRSRV_MISC_INFO_CPUCACHEOP_TYPE;
 
 typedef struct _PVRSRV_MISC_INFO_
@@ -427,6 +429,22 @@ typedef struct _PVRSRV_MISC_INFO_
 
 		
 		IMG_UINT32	ui32Length;
+
+#define PVRSRV_MISC_INFO_MAX_REGIONS 10
+		/* the following three fields are applicable for
+		 * PVRSRV_MISC_INFO_CPUCACHEOP_{CLEAN,INV}_REGIONS
+		 */
+		IMG_INT32 i32StrideInBytes;
+		IMG_UINT32 ui32NumRegions;
+		struct
+		{
+			/* note: coordinates are translated to byte offsets by userspace..
+			 * ie. if the buffer is 32bit/pixel then the pixel coordinates are
+			 * multiplied by 4 by the caller
+			 */
+			IMG_UINT16 x, y, w, h;
+		} sRegions[PVRSRV_MISC_INFO_MAX_REGIONS];
+
 	} sCacheOpCtl;
 } PVRSRV_MISC_INFO;
 

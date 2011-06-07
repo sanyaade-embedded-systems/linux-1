@@ -1014,6 +1014,72 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVGetMiscInfoKM(PVRSRV_MISC_INFO *psMiscInfo)
 					return PVRSRV_ERROR_CACHEOP_FAILED;
 				}
 			}
+
+			if ((psMiscInfo->sCacheOpCtl.eCacheOpType == PVRSRV_MISC_INFO_CPUCACHEOP_CLEAN_REGIONS) ||
+				(psMiscInfo->sCacheOpCtl.eCacheOpType == PVRSRV_MISC_INFO_CPUCACHEOP_INV_REGIONS))
+			{
+				IMG_BOOL (*op)(IMG_HANDLE hOSMemHandle, IMG_VOID *pvRangeAddrStart, IMG_UINT32 ui32Length);
+				IMG_HANDLE hOSMemHandle = psKernelMemInfo->sMemBlk.hOSMemHandle;
+				IMG_VOID *pvEndVAddr = psMiscInfo->sCacheOpCtl.pvBaseVAddr +
+						psMiscInfo->sCacheOpCtl.ui32Length;
+				int i, j;
+
+				if (psMiscInfo->sCacheOpCtl.eCacheOpType == PVRSRV_MISC_INFO_CPUCACHEOP_CLEAN_REGIONS)
+					op = OSCleanCPUCacheRangeKM;
+				else
+					op = OSInvalidateCPUCacheRangeKM;
+
+				for (i = 0; i < psMiscInfo->sCacheOpCtl.ui32NumRegions; i++)
+				{
+					IMG_UINT32 ui32Length = psMiscInfo->sCacheOpCtl.sRegions[i].w;
+
+					/* if length bleeds over into next line, merge all into one range op */
+					if (ui32Length >= psMiscInfo->sCacheOpCtl.i32StrideInBytes)
+					{
+						IMG_VOID *pvBaseVAddr = psMiscInfo->sCacheOpCtl.pvBaseVAddr +
+								psMiscInfo->sCacheOpCtl.sRegions[i].x +
+								(psMiscInfo->sCacheOpCtl.sRegions[i].y *
+										psMiscInfo->sCacheOpCtl.i32StrideInBytes);
+
+						ui32Length *= psMiscInfo->sCacheOpCtl.sRegions[i].h;
+
+						if(!(*op)(hOSMemHandle, pvBaseVAddr, ui32Length))
+						{
+							return PVRSRV_ERROR_CACHEOP_FAILED;
+						}
+
+						continue;
+					}
+
+					for (j = 0; j < psMiscInfo->sCacheOpCtl.sRegions[i].h; j++)
+					{
+						IMG_VOID *pvBaseVAddr = psMiscInfo->sCacheOpCtl.pvBaseVAddr +
+								psMiscInfo->sCacheOpCtl.sRegions[i].x +
+								((psMiscInfo->sCacheOpCtl.sRegions[i].y+j) *
+										psMiscInfo->sCacheOpCtl.i32StrideInBytes);
+
+						if ((pvBaseVAddr + ui32Length) > pvEndVAddr)
+						{
+							printk(KERN_WARNING "out of bounds, %p + %d (%p) > %p (%d, %d) (%d, %d)\n",
+									pvBaseVAddr, ui32Length, pvBaseVAddr + ui32Length, pvEndVAddr,
+									i, psMiscInfo->sCacheOpCtl.ui32NumRegions,
+									j, psMiscInfo->sCacheOpCtl.sRegions[i].h);
+							ui32Length = pvEndVAddr - pvBaseVAddr;
+						}
+
+						if(!(*op)(hOSMemHandle, pvBaseVAddr, ui32Length))
+						{
+							printk(KERN_WARNING "op failed\n");
+							return PVRSRV_ERROR_CACHEOP_FAILED;
+						}
+
+						if (ui32Length != psMiscInfo->sCacheOpCtl.sRegions[i].w)
+						{
+							break;
+						}
+					}
+				}
+			}
 			else if(psMiscInfo->sCacheOpCtl.eCacheOpType == PVRSRV_MISC_INFO_CPUCACHEOP_CLEAN)
 			{
 				if(!OSCleanCPUCacheRangeKM(psKernelMemInfo->sMemBlk.hOSMemHandle,
