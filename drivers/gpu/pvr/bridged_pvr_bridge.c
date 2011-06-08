@@ -728,6 +728,108 @@ PVRSRVFreeDeviceMemBW(IMG_UINT32 ui32BridgeID,
 
 
 static IMG_INT
+PVRSRVRemapToDevBW(IMG_UINT32 ui32BridgeID,
+		PVRSRV_BRIDGE_IN_REMAP_TO_DEV *psRemapToDevMemIN,
+		PVRSRV_BRIDGE_OUT_REMAP_TO_DEV *psRemapToDevMemOUT,
+		PVRSRV_PER_PROCESS_DATA *psPerProc)
+{
+	IMG_HANDLE hDevCookieInt;
+	IMG_VOID *pvKernelMemInfo;
+	IMG_DEV_VIRTADDR sDevVAddr;
+
+
+	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_REMAP_TO_DEV);
+
+	psRemapToDevMemOUT->eError =
+			PVRSRVLookupHandle(psPerProc->psHandleBase, &hDevCookieInt,
+					psRemapToDevMemIN->hDevCookie,
+					PVRSRV_HANDLE_TYPE_DEV_NODE);
+
+	if(psRemapToDevMemOUT->eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVRemapToDevBW: invalid hDevCookie"));
+		return 0;
+	}
+
+	psRemapToDevMemOUT->eError =
+			PVRSRVLookupHandle(psPerProc->psHandleBase,
+					&pvKernelMemInfo,
+#if defined (SUPPORT_SID_INTERFACE)
+					psRemapToDevMemIN->hKernelMemInfo,
+#else
+					psRemapToDevMemIN->psKernelMemInfo,
+#endif
+					PVRSRV_HANDLE_TYPE_MEM_INFO);
+
+	if(psRemapToDevMemOUT->eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVRemapToDevBW: invalid psKernelMemInfo"));
+		return 0;
+	}
+
+	psRemapToDevMemOUT->eError = PVRSRVRemapToDevKM(hDevCookieInt,
+			pvKernelMemInfo, &sDevVAddr);
+
+	if(psRemapToDevMemOUT->eError != PVRSRV_OK)
+	{
+		return 0;
+	}
+
+	psRemapToDevMemOUT->sDevVAddr = sDevVAddr;
+
+	return 0;
+}
+
+static IMG_INT
+PVRSRVUnmapFromDevBW(IMG_UINT32 ui32BridgeID,
+		PVRSRV_BRIDGE_IN_UNMAP_FROM_DEV *psUnmapFromDevMemIN,
+		PVRSRV_BRIDGE_RETURN *psRetOUT,
+		PVRSRV_PER_PROCESS_DATA *psPerProc)
+{
+	IMG_HANDLE hDevCookieInt;
+	IMG_VOID *pvKernelMemInfo;
+
+	PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_UNMAP_FROM_DEV);
+
+	psRetOUT->eError =
+			PVRSRVLookupHandle(psPerProc->psHandleBase, &hDevCookieInt,
+					psUnmapFromDevMemIN->hDevCookie,
+					PVRSRV_HANDLE_TYPE_DEV_NODE);
+
+	if(psRetOUT->eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVUnmapFromDevBW: invalid hDevCookie"));
+		return 0;
+	}
+
+	psRetOUT->eError =
+			PVRSRVLookupHandle(psPerProc->psHandleBase,
+					&pvKernelMemInfo,
+#if defined (SUPPORT_SID_INTERFACE)
+					psUnmapFromDevMemIN->hKernelMemInfo,
+#else
+					psUnmapFromDevMemIN->psKernelMemInfo,
+#endif
+					PVRSRV_HANDLE_TYPE_MEM_INFO);
+
+	if(psRetOUT->eError != PVRSRV_OK)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVUnmapFromDevBW: invalid psKernelMemInfo"));
+		return 0;
+	}
+
+	psRetOUT->eError = PVRSRVUnmapFromDevKM(hDevCookieInt, pvKernelMemInfo);
+
+	if(psRetOUT->eError != PVRSRV_OK)
+	{
+		return 0;
+	}
+
+	return 0;
+}
+
+
+static IMG_INT
 PVRSRVExportDeviceMemBW(IMG_UINT32 ui32BridgeID,
                       PVRSRV_BRIDGE_IN_EXPORTDEVICEMEM *psExportDeviceMemIN,
                       PVRSRV_BRIDGE_OUT_EXPORTDEVICEMEM *psExportDeviceMemOUT,
@@ -4461,6 +4563,8 @@ CommonBridgeInit(IMG_VOID)
     SetDispatchTableEntry(PVRSRV_BRIDGE_CHG_DEV_MEM_ATTRIBS, PVRSRVChangeDeviceMemoryAttributesBW);
     SetDispatchTableEntry(PVRSRV_BRIDGE_MAP_DEV_MEMORY_2, PVRSRVMapDeviceMemoryBW);
     SetDispatchTableEntry(PVRSRV_BRIDGE_EXPORT_DEVICEMEM_2, PVRSRVExportDeviceMemBW);
+    SetDispatchTableEntry(PVRSRV_BRIDGE_REMAP_TO_DEV, PVRSRVRemapToDevBW);
+    SetDispatchTableEntry(PVRSRV_BRIDGE_UNMAP_FROM_DEV, PVRSRVUnmapFromDevBW);
 
     
     SetDispatchTableEntry(PVRSRV_BRIDGE_PROCESS_SIMISR_EVENT, DummyBW);

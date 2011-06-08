@@ -67,12 +67,14 @@ extern "C" {
 #define PVRSRV_HAP_MULTI_PROCESS			(1U<<17)
 #define PVRSRV_HAP_FROM_EXISTING_PROCESS	(1U<<18)
 #define PVRSRV_HAP_NO_CPU_VIRTUAL			(1U<<19)
+#define PVRSRV_HAP_GPU_PAGEABLE				(1U<<21)
 #define PVRSRV_HAP_MAPTYPE_MASK				(PVRSRV_HAP_KERNEL_ONLY \
                                             |PVRSRV_HAP_SINGLE_PROCESS \
                                             |PVRSRV_HAP_MULTI_PROCESS \
                                             |PVRSRV_HAP_FROM_EXISTING_PROCESS \
-                                            |PVRSRV_HAP_NO_CPU_VIRTUAL)
-
+                                            |PVRSRV_HAP_NO_CPU_VIRTUAL\
+                                            |PVRSRV_HAP_GPU_PAGEABLE)
+ 
 #define PVRSRV_MEM_CACHED					PVRSRV_HAP_CACHED
 #define PVRSRV_MEM_UNCACHED					PVRSRV_HAP_UNCACHED
 #define PVRSRV_MEM_WRITECOMBINE				PVRSRV_HAP_WRITECOMBINE
@@ -552,6 +554,14 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVAllocDeviceMem(IMG_CONST PVRSRV_DEV_DATA	*psDevD
 
 IMG_IMPORT
 PVRSRV_ERROR IMG_CALLCONV PVRSRVFreeDeviceMem(IMG_CONST PVRSRV_DEV_DATA	*psDevData,
+								PVRSRV_CLIENT_MEM_INFO		*psMemInfo);
+
+IMG_IMPORT
+PVRSRV_ERROR IMG_CALLCONV PVRSRVRemapToDev(IMG_CONST PVRSRV_DEV_DATA	*psDevData,
+								PVRSRV_CLIENT_MEM_INFO		*psMemInfo);
+
+IMG_IMPORT
+PVRSRV_ERROR IMG_CALLCONV PVRSRVUnmapFromDev(IMG_CONST PVRSRV_DEV_DATA	*psDevData,
 								PVRSRV_CLIENT_MEM_INFO		*psMemInfo);
 
 IMG_IMPORT

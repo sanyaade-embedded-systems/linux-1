@@ -701,6 +701,89 @@ PVRSRV_ERROR IMG_CALLCONV PVRSRVFreeDeviceMemKM(IMG_HANDLE				hDevCookie,
 }
 
 
+/*!
+******************************************************************************
+
+ @Function	PVRSRVRemapToDevKM
+
+ @Description
+
+ Remaps buffer to GPU virtual address space
+
+ @Input    psMemInfo
+
+ @Return   PVRSRV_ERROR :
+
+******************************************************************************/
+IMG_EXPORT
+PVRSRV_ERROR IMG_CALLCONV PVRSRVRemapToDevKM(IMG_HANDLE	hDevCookie,
+		PVRSRV_KERNEL_MEM_INFO *psMemInfo, IMG_DEV_VIRTADDR *psDevVAddr)
+{
+	PVRSRV_MEMBLK *psMemBlock;
+
+	PVR_UNREFERENCED_PARAMETER(hDevCookie);
+
+	if (!psMemInfo)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVRemapToDevKM: invalid parameters"));
+		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
+
+	psMemBlock = &(psMemInfo->sMemBlk);
+
+	if (! BM_RemapToDev(psMemBlock->hBuffer))
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVRemapToDevKM: could not remap"));
+		return PVRSRV_ERROR_OUT_OF_MEMORY;
+	}
+
+	psMemBlock->sDevVirtAddr = BM_HandleToDevVaddr(psMemBlock->hBuffer);
+	psMemInfo->sDevVAddr = psMemBlock->sDevVirtAddr;
+	*psDevVAddr = psMemBlock->sDevVirtAddr;
+
+	return PVRSRV_OK;
+}
+
+/*!
+******************************************************************************
+
+ @Function	PVRSRVUnmapFromDevKM
+
+ @Description
+
+ Unmaps buffer from GPU virtual address space
+
+ @Input    psMemInfo
+
+ @Return   PVRSRV_ERROR :
+
+******************************************************************************/
+IMG_EXPORT
+PVRSRV_ERROR IMG_CALLCONV PVRSRVUnmapFromDevKM(IMG_HANDLE	hDevCookie,
+		PVRSRV_KERNEL_MEM_INFO *psMemInfo)
+{
+	PVRSRV_MEMBLK *psMemBlock;
+
+	PVR_UNREFERENCED_PARAMETER(hDevCookie);
+
+	if (!psMemInfo)
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVUnmapFromDevKM: invalid parameters"));
+		return PVRSRV_ERROR_INVALID_PARAMS;
+	}
+
+	psMemBlock = &(psMemInfo->sMemBlk);
+
+	if (! BM_UnmapFromDev(psMemBlock->hBuffer))
+	{
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVUnmapFromDevKM: could not unmap"));
+		return PVRSRV_ERROR_OUT_OF_MEMORY; // XXX hmm, should pick better error code
+	}
+
+	return PVRSRV_OK;
+}
+
+
 IMG_EXPORT
 PVRSRV_ERROR IMG_CALLCONV _PVRSRVAllocDeviceMemKM(IMG_HANDLE					hDevCookie,
 												 PVRSRV_PER_PROCESS_DATA	*psPerProc,

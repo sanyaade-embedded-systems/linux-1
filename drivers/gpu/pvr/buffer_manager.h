@@ -59,6 +59,17 @@ struct _BM_MAPPING_
 	IMG_SIZE_T			uSize;
     IMG_HANDLE          hOSMemHandle;
 	IMG_UINT32			ui32Flags;
+
+	/* possibly this could be tracked in ui32Flags, but to be
+	 * less intrusive for now I'm keeping it a separate variable
+	 */
+	IMG_BOOL			bUnmapped;
+
+	/* need to track the original required alignment to make sure
+	 * that an unmapped buffer which is later remapped to device
+	 * is remapped with the original alignment restrictions.
+	 */
+	IMG_UINT32			ui32DevVAddrAlignment;
 };
 
 typedef struct _BM_BUF_
@@ -182,6 +193,14 @@ BM_HandleToSysPaddr (BM_HANDLE hBuf);
 
 IMG_HANDLE
 BM_HandleToOSMemHandle (BM_HANDLE hBuf);
+
+
+IMG_BOOL
+BM_RemapToDev(BM_HANDLE hBuf);
+
+IMG_BOOL
+BM_UnmapFromDev(BM_HANDLE hBuf);
+
 
 IMG_VOID BM_GetPhysPageAddr(PVRSRV_KERNEL_MEM_INFO *psMemInfo,
 								IMG_DEV_VIRTADDR sDevVPageAddr,
