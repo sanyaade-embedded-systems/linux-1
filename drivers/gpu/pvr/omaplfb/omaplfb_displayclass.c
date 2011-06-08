@@ -1625,8 +1625,6 @@ static OMAP_ERROR InitDev(OMAPLFB_DEVINFO *psDevInfo)
 
 	/* Calculate the buffers according to the flipping technique */
 #if defined(FLIP_TECHNIQUE_FRAMEBUFFER)
-	psLINFBInfo->var.activate = FB_ACTIVATE_FORCE;
-	fb_set_var(psLINFBInfo, &psLINFBInfo->var);
 	/* note: calculate by fb size, not yres_virtual, as drm will set
 	 * yres_virtual back to yres
 	 */
@@ -1648,8 +1646,6 @@ static OMAP_ERROR InitDev(OMAPLFB_DEVINFO *psDevInfo)
 		 * Flipping is not supported, return the framebuffer to
 		 * its original state
 		 */
-		psLINFBInfo->var.activate = FB_ACTIVATE_FORCE;
-		fb_set_var(psLINFBInfo, &psLINFBInfo->var);
 		buffers_available = 1;
 	}
 	psDevInfo->sDisplayInfo.ui32MaxSwapChainBuffers = buffers_available;
