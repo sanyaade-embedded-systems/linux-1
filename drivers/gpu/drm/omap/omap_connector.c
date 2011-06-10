@@ -275,12 +275,13 @@ bool omap_connector_get_dimension(struct drm_connector *connector,
 {
 	struct omap_connector *omap_connector = to_omap_connector(connector);
 	struct omap_dss_device *dssdev = omap_connector->dssdev;
-	struct omap_dss_driver *dssdrv = dssdev->driver;
 
-	if (! dssdrv->get_dimension)
+	if (dssdev->panel.width_in_mm && dssdev->panel.height_in_mm) {
+		*width = dssdev->panel.width_in_mm;
+		*height = dssdev->panel.height_in_mm;
+	} else {
 		return false;
-
-	dssdrv->get_dimension(dssdev, width, height);
+	}
 
 	return true;
 }
