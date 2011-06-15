@@ -941,6 +941,9 @@ static void __init omap3_beagle_init(void)
 	omap3_beagle_init_rev();
 	omap3_beagle_i2c_init();
 
+	/* Ensure msecure is mux'd to be able to set the RTC. */
+	omap_mux_init_signal("sys_drm_msecure", OMAP_PIN_OFF_OUTPUT_HIGH);
+
 	if (cpu_is_omap3630()) {
 		gpio_buttons[0].gpio = 4;
 	}
