@@ -1,3 +1,37 @@
+linux-ti-omap4 (2.6.35-992.3) maverick; urgency=low
+
+  [ Sebastien Jan ]
+
+  * Config: enable config file support
+  * Config: enable ERRATA 754322,
+
+  [ Upstream Kernel Changes ]
+
+  * misc: twl6040-vib: Enable vibrator overcurrent detection
+  * [ARM] board-44xxtablet.c and board-4430sdp.c: ti-st chip enable &
+    disable
+  * OMAP4: DSS HDMI: HDMI cable unplug issue on video playback
+  * misc: twl6040-vib: Add errata for false overcurrent detection
+  * TWL6030: Return correct regulator state for SLEEP(STANDBY) mode
+  * TWL6030: USB: Fix enabling of VUSB regulator twice
+  * ARM Errata 754322: possible fault MMU translations following an ASID
+    switch
+  * OMAP4: introduce 1.2Ghz MPU OPP
+  * TWL: Correct VSEL formula to get the right HEX value.
+  * cpufreq: hotplug: Allow safe usage of cpufreq_update_policy
+  * cpu-omap: Report the old and new frequencies correctly
+  * OMAP4430: Thermal: Add thermal control on 4430
+  * OMAP4 - board-4430sdp.c, board-44xxtablet.c: MMC5 info cleanup
+  * OMAP4460: SAR: Update SAR layout for 4460
+  * OMAP4: Program zero volts for all the VDD's in OFF mode
+  * OMAP4460: Workaround for ROM bug because of CA9 r2pX gic control
+    register change
+  * fix ARM Errata 754322 flag definition
+  * Add PVR2DUnmapFromDev / PVR2DRemapToDev (v5)
+  * OMAP4: SGX: fix race condition for HDMI at boot
+
+ -- Sebastien JAN <s-jan@ti.com>  Fri, 17 Jun 2011 13:17:29 +0200
+
 linux-ti-omap4 (2.6.35-992.2) maverick; urgency=low
 
   [ Sebastien Jan ]
