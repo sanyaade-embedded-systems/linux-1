@@ -1,6 +1,5 @@
 /*
  * Copyright (C) 2010 Texas Instruments Incorporated - http://www.ti.com/
- * Copyright(c) 2008 Imagination Technologies Ltd. All rights reserved.
  *
  * This file is licensed under the terms of the GNU General Public License
  * version 2. This program is licensed "as is" without any warranty of any
@@ -13,14 +12,13 @@
 #include <linux/delay.h>
 
 #define LINUX	/* Needed by IMG headers */
+
 #include "pvrmodule.h"
 #include "img_defs.h"
 #include "servicesext.h"
 #include "kernelbuffer.h"
 #include "gfx_bc.h"
 #include "v4gfx.h"
-
-#define DEVICE_COUNT  1
 
 #define BCLOGNM "v4l2-gfx bc: "
 
@@ -51,8 +49,9 @@ struct gfx_bc_devinfo {
 	PVRSRV_BC_SRV2BUFFER_KMJTABLE pvr_s2b_jt;
 };
 
-static struct gfx_bc_devinfo *g_devices[DEVICE_COUNT] = { NULL };
+static struct gfx_bc_devinfo *g_devices[DEVICE_COUNT];
 static PVRSRV_BC_BUFFER2SRV_KMJTABLE pvr_b2s_jt; /* Jump table from driver to SGX */
+static bool bc_initialized = false;
 
 /*
  * Service to Buffer Device API - this section covers the entry points from
@@ -62,22 +61,21 @@ static PVRSRV_ERROR s2b_open_bc_device(IMG_UINT32 ui32DeviceID,
 				       IMG_HANDLE *hdevicep)
 {
 	struct gfx_bc_devinfo *devinfo;
+	int idx;
 
-	BCLOG("+%s %d\n", __func__, (int)ui32DeviceID);
-
-#ifdef MULTIPLEBUFFERCLASSDEVICESUPPORTED
-	if (ui32DeviceID >= DEVICE_COUNT) {
-		BCERR("Attempting to open device %d, max device id is %d\n",
-				ui32DeviceID, DEVICE_COUNT-1);
-		return -EINVAL;
-
+	// Search for device in g_devices and return it
+	for (idx=0; idx<DEVICE_COUNT; idx++)
+	{
+	    devinfo = g_devices[idx];
+	    if (devinfo->pvr_id ==  ui32DeviceID) {
+	        *hdevicep = (IMG_HANDLE)devinfo;
+	        return PVRSRV_OK;
+	    }
 	}
-	devinfo = g_devices[ui32DeviceID];
-#else
-	devinfo = g_devices[0];
-#endif
-	*hdevicep = (IMG_HANDLE)devinfo;
-	return PVRSRV_OK;
+
+	// Didn't find the device id in g_devices
+	BCERR("Open of bc device %d failed, not found in g_devices\n", ui32DeviceID);
+	return -EINVAL;
 }
 
 static PVRSRV_ERROR s2b_close_bc_device(IMG_UINT32 ui32DeviceID,
@@ -94,7 +92,6 @@ static PVRSRV_ERROR s2b_get_bc_buffer(IMG_HANDLE hdevice,
 {
 	struct gfx_bc_devinfo *devinfo;
 	BCLOG("+%s\n", __func__);
-
 	if (!hdevice || !hbufferp)
 		return PVRSRV_ERROR_INVALID_PARAMS;
 
@@ -115,7 +112,6 @@ static PVRSRV_ERROR s2b_get_bc_info(IMG_HANDLE hdevice, BUFFER_INFO *bcinfop)
 {
 	struct gfx_bc_devinfo *devinfo = NULL;
 	int rv = 0;
-
 	if (!hdevice || !bcinfop) {
 		rv = PVRSRV_ERROR_INVALID_PARAMS;
 	} else {
@@ -154,7 +150,6 @@ static PVRSRV_ERROR s2b_get_buffer_addr(IMG_HANDLE hdevice,
 	struct bc_buffer *bc_buf;
 	PVRSRV_ERROR rv = PVRSRV_OK;
 	BCLOG("+%s\n", __func__);
-
 	if (!hdevice || !hbuffer || !sysaddrpp || !sizebytesp)
 		return PVRSRV_ERROR_INVALID_PARAMS;
 
@@ -207,11 +202,11 @@ static PVRSRV_PIXEL_FORMAT v4l2_to_pvr_pixfmt(u32 v4l2pixelfmt)
 	return pvr_fmt;
 }
 
-static int gfx_bc_release_device_resources(int id)
+static int gfx_bc_release_device_resources(int idx)
 {
 	struct gfx_bc_devinfo *devinfo;
 
-	devinfo = g_devices[id];
+	devinfo = g_devices[idx];
 	if (devinfo == NULL)
 		return -ENOENT;
 
@@ -223,25 +218,25 @@ static int gfx_bc_release_device_resources(int id)
 	devinfo->pvr_bcinfo.ui32Width = 0;
 	devinfo->pvr_bcinfo.ui32Height = 0;
 	devinfo->pvr_bcinfo.ui32ByteStride = 0;
-	devinfo->pvr_bcinfo.ui32BufferDeviceID = id;
+	devinfo->pvr_bcinfo.ui32BufferDeviceID = -1;
 	devinfo->pvr_bcinfo.ui32Flags = 0;
 	devinfo->pvr_bcinfo.ui32BufferCount = 0;
 
 	return 0;
 }
 
-static int gfx_bc_register(int id)
+static int gfx_bc_register(int idx)
 {
 	struct gfx_bc_devinfo *devinfo;
 	int rv = 0;
 	BCLOG("+%s\n", __func__);
 
-	devinfo = g_devices[id];
+	devinfo = g_devices[idx];
 
 	if (devinfo) {
 		devinfo->ref_cnt++;
 		BCLOG("%s device already registered\n", __func__);
-		rv = 0;
+		rv = devinfo->pvr_bcinfo.ui32BufferDeviceID;
 		goto end;
 	}
 
@@ -251,13 +246,12 @@ static int gfx_bc_register(int id)
 		rv = -ENOMEM;
 		goto end;
 	}
-	BCLOG("%s devinfo id=%d addr=0x%x\n", __func__, id, (int)devinfo);
+	BCLOG("%s devinfo idx=%d addr=0x%x\n", __func__, idx, (int)devinfo);
 
 	devinfo->pvr_bcinfo.pixelformat = PVRSRV_PIXEL_FORMAT_UNKNOWN;
 	devinfo->pvr_bcinfo.ui32Width = 0;
 	devinfo->pvr_bcinfo.ui32Height = 0;
 	devinfo->pvr_bcinfo.ui32ByteStride = 0;
-	devinfo->pvr_bcinfo.ui32BufferDeviceID = id;
 	devinfo->pvr_bcinfo.ui32Flags = 0;
 	devinfo->pvr_bcinfo.ui32BufferCount = devinfo->num_bufs;
 
@@ -270,27 +264,29 @@ static int gfx_bc_register(int id)
 	devinfo->pvr_s2b_jt.pfnGetBufferAddr = s2b_get_buffer_addr;
 
 	if (pvr_b2s_jt.pfnPVRSRVRegisterBCDevice(&devinfo->pvr_s2b_jt,
-				&devinfo->pvr_id) != PVRSRV_OK) {
+				&devinfo->pvr_id) != PVRSRV_OK)
+	{
 		BCLOG("RegisterBCDevice failed\n");
 		rv = -EIO;
 		goto end;
 	}
-
-	BCLOG("my device id: %d\n", (int)devinfo->pvr_id);
+	
+	devinfo->pvr_bcinfo.ui32BufferDeviceID = VOUT_DEVICENODE_SUFFIX + idx;
 
 	devinfo->ref_cnt++;
-	g_devices[id] = devinfo;
+	g_devices[idx] = devinfo;
+	rv = devinfo->pvr_bcinfo.ui32BufferDeviceID;
 end:
 	BCLOG("-%s [%d]\n", __func__, rv);
 	return rv;
 }
 
-static int gfx_bc_unregister(int id)
+static int gfx_bc_unregister(int idx)
 {
 	int rv = 0;
 	struct gfx_bc_devinfo *devinfo;
 
-	devinfo = g_devices[id];
+	devinfo = g_devices[idx];
 	if (devinfo == NULL) {
 		rv = -ENODEV;
 		goto end;
@@ -309,7 +305,7 @@ static int gfx_bc_unregister(int id)
 	}
 
 	kfree(devinfo);
-	g_devices[id] = NULL;
+	g_devices[idx] = NULL;
 
 end:
 	return rv;
@@ -340,7 +336,7 @@ static void gfx_bc_params2_to_common(struct bc_buf_params2 *p,
  * ioctl handlers.
  */
 static int gfx_bc_validateparams(
-				int id,
+				int idx,
 				struct bc_buf_params_common *p,
 				struct gfx_bc_devinfo **devinfop,
 				PVRSRV_PIXEL_FORMAT *pvr_pix_fmtp)
@@ -348,9 +344,9 @@ static int gfx_bc_validateparams(
 	struct gfx_bc_devinfo *devinfo;
 	int rv = 0;
 
-	devinfo = g_devices[id];
+	devinfo = g_devices[idx];
 	if (devinfo == NULL) {
-		BCLOG("%s: no such device %d", __func__, id);
+		BCLOG("%s: no such device %d", __func__, idx);
 		rv = -ENODEV;
 	}
 
@@ -373,23 +369,29 @@ static int gfx_bc_validateparams(
 /*
  * API for the V4L2 component
  */
-int bc_init(void)
+int bc_init(int idx)
 {
-	int id, rv;
+	int i,rv;
 	BCLOG("+%s\n", __func__);
 
-	if (!PVRGetBufferClassJTable(&pvr_b2s_jt)) {
-		BCERR("no jump table to SGX APIs\n");
-		rv = -EIO;
-		goto end;
+	if (!bc_initialized)
+	{
+        for (i=0; i<DEVICE_COUNT; i++)
+		    g_devices[i] = NULL;
+
+	    if (!PVRGetBufferClassJTable(&pvr_b2s_jt)) {
+		    BCERR("no jump table to SGX APIs\n");
+		    rv = -EIO;
+		    goto end;
+	    }
+
+	    bc_initialized = true;
 	}
 
-	for (id = 0; id < DEVICE_COUNT; id++) {
-		rv = gfx_bc_register(id);
-		if (rv != 0) {
-			BCERR("can't register BC service\n");
-			goto end;
-		}
+	rv = gfx_bc_register(idx);
+	if (rv < 0) {
+		BCERR("can't register BC service\n");
+		goto end;
 	}
 
 end:
@@ -397,21 +399,18 @@ end:
 	return rv;
 }
 
-void bc_cleanup(void)
+void bc_cleanup(int idx)
 {
-	int id;
-	for (id = 0; id < DEVICE_COUNT; id++) {
-		if (gfx_bc_release_device_resources(id) != 0)
-			BCERR("can't b/c device resources: %d\n", id);
-		if (gfx_bc_unregister(id) != 0)
-			BCERR("can't un-register BC service\n");
-	}
+	if (gfx_bc_release_device_resources(idx) != 0)
+		BCERR("can't b/c device resources: %d\n", idx);
+	if (gfx_bc_unregister(idx) != 0)
+		BCERR("can't un-register BC service\n");
 }
 
-int bc_setup_complete(int id, struct bc_buf_params2 *p)
+int bc_setup_complete(int idx, struct bc_buf_params2 *p)
 {
 	/* Fn called after successful bc_setup() so id should be valid */
-	struct gfx_bc_devinfo *devinfo = g_devices[id];
+	struct gfx_bc_devinfo *devinfo = g_devices[idx];
 	if (p->count != devinfo->num_bufs) {
 		BCLOG("+%s: Count doesn't match\n", __func__);
 		return -ENODEV;
@@ -419,26 +418,26 @@ int bc_setup_complete(int id, struct bc_buf_params2 *p)
 	return 0;
 }
 
-int bc_setup_buffer(int id, struct bc_buf_params2 *p, unsigned long *paddrp)
+int bc_setup_buffer(int idx, struct bc_buf_params2 *p, unsigned long *paddrp)
 {
-	int idx;
-	/* Fn called after successful bc_setup() so id should be valid */
-	struct gfx_bc_devinfo *devinfo = g_devices[id];
-	idx = devinfo->num_bufs;
-	if (unlikely(idx >= VIDEO_MAX_FRAME))
+	int i;
+	/* Fn called after successful bc_setup() so idx should be valid */
+	struct gfx_bc_devinfo *devinfo = g_devices[idx];
+	i = devinfo->num_bufs;
+	if (unlikely(i >= VIDEO_MAX_FRAME))
 		return -ENOENT;
 
 	devinfo->num_bufs++;
 	devinfo->pvr_bcinfo.ui32BufferCount = devinfo->num_bufs;
 
-	memset(&devinfo->bc_buf[idx], 0, sizeof(devinfo->bc_buf[idx]));
-	devinfo->bc_buf[idx].paddrp = paddrp;
-	devinfo->bc_buf[idx].size = p->size;
-	devinfo->bc_buf[idx].pvr_sync_data = IMG_NULL;
+	memset(&devinfo->bc_buf[i], 0, sizeof(devinfo->bc_buf[i]));
+	devinfo->bc_buf[i].paddrp = paddrp;
+	devinfo->bc_buf[i].size = p->size;
+	devinfo->bc_buf[i].pvr_sync_data = IMG_NULL;
 	return 0;
 }
 
-int bc_setup(int id, struct bc_buf_params2 *p)
+int bc_setup(int idx, struct bc_buf_params2 *p)
 {
 	struct gfx_bc_devinfo *devinfo;
 	int rv = 0;
@@ -448,7 +447,7 @@ int bc_setup(int id, struct bc_buf_params2 *p)
 	BCLOG("+%s\n", __func__);
 
 	gfx_bc_params2_to_common(p, &pc);
-	rv = gfx_bc_validateparams(id, &pc, &devinfo, &pvr_pix_fmt);
+	rv = gfx_bc_validateparams(idx, &pc, &devinfo, &pvr_pix_fmt);
 	if (rv != 0)
 		goto end;
 
@@ -463,7 +462,6 @@ int bc_setup(int id, struct bc_buf_params2 *p)
 	devinfo->pvr_bcinfo.ui32Width = p->width;
 	devinfo->pvr_bcinfo.ui32Height = p->height;
 	devinfo->pvr_bcinfo.ui32ByteStride = p->stride;
-	devinfo->pvr_bcinfo.ui32BufferDeviceID = id;
 	/* I'm not 100% sure these flags are right but here goes */
 	devinfo->pvr_bcinfo.ui32Flags =
 					PVRSRV_BC_FLAGS_YUVCSC_FULL_RANGE |
@@ -479,9 +477,9 @@ end:
 /*
  * The caller of this API will ensure that the arguments are valid
  */
-int bc_sync_status(int id, int bufidx)
+int bc_sync_status(int idx, int bufidx)
 {
-	struct gfx_bc_devinfo *devinfo = g_devices[id];
+	struct gfx_bc_devinfo *devinfo = g_devices[idx];
 	int ui32ReadOpsPending, ui32ReadOpsComplete;
 
 	ui32ReadOpsPending =

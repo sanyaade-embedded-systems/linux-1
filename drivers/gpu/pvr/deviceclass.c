@@ -292,7 +292,7 @@ PVRSRV_ERROR PVRSRVRegisterDCDeviceKM (PVRSRV_DC_SRV2DISP_KMJTABLE *psFuncTable,
 	
 	if (AllocateDeviceID(psSysData, &psDeviceNode->sDevId.ui32DeviceIndex) != PVRSRV_OK)
 	{
-		PVR_DPF((PVR_DBG_ERROR,"PVRSRVRegisterBCDeviceKM: Failed to allocate Device ID"));
+		PVR_DPF((PVR_DBG_ERROR,"PVRSRVRegisterDCDeviceKM: Failed to allocate Device ID"));
 		goto ErrorExit;
 	}
 	psDCInfo->ui32DeviceID = psDeviceNode->sDevId.ui32DeviceIndex;
@@ -450,6 +450,7 @@ PVRSRV_ERROR PVRSRVRegisterBCDeviceKM (PVRSRV_BC_SRV2BUFFER_KMJTABLE *psFuncTabl
 	psDeviceNode->sDevId.eDeviceType = PVRSRV_DEVICE_TYPE_EXT;
 	psDeviceNode->sDevId.eDeviceClass = PVRSRV_DEVICE_CLASS_BUFFER;
 	psDeviceNode->psSysData = psSysData;
+	psDeviceNode->handle = NULL;
 
 	
 	if (AllocateDeviceID(psSysData, &psDeviceNode->sDevId.ui32DeviceIndex) != PVRSRV_OK)
@@ -1753,7 +1754,9 @@ static PVRSRV_ERROR CloseBCDeviceCallBack(IMG_PVOID  pvParam,
 					i,
 					&psBCInfo->psBuffer[i].sDeviceClassBuffer,
 					psBCInfo->psBuffer[i].sDeviceClassBuffer.ui32MemMapRefCount));
+#if 0
 			return PVRSRV_ERROR_STILL_MAPPED;
+#endif
 		}
 	}
 

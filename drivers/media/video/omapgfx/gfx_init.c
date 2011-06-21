@@ -9,6 +9,8 @@
  *
  */
 
+#define LINUX	/* Needed by IMG headers */
+
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/errno.h>
@@ -19,8 +21,8 @@
 #include <linux/version.h>
 
 #include <linux/omap_v4l2_gfx.h>	/* private ioctls */
-
 #include <media/v4l2-ioctl.h>
+#include <img_defs.h>
 
 #include "v4gfx.h"
 #include "gfx_bc.h"
@@ -29,14 +31,7 @@ MODULE_AUTHOR("Texas Instruments.");
 MODULE_DESCRIPTION("OMAP V4L2 GFX driver");
 MODULE_LICENSE("GPL");
 
-/*
- * Device node will be: /dev/video<VOUT_DEVICENODE_SUFFIX>
- * See also /sys/devices/virtual/video4linux/<node>/name which will be
- * whatever the value of VOUT_NAME is
- */
-#define VOUT_DEVICENODE_SUFFIX 100
-
-static struct gbl_v4gfx *gbl_dev;
+static struct gbl_v4gfx *gbl_dev[DEVICE_COUNT];
 
 int debug;	/* is used outside this compilation unit too */
 module_param(debug, int, 0644);
@@ -126,16 +121,14 @@ static void v4gfx_cleanup_device(struct v4gfx_device *vout)
 
 static int driver_remove(struct platform_device *pdev)
 {
-	struct v4l2_device *v4l2_dev = platform_get_drvdata(pdev);
-	struct gbl_v4gfx *dev = container_of(v4l2_dev, struct
-			gbl_v4gfx, v4l2_dev);
-	int k;
+	int i;
+	PVR_UNREFERENCED_PARAMETER(pdev);
 
-	v4l2_device_unregister(v4l2_dev);
-	for (k = 0; k < pdev->num_resources; k++)
-		v4gfx_cleanup_device(dev->vouts[k]);
-
-	kfree(gbl_dev);
+	for (i=0; i<DEVICE_COUNT; i++) {
+	    v4l2_device_unregister(&gbl_dev[i]->v4l2_dev);
+	    v4gfx_cleanup_device(gbl_dev[i]->vout);
+	    kfree(gbl_dev[i]);
+	}
 	return 0;
 }
 
@@ -145,7 +138,7 @@ static int driver_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int v4gfx_create_instance(struct v4gfx_device **voutp)
+static int v4gfx_create_instance(struct v4gfx_device **voutp, int idx)
 {
 	int r = 0;
 	struct v4gfx_device *vout = NULL;
@@ -160,7 +153,7 @@ static int v4gfx_create_instance(struct v4gfx_device **voutp)
 	spin_lock_init(&vout->vbq_lock);
 	/* TODO set this to an invalid value, need to change unit test though */
 	vout->bpp = RGB565_BPP;
-	vout->gbl_dev = gbl_dev;
+	vout->gbl_dev = gbl_dev[idx];
 	vout->type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 
 	init_timer(&vout->acquire_timer);
@@ -183,7 +176,7 @@ static int v4gfx_create_instance(struct v4gfx_device **voutp)
 	vfd->debug = debug;
 
 	r = video_register_device(vfd, VFL_TYPE_GRABBER,
-				  VOUT_DEVICENODE_SUFFIX);
+				  VOUT_DEVICENODE_SUFFIX+idx);
 	if (r < 0)
 		goto end;
 
@@ -222,9 +215,16 @@ static struct platform_driver v4gfx_driver = {
 
 static int module_init_v4gfx(void)
 {
-	int rv;
-	bool v4l2_dev_registered = false;
-	bool bc_dev_registered = false;
+	int i, rv;
+	bool v4l2_dev_registered[DEVICE_COUNT];
+	bool bc_dev_registered[DEVICE_COUNT];
+
+    for (i=0; i<DEVICE_COUNT; i++)
+	{
+	    gbl_dev[i] = NULL;
+	    v4l2_dev_registered[i] = false;
+	    bc_dev_registered[i] = false;
+	}
 
 	if (bypass) {
 		printk(KERN_INFO VOUT_NAME ":Enable bypass mode\n");
@@ -237,58 +237,72 @@ static int module_init_v4gfx(void)
 		goto end;
 	}
 
-	gbl_dev = kzalloc(sizeof(struct gbl_v4gfx), GFP_KERNEL);
-	if (gbl_dev == NULL) {
-		rv = -ENOMEM;
-		goto end;
+    for (i=0; i<DEVICE_COUNT; i++)
+	{
+		gbl_dev[i] = kzalloc(sizeof(struct gbl_v4gfx), GFP_KERNEL);
+		if (gbl_dev[i] == NULL) {
+			rv = -ENOMEM;
+			goto end;
+		}
+
+		snprintf(gbl_dev[i]->v4l2_dev.name, sizeof(gbl_dev[i]->v4l2_dev.name),
+				"%s-%03d", VOUT_NAME, VOUT_DEVICENODE_SUFFIX+i);
+
+		rv = v4l2_device_register(NULL, &gbl_dev[i]->v4l2_dev);
+		if (rv != 0) {
+			printk(KERN_ERR VOUT_NAME ":v4l2_device_register failed\n");
+			goto end;
+		}
+		v4l2_dev_registered[i] = true;
+
+		rv = v4gfx_create_instance(&gbl_dev[i]->vout, i);
+		if (rv != 0)
+			goto end;
+
+	    rv = bc_init(i);
+	    if (rv < 0)
+		    goto end;
+		gbl_dev[i]->vout->deviceidx = i;
+	    bc_dev_registered[i] = true;
+		rv = 0;
 	}
-
-	snprintf(gbl_dev->v4l2_dev.name, sizeof(gbl_dev->v4l2_dev.name),
-			"%s-%03d", VOUT_NAME, VOUT_DEVICENODE_SUFFIX);
-
-	rv = v4l2_device_register(NULL, &gbl_dev->v4l2_dev);
-	if (rv != 0) {
-		printk(KERN_ERR VOUT_NAME ":v4l2_device_register failed\n");
-		goto end;
-	}
-	v4l2_dev_registered = true;
-
-	rv = v4gfx_create_instance(&gbl_dev->vouts[0]);
-	if (rv != 0)
-		goto end;
-
-	rv = bc_init();
-	if (rv != 0)
-		goto end;
-
-	bc_dev_registered = true;
 
 	printk(KERN_INFO VOUT_NAME ":OMAP V4L2 GFX driver loaded ok\n");
 	return rv;
+
 end:
 	printk(KERN_INFO VOUT_NAME ":Error %d loading OMAP V4L2 GFX driver\n",
 									rv);
 
-	if (bc_dev_registered)
-		bc_cleanup();
+	for (i=0; i<DEVICE_COUNT; i++) {
+	
+	    if (bc_dev_registered[i])
+		    bc_cleanup(i);
 
-	if (v4l2_dev_registered)
-		v4l2_device_unregister(&gbl_dev->v4l2_dev);
+	    if (v4l2_dev_registered[i])
+		    v4l2_device_unregister(&gbl_dev[i]->v4l2_dev);
 
-	kfree(gbl_dev); /* gbl_dev can be null */
+	    kfree(gbl_dev[i]); /* gbl_dev[i] can be null */
+	}
 
 	return rv;
 }
 
 static void module_exit_v4gfx(void)
 {
-	bc_cleanup();
+	int i;
+	
+	for (i=0; i<DEVICE_COUNT; i++) {
+	
+	    bc_cleanup(i);
 
-	v4gfx_delete_instance(&gbl_dev->v4l2_dev, gbl_dev->vouts[0]);
+	    v4gfx_delete_instance(&gbl_dev[i]->v4l2_dev, gbl_dev[i]->vout);
 
-	v4l2_device_unregister(&gbl_dev->v4l2_dev);
+	    v4l2_device_unregister(&gbl_dev[i]->v4l2_dev);
 
-	kfree(gbl_dev);
+	    kfree(gbl_dev[i]);
+
+	}
 
 	platform_driver_unregister(&v4gfx_driver);
 }

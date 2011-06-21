@@ -16,13 +16,21 @@
 #include <media/v4l2-device.h>
 #include <asm/atomic.h>
 
-#define MAX_VOUT_DEV 3
+/*
+ * First device node will be: /dev/video<VOUT_DEVICENODE_SUFFIX>
+ * See also /sys/devices/virtual/video4linux/<node>/name which will be
+ * whatever the value of VOUT_NAME is
+ */
+#define VOUT_DEVICENODE_SUFFIX 100
+
+// Maximum number of parallel video streams supported
+#define DEVICE_COUNT  6
 
 struct gbl_v4gfx {
 	struct mutex mtx;
 	int state;
 	struct v4l2_device v4l2_dev;
-	struct v4gfx_device *vouts[MAX_VOUT_DEV];
+	struct v4gfx_device *vout;
 };
 
 /* per-device data structure */
@@ -111,6 +119,8 @@ struct v4gfx_device {
 	spinlock_t vbq_lock;	/* spinlock for videobuf queues */
 
 	unsigned int producer_flags;
+
+	int deviceidx;   /* Device index for buffer class */
 };
 
 extern int debug;

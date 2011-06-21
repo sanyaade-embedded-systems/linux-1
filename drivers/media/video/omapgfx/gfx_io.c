@@ -194,7 +194,7 @@ static int v4gfx_wait_on_pending(struct v4gfx_device *vout, int bufidx)
 	int iteration = 0;
 
 	do {
-		dqable = bc_sync_status(0, bufidx);
+		dqable = bc_sync_status(vout->deviceidx, bufidx); 
 		if (!dqable) {
 			/* printk("w-on %d [%d]\n", bufidx, iteration); */
 			if (iteration++ < V4GFX_FRAME_UNLOCK_TIMEOUT) {
@@ -467,7 +467,7 @@ static int v4gfx_frame_unlock(struct v4gfx_device *vout, int bufidx)
 		 * Interrogate the buffer class synch data buffer to see if SGX
 		 * is done with this buffer
 		 */
-		rv = bc_sync_status(0, bufidx);
+		rv = bc_sync_status(vout->deviceidx, bufidx);
 		if (rv == 0) {
 			if (iteration++ < V4GFX_FRAME_UNLOCK_TIMEOUT)
 				msleep(1);	/* milliseconds */
@@ -691,6 +691,8 @@ static int vidfop_release(struct file *file)
 
 	if (!vout)
 		goto end;
+	
+	mutex_lock(&vout->lock);
 
 	vout->opened = vout->opened ? vout->opened - 1 : 0;
 	if (vout->opened) {
@@ -727,6 +729,7 @@ static int vidfop_release(struct file *file)
 	file->private_data = NULL;
 
 end:
+	mutex_unlock(&vout->lock);
 	GFXLOG(1, V4L2DEV(vout), "Exiting %s\n", __func__);
 	return r;
 }
@@ -933,10 +936,11 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 	bc_params.height = vout->pix.height;
 	bc_params.pixel_fmt = vout->pix.pixelformat;
 /*	bc_params.stride = vout->pix.bytesperline; */
-	rv = bc_setup(0, &bc_params);
+	rv = bc_setup(vout->deviceidx, &bc_params);
 	if (rv < 0) {
 		GFXLOG(1, V4L2DEV(vout),
 				"+%s bc_setup() failed %d\n", __func__, rv);
+		mutex_unlock(&vout->lock);
 		goto end;
 	}
 
@@ -973,9 +977,9 @@ static int vidioc_reqbufs(struct file *file, void *fh,
 				V4L2_PIX_FMT_NV12 == vout->pix.pixelformat ?
 					vout->buf_phy_uv_addr[i] : 0);
 
-		bc_setup_buffer(0, &bc_params, vout->buf_phys_addr_array[i]);
+		bc_setup_buffer(vout->deviceidx, &bc_params, vout->buf_phys_addr_array[i]);
 	}
-	bc_setup_complete(0, &bc_params);
+	bc_setup_complete(vout->deviceidx, &bc_params);
 
 	mutex_unlock(&vout->lock);
 end:

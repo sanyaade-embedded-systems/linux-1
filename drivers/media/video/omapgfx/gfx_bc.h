@@ -39,8 +39,8 @@ struct bc_buf_params2 {
 	int stride;	/*(in) */
 	int size;	/*(out */
 };
-extern int bc_init(void);
-extern void bc_cleanup(void);
+extern int bc_init(int idx);
+extern void bc_cleanup(int idx);
 
 /* bc_setup
  *
@@ -48,7 +48,7 @@ extern void bc_cleanup(void);
  * buffer class device. Buffers should be added with subsequent calls to
  * bc_setup_buffer()
  */
-extern int bc_setup(int id, struct bc_buf_params2 *p);
+extern int bc_setup(int idx, struct bc_buf_params2 *p);
 
 /* bc_setup_buffer
  *
@@ -56,13 +56,13 @@ extern int bc_setup(int id, struct bc_buf_params2 *p);
  * to this device
  */
 extern int bc_setup_buffer(
-			int id, struct bc_buf_params2 *p, unsigned long *paddr);
+			int idx, struct bc_buf_params2 *p, unsigned long *paddr);
 
 /* bc_setup_complete
  *
  * Called after all physical buffers have been added to the device
  */
-extern int bc_setup_complete(int id, struct bc_buf_params2 *p);
+extern int bc_setup_complete(int idx, struct bc_buf_params2 *p);
 
 /* bc_sync_status
  *
@@ -72,5 +72,5 @@ extern int bc_setup_complete(int id, struct bc_buf_params2 *p);
  * 0	SGX still has pending operations on the buffer
  * 1	SGX done with the buffer
  */
-extern int bc_sync_status(int id, int bufidx);
+extern int bc_sync_status(int idx, int bufidx);
 #endif
