@@ -1,3 +1,55 @@
+linux-ti-omap4 (2.6.35-992.4) maverick; urgency=low
+
+  [ Sebastien Jan ]
+
+  * Config: uplevel config
+
+  [ Upstream Kernel Changes ]
+
+  * Revert "OMAP:DSS: HWC structures and kernel APIs"
+  * Multi-texture streaming changes
+  * OMAP4: Allow device off mode on OMAP4460 GP devices.
+  * OMAP4: PM: Trace for device-off status at wakeup
+  * Power/Reset Manager debug state display needed OMAP4 update
+  * [ARM] board-4430sdp.c FM Tx and modem audio.
+  * OMAP4 DSS V4L2: Remove incorrect check for fbuf flags
+  * wl12xx: update wl12xx_platform_data struct
+  * mmc: fix CONFIG_MMC_UNSAFE_RESUME regression
+  * mmc: mmc_card_keep_power cleanups
+  * mmc: do not switch to 1-bit mode if not required
+  * mmc: clear MMC_PM_KEEP_POWER flag on resume
+  * board-4430sdp.c, board-44xxtablet.c: set wakeup enable for WLAN IRQ
+  * omap_hsmmc: declare MMC_PM_KEEP_POWER capability
+  * mmc: fix division by zero in MMC core
+  * OMAP: DEFCONFIG: enable duty cycle by default for android
+  * Remove the existing omapdss comp changes.
+  * OMAP: DSS2: Add callback for tracking overlay/manager changes
+  * OMAP:DSS: Expose overlay checking DISPC methods
+  * OMAP3+: xSI: fix for IRQ request flags
+  * OMAP4: HSI: implement PM suspend/resume ops
+  * OMAP3+: xSI: added char driver support for GET_CAWAKE ioctl
+  * board-44xxtablet.c: Cleanup: delete Blaze board code
+  * OMAP4: HSI: Abort driver registration when bus registration fails
+  * OMAP3+: xSI: kill tasklet on HSI module unload
+  * OMAP4: HSI: optimize IO wakeup latency
+  * ASoC: McPDM: Link control of UL and DL channels for Downlink streams
+  * oma4430: duty cycle: Set hard coded default values
+  * OMAP4:GPIO: Fix missing IRQ during wakeup from IOPAD
+  * OMAP:DSS:DSSCOMP: New composition module
+  * OMAP:DSS:DSSCOMP: Add DSS composition module to build/config system
+  * board44xx_tablet.c: Backlight recalculation.
+  * OMAP4 - WLAN: MAC80211 and MCP driver coexist in same kernel
+  * android_4430_defconfig: Enable MAC80211 support for WL12xx solution
+  * drivers/staging/ti-st:Resolve possible memory leak issue in GPS driver.
+  * cache: Add outer_clean_all and outer_flush_all support
+  * SGX-KM: Support full cache ops on large buffers
+  * [OMAP4] omap_tps6236x.c: max voltage for 1.5GHz
+  * OMAP4: TWL6030 configurations for MPU VDD scalling to Zero volts in OFF
+    mode
+  * HSI: fix compilation error with HSI deactivated
+
+ -- Sebastien JAN <s-jan@ti.com>  Thu, 23 Jun 2011 10:40:39 +0200
+
 linux-ti-omap4 (2.6.35-992.3) maverick; urgency=low
 
   [ Sebastien Jan ]

@@ -1,10 +1,14 @@
 btwilink
+cfg80211
+crc7
 ecb
 fm_drv
 fm_v4l2_drv
 gfx_vout_mod
 gps_drv
 gspca_main
+lib80211
+mac80211
 ohci-hcd
 pcbc
 scsi_wait_scan
@@ -19,3 +23,5 @@ ums-onetouch
 ums-sddr09
 ums-sddr55
 ums-usbat
+wl1271
+wl1271_sdio
