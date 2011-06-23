@@ -32,7 +32,7 @@ ccflags-y = -DLINUX -D__linux__ -Idrivers/gpu/pvr \
 	-DPVR_NO_OMAP_TIMER \
 	-DSUPPORT_SGX_LOW_LATENCY_SCHEDULING \
 	-DSUPPORT_DRI_DRM_EXTERNAL \
-	-DPVRSRV_MODNAME="\"pvrsrvkm_pvr"\"
+	-DSYS_SGX_DEV_NAME="\"pvrsrvkm_pvr\""
 
 ccflags-$(CONFIG_SGX540) +=  -Idrivers/gpu/pvr/omap4  -Idrivers/gpu/pvr/sgx \
 	-DSGX_CLK_CORE_DIV5 \

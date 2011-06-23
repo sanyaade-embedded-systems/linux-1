@@ -71,7 +71,6 @@
 #include "pvr_drm_mod.h"
 #endif
 
-#define PVR_DRM_NAME	PVRSRV_MODNAME
 #define PVR_DRM_DESC	"Imagination Technologies PVR DRM"
 
 DECLARE_WAIT_QUEUE_HEAD(sWaitForInit);
@@ -363,7 +362,7 @@ static int pvr_max_ioctl = DRM_ARRAY_SIZE(sPVRDrmIoctls);
 
 #if defined(SUPPORT_DRI_DRM_EXTERNAL)
 static struct omap_gpu_plugin plugin = {
-               .name = PVR_DRM_NAME,
+               .name = SYS_SGX_DEV_NAME,
 
                .open = PVRSRVDrmOpen,
                .load = PVRSRVDrmLoad,
@@ -411,7 +410,7 @@ static struct drm_driver sPVRDrmDriver =
 		.id_table = asPlatIdList,
 		.driver =
 		{
-			.name = PVR_DRM_NAME,
+			.name = SYS_SGX_DEV_NAME,
 		},
 		.probe = PVRSRVDrmProbe,
 		.remove = PVRSRVDrmRemove,
@@ -422,11 +421,11 @@ static struct drm_driver sPVRDrmDriver =
 #else
 	.pci_driver = 
 	{
-		.name = PVR_DRM_NAME,
+		.name = SYS_SGX_DEV_NAME,
 		.id_table = asPciIdList,
 	},
 #endif
-	.name = PVR_DRM_NAME,
+	.name = SYS_SGX_DEV_NAME,
 	.desc = PVR_DRM_DESC,
 	.date = PVR_BUILD_DATE,
 	.major = PVRVERSION_MAJ,

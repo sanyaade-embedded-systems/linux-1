@@ -103,13 +103,8 @@
 #if defined(SUPPORT_DRI_DRM)
 #include "pvr_drm.h"
 #endif
-#if defined(SUPPORT_DRI_DRM_EXTERNAL)
-#define DRVNAME                PVRSRV_MODNAME
-#define DEVNAME		PVRSRV_MODNAME
-#else
-#define DRVNAME		PVRSRV_MODNAME
-#define DEVNAME		PVRSRV_MODNAME
-MODULE_SUPPORTED_DEVICE(DEVNAME);
+#if !defined(SUPPORT_DRI_DRM_EXTERNAL)
+MODULE_SUPPORTED_DEVICE(SYS_SGX_DEV_NAME);
 #endif
 
 #if defined(SUPPORT_DRI_DRM)
@@ -202,11 +197,11 @@ static struct platform_device_id powervr_id_table[] __devinitdata = {
 static LDM_DRV powervr_driver = {
 #if defined(PVR_LDM_PLATFORM_MODULE)
 	.driver = {
-		.name		= DRVNAME,
+		.name		= SYS_SGX_DEV_NAME,
 	},
 #endif
 #if defined(PVR_LDM_PCI_MODULE)
-	.name		= DRVNAME,
+	.name		= SYS_SGX_DEV_NAME,
 #endif
 #if defined(PVR_LDM_PCI_MODULE) || defined(PVR_USE_PRE_REGISTERED_PLATFORM_DEV)
 	.id_table = powervr_id_table,
@@ -233,7 +228,7 @@ static void PVRSRVDeviceRelease(struct device unref__ *pDevice)
 }
 
 static struct platform_device powervr_device = {
-	.name			= DEVNAME,
+	.name			= SYS_SGX_DEV_NAME,
 	.id				= -1,
 	.dev 			= {
 		.release	= PVRSRVDeviceRelease
@@ -610,7 +605,7 @@ static int __init PVRCore_Init(void)
 #endif 
 
 #if !defined(SUPPORT_DRI_DRM)
-	AssignedMajorNumber = register_chrdev(0, DEVNAME, &pvrsrv_fops);
+	AssignedMajorNumber = register_chrdev(0, SYS_SGX_DEV_NAME, &pvrsrv_fops);
 
 	if (AssignedMajorNumber <= 0)
 	{
@@ -638,7 +633,7 @@ static int __init PVRCore_Init(void)
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,26))
 				  NULL,
 #endif 
-				  DEVNAME);
+				  SYS_SGX_DEV_NAME);
 	if (IS_ERR(psDev))
 	{
 		PVR_DPF((PVR_DBG_ERROR, "PVRCore_Init: unable to create device (%ld)", PTR_ERR(psDev)));
@@ -653,7 +648,7 @@ static int __init PVRCore_Init(void)
 destroy_class:
 	class_destroy(psPvrClass);
 unregister_device:
-	unregister_chrdev((IMG_UINT)AssignedMajorNumber, DRVNAME);
+	unregister_chrdev((IMG_UINT)AssignedMajorNumber, SYS_SGX_DEV_NAME);
 #endif
 #if !defined(SUPPORT_DRI_DRM)
 sys_deinit:
@@ -718,7 +713,7 @@ static void __exit PVRCore_Cleanup(void)
 #if (LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,22))
 	if (
 #endif	
-		unregister_chrdev((IMG_UINT)AssignedMajorNumber, DRVNAME)
+		unregister_chrdev((IMG_UINT)AssignedMajorNumber, SYS_SGX_DEV_NAME)
 #if !(LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,22))
 								;
 #else	

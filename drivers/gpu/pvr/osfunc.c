@@ -713,7 +713,7 @@ PVRSRV_ERROR OSInstallSystemLISR(IMG_VOID *pvSysData, IMG_UINT32 ui32Irq)
 #else
         IRQF_SHARED
 #endif
-        , PVRSRV_MODNAME, pvSysData))
+        , SYS_SGX_DEV_NAME, pvSysData))
     {
         PVR_DPF((PVR_DBG_ERROR,"OSInstallSystemLISR: Couldn't install system LISR on IRQ %d", ui32Irq));
 
@@ -1572,7 +1572,7 @@ static IMG_UINT32 OSPCIAddrRangeFunc(enum HOST_PCI_ADDR_RANGE_FUNC eFunc,
         {
             int err;
 
-            err = pci_request_region(psPVRPCI->psPCIDev, (IMG_INT)ui32Index, PVRSRV_MODNAME);
+            err = pci_request_region(psPVRPCI->psPCIDev, (IMG_INT)ui32Index, SYS_SGX_DEV_NAME);
             if (err != 0)
             {
                 PVR_DPF((PVR_DBG_ERROR, "OSPCIAddrRangeFunc: pci_request_region_failed (%d)", err));
@@ -1752,7 +1752,7 @@ PVRSRV_ERROR OSPCIResumeDev(PVRSRV_PCI_DEV_HANDLE hPVRPCI)
     {
         if (psPVRPCI->abPCIResourceInUse[i])
         {
-            err = pci_request_region(psPVRPCI->psPCIDev, i, PVRSRV_MODNAME);
+            err = pci_request_region(psPVRPCI->psPCIDev, i, SYS_SGX_DEV_NAME);
             if (err != 0)
             {
                 PVR_DPF((PVR_DBG_ERROR, "OSPCIResumeDev: pci_request_region_failed (region %d, error %d)", i, err));
