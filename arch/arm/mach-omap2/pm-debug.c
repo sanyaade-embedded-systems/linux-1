@@ -41,10 +41,7 @@
 #include "pm.h"
 
 int omap2_pm_debug;
-u32 enable_off_mode;
-u32 volt_off_mode;
 u32 sleep_while_idle;
-u32 wakeup_timer_seconds;
 u32 wakeup_timer_milliseconds;
 u32 omap4_device_off_counter = 0;
 int pmd_clks_enable;

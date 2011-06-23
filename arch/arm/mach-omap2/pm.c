@@ -28,6 +28,12 @@ static struct device *iva_dev;
 static struct device *l3_dev;
 static struct device *dsp_dev;
 
+#if defined(CONFIG_ARCH_OMAP3) || defined(CONFIG_ARCH_OMAP4)
+u32 enable_off_mode;
+u32 volt_off_mode;
+u32 wakeup_timer_seconds;
+#endif
+
 struct device *omap2_get_mpuss_device(void)
 {
 	WARN_ON_ONCE(!mpu_dev);
