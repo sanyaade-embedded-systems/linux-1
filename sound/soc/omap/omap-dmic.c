@@ -234,11 +234,12 @@ static int omap_dmic_dai_startup(struct snd_pcm_substream *substream,
 {
 	struct omap_dmic *dmic = snd_soc_dai_get_drvdata(dai);
 
-	if (!dmic->active++) {
+	if (!dmic->active) {
 		pm_runtime_get_sync(dmic->dev);
 		/* Enable DMIC bias */
 		/* TODO: convert this over to DAPM */
 		twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, 0x55, 0x0B);
+		++dmic->active;
 	}
 
 	return 0;
@@ -249,11 +250,12 @@ static void omap_dmic_dai_shutdown(struct snd_pcm_substream *substream,
 {
 	struct omap_dmic *dmic = snd_soc_dai_get_drvdata(dai);
 
-	if (!--dmic->active) {
+	if (dmic->active) {
 		/* Disable DMIC bias */
 		/* TODO: convert this over to DAPM */
 		twl_i2c_write_u8(TWL_MODULE_AUDIO_VOICE, 0x44, 0x0B);
 		pm_runtime_put_sync(dmic->dev);
+		--dmic->active;
 	}
 }
 
@@ -271,6 +273,14 @@ static int omap_dmic_dai_hw_params(struct snd_pcm_substream *substream,
 	case 1:
 	case 2:
 		link->channels = 2;
+		break;
+	case 3:
+	case 4:
+		link->channels = 4;
+		break;
+	case 5:
+	case 6:
+		link->channels = 6;
 		break;
 	default:
 		dev_err(dmic->dev, "invalid number of channels\n");
