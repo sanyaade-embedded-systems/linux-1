@@ -727,7 +727,7 @@ static void wl1271_tx_complete_packet(struct wl1271 *wl,
 
 	/* return the packet to the stack */
 	skb_queue_tail(&wl->deferred_tx_queue, skb);
-	ieee80211_queue_work(wl->hw, &wl->netstack_work);
+	queue_work(wl->freezable_wq, &wl->netstack_work);
 	wl1271_free_tx_id(wl, result->id);
 }
 
@@ -782,7 +782,7 @@ void wl1271_tx_reset_link_queues(struct wl1271 *wl, u8 hlid)
 			info = IEEE80211_SKB_CB(skb);
 			info->status.rates[0].idx = -1;
 			info->status.rates[0].count = 0;
-			ieee80211_tx_status(wl->hw, skb);
+			ieee80211_tx_status_ni(wl->hw, skb);
 			total++;
 		}
 	}
@@ -820,7 +820,7 @@ void wl1271_tx_reset(struct wl1271 *wl, bool reset_tx_queues)
 					info = IEEE80211_SKB_CB(skb);
 					info->status.rates[0].idx = -1;
 					info->status.rates[0].count = 0;
-					ieee80211_tx_status(wl->hw, skb);
+					ieee80211_tx_status_ni(wl->hw, skb);
 				}
 			}
 		}
@@ -863,7 +863,7 @@ void wl1271_tx_reset(struct wl1271 *wl, bool reset_tx_queues)
 			info->status.rates[0].idx = -1;
 			info->status.rates[0].count = 0;
 
-			ieee80211_tx_status(wl->hw, skb);
+			ieee80211_tx_status_ni(wl->hw, skb);
 		}
 	}
 }
