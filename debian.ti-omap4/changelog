@@ -1,3 +1,47 @@
+linux-ti-omap4 (2.6.35-992.5) maverick; urgency=low
+
+  [ Sebastien Jan ]
+
+  * Config: disable TIWLAN_SDIO
+  * Config: uplevel config after merge
+
+  [ Upstream Kernel Changes ]
+
+  * Revert "ASoC: McPDM: Link control of UL and DL channels for Downlink
+    streams"
+  * OMAP: Fix builds without pm-debug on OMAP3/4
+  * PVR: sanitise device name #defines
+  * dmic: enable support for 4 and 6 channels
+  * USB: MUSB: Fix device enumeration issue if connected during boot.
+  * OMAP4:WLAN: Add WLAN PowerEnable GPIO for Panda
+  * CONFIG_WIFI_CONTROL_FUNC  for MACH_OMAP4_PANDA
+  * board-omap4panda.c: Bluetooth platform changes
+  * hsmmc: Change the clock speed for WL127x
+  * board-omap4panda.c: Disable power saving for Panda+WL1271
+  * drivers/staging/ti-st: Replaced non blocking memory allocation flag
+    GFP_ATOMIC with GFP_KERNEL in GPS driver.
+  * OMAP4: TWL6030: Add USB charger detection feature
+  * OTG: TWL6030: Fix missing USB_EVENT_NONE case
+  * MUSB: OMAP: choose ULPI 12 pin for correct charger detection
+  * MUSB Charger Type Detection: Fix DCP detect during boot.
+  * USB: MUSB: Ignore any SESSREQ interrupt if musb is B-device
+  * board44xx_tablet.c: Increase USB OTG power.
+  * TSL2771 Driver:Proximity trigging lenght correction
+  * OMAP4: HSI: fix frame corruption due to race condition in mixed mode
+    CPU copy/DMA
+  * radio: wl128x: Add support for FM TX RDS
+  * panda_defconfig: Add CONFIG_TIWLAN_127x for selecting WL127x chip
+  * wireless: Add WEXT_GEM configuration option
+  * OMAP4: HSI: SW WA for hardcoded wakeup dependency from HSI to DSP
+  * drm: improve signal-to-noise ratio of drm traces
+  * gpu/pvr: make blank/unblank traces more clear
+  * drm/omap: fix compiler warning
+  * gpu/pvr: clean and inv regions flush operations (v2)
+  * ARM: GIC: Convert GIC library to use the IO relaxed operations
+  * Performing full cache flush based on threshold.
+
+ -- Sebastien JAN <s-jan@ti.com>  Wed, 29 Jun 2011 13:55:23 +0200
+
 linux-ti-omap4 (2.6.35-992.4) maverick; urgency=low
 
   [ Sebastien Jan ]

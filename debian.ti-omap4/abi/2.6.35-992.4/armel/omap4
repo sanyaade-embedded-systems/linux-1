@@ -2210,7 +2210,6 @@ EXPORT_SYMBOL vmlinux 0x00000000	mmc_resume_bus
 EXPORT_SYMBOL vmlinux 0x00000000	mmc_resume_host
 EXPORT_SYMBOL vmlinux 0x00000000	mmc_set_blocklen
 EXPORT_SYMBOL vmlinux 0x00000000	mmc_set_data_timeout
-EXPORT_SYMBOL vmlinux 0x00000000	mmc_set_embedded_sdio_data
 EXPORT_SYMBOL vmlinux 0x00000000	mmc_suspend_host
 EXPORT_SYMBOL vmlinux 0x00000000	mmc_try_claim_host
 EXPORT_SYMBOL vmlinux 0x00000000	mmc_unregister_driver
