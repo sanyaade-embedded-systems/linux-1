@@ -267,16 +267,6 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_wp	= -EINVAL,
 	},
 	{
-		.mmc            = 5,
-		.caps		= MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA,
-		.gpio_cd        = -EINVAL,
-		.gpio_wp        = 4,
-		.ocr_mask       = MMC_VDD_165_195,
-#ifdef CONFIG_PM_RUNTIME
-		.power_saving   = false,
-#endif
-	},
-	{
 		.name		= "wl1271",
 		.mmc		= 5,
 		.caps		= MMC_CAP_4_BIT_DATA | MMC_CAP_POWER_OFF_CARD,
