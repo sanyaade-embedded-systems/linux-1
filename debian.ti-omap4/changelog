@@ -1,3 +1,38 @@
+linux-ti-omap4 (2.6.35-992.6) maverick; urgency=low
+
+  [ Sebastien Jan ]
+
+  * Config: activate MODVERSIONS support
+
+  [ Upstream Kernel Changes ]
+
+  * Revert "HSMMC: Add shutdown functionality"
+  * PVR: "smart" cached buffer support (v2)
+  * OMAP4:PM:CPUIDLE enable all c-states by default
+  * Workaround: ASoC: ABE DSP: Always reload firmware during restoring
+    context if CONFIG_PM_DEBUG defined.
+  * OMAP4: clock: Keep GPMC clocks always enabled and hardware managed.
+  * ASoC: DMIC: Get PM resources during DMIC_CTRL access
+  * OMAP4 : DSSCOMP : (HACK) fixed kernel crash while entering suspend
+    during video playback
+  * OMAP4: HSI: SW WA for HSR in dead state after SW reset with pending
+    errors
+  * S3D V4L2: Fixed problem with vidioc_qbuf()
+  * DSS: Several debug messages in overlay changed to error ones
+  * S3D V4L2: Window size setting fixes
+  * S3D V4L2: Do not return error when trying to disable alpha blender
+  * OMAP4: HDMI S3D - Fix deadlock when enabling S3D mode.
+  * [OMAP] Add runtime check for the 4430 in the duty cycle
+  * OMAP4:STE: Set SERVICEn and ONSWA signals at boot
+  * OMAP4:STE: Remove pull-down on GPIO_92 (Modem SERVICEn)
+  * ASoC: twl6040: Apply mute per DAI
+  * ASoC: twl6040: Add digital mute for Earpiece
+  * ASoc: twl6040: enable FIR in EAR DAC
+  * Workaround: ASoC: ABE DSP: Change context/memory lost counter.
+  * OMAP4: PM: Fixed sequence of enable/disable GIC distributor
+
+ -- Sebastien JAN <s-jan@ti.com>  Tue, 05 Jul 2011 14:37:54 +0200
+
 linux-ti-omap4 (2.6.35-992.5) maverick; urgency=low
 
   [ Sebastien Jan ]
