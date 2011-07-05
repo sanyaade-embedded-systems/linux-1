@@ -338,7 +338,10 @@ static ssize_t driver_state_read(struct file *file, char __user *user_buf,
 #define DRIVER_STATE_PRINT_HEX(x)  DRIVER_STATE_PRINT(x, "0x%x")
 
 	DRIVER_STATE_PRINT_INT(tx_blocks_available);
-	DRIVER_STATE_PRINT_INT(tx_allocated_blocks);
+	DRIVER_STATE_PRINT_INT(tx_allocated_blocks[0]);
+	DRIVER_STATE_PRINT_INT(tx_allocated_blocks[1]);
+	DRIVER_STATE_PRINT_INT(tx_allocated_blocks[2]);
+	DRIVER_STATE_PRINT_INT(tx_allocated_blocks[3]);
 	DRIVER_STATE_PRINT_INT(tx_frames_cnt);
 	DRIVER_STATE_PRINT_LHEX(tx_frames_map[0]);
 	DRIVER_STATE_PRINT_INT(tx_queue_count);
@@ -349,7 +352,7 @@ static ssize_t driver_state_read(struct file *file, char __user *user_buf,
 	DRIVER_STATE_PRINT_INT(tx_blocks_freed[1]);
 	DRIVER_STATE_PRINT_INT(tx_blocks_freed[2]);
 	DRIVER_STATE_PRINT_INT(tx_blocks_freed[3]);
-	DRIVER_STATE_PRINT_INT(tx_security_last_seq);
+	DRIVER_STATE_PRINT_INT(tx_security_last_seq_lsb);
 	DRIVER_STATE_PRINT_INT(rx_counter);
 	DRIVER_STATE_PRINT_INT(session_counter);
 	DRIVER_STATE_PRINT_INT(state);
