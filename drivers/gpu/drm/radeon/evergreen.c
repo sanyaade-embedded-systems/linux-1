@@ -2013,9 +2013,9 @@ static void evergreen_gpu_init(struct radeon_device *rdev)
 		rdev->config.evergreen.tile_config |= (3 << 0);
 		break;
 	}
-	/* num banks is 8 on all fusion asics */
+	/* num banks is 8 on all fusion asics. 0 = 4, 1 = 8, 2 = 16 */
 	if (rdev->flags & RADEON_IS_IGP)
-		rdev->config.evergreen.tile_config |= 8 << 4;
+		rdev->config.evergreen.tile_config |= 1 << 4;
 	else
 		rdev->config.evergreen.tile_config |=
 			((mc_arb_ramcfg & NOOFBANK_MASK) >> NOOFBANK_SHIFT) << 4;
@@ -2248,7 +2248,10 @@ int evergreen_mc_init(struct radeon_device *rdev)
 
 	/* Get VRAM informations */
 	rdev->mc.vram_is_ddr = true;
-	tmp = RREG32(MC_ARB_RAMCFG);
+	if (rdev->flags & RADEON_IS_IGP)
+		tmp = RREG32(FUS_MC_ARB_RAMCFG);
+	else
+		tmp = RREG32(MC_ARB_RAMCFG);
 	if (tmp & CHANSIZE_OVERRIDE) {
 		chansize = 16;
 	} else if (tmp & CHANSIZE_MASK) {
