@@ -1,3 +1,18 @@
+linux-ti-omap4 (2.6.35-992.7) maverick; urgency=low
+
+  [ Upstream Kernel Changes ]
+
+  * omap: panda: add fixed regulator device for wlan
+  * omap: panda: add mmc5/wl1271 device support
+  * omap: panda: wlan board muxing
+  * omap: select REGULATOR_FIXED_VOLTAGE by default for panda and sdp4430
+  * OMAP: hsmmc: Enable MMC4 and MMC5 on OMAP4 platforms
+  * pandaboard: fix MMC setup for WLAN
+  * Blaze: Fix pin mux for wlan clock
+  * Pandaboard: WLAN power setup
+
+ -- Sebastien JAN <s-jan@ti.com>  Thu, 07 Jul 2011 15:55:34 +0200
+
 linux-ti-omap4 (2.6.35-992.6) maverick; urgency=low
 
   [ Sebastien Jan ]
