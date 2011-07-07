@@ -254,6 +254,32 @@ static struct omap_musb_board_data musb_board_data = {
 	.power			= 100,
 };
 
+#ifndef CONFIG_TIWLAN_SDIO
+static int wifi_set_power(struct device *dev, int slot, int power_on, int vdd)
+{
+	static int power_state;
+
+	pr_debug("Powering %s wifi", (power_on ? "on" : "off"));
+
+	if (power_on == power_state)
+		return 0;
+	power_state = power_on;
+
+	if (power_on) {
+		gpio_set_value(GPIO_WIFI_PMENA, 1);
+		mdelay(15);
+		gpio_set_value(GPIO_WIFI_PMENA, 0);
+		mdelay(1);
+		gpio_set_value(GPIO_WIFI_PMENA, 1);
+		mdelay(70);
+	} else {
+		gpio_set_value(GPIO_WIFI_PMENA, 0);
+	}
+
+	return 0;
+}
+#endif
+
 static struct twl4030_usb_data omap4_usbphy_data = {
 	.phy_init	= omap4430_phy_init,
 	.phy_exit	= omap4430_phy_exit,
@@ -320,7 +346,7 @@ static struct platform_device omap_vwlan_device = {
 	},
 };
 
-struct wl12xx_platform_data omap_panda_wlan_data  __initdata = {
+struct wl12xx_platform_data omap4_panda_wlan_data  __initdata = {
 	.irq = OMAP_GPIO_IRQ(GPIO_WIFI_IRQ),
 	/* PANDA ref clock is 38.4 MHz */
 	.board_ref_clock = 2,
@@ -342,6 +368,13 @@ static int omap4_twl6030_hsmmc_late_init(struct device *dev)
 						MMCDETECT_INTR_OFFSET;
 		pdata->slots[0].card_detect = twl6030_mmc_card_detect;
 	}
+
+#ifndef CONFIG_TIWLAN_SDIO
+	/* Set the MMC5 (wlan) power function */
+	if (pdev->id == 4)
+		pdata->slots[0].set_power = wifi_set_power;
+#endif
+
 	return ret;
 }
 
@@ -967,6 +1000,17 @@ error1:
 
 }
 
+#ifndef CONFIG_TIWLAN_SDIO
+static void omap4_panda_wifi_init(void)
+{
+	if (gpio_request(GPIO_WIFI_PMENA, "wl12xx") ||
+	    gpio_direction_output(GPIO_WIFI_PMENA, 0))
+		pr_err("Error initializing up WLAN_EN\n");
+	if (wl12xx_set_platform_data(&omap4_panda_wlan_data))
+		pr_err("Error setting wl12xx data\n");
+}
+#endif
+
 static void __init omap_panda_init(void)
 {
 	int package = OMAP_PACKAGE_CBS;
@@ -975,9 +1019,6 @@ static void __init omap_panda_init(void)
 		package = OMAP_PACKAGE_CBL;
 	omap4_mux_init(board_mux, package);
 	panda_boardrev_init();
-
-	if (wl12xx_set_platform_data(&omap_panda_wlan_data))
-		pr_err("error setting wl12xx data\n");
 
 	omap_emif_setup_device_details(&emif_devices, &emif_devices);
 	omap_init_emif_timings();
@@ -991,6 +1032,8 @@ static void __init omap_panda_init(void)
 
 #ifdef CONFIG_TIWLAN_SDIO
 	wlan_1273_config();
+#else
+	omap4_panda_wifi_init();
 #endif
 
 
