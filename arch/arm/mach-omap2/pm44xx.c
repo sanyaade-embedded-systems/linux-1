@@ -35,6 +35,7 @@
 
 #include <mach/omap4-common.h>
 #include <mach/omap4-wakeupgen.h>
+#include <mach/tiler.h>
 #include "mach/omap_hsi.h"
 
 #include "prm.h"
@@ -529,6 +530,8 @@ restore:
 	 * Enable all wakeup sources post wakeup
 	 */
 	omap4_wakeupgen_set_all(cpu_id);
+	if (enable_off_mode && volt_off_mode)
+		tiler_restore_pat_entry();
 
 	return 0;
 }

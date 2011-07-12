@@ -1130,6 +1130,25 @@ static s32 refill_pat(struct tmm *tmm, struct tcm_area *area, u32 *ptr)
 	return res;
 }
 
+int tiler_restore_pat_entry(void)
+{
+	struct mem_info *mi;
+	struct pat_area area = {0};
+
+	/* clear out PAT entries and set dummy page */
+	area.x1 = TILER_WIDTH - 1;
+	area.y1 = TILER_HEIGHT - 1;
+	tmm_clear(TMM(TILFMT_8BIT), area);
+
+	/* iterate over all the blocks and refresh the PAT entries */
+	list_for_each_entry(mi, &blocks, global) {
+		if (refill_pat(TMM_SS(mi->sys_addr), &mi->area, mi->mem))
+			printk(KERN_ERR "Failed to reinitialize PAT for %08x\n",
+			mi->sys_addr);
+	}
+	return 0;
+}
+
 static u32 virt2phys(u32 usr)
 {
 	pmd_t *pmd;

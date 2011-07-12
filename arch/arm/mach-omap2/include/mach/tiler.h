@@ -242,5 +242,6 @@ enum buf_state {
 
 s32 tiler_set_buf_state(u32 ssptr, enum buf_state state);
 
+int tiler_restore_pat_entry(void);
 #endif
 
