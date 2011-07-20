@@ -490,8 +490,7 @@ PVRSRVAllocDeviceMemBW(IMG_UINT32 ui32BridgeID,
     PVRSRV_KERNEL_MEM_INFO *psMemInfo;
     IMG_HANDLE hDevCookieInt;
     IMG_HANDLE hDevMemHeapInt;
-    IMG_UINT32 ui32ShareIndex;
-    IMG_BOOL bUseShareMemWorkaround;
+    PXProcShareDataNode pShareDataNode = NULL;
 
     PVRSRV_BRIDGE_ASSERT_CMD(ui32BridgeID, PVRSRV_BRIDGE_ALLOC_DEVICEMEM);
 
@@ -517,23 +516,17 @@ PVRSRVAllocDeviceMemBW(IMG_UINT32 ui32BridgeID,
         return 0;
     }
 
-    
+	/* Start mutually exclusive region */
 
-    bUseShareMemWorkaround = ((psAllocDeviceMemIN->ui32Attribs & PVRSRV_MEM_XPROC) != 0) ? IMG_TRUE : IMG_FALSE;
-    ui32ShareIndex = 7654321; 
-
-    if (bUseShareMemWorkaround)
-    {
-        
-        
-
-        psAllocDeviceMemOUT->eError =
-            BM_XProcWorkaroundFindNewBufferAndSetShareIndex(&ui32ShareIndex);
-        if(psAllocDeviceMemOUT->eError != PVRSRV_OK)
-        {
-            return 0;
-        }
-    }
+	if((psAllocDeviceMemIN->ui32Attribs & PVRSRV_MEM_XPROC) != 0)
+	{
+		pShareDataNode = BM_XProcAllocNewBuffer();
+		if(pShareDataNode == NULL)
+		{
+			psAllocDeviceMemOUT->eError = PVRSRV_ERROR_OUT_OF_MEMORY;
+			return 0;
+		}
+	}
 
     psAllocDeviceMemOUT->eError =
         PVRSRVAllocDeviceMemKM(hDevCookieInt,
@@ -545,27 +538,28 @@ PVRSRVAllocDeviceMemBW(IMG_UINT32 ui32BridgeID,
                                &psMemInfo,
                                "" );
 
-    if (bUseShareMemWorkaround)
-    {
-        PVR_ASSERT(ui32ShareIndex != 7654321);
-        BM_XProcWorkaroundUnsetShareIndex(ui32ShareIndex);
-    }
+	if (pShareDataNode)
+	{
+		IMG_BOOL freeIfNotUsed = (psAllocDeviceMemOUT->eError == PVRSRV_OK) ? IMG_FALSE : IMG_TRUE;
+		BM_XProcFinishShareIndex(pShareDataNode, freeIfNotUsed);
+	}
+
+	/* End mutually exclusive region */
 
     if(psAllocDeviceMemOUT->eError != PVRSRV_OK)
     {
         return 0;
     }
 
-    psMemInfo->sShareMemWorkaround.bInUse = bUseShareMemWorkaround;
-    if (bUseShareMemWorkaround)
-    {
-        PVR_ASSERT(ui32ShareIndex != 7654321);
-        psMemInfo->sShareMemWorkaround.ui32ShareIndex = ui32ShareIndex;
-        psMemInfo->sShareMemWorkaround.hDevCookieInt = hDevCookieInt;
-        psMemInfo->sShareMemWorkaround.ui32OrigReqAttribs = psAllocDeviceMemIN->ui32Attribs;
-        psMemInfo->sShareMemWorkaround.ui32OrigReqSize = (IMG_UINT32)psAllocDeviceMemIN->ui32Size;
-        psMemInfo->sShareMemWorkaround.ui32OrigReqAlignment = (IMG_UINT32)psAllocDeviceMemIN->ui32Alignment;
-    }
+	if (pShareDataNode)
+	{
+		psMemInfo->sShareMemWorkaround.bInUse = IMG_TRUE;
+		psMemInfo->sShareMemWorkaround.pShareDataNode = pShareDataNode;
+		psMemInfo->sShareMemWorkaround.hDevCookieInt = hDevCookieInt;
+		psMemInfo->sShareMemWorkaround.ui32OrigReqAttribs = psAllocDeviceMemIN->ui32Attribs;
+		psMemInfo->sShareMemWorkaround.ui32OrigReqSize = (IMG_UINT32)psAllocDeviceMemIN->ui32Size;
+		psMemInfo->sShareMemWorkaround.ui32OrigReqAlignment = (IMG_UINT32)psAllocDeviceMemIN->ui32Alignment;
+	}
 
     OSMemSet(&psAllocDeviceMemOUT->sClientMemInfo,
              0,
@@ -956,8 +950,9 @@ PVRSRVMapDeviceMemoryBW(IMG_UINT32 ui32BridgeID,
 
 
 
+		/* Start mutually exclusive region */
 
-        psMapDevMemOUT->eError = BM_XProcWorkaroundSetShareIndex(psSrcKernelMemInfo->sShareMemWorkaround.ui32ShareIndex);
+        psMapDevMemOUT->eError = BM_XProcSetShareIndex(psSrcKernelMemInfo->sShareMemWorkaround.pShareDataNode);
         if(psMapDevMemOUT->eError != PVRSRV_OK)
         {
             PVR_DPF((PVR_DBG_ERROR, "PVRSRVMapDeviceMemoryBW(): failed to recycle shared buffer"));
@@ -975,12 +970,13 @@ PVRSRVMapDeviceMemoryBW(IMG_UINT32 ui32BridgeID,
                                    "" );
         
 
-        BM_XProcWorkaroundUnsetShareIndex(psSrcKernelMemInfo->sShareMemWorkaround.ui32ShareIndex);
+        BM_XProcFinishShareIndex(psSrcKernelMemInfo->sShareMemWorkaround.pShareDataNode, IMG_FALSE);
         if(psMapDevMemOUT->eError != PVRSRV_OK)
         {
             PVR_DPF((PVR_DBG_ERROR, "lakjgfgewjlrgebhe"));
             return 0;
         }
+		/* End mutually exclusive region */
 
         if(psSrcKernelMemInfo->psKernelSyncInfo)
         {

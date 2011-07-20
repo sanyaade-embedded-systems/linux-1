@@ -226,9 +226,9 @@ IMG_VOID BM_Export(BM_HANDLE hBuf);
 
 IMG_VOID BM_FreeExport(BM_HANDLE hBuf, IMG_UINT32 ui32Flags);
 
-PVRSRV_ERROR BM_XProcWorkaroundSetShareIndex(IMG_UINT32 ui32Index);
-PVRSRV_ERROR BM_XProcWorkaroundUnsetShareIndex(IMG_UINT32 ui32Index);
-PVRSRV_ERROR BM_XProcWorkaroundFindNewBufferAndSetShareIndex(IMG_UINT32 *pui32Index);
+PVRSRV_ERROR BM_XProcSetShareIndex(PXProcShareDataNode pShareDataNode);
+PVRSRV_ERROR BM_XProcFinishShareIndex(PXProcShareDataNode pShareDataNode, IMG_BOOL freeIfNotUsed);
+PXProcShareDataNode BM_XProcAllocNewBuffer(void);
 
 
 #if defined(__cplusplus)

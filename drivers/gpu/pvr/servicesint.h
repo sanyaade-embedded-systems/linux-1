@@ -56,6 +56,9 @@ typedef enum _PVRSRV_MEMTYPE_
 	PVRSRV_MEMTYPE_MAPPED		= 4,
 } PVRSRV_MEMTYPE;
 
+struct XProcShareDataNode;
+typedef struct XProcShareDataNode *PXProcShareDataNode;
+
 typedef struct _PVRSRV_KERNEL_MEM_INFO_
 {
 	
@@ -113,10 +116,8 @@ typedef struct _PVRSRV_KERNEL_MEM_INFO_
         
 		IMG_HANDLE hDevCookieInt;
 
-        
-		IMG_UINT32 ui32ShareIndex;
 
-        
+		PXProcShareDataNode pShareDataNode;
 
 		IMG_UINT32 ui32OrigReqAttribs;
 		IMG_UINT32 ui32OrigReqSize;
