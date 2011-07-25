@@ -75,14 +75,67 @@
 
 static int board_revision;
 
-/* wl127x BT, FM, GPS connectivity chip */
-static int gpios[] = {46, -1, -1};
+
+
+static unsigned long retry_suspend;
+static int plat_kim_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct kim_data_s *kim_gdata;
+	struct st_data_s *core_data;
+	kim_gdata = dev_get_drvdata(&pdev->dev);
+	core_data = kim_gdata->core_data;
+	 if (st_ll_getstate(core_data) != ST_LL_INVALID) {
+		 /*Prevent suspend until sleep indication from chip*/
+		   while(st_ll_getstate(core_data) != ST_LL_ASLEEP &&
+				   (retry_suspend++ < 5)) {
+			   return -1;
+		   }
+	 }
+	return 0;
+}
+static int plat_kim_resume(struct platform_device *pdev)
+{
+	retry_suspend = 0;
+	return 0;
+}
+
+static int plat_kim_chip_enable(struct kim_data_s *kim_data)
+{
+	printk(KERN_INFO"%s\n", __func__);
+	/* Configure BT nShutdown to HIGH state */
+	gpio_set_value(kim_data->nshutdown, GPIO_LOW);
+	mdelay(5);      /* FIXME: a proper toggle */
+	gpio_set_value(kim_data->nshutdown, GPIO_HIGH);
+	mdelay(100);
+	/* Call to black DPLL when BT/FM is in use */
+	dpll_cascading_blocker_hold(&kim_data->kim_pdev->dev);
+	return 0;
+}
+
+static int plat_kim_chip_disable(struct kim_data_s *kim_data)
+{
+	printk(KERN_INFO"%s\n", __func__);
+	/* By default configure BT nShutdown to LOW state */
+	gpio_set_value(kim_data->nshutdown, GPIO_LOW);
+	mdelay(1);
+	gpio_set_value(kim_data->nshutdown, GPIO_HIGH);
+	mdelay(1);
+	gpio_set_value(kim_data->nshutdown, GPIO_LOW);
+	/* Release DPLL cascading blockers when we are done with BT/FM */
+	dpll_cascading_blocker_release(&kim_data->kim_pdev->dev);
+	return 0;
+}
+
 /* wl128x BT, FM, GPS connectivity chip */
 struct ti_st_plat_data wilink_pdata = {
 	.nshutdown_gpio = 46,
 	.dev_name = BLUETOOTH_UART_DEV_NAME,
 	.flow_cntrl = 1,
 	.baud_rate = 3000000,
+	.suspend = plat_kim_suspend,
+	.resume = plat_kim_resume,
+	.chip_enable = plat_kim_chip_enable,
+	.chip_disable = plat_kim_chip_disable,
 };
 
 static struct platform_device wl127x_device = {
