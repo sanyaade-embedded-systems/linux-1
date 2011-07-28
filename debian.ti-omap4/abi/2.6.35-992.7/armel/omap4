@@ -457,7 +457,6 @@ EXPORT_SYMBOL vmlinux 0x1551dc51	bitmap_find_free_region
 EXPORT_SYMBOL vmlinux 0x1571fd6e	generic_error_remove_page
 EXPORT_SYMBOL vmlinux 0x1590a093	i2c_master_send
 EXPORT_SYMBOL vmlinux 0x15a20211	dev_get_by_index_rcu
-EXPORT_SYMBOL vmlinux 0x15d9d066	PVRGetDisplayClassJTable
 EXPORT_SYMBOL vmlinux 0x15f20c73	ioremap_page
 EXPORT_SYMBOL vmlinux 0x15f23f4e	dma_alloc_coherent
 EXPORT_SYMBOL vmlinux 0x162c0f75	netif_notify_peers
@@ -941,7 +940,6 @@ EXPORT_SYMBOL vmlinux 0x39ae4435	gen_new_estimator
 EXPORT_SYMBOL vmlinux 0x39ba0f4d	elv_queue_empty
 EXPORT_SYMBOL vmlinux 0x39bf9301	_snd_pcm_hw_param_setempty
 EXPORT_SYMBOL vmlinux 0x39cd1696	drm_connector_attach_property
-EXPORT_SYMBOL vmlinux 0x39db1561	PVRGetBufferClassJTable
 EXPORT_SYMBOL vmlinux 0x3a199626	hwspinlock_free
 EXPORT_SYMBOL vmlinux 0x3a2204c6	security_netlink_recv
 EXPORT_SYMBOL vmlinux 0x3a353f4d	fib_default_rule_pref
@@ -2731,6 +2729,7 @@ EXPORT_SYMBOL vmlinux 0xad0c9969	lease_get_mtime
 EXPORT_SYMBOL vmlinux 0xad37067a	dqstats
 EXPORT_SYMBOL vmlinux 0xad5307e6	d_alloc
 EXPORT_SYMBOL vmlinux 0xad54426c	heapmemmp_params_init
+EXPORT_SYMBOL vmlinux 0xad658147	tiler_set_buf_state
 EXPORT_SYMBOL vmlinux 0xad715329	inet_csk_accept
 EXPORT_SYMBOL vmlinux 0xad98f850	input_register_handle
 EXPORT_SYMBOL vmlinux 0xadaa2657	cpufreq_register_notifier
@@ -3129,6 +3128,7 @@ EXPORT_SYMBOL vmlinux 0xc663f8ca	mmc_detect_change
 EXPORT_SYMBOL vmlinux 0xc66ab4c4	dmam_free_coherent
 EXPORT_SYMBOL vmlinux 0xc6794f16	drm_core_get_map_ofs
 EXPORT_SYMBOL vmlinux 0xc67a647b	framebuffer_alloc
+EXPORT_SYMBOL vmlinux 0xc680e0b3	PVRGetBufferClassJTable
 EXPORT_SYMBOL vmlinux 0xc697c49c	input_register_polled_device
 EXPORT_SYMBOL vmlinux 0xc69edc5b	snd_card_file_remove
 EXPORT_SYMBOL vmlinux 0xc6a45fa2	gatepeterson_get_num_reserved
@@ -3740,6 +3740,7 @@ EXPORT_SYMBOL vmlinux 0xf0c9ee0d	__next_cpu
 EXPORT_SYMBOL vmlinux 0xf0caf44b	zlib_deflate_workspacesize
 EXPORT_SYMBOL vmlinux 0xf0ef15b4	list_sort
 EXPORT_SYMBOL vmlinux 0xf0f1246c	kvasprintf
+EXPORT_SYMBOL vmlinux 0xf1046ca2	PVRGetDisplayClassJTable
 EXPORT_SYMBOL vmlinux 0xf10d1f08	__dev_get_by_name
 EXPORT_SYMBOL vmlinux 0xf11a4f00	hci_send_acl
 EXPORT_SYMBOL vmlinux 0xf1216c75	prandom32

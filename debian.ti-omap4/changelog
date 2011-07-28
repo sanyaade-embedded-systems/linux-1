@@ -1,3 +1,42 @@
+linux-ti-omap4 (2.6.35-993.1) maverick; urgency=low
+
+  [ Sebastien Jan ]
+
+  * Config: uplevel config with SMC trace deactivation
+
+  [ Upstream Kernel Changes ]
+
+  * OMAP4-SGX-KM: Upgrading SGX DDK to version 1.7.17.4828
+  * SGX-KM: Add NV12/Tiler support for EGL Image External
+  * OMAP4: ASoC: Added init id value for DMIC parent frequency
+  * OMAP4: SMC : 01.04 P6 Release
+  * OMAP4: SMC: Disable secure trace option by default
+  * SGX-KM: Upgrade SGX DDK to version 1.7.17.4958
+  * OMAP4: USB: Use Mux Framework APIs for managing I/O wakeups
+  * OMAP4: SDP: Mux gpio_157 for EHCI and HSI power
+  * OMAP4: USB Host: Re-implement EHCI Hub Control to workaround errata
+  * OMAP: USBHOST: Enable clocking gating for TLL interface
+  * OMAP4: HSI: Fix Multiple IRQ disabling
+  * TILER driver changes to support buffer lock/unlock
+  * OMAP4: PM: Protect SAR save and abort it if HUSBHOST and USBTLL are not
+    idled.
+  * OMAP4: USBTLL: Off mode disconnect workaround
+  * OMAP4: TILER: Increased the waitforbuffer timeout duration
+  * OMAP4: DSS2: manager irqhandler fix for spin lock usage
+  * OMAP4: PM: Allow OFF mode for ES2.3 GP CPUs
+  * Workaround: OMAP4: PHY internal: Add msleep_interruptible to charger
+    detection function.
+  * OMAP4: powerdomain: Enable INACTIVE state for 4460 mpu powerdomain
+  * OMAP4: Restrict SW w/a for L2$ only for 4460ES1.0
+  * OMAP4: Correct GIC distributor switch sequence
+  * OMAP4: L2C: Add restore L2$ POR value for GP devices
+  * MMC: increased write data timeout (DTO) for SD cards up to 500ms
+  * misc: twl6040-vib: Fix haptic feedback
+  * android_4430_defconfig: Enable FUSE filesystem
+  * Add BT support for Panda board
+
+ -- Sebastien JAN <s-jan@ti.com>  Thu, 28 Jul 2011 13:36:42 +0200
+
 linux-ti-omap4 (2.6.35-992.7) maverick; urgency=low
 
   [ Upstream Kernel Changes ]
