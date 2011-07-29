@@ -178,7 +178,7 @@ static int omap_crtc_mode_set(struct drm_crtc *crtc,
 	omap_crtc->info.min_y_decim = 1;
 	omap_crtc->info.max_y_decim = 1;
 
-	omap_crtc_update_scanout(crtc);
+	update_scanout(crtc);
 
 	return 0;
 }
@@ -236,17 +236,18 @@ static int omap_crtc_page_flip_locked(struct drm_crtc *crtc,
 
 	/* wakeup userspace */
 	// TODO: this should happen *after* flip.. somehow..
-	if (event) {
-		spin_lock_irqsave(&dev->event_lock, flags);
-		event->event.sequence =
-				drm_vblank_count_and_time(dev, omap_crtc->id, &now);
-		event->event.tv_sec = now.tv_sec;
-		event->event.tv_usec = now.tv_usec;
-		list_add_tail(&event->base.link,
-				&event->base.file_priv->event_list);
-		wake_up_interruptible(&event->base.file_priv->event_wait);
-		spin_unlock_irqrestore(&dev->event_lock, flags);
-	}
+	// NOTE: we don't need this that in 2.6.35 (DRM port)
+	//if (event) {
+	//	spin_lock_irqsave(&dev->event_lock, flags);
+	//	event->event.sequence =
+	//			drm_vblank_count_and_time(dev, omap_crtc->id, &now);
+	//	event->event.tv_sec = now.tv_sec;
+	//	event->event.tv_usec = now.tv_usec;
+	//	list_add_tail(&event->base.link,
+	//			&event->base.file_priv->event_list);
+	//	wake_up_interruptible(&event->base.file_priv->event_wait);
+	//	spin_unlock_irqrestore(&dev->event_lock, flags);
+	//}
 
 	return ret;
 }

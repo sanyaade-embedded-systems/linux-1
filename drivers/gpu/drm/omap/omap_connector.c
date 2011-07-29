@@ -107,7 +107,7 @@ enum drm_connector_status omap_connector_detect(
 		ret = connector_status_disconnected;
 	}
 
-	VERB("%s: %d (force=%d)", omap_connector->dssdev->name, ret, force);
+	//VERB("%s: %d (force=%d)", omap_connector->dssdev->name, ret, force);
 
 	return ret;
 }

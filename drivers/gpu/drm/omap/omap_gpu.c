@@ -21,6 +21,7 @@
 #include "omap_gpu_priv.h"
 
 #include "drm_fb_helper.h"
+#include "drm_crtc_helper.h"
 
 //#define DRIVER_NAME		MODULE_NAME
 // temporary hack for android:

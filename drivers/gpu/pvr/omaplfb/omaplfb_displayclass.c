@@ -1002,7 +1002,8 @@ static OMAPLFB_DEVINFO *OMAPLFBInitDev(unsigned uiFBDevID, struct drm_device *de
 	
 	if(psDevInfo->sPVRJTable.pfnPVRSRVRegisterDCDevice(
 		&psDevInfo->sDCJTable,
-		&psDevInfo->uiPVRDevID) != PVRSRV_OK)
+		&psDevInfo->uiPVRDevID,
+		NULL) != PVRSRV_OK)
 	{
 		printk(KERN_ERR DRIVER_PREFIX
 			": %s: Device %u: PVR Services device registration failed\n", __FUNCTION__, uiFBDevID);

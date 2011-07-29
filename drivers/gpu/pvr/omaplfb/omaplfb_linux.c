@@ -127,7 +127,7 @@ static void WorkQueueHandler(struct work_struct *psWork)
 OMAPLFB_ERROR OMAPLFBCreateSwapQueue(OMAPLFB_SWAPCHAIN *psSwapChain)
 {
 	
-	psSwapChain->psWorkQueue = alloc_ordered_workqueue(DEVNAME, WQ_NON_REENTRANT | WQ_FREEZABLE | WQ_HIGHPRI);
+	psSwapChain->psWorkQueue = __create_workqueue(DEVNAME, 1, 1, 1);
 	if (psSwapChain->psWorkQueue == NULL)
 	{
 		printk(KERN_WARNING DRIVER_PREFIX ": %s: Device %u: create_singlethreaded_workqueue failed\n", __FUNCTION__, psSwapChain->uiFBDevID);
