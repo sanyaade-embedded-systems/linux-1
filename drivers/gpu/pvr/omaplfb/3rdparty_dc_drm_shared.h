@@ -1,6 +1,6 @@
 /**********************************************************************
  *
- * Copyright (C) Imagination Technologies Ltd. All rights reserved.
+ * Copyright(c) 2008 Imagination Technologies Ltd. All rights reserved.
  * 
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -35,11 +35,12 @@
 #define	PVR_DRM_DISP_CMD_STANDBY	4
 #define	PVR_DRM_DISP_CMD_SUSPEND	5
 #define	PVR_DRM_DISP_CMD_OFF		6
-#define	PVR_DRM_DISP_CMD_RESYNC		7
+
+#define	PVR_DRM_DISP_CMD_RESYNC	7
 
 #define	PVR_DRM_DISP_ARG_CMD		0
 #define	PVR_DRM_DISP_ARG_DEV		1
-#define	PVR_DRM_DISP_ARG_ARG		2
+#define PVR_DRM_DISP_ARG_ARG        2
 #define	PVR_DRM_DISP_NUM_ARGS		3
 
 #endif	
