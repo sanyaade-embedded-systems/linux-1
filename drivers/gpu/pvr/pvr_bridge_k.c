@@ -194,8 +194,8 @@ PVRSRV_BridgeDispatchKM(struct file *pFile, unsigned int unref__ ioctlCmd, unsig
 	PVRSRV_BRIDGE_PACKAGE sBridgePackageKM;
 	IMG_VOID *handle = NULL;
 #else
-	IMG_VOID * omap_gpu_get_fbdev(struct drm_device *dev);
-	IMG_VOID *handle = omap_gpu_get_fbdev(dev); // XXX handle should come from omaplfb somehow, because it is omaplfb that decided to use the fb_info* as the unique handle..
+	IMG_VOID * omap_gpu_get_default_fb(struct drm_device *dev);
+	IMG_VOID *handle = omap_gpu_get_default_fb(dev); // XXX handle should come from omaplfb somehow, because it is omaplfb that decided to use the fb_info* as the unique handle..
 #endif
 	PVRSRV_BRIDGE_PACKAGE *psBridgePackageKM;
 	IMG_UINT32 ui32PID = OSGetCurrentProcessIDKM();
