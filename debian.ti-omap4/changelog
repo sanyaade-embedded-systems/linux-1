@@ -1,3 +1,12 @@
+linux-ti-omap4 (2.6.35-993.2) maverick; urgency=low
+
+  [ Upstream Kernel Changes ]
+
+  * XPROC kernel global pool fixes v3.1
+  * OMAP: TILER: Restore PAT entries when resuming from DEVICE OFF
+
+ -- Sebastien JAN <s-jan@ti.com>  Tue, 02 Aug 2011 14:58:39 +0200
+
 linux-ti-omap4 (2.6.35-993.1) maverick; urgency=low
 
   [ Sebastien Jan ]
