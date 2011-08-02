@@ -1713,6 +1713,7 @@ EXPORT_SYMBOL vmlinux 0x6aeb99ef	snd_pcm_lib_preallocate_free_for_all
 EXPORT_SYMBOL vmlinux 0x6b18a8ea	blk_queue_start_tag
 EXPORT_SYMBOL vmlinux 0x6b1acc1c	iio_read_ring_length
 EXPORT_SYMBOL vmlinux 0x6b1b67d3	__bdevname
+EXPORT_SYMBOL vmlinux 0x6b29832e	omap_crtc_page_flip
 EXPORT_SYMBOL vmlinux 0x6b2aa566	clk_get_rate
 EXPORT_SYMBOL vmlinux 0x6b2dc060	dump_stack
 EXPORT_SYMBOL vmlinux 0x6b349fba	tty_unthrottle
@@ -2117,7 +2118,6 @@ EXPORT_SYMBOL vmlinux 0x82ed4042	uart_get_baud_rate
 EXPORT_SYMBOL vmlinux 0x82fb7db2	xfrm_policy_delete
 EXPORT_SYMBOL vmlinux 0x83199a75	__ip_select_ident
 EXPORT_SYMBOL vmlinux 0x8320bea8	__umodsi3
-EXPORT_SYMBOL vmlinux 0x834971d2	omap_fbdev_get_next_connector
 EXPORT_SYMBOL vmlinux 0x83517469	bd_release
 EXPORT_SYMBOL vmlinux 0x83610751	sk_stream_wait_memory
 EXPORT_SYMBOL vmlinux 0x836d20ab	dsi_bus_is_locked
@@ -2144,6 +2144,7 @@ EXPORT_SYMBOL vmlinux 0x84949d02	blk_free_tags
 EXPORT_SYMBOL vmlinux 0x84b183ae	strncmp
 EXPORT_SYMBOL vmlinux 0x84d9a402	scsi_prep_fn
 EXPORT_SYMBOL vmlinux 0x84deb398	arp_xmit
+EXPORT_SYMBOL vmlinux 0x84fc9e86	omap_framebuffer_get_buffer
 EXPORT_SYMBOL vmlinux 0x850cce5f	truncate_inode_pages_range
 EXPORT_SYMBOL vmlinux 0x850fb97d	omap_dss_get_overlay
 EXPORT_SYMBOL vmlinux 0x8510fd28	omap_mcbsp_read
@@ -2545,7 +2546,6 @@ EXPORT_SYMBOL vmlinux 0x9f5a3242	sock_create_lite
 EXPORT_SYMBOL vmlinux 0x9f5b43aa	snd_power_wait
 EXPORT_SYMBOL vmlinux 0x9f92a405	__pagevec_release
 EXPORT_SYMBOL vmlinux 0x9f984513	strrchr
-EXPORT_SYMBOL vmlinux 0x9f98486c	omap_gpu_get_fbdev
 EXPORT_SYMBOL vmlinux 0x9fa2ee8a	inet_csk_destroy_sock
 EXPORT_SYMBOL vmlinux 0x9fb3dd30	memcpy_fromiovec
 EXPORT_SYMBOL vmlinux 0x9fc89fd1	schedule_delayed_work_on
@@ -2604,6 +2604,7 @@ EXPORT_SYMBOL vmlinux 0xa34f1ef5	crc32_le
 EXPORT_SYMBOL vmlinux 0xa35de80f	ipv4_config
 EXPORT_SYMBOL vmlinux 0xa37035a6	xfrm_state_alloc
 EXPORT_SYMBOL vmlinux 0xa37be2a4	__dev_getfirstbyhwtype
+EXPORT_SYMBOL vmlinux 0xa3a90e23	omap_framebuffer_init
 EXPORT_SYMBOL vmlinux 0xa3cd7fd0	tty_get_baud_rate
 EXPORT_SYMBOL vmlinux 0xa407f3d6	mmc_host_enable
 EXPORT_SYMBOL vmlinux 0xa4380244	elv_abort_queue
@@ -2983,6 +2984,7 @@ EXPORT_SYMBOL vmlinux 0xbd0d4cf1	snd_pcm_lib_mmap_noncached
 EXPORT_SYMBOL vmlinux 0xbd1baa68	tty_port_tty_set
 EXPORT_SYMBOL vmlinux 0xbd2c3264	snd_pcm_notify
 EXPORT_SYMBOL vmlinux 0xbd3e108d	blk_run_queue
+EXPORT_SYMBOL vmlinux 0xbd45c1f0	omap_gpu_get_default_fb
 EXPORT_SYMBOL vmlinux 0xbd5fe3d6	clocksource_unregister
 EXPORT_SYMBOL vmlinux 0xbd638742	neigh_seq_next
 EXPORT_SYMBOL vmlinux 0xbd64f987	xfrm_state_delete_tunnel

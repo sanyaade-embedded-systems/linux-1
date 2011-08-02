@@ -1,3 +1,14 @@
+linux-ti-omap4 (2.6.35-993.3) maverick; urgency=low
+
+  [ Upstream Kernel Changes ]
+
+  * DRM port to 2.6.35 : initial patch from robClark
+  * DRM port to 2.6.35 : imported PVR dc_omapdrm code
+  * DRM port to 2.6.35 : other minor port fixes
+  * DRM port to 2.6.35 : Fix minor build issue
+
+ -- Sebastien JAN <s-jan@ti.com>  Tue, 02 Aug 2011 15:13:23 +0200
+
 linux-ti-omap4 (2.6.35-993.2) maverick; urgency=low
 
   [ Upstream Kernel Changes ]
