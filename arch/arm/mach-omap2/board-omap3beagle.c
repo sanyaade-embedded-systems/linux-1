@@ -84,11 +84,13 @@ static struct {
 	int usb_pwr_level;
 	int reset_gpio;
 	int usr_button_gpio;
+	char *lcd_driver_name;
 } beagle_config = {
 	.mmc1_gpio_wp = -EINVAL,
 	.usb_pwr_level = GPIOF_OUT_INIT_LOW,
 	.reset_gpio = 129,
 	.usr_button_gpio = 4,
+	.lcd_driver_name = "",
 };
 
 static struct gpio omap3_beagle_rev_gpios[] __initdata = {
@@ -387,9 +389,28 @@ static struct omap_dss_device beagle_tv_device = {
 	.phy.venc.type = OMAP_DSS_VENC_TYPE_SVIDEO,
 };
 
+static int beagle_enable_lcd(struct omap_dss_device *dssdev)
+{
+	return 0;
+}
+
+static int beagle_disable_lcd(struct omap_dss_device *dssdev)
+{
+}
+
+static struct omap_dss_device beagle_lcd_device = {
+	.name			= "lcd",
+	.driver_name		= "",
+	.type			= OMAP_DISPLAY_TYPE_DPI,
+	.phy.dpi.data_lines	= 24,
+	.platform_enable	= beagle_enable_lcd,
+	.platform_disable	= beagle_disable_lcd,
+};
+
 static struct omap_dss_device *beagle_dss_devices[] = {
 	&beagle_dvi_device,
 	&beagle_tv_device,
+	&beagle_lcd_device,
 };
 
 static struct omap_dss_board_info beagle_dss_data = {
@@ -732,6 +753,10 @@ static void __init omap3_beagle_init(void)
 	omap3_beagle_i2c_init();
 
 	gpio_buttons[0].gpio = beagle_config.usr_button_gpio;
+
+	/* TODO: set lcd_driver_name by command line or device tree */
+	beagle_config.lcd_driver_name = "tfc_s9700_panel";
+	beagle_lcd_device.driver_name = beagle_config.lcd_driver_name;
 
 	platform_add_devices(omap3_beagle_devices,
 			ARRAY_SIZE(omap3_beagle_devices));
