@@ -88,6 +88,12 @@ static int tfc_panel_resume(struct omap_dss_device *dssdev)
 	return tfc_panel_enable(dssdev);
 }
 
+static void tfc_panel_get_timings(struct omap_dss_device *dssdev,
+		            struct omap_video_timings *timings)
+{
+	    *timings = dssdev->panel.timings;
+}
+
 static struct omap_dss_driver tfc_s9700_driver = {
 	.probe		= tfc_panel_probe,
 	.remove		= tfc_panel_remove,
@@ -96,7 +102,7 @@ static struct omap_dss_driver tfc_s9700_driver = {
 	.disable	= tfc_panel_disable,
 	.suspend	= tfc_panel_suspend,
 	.resume		= tfc_panel_resume,
-
+	.get_timings = tfc_panel_get_timings,
 	.driver         = {
 		.name   = "tfc_s9700_panel",
 		.owner  = THIS_MODULE,
