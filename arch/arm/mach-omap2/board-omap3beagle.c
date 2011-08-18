@@ -85,12 +85,14 @@ static struct {
 	int reset_gpio;
 	int usr_button_gpio;
 	char *lcd_driver_name;
+	int lcd_pwren;
 } beagle_config = {
 	.mmc1_gpio_wp = -EINVAL,
 	.usb_pwr_level = GPIOF_OUT_INIT_LOW,
 	.reset_gpio = 129,
 	.usr_button_gpio = 4,
 	.lcd_driver_name = "",
+	.lcd_pwren = 156
 };
 
 static struct gpio omap3_beagle_rev_gpios[] __initdata = {
@@ -422,6 +424,11 @@ static struct omap_dss_board_info beagle_dss_data = {
 static void __init beagle_display_init(void)
 {
 	int r;
+
+	r = gpio_request_one(beagle_config.lcd_pwren, GPIOF_OUT_INIT_LOW,
+			     "LCD power");
+	if (r < 0)
+		printk(KERN_ERR "Unable to get LCD power enable GPIO\n");
 
 	r = gpio_request_one(beagle_dvi_device.reset_gpio, GPIOF_OUT_INIT_LOW,
 			     "DVI reset");
