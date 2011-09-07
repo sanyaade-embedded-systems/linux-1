@@ -36,7 +36,7 @@
 #define UART_OMAP_NO_EMPTY_FIFO_READ_IP_REV	0x52
 #define UART_OMAP_WER		0x17	/* Wake-up enable register */
 
-#define DEFAULT_TIMEOUT (5 * HZ)
+#define DEFAULT_TIMEOUT 0
 
 struct omap_uart_state {
 	int num;
