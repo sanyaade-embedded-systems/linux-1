@@ -985,6 +985,19 @@ static void am335x_evm_setup(struct memory_accessor *mem_acc, void *context)
 	int ret;
 	char tmp[10];
 
+	/* Eventually when we have device tree support, u-boot will
+	 * read the EEPROMs and pass flattened device trees to the
+	 * kernel. For beaglebone, u-boot will read the EEPROM and
+	 * pass the machine type to the kernel.
+	 */
+	if (machine_is_beaglebone()) {
+		pr_info("Board name: AM335BONE\n");
+		daughter_brd_detected = false;
+		setup_beaglebone();
+		am335x_cpsw_init();
+		return;
+	}
+
 	/* get board specific data */
 	ret = mem_acc->read(mem_acc, (char *)&config, 0, sizeof(config));
 	if (ret != sizeof(config)) {
@@ -1164,6 +1177,16 @@ MACHINE_START(AM335XEVM, "am335xevm")
 	.map_io		= am335x_evm_map_io,
 	.init_early	= am335x_init_early,
 	.init_irq	= ti81xx_init_irq,
+	.timer		= &omap3_am33xx_timer,
+	.init_machine	= am335x_evm_init,
+MACHINE_END
+
+MACHINE_START(BEAGLEBONE, "beaglebone")
+	/* Maintainer: Texas Instruments */
+	.atag_offset	= 0x100,
+	.map_io		= am335x_evm_map_io,
+	.init_irq	= ti816x_init_irq,
+	.init_early	= am335x_init_early,
 	.timer		= &omap3_am33xx_timer,
 	.init_machine	= am335x_evm_init,
 MACHINE_END
