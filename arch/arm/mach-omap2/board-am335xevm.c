@@ -2975,6 +2975,9 @@ static void tps65217_init(int evm_id, int profile)
 		return;
 	}
 
+	pr_info("Disabling OPP for 275MHz due to silicon errata");
+	opp_disable(mpu_dev, 275000000);
+
 	if (!(val & TPS65217_STATUS_ACPWR)) {
 		/* If powered by USB then disable OPP120 and OPPTURBO */
 		pr_info("Maximum current provided by the USB port is 500mA"
